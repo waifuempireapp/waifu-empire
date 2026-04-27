@@ -96,3 +96,70 @@ export const NOMI_CONTINENTI = {
   NA: 'Nord America', SA: 'Sud America', EU: 'Europa',
   AF: 'Africa', AS: 'Asia', OC: 'Oceania',
 };
+
+// Mappa progressiva: territori per livello
+// Livello 1: solo continenti
+// Livello 2+: aggiungi stati progressivamente
+export const TERRITORI_PER_LIVELLO = {
+  1: [ // Solo continenti (6 territori)
+    { id: 'cont_NA', nome: 'Nord America', tipo: 'continente', cx: 250, cy: 250, path: 'M100,100 L400,100 L400,400 L100,400 Z' },
+    { id: 'cont_SA', nome: 'Sud America', tipo: 'continente', cx: 350, cy: 500, path: 'M250,420 L450,420 L450,620 L250,620 Z' },
+    { id: 'cont_EU', nome: 'Europa', tipo: 'continente', cx: 600, cy: 250, path: 'M500,150 L700,150 L700,350 L500,350 Z' },
+    { id: 'cont_AF', nome: 'Africa', tipo: 'continente', cx: 650, cy: 450, path: 'M550,350 L750,350 L750,600 L550,600 Z' },
+    { id: 'cont_AS', nome: 'Asia', tipo: 'continente', cx: 850, cy: 300, path: 'M750,150 L1000,150 L1000,450 L750,450 Z' },
+    { id: 'cont_OC', nome: 'Oceania', tipo: 'continente', cx: 920, cy: 550, path: 'M850,500 L1000,500 L1000,600 L850,600 Z' },
+  ],
+  2: [ // Europa dettagliata (10 stati principali)
+    { id: 'eu_uk', nome: 'Regno Unito', tipo: 'stato', cx: 510, cy: 230, conf: ['eu_fr', 'eu_ie'] },
+    { id: 'eu_fr', nome: 'Francia', tipo: 'stato', cx: 550, cy: 270, conf: ['eu_uk', 'eu_de', 'eu_es', 'eu_it'] },
+    { id: 'eu_de', nome: 'Germania', tipo: 'stato', cx: 600, cy: 250, conf: ['eu_fr', 'eu_pl', 'eu_it'] },
+    { id: 'eu_it', nome: 'Italia', tipo: 'stato', cx: 610, cy: 300, conf: ['eu_fr', 'eu_de'] },
+    { id: 'eu_es', nome: 'Spagna', tipo: 'stato', cx: 530, cy: 310, conf: ['eu_fr'] },
+    { id: 'eu_pl', nome: 'Polonia', tipo: 'stato', cx: 650, cy: 240, conf: ['eu_de', 'eu_ru'] },
+    { id: 'eu_ru', nome: 'Russia (EU)', tipo: 'stato', cx: 720, cy: 220, conf: ['eu_pl', 'eu_ua'] },
+    { id: 'eu_ua', nome: 'Ucraina', tipo: 'stato', cx: 690, cy: 270, conf: ['eu_ru', 'eu_pl'] },
+    { id: 'eu_se', nome: 'Svezia', tipo: 'stato', cx: 620, cy: 180, conf: ['eu_no'] },
+    { id: 'eu_no', nome: 'Norvegia', tipo: 'stato', cx: 590, cy: 160, conf: ['eu_se'] },
+  ],
+  3: [ // Nord America dettagliato (5 stati)
+    { id: 'na_us', nome: 'USA', tipo: 'stato', cx: 250, cy: 260, conf: ['na_ca', 'na_mx'] },
+    { id: 'na_ca', nome: 'Canada', tipo: 'stato', cx: 250, cy: 180, conf: ['na_us'] },
+    { id: 'na_mx', nome: 'Messico', tipo: 'stato', cx: 250, cy: 320, conf: ['na_us'] },
+    { id: 'na_cu', nome: 'Cuba', tipo: 'stato', cx: 320, cy: 330, conf: [] },
+    { id: 'na_gt', nome: 'Guatemala', tipo: 'stato', cx: 280, cy: 350, conf: ['na_mx'] },
+  ],
+  4: [ // Sud America dettagliato (5 stati)
+    { id: 'sa_br', nome: 'Brasile', tipo: 'stato', cx: 380, cy: 490, conf: ['sa_ar', 'sa_pe'] },
+    { id: 'sa_ar', nome: 'Argentina', tipo: 'stato', cx: 340, cy: 570, conf: ['sa_br', 'sa_cl'] },
+    { id: 'sa_cl', nome: 'Cile', tipo: 'stato', cx: 320, cy: 540, conf: ['sa_ar'] },
+    { id: 'sa_pe', nome: 'Perù', tipo: 'stato', cx: 310, cy: 480, conf: ['sa_br', 'sa_co'] },
+    { id: 'sa_co', nome: 'Colombia', tipo: 'stato', cx: 320, cy: 440, conf: ['sa_pe'] },
+  ],
+  5: [ // Africa dettagliata (5 stati)
+    { id: 'af_eg', nome: 'Egitto', tipo: 'stato', cx: 650, cy: 370, conf: ['af_sd'] },
+    { id: 'af_sd', nome: 'Sudan', tipo: 'stato', cx: 660, cy: 410, conf: ['af_eg', 'af_et'] },
+    { id: 'af_et', nome: 'Etiopia', tipo: 'stato', cx: 680, cy: 440, conf: ['af_sd', 'af_ke'] },
+    { id: 'af_ke', nome: 'Kenya', tipo: 'stato', cx: 680, cy: 470, conf: ['af_et', 'af_za'] },
+    { id: 'af_za', nome: 'Sud Africa', tipo: 'stato', cx: 660, cy: 560, conf: ['af_ke'] },
+  ],
+  6: [ // Asia dettagliata (5 stati)
+    { id: 'as_cn', nome: 'Cina', tipo: 'stato', cx: 880, cy: 320, conf: ['as_ru', 'as_in', 'as_jp'] },
+    { id: 'as_ru', nome: 'Russia', tipo: 'stato', cx: 820, cy: 200, conf: ['as_cn'] },
+    { id: 'as_in', nome: 'India', tipo: 'stato', cx: 820, cy: 380, conf: ['as_cn'] },
+    { id: 'as_jp', nome: 'Giappone', tipo: 'stato', cx: 960, cy: 300, conf: ['as_cn'] },
+    { id: 'as_kr', nome: 'Corea del Sud', tipo: 'stato', cx: 920, cy: 310, conf: ['as_cn', 'as_jp'] },
+  ],
+  7: [ // Oceania dettagliata (2 stati)
+    { id: 'oc_au', nome: 'Australia', tipo: 'stato', cx: 930, cy: 560, conf: ['oc_nz'] },
+    { id: 'oc_nz', nome: 'Nuova Zelanda', tipo: 'stato', cx: 980, cy: 580, conf: ['oc_au'] },
+  ],
+};
+
+// Funzione helper: ottieni territori per un dato livello (cumulativo)
+export function getTerritori_ForLivello(livello) {
+  let territori = [];
+  for (let i = 1; i <= Math.min(livello, 7); i++) {
+    territori = [...territori, ...TERRITORI_PER_LIVELLO[i]];
+  }
+  return territori;
+}
