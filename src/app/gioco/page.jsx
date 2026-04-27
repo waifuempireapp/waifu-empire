@@ -1051,8 +1051,6 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
         setProfilo({ ...profilo, energia: nuovaEnergia });
         await updateUserProfile(user.uid, { energia: nuovaEnergia });
       }
-        await updateUserProfile(user.uid, { energia: nuovaEnergia });
-      }
       mostraNotif('Sconfitta! -1 energia', '#ef4444');
     }
 
@@ -1062,43 +1060,6 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
     setSceltaStat(null);
     setSceltaPiuMeno(null);
     setTerrSel(null);
-  };
-
-    const vittorieUtente = scontri.filter(s => s.vittoriaUtente).length;
-    const vittoria = vittorieUtente >= 3;
-
-    setTimeout(() => {
-      setRisultatoBattaglia({ vittoria, scontri, vittorieUtente });
-      setInBattaglia(false);
-
-      if (vittoria) {
-        // Conquista territorio
-        setTerritoriUtente({ ...territoriUtente, [terrSel.id]: { conquistato: true } });
-        
-        // Consuma 1 energia
-        const nuovaEnergia = (profilo.energia ?? 0) - 1;
-        setProfilo({ ...profilo, energia: nuovaEnergia });
-        updateUserProfile(user.uid, { energia: nuovaEnergia });
-
-        mostraNotif(`${terrSel.nome} conquistato!`, '#06d6a0');
-        
-        // Check mappa completa
-        const nuoviConquistati = Object.values({ ...territoriUtente, [terrSel.id]: { conquistato: true } }).filter(t => t?.conquistato).length;
-        if (nuoviConquistati === TERRITORI.length) {
-          setTimeout(() => {
-            mostraNotif('🎉 MAPPA COMPLETATA! +5 pacchetti omaggio', '#f59e0b');
-            // Dai 5 pacchetti + reset mappa + incrementa livello CPU
-            const nuoviPacchetti = (profilo.pacchetti ?? 0) + 5;
-            setProfilo({ ...profilo, pacchetti: nuoviPacchetti });
-            updateUserProfile(user.uid, { pacchetti: nuoviPacchetti });
-            setTerritoriUtente({});
-            setLivelloCPU(livelloCPU + 1);
-          }, 2000);
-        }
-      } else {
-        mostraNotif('Sconfitta! Riprova', '#ef4444');
-      }
-    }, 3000); // Simula 3 secondi di battaglia
   };
 
   if (modoBattaglia) {

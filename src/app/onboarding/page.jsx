@@ -82,34 +82,7 @@ export default function OnboardingPage() {
             {busy ? 'CREAZIONE...' : 'FONDA L\'IMPERO'}
           </button>
         </div>
-      )}
-
-      {step === 2 && (
-        <div className="fade-up" style={{ ...card, maxWidth: 600 }}>
-          <div style={{ textAlign: 'center' }}>
-            <div className="pulse" style={{ fontSize: 60 }}>🎁</div>
-            <h2 style={titolo}>5 PACCHETTI RICEVUTI</h2>
-            <p style={{ color: '#d4c5b9', lineHeight: 1.7, marginTop: 12 }}>
-              I tuoi 5 pacchetti di benvenuto sono stati distribuiti — senza doppioni di waifu.
-              <br />Tutto è già nella tua collezione.
-            </p>
-            <div style={{ margin: '20px 0', padding: 16, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, textAlign: 'left' }}>
-              <div style={{ fontSize: 12, color: '#f59e0b', letterSpacing: 2, fontFamily: 'Cinzel, serif', marginBottom: 8 }}>RIEPILOGO</div>
-              <div style={{ fontSize: 12, opacity: 0.85 }}>
-                {pacchettiBenvenuto.flat().reduce((acc, c) => {
-                  acc[c.tipo] = (acc[c.tipo] || 0) + 1;
-                  return acc;
-                }, {}) && Object.entries(pacchettiBenvenuto.flat().reduce((acc, c) => { acc[c.tipo] = (acc[c.tipo] || 0) + 1; return acc; }, {})).map(([k, v]) => (
-                  <div key={k}>· {v} {k}</div>
-                ))}
-              </div>
-            </div>
-            <button onClick={() => router.replace('/gioco')} style={btnPrimario}>
-              ENTRA NELL'IMPERO
-            </button>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
