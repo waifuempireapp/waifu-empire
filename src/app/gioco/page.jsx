@@ -454,19 +454,6 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
       </PannelloOrnato>
     </div>
   );
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 56, fontFamily: 'Cinzel, serif', color: '#fbbf24', textShadow: '0 0 20px rgba(245,158,11,0.6)', fontWeight: 700 }}>
-              {profilo.pacchetti ?? 0}
-            </div>
-            <div style={{ fontSize: 10, opacity: 0.7, letterSpacing: 3 }}>DI {TIMER.MAX_PACCHETTI}</div>
-          </div>
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <PacchettoBox onClick={apri} disabled={(profilo.pacchetti ?? 0) <= 0} />
-        </div>
-      </PannelloOrnato>
-    </div>
-  );
 }
 
 function PacchettoBox({ onClick, disabled, isBenvenuto }) {
