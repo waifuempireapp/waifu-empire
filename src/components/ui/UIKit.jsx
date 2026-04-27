@@ -222,7 +222,7 @@ export function BarraRisorsa({ valore, max, colore = '#f59e0b', icon, label, mos
           }} />
         </div>
         {mostraNumero && (
-          <div style={{ fontSize: 10, color: colore, fontFamily: 'Cinzel, serif', textAlign: 'right', marginTop: 2 }}>
+          <div style={{ fontSize: 10, color, fontFamily: 'Cinzel, serif', textAlign: 'right', marginTop: 2 }}>
             {valore}/{max}
           </div>
         )}

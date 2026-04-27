@@ -32,9 +32,5 @@ export async function POST(request) {
   }
 }
 
-// Configurazione Next.js per file upload
-export const config = {
-  api: {
-    bodyParser: false, // Disabilita body parser di default per gestire FormData
-  },
-};
+// Note: Next.js 14 App Router gestisce automaticamente FormData
+// Non serve più export const config per bodyParser
