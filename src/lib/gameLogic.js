@@ -101,3 +101,28 @@ export const INCREMENTI_LEVELUP = {
   colore_capelli: 1,
   esperienza: 20,
 };
+
+// Ricarica pacchetti omaggio: 2 ogni 12 ore
+export function calcolaRicaricaPacchettiOmaggio(ultimaRicarica, attualiPacchetti = 0) {
+  const MAX_PACCHETTI = 2;
+  const ORE_RICARICA = 12;
+  
+  if (attualiPacchetti >= MAX_PACCHETTI) {
+    return { nuoviPacchetti: MAX_PACCHETTI, deveAggiornare: false };
+  }
+  
+  const oraAttuale = Date.now();
+  const lastTs = ultimaRicarica?.toMillis ? ultimaRicarica.toMillis() : Number(ultimaRicarica) || 0;
+  const oreTrascorse = (oraAttuale - lastTs) / (1000 * 60 * 60);
+  
+  if (oreTrascorse < ORE_RICARICA) {
+    return { nuoviPacchetti: attualiPacchetti, deveAggiornare: false };
+  }
+  
+  // Reset a 2 pacchetti
+  return { 
+    nuoviPacchetti: MAX_PACCHETTI, 
+    ultimaRicaricaAggiornata: oraAttuale, 
+    deveAggiornare: true 
+  };
+}

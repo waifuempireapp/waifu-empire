@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, getDropAttivo } from '@/lib/firestoreService';
-import { calcolaRicaricaPacchetti, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, INCREMENTI_LEVELUP } from '@/lib/gameLogic';
+import { calcolaRicaricaPacchetti, calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, INCREMENTI_LEVELUP } from '@/lib/gameLogic';
 import { TIMER, RARITA, COLORI_CAPELLI, CATEGORIE_TETTE, SLOT_OUTFIT, TERRITORI } from '@/lib/constants';
 import PaperDoll from '@/components/PaperDoll';
 import { CartaWaifu, CartaOutfit, CartaPosa } from '@/components/CartaWaifu';
@@ -53,11 +53,11 @@ export default function GiocoPage() {
       updatedProfile.ultimaRicaricaEnergia = new Date(ricE.ultimaRicaricaAggiornata);
       await updateUserProfile(user.uid, { energia: ricE.nuovaEnergia, ultimaRicaricaEnergia: new Date(ricE.ultimaRicaricaAggiornata) });
     }
-    const ricP = calcolaRicaricaPacchetti(p.ultimaRicaricaPacchetti, p.pacchetti ?? 0);
+    const ricP = calcolaRicaricaPacchettiOmaggio(p.ultimaRicaricaPacchetti, p.pacchettiOmaggio ?? 0);
     if (ricP.deveAggiornare) {
-      updatedProfile.pacchetti = ricP.nuoviPacchetti;
+      updatedProfile.pacchettiOmaggio = ricP.nuoviPacchetti;
       updatedProfile.ultimaRicaricaPacchetti = new Date(ricP.ultimaRicaricaAggiornata);
-      await updateUserProfile(user.uid, { pacchetti: ricP.nuoviPacchetti, ultimaRicaricaPacchetti: new Date(ricP.ultimaRicaricaAggiornata) });
+      await updateUserProfile(user.uid, { pacchettiOmaggio: ricP.nuoviPacchetti, ultimaRicaricaPacchetti: new Date(ricP.ultimaRicaricaAggiornata) });
     }
     setProfilo(updatedProfile);
     setColl(c);
@@ -320,9 +320,10 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
 
   const apri = async () => {
     const hasBenvenuto = (profilo.pacchettiBenvenuto ?? 0) > 0;
-    const hasNormali = (profilo.pacchetti ?? 0) > 0;
+    const hasOmaggio = (profilo.pacchettiOmaggio ?? 0) > 0;
+    const hasSfida = (profilo.pacchettiSfida ?? 0) > 0;
     
-    if (!hasBenvenuto && !hasNormali) {
+    if (!hasBenvenuto && !hasOmaggio && !hasSfida) {
       mostraNotif('Nessun pacchetto disponibile', '#ef4444');
       return;
     }
@@ -333,15 +334,25 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     const pp = drop && drop.poseIds ? poseCat.filter(p => drop.poseIds.includes(p.id)) : poseCat;
     if (wp.length === 0) { mostraNotif('Nessuna waifu nel drop attivo. Contatta admin.', '#ef4444'); return; }
 
-    // Se sto aprendo un pacchetto benvenuto, escludo doppioni waifu
-    const usaBenvenuto = hasBenvenuto;
-    const waifuPossedute = usaBenvenuto ? Object.keys(collezione.waifu || {}) : [];
+    // Priorità: benvenuto → omaggio → sfida
+    let tipoPacchetto = null;
+    if (hasBenvenuto) {
+      tipoPacchetto = 'benvenuto';
+    } else if (hasOmaggio) {
+      tipoPacchetto = 'omaggio';
+    } else {
+      tipoPacchetto = 'sfida';
+    }
+
+    // Se pacchetto benvenuto, escludo doppioni waifu
+    const escludiDoppioni = tipoPacchetto === 'benvenuto';
+    const waifuPossedute = escludiDoppioni ? Object.keys(collezione.waifu || {}) : [];
     
     const carte = generaPacchetto({
       waifuPool: wp,
       outfitPool: op,
       posePool: pp,
-      escludiDoppioniWaifu: usaBenvenuto,
+      escludiDoppioniWaifu: escludiDoppioni,
       waifuPossedute,
     });
     
@@ -364,14 +375,18 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     await saveCollezione(user.uid, nuova);
 
     // Decrementa il contatore corretto
-    if (usaBenvenuto) {
+    if (tipoPacchetto === 'benvenuto') {
       const nuovoBenv = (profilo.pacchettiBenvenuto ?? 0) - 1;
       setProfilo({ ...profilo, pacchettiBenvenuto: nuovoBenv });
       await updateUserProfile(user.uid, { pacchettiBenvenuto: nuovoBenv });
+    } else if (tipoPacchetto === 'omaggio') {
+      const nuovoOmaggio = (profilo.pacchettiOmaggio ?? 0) - 1;
+      setProfilo({ ...profilo, pacchettiOmaggio: nuovoOmaggio });
+      await updateUserProfile(user.uid, { pacchettiOmaggio: nuovoOmaggio });
     } else {
-      const nuovoPacchetti = (profilo.pacchetti ?? 0) - 1;
-      setProfilo({ ...profilo, pacchetti: nuovoPacchetti });
-      await updateUserProfile(user.uid, { pacchetti: nuovoPacchetti });
+      const nuovoSfida = (profilo.pacchettiSfida ?? 0) - 1;
+      setProfilo({ ...profilo, pacchettiSfida: nuovoSfida });
+      await updateUserProfile(user.uid, { pacchettiSfida: nuovoSfida });
     }
 
     carte.forEach((_, i) => {
@@ -417,37 +432,50 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
           Ogni pacchetto contiene <strong style={{ color: '#fbbf24' }}>2 waifu, 2 outfit, 1 posa</strong>.
         </p>
         
-        {/* Pacchetti Benvenuto (se presenti) */}
+        {/* Pacchetti Benvenuto */}
         {(profilo.pacchettiBenvenuto ?? 0) > 0 && (
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 24, padding: 16, background: 'rgba(6,214,160,0.08)', borderRadius: 12, border: '1px solid rgba(6,214,160,0.3)' }}>
             <Chip colore="#06d6a0" icon="⭐" size="md">PACCHETTI BENVENUTO</Chip>
             <p style={{ fontSize: 11, color: '#06d6a0', marginTop: 8, opacity: 0.9 }}>
               Senza doppioni waifu garantiti!
             </p>
-            <div style={{ fontSize: 56, fontFamily: 'Cinzel, serif', color: '#06d6a0', textShadow: '0 0 20px rgba(6,214,160,0.6)', fontWeight: 700, marginTop: 8 }}>
+            <div style={{ fontSize: 56, fontFamily: 'Fredoka', color: '#06d6a0', textShadow: '0 0 20px rgba(6,214,160,0.6)', fontWeight: 700, marginTop: 8 }}>
               {profilo.pacchettiBenvenuto}
             </div>
           </div>
         )}
         
-        {/* Pacchetti Normali */}
-        <div>
-          {(profilo.pacchettiBenvenuto ?? 0) > 0 && <Divider colore="#f59e0b" spazio={16} />}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 16 }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 11, opacity: 0.7, letterSpacing: 3, marginBottom: 4 }}>PACCHETTI</div>
-              <div style={{ fontSize: 48, fontFamily: 'Cinzel, serif', color: '#fbbf24', textShadow: '0 0 20px rgba(245,158,11,0.6)', fontWeight: 700 }}>
-                {profilo.pacchetti ?? 0}
-              </div>
-              <div style={{ fontSize: 10, opacity: 0.7, letterSpacing: 3, marginTop: 2 }}>DI {TIMER.MAX_PACCHETTI}</div>
-            </div>
+        {/* Pacchetti Omaggio */}
+        <div style={{ marginBottom: 24, padding: 16, background: 'rgba(245,158,11,0.08)', borderRadius: 12, border: '1px solid rgba(245,158,11,0.3)' }}>
+          <Chip colore="#f59e0b" icon="🎁" size="md">PACCHETTI OMAGGIO</Chip>
+          <p style={{ fontSize: 11, color: '#f59e0b', marginTop: 8, opacity: 0.9 }}>
+            2 pacchetti ogni 12 ore
+          </p>
+          <div style={{ fontSize: 56, fontFamily: 'Fredoka', color: '#fbbf24', textShadow: '0 0 20px rgba(245,158,11,0.6)', fontWeight: 700, marginTop: 8 }}>
+            {profilo.pacchettiOmaggio ?? 0}
           </div>
+          <div style={{ fontSize: 10, opacity: 0.7, letterSpacing: 2, marginTop: 4 }}>MAX 2</div>
+          {(profilo.pacchettiOmaggio ?? 0) < 2 && (
+            <CountdownPacchettiOmaggio ultimaRicarica={profilo.ultimaRicaricaPacchetti} />
+          )}
+        </div>
+
+        {/* Pacchetti Sfida */}
+        <div style={{ marginBottom: 24, padding: 16, background: 'rgba(236,72,153,0.08)', borderRadius: 12, border: '1px solid rgba(236,72,153,0.3)' }}>
+          <Chip colore="#ec4899" icon="⚔" size="md">PACCHETTI SFIDA</Chip>
+          <p style={{ fontSize: 11, color: '#ec4899', marginTop: 8, opacity: 0.9 }}>
+            Vinti dalle battaglie
+          </p>
+          <div style={{ fontSize: 56, fontFamily: 'Fredoka', color: '#ec4899', textShadow: '0 0 20px rgba(236,72,153,0.6)', fontWeight: 700, marginTop: 8 }}>
+            {profilo.pacchettiSfida ?? 0}
+          </div>
+          <div style={{ fontSize: 10, opacity: 0.7, letterSpacing: 2, marginTop: 4 }}>ILLIMITATI</div>
         </div>
         
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 20 }}>
           <PacchettoBox 
             onClick={apri} 
-            disabled={(profilo.pacchettiBenvenuto ?? 0) <= 0 && (profilo.pacchetti ?? 0) <= 0}
+            disabled={(profilo.pacchettiBenvenuto ?? 0) <= 0 && (profilo.pacchettiOmaggio ?? 0) <= 0 && (profilo.pacchettiSfida ?? 0) <= 0}
             isBenvenuto={(profilo.pacchettiBenvenuto ?? 0) > 0}
           />
         </div>
@@ -834,12 +862,27 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
   const [terrSel, setTerrSel] = useState(null);
   const [modoBattaglia, setModoBattaglia] = useState(false);
   const [waifuSelezionate, setWaifuSelezionate] = useState([]);
-  const [inBattaglia, setInBattaglia] = useState(false);
-  const [risultatoBattaglia, setRisultatoBattaglia] = useState(null);
   const [livelloCPU, setLivelloCPU] = useState(1);
+  const [livelloMappa, setLivelloMappa] = useState(1);
+  
+  // Stati battaglia interattiva
+  const [battagliaAttiva, setBattagliaAttiva] = useState(null);
+  const [sceltaStat, setSceltaStat] = useState(null);
+  const [sceltaPiuMeno, setSceltaPiuMeno] = useState(null);
+  const [risultatoRound, setRisultatoRound] = useState(null);
+
+  // Carica dati mappa da profilo Firestore
+  useEffect(() => {
+    if (profilo) {
+      setTerritoriUtente(profilo.territoriUtente || {});
+      setLivelloMappa(profilo.livelloMappa || 1);
+      setLivelloCPU(profilo.livelloCPU || 1);
+    }
+  }, [profilo]);
 
   const numConquistati = Object.values(territoriUtente).filter(t => t?.conquistato).length;
-  const mappaCompleta = numConquistati === TERRITORI.length;
+  const totaleTerritori = TERRITORI.length;
+  const mappaCompleta = numConquistati === totaleTerritori;
   const waifuDisponibili = Object.entries(collezione.waifu || {}).map(([id, dati]) => {
     const w = waifuCat.find(x => x.id === id);
     return w ? { ...w, ...dati } : null;
@@ -849,75 +892,177 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
     // Check: almeno 5 waifu
     if (waifuDisponibili.length < 5) {
       mostraNotif('Serve almeno 5 waifu per combattere!', '#ef4444');
-      // Suggerisci di andare a sbustare
       setTimeout(() => {
         mostraNotif('Vai alla sezione Sbusta per ottenere più waifu', '#f59e0b');
       }, 2000);
       return;
     }
     
-    // Check: almeno 1 energia
-    if ((profilo.energia ?? 0) < 1) {
-      const { tempoRimanente } = calcolaRicaricaEnergia(profilo.ultimaRicaricaEnergia, profilo.energia ?? 0);
-      const ore = Math.floor(tempoRimanente / 3600000);
-      const minuti = Math.floor((tempoRimanente % 3600000) / 60000);
-      mostraNotif(`Energia esaurita! Ricarica tra ${ore}h ${minuti}m`, '#ef4444');
-      return;
-    }
-
+    // Check: energia NON necessaria (consumo solo se perdo)
     setModoBattaglia(true);
   };
 
-  const confermaSquadra = async () => {
+  const confermaSquadra = () => {
     if (waifuSelezionate.length !== 5) {
       mostraNotif('Seleziona esattamente 5 waifu!', '#ef4444');
       return;
     }
 
-    setInBattaglia(true);
-
-    // Simula battaglia (best of 5)
-    const waifuUtente = waifuSelezionate.map(id => {
+    // Prepara mazzi
+    const mazzoUtente = waifuSelezionate.map(id => {
       const w = waifuDisponibili.find(x => x.id === id);
       const dati = collezione.waifu[id];
       return {
         ...w,
-        tette_eff: Math.min(7, w.tette + (dati.stat_bonus?.tette || 0)),
-        taglia_piedi_eff: Math.min(44, w.taglia_piedi + (dati.stat_bonus?.taglia_piedi || 0)),
-        eta_eff: Math.min(2000, w.eta + (dati.stat_bonus?.eta || 0)),
-        colore_capelli_eff: Math.min(10, w.colore_capelli + (dati.stat_bonus?.colore_capelli || 0)),
-        esperienza_eff: Math.min(250, w.esperienza + (dati.stat_bonus?.esperienza || 0)),
+        tette: Math.min(7, w.tette + (dati.stat_bonus?.tette || 0)),
+        taglia_piedi: Math.min(44, w.taglia_piedi + (dati.stat_bonus?.taglia_piedi || 0)),
+        eta: Math.min(2000, w.eta + (dati.stat_bonus?.eta || 0)),
+        colore_capelli: Math.min(10, w.colore_capelli + (dati.stat_bonus?.colore_capelli || 0)),
+        esperienza: Math.min(250, w.esperienza + (dati.stat_bonus?.esperienza || 0)),
       };
     });
 
-    // CPU con difficoltà crescente
-    const waifuCPU = Array.from({ length: 5 }, (_, i) => {
-      const baseStats = {
-        tette: 3 + Math.floor(Math.random() * 3),
-        taglia_piedi: 36 + Math.floor(Math.random() * 6),
-        eta: 20 + Math.floor(Math.random() * 15),
-        colore_capelli: 1 + Math.floor(Math.random() * 10),
-        esperienza: 30 + Math.floor(Math.random() * 50),
-      };
-      // Bonus CPU in base al livello
-      const bonus = (livelloCPU - 1) * 0.5; // +50% stats per livello
+    // CPU genera mazzo random con scaling
+    const mazzoCPU = Array.from({ length: 5 }, (_, i) => {
+      const bonus = (livelloCPU - 1) * 0.5;
       return {
-        nome: `CPU-${i + 1}`,
-        tette_eff: Math.round(baseStats.tette * (1 + bonus)),
-        taglia_piedi_eff: Math.round(baseStats.taglia_piedi * (1 + bonus * 0.3)),
-        eta_eff: Math.round(baseStats.eta * (1 + bonus * 0.2)),
-        colore_capelli_eff: baseStats.colore_capelli,
-        esperienza_eff: Math.round(baseStats.esperienza * (1 + bonus)),
+        id: `cpu_${i}`,
+        nome: `Avversario ${i + 1}`,
+        tette: Math.min(7, Math.round((3 + Math.floor(Math.random() * 4)) * (1 + bonus))),
+        taglia_piedi: Math.min(44, Math.round((36 + Math.floor(Math.random() * 8)) * (1 + bonus * 0.2))),
+        eta: Math.min(2000, Math.round((20 + Math.floor(Math.random() * 30)) * (1 + bonus * 0.3))),
+        colore_capelli: 1 + Math.floor(Math.random() * 10),
+        esperienza: Math.min(250, Math.round((30 + Math.floor(Math.random() * 70)) * (1 + bonus))),
       };
     });
 
-    // Battaglia: confronto stat per stat
-    const scontri = waifuUtente.map((wu, idx) => {
-      const wc = waifuCPU[idx];
-      const stats = ['tette_eff', 'taglia_piedi_eff', 'eta_eff', 'colore_capelli_eff', 'esperienza_eff'];
-      const vinte = stats.filter(s => wu[s] > wc[s]).length;
-      return { utente: wu, cpu: wc, vittoriaUtente: vinte >= 3 };
+    // Lancia moneta per primo turno
+    const chiInizia = Math.random() < 0.5 ? 'utente' : 'cpu';
+    
+    setBattagliaAttiva({
+      mazzo: mazzoUtente,
+      mazzoCPU: mazzoCPU,
+      turno: chiInizia,
+      round: 0,
+      punteggioUtente: 0,
+      punteggioCPU: 0,
     });
+    setModoBattaglia(false);
+  };
+
+  const giocaRound = async (stat, piuMeno) => {
+    const b = battagliaAttiva;
+    const cartaUtente = b.mazzo[b.round];
+    const cartaCPU = b.mazzoCPU[b.round];
+
+    let vinceUtente = false;
+    if (piuMeno === 'piu') {
+      vinceUtente = cartaUtente[stat] > cartaCPU[stat];
+    } else {
+      vinceUtente = cartaUtente[stat] < cartaCPU[stat];
+    }
+
+    const pareggio = cartaUtente[stat] === cartaCPU[stat];
+
+    setRisultatoRound({
+      cartaUtente,
+      cartaCPU,
+      stat,
+      piuMeno,
+      vinceUtente: pareggio ? null : vinceUtente,
+      pareggio,
+    });
+
+    // Aspetta 3 secondi prima del prossimo round
+    setTimeout(() => {
+      const nuovoPunteggioUtente = b.punteggioUtente + (vinceUtente && !pareggio ? 1 : 0);
+      const nuovoPunteggioCPU = b.punteggioCPU + (!vinceUtente && !pareggio ? 1 : 0);
+      const nuovoRound = b.round + 1;
+
+      // Check fine battaglia
+      if (nuovoRound >= 5 || nuovoPunteggioUtente >= 3 || nuovoPunteggioCPU >= 3) {
+        fineBattaglia(nuovoPunteggioUtente > nuovoPunteggioCPU);
+      } else {
+        // Prossimo round - turno alternato
+        setBattagliaAttiva({
+          ...b,
+          round: nuovoRound,
+          punteggioUtente: nuovoPunteggioUtente,
+          punteggioCPU: nuovoPunteggioCPU,
+          turno: b.turno === 'utente' ? 'cpu' : 'utente',
+        });
+        setRisultatoRound(null);
+        setSceltaStat(null);
+        setSceltaPiuMeno(null);
+
+        // Se turno CPU, sceglie automaticamente
+        if (b.turno === 'cpu') {
+          setTimeout(() => giocaTurnoCPU(), 1500);
+        }
+      }
+    }, 3000);
+  };
+
+  const giocaTurnoCPU = () => {
+    const stats = ['tette', 'taglia_piedi', 'eta', 'colore_capelli', 'esperienza'];
+    const statRandom = stats[Math.floor(Math.random() * stats.length)];
+    const piuMenoRandom = Math.random() < 0.5 ? 'piu' : 'meno';
+    giocaRound(statRandom, piuMenoRandom);
+  };
+
+  const fineBattaglia = async (vittoria) => {
+    if (vittoria) {
+      // Conquista territorio
+      const nuoviTerritori = { ...territoriUtente, [terrSel.id]: { conquistato: true, impero: profilo.nomeImpero } };
+      setTerritoriUtente(nuoviTerritori);
+      
+      // Salva territori in Firestore
+      await updateUserProfile(user.uid, { territoriUtente: nuoviTerritori });
+      
+      // +1 pacchetto SFIDA
+      const nuoviPacchettiSfida = (profilo.pacchettiSfida ?? 0) + 1;
+      setProfilo({ ...profilo, pacchettiSfida: nuoviPacchettiSfida });
+      await updateUserProfile(user.uid, { pacchettiSfida: nuoviPacchettiSfida });
+
+      mostraNotif(`${terrSel.nome} conquistato! +1 pacchetto sfida`, '#06d6a0');
+      
+      // Check mappa completa
+      const nuoviConquistati = Object.values(nuoviTerritori).filter(t => t?.conquistato).length;
+      if (nuoviConquistati === totaleTerritori) {
+        setTimeout(async () => {
+          mostraNotif('🎉 LIVELLO COMPLETATO!', '#f59e0b');
+          // Reset mappa + incrementa livello
+          const nuovoLivelloMappa = livelloMappa + 1;
+          const nuovoLivelloCPU = livelloCPU + 1;
+          setTerritoriUtente({});
+          setLivelloMappa(nuovoLivelloMappa);
+          setLivelloCPU(nuovoLivelloCPU);
+          await updateUserProfile(user.uid, { 
+            territoriUtente: {}, 
+            livelloMappa: nuovoLivelloMappa, 
+            livelloCPU: nuovoLivelloCPU 
+          });
+        }, 2000);
+      }
+    } else {
+      // Sconfitta: consuma 1 energia
+      if ((profilo.energia ?? 0) >= 1) {
+        const nuovaEnergia = (profilo.energia ?? 0) - 1;
+        setProfilo({ ...profilo, energia: nuovaEnergia });
+        await updateUserProfile(user.uid, { energia: nuovaEnergia });
+      }
+        await updateUserProfile(user.uid, { energia: nuovaEnergia });
+      }
+      mostraNotif('Sconfitta! -1 energia', '#ef4444');
+    }
+
+    // Reset battaglia
+    setBattagliaAttiva(null);
+    setRisultatoRound(null);
+    setSceltaStat(null);
+    setSceltaPiuMeno(null);
+    setTerrSel(null);
+  };
 
     const vittorieUtente = scontri.filter(s => s.vittoriaUtente).length;
     const vittoria = vittorieUtente >= 3;
@@ -965,67 +1110,157 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
             Scegli <strong style={{ color: '#fbbf24' }}>5 waifu</strong> per la battaglia
           </p>
 
-          {inBattaglia && (
-            <div style={{ textAlign: 'center', padding: 40 }}>
-              <div className="glow-pulse" style={{ fontSize: 60, color: '#f59e0b' }}>⚔</div>
-              <div style={{ fontSize: 16, color: '#fbbf24', marginTop: 12, fontFamily: 'Cinzel, serif', letterSpacing: 4 }}>
-                BATTAGLIA IN CORSO...
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'center', marginBottom: 16 }}>
+            {waifuDisponibili.map(w => {
+              const isSelected = waifuSelezionate.includes(w.id);
+              return (
+                <div key={w.id} onClick={() => {
+                  if (isSelected) setWaifuSelezionate(waifuSelezionate.filter(id => id !== w.id));
+                  else if (waifuSelezionate.length < 5) setWaifuSelezionate([...waifuSelezionate, w.id]);
+                }} style={{
+                  cursor: 'pointer',
+                  opacity: isSelected ? 1 : 0.7,
+                  transform: isSelected ? 'scale(1.05)' : 'scale(1)',
+                  transition: 'all 0.3s',
+                  position: 'relative',
+                }}>
+                  <CartaWaifu waifu={w} dimensione="piccola" evidenziato={isSelected} />
+                  {isSelected && (
+                    <div style={{
+                      position: 'absolute', top: -8, right: -8,
+                      background: '#fbbf24', color: '#0a0515',
+                      width: 24, height: 24, borderRadius: '50%',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 12, fontWeight: 700,
+                      boxShadow: '0 0 12px rgba(251,191,36,0.8)',
+                    }}>✓</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <BtnDecorato variant="secondary" onClick={() => { setModoBattaglia(false); setWaifuSelezionate([]); }}>
+              ANNULLA
+            </BtnDecorato>
+            <BtnDecorato variant="primary" disabled={waifuSelezionate.length !== 5} onClick={confermaSquadra}>
+              COMBATTI ({waifuSelezionate.length}/5)
+            </BtnDecorato>
+          </div>
+        </PannelloOrnato>
+      </div>
+    );
+  }
+
+  // UI BATTAGLIA INTERATTIVA
+  if (battagliaAttiva) {
+    const b = battagliaAttiva;
+    const cartaUtente = b.mazzo[b.round];
+    const cartaCPU = b.mazzoCPU[b.round];
+    const eTurnoUtente = b.turno === 'utente';
+
+    return (
+      <div className="fade-in">
+        <PannelloOrnato glow="#f59e0b">
+          {/* Header battaglia */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+            <Chip colore="#06d6a0" icon="👤">TU: {b.punteggioUtente}</Chip>
+            <TitoloOrnato livello={2} colore="#f59e0b">ROUND {b.round + 1}/5</TitoloOrnato>
+            <Chip colore="#ef4444" icon="🤖">CPU: {b.punteggioCPU}</Chip>
+          </div>
+
+          {/* Campo di gioco */}
+          <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', gap: 20, marginBottom: 20, flexWrap: 'wrap' }}>
+            {/* Carta utente */}
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 8, letterSpacing: 2 }}>LA TUA CARTA</div>
+              <CartaWaifu waifu={cartaUtente} dimensione="normale" />
+            </div>
+
+            {/* VS */}
+            <div style={{ fontSize: 48, color: '#f59e0b', textShadow: '0 0 20px rgba(245,158,11,0.6)' }}>⚔</div>
+
+            {/* Carta CPU (coperta se non rivelata) */}
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 8, letterSpacing: 2 }}>AVVERSARIO</div>
+              {risultatoRound ? (
+                <CartaWaifu waifu={cartaCPU} dimensione="normale" />
+              ) : (
+                <CartaCoperta />
+              )}
+            </div>
+          </div>
+
+          {/* Risultato round (se presente) */}
+          {risultatoRound && (
+            <PannelloOrnato variant="accent" glow={risultatoRound.pareggio ? '#f59e0b' : risultatoRound.vinceUtente ? '#06d6a0' : '#ef4444'} style={{ marginBottom: 20, textAlign: 'center', padding: 16 }}>
+              <div style={{ fontSize: 24, marginBottom: 8 }}>
+                {risultatoRound.pareggio ? '🤝 PAREGGIO' : risultatoRound.vinceUtente ? '🎉 HAI VINTO' : '😔 HAI PERSO'}
               </div>
+              <div style={{ fontSize: 12, opacity: 0.9 }}>
+                {risultatoRound.stat.toUpperCase()}: {risultatoRound.piuMeno === 'piu' ? 'PIÙ ALTO' : 'PIÙ BASSO'}
+                <br />
+                Tu: {risultatoRound.cartaUtente[risultatoRound.stat]} vs CPU: {risultatoRound.cartaCPU[risultatoRound.stat]}
+              </div>
+            </PannelloOrnato>
+          )}
+
+          {/* Scelta statistica (solo se turno utente e nessun risultato) */}
+          {eTurnoUtente && !risultatoRound && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ textAlign: 'center', fontSize: 13, color: '#fbbf24', marginBottom: 12, letterSpacing: 2 }}>
+                🎯 È IL TUO TURNO - SCEGLI UNA STATISTICA
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+                {[
+                  { key: 'tette', label: '💗 Tette', val: cartaUtente.tette },
+                  { key: 'taglia_piedi', label: '👠 Piedi', val: cartaUtente.taglia_piedi },
+                  { key: 'eta', label: '📅 Età', val: cartaUtente.eta },
+                  { key: 'colore_capelli', label: '💇 Capelli', val: cartaUtente.colore_capelli },
+                  { key: 'esperienza', label: '⭐ Esperienza', val: cartaUtente.esperienza },
+                ].map(s => (
+                  <button key={s.key} onClick={() => setSceltaStat(s.key)} style={{
+                    padding: '8px 16px',
+                    background: sceltaStat === s.key ? 'linear-gradient(135deg, #f59e0b, #ec4899)' : 'rgba(0,0,0,0.4)',
+                    color: sceltaStat === s.key ? '#0a0515' : '#f5e6d3',
+                    border: `2px solid ${sceltaStat === s.key ? '#fbbf24' : 'rgba(245,158,11,0.3)'}`,
+                    borderRadius: 6, cursor: 'pointer',
+                    fontSize: 12, fontFamily: 'Fredoka, sans-serif', fontWeight: 600,
+                    transition: 'all 0.2s',
+                  }}>
+                    {s.label}: {s.val}
+                  </button>
+                ))}
+              </div>
+
+              {sceltaStat && (
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12 }}>
+                  <BtnDecorato variant={sceltaPiuMeno === 'piu' ? 'primary' : 'secondary'} onClick={() => setSceltaPiuMeno('piu')}>
+                    ⬆ PIÙ ALTO
+                  </BtnDecorato>
+                  <BtnDecorato variant={sceltaPiuMeno === 'meno' ? 'primary' : 'secondary'} onClick={() => setSceltaPiuMeno('meno')}>
+                    ⬇ PIÙ BASSO
+                  </BtnDecorato>
+                </div>
+              )}
+
+              {sceltaStat && sceltaPiuMeno && (
+                <div style={{ textAlign: 'center', marginTop: 16 }}>
+                  <BtnDecorato variant="success" size="lg" onClick={() => giocaRound(sceltaStat, sceltaPiuMeno)}>
+                    ⚔ CONFERMA SCELTA
+                  </BtnDecorato>
+                </div>
+              )}
             </div>
           )}
 
-          {!inBattaglia && !risultatoBattaglia && (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
-                {waifuDisponibili.map(w => {
-                  const isSelected = waifuSelezionate.includes(w.id);
-                  return (
-                    <div key={w.id} onClick={() => {
-                      if (isSelected) setWaifuSelezionate(waifuSelezionate.filter(id => id !== w.id));
-                      else if (waifuSelezionate.length < 5) setWaifuSelezionate([...waifuSelezionate, w.id]);
-                    }} style={{
-                      padding: 12, cursor: 'pointer',
-                      background: isSelected ? 'linear-gradient(135deg, #f59e0b40, #ec489940)' : 'rgba(0,0,0,0.5)',
-                      border: `2px solid ${isSelected ? '#fbbf24' : 'rgba(245,158,11,0.3)'}`,
-                      borderRadius: 4,
-                      boxShadow: isSelected ? '0 0 16px rgba(251,191,36,0.5)' : 'none',
-                      transition: 'all 0.2s',
-                    }}>
-                      <div style={{ fontFamily: 'Cinzel, serif', fontSize: 12, textAlign: 'center', color: isSelected ? '#fbbf24' : '#f5e6d3', marginBottom: 4 }}>
-                        {w.nome}
-                      </div>
-                      <div style={{ fontSize: 9, opacity: 0.7, textAlign: 'center' }}>
-                        LV{collezione.waifu[w.id]?.livello || 1}
-                      </div>
-                    </div>
-                  );
-                })}
+          {/* Turno CPU */}
+          {!eTurnoUtente && !risultatoRound && (
+            <div style={{ textAlign: 'center', padding: 30 }}>
+              <div className="glow-pulse" style={{ fontSize: 48, color: '#ef4444' }}>🤖</div>
+              <div style={{ fontSize: 14, color: '#ef4444', marginTop: 12, fontFamily: 'Fredoka, sans-serif' }}>
+                TURNO AVVERSARIO...
               </div>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                <BtnDecorato variant="secondary" onClick={() => { setModoBattaglia(false); setWaifuSelezionate([]); }}>
-                  ANNULLA
-                </BtnDecorato>
-                <BtnDecorato variant="primary" disabled={waifuSelezionate.length !== 5} onClick={confermaSquadra}>
-                  COMBATTI ({waifuSelezionate.length}/5)
-                </BtnDecorato>
-              </div>
-            </>
-          )}
-
-          {risultatoBattaglia && (
-            <div style={{ textAlign: 'center', padding: 20 }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>
-                {risultatoBattaglia.vittoria ? '🎉' : '😔'}
-              </div>
-              <TitoloOrnato livello={1} colore={risultatoBattaglia.vittoria ? '#06d6a0' : '#ef4444'}>
-                {risultatoBattaglia.vittoria ? 'VITTORIA!' : 'SCONFITTA'}
-              </TitoloOrnato>
-              <p style={{ color: '#d4c5b9', marginTop: 12 }}>
-                Hai vinto {risultatoBattaglia.vittorieUtente}/5 scontri
-              </p>
-              <BtnDecorato variant="primary" onClick={() => { setModoBattaglia(false); setWaifuSelezionate([]); setRisultatoBattaglia(null); setTerrSel(null); }} style={{ marginTop: 20 }}>
-                CONTINUA
-              </BtnDecorato>
             </div>
           )}
         </PannelloOrnato>
@@ -1090,6 +1325,64 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
           </p>
         </PannelloOrnato>
       )}
+    </div>
+  );
+}
+
+// ============================================================
+// COMPONENTE: COUNTDOWN PACCHETTI OMAGGIO
+// ============================================================
+function CountdownPacchettiOmaggio({ ultimaRicarica }) {
+  const [tempoRimanente, setTempoRimanente] = useState('');
+
+  useEffect(() => {
+    const calcola = () => {
+      if (!ultimaRicarica) return;
+      const ora = new Date();
+      const ultima = new Date(ultimaRicarica.seconds ? ultimaRicarica.seconds * 1000 : ultimaRicarica);
+      const prossima = new Date(ultima.getTime() + 12 * 60 * 60 * 1000); // +12h
+      const diff = prossima - ora;
+      
+      if (diff <= 0) {
+        setTempoRimanente('Disponibili ora!');
+      } else {
+        const ore = Math.floor(diff / (1000 * 60 * 60));
+        const minuti = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const secondi = Math.floor((diff % (1000 * 60)) / 1000);
+        setTempoRimanente(`${ore}h ${minuti}m ${secondi}s`);
+      }
+    };
+
+    calcola();
+    const interval = setInterval(calcola, 1000);
+    return () => clearInterval(interval);
+  }, [ultimaRicarica]);
+
+  return (
+    <div style={{ marginTop: 12, fontSize: 11, color: '#f59e0b', opacity: 0.9 }}>
+      ⏱ Prossimi pacchetti tra: <strong>{tempoRimanente}</strong>
+    </div>
+  );
+}
+
+// ============================================================
+// COMPONENTE: CARTA COPERTA (battaglia)
+// ============================================================
+function CartaCoperta() {
+  return (
+    <div style={{
+      width: 140, height: 200,
+      background: 'linear-gradient(135deg, rgba(245,158,11,0.2), rgba(168,85,247,0.2))',
+      border: '2px solid rgba(245,158,11,0.5)',
+      borderRadius: 8,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 48,
+      color: '#f59e0b',
+      textShadow: '0 0 20px rgba(245,158,11,0.6)',
+    }}>
+      ?
     </div>
   );
 }

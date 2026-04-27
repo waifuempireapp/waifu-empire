@@ -191,8 +191,10 @@ export function CartaPosa({ posa, quantita = 1, onClick, evidenziato = false }) 
           <div style={{ fontSize: 36 }}>⚜</div>
         )}
       </div>
-      <div style={{ fontFamily: 'Cinzel, serif', fontSize: 11, textAlign: 'center', color: '#f5e6d3', marginBottom: 4, minHeight: 28 }}>{posa.nome}</div>
-      <div style={{ fontSize: 9, opacity: 0.6, textAlign: 'center', marginBottom: 4 }}>per waifu specifica</div>
+      <div style={{ fontFamily: 'Fredoka', fontSize: 11, textAlign: 'center', color: '#f5e6d3', marginBottom: 4, minHeight: 28 }}>{posa.nome}</div>
+      <div style={{ fontSize: 9, opacity: 0.6, textAlign: 'center', marginBottom: 4 }}>
+        {posa.waifu_id ? `Waifu: ${posa.waifu_id}` : 'Universale'}
+      </div>
       <div style={{ textAlign: 'center', color: rar.colore, fontSize: 10 }}>{'★'.repeat(rar.stelle)}</div>
     </div>
   );

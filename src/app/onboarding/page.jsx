@@ -3,17 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
-import { createUserProfile, getUserProfile, listWaifu, listOutfit, listPose, getDropAttivo, setCollezione } from '@/lib/firestoreService';
-import { generaPacchetto } from '@/lib/gameLogic';
+import { createUserProfile, getUserProfile, setCollezione } from '@/lib/firestoreService';
 
 export default function OnboardingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [nomeImpero, setNomeImpero] = useState('');
   const [coloreImpero, setColoreImpero] = useState('#f59e0b');
-  const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
-  const [pacchettiBenvenuto, setPacchettiBenvenuto] = useState([]);
 
   useEffect(() => {
     if (loading) return;
@@ -35,53 +32,18 @@ export default function OnboardingPage() {
         email: user.email,
         displayName: user.displayName || nomeImpero.trim(),
         energia: 10,
-        pacchetti: 2, // 2 pacchetti normali subito disponibili
-        pacchettiBenvenuto: 5, // 5 pacchetti benvenuto (separati, senza doppioni waifu)
+        pacchettiOmaggio: 2, // 2 pacchetti omaggio (ricarica ogni 12h)
+        pacchettiBenvenuto: 5, // 5 pacchetti benvenuto (solo una volta)
+        pacchettiSfida: 0, // Pacchetti vinti dalle battaglie
         ultimaRicaricaEnergia: new Date(),
         ultimaRicaricaPacchetti: new Date(),
       });
 
-      // 2) Genera 5 pacchetti benvenuto SENZA doppioni waifu
-      const drop = await getDropAttivo();
-      const allWaifu = await listWaifu();
-      const allOutfit = await listOutfit();
-      const allPose = await listPose();
+      // 2) Collezione vuota iniziale
+      await setCollezione(user.uid, { waifu: {}, outfit: {}, pose: {}, equipaggiamento: {}, preset: {} });
 
-      const waifuPool = drop && drop.waifuIds ? allWaifu.filter(w => drop.waifuIds.includes(w.id)) : allWaifu;
-      const outfitPool = drop && drop.outfitIds ? allOutfit.filter(o => drop.outfitIds.includes(o.id)) : allOutfit;
-      const posePool = drop && drop.poseIds ? allPose.filter(p => drop.poseIds.includes(p.id)) : allPose;
-
-      const collezione = { waifu: {}, outfit: {}, pose: {}, equipaggiamento: {}, preset: {} };
-      const idsWaifuOttenute = [];
-      const tuttiPacchetti = [];
-
-      for (let i = 0; i < 5; i++) {
-        const pkt = generaPacchetto({
-          waifuPool, outfitPool, posePool,
-          escludiDoppioniWaifu: true,
-          waifuPossedute: idsWaifuOttenute,
-        });
-        tuttiPacchetti.push(pkt);
-        // Aggiungi alla collezione + tracking ids
-        pkt.forEach(carta => {
-          if (carta.tipo === 'waifu') {
-            const id = carta.data.id;
-            idsWaifuOttenute.push(id);
-            if (collezione.waifu[id]) collezione.waifu[id].copie++;
-            else collezione.waifu[id] = { copie: 1, livello: 1, stat_bonus: {} };
-          } else if (carta.tipo === 'outfit') {
-            const id = carta.data.id;
-            collezione.outfit[id] = { quantita: (collezione.outfit[id]?.quantita || 0) + 1 };
-          } else if (carta.tipo === 'posa') {
-            const id = carta.data.id;
-            collezione.pose[id] = { quantita: (collezione.pose[id]?.quantita || 0) + 1 };
-          }
-        });
-      }
-
-      await setCollezione(user.uid, collezione);
-      setPacchettiBenvenuto(tuttiPacchetti);
-      setStep(2);
+      // 3) Vai al gioco - i pacchetti si aprono nella sezione Sbusta
+      router.replace('/gioco');
     } finally { setBusy(false); }
   };
 
@@ -89,16 +51,15 @@ export default function OnboardingPage() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      {step === 1 && (
-        <div className="fade-up" style={card}>
-          <div style={{ textAlign: 'center', marginBottom: 20 }}>
-            <div className="glow-pulse" style={{ fontSize: 50, color: '#f59e0b' }}>♛</div>
-            <h2 style={titolo}>FONDA IL TUO IMPERO</h2>
-            <p style={{ color: '#d4c5b9', fontSize: 13, lineHeight: 1.6, marginTop: 12 }}>
-              Benvenuta/o nell'Impero delle Waifu. Inizia scegliendo il nome del tuo dominio
-              e riceverai <strong style={{ color: '#f59e0b' }}>5 pacchetti di benvenuto</strong> senza doppioni.
-            </p>
-          </div>
+      <div className="fade-up" style={card}>
+        <div style={{ textAlign: 'center', marginBottom: 20 }}>
+          <div className="glow-pulse" style={{ fontSize: 50, color: '#f59e0b' }}>♛</div>
+          <h2 style={titolo}>FONDA IL TUO IMPERO</h2>
+          <p style={{ color: '#d4c5b9', fontSize: 13, lineHeight: 1.6, marginTop: 12 }}>
+            Benvenuta/o nell'Impero delle Waifu. Inizia scegliendo il nome del tuo dominio
+            e riceverai <strong style={{ color: '#f59e0b' }}>5 pacchetti di benvenuto</strong> senza doppioni.
+          </p>
+        </div>
           <label style={{ fontSize: 11, letterSpacing: 2, color: '#a855f7', fontFamily: 'Cinzel, serif' }}>
             NOME IMPERO
           </label>
