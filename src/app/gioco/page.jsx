@@ -673,8 +673,6 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
           )}
         </div>
       )}
-        </div>
-      )}
 
       {waifuSel && (
         <ModaPersonalizzazione
