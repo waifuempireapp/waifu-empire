@@ -192,62 +192,60 @@ export default function MappaMondoArt({
         {TERRITORI.map(t => {
           const datiUt = territoriUtente[t.id];
           const conquistato = datiUt?.conquistato;
-          const defesa = !!datiUt?.defendente;
           const selez = territorioSelezionato === t.id;
-          const coloreCont = COLORI_CONTINENTI[t.cont] || '#888';
-          const fillCol = conquistato ? coloreImpero : `url(#cont-${t.cont})`;
-          const opac = conquistato ? 0.85 : 0.55;
+
+          // Colore territorio basato sull'impero che lo possiede
+          let fillCol, strokeCol, opac;
+          if (conquistato) {
+            fillCol = coloreImpero;
+            strokeCol = lighten(coloreImpero, 30);
+            opac = 0.85;
+          } else if (datiUt?.coloreImpero) {
+            fillCol = datiUt.coloreImpero;
+            strokeCol = lighten(datiUt.coloreImpero, 20);
+            opac = 0.65;
+          } else {
+            fillCol = `url(#cont-${t.cont})`;
+            strokeCol = '#555';
+            opac = 0.4;
+          }
+
+          // Check se confinante con territori del player (pulsazione)
+          const mieiTerrIds = Object.entries(territoriUtente).filter(([, v]) => v?.conquistato).map(([k]) => k);
+          const primoAttacco = mieiTerrIds.length === 0;
+          const eConfinante = !conquistato && (primoAttacco || (t.conf || []).some(cId => mieiTerrIds.includes(cId)));
 
           return (
             <g key={t.id} style={{ cursor: 'pointer' }} onClick={() => onTerritorioClick && onTerritorioClick(t)}>
-              {/* Forma territorio */}
               <path d={t.path}
                 fill={fillCol}
-                stroke={selez ? '#fbbf24' : conquistato ? lighten(coloreImpero, 30) : '#000'}
-                strokeWidth={selez ? 2.5 : 1.5}
+                stroke={selez ? '#fbbf24' : strokeCol}
+                strokeWidth={selez ? 2.5 : eConfinante ? 2 : 1.2}
                 opacity={opac}
                 filter={selez ? 'url(#glow-strong)' : undefined}
-              />
-              {/* Texture/decorazione interna sul territorio */}
-              {conquistato && (
-                <use href="#castle" x={t.cx - 10} y={t.cy - 10} width="20" height="20" opacity="0.85" />
-              )}
-              {!conquistato && (t.cont === 'NA' || t.cont === 'EU' || t.cont === 'AS') && (
-                <use href="#mountain" x={t.cx - 8} y={t.cy - 8} width="16" height="16" opacity="0.5" />
-              )}
-              {!conquistato && (t.cont === 'SA' || t.cont === 'AF') && (
-                <use href="#forest" x={t.cx - 8} y={t.cy - 8} width="16" height="16" opacity="0.5" />
-              )}
-
-              {/* Nome territorio */}
-              <text x={t.cx} y={t.cy + 18}
-                textAnchor="middle"
-                fontSize="9"
-                fontFamily="Cinzel, serif"
-                fill={conquistato ? '#fbbf24' : '#f5e6d3'}
-                stroke="#000"
-                strokeWidth="0.4"
-                paintOrder="stroke"
-                opacity="0.95"
-                style={{ letterSpacing: 0.5, fontWeight: 600 }}
               >
+                {eConfinante && <animate attributeName="opacity" values={`${opac};${Math.min(1, opac + 0.3)};${opac}`} dur="2s" repeatCount="indefinite" />}
+              </path>
+              {conquistato && <use href="#castle" x={t.cx - 10} y={t.cy - 10} width="20" height="20" opacity="0.85" />}
+              {!conquistato && (t.cont === 'NA' || t.cont === 'EU' || t.cont === 'AS') && <use href="#mountain" x={t.cx - 8} y={t.cy - 8} width="16" height="16" opacity="0.5" />}
+              {!conquistato && (t.cont === 'SA' || t.cont === 'AF') && <use href="#forest" x={t.cx - 8} y={t.cy - 8} width="16" height="16" opacity="0.5" />}
+              <text x={t.cx} y={t.cy + 18} textAnchor="middle" fontSize="9" fontFamily="Cinzel, serif"
+                fill={conquistato ? '#fbbf24' : eConfinante ? '#fff' : '#f5e6d3'}
+                stroke="#000" strokeWidth="0.4" paintOrder="stroke" opacity="0.95"
+                style={{ letterSpacing: 0.5, fontWeight: conquistato || eConfinante ? 700 : 600 }}>
                 {t.nome}
               </text>
-
-              {/* Marker conquistato (vessillo) */}
               {conquistato && (
                 <g transform={`translate(${t.cx - 4}, ${t.cy - 16})`}>
                   <line x1="4" y1="0" x2="4" y2="12" stroke="#3d2818" strokeWidth="0.8" />
                   <path d="M4,0 L12,3 L4,6 Z" fill={coloreImpero} stroke="#fbbf24" strokeWidth="0.4" />
                 </g>
               )}
-
-              {/* Marker difensore (icona spada) */}
-              {defesa && (
-                <g transform={`translate(${t.cx + 8}, ${t.cy - 8})`}>
-                  <circle r="4" fill="rgba(0,0,0,0.7)" stroke="#ef4444" strokeWidth="0.8" />
-                  <text textAnchor="middle" y="2" fontSize="6" fill="#ef4444">⚔</text>
-                </g>
+              {eConfinante && (
+                <circle cx={t.cx} cy={t.cy - 20} r="4" fill="#fbbf24" opacity="0.8">
+                  <animate attributeName="r" values="3;5;3" dur="1.5s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.5s" repeatCount="indefinite" />
+                </circle>
               )}
             </g>
           );
@@ -281,30 +279,45 @@ export default function MappaMondoArt({
           </g>
         ))}
 
-        {/* === LEGENDA CONTINENTI (in basso a sinistra) === */}
-        <g transform="translate(20, 600)">
-          <rect x="0" y="0" width="240" height="85" rx="3"
-                fill="rgba(10,5,21,0.85)" stroke="#f59e0b" strokeWidth="0.8" opacity="0.95" />
-          <text x="120" y="14" textAnchor="middle" fontSize="9"
-                fontFamily="Cinzel, serif" fill="#f59e0b" letterSpacing="2">⚜ CONTINENTI ⚜</text>
-          {Object.entries(NOMI_CONTINENTI).map(([key, nome], i) => {
-            const x = (i % 2) * 115 + 10;
-            const y = Math.floor(i / 2) * 18 + 28;
+        {/* === LEGENDA IMPERI (in basso a sinistra) === */}
+        <g transform="translate(20, 570)">
+          {(() => {
+            // Raccogli imperi unici dalla mappa
+            const imperiMap = {};
+            Object.values(territoriUtente).forEach(v => {
+              if (v?.impero && v?.coloreImpero) {
+                if (!imperiMap[v.impero]) imperiMap[v.impero] = { colore: v.coloreImpero, count: 0 };
+                imperiMap[v.impero].count++;
+              }
+            });
+            const imperiList = Object.entries(imperiMap);
+            const rows = Math.ceil(imperiList.length / 2);
+            const h = Math.max(50, rows * 18 + 28);
             return (
-              <g key={key} transform={`translate(${x}, ${y})`}>
-                <rect x="0" y="0" width="10" height="10" fill={`url(#cont-${key})`} stroke="#f5e6d3" strokeWidth="0.3" />
-                <text x="14" y="8" fontSize="8" fill="#f5e6d3" fontFamily="Inter, sans-serif">{nome}</text>
-              </g>
+              <>
+                <rect x="0" y="0" width="260" height={h} rx="3" fill="rgba(10,5,21,0.88)" stroke="#f59e0b" strokeWidth="0.8" opacity="0.95" />
+                <text x="130" y="14" textAnchor="middle" fontSize="9" fontFamily="Cinzel, serif" fill="#f59e0b" letterSpacing="2">⚜ IMPERI ⚜</text>
+                {imperiList.map(([nome, { colore, count }], i) => {
+                  const x = (i % 2) * 125 + 10;
+                  const y = Math.floor(i / 2) * 18 + 28;
+                  return (
+                    <g key={nome} transform={`translate(${x}, ${y})`}>
+                      <rect x="0" y="0" width="10" height="10" rx="2" fill={colore} stroke="#f5e6d3" strokeWidth="0.3" />
+                      <text x="14" y="8" fontSize="7.5" fill="#f5e6d3" fontFamily="Inter, sans-serif">{nome} ({count})</text>
+                    </g>
+                  );
+                })}
+              </>
             );
-          })}
+          })()}
         </g>
 
         {/* === TITOLO MAPPA in alto === */}
-        <g transform="translate(525, 35)">
-          <rect x="-110" y="-18" width="220" height="32" rx="2"
-                fill="rgba(10,5,21,0.9)" stroke="#f59e0b" strokeWidth="0.8" />
-          <text textAnchor="middle" y="3" fontSize="14"
-                fontFamily="Cinzel, serif" fill="#f59e0b" letterSpacing="6"
+        <g transform="translate(525, 38)">
+          <rect x="-160" y="-22" width="320" height="40" rx="4"
+                fill="rgba(10,5,21,0.92)" stroke="#f59e0b" strokeWidth="1" />
+          <text textAnchor="middle" y="5" fontSize="16"
+                fontFamily="Cinzel, serif" fill="#f59e0b" letterSpacing="5"
                 style={{ fontWeight: 700 }}>
             ⚔ MONDO CONOSCIUTO ⚔
           </text>

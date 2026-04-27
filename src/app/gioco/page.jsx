@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, getDropAttivo } from '@/lib/firestoreService';
 import { calcolaRicaricaPacchetti, calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, INCREMENTI_LEVELUP } from '@/lib/gameLogic';
-import { TIMER, RARITA, COLORI_CAPELLI, CATEGORIE_TETTE, SLOT_OUTFIT, TERRITORI } from '@/lib/constants';
+import { TIMER, RARITA, COLORI_CAPELLI, CATEGORIE_TETTE, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI } from '@/lib/constants';
 import PaperDoll from '@/components/PaperDoll';
 import { CartaWaifu, CartaOutfit, CartaPosa } from '@/components/CartaWaifu';
 import MappaMondoArt from '@/components/MappaMondoArt';
@@ -1002,20 +1002,25 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
       setLivelloMappa(profilo.livelloMappa || 1);
       setLivelloCPU(profilo.livelloCPU || 1);
 
-      // Se la mappa è vuota (primo accesso o reset), assegna imperi avversari a tutti i territori
-      const haImperiAssegnati = Object.keys(terr).length > 0;
-      if (!haImperiAssegnati) {
+      // Se la mappa è vuota O i territori non hanno imperi assegnati, inizializza
+      const terrKeys = Object.keys(terr);
+      const haImperiAssegnati = terrKeys.length > 0 && terrKeys.some(k => terr[k]?.impero);
+      if (!haImperiAssegnati || terrKeys.length < TERRITORI.length) {
         const nuoviTerritori = {};
         TERRITORI.forEach((t, idx) => {
-          const imperoIdx = idx % NOMI_IMPERI.length;
-          nuoviTerritori[t.id] = {
-            conquistato: false,
-            impero: NOMI_IMPERI[imperoIdx],
-            coloreImpero: COLORI_IMPERI[imperoIdx],
-          };
+          // Se è già mio (conquistato), mantieni
+          if (terr[t.id]?.conquistato) {
+            nuoviTerritori[t.id] = terr[t.id];
+          } else {
+            const imperoIdx = idx % NOMI_IMPERI.length;
+            nuoviTerritori[t.id] = {
+              conquistato: false,
+              impero: NOMI_IMPERI[imperoIdx],
+              coloreImpero: COLORI_IMPERI[imperoIdx],
+            };
+          }
         });
         terr = nuoviTerritori;
-        // Salva in Firestore
         updateUserProfile(user.uid, { territoriUtente: nuoviTerritori });
       }
       setTerritoriUtente(terr);
@@ -1622,19 +1627,47 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
           </div>
         )}
 
-        {/* CPU sta scegliendo */}
+        {/* BLOCCO 2.5: TRACKER STATISTICHE (tra sfida e team) */}
+        <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+          {STATS_BATTAGLIA.map(s => {
+            const usata = statsUsate.includes(s.key);
+            const sceltaOra = statScelta === s.key;
+            return (
+              <div key={s.key} style={{
+                padding: '4px 10px', borderRadius: 6, fontSize: 11, fontFamily: 'Fredoka',
+                background: sceltaOra ? 'rgba(245,158,11,0.3)' : usata ? 'rgba(100,100,100,0.2)' : 'rgba(168,85,247,0.1)',
+                border: `1px solid ${sceltaOra ? '#f59e0b' : usata ? '#555' : 'rgba(168,85,247,0.3)'}`,
+                color: sceltaOra ? '#f59e0b' : usata ? '#555' : '#d4c5b9',
+                textDecoration: usata ? 'line-through' : 'none',
+              }}>
+                {s.icon} {s.label}
+              </div>
+            );
+          })}
+        </div>
         {fase === 'play' && carteP && carteC && turno === 'cpu' && !statScelta && (
           <div style={{ textAlign: 'center', padding: 20 }}>
             <div className="pulse" style={{ color: '#a855f7', fontFamily: 'Fredoka', letterSpacing: 2, fontSize: 14 }}>🤖 CPU STA SCEGLIENDO...</div>
           </div>
         )}
 
-        {/* Bottone prossimo round */}
+        {/* Bottone prossimo round - bar fissa in basso */}
         {fase === 'roundEnd' && (
-          <div style={{ textAlign: 'center', marginTop: 12 }}>
-            <BtnDecorato variant="primary" size="lg" onClick={prossimoRound}>
-              {(round >= 5 || punteggio.player >= 3 || punteggio.cpu >= 3) ? 'FINE PARTITA' : 'PROSSIMO ROUND →'}
-            </BtnDecorato>
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 70, padding: '12px 16px', background: 'linear-gradient(0deg, rgba(10,5,21,0.98), rgba(10,5,21,0.9))', borderTop: `2px solid ${vincitoreRound === 'player' ? '#06d6a0' : vincitoreRound === 'cpu' ? '#ef4444' : '#fbbf24'}` }}>
+            <div style={{ maxWidth: 500, margin: '0 auto', textAlign: 'center' }}>
+              <div style={{ fontSize: 14, fontFamily: 'Fredoka', fontWeight: 700, marginBottom: 4, color: vincitoreRound === 'player' ? '#06d6a0' : vincitoreRound === 'cpu' ? '#ef4444' : '#fbbf24' }}>
+                {vincitoreRound === 'player' ? '✅ HAI VINTO IL ROUND!' : vincitoreRound === 'cpu' ? '❌ ROUND PERSO' : '🤝 PAREGGIO'}
+              </div>
+              <div style={{ fontSize: 11, color: '#d4c5b9', marginBottom: 8 }}>
+                {STATS_BATTAGLIA.find(s => s.key === statScelta)?.icon} {STATS_BATTAGLIA.find(s => s.key === statScelta)?.label} {direzione === 'piu' ? '▲' : '▼'} — Tu: <strong>{carteP[statScelta]}</strong> vs CPU: <strong>{carteC[statScelta]}</strong>
+              </div>
+              <button onClick={prossimoRound} style={{
+                padding: '10px 28px', background: 'linear-gradient(135deg, #f59e0b, #ec4899)', border: 'none',
+                borderRadius: 8, cursor: 'pointer', color: '#000', fontFamily: 'Fredoka', fontSize: 13, fontWeight: 700, letterSpacing: 2,
+              }}>
+                {(round >= 5 || punteggio.player >= 3 || punteggio.cpu >= 3) ? 'FINE PARTITA' : 'PROSSIMO ROUND →'}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -1692,22 +1725,41 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
   if (fase === 'gameEnd') {
     const vittoria = punteggio.player > punteggio.cpu;
     return (
-      <div className="fade-in" style={{ textAlign: 'center', padding: 20 }}>
-        <PannelloOrnato glow={vittoria ? '#06d6a0' : '#ef4444'} style={{ padding: 32 }}>
-          <div style={{ fontSize: 72, marginBottom: 16 }}>{vittoria ? '👑' : '💔'}</div>
-          <TitoloOrnato livello={1} colore={vittoria ? '#06d6a0' : '#ef4444'}>{vittoria ? 'VITTORIA!' : 'SCONFITTA'}</TitoloOrnato>
-          <div style={{ fontSize: 28, fontFamily: 'Fredoka', fontWeight: 700, marginTop: 12 }}>
-            <span style={{ color: '#06d6a0' }}>{punteggio.player}</span> - <span style={{ color: '#ef4444' }}>{punteggio.cpu}</span>
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div className="fade-up" style={{
+          background: `linear-gradient(160deg, #1a0a2e, #0a0515)`,
+          border: `2px solid ${vittoria ? '#06d6a0' : '#ef4444'}`,
+          borderRadius: 16, padding: 32, maxWidth: 400, width: '100%', textAlign: 'center',
+          boxShadow: `0 0 60px ${vittoria ? 'rgba(6,214,160,0.3)' : 'rgba(239,68,68,0.3)'}`,
+        }}>
+          <div style={{ fontSize: 64, marginBottom: 12 }}>{vittoria ? '👑' : '💔'}</div>
+          <div style={{ fontFamily: 'Fredoka', fontSize: 28, fontWeight: 700, color: vittoria ? '#06d6a0' : '#ef4444', letterSpacing: 3 }}>
+            {vittoria ? 'VITTORIA!' : 'SCONFITTA'}
           </div>
-          <p style={{ color: '#d4c5b9', marginTop: 12, lineHeight: 1.7 }}>
+          <div style={{ fontSize: 32, fontFamily: 'Fredoka', fontWeight: 700, marginTop: 10 }}>
+            <span style={{ color: '#06d6a0' }}>{punteggio.player}</span>
+            <span style={{ color: '#666', margin: '0 8px' }}>—</span>
+            <span style={{ color: '#ef4444' }}>{punteggio.cpu}</span>
+          </div>
+          <div style={{ marginTop: 16, padding: 12, background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)' }}>
             {vittoria ? (
-              <><strong style={{ color: '#06d6a0' }}>{terrSel?.nome}</strong> conquistato! +1 pacchetto sfida. Nessuna energia consumata.</>
+              <div style={{ fontSize: 12, color: '#d4c5b9', lineHeight: 1.7 }}>
+                <strong style={{ color: '#06d6a0' }}>{terrSel?.nome}</strong> conquistato!
+                <br /><span style={{ color: '#fbbf24' }}>+1 pacchetto sfida</span> · Nessuna energia consumata
+              </div>
             ) : (
-              <>Sconfitta contro <strong style={{ color: '#ef4444' }}>{nomeImperoAvversario}</strong>. -1 energia.</>
+              <div style={{ fontSize: 12, color: '#d4c5b9', lineHeight: 1.7 }}>
+                Sconfitta contro <strong style={{ color: '#ef4444' }}>{nomeImperoAvversario}</strong>
+                <br /><span style={{ color: '#ef4444' }}>-1 energia</span>
+              </div>
             )}
-          </p>
-          <BtnDecorato variant="primary" size="lg" onClick={resetBattaglia} style={{ marginTop: 20 }}>CONTINUA</BtnDecorato>
-        </PannelloOrnato>
+          </div>
+          <button onClick={resetBattaglia} style={{
+            marginTop: 20, padding: '12px 32px', width: '100%',
+            background: 'linear-gradient(135deg, #f59e0b, #ec4899)', border: 'none', borderRadius: 10,
+            cursor: 'pointer', color: '#000', fontFamily: 'Fredoka', fontSize: 15, fontWeight: 700, letterSpacing: 2,
+          }}>CONTINUA</button>
+        </div>
       </div>
     );
   }
@@ -1728,34 +1780,51 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
         <MappaMondoArt territoriUtente={territoriUtente} coloreImpero={profilo.coloreImpero} territorioSelezionato={terrSel?.id} onTerritorioClick={(t) => setTerrSel(t)} />
         
         {/* POPUP OVERLAY TERRITORIO */}
-        {terrSel && (
-          <div style={{
-            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            background: 'rgba(10,5,21,0.95)', backdropFilter: 'blur(12px)',
-            border: '2px solid rgba(168,85,247,0.5)', borderRadius: 14,
-            padding: 20, minWidth: 260, maxWidth: 340, zIndex: 50,
-            boxShadow: '0 0 40px rgba(168,85,247,0.3)',
-          }}>
-            <button onClick={() => setTerrSel(null)} style={{
-              position: 'absolute', top: 8, right: 12, background: 'none', border: 'none',
-              color: '#f5e6d3', fontSize: 20, cursor: 'pointer', opacity: 0.7,
-            }}>✕</button>
-            <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 18, color: '#fbbf24', fontWeight: 700, marginBottom: 8 }}>{terrSel.nome}</div>
-            <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>Continente: <span style={{ color: '#a855f7' }}>{terrSel.cont}</span></div>
-            <div style={{ fontSize: 11, marginBottom: 4 }}>
-              Impero: <strong style={{ color: territoriUtente[terrSel.id]?.conquistato ? (profilo.coloreImpero || '#06d6a0') : (territoriUtente[terrSel.id]?.coloreImpero || '#ef4444') }}>
-                {territoriUtente[terrSel.id]?.impero || 'Sconosciuto'}
-              </strong>
-              {territoriUtente[terrSel.id]?.conquistato && <span style={{ color: '#06d6a0', marginLeft: 6 }}>★ TUO</span>}
+        {terrSel && (() => {
+          const terrData = territoriUtente[terrSel.id] || {};
+          const eMio = terrData.conquistato && terrData.impero === profilo.nomeImpero;
+          // Check confinante: posso attaccare solo territori vicini ai miei
+          const mieiTerritori = Object.entries(territoriUtente).filter(([, v]) => v?.conquistato).map(([k]) => k);
+          const primoAttacco = mieiTerritori.length === 0; // Se non ho territori, posso attaccare qualsiasi
+          const eConfinante = primoAttacco || (terrSel.conf || []).some(confId => mieiTerritori.includes(confId));
+          const possoAttaccare = !terrData.conquistato && eConfinante;
+
+          return (
+            <div style={{
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              background: 'rgba(10,5,21,0.97)', backdropFilter: 'blur(14px)',
+              border: `2px solid ${eMio ? (profilo.coloreImpero || '#06d6a0') : (terrData.coloreImpero || 'rgba(168,85,247,0.5)')}`,
+              borderRadius: 14, padding: 20, minWidth: 260, maxWidth: 340, zIndex: 50,
+              boxShadow: `0 0 40px ${eMio ? 'rgba(6,214,160,0.3)' : 'rgba(168,85,247,0.3)'}`,
+            }}>
+              <button onClick={() => setTerrSel(null)} style={{
+                position: 'absolute', top: 8, right: 12, background: 'none', border: 'none',
+                color: '#f5e6d3', fontSize: 20, cursor: 'pointer', opacity: 0.7,
+              }}>✕</button>
+              <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 18, color: '#fbbf24', fontWeight: 700, marginBottom: 8 }}>{terrSel.nome}</div>
+              <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>Continente: <span style={{ color: '#a855f7' }}>{NOMI_CONTINENTI[terrSel.cont] || terrSel.cont}</span></div>
+              <div style={{ fontSize: 11, marginBottom: 4 }}>
+                Impero: <strong style={{ color: terrData.coloreImpero || '#888' }}>{terrData.impero || 'Libero'}</strong>
+                {eMio && <span style={{ color: '#06d6a0', marginLeft: 6 }}>★ TUO</span>}
+              </div>
+              <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 14 }}>
+                Confini: {terrSel.conf?.length ? terrSel.conf.map(c => { const t = TERRITORI?.find(x => x.id === c); return t?.nome; }).filter(Boolean).join(', ') : '—'}
+              </div>
+              {!terrData.conquistato && (
+                <button onClick={() => possoAttaccare && iniziaBattaglia()} disabled={!possoAttaccare} style={{
+                  width: '100%', padding: '12px 0', textAlign: 'center',
+                  background: possoAttaccare ? 'linear-gradient(135deg, #f59e0b, #ec4899)' : 'rgba(100,100,100,0.3)',
+                  border: 'none', borderRadius: 8, cursor: possoAttaccare ? 'pointer' : 'not-allowed',
+                  color: possoAttaccare ? '#000' : '#666', fontFamily: 'Fredoka, sans-serif', fontSize: 14, fontWeight: 700,
+                  letterSpacing: 2, opacity: possoAttaccare ? 1 : 0.5,
+                }}>⚔ CONQUISTA</button>
+              )}
+              {!possoAttaccare && !terrData.conquistato && (
+                <div style={{ fontSize: 10, color: '#ef4444', textAlign: 'center', marginTop: 6 }}>Non confinante con i tuoi territori</div>
+              )}
             </div>
-            <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 12 }}>
-              Confini: {terrSel.conf?.length ? terrSel.conf.map(c => { const t = TERRITORI?.find(x => x.id === c); return t?.nome; }).filter(Boolean).join(', ') : '—'}
-            </div>
-            {!territoriUtente[terrSel.id]?.conquistato && (
-              <BtnDecorato variant="primary" size="md" onClick={iniziaBattaglia} style={{ width: '100%' }}>⚔ CONQUISTA</BtnDecorato>
-            )}
-          </div>
-        )}
+          );
+        })()}
       </PannelloOrnato>
 
       {mappaCompleta && (
