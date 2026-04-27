@@ -322,3 +322,64 @@ export function suggerisciDiversificazione(waifuEsistenti = []) {
     distribuzionePalette: paletteOrdinate,
   };
 }
+
+
+// ============================================================
+// PROMPT BUSTINA DROP
+// ============================================================
+// Genera un prompt per l'immagine della bustina di un drop
+// basato sulle waifu contenute nel drop
+export function buildPromptBustina(drop, waifuCatalogo = []) {
+  const waifuDelDrop = waifuCatalogo.filter(w => drop.waifuIds?.includes(w.id));
+  
+  if (waifuDelDrop.length === 0) {
+    return "Nessuna waifu nel drop. Aggiungi waifu al drop per generare il prompt.";
+  }
+
+  // Estrae palette dominanti
+  const paletteUsate = {};
+  waifuDelDrop.forEach(w => {
+    if (w.palette) paletteUsate[w.palette] = (paletteUsate[w.palette] || 0) + 1;
+  });
+  const paletteDominanti = Object.entries(paletteUsate)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(([id]) => {
+      const p = PALETTE.find(x => x.id === id);
+      return p ? p.colors : "";
+    })
+    .filter(Boolean);
+
+  // Estrae archetipi dominanti
+  const archetipiUsati = {};
+  waifuDelDrop.forEach(w => {
+    if (w.archetipo) archetipiUsati[w.archetipo] = (archetipiUsati[w.archetipo] || 0) + 1;
+  });
+  const archetipiDominanti = Object.entries(archetipiUsati)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(([id]) => {
+      const a = ARCHETIPI.find(x => x.id === id);
+      return a ? a.nome.toLowerCase() : "";
+    })
+    .filter(Boolean);
+
+  const tema = drop.nome || "Stagione";
+  const colori = paletteDominanti.join(", ") || "vibrant colors";
+  const tipoWaifu = archetipiDominanti.join(", ") || "fantasy characters";
+
+  return `Professional anime gacha card pack design for "${tema}" collection
+FRONT VIEW, centered composition
+Ornate decorative frame with premium golden borders and flourishes
+Color palette: ${colori}
+Theme: ${tipoWaifu} aesthetic
+Logo text: "L'IMPERO DELLE WAIFU" prominently displayed at top in elegant fantasy font
+Subtitle: "${tema}" in smaller ornate text
+Central illustration: silhouette or stylized preview of featured waifu character
+Decorative elements: sparkles, stars, magical particles
+Premium quality, detailed illustration, collectible card game aesthetic
+Background: gradient with thematic elements matching ${colori}
+Style: high quality anime art, gacha game promotional material
+NO explicit content, family-friendly design
+Aspect ratio: vertical card pack (2:3)`;
+}

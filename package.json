@@ -10,6 +10,7 @@
     "seed": "node scripts/seed.mjs"
   },
   "dependencies": {
+    "cloudinary": "^2.5.1",
     "firebase": "^11.0.0",
     "firebase-admin": "^13.0.0",
     "next": "14.2.15",

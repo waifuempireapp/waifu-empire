@@ -35,8 +35,10 @@ export default function OnboardingPage() {
         email: user.email,
         displayName: user.displayName || nomeImpero.trim(),
         energia: 10,
-        pacchetti: 0,
-        pacchettiBenvenutoRimasti: 5,
+        pacchetti: 2, // 2 pacchetti normali subito disponibili
+        pacchettiBenvenuto: 5, // 5 pacchetti benvenuto (separati, senza doppioni waifu)
+        ultimaRicaricaEnergia: new Date(),
+        ultimaRicaricaPacchetti: new Date(),
       });
 
       // 2) Genera 5 pacchetti benvenuto SENZA doppioni waifu

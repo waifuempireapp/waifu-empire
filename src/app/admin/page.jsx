@@ -11,7 +11,7 @@ import {
 import { uploadAsset, pathWaifu, pathOutfit, pathPosa } from '@/lib/storageService';
 import {
   buildPromptPaperDoll, buildPromptCartaStatica, buildPromptCartaImmersiva,
-  buildPromptOutfit, buildPromptPosa,
+  buildPromptOutfit, buildPromptPosa, buildPromptBustina,
   ARCHETIPI, PALETTE, MOTORI_AI, suggerisciDiversificazione,
 } from '@/lib/promptGenerator';
 import { RARITA, COLORI_CAPELLI, SLOT_OUTFIT } from '@/lib/constants';
@@ -266,6 +266,59 @@ function DropEditor({ drop, setDrop, waifu, outfit, pose, onSalva, onAnnulla, fl
       <Field label="Descrizione">
         <textarea value={drop.descrizione || ''} onChange={e => setDrop({ ...drop, descrizione: e.target.value })} style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} />
       </Field>
+
+      {/* UPLOAD IMMAGINE BUSTINA */}
+      <Field label="Immagine Bustina (opzionale)">
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input 
+            type="file" 
+            accept="image/*"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              
+              try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('folder', 'bustine');
+                
+                const res = await fetch('/api/upload', {
+                  method: 'POST',
+                  body: formData,
+                });
+                
+                if (!res.ok) throw new Error('Upload fallito');
+                const data = await res.json();
+                
+                setDrop({ ...drop, asset_bustina: data.url });
+                flash('Immagine bustina caricata!', '#06d6a0');
+              } catch (err) {
+                flash('Errore upload: ' + err.message, '#ef4444');
+              }
+            }}
+            style={{ ...inputStyle, padding: 8 }}
+          />
+          
+          {drop.asset_bustina && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <img src={drop.asset_bustina} alt="Bustina" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '2px solid #f59e0b' }} />
+              <button onClick={() => setDrop({ ...drop, asset_bustina: '' })} style={{ ...btnSecondario, fontSize: 11, padding: '4px 8px' }}>✕ Rimuovi</button>
+            </div>
+          )}
+        </div>
+      </Field>
+
+      {/* PROMPT BUSTINA AUTOGENERATO */}
+      {drop.waifuIds?.length > 0 && (
+        <Field label="Prompt Bustina Suggerito (per AI)">
+          <div style={{ padding: 12, background: 'rgba(6,214,160,0.08)', border: '1px solid rgba(6,214,160,0.3)', borderRadius: 8 }}>
+            <div style={{ fontFamily: 'Cinzel, serif', color: '#06d6a0', letterSpacing: 2, fontSize: 11, marginBottom: 8 }}>🎨 PROMPT AUTOGENERATO</div>
+            <div style={{ fontSize: 11, lineHeight: 1.6, color: '#d4c5b9', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
+              {buildPromptBustina(drop, waifu)}
+            </div>
+          </div>
+        </Field>
+      )}
 
       {/* Suggerimenti diversificazione */}
       {drop.waifuIds?.length > 0 && (

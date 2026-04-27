@@ -57,9 +57,9 @@ function CornerOrn({ pos, colore }) {
 // ============================================================
 export function TitoloOrnato({ children, livello = 1, colore = '#f59e0b', glow = true, allineamento = 'center', style = {} }) {
   const sizes = {
-    1: { fs: 'clamp(20px, 4vw, 28px)', ls: 5, mb: 10 },
-    2: { fs: 'clamp(16px, 3vw, 20px)', ls: 4, mb: 8 },
-    3: { fs: 'clamp(13px, 2.5vw, 16px)', ls: 3, mb: 6 },
+    1: { fs: 'clamp(20px, 4vw, 28px)', ls: 5, mb: 10, ff: 'Fredoka, Cinzel, serif', fw: 700 },
+    2: { fs: 'clamp(16px, 3vw, 20px)', ls: 4, mb: 8, ff: 'Cinzel, serif', fw: 600 },
+    3: { fs: 'clamp(13px, 2.5vw, 16px)', ls: 3, mb: 6, ff: 'Cinzel, serif', fw: 600 },
   };
   const s = sizes[livello] || sizes[1];
   return (
@@ -73,7 +73,7 @@ export function TitoloOrnato({ children, livello = 1, colore = '#f59e0b', glow =
       )}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
-        fontFamily: 'Cinzel, serif', fontSize: s.fs, fontWeight: 600, letterSpacing: s.ls,
+        fontFamily: s.ff, fontSize: s.fs, fontWeight: s.fw, letterSpacing: s.ls,
         color: colore,
         textShadow: glow ? `0 0 12px ${colore}80, 0 0 24px ${colore}40` : 'none',
         whiteSpace: 'nowrap',

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, getDropAttivo } from '@/lib/firestoreService';
 import { calcolaRicaricaPacchetti, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, INCREMENTI_LEVELUP } from '@/lib/gameLogic';
-import { TIMER, RARITA, COLORI_CAPELLI, CATEGORIE_TETTE, SLOT_OUTFIT } from '@/lib/constants';
+import { TIMER, RARITA, COLORI_CAPELLI, CATEGORIE_TETTE, SLOT_OUTFIT, TERRITORI } from '@/lib/constants';
 import PaperDoll from '@/components/PaperDoll';
 import { CartaWaifu, CartaOutfit, CartaPosa } from '@/components/CartaWaifu';
 import MappaMondoArt from '@/components/MappaMondoArt';
@@ -102,7 +102,7 @@ export default function GiocoPage() {
         {tab === 'home' && <HomeTab profilo={profilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} />}
         {tab === 'sbusta' && <SbustaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} user={user} mostraNotif={mostraNotif} />}
         {tab === 'collezione' && <CollezioneTab collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} profilo={profilo} setProfilo={setProfilo} user={user} mostraNotif={mostraNotif} />}
-        {tab === 'mappa' && <MappaTab profilo={profilo} mostraNotif={mostraNotif} />}
+        {tab === 'mappa' && <MappaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} user={user} mostraNotif={mostraNotif} />}
       </div>
 
       <BottomNav tab={tab} setTab={setTab} isAdmin={isAdmin} />
@@ -153,9 +153,9 @@ function Header({ profilo, isAdmin, onLogout }) {
 // ============================================================
 const TAB_DEFS = [
   { id: 'home', label: 'Home', icon: '♛' },
+  { id: 'mappa', label: 'Mappa', icon: '⚔' },
   { id: 'sbusta', label: 'Sbusta', icon: '◈' },
   { id: 'collezione', label: 'Collezione', icon: '☷' },
-  { id: 'mappa', label: 'Mappa', icon: '⚔' },
 ];
 
 function NavTabs({ tab, setTab }) {
@@ -319,17 +319,32 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
   const [indiceRivelato, setIndiceRivelato] = useState(-1);
 
   const apri = async () => {
-    if ((profilo.pacchetti ?? 0) <= 0) {
+    const hasBenvenuto = (profilo.pacchettiBenvenuto ?? 0) > 0;
+    const hasNormali = (profilo.pacchetti ?? 0) > 0;
+    
+    if (!hasBenvenuto && !hasNormali) {
       mostraNotif('Nessun pacchetto disponibile', '#ef4444');
       return;
     }
+    
     const drop = await getDropAttivo();
     const wp = drop && drop.waifuIds ? waifuCat.filter(w => drop.waifuIds.includes(w.id)) : waifuCat;
     const op = drop && drop.outfitIds ? outfitCat.filter(o => drop.outfitIds.includes(o.id)) : outfitCat;
     const pp = drop && drop.poseIds ? poseCat.filter(p => drop.poseIds.includes(p.id)) : poseCat;
     if (wp.length === 0) { mostraNotif('Nessuna waifu nel drop attivo. Contatta admin.', '#ef4444'); return; }
 
-    const carte = generaPacchetto({ waifuPool: wp, outfitPool: op, posePool: pp });
+    // Se sto aprendo un pacchetto benvenuto, escludo doppioni waifu
+    const usaBenvenuto = hasBenvenuto;
+    const waifuPossedute = usaBenvenuto ? Object.keys(collezione.waifu || {}) : [];
+    
+    const carte = generaPacchetto({
+      waifuPool: wp,
+      outfitPool: op,
+      posePool: pp,
+      escludiDoppioniWaifu: usaBenvenuto,
+      waifuPossedute,
+    });
+    
     setCarteRivelate(carte);
     setIndiceRivelato(-1);
     setStato('reveal');
@@ -348,9 +363,16 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     setColl(nuova);
     await saveCollezione(user.uid, nuova);
 
-    const nuovoPacchetti = (profilo.pacchetti ?? 0) - 1;
-    setProfilo({ ...profilo, pacchetti: nuovoPacchetti });
-    await updateUserProfile(user.uid, { pacchetti: nuovoPacchetti });
+    // Decrementa il contatore corretto
+    if (usaBenvenuto) {
+      const nuovoBenv = (profilo.pacchettiBenvenuto ?? 0) - 1;
+      setProfilo({ ...profilo, pacchettiBenvenuto: nuovoBenv });
+      await updateUserProfile(user.uid, { pacchettiBenvenuto: nuovoBenv });
+    } else {
+      const nuovoPacchetti = (profilo.pacchetti ?? 0) - 1;
+      setProfilo({ ...profilo, pacchetti: nuovoPacchetti });
+      await updateUserProfile(user.uid, { pacchetti: nuovoPacchetti });
+    }
 
     carte.forEach((_, i) => {
       setTimeout(() => setIndiceRivelato(i), 500 + i * 700);
@@ -393,9 +415,45 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
         <TitoloOrnato livello={1} colore="#f59e0b">SBUSTA UN PACCHETTO</TitoloOrnato>
         <p style={{ color: '#d4c5b9', maxWidth: 480, margin: '14px auto', lineHeight: 1.7, fontSize: 13 }}>
           Ogni pacchetto contiene <strong style={{ color: '#fbbf24' }}>2 waifu, 2 outfit, 1 posa</strong>.
-          <br />Pacchetti disponibili:
         </p>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 24 }}>
+        
+        {/* Pacchetti Benvenuto (se presenti) */}
+        {(profilo.pacchettiBenvenuto ?? 0) > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <Chip colore="#06d6a0" icon="⭐" size="md">PACCHETTI BENVENUTO</Chip>
+            <p style={{ fontSize: 11, color: '#06d6a0', marginTop: 8, opacity: 0.9 }}>
+              Senza doppioni waifu garantiti!
+            </p>
+            <div style={{ fontSize: 56, fontFamily: 'Cinzel, serif', color: '#06d6a0', textShadow: '0 0 20px rgba(6,214,160,0.6)', fontWeight: 700, marginTop: 8 }}>
+              {profilo.pacchettiBenvenuto}
+            </div>
+          </div>
+        )}
+        
+        {/* Pacchetti Normali */}
+        <div>
+          {(profilo.pacchettiBenvenuto ?? 0) > 0 && <Divider colore="#f59e0b" spazio={16} />}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 16 }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 11, opacity: 0.7, letterSpacing: 3, marginBottom: 4 }}>PACCHETTI</div>
+              <div style={{ fontSize: 48, fontFamily: 'Cinzel, serif', color: '#fbbf24', textShadow: '0 0 20px rgba(245,158,11,0.6)', fontWeight: 700 }}>
+                {profilo.pacchetti ?? 0}
+              </div>
+              <div style={{ fontSize: 10, opacity: 0.7, letterSpacing: 3, marginTop: 2 }}>DI {TIMER.MAX_PACCHETTI}</div>
+            </div>
+          </div>
+        </div>
+        
+        <div style={{ marginTop: 12 }}>
+          <PacchettoBox 
+            onClick={apri} 
+            disabled={(profilo.pacchettiBenvenuto ?? 0) <= 0 && (profilo.pacchetti ?? 0) <= 0}
+            isBenvenuto={(profilo.pacchettiBenvenuto ?? 0) > 0}
+          />
+        </div>
+      </PannelloOrnato>
+    </div>
+  );
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 56, fontFamily: 'Cinzel, serif', color: '#fbbf24', textShadow: '0 0 20px rgba(245,158,11,0.6)', fontWeight: 700 }}>
               {profilo.pacchetti ?? 0}
@@ -411,41 +469,53 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
   );
 }
 
-function PacchettoBox({ onClick, disabled }) {
+function PacchettoBox({ onClick, disabled, isBenvenuto }) {
   return (
     <div onClick={!disabled ? onClick : undefined} className={!disabled ? 'pulse' : ''} style={{
       width: 220, height: 320, margin: '0 auto',
-      background: 'linear-gradient(135deg, #2a0a3e 0%, #4a0a5e 50%, #1a0a2e 100%)',
-      border: '3px solid #f59e0b', borderRadius: 6,
+      background: isBenvenuto 
+        ? 'linear-gradient(135deg, #0a3e2e 0%, #06d6a0 50%, #0a2e3e 100%)'
+        : 'linear-gradient(135deg, #2a0a3e 0%, #4a0a5e 50%, #1a0a2e 100%)',
+      border: `3px solid ${isBenvenuto ? '#06d6a0' : '#f59e0b'}`, borderRadius: 6,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       cursor: disabled ? 'not-allowed' : 'pointer',
       opacity: disabled ? 0.4 : 1,
       boxShadow: disabled
         ? '0 0 20px rgba(245,158,11,0.2)'
-        : '0 0 50px rgba(245,158,11,0.5), inset 0 0 40px rgba(0,0,0,0.6), 0 8px 30px rgba(0,0,0,0.6)',
+        : isBenvenuto
+          ? '0 0 50px rgba(6,214,160,0.5), inset 0 0 40px rgba(0,0,0,0.6), 0 8px 30px rgba(0,0,0,0.6)'
+          : '0 0 50px rgba(245,158,11,0.5), inset 0 0 40px rgba(0,0,0,0.6), 0 8px 30px rgba(0,0,0,0.6)',
       position: 'relative', overflow: 'hidden',
       transition: 'all 0.3s',
     }}>
       <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0, opacity: 0.25 }}>
         <pattern id="pkg" width="40" height="40" patternUnits="userSpaceOnUse">
-          <path d="M20 0 L40 20 L20 40 L0 20 Z" fill="none" stroke="#f59e0b" strokeWidth="1" />
+          <path d="M20 0 L40 20 L20 40 L0 20 Z" fill="none" stroke={isBenvenuto ? '#06d6a0' : '#f59e0b'} strokeWidth="1" />
         </pattern>
         <rect width="100%" height="100%" fill="url(#pkg)" />
       </svg>
-      {/* Cornice decorativa interna */}
       <div style={{
         position: 'absolute', inset: 12,
-        border: '1px solid rgba(245,158,11,0.4)',
+        border: `1px solid ${isBenvenuto ? 'rgba(6,214,160,0.4)' : 'rgba(245,158,11,0.4)'}`,
         borderRadius: 3,
         pointerEvents: 'none',
       }} />
+      
+      {isBenvenuto && (
+        <div style={{
+          position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(6,214,160,0.2)', border: '1px solid #06d6a0',
+          padding: '4px 16px', borderRadius: 12,
+          fontSize: 10, letterSpacing: 3, color: '#06d6a0', fontFamily: 'Cinzel, serif', fontWeight: 700,
+        }}>⭐ BENVENUTO ⭐</div>
+      )}
+      
       <div style={{ textAlign: 'center', zIndex: 1 }}>
-        <div style={{ fontSize: 80, color: '#fbbf24', textShadow: '0 0 30px rgba(245,158,11,0.8)' }}>♛</div>
-        <div style={{ fontFamily: 'Cinzel, serif', letterSpacing: 6, color: '#fbbf24', fontSize: 16, fontWeight: 700, textShadow: '0 0 12px rgba(245,158,11,0.6)' }}>IMPERO</div>
+        <div style={{ fontSize: 80, color: isBenvenuto ? '#06d6a0' : '#fbbf24', textShadow: `0 0 30px ${isBenvenuto ? 'rgba(6,214,160,0.8)' : 'rgba(245,158,11,0.8)'}` }}>♛</div>
+        <div style={{ fontFamily: 'Cinzel, serif', letterSpacing: 6, color: isBenvenuto ? '#06d6a0' : '#fbbf24', fontSize: 16, fontWeight: 700, textShadow: `0 0 12px ${isBenvenuto ? 'rgba(6,214,160,0.6)' : 'rgba(245,158,11,0.6)'}` }}>IMPERO</div>
         <div style={{ fontSize: 11, letterSpacing: 4, opacity: 0.8, marginTop: 6, color: '#f5e6d3' }}>delle WAIFU</div>
         <div style={{ marginTop: 16, fontSize: 9, letterSpacing: 2, color: '#d4c5b9', opacity: 0.7 }}>⚜ TOCCA PER APRIRE ⚜</div>
       </div>
-      {/* Angoli ornamentali */}
       {[
         { top: 4, left: 4, rot: 0 },
         { top: 4, right: 4, rot: 90 },
@@ -453,8 +523,8 @@ function PacchettoBox({ onClick, disabled }) {
         { bottom: 4, left: 4, rot: 270 },
       ].map((c, i) => (
         <svg key={i} viewBox="0 0 24 24" width="20" height="20" style={{ position: 'absolute', transform: `rotate(${c.rot}deg)`, ...c }}>
-          <path d="M0,0 L24,0 L24,3 L3,3 L3,24 L0,24 Z" fill="#fbbf24" opacity="0.9" />
-          <circle cx="3" cy="3" r="1.5" fill="#fbbf24" />
+          <path d="M0,0 L24,0 L24,3 L3,3 L3,24 L0,24 Z" fill={isBenvenuto ? '#06d6a0' : '#fbbf24'} opacity="0.9" />
+          <circle cx="3" cy="3" r="1.5" fill={isBenvenuto ? '#06d6a0' : '#fbbf24'} />
         </svg>
       ))}
     </div>
@@ -587,6 +657,11 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
               )}
             </div>;
           })}
+          {Object.keys(collezione.outfit || {}).length === 0 && (
+            <PannelloOrnato style={{ width: '100%', textAlign: 'center', padding: 40 }}>
+              <div style={{ opacity: 0.6, fontSize: 13 }}>Nessun outfit nella collezione.</div>
+            </PannelloOrnato>
+          )}
         </div>
       )}
 
@@ -604,6 +679,13 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
               )}
             </div>;
           })}
+          {Object.keys(collezione.pose || {}).length === 0 && (
+            <PannelloOrnato style={{ width: '100%', textAlign: 'center', padding: 40 }}>
+              <div style={{ opacity: 0.6, fontSize: 13 }}>Nessuna posa nella collezione.</div>
+            </PannelloOrnato>
+          )}
+        </div>
+      )}
         </div>
       )}
 
@@ -762,13 +844,222 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
 // ============================================================
 // TAB: MAPPA - Usa il nuovo MappaMondoArt
 // ============================================================
-function MappaTab({ profilo, mostraNotif }) {
+function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif }) {
   const [territoriUtente, setTerritoriUtente] = useState({});
   const [terrSel, setTerrSel] = useState(null);
+  const [modoBattaglia, setModoBattaglia] = useState(false);
+  const [waifuSelezionate, setWaifuSelezionate] = useState([]);
+  const [inBattaglia, setInBattaglia] = useState(false);
+  const [risultatoBattaglia, setRisultatoBattaglia] = useState(null);
+  const [livelloCPU, setLivelloCPU] = useState(1);
+
+  const numConquistati = Object.values(territoriUtente).filter(t => t?.conquistato).length;
+  const mappaCompleta = numConquistati === TERRITORI.length;
+  const waifuDisponibili = Object.entries(collezione.waifu || {}).map(([id, dati]) => {
+    const w = waifuCat.find(x => x.id === id);
+    return w ? { ...w, ...dati } : null;
+  }).filter(Boolean);
+
+  const iniziaBattaglia = () => {
+    // Check: almeno 5 waifu
+    if (waifuDisponibili.length < 5) {
+      mostraNotif('Serve almeno 5 waifu per combattere!', '#ef4444');
+      // Suggerisci di andare a sbustare
+      setTimeout(() => {
+        mostraNotif('Vai alla sezione Sbusta per ottenere più waifu', '#f59e0b');
+      }, 2000);
+      return;
+    }
+    
+    // Check: almeno 1 energia
+    if ((profilo.energia ?? 0) < 1) {
+      const { tempoRimanente } = calcolaRicaricaEnergia(profilo.ultimaRicaricaEnergia, profilo.energia ?? 0);
+      const ore = Math.floor(tempoRimanente / 3600000);
+      const minuti = Math.floor((tempoRimanente % 3600000) / 60000);
+      mostraNotif(`Energia esaurita! Ricarica tra ${ore}h ${minuti}m`, '#ef4444');
+      return;
+    }
+
+    setModoBattaglia(true);
+  };
+
+  const confermaSquadra = async () => {
+    if (waifuSelezionate.length !== 5) {
+      mostraNotif('Seleziona esattamente 5 waifu!', '#ef4444');
+      return;
+    }
+
+    setInBattaglia(true);
+
+    // Simula battaglia (best of 5)
+    const waifuUtente = waifuSelezionate.map(id => {
+      const w = waifuDisponibili.find(x => x.id === id);
+      const dati = collezione.waifu[id];
+      return {
+        ...w,
+        tette_eff: Math.min(7, w.tette + (dati.stat_bonus?.tette || 0)),
+        taglia_piedi_eff: Math.min(44, w.taglia_piedi + (dati.stat_bonus?.taglia_piedi || 0)),
+        eta_eff: Math.min(2000, w.eta + (dati.stat_bonus?.eta || 0)),
+        colore_capelli_eff: Math.min(10, w.colore_capelli + (dati.stat_bonus?.colore_capelli || 0)),
+        esperienza_eff: Math.min(250, w.esperienza + (dati.stat_bonus?.esperienza || 0)),
+      };
+    });
+
+    // CPU con difficoltà crescente
+    const waifuCPU = Array.from({ length: 5 }, (_, i) => {
+      const baseStats = {
+        tette: 3 + Math.floor(Math.random() * 3),
+        taglia_piedi: 36 + Math.floor(Math.random() * 6),
+        eta: 20 + Math.floor(Math.random() * 15),
+        colore_capelli: 1 + Math.floor(Math.random() * 10),
+        esperienza: 30 + Math.floor(Math.random() * 50),
+      };
+      // Bonus CPU in base al livello
+      const bonus = (livelloCPU - 1) * 0.5; // +50% stats per livello
+      return {
+        nome: `CPU-${i + 1}`,
+        tette_eff: Math.round(baseStats.tette * (1 + bonus)),
+        taglia_piedi_eff: Math.round(baseStats.taglia_piedi * (1 + bonus * 0.3)),
+        eta_eff: Math.round(baseStats.eta * (1 + bonus * 0.2)),
+        colore_capelli_eff: baseStats.colore_capelli,
+        esperienza_eff: Math.round(baseStats.esperienza * (1 + bonus)),
+      };
+    });
+
+    // Battaglia: confronto stat per stat
+    const scontri = waifuUtente.map((wu, idx) => {
+      const wc = waifuCPU[idx];
+      const stats = ['tette_eff', 'taglia_piedi_eff', 'eta_eff', 'colore_capelli_eff', 'esperienza_eff'];
+      const vinte = stats.filter(s => wu[s] > wc[s]).length;
+      return { utente: wu, cpu: wc, vittoriaUtente: vinte >= 3 };
+    });
+
+    const vittorieUtente = scontri.filter(s => s.vittoriaUtente).length;
+    const vittoria = vittorieUtente >= 3;
+
+    setTimeout(() => {
+      setRisultatoBattaglia({ vittoria, scontri, vittorieUtente });
+      setInBattaglia(false);
+
+      if (vittoria) {
+        // Conquista territorio
+        setTerritoriUtente({ ...territoriUtente, [terrSel.id]: { conquistato: true } });
+        
+        // Consuma 1 energia
+        const nuovaEnergia = (profilo.energia ?? 0) - 1;
+        setProfilo({ ...profilo, energia: nuovaEnergia });
+        updateUserProfile(user.uid, { energia: nuovaEnergia });
+
+        mostraNotif(`${terrSel.nome} conquistato!`, '#06d6a0');
+        
+        // Check mappa completa
+        const nuoviConquistati = Object.values({ ...territoriUtente, [terrSel.id]: { conquistato: true } }).filter(t => t?.conquistato).length;
+        if (nuoviConquistati === TERRITORI.length) {
+          setTimeout(() => {
+            mostraNotif('🎉 MAPPA COMPLETATA! +5 pacchetti omaggio', '#f59e0b');
+            // Dai 5 pacchetti + reset mappa + incrementa livello CPU
+            const nuoviPacchetti = (profilo.pacchetti ?? 0) + 5;
+            setProfilo({ ...profilo, pacchetti: nuoviPacchetti });
+            updateUserProfile(user.uid, { pacchetti: nuoviPacchetti });
+            setTerritoriUtente({});
+            setLivelloCPU(livelloCPU + 1);
+          }, 2000);
+        }
+      } else {
+        mostraNotif('Sconfitta! Riprova', '#ef4444');
+      }
+    }, 3000); // Simula 3 secondi di battaglia
+  };
+
+  if (modoBattaglia) {
+    return (
+      <div className="fade-in">
+        <PannelloOrnato glow="#f59e0b">
+          <TitoloOrnato livello={2} colore="#f59e0b">SELEZIONE SQUADRA</TitoloOrnato>
+          <p style={{ textAlign: 'center', color: '#d4c5b9', fontSize: 13, marginBottom: 16 }}>
+            Scegli <strong style={{ color: '#fbbf24' }}>5 waifu</strong> per la battaglia
+          </p>
+
+          {inBattaglia && (
+            <div style={{ textAlign: 'center', padding: 40 }}>
+              <div className="glow-pulse" style={{ fontSize: 60, color: '#f59e0b' }}>⚔</div>
+              <div style={{ fontSize: 16, color: '#fbbf24', marginTop: 12, fontFamily: 'Cinzel, serif', letterSpacing: 4 }}>
+                BATTAGLIA IN CORSO...
+              </div>
+            </div>
+          )}
+
+          {!inBattaglia && !risultatoBattaglia && (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
+                {waifuDisponibili.map(w => {
+                  const isSelected = waifuSelezionate.includes(w.id);
+                  return (
+                    <div key={w.id} onClick={() => {
+                      if (isSelected) setWaifuSelezionate(waifuSelezionate.filter(id => id !== w.id));
+                      else if (waifuSelezionate.length < 5) setWaifuSelezionate([...waifuSelezionate, w.id]);
+                    }} style={{
+                      padding: 12, cursor: 'pointer',
+                      background: isSelected ? 'linear-gradient(135deg, #f59e0b40, #ec489940)' : 'rgba(0,0,0,0.5)',
+                      border: `2px solid ${isSelected ? '#fbbf24' : 'rgba(245,158,11,0.3)'}`,
+                      borderRadius: 4,
+                      boxShadow: isSelected ? '0 0 16px rgba(251,191,36,0.5)' : 'none',
+                      transition: 'all 0.2s',
+                    }}>
+                      <div style={{ fontFamily: 'Cinzel, serif', fontSize: 12, textAlign: 'center', color: isSelected ? '#fbbf24' : '#f5e6d3', marginBottom: 4 }}>
+                        {w.nome}
+                      </div>
+                      <div style={{ fontSize: 9, opacity: 0.7, textAlign: 'center' }}>
+                        LV{collezione.waifu[w.id]?.livello || 1}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <BtnDecorato variant="secondary" onClick={() => { setModoBattaglia(false); setWaifuSelezionate([]); }}>
+                  ANNULLA
+                </BtnDecorato>
+                <BtnDecorato variant="primary" disabled={waifuSelezionate.length !== 5} onClick={confermaSquadra}>
+                  COMBATTI ({waifuSelezionate.length}/5)
+                </BtnDecorato>
+              </div>
+            </>
+          )}
+
+          {risultatoBattaglia && (
+            <div style={{ textAlign: 'center', padding: 20 }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>
+                {risultatoBattaglia.vittoria ? '🎉' : '😔'}
+              </div>
+              <TitoloOrnato livello={1} colore={risultatoBattaglia.vittoria ? '#06d6a0' : '#ef4444'}>
+                {risultatoBattaglia.vittoria ? 'VITTORIA!' : 'SCONFITTA'}
+              </TitoloOrnato>
+              <p style={{ color: '#d4c5b9', marginTop: 12 }}>
+                Hai vinto {risultatoBattaglia.vittorieUtente}/5 scontri
+              </p>
+              <BtnDecorato variant="primary" onClick={() => { setModoBattaglia(false); setWaifuSelezionate([]); setRisultatoBattaglia(null); setTerrSel(null); }} style={{ marginTop: 20 }}>
+                CONTINUA
+              </BtnDecorato>
+            </div>
+          )}
+        </PannelloOrnato>
+      </div>
+    );
+  }
 
   return (
     <div className="fade-in">
       <PannelloOrnato glow="#f59e0b" style={{ padding: 8, marginBottom: 12 }}>
+        <div style={{ padding: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <Chip colore="#a855f7" icon="⚔" size="md">LIVELLO CPU: {livelloCPU}</Chip>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Chip colore="#06d6a0" icon="✓">{numConquistati}/{TERRITORI.length}</Chip>
+            <Chip colore="#f59e0b" icon="✦">{profilo.energia ?? 0}/10</Chip>
+          </div>
+        </div>
         <MappaMondoArt
           territoriUtente={territoriUtente}
           coloreImpero={profilo.coloreImpero}
@@ -790,20 +1081,28 @@ function MappaTab({ profilo, mostraNotif }) {
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {!territoriUtente[terrSel.id]?.conquistato && (
-                <BtnDecorato variant="primary" size="md" onClick={() => {
-                  setTerritoriUtente({ ...territoriUtente, [terrSel.id]: { conquistato: true } });
-                  mostraNotif(`${terrSel.nome} conquistato!`, '#06d6a0');
-                }}>⚔ CONQUISTA</BtnDecorato>
+                <BtnDecorato variant="primary" size="md" onClick={iniziaBattaglia}>⚔ CONQUISTA</BtnDecorato>
               )}
               <BtnDecorato variant="secondary" size="md" onClick={() => setTerrSel(null)}>CHIUDI</BtnDecorato>
             </div>
           </div>
           <div style={{ marginTop: 12, fontSize: 11, opacity: 0.7, lineHeight: 1.6 }}>
             <strong>Territori confinanti:</strong> {terrSel.conf?.length ? terrSel.conf.map(c => {
-              const t = require('@/lib/constants').TERRITORI?.find(x => x.id === c);
+              const t = TERRITORI?.find(x => x.id === c);
               return t?.nome;
             }).filter(Boolean).join(', ') : 'nessuno'}
           </div>
+        </PannelloOrnato>
+      )}
+
+      {mappaCompleta && (
+        <PannelloOrnato variant="accent" glow="#06d6a0" style={{ marginTop: 12, textAlign: 'center', padding: 24 }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>🏆</div>
+          <TitoloOrnato livello={1} colore="#06d6a0">MAPPA COMPLETATA!</TitoloOrnato>
+          <p style={{ color: '#d4c5b9', marginTop: 12 }}>
+            Hai conquistato tutti i territori! Ricevi <strong style={{ color: '#fbbf24' }}>5 pacchetti omaggio</strong>.
+            <br />La mappa verrà resettata e la difficoltà CPU aumenterà.
+          </p>
         </PannelloOrnato>
       )}
     </div>
