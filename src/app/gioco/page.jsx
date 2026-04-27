@@ -1326,24 +1326,3 @@ function CountdownPacchettiOmaggio({ ultimaRicarica }) {
   );
 }
 
-// ============================================================
-// COMPONENTE: CARTA COPERTA (battaglia)
-// ============================================================
-function CartaCoperta() {
-  return (
-    <div style={{
-      width: 140, height: 200,
-      background: 'linear-gradient(135deg, rgba(245,158,11,0.2), rgba(168,85,247,0.2))',
-      border: '2px solid rgba(245,158,11,0.5)',
-      borderRadius: 8,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: 48,
-      color: '#f59e0b',
-      textShadow: '0 0 20px rgba(245,158,11,0.6)',
-    }}>
-      ?
-    </div>
-  );
-}
