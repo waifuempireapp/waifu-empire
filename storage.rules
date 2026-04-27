@@ -1,0 +1,34 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email != null
+             && firestore.exists(/databases/(default)/documents/admins/list)
+             && firestore.get(/databases/(default)/documents/admins/list).data.emails.hasAny([request.auth.token.email]);
+    }
+
+    // Asset waifu, outfit, pose: lettura pubblica per gli utenti autenticati, scrittura solo admin
+    match /waifu/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() && request.resource.size < 10 * 1024 * 1024
+                  && request.resource.contentType.matches('image/.*');
+    }
+    match /outfit/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() && request.resource.size < 5 * 1024 * 1024
+                  && request.resource.contentType.matches('image/.*');
+    }
+    match /pose/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() && request.resource.size < 5 * 1024 * 1024
+                  && request.resource.contentType.matches('image/.*');
+    }
+
+    // Default: blocca tutto
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
