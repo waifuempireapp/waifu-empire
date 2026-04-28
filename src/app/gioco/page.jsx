@@ -864,7 +864,8 @@ function RoundEndBar({ vincitoreRound, statScelta, direzione, carteP, carteC, ro
     return () => clearTimeout(t);
   }, [timer]);
   const statInfo = STATS_BATTAGLIA.find(s => s.key === statScelta);
-  const eFine = round >= 5 || punteggio.player >= 3 || punteggio.cpu >= 3;
+  // Fine solo dopo 5 round totali — nessun early exit (spec)
+  const eFine = round >= 5 || punteggio.player >= 3 || punteggio.cpu >= 3;;
 
   return (
     <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 70, padding: '10px 16px', background: 'rgba(6,3,15,0.96)', borderTop: `2px solid ${colore}` }}>
@@ -888,270 +889,301 @@ function RoundEndBar({ vincitoreRound, statScelta, direzione, carteP, carteC, ro
 // TAB: MAPPA — Tutto il codice battaglia invariato, solo UI reworkata
 // ============================================================
 function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif }) {
+  // ── STATO MAPPA ────────────────────────────────────────────
   const [territoriUtente, setTerritoriUtente] = useState({});
   const [terrSel, setTerrSel] = useState(null);
   const [livelloCPU, setLivelloCPU] = useState(1);
   const [livelloMappa, setLivelloMappa] = useState(1);
+
+  // ── STATO SELEZIONE TEAM ───────────────────────────────────
   const [modoBattaglia, setModoBattaglia] = useState(false);
   const [teamSelezionato, setTeamSelezionato] = useState(null);
   const [waifuSelezionate, setWaifuSelezionate] = useState([]);
+
+  // ── STATO BATTAGLIA ────────────────────────────────────────
+  // Fasi possibili:
+  //   null                   → mappa
+  //   'coin'                 → lancio moneta
+  //   'playerScegliWaifu'    → turno player: player sceglie waifu
+  //   'playerScegliStat'     → turno player: player sceglie statistica
+  //   'playerScegliDir'      → turno player: player sceglie direzione
+  //   'cpuRispondeWaifu'     → turno player: CPU sceglie waifu (auto, breve pausa)
+  //   'cpuSceglieTutto'      → turno CPU: CPU calcola waifu+stat+dir internamente
+  //   'playerScegliWaifuVsCPU' → turno CPU: player sceglie la propria waifu
+  //   'reveal'               → animazione rivelazione
+  //   'roundEnd'             → risultato round, bottone prossimo round
+  //   'suddenDeathWaifu'     → SD: player sceglie waifu (CPU ha già scelto tutto)
+  //   'suddenDeathReveal'    → SD: rivelazione e risoluzione
+  //   'gameEnd'              → fine partita
   const [fase, setFase] = useState(null);
-  const [turno, setTurno] = useState(null);
+  const [turno, setTurno] = useState(null);           // 'player' | 'cpu'
+  const [primoTurno, setPrimoTurno] = useState(null); // chi ha vinto il coin flip
   const [round, setRound] = useState(1);
   const [punteggio, setPunteggio] = useState({ player: 0, cpu: 0 });
   const [mazzoP, setMazzoP] = useState([]);
   const [mazzoC, setMazzoC] = useState([]);
+
+  // Carte scelte nel round corrente
   const [carteP, setCarteP] = useState(null);
   const [carteC, setCarteC] = useState(null);
+
+  // Scelte per questo round
   const [statScelta, setStatScelta] = useState(null);
-  const [direzione, setDirezione] = useState(null);
+  const [direzione, setDirezione] = useState(null);   // 'piu' | 'meno'
+
+  // Scelte interne CPU (non ancora mostrate al player)
+  const [cpuWaifuPending, setCpuWaifuPending] = useState(null);
+  const [cpuStatPending, setCpuStatPending] = useState(null);
+  const [cpuDirPending, setCpuDirPending] = useState(null);
+
   const [vincitoreRound, setVincitoreRound] = useState(null);
   const [coinResult, setCoinResult] = useState(null);
-  const [statsUsate, setStatsUsate] = useState([]);
   const [risultatiWaifu, setRisultatiWaifu] = useState({});
-  const [timeLeft, setTimeLeft] = useState(10);
+  const [timeLeft, setTimeLeft] = useState(30);
   const [nomeImperoAvversario, setNomeImperoAvversario] = useState('');
 
-  const NOMI_IMPERI = ['Drago Nero', 'Rosa d\'Oro', 'Ombra Viola', 'Fenice Rossa'];
+  // ── COSTANTI ───────────────────────────────────────────────
+  const NOMI_IMPERI = ['Drago Nero', "Rosa d'Oro", 'Ombra Viola', 'Fenice Rossa'];
   const COLORI_IMPERI = ['#ef4444', '#a855f7', '#3b82f6', '#ec4899'];
-
-  useEffect(() => {
-    if (profilo) {
-      let terr = profilo.territoriUtente || {};
-      setLivelloMappa(profilo.livelloMappa || 1);
-      setLivelloCPU(profilo.livelloCPU || 1);
-      const terrKeys = Object.keys(terr);
-      const haImperiAssegnati = terrKeys.length > 0 && terrKeys.some(k => terr[k]?.impero);
-      if (!haImperiAssegnati || terrKeys.length < TERRITORI.length) {
-        const nuoviTerritori = {};
-        TERRITORI.forEach((t, idx) => {
-          if (terr[t.id]?.conquistato) nuoviTerritori[t.id] = terr[t.id];
-          else if (Math.random() < 0.15) nuoviTerritori[t.id] = { conquistato: false, impero: 'Terra di Nessuno', coloreImpero: '#444444' };
-          else { const i = idx % NOMI_IMPERI.length; nuoviTerritori[t.id] = { conquistato: false, impero: NOMI_IMPERI[i], coloreImpero: COLORI_IMPERI[i] }; }
-        });
-        terr = nuoviTerritori;
-        updateUserProfile(user.uid, { territoriUtente: nuoviTerritori });
-      }
-      setTerritoriUtente(terr);
-    }
-  }, [profilo]);
-
-  const numConquistati = Object.values(territoriUtente).filter(t => t?.conquistato).length;
-  const totaleTerritori = TERRITORI.length;
-  const mappaCompleta = numConquistati === totaleTerritori;
-  const waifuDisponibili = Object.entries(collezione.waifu || {}).map(([id, dati]) => { const w = waifuCat.find(x => x.id === id); return w ? { ...w, ...dati } : null; }).filter(Boolean);
-  const teams = collezione.teams || {};
   const STATS_BATTAGLIA = [
-    { key: 'tette', label: 'Tette', icon: '💗' },
-    { key: 'taglia_piedi', label: 'Piedi', icon: '👠' },
-    { key: 'eta', label: 'Età', icon: '📅' },
-    { key: 'colore_capelli', label: 'Capelli', icon: '💇' },
-    { key: 'esperienza', label: 'Esperienza', icon: '⭐' },
+    { key: 'tette',          label: 'Tette',      icon: '💗' },
+    { key: 'taglia_piedi',   label: 'Piedi',      icon: '👠' },
+    { key: 'eta',            label: 'Età',        icon: '📅' },
+    { key: 'colore_capelli', label: 'Capelli',    icon: '💇' },
+    { key: 'esperienza',     label: 'Esperienza', icon: '⭐' },
   ];
 
-  // Timer
+  // ── FASI CON TIMER ATTIVO (solo dove il player deve agire) ─
+  const FASI_TIMER = [
+    'playerScegliWaifu',
+    'playerScegliStat',
+    'playerScegliDir',
+    'playerScegliWaifuVsCPU',
+    'suddenDeathWaifu',
+  ];
+
+  // ── INIZIALIZZAZIONE MAPPA ─────────────────────────────────
   useEffect(() => {
-    if ((fase === 'play' || fase === 'suddenDeath') && timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(t => t - 1), 1000);
-      return () => clearTimeout(timer);
+    if (!profilo) return;
+    let terr = profilo.territoriUtente || {};
+    setLivelloMappa(profilo.livelloMappa || 1);
+    setLivelloCPU(profilo.livelloCPU || 1);
+    const terrKeys = Object.keys(terr);
+    const haImperiAssegnati = terrKeys.length > 0 && terrKeys.some(k => terr[k]?.impero);
+    if (!haImperiAssegnati || terrKeys.length < TERRITORI.length) {
+      const nuoviTerritori = {};
+      TERRITORI.forEach((t, idx) => {
+        if (terr[t.id]?.conquistato) nuoviTerritori[t.id] = terr[t.id];
+        else if (Math.random() < 0.15) nuoviTerritori[t.id] = { conquistato: false, impero: 'Terra di Nessuno', coloreImpero: '#444444' };
+        else { const i = idx % NOMI_IMPERI.length; nuoviTerritori[t.id] = { conquistato: false, impero: NOMI_IMPERI[i], coloreImpero: COLORI_IMPERI[i] }; }
+      });
+      terr = nuoviTerritori;
+      updateUserProfile(user.uid, { territoriUtente: nuoviTerritori });
     }
-    if ((fase === 'play' || fase === 'suddenDeath') && timeLeft <= 0) autoCompleteScelte();
+    setTerritoriUtente(terr);
+  }, [profilo]);
+
+  // ── TIMER ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!FASI_TIMER.includes(fase)) return;
+    if (timeLeft <= 0) { autoCompletaScelta(); return; }
+    const t = setTimeout(() => setTimeLeft(p => p - 1), 1000);
+    return () => clearTimeout(t);
   }, [fase, timeLeft]);
 
-  // CPU TURN: when it's CPU's turn, auto-play after delays
+  // ── TURNO CPU: calcola waifu+stat+dir appena inizia ───────
+  // Poi passa subito a 'playerScegliWaifuVsCPU'
   useEffect(() => {
-    if (fase !== 'play' || turno !== 'cpu') return;
-    let cancelled = false;
+    if (fase !== 'cpuSceglieTutto') return;
+    // CPU sceglie la propria waifu
+    const cpuDisp = mazzoC.filter(w => !risultatiWaifu[w.id]);
+    const cpuW = cpuDisp[Math.floor(Math.random() * cpuDisp.length)];
+    if (!cpuW) return;
+    // CPU sceglie stat e direzione
+    const stat = STATS_BATTAGLIA[Math.floor(Math.random() * STATS_BATTAGLIA.length)];
+    const dir = Math.random() < 0.5 ? 'piu' : 'meno';
+    // Salva internamente (non ancora visibile al player)
+    setCpuWaifuPending(cpuW);
+    setCpuStatPending(stat.key);
+    setCpuDirPending(dir);
+    // Ora il player sceglie la propria waifu
+    setTimeout(() => { setTimeLeft(30); setFase('playerScegliWaifuVsCPU'); }, 400);
+  }, [fase]);
 
-    const cpuPlay = async () => {
-      // Step 1: CPU picks its card (after 1s)
-      await new Promise(r => setTimeout(r, 1000));
-      if (cancelled) return;
-
-      const cpuDisp = mazzoC.filter(w => !risultatiWaifu[w.id]);
-      const cpuPick = cpuDisp[Math.floor(Math.random() * cpuDisp.length)];
-      if (!cpuPick) return;
-      setCarteC(cpuPick);
-
-      // Also pick player card if not picked (auto)
-      const playerDisp = mazzoP.filter(w => !risultatiWaifu[w.id]);
-      const playerPick = playerDisp[Math.floor(Math.random() * playerDisp.length)];
-
-      // Step 2: Wait for player to pick card, or auto-pick after a bit
-      // Player must pick their card - the CPU just picks stat+dir
-      // We set carteC and wait. Player picks via UI or timeout.
-      // If player already picked, proceed to stat choice.
-
-      await new Promise(r => setTimeout(r, 1500));
-      if (cancelled) return;
-
-      // CPU chooses stat and direction
-      const statsDisp = STATS_BATTAGLIA.filter(s => !statsUsate.includes(s.key));
-      if (statsDisp.length === 0) return;
-      const stat = statsDisp[Math.floor(Math.random() * statsDisp.length)];
-      const dir = Math.random() < 0.5 ? 'piu' : 'meno';
-
-      // Need both cards on the field first
-      // If player hasn't picked yet, auto-pick for them
-      setCarteP(prev => {
-        if (prev) return prev; // player already picked
-        return playerPick;
-      });
-
-      await new Promise(r => setTimeout(r, 800));
-      if (cancelled) return;
-
-      setStatScelta(stat.key);
-      setDirezione(dir);
-      setTimeout(() => {
-        if (!cancelled) risolviRound(stat.key, dir);
-      }, 800);
-    };
-
-    cpuPlay();
-    return () => { cancelled = true; };
-  }, [fase, turno]);
-
-  const autoCompleteScelte = () => {
-    if (fase === 'suddenDeath') {
-      if (!carteP) { const disponibili = mazzoP.filter(w => !risultatiWaifu[w.id]); const pick = disponibili.length > 0 ? disponibili[0] : mazzoP[0]; setCarteP(pick); setTimeout(() => risolviSuddenDeath(pick), 800); }
-      return;
+  // ── AUTO-COMPLETA SCELTA SE TIMER SCADE ───────────────────
+  const autoCompletaScelta = () => {
+    const pDisp = mazzoP.filter(w => !risultatiWaifu[w.id]);
+    if (fase === 'playerScegliWaifu') {
+      // Turno player: auto-scegli waifu player
+      const pick = pDisp[Math.floor(Math.random() * pDisp.length)];
+      if (pick) onPlayerScegliWaifu(pick);
+    } else if (fase === 'playerScegliStat') {
+      // Turno player: auto-scegli stat
+      const stat = STATS_BATTAGLIA[Math.floor(Math.random() * STATS_BATTAGLIA.length)];
+      onPlayerScegliStat(stat.key);
+    } else if (fase === 'playerScegliDir') {
+      // Turno player: auto-scegli direzione
+      onPlayerScegliDir(Math.random() < 0.5 ? 'piu' : 'meno');
+    } else if (fase === 'playerScegliWaifuVsCPU') {
+      // Turno CPU: auto-scegli waifu player
+      const pick = pDisp[Math.floor(Math.random() * pDisp.length)];
+      if (pick) onPlayerScegliWaifuVsCPU(pick);
+    } else if (fase === 'suddenDeathWaifu') {
+      // Sudden Death: auto-scegli waifu player
+      const pick = pDisp.length > 0 ? pDisp[Math.floor(Math.random() * pDisp.length)] : mazzoP[0];
+      if (pick) onPlayerScegliWaifuSD(pick);
     }
-    // Auto-complete for player when timer expires
-    if (!carteP) {
-      const disponibili = mazzoP.filter(w => !risultatiWaifu[w.id]);
-      const pick = disponibili[Math.floor(Math.random() * disponibili.length)];
-      if (pick) scegliCartaPlayer(pick);
-    }
-    if (carteP && carteC && turno === 'player' && !statScelta) {
-      const statsDisp = STATS_BATTAGLIA.filter(s => !statsUsate.includes(s.key));
-      const stat = statsDisp[Math.floor(Math.random() * statsDisp.length)];
-      const dir = Math.random() < 0.5 ? 'piu' : 'meno';
-      confermaStatPlayer(stat.key, dir);
-    }
-    // If it's CPU turn and timer expired, the CPU useEffect handles it
-    // But as fallback, force progress
-    if (turno === 'cpu' && !statScelta && carteP && carteC) {
-      const statsDisp = STATS_BATTAGLIA.filter(s => !statsUsate.includes(s.key));
-      if (statsDisp.length > 0) {
-        const stat = statsDisp[Math.floor(Math.random() * statsDisp.length)];
-        const dir = Math.random() < 0.5 ? 'piu' : 'meno';
-        setStatScelta(stat.key); setDirezione(dir);
-        setTimeout(() => risolviRound(stat.key, dir), 800);
+  };
+
+  // ══════════════════════════════════════════════════════════
+  // HANDLER TURNO PLAYER
+  // Ordine: playerScegliWaifu → playerScegliStat → playerScegliDir
+  //         → cpuRispondeWaifu → reveal → roundEnd
+  // ══════════════════════════════════════════════════════════
+
+  const onPlayerScegliWaifu = (waifu) => {
+    if (fase !== 'playerScegliWaifu') return;
+    setCarteP(waifu);
+    setTimeLeft(30);
+    setFase('playerScegliStat');
+  };
+
+  const onPlayerScegliStat = (statKey) => {
+    if (fase !== 'playerScegliStat') return;
+    setStatScelta(statKey);
+    setTimeLeft(30);
+    setFase('playerScegliDir');
+  };
+
+  const onPlayerScegliDir = (dir) => {
+    if (fase !== 'playerScegliDir') return;
+    setDirezione(dir);
+    // CPU risponde scegliendo la propria waifu
+    const cpuDisp = mazzoC.filter(w => !risultatiWaifu[w.id]);
+    const cpuW = cpuDisp[Math.floor(Math.random() * cpuDisp.length)];
+    setCarteC(cpuW);
+    setFase('cpuRispondeWaifu');
+    // Breve pausa drammatica, poi risolvi
+    setTimeout(() => eseguiRisoluzione(carteP, cpuW, statScelta, dir), 1200);
+  };
+
+  // ══════════════════════════════════════════════════════════
+  // HANDLER TURNO CPU
+  // Ordine: cpuSceglieTutto → playerScegliWaifuVsCPU → reveal → roundEnd
+  // ══════════════════════════════════════════════════════════
+
+  const onPlayerScegliWaifuVsCPU = (waifu) => {
+    if (fase !== 'playerScegliWaifuVsCPU') return;
+    setCarteP(waifu);
+    // Ora riveliamo le scelte della CPU (waifu, stat, dir)
+    setCarteC(cpuWaifuPending);
+    setStatScelta(cpuStatPending);
+    setDirezione(cpuDirPending);
+    setFase('reveal');
+    // Risolvi con i valori pending (non con lo state che non è ancora aggiornato)
+    setTimeout(() => eseguiRisoluzione(waifu, cpuWaifuPending, cpuStatPending, cpuDirPending), 1400);
+  };
+
+  // ══════════════════════════════════════════════════════════
+  // SUDDEN DEATH
+  // Ordine: CPU sceglie waifu+stat+dir → player sceglie waifu
+  //         → riveliamo stat+dir → risolviamo
+  // ══════════════════════════════════════════════════════════
+
+  const onPlayerScegliWaifuSD = (waifu) => {
+    if (fase !== 'suddenDeathWaifu') return;
+    setCarteP(waifu);
+    // Riveliamo stat e dir della CPU
+    setStatScelta(cpuStatPending);
+    setDirezione(cpuDirPending);
+    setFase('suddenDeathReveal');
+    setTimeout(() => {
+      const valP = waifu[cpuStatPending];
+      const valC = cpuWaifuPending[cpuStatPending];
+      let vince;
+      if (valP === valC) vince = 'pareggio';
+      else if (cpuDirPending === 'piu') vince = valP > valC ? 'player' : 'cpu';
+      else vince = valP < valC ? 'player' : 'cpu';
+      setVincitoreRound(vince);
+      if (vince === 'pareggio') {
+        setTimeout(() => avviaSuddenDeath(), 2500);
+      } else {
+        setTimeout(() => fineBattaglia(vince === 'player'), 2500);
       }
-    }
+    }, 1800);
   };
 
-  const iniziaBattaglia = () => {
-    if ((profilo.energia ?? 0) < 1 && !(Object.values(territoriUtente).some(t => t?.conquistato))) {
-      if ((profilo.energia ?? 0) < 1) { mostraNotif('Energia insufficiente!', '#ff3d3d'); return; }
-    }
-    if (waifuDisponibili.length < 5) { mostraNotif('Servono almeno 5 waifu!', '#ff3d3d'); return; }
-    const teamKeys = Object.keys(teams);
-    if (teamKeys.length > 0) setTeamSelezionato(teamKeys[0]);
-    else setTeamSelezionato('manuale');
-    setModoBattaglia(true);
-  };
-
-  const confermaEAvvia = () => {
-    let mazzoUtente;
-    if (teamSelezionato && teamSelezionato !== 'manuale') {
-      const team = teams[teamSelezionato];
-      mazzoUtente = team.waifu.map(id => {
-        const w = waifuDisponibili.find(x => x.id === id); const dati = collezione.waifu[id];
-        return w ? { ...w, tette: Math.min(7, w.tette + (dati?.stat_bonus?.tette || 0)), taglia_piedi: Math.min(44, w.taglia_piedi + (dati?.stat_bonus?.taglia_piedi || 0)), eta: Math.min(2000, w.eta + (dati?.stat_bonus?.eta || 0)), colore_capelli: Math.min(10, w.colore_capelli + (dati?.stat_bonus?.colore_capelli || 0)), esperienza: Math.min(250, w.esperienza + (dati?.stat_bonus?.esperienza || 0)) } : null;
-      }).filter(Boolean);
-    } else {
-      if (waifuSelezionate.length !== 5) { mostraNotif('Seleziona 5 waifu!', '#ff3d3d'); return; }
-      mazzoUtente = waifuSelezionate.map(id => {
-        const w = waifuDisponibili.find(x => x.id === id); const dati = collezione.waifu[id];
-        return { ...w, tette: Math.min(7, w.tette + (dati?.stat_bonus?.tette || 0)), taglia_piedi: Math.min(44, w.taglia_piedi + (dati?.stat_bonus?.taglia_piedi || 0)), eta: Math.min(2000, w.eta + (dati?.stat_bonus?.eta || 0)), colore_capelli: Math.min(10, w.colore_capelli + (dati?.stat_bonus?.colore_capelli || 0)), esperienza: Math.min(250, w.esperienza + (dati?.stat_bonus?.esperienza || 0)) };
-      });
-    }
-    if (mazzoUtente.length < 5) { mostraNotif('Team insufficiente!', '#ff3d3d'); return; }
-    const bonus = (livelloCPU - 1) * 0.5;
-    const mazzoCPU = Array.from({ length: 5 }, (_, i) => ({
-      id: `cpu_${i}`, nome: `Guerriera ${i + 1}`, rarita: ['comune', 'raro', 'epico', 'leggendario', 'raro'][i],
-      tette: Math.min(7, Math.round((3 + Math.floor(Math.random() * 4)) * (1 + bonus))),
-      taglia_piedi: Math.min(44, Math.round((36 + Math.floor(Math.random() * 8)) * (1 + bonus * 0.2))),
-      eta: Math.min(2000, Math.round((20 + Math.floor(Math.random() * 30)) * (1 + bonus * 0.3))),
-      colore_capelli: 1 + Math.floor(Math.random() * 10),
-      esperienza: Math.min(250, Math.round((30 + Math.floor(Math.random() * 70)) * (1 + bonus))),
-    }));
-    const nomiImperi = ['Drago Nero', 'Rosa d\'Oro', 'Ombra Viola', 'Fenice Rossa', 'Luna d\'Argento', 'Serpente Verde'];
-    setNomeImperoAvversario(nomiImperi[Math.floor(Math.random() * nomiImperi.length)]);
-    setMazzoP(mazzoUtente); setMazzoC(mazzoCPU); setModoBattaglia(false);
-    setPunteggio({ player: 0, cpu: 0 }); setRound(1); setStatsUsate([]); setRisultatiWaifu({});
-    setCarteP(null); setCarteC(null); setStatScelta(null); setDirezione(null); setVincitoreRound(null);
-    setFase('coin'); setCoinResult(null);
-    setTimeout(() => { const result = Math.random() < 0.5 ? 'player' : 'cpu'; setCoinResult(result); setTimeout(() => { setTurno(result); setFase('play'); setTimeLeft(30); }, 1800); }, 200);
-  };
-
-  const scegliCartaPlayer = (carta) => {
-    if (fase !== 'play' && fase !== 'suddenDeath') return;
-    if (carteP) return;
-    setCarteP(carta);
-    if (!carteC) { const cpuDisp = mazzoC.filter(w => !risultatiWaifu[w.id]); setCarteC(cpuDisp[Math.floor(Math.random() * cpuDisp.length)]); }
-  };
-
-  const confermaStatPlayer = (stat, dir) => {
-    setStatScelta(stat); setDirezione(dir);
-    setTimeout(() => risolviRound(stat, dir), 800);
-  };
-
-  const risolviRound = (stat, dir) => {
+  // ── RISOLUZIONE ROUND NORMALE ──────────────────────────────
+  const eseguiRisoluzione = (waifuP, waifuC, stat, dir) => {
     setFase('reveal');
     setTimeout(() => {
-      const valP = carteP[stat]; const valC = carteC[stat];
-      let vincitore;
-      if (valP === valC) vincitore = 'pareggio';
-      else if (dir === 'piu') vincitore = valP > valC ? 'player' : 'cpu';
-      else vincitore = valP < valC ? 'player' : 'cpu';
-      setVincitoreRound(vincitore);
-      const np = { ...punteggio }; if (vincitore === 'player') np.player++; if (vincitore === 'cpu') np.cpu++;
-      setPunteggio(np);
-      const nr = { ...risultatiWaifu };
-      nr[carteP.id] = vincitore === 'player' ? 'vinta' : vincitore === 'cpu' ? 'persa' : 'pareggio';
-      nr[carteC.id] = vincitore === 'cpu' ? 'vinta' : vincitore === 'player' ? 'persa' : 'pareggio';
-      setRisultatiWaifu(nr); setFase('roundEnd');
+      const valP = waifuP[stat];
+      const valC = waifuC[stat];
+      let vince;
+      if (valP === valC) vince = 'pareggio';
+      else if (dir === 'piu') vince = valP > valC ? 'player' : 'cpu';
+      else vince = valP < valC ? 'player' : 'cpu';
+      setVincitoreRound(vince);
+      // IMPORTANTE: pareggio = 0 punti a entrambi
+      setPunteggio(prev => ({
+        player: prev.player + (vince === 'player' ? 1 : 0),
+        cpu:    prev.cpu    + (vince === 'cpu'    ? 1 : 0),
+      }));
+      setRisultatiWaifu(prev => ({
+        ...prev,
+        [waifuP.id]: vince === 'player' ? 'vinta' : vince === 'cpu' ? 'persa' : 'pareggio',
+        [waifuC.id]: vince === 'cpu'    ? 'vinta' : vince === 'player' ? 'persa' : 'pareggio',
+      }));
+      setFase('roundEnd');
     }, 1500);
   };
 
+  // ── PROSSIMO ROUND ─────────────────────────────────────────
+  // Sempre 5 round totali — nessun early exit.
+  // Dopo 5 round: se pari → Sudden Death, altrimenti gameEnd.
   const prossimoRound = () => {
+    const nuovoPunteggio = punteggio; // snapshot corrente
     if (round >= 5 || punteggio.player >= 3 || punteggio.cpu >= 3) {
-      if (punteggio.player === punteggio.cpu) avviaSuddenDeath();
-      else fineBattaglia(punteggio.player > punteggio.cpu);
+      if (nuovoPunteggio.player === nuovoPunteggio.cpu) avviaSuddenDeath();
+      else fineBattaglia(nuovoPunteggio.player > nuovoPunteggio.cpu);
       return;
     }
-    setStatsUsate([...statsUsate, statScelta]);
-    setCarteP(null); setCarteC(null); setStatScelta(null); setDirezione(null); setVincitoreRound(null);
-    setRound(r => r + 1); setTurno(t => t === 'player' ? 'cpu' : 'player'); setFase('play'); setTimeLeft(30);
+    const prossimoRoundNum = round + 1;
+    // Alterna turno basandosi su chi ha iniziato (primoTurno)
+    // round 1=primoTurno, 2=altro, 3=primoTurno, 4=altro, 5=primoTurno
+    const turnoSuccessivo = primoTurno === 'player'
+      ? (prossimoRoundNum % 2 === 1 ? 'player' : 'cpu')
+      : (prossimoRoundNum % 2 === 1 ? 'cpu' : 'player');
+
+    setCarteP(null); setCarteC(null);
+    setStatScelta(null); setDirezione(null); setVincitoreRound(null);
+    setCpuWaifuPending(null); setCpuStatPending(null); setCpuDirPending(null);
+    setRound(prossimoRoundNum);
+    setTurno(turnoSuccessivo);
+    setTimeLeft(30);
+    setFase(turnoSuccessivo === 'player' ? 'playerScegliWaifu' : 'cpuSceglieTutto');
   };
 
+  // ── AVVIA SUDDEN DEATH ─────────────────────────────────────
   const avviaSuddenDeath = () => {
-    setCarteP(null); setCarteC(null); setStatScelta(null); setDirezione(null); setVincitoreRound(null);
-    const cpuPick = mazzoC[Math.floor(Math.random() * mazzoC.length)];
-    setCarteC(cpuPick); setFase('suddenDeath'); setTimeLeft(30);
+    setCarteP(null); setCarteC(null);
+    setStatScelta(null); setDirezione(null); setVincitoreRound(null);
+    // CPU sceglie waifu, stat e dir — tutto internamente
+    const cpuDisp = mazzoC.filter(w => !risultatiWaifu[w.id]);
+    const cpuW = cpuDisp.length > 0
+      ? cpuDisp[Math.floor(Math.random() * cpuDisp.length)]
+      : mazzoC[Math.floor(Math.random() * mazzoC.length)];
+    const stat = STATS_BATTAGLIA[Math.floor(Math.random() * STATS_BATTAGLIA.length)];
+    const dir = Math.random() < 0.5 ? 'piu' : 'meno';
+    setCpuWaifuPending(cpuW);
+    setCpuStatPending(stat.key);
+    setCpuDirPending(dir);
+    setCarteC(cpuW); // mostriamo "?" — carta in attesa, stat/dir ancora nascoste
+    setTimeLeft(30);
+    setFase('suddenDeathWaifu');
   };
 
-  const risolviSuddenDeath = (waifuPlayer) => {
-    setCarteP(waifuPlayer);
-    const allStats = STATS_BATTAGLIA.map(s => s.key);
-    const statRandom = allStats[Math.floor(Math.random() * allStats.length)];
-    const dirRandom = Math.random() < 0.5 ? 'piu' : 'meno';
-    setStatScelta(statRandom); setDirezione(dirRandom); setFase('suddenReveal');
-    setTimeout(() => {
-      const valP = waifuPlayer[statRandom]; const valC = carteC[statRandom];
-      let vincitore;
-      if (valP === valC) vincitore = 'pareggio';
-      else if (dirRandom === 'piu') vincitore = valP > valC ? 'player' : 'cpu';
-      else vincitore = valP < valC ? 'player' : 'cpu';
-      setVincitoreRound(vincitore);
-      if (vincitore === 'pareggio') setTimeout(() => avviaSuddenDeath(), 2500);
-      else setTimeout(() => fineBattaglia(vincitore === 'player'), 2500);
-    }, 2000);
-  };
-
+  // ── FINE BATTAGLIA ─────────────────────────────────────────
   const fineBattaglia = async (vittoria) => {
     setFase('gameEnd');
     if (vittoria) {
@@ -1161,7 +1193,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
       setProfilo({ ...profilo, pacchettiSfida: nps, territoriUtente: nt });
       await updateUserProfile(user.uid, { territoriUtente: nt, pacchettiSfida: nps, livelloMappa, livelloCPU });
       const numConq = Object.values(nt).filter(t => t?.conquistato).length;
-      if (numConq >= totaleTerritori) {
+      if (numConq >= TERRITORI.length) {
         setTimeout(async () => {
           mostraNotif('🎉 LIVELLO COMPLETATO!', '#f5a623');
           const nlm = livelloMappa + 1; const nlc = livelloCPU + 1;
@@ -1177,17 +1209,113 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
     } else {
       if ((profilo.energia ?? 0) >= 1) {
         const ne = (profilo.energia ?? 0) - 1;
-        setProfilo({ ...profilo, energia: ne }); await updateUserProfile(user.uid, { energia: ne });
+        setProfilo({ ...profilo, energia: ne });
+        await updateUserProfile(user.uid, { energia: ne });
       }
     }
   };
 
+  // ── RESET BATTAGLIA ────────────────────────────────────────
   const resetBattaglia = () => {
     setFase(null); setModoBattaglia(false); setTerrSel(null);
     setTeamSelezionato(null); setWaifuSelezionate([]);
-    setCarteP(null); setCarteC(null); setStatScelta(null); setDirezione(null);
-    setVincitoreRound(null); setCoinResult(null); setStatsUsate([]); setRisultatiWaifu({});
+    setCarteP(null); setCarteC(null);
+    setStatScelta(null); setDirezione(null); setVincitoreRound(null);
+    setCoinResult(null); setRisultatiWaifu({});
+    setCpuWaifuPending(null); setCpuStatPending(null); setCpuDirPending(null);
+    setPunteggio({ player: 0, cpu: 0 }); setRound(1);
   };
+
+  // ── INIZIA BATTAGLIA (verifica prerequisiti) ───────────────
+  const iniziaBattaglia = () => {
+    if ((profilo.energia ?? 0) < 1) { mostraNotif('Energia insufficiente!', '#ff3d3d'); return; }
+    if (waifuDisponibili.length < 5) { mostraNotif('Servono almeno 5 waifu!', '#ff3d3d'); return; }
+    const teamKeys = Object.keys(teams);
+    if (teamKeys.length > 0) setTeamSelezionato(teamKeys[0]);
+    else setTeamSelezionato('manuale');
+    setModoBattaglia(true);
+  };
+
+  // ── CONFERMA TEAM E AVVIA ──────────────────────────────────
+  const confermaEAvvia = () => {
+    let mazzoUtente;
+    if (teamSelezionato && teamSelezionato !== 'manuale') {
+      const team = teams[teamSelezionato];
+      mazzoUtente = team.waifu.map(id => {
+        const w = waifuDisponibili.find(x => x.id === id);
+        const dati = collezione.waifu[id];
+        return w ? {
+          ...w,
+          tette:          Math.min(7,    w.tette          + (dati?.stat_bonus?.tette          || 0)),
+          taglia_piedi:   Math.min(44,   w.taglia_piedi   + (dati?.stat_bonus?.taglia_piedi   || 0)),
+          eta:            Math.min(2000, w.eta             + (dati?.stat_bonus?.eta             || 0)),
+          colore_capelli: Math.min(10,   w.colore_capelli  + (dati?.stat_bonus?.colore_capelli  || 0)),
+          esperienza:     Math.min(250,  w.esperienza      + (dati?.stat_bonus?.esperienza      || 0)),
+        } : null;
+      }).filter(Boolean);
+    } else {
+      if (waifuSelezionate.length !== 5) { mostraNotif('Seleziona esattamente 5 waifu!', '#ff3d3d'); return; }
+      mazzoUtente = waifuSelezionate.map(id => {
+        const w = waifuDisponibili.find(x => x.id === id);
+        const dati = collezione.waifu[id];
+        return {
+          ...w,
+          tette:          Math.min(7,    w.tette          + (dati?.stat_bonus?.tette          || 0)),
+          taglia_piedi:   Math.min(44,   w.taglia_piedi   + (dati?.stat_bonus?.taglia_piedi   || 0)),
+          eta:            Math.min(2000, w.eta             + (dati?.stat_bonus?.eta             || 0)),
+          colore_capelli: Math.min(10,   w.colore_capelli  + (dati?.stat_bonus?.colore_capelli  || 0)),
+          esperienza:     Math.min(250,  w.esperienza      + (dati?.stat_bonus?.esperienza      || 0)),
+        };
+      });
+    }
+    if (mazzoUtente.length < 5) { mostraNotif('Team insufficiente!', '#ff3d3d'); return; }
+
+    // Genera mazzo CPU con livello
+    const bonus = (livelloCPU - 1) * 0.5;
+    const mazzoCPU = Array.from({ length: 5 }, (_, i) => ({
+      id: `cpu_${i}`,
+      nome: `Guerriera ${i + 1}`,
+      rarita: ['comune', 'raro', 'epico', 'leggendario', 'raro'][i],
+      tette:          Math.min(7,    Math.round((3  + Math.floor(Math.random() * 4))  * (1 + bonus))),
+      taglia_piedi:   Math.min(44,   Math.round((36 + Math.floor(Math.random() * 8))  * (1 + bonus * 0.2))),
+      eta:            Math.min(2000, Math.round((20 + Math.floor(Math.random() * 30)) * (1 + bonus * 0.3))),
+      colore_capelli: 1 + Math.floor(Math.random() * 10),
+      esperienza:     Math.min(250,  Math.round((30 + Math.floor(Math.random() * 70)) * (1 + bonus))),
+    }));
+
+    const nomiImperi = ["Drago Nero", "Rosa d'Oro", "Ombra Viola", "Fenice Rossa", "Luna d'Argento", "Serpente Verde"];
+    setNomeImperoAvversario(nomiImperi[Math.floor(Math.random() * nomiImperi.length)]);
+
+    // Reset stato battaglia
+    setMazzoP(mazzoUtente); setMazzoC(mazzoCPU); setModoBattaglia(false);
+    setPunteggio({ player: 0, cpu: 0 }); setRound(1); setRisultatiWaifu({});
+    setCarteP(null); setCarteC(null); setStatScelta(null); setDirezione(null); setVincitoreRound(null);
+    setCpuWaifuPending(null); setCpuStatPending(null); setCpuDirPending(null);
+    setCoinResult(null);
+
+    // Lancio moneta
+    setFase('coin');
+    setTimeout(() => {
+      const result = Math.random() < 0.5 ? 'player' : 'cpu';
+      setCoinResult(result);
+      setPrimoTurno(result);
+      setTimeout(() => {
+        setTurno(result);
+        setTimeLeft(30);
+        setFase(result === 'player' ? 'playerScegliWaifu' : 'cpuSceglieTutto');
+      }, 1800);
+    }, 200);
+  };
+
+  // ── HELPERS RENDER ─────────────────────────────────────────
+  const numConquistati = Object.values(territoriUtente).filter(t => t?.conquistato).length;
+  const totaleTerritori = TERRITORI.length;
+  const mappaCompleta = numConquistati === totaleTerritori;
+  const waifuDisponibili = Object.entries(collezione.waifu || {}).map(([id, dati]) => {
+    const w = waifuCat.find(x => x.id === id);
+    return w ? { ...w, ...dati } : null;
+  }).filter(Boolean);
+  const teams = collezione.teams || {};
 
   const getStatoWaifu = (waifuId) => {
     if (carteP?.id === waifuId && !vincitoreRound) return 'inUso';
@@ -1196,6 +1324,13 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
   };
   const getColoreBordo = (stato) => ({ vinta: '#00e676', persa: '#ff3d3d', pareggio: '#ffd666', inUso: '#9b59ff' }[stato] || 'rgba(245,166,35,0.2)');
   const getIconaStato = (stato) => ({ vinta: '✅', persa: '❌', pareggio: '🤝', inUso: '⚔' }[stato] || '');
+
+  // Determina se siamo in una fase di battaglia (non mappa)
+  const inBattaglia = fase !== null;
+  // Tutte le fasi dove il player vede il suo mazzo e può scegliere waifu
+  const playerDeveScegliereWaifu = fase === 'playerScegliWaifu' || fase === 'playerScegliWaifuVsCPU' || fase === 'suddenDeathWaifu';
+  // Mostra carta CPU come "?" quando la CPU ha scelto ma non riveliamo ancora
+  const cpuCartaNascosta = fase === 'playerScegliWaifuVsCPU' || fase === 'suddenDeathWaifu' || fase === 'cpuSceglieTutto';
 
   // ================================================================
   // RENDER: SELEZIONE TEAM
@@ -1265,13 +1400,33 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
     );
   }
 
+  // ================================================================
   // BATTAGLIA ATTIVA
-  if (fase === 'play' || fase === 'reveal' || fase === 'roundEnd') {
+  // Copre tutte le fasi di gioco tranne coin, gameEnd e mappa
+  // ================================================================
+  const fasiBattaglia = ['playerScegliWaifu','playerScegliStat','playerScegliDir','cpuRispondeWaifu','cpuSceglieTutto','playerScegliWaifuVsCPU','reveal','roundEnd','suddenDeathWaifu','suddenDeathReveal'];
+  if (fasiBattaglia.includes(fase)) {
     const waifuPDisponibili = mazzoP.filter(w => !risultatiWaifu[w.id]);
-    const statsDisponibili = STATS_BATTAGLIA.filter(s => !statsUsate.includes(s.key));
+    const statInfoScelta = STATS_BATTAGLIA.find(s => s.key === statScelta);
+
+    // Etichetta della fase corrente per l'utente
+    const labelFase = () => {
+      if (fase === 'playerScegliWaifu')      return '👇 Scegli la tua waifu';
+      if (fase === 'playerScegliStat')       return '🎯 Scegli la statistica';
+      if (fase === 'playerScegliDir')        return '📊 Scegli la direzione';
+      if (fase === 'cpuRispondeWaifu')       return '🤖 La CPU sceglie la sua waifu...';
+      if (fase === 'cpuSceglieTutto')        return '🤖 La CPU sta decidendo...';
+      if (fase === 'playerScegliWaifuVsCPU') return '👇 Scegli la tua waifu (la CPU ha già scelto)';
+      if (fase === 'reveal')                 return '⚡ Risoluzione in corso...';
+      if (fase === 'roundEnd')               return '';
+      if (fase === 'suddenDeathWaifu')       return '⚡ SUDDEN DEATH — Scegli la tua waifu!';
+      if (fase === 'suddenDeathReveal')      return '⚡ Risoluzione Sudden Death...';
+      return '';
+    };
 
     return (
       <div className="fade-in">
+        {/* ── Header punteggio e round ── */}
         <PannelloOrnato glow="#f5a623" style={{ padding: 10, marginBottom: 10 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ textAlign: 'left' }}>
@@ -1279,32 +1434,54 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
               <div style={{ fontSize: 28, color: '#00e676', fontFamily: 'Orbitron', fontWeight: 700 }}>{punteggio.player}</div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: 'Orbitron', letterSpacing: 2, fontSize: 10, color: '#f5a623' }}>ROUND {round}/5</div>
-              <div style={{ fontSize: 9, opacity: 0.4, marginTop: 2 }}>{turno === 'player' ? 'Tocca a te' : 'CPU'}</div>
-              {fase === 'play' && <div style={{ fontSize: 20, color: timeLeft <= 3 ? '#ff3d3d' : '#ffd666', fontFamily: 'Orbitron', fontWeight: 700, marginTop: 2 }}>⏱ {timeLeft}s</div>}
+              <div style={{ fontFamily: 'Orbitron', letterSpacing: 2, fontSize: 10, color: '#f5a623' }}>
+                {fase === 'suddenDeathWaifu' || fase === 'suddenDeathReveal' ? '⚡ SUDDEN DEATH' : `ROUND ${round}/5`}
+              </div>
+              <div style={{ fontSize: 9, opacity: 0.5, marginTop: 2, fontFamily: 'Orbitron' }}>
+                {turno === 'player' ? 'TUO TURNO' : 'TURNO CPU'}
+              </div>
+              {FASI_TIMER.includes(fase) && (
+                <div style={{ fontSize: 20, color: timeLeft <= 5 ? '#ff3d3d' : '#ffd666', fontFamily: 'Orbitron', fontWeight: 700, marginTop: 2 }}>
+                  ⏱ {timeLeft}s
+                </div>
+              )}
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 8, opacity: 0.5, letterSpacing: 2, fontFamily: 'Orbitron' }}>{nomeImperoAvversario}</div>
               <div style={{ fontSize: 28, color: '#ff3d3d', fontFamily: 'Orbitron', fontWeight: 700 }}>{punteggio.cpu}</div>
             </div>
           </div>
+          {labelFase() && (
+            <div style={{ textAlign: 'center', marginTop: 6, fontSize: 10, color: '#ffd666', fontFamily: 'Orbitron', letterSpacing: 1 }}>
+              {labelFase()}
+            </div>
+          )}
         </PannelloOrnato>
 
+        {/* ── Campo di battaglia: carte ── */}
         <PannelloOrnato style={{ padding: 14, marginBottom: 10 }}>
           <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+            {/* Carta Player */}
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 8, letterSpacing: 2, opacity: 0.4, marginBottom: 4, fontFamily: 'Orbitron' }}>TU</div>
-              {carteP ? <CartaWaifu waifu={carteP} dimensione="piccola" /> : <div style={{ width: 130, height: 195, border: '1px dashed rgba(245,166,35,0.25)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(245,166,35,0.3)', fontFamily: 'Orbitron', fontSize: 9 }} className="pulse">SCEGLI</div>}
+              {carteP
+                ? <CartaWaifu waifu={carteP} dimensione="piccola" evidenziaStat={(fase === 'reveal' || fase === 'roundEnd' || fase === 'suddenDeathReveal') ? statScelta : null} perdente={fase === 'roundEnd' && vincitoreRound === 'cpu'} />
+                : <div style={{ width: 130, height: 195, border: '1px dashed rgba(245,166,35,0.25)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(245,166,35,0.3)', fontFamily: 'Orbitron', fontSize: 9 }} className="pulse">SCEGLI</div>
+              }
             </div>
+
+            {/* Centro VS + risultato */}
             <div style={{ textAlign: 'center', minWidth: 120 }}>
               <div style={{ fontSize: 28, fontFamily: 'Orbitron', background: 'linear-gradient(135deg, #f5a623, #ff2d78)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>VS</div>
-              {(fase === 'reveal' || fase === 'roundEnd') && statScelta && (
+              {(fase === 'reveal' || fase === 'roundEnd' || fase === 'suddenDeathReveal') && statScelta && (
                 <div className="fade-up" style={{ marginTop: 10, padding: 8, background: 'rgba(245,166,35,0.06)', borderRadius: 8, border: '1px solid rgba(245,166,35,0.2)' }}>
                   <div style={{ fontSize: 8, opacity: 0.5, letterSpacing: 2, fontFamily: 'Orbitron' }}>STAT</div>
                   <div style={{ fontFamily: 'Orbitron', fontSize: 12, color: '#f5a623', marginTop: 2 }}>
-                    {STATS_BATTAGLIA.find(s => s.key === statScelta)?.icon} {STATS_BATTAGLIA.find(s => s.key === statScelta)?.label}
+                    {statInfoScelta?.icon} {statInfoScelta?.label}
                   </div>
-                  <div style={{ fontSize: 11, marginTop: 2, color: direzione === 'piu' ? '#00e676' : '#ff3d3d' }}>{direzione === 'piu' ? '▲ PIÙ' : '▼ MENO'}</div>
+                  <div style={{ fontSize: 11, marginTop: 2, color: direzione === 'piu' ? '#00e676' : '#ff3d3d' }}>
+                    {direzione === 'piu' ? '▲ PIÙ' : '▼ MENO'}
+                  </div>
                 </div>
               )}
               {fase === 'roundEnd' && vincitoreRound && (
@@ -1312,34 +1489,66 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
                   <div style={{ fontFamily: 'Orbitron', fontSize: 13, fontWeight: 700, color: vincitoreRound === 'player' ? '#00e676' : vincitoreRound === 'cpu' ? '#ff3d3d' : '#ffd666' }}>
                     {vincitoreRound === 'player' ? '✅ VINTO!' : vincitoreRound === 'cpu' ? '❌ PERSO' : '🤝 PAREGGIO'}
                   </div>
-                  <div style={{ fontSize: 10, marginTop: 4 }}>Tu: <strong>{carteP[statScelta]}</strong> vs CPU: <strong>{carteC[statScelta]}</strong></div>
+                  {carteP && carteC && statScelta && (
+                    <div style={{ fontSize: 10, marginTop: 4 }}>Tu: <strong>{carteP[statScelta]}</strong> vs CPU: <strong>{carteC[statScelta]}</strong></div>
+                  )}
                 </div>
               )}
+              {fase === 'suddenDeathReveal' && vincitoreRound && (
+                <div className="fade-up" style={{ marginTop: 8 }}>
+                  <div style={{ fontFamily: 'Orbitron', fontSize: 13, fontWeight: 700, color: vincitoreRound === 'player' ? '#00e676' : vincitoreRound === 'cpu' ? '#ff3d3d' : '#ffd666' }}>
+                    {vincitoreRound === 'player' ? '✅ VINCI!' : vincitoreRound === 'cpu' ? '❌ PERDI' : '🤝 PAREGGIO — ANCORA!'}
+                  </div>
+                  {carteP && carteC && statScelta && (
+                    <div style={{ fontSize: 10, marginTop: 4 }}>Tu: <strong>{carteP[statScelta]}</strong> vs CPU: <strong>{carteC[statScelta]}</strong></div>
+                  )}
+                </div>
+              )}
+              {(fase === 'cpuSceglieTutto' || fase === 'cpuRispondeWaifu') && (
+                <div className="pulse" style={{ color: '#9b59ff', fontFamily: 'Orbitron', letterSpacing: 2, fontSize: 10, marginTop: 8 }}>🤖 CPU...</div>
+              )}
             </div>
+
+            {/* Carta CPU */}
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 8, letterSpacing: 2, opacity: 0.4, marginBottom: 4, fontFamily: 'Orbitron' }}>CPU</div>
-              {carteC ? ((fase === 'reveal' || fase === 'roundEnd') ? <CartaWaifu waifu={carteC} dimensione="piccola" /> :
-                <div style={{ width: 130, height: 195, background: 'linear-gradient(160deg, #130a24, #06030f)', border: '1px solid rgba(155,89,255,0.3)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: 'rgba(155,89,255,0.5)' }}>?</div>
-              ) : <div style={{ width: 130, height: 195, border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.2)', fontSize: 9 }}>ATTESA</div>}
+              {carteC
+                ? ((fase === 'reveal' || fase === 'roundEnd' || fase === 'suddenDeathReveal')
+                    ? <CartaWaifu waifu={carteC} dimensione="piccola" evidenziaStat={statScelta} perdente={fase === 'roundEnd' && vincitoreRound === 'player'} />
+                    : <div style={{ width: 130, height: 195, background: 'linear-gradient(160deg, #130a24, #06030f)', border: '1px solid rgba(155,89,255,0.3)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: 'rgba(155,89,255,0.5)' }}>?</div>
+                  )
+                : <div style={{ width: 130, height: 195, border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.2)', fontSize: 9 }}>ATTESA</div>
+              }
             </div>
           </div>
         </PannelloOrnato>
 
+        {/* ── Mazzo del player ── */}
         <PannelloOrnato style={{ padding: 10, marginBottom: 10 }}>
           <div style={{ fontSize: 9, letterSpacing: 2, color: '#f5a623', textAlign: 'center', marginBottom: 8, fontFamily: 'Orbitron' }}>
-            {fase === 'play' && !carteP ? '👇 SCEGLI WAIFU' : 'IL TUO TEAM'}
+            {playerDeveScegliereWaifu ? '👇 SCEGLI LA TUA WAIFU' : 'IL TUO TEAM'}
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
             {mazzoP.map(w => {
               const stato = getStatoWaifu(w.id);
               const usata = stato !== 'disponibile';
-              const cliccabile = fase === 'play' && !carteP && !usata;
-              return <div key={w.id} onClick={() => cliccabile && scegliCartaPlayer(w)} style={{
+              const cliccabile = playerDeveScegliereWaifu && !usata;
+              const handler = () => {
+                if (!cliccabile) return;
+                if (fase === 'playerScegliWaifu')       onPlayerScegliWaifu(w);
+                if (fase === 'playerScegliWaifuVsCPU')  onPlayerScegliWaifuVsCPU(w);
+                if (fase === 'suddenDeathWaifu')         onPlayerScegliWaifuSD(w);
+              };
+              return <div key={w.id} onClick={handler} style={{
                 position: 'relative', cursor: cliccabile ? 'pointer' : 'default',
                 opacity: usata ? 0.35 : 1, filter: usata ? 'grayscale(0.5)' : 'none',
                 transition: 'all 0.2s',
                 border: `2px solid ${getColoreBordo(stato)}`, borderRadius: 12, padding: 2,
-              }}>
+                transform: cliccabile ? 'translateY(0)' : 'none',
+              }}
+              onMouseEnter={e => { if (cliccabile) e.currentTarget.style.transform = 'translateY(-8px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; }}
+              >
                 <CartaWaifu waifu={w} dimensione="piccola" />
                 {usata && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: 24, textShadow: '0 0 10px rgba(0,0,0,0.8)' }}>{getIconaStato(stato)}</div>}
               </div>;
@@ -1347,8 +1556,8 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
           </div>
         </PannelloOrnato>
 
-        {/* Scelta stat — MODAL OVERLAY (stile battaglia) */}
-        {fase === 'play' && turno === 'player' && carteP && carteC && !statScelta && (
+        {/* ── MODAL: Scelta statistica (turno player) ── */}
+        {fase === 'playerScegliStat' && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
             <div className="fade-up" style={{ background: 'rgba(12,6,24,0.95)', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 16, padding: 22, maxWidth: 380, width: '100%', boxShadow: '0 0 50px rgba(245,166,35,0.2)' }}>
               <div style={{ textAlign: 'center', marginBottom: 14 }}>
@@ -1356,8 +1565,8 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
                 <div style={{ fontSize: 18, color: timeLeft <= 5 ? '#ff3d3d' : '#ffd666', fontFamily: 'Orbitron', fontWeight: 700, marginTop: 4 }}>⏱ {timeLeft}s</div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {statsDisponibili.map(s => (
-                  <button key={s.key} onClick={() => setStatScelta(s.key)} style={{
+                {STATS_BATTAGLIA.map(s => (
+                  <button key={s.key} onClick={() => onPlayerScegliStat(s.key)} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '12px 16px', background: 'rgba(155,89,255,0.06)',
                     border: '1px solid rgba(245,166,35,0.15)', borderRadius: 10, cursor: 'pointer',
@@ -1376,14 +1585,17 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
           </div>
         )}
 
-        {/* Direzione — MODAL OVERLAY */}
-        {fase === 'play' && turno === 'player' && statScelta && !direzione && (
+        {/* ── MODAL: Scelta direzione (turno player) ── */}
+        {fase === 'playerScegliDir' && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
             <div className="fade-up" style={{ background: 'rgba(12,6,24,0.95)', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 16, padding: 24, maxWidth: 340, width: '100%', textAlign: 'center', boxShadow: '0 0 50px rgba(245,166,35,0.2)' }}>
-              <div style={{ fontSize: 24, marginBottom: 6 }}>{STATS_BATTAGLIA.find(s => s.key === statScelta)?.icon}</div>
-              <div style={{ fontFamily: 'Orbitron', fontSize: 13, color: '#f5a623', letterSpacing: 2, marginBottom: 16 }}>{STATS_BATTAGLIA.find(s => s.key === statScelta)?.label}: <strong>{carteP[statScelta]}</strong></div>
+              <div style={{ fontSize: 24, marginBottom: 6 }}>{statInfoScelta?.icon}</div>
+              <div style={{ fontFamily: 'Orbitron', fontSize: 13, color: '#f5a623', letterSpacing: 2, marginBottom: 4 }}>
+                {statInfoScelta?.label}: <strong>{carteP?.[statScelta]}</strong>
+              </div>
+              <div style={{ fontSize: 18, color: timeLeft <= 5 ? '#ff3d3d' : '#ffd666', fontFamily: 'Orbitron', fontWeight: 700, marginBottom: 16 }}>⏱ {timeLeft}s</div>
               <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                <button onClick={() => confermaStatPlayer(statScelta, 'piu')} style={{
+                <button onClick={() => onPlayerScegliDir('piu')} style={{
                   flex: 1, padding: '16px 12px', background: 'rgba(0,230,118,0.08)',
                   border: '1px solid #00e676', borderRadius: 12, cursor: 'pointer', color: '#00e676',
                   fontFamily: 'Orbitron', fontSize: 14, fontWeight: 700, transition: 'all 0.2s',
@@ -1394,7 +1606,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
                   <div style={{ fontSize: 24 }}>▲</div>
                   <div style={{ marginTop: 4, fontSize: 10 }}>PIÙ ALTO</div>
                 </button>
-                <button onClick={() => confermaStatPlayer(statScelta, 'meno')} style={{
+                <button onClick={() => onPlayerScegliDir('meno')} style={{
                   flex: 1, padding: '16px 12px', background: 'rgba(255,61,61,0.08)',
                   border: '1px solid #ff3d3d', borderRadius: 12, cursor: 'pointer', color: '#ff3d3d',
                   fontFamily: 'Orbitron', fontSize: 14, fontWeight: 700, transition: 'all 0.2s',
@@ -1410,65 +1622,20 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
           </div>
         )}
 
-        {/* Stats tracker */}
-        <div style={{ display: 'flex', gap: 4, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
-          {STATS_BATTAGLIA.map(s => {
-            const usata = statsUsate.includes(s.key);
-            const sceltaOra = statScelta === s.key;
-            return <div key={s.key} style={{
-              padding: '3px 8px', borderRadius: 6, fontSize: 9, fontFamily: 'Orbitron',
-              background: sceltaOra ? 'rgba(245,166,35,0.15)' : usata ? 'rgba(60,60,60,0.15)' : 'rgba(155,89,255,0.06)',
-              border: `1px solid ${sceltaOra ? '#f5a623' : usata ? '#333' : 'rgba(155,89,255,0.15)'}`,
-              color: sceltaOra ? '#f5a623' : usata ? '#444' : 'rgba(238,232,220,0.5)',
-              textDecoration: usata ? 'line-through' : 'none',
-            }}>{s.icon} {s.label}</div>;
-          })}
-        </div>
-
-        {fase === 'play' && carteP && carteC && turno === 'cpu' && !statScelta && (
-          <div style={{ textAlign: 'center', padding: 16 }}>
-            <div className="pulse" style={{ color: '#9b59ff', fontFamily: 'Orbitron', letterSpacing: 2, fontSize: 12 }}>🤖 CPU STA SCEGLIENDO...</div>
-          </div>
+        {/* ── Pulsante prossimo round ── */}
+        {fase === 'roundEnd' && (
+          <RoundEndBar
+            vincitoreRound={vincitoreRound}
+            statScelta={statScelta}
+            direzione={direzione}
+            carteP={carteP}
+            carteC={carteC}
+            round={round}
+            punteggio={punteggio}
+            STATS_BATTAGLIA={STATS_BATTAGLIA}
+            onProssimoRound={prossimoRound}
+          />
         )}
-
-        {fase === 'roundEnd' && <RoundEndBar vincitoreRound={vincitoreRound} statScelta={statScelta} direzione={direzione} carteP={carteP} carteC={carteC} round={round} punteggio={punteggio} STATS_BATTAGLIA={STATS_BATTAGLIA} onProssimoRound={prossimoRound} />}
-      </div>
-    );
-  }
-
-  // SUDDEN DEATH
-  if (fase === 'suddenDeath' || fase === 'suddenReveal') {
-    return (
-      <div className="fade-in">
-        <PannelloOrnato glow="#ffd666" style={{ textAlign: 'center', padding: 18 }}>
-          <div style={{ fontSize: 32, marginBottom: 6 }}>⚡</div>
-          <TitoloOrnato livello={1} colore="#ffd666">SUDDEN DEATH</TitoloOrnato>
-          <p style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', marginBottom: 14 }}>Pareggio! Scegli una waifu. Stat e direzione casuali.</p>
-          {fase === 'suddenDeath' && (
-            <>
-              <div style={{ fontSize: 18, color: timeLeft <= 3 ? '#ff3d3d' : '#ffd666', fontFamily: 'Orbitron', fontWeight: 700, marginBottom: 10 }}>⏱ {timeLeft}s</div>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                {mazzoP.map(w => <div key={w.id} onClick={() => { setCarteP(w); setTimeout(() => risolviSuddenDeath(w), 800); }} style={{ cursor: 'pointer', transition: 'all 0.2s' }}><CartaWaifu waifu={w} dimensione="piccola" /></div>)}
-              </div>
-            </>
-          )}
-          {fase === 'suddenReveal' && carteP && carteC && statScelta && (
-            <div style={{ marginTop: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-                <CartaWaifu waifu={carteP} dimensione="piccola" />
-                <div style={{ fontSize: 20 }}>⚔</div>
-                <CartaWaifu waifu={carteC} dimensione="piccola" />
-              </div>
-              <div style={{ marginTop: 12, padding: 10, background: 'rgba(245,166,35,0.06)', borderRadius: 8 }}>
-                <div style={{ fontSize: 12, color: '#f5a623' }}>{STATS_BATTAGLIA.find(s => s.key === statScelta)?.icon} {STATS_BATTAGLIA.find(s => s.key === statScelta)?.label} {direzione === 'piu' ? '▲' : '▼'}</div>
-                <div style={{ fontSize: 11, marginTop: 4 }}>Tu: <strong>{carteP[statScelta]}</strong> vs CPU: <strong>{carteC[statScelta]}</strong></div>
-              </div>
-              {vincitoreRound && <div style={{ marginTop: 10, fontSize: 16, fontFamily: 'Orbitron', fontWeight: 700, color: vincitoreRound === 'player' ? '#00e676' : vincitoreRound === 'cpu' ? '#ff3d3d' : '#ffd666' }}>
-                {vincitoreRound === 'player' ? '✅ VINCI!' : vincitoreRound === 'cpu' ? '❌ PERDI' : '🤝 PAREGGIO'}
-              </div>}
-            </div>
-          )}
-        </PannelloOrnato>
       </div>
     );
   }
@@ -1485,7 +1652,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
         }}>
           <div style={{ fontSize: 52, marginBottom: 10 }}>{vittoria ? '👑' : '💔'}</div>
           <div style={{ fontFamily: 'Orbitron', fontSize: 22, fontWeight: 700, color: vittoria ? '#00e676' : '#ff3d3d', letterSpacing: 3 }}>
-            {vittoria ? 'VITTORIA!' : 'SCONFITTA'}
+            {vittoria ? 'VITTORIA!' : punteggio.player === punteggio.cpu ? 'PAREGGIO' : 'SCONFITTA'}
           </div>
           <div style={{ fontSize: 28, fontFamily: 'Orbitron', fontWeight: 700, marginTop: 8 }}>
             <span style={{ color: '#00e676' }}>{punteggio.player}</span>
@@ -1515,7 +1682,9 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
     );
   }
 
-  // MAPPA STANDARD (popup territorio invariati)
+  // ================================================================
+  // MAPPA STANDARD
+  // ================================================================
   return (
     <div className="fade-in">
       <PannelloOrnato glow="#f5a623" style={{ padding: 8, marginBottom: 10, position: 'relative' }}>
@@ -1528,7 +1697,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
         </div>
         <MappaMondoArt territoriUtente={territoriUtente} coloreImpero={profilo.coloreImpero} nomeImpero={profilo.nomeImpero} territorioSelezionato={terrSel?.id} onTerritorioClick={(t) => setTerrSel(t)} />
 
-        {/* POPUP OVERLAY TERRITORIO (invariato) */}
+        {/* POPUP OVERLAY TERRITORIO */}
         {terrSel && (() => {
           const terrData = territoriUtente[terrSel.id] || {};
           const eMio = terrData.conquistato && terrData.impero === profilo.nomeImpero;
