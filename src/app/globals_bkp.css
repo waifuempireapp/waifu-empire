@@ -162,26 +162,7 @@ input:focus, textarea:focus, select:focus {
 @media (max-width:1024px) and (orientation:landscape) {
   .rotate-overlay { display:none !important; }
   .game-container { display:block !important; }
-  body { font-size:12px; }
-  /* No-scroll mobile landscape: tutto dentro il viewport */
-  .game-container {
-    height: 100vh;
-    height: 100dvh;
-    overflow: hidden;
-    display: flex !important;
-    flex-direction: column;
-  }
-  .game-container > div:last-child {
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  /* Compact header */
-  .game-container > div:first-child {
-    flex-shrink: 0;
-  }
-  /* Hide bottom nav padding */
-  .game-container { padding-bottom: 0 !important; }
+  body { font-size:13px; }
 }
 @media (min-width:1025px) {
   .rotate-overlay { display:none !important; }

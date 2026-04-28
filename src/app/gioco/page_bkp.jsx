@@ -283,8 +283,6 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
   const [stato, setStato] = useState('idle');
   const [carteRivelate, setCarteRivelate] = useState([]);
   const [indiceRivelato, setIndiceRivelato] = useState(-1);
-  const [mostraCatalogo, setMostraCatalogo] = useState(false);
-  const [catTab, setCatTab] = useState('waifu');
 
   const apri = async () => {
     const hasBenvenuto = (profilo.pacchettiBenvenuto ?? 0) > 0;
@@ -314,13 +312,6 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     carte.forEach((_, i) => { setTimeout(() => setIndiceRivelato(i), 500 + i * 700); });
   };
 
-  // Get current drop waifu/outfit/pose for catalog
-  const [dropAttivo, setDropAttivo] = useState(null);
-  useEffect(() => { getDropAttivo().then(d => setDropAttivo(d)); }, []);
-  const dropWaifu = dropAttivo?.waifuIds ? waifuCat.filter(w => dropAttivo.waifuIds.includes(w.id)) : waifuCat;
-  const dropOutfit = dropAttivo?.outfitIds ? outfitCat.filter(o => dropAttivo.outfitIds.includes(o.id)) : outfitCat;
-  const dropPose = dropAttivo?.poseIds ? poseCat.filter(p => dropAttivo.poseIds.includes(p.id)) : poseCat;
-
   if (stato === 'reveal') {
     return (
       <div className="fade-in" style={{ padding: 16 }}>
@@ -349,75 +340,40 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     );
   }
 
-  const totalPack = (profilo.pacchettiBenvenuto ?? 0) + (profilo.pacchettiOmaggio ?? 0) + (profilo.pacchettiSfida ?? 0);
-
   return (
-    <div className="fade-in" style={{ padding: '8px 0' }}>
-      {/* LAYOUT: Pack left + Counts right */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'stretch', marginBottom: 12 }}>
-        {/* LEFT: Pack box */}
-        <div style={{ flex: '0 0 auto' }}>
-          <PacchettoBox onClick={apri} disabled={totalPack <= 0} isBenvenuto={(profilo.pacchettiBenvenuto ?? 0) > 0} />
-        </div>
-        {/* RIGHT: Counts stacked */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'stretch' }}>
+    <div className="fade-in" style={{ padding: 12 }}>
+      <PannelloOrnato glow="#f5a623" style={{ textAlign: 'center', padding: 28 }}>
+        <TitoloOrnato livello={1} colore="#f5a623">SBUSTA UN PACCHETTO</TitoloOrnato>
+        <p style={{ color: 'rgba(238,232,220,0.6)', maxWidth: 480, margin: '12px auto', lineHeight: 1.7, fontSize: 12 }}>
+          Ogni pacchetto contiene <strong style={{ color: '#ffd666' }}>2 waifu, 2 outfit, 1 posa</strong>.
+        </p>
+
+        {/* Pacchetti disponibili */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 20 }}>
           {(profilo.pacchettiBenvenuto ?? 0) > 0 && (
-            <div style={{ flex: 1, background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.25)', borderRadius: 10, padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div><Chip colore="#00e676" icon="⭐" size="xs">BENVENUTO</Chip><div style={{ fontSize: 7, opacity: 0.4, marginTop: 2 }}>No doppioni</div></div>
-              <div style={{ fontSize: 28, fontFamily: 'Orbitron', color: '#00e676', fontWeight: 700 }}>{profilo.pacchettiBenvenuto}</div>
-            </div>
+            <CardInfo colore="#00e676"><div style={{ textAlign: 'center' }}>
+              <Chip colore="#00e676" icon="⭐" size="sm">BENVENUTO</Chip>
+              <div style={{ fontSize: 36, fontFamily: 'Orbitron', color: '#00e676', fontWeight: 700, marginTop: 6 }}>{profilo.pacchettiBenvenuto}</div>
+              <div style={{ fontSize: 8, opacity: 0.5, marginTop: 2 }}>No doppioni waifu</div>
+            </div></CardInfo>
           )}
-          <div style={{ flex: 1, background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: 10, padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div><Chip colore="#f5a623" icon="🎁" size="xs">OMAGGIO</Chip>
-              {(profilo.pacchettiOmaggio ?? 0) < 2 && <CountdownPacchettiOmaggio ultimaRicarica={profilo.ultimaRicaricaPacchetti} />}
-            </div>
-            <div style={{ fontSize: 28, fontFamily: 'Orbitron', color: '#ffd666', fontWeight: 700 }}>{profilo.pacchettiOmaggio ?? 0}</div>
-          </div>
-          <div style={{ flex: 1, background: 'rgba(255,45,120,0.06)', border: '1px solid rgba(255,45,120,0.2)', borderRadius: 10, padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div><Chip colore="#ff2d78" icon="⚔" size="xs">SFIDA</Chip><div style={{ fontSize: 7, opacity: 0.4, marginTop: 2 }}>Vinti in battaglia</div></div>
-            <div style={{ fontSize: 28, fontFamily: 'Orbitron', color: '#ff2d78', fontWeight: 700 }}>{profilo.pacchettiSfida ?? 0}</div>
-          </div>
+          <CardInfo colore="#f5a623"><div style={{ textAlign: 'center' }}>
+            <Chip colore="#f5a623" icon="🎁" size="sm">OMAGGIO</Chip>
+            <div style={{ fontSize: 36, fontFamily: 'Orbitron', color: '#ffd666', fontWeight: 700, marginTop: 6 }}>{profilo.pacchettiOmaggio ?? 0}</div>
+            <div style={{ fontSize: 8, opacity: 0.5, marginTop: 2 }}>2 ogni 12h</div>
+            {(profilo.pacchettiOmaggio ?? 0) < 2 && <CountdownPacchettiOmaggio ultimaRicarica={profilo.ultimaRicaricaPacchetti} />}
+          </div></CardInfo>
+          <CardInfo colore="#ff2d78"><div style={{ textAlign: 'center' }}>
+            <Chip colore="#ff2d78" icon="⚔" size="sm">SFIDA</Chip>
+            <div style={{ fontSize: 36, fontFamily: 'Orbitron', color: '#ff2d78', fontWeight: 700, marginTop: 6 }}>{profilo.pacchettiSfida ?? 0}</div>
+            <div style={{ fontSize: 8, opacity: 0.5, marginTop: 2 }}>Vinti in battaglia</div>
+          </div></CardInfo>
         </div>
-      </div>
 
-      {/* CATALOG TOGGLE */}
-      <div style={{ textAlign: 'center', marginBottom: 8 }}>
-        <BtnDecorato variant="secondary" size="sm" onClick={() => setMostraCatalogo(!mostraCatalogo)}>
-          {mostraCatalogo ? '✕ CHIUDI CATALOGO' : '📖 VEDI CARTE DISPONIBILI'}
-        </BtnDecorato>
-      </div>
-
-      {/* CATALOG BROWSER */}
-      {mostraCatalogo && (
-        <PannelloOrnato glow="#9b59ff" variant="purple" style={{ padding: 12 }}>
-          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 10 }}>
-            {[
-              { k: 'waifu', l: `👑 Waifu (${dropWaifu.length})` },
-              { k: 'outfit', l: `✦ Outfit (${dropOutfit.length})` },
-              { k: 'pose', l: `⚜ Pose (${dropPose.length})` },
-            ].map(t => (
-              <button key={t.k} onClick={() => setCatTab(t.k)} style={{
-                padding: '5px 12px', fontSize: 9, fontFamily: 'Orbitron',
-                background: catTab === t.k ? 'linear-gradient(135deg, #9b59ff, #ff2d78)' : 'rgba(255,255,255,0.03)',
-                color: catTab === t.k ? '#000' : 'rgba(238,232,220,0.5)',
-                border: `1px solid ${catTab === t.k ? 'transparent' : 'rgba(155,89,255,0.2)'}`,
-                borderRadius: 8, cursor: 'pointer', fontWeight: 700,
-              }}>{t.l}</button>
-            ))}
-          </div>
-          {dropAttivo && <div style={{ textAlign: 'center', fontSize: 9, color: '#9b59ff', marginBottom: 8, letterSpacing: 2, fontFamily: 'Orbitron' }}>DROP: {dropAttivo.nome}</div>}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', maxHeight: 300, overflowY: 'auto', padding: 4 }}>
-            {catTab === 'waifu' && dropWaifu.map(w => (
-              <CartaWaifu key={w.id} waifu={w} dimensione="piccola" tipo="auto" />
-            ))}
-            {catTab === 'outfit' && dropOutfit.map(o => <CartaOutfit key={o.id} outfit={o} />)}
-            {catTab === 'pose' && dropPose.map(p => <CartaPosa key={p.id} posa={p} />)}
-            {((catTab === 'waifu' && dropWaifu.length === 0) || (catTab === 'outfit' && dropOutfit.length === 0) || (catTab === 'pose' && dropPose.length === 0)) && (
-              <div style={{ padding: 20, opacity: 0.4, fontSize: 11 }}>Nessun contenuto in questo drop.</div>
-            )}
-          </div>
-        </PannelloOrnato>
-      )}
+        <PacchettoBox onClick={apri}
+          disabled={(profilo.pacchettiBenvenuto ?? 0) <= 0 && (profilo.pacchettiOmaggio ?? 0) <= 0 && (profilo.pacchettiSfida ?? 0) <= 0}
+          isBenvenuto={(profilo.pacchettiBenvenuto ?? 0) > 0} />
+      </PannelloOrnato>
     </div>
   );
 }
@@ -958,87 +914,17 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
     if ((fase === 'play' || fase === 'suddenDeath') && timeLeft <= 0) autoCompleteScelte();
   }, [fase, timeLeft]);
 
-  // CPU TURN: when it's CPU's turn, auto-play after delays
-  useEffect(() => {
-    if (fase !== 'play' || turno !== 'cpu') return;
-    let cancelled = false;
-
-    const cpuPlay = async () => {
-      // Step 1: CPU picks its card (after 1s)
-      await new Promise(r => setTimeout(r, 1000));
-      if (cancelled) return;
-
-      const cpuDisp = mazzoC.filter(w => !risultatiWaifu[w.id]);
-      const cpuPick = cpuDisp[Math.floor(Math.random() * cpuDisp.length)];
-      if (!cpuPick) return;
-      setCarteC(cpuPick);
-
-      // Also pick player card if not picked (auto)
-      const playerDisp = mazzoP.filter(w => !risultatiWaifu[w.id]);
-      const playerPick = playerDisp[Math.floor(Math.random() * playerDisp.length)];
-
-      // Step 2: Wait for player to pick card, or auto-pick after a bit
-      // Player must pick their card - the CPU just picks stat+dir
-      // We set carteC and wait. Player picks via UI or timeout.
-      // If player already picked, proceed to stat choice.
-
-      await new Promise(r => setTimeout(r, 1500));
-      if (cancelled) return;
-
-      // CPU chooses stat and direction
-      const statsDisp = STATS_BATTAGLIA.filter(s => !statsUsate.includes(s.key));
-      if (statsDisp.length === 0) return;
-      const stat = statsDisp[Math.floor(Math.random() * statsDisp.length)];
-      const dir = Math.random() < 0.5 ? 'piu' : 'meno';
-
-      // Need both cards on the field first
-      // If player hasn't picked yet, auto-pick for them
-      setCarteP(prev => {
-        if (prev) return prev; // player already picked
-        return playerPick;
-      });
-
-      await new Promise(r => setTimeout(r, 800));
-      if (cancelled) return;
-
-      setStatScelta(stat.key);
-      setDirezione(dir);
-      setTimeout(() => {
-        if (!cancelled) risolviRound(stat.key, dir);
-      }, 800);
-    };
-
-    cpuPlay();
-    return () => { cancelled = true; };
-  }, [fase, turno]);
-
   const autoCompleteScelte = () => {
     if (fase === 'suddenDeath') {
       if (!carteP) { const disponibili = mazzoP.filter(w => !risultatiWaifu[w.id]); const pick = disponibili.length > 0 ? disponibili[0] : mazzoP[0]; setCarteP(pick); setTimeout(() => risolviSuddenDeath(pick), 800); }
       return;
     }
-    // Auto-complete for player when timer expires
-    if (!carteP) {
-      const disponibili = mazzoP.filter(w => !risultatiWaifu[w.id]);
-      const pick = disponibili[Math.floor(Math.random() * disponibili.length)];
-      if (pick) scegliCartaPlayer(pick);
-    }
+    if (!carteP) { const disponibili = mazzoP.filter(w => !risultatiWaifu[w.id]); const pick = disponibili[Math.floor(Math.random() * disponibili.length)]; scegliCartaPlayer(pick); }
     if (carteP && carteC && turno === 'player' && !statScelta) {
       const statsDisp = STATS_BATTAGLIA.filter(s => !statsUsate.includes(s.key));
       const stat = statsDisp[Math.floor(Math.random() * statsDisp.length)];
       const dir = Math.random() < 0.5 ? 'piu' : 'meno';
       confermaStatPlayer(stat.key, dir);
-    }
-    // If it's CPU turn and timer expired, the CPU useEffect handles it
-    // But as fallback, force progress
-    if (turno === 'cpu' && !statScelta && carteP && carteC) {
-      const statsDisp = STATS_BATTAGLIA.filter(s => !statsUsate.includes(s.key));
-      if (statsDisp.length > 0) {
-        const stat = statsDisp[Math.floor(Math.random() * statsDisp.length)];
-        const dir = Math.random() < 0.5 ? 'piu' : 'meno';
-        setStatScelta(stat.key); setDirezione(dir);
-        setTimeout(() => risolviRound(stat.key, dir), 800);
-      }
     }
   };
 
