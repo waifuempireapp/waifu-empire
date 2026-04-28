@@ -19,14 +19,14 @@ const RARITY_BORDER = {
 // ====================================================================
 // CERCHI STAT (stile Digimon/gacha card)
 // ====================================================================
-function StatCircle({ value, label, icon, color, size = 34 }) {
+function StatCircle({ value, statKey, icon, color, size = 34 }) {
   const r = (size - 4) / 2;
   const circ = 2 * Math.PI * r;
-  const maxVal = label === 'Piedi' ? 44 : label === 'Età' ? 100 : label === 'Exp' ? 250 : label === 'Capelli' ? 10 : 7;
+  const maxVal = statKey === 'piedi' ? 44 : statKey === 'eta' ? 100 : statKey === 'exp' ? 250 : statKey === 'capelli' ? 10 : 7;
   const pct = Math.min(1, value / maxVal);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
       <div style={{ position: 'relative', width: size, height: size }}>
         <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
           <circle cx={size/2} cy={size/2} r={r} fill="rgba(0,0,0,0.6)" stroke="rgba(255,255,255,0.08)" strokeWidth="2" />
@@ -42,7 +42,13 @@ function StatCircle({ value, label, icon, color, size = 34 }) {
           textShadow: `0 0 6px ${color}`,
         }}>{value}</div>
       </div>
-      <div style={{ fontSize: 7, letterSpacing: 1, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', fontFamily: 'Orbitron, sans-serif' }}>{label}</div>
+      {/* Icona emoji sotto il cerchio — no testo */}
+      <div style={{
+        fontSize: size * 0.32,
+        lineHeight: 1,
+        filter: `drop-shadow(0 0 3px ${color})`,
+        transform: statKey === 'tette' ? 'rotate(180deg)' : 'none',
+      }}>{icon}</div>
     </div>
   );
 }
@@ -106,7 +112,7 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
         pointerEvents: 'none', zIndex: 3,
       }} />
 
-      {/* --- IMMAGINE FULL-ART --- */}
+      {/* --- IMMAGINE FULL-ART (stile Pokemon Pocket / Lillie) --- */}
       <div style={{
         position: 'absolute', inset: 0,
         borderRadius: Math.round(10 * scale),
@@ -114,10 +120,14 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
       }}>
         {imgSrc ? (
           <img src={imgSrc} alt={waifu.nome}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 20%' }}
+            style={{
+              width: '100%', height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center 15%',
+            }}
           />
         ) : (
-          /* Fallback: sfondo decorativo con pattern */
+          /* Fallback: sfondo decorativo con pattern quando non c'è immagine */
           <div style={{
             width: '100%', height: '100%',
             background: `radial-gradient(ellipse at 50% 30%, ${rb.inner}30, transparent 70%), ${rb.bg}`,
@@ -131,11 +141,11 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
         )}
       </div>
 
-      {/* --- OVERLAY GRADIENTE TOP (nome + rarità) --- */}
+      {/* --- OVERLAY GRADIENTE TOP (nome + rarità) — sottile per non coprire l'art --- */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0,
         padding: `${Math.round(8 * scale)}px ${Math.round(10 * scale)}px`,
-        background: 'linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)',
+        background: 'linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.25) 50%, transparent 100%)',
         zIndex: 4,
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
       }}>
@@ -184,8 +194,8 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
       {/* --- OVERLAY GRADIENTE BOTTOM (stats) --- */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
-        padding: `${Math.round(24 * scale)}px ${Math.round(8 * scale)}px ${Math.round(8 * scale)}px`,
-        background: 'linear-gradient(0deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.7) 50%, transparent 100%)',
+        padding: `${Math.round(20 * scale)}px ${Math.round(8 * scale)}px ${Math.round(8 * scale)}px`,
+        background: 'linear-gradient(0deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.55) 40%, transparent 100%)',
         zIndex: 4,
       }}>
         {/* Linea decorativa */}
@@ -194,13 +204,13 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
           background: `linear-gradient(90deg, transparent, ${rb.inner}, transparent)`,
         }} />
 
-        {/* STAT CIRCLES — stile Digimon */}
+        {/* STAT CIRCLES — emoji icons instead of text labels */}
         <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
-          <StatCircle value={tetteEff} label={CATEGORIE_TETTE[tetteEff]?.substring(0,3) || 'Med'} icon="✦" color="#ff6b9d" size={statSize} />
-          <StatCircle value={piediEff} label="Piedi" icon="⚘" color="#64b5f6" size={statSize} />
-          <StatCircle value={etaEff} label="Età" icon="⌛" color="#ffd54f" size={statSize} />
-          <StatCircle value={capelliEff} label="Cap" icon="✿" color="#81c784" size={statSize} />
-          <StatCircle value={expEff} label="Exp" icon="★" color="#ce93d8" size={statSize} />
+          <StatCircle value={tetteEff} statKey="tette" icon="💗" color="#ff6b9d" size={statSize} />
+          <StatCircle value={piediEff} statKey="piedi" icon="🦶" color="#64b5f6" size={statSize} />
+          <StatCircle value={etaEff} statKey="eta" icon="⏳" color="#ffd54f" size={statSize} />
+          <StatCircle value={capelliEff} statKey="capelli" icon="💇" color="#81c784" size={statSize} />
+          <StatCircle value={expEff} statKey="exp" icon="⭐" color="#ce93d8" size={statSize} />
         </div>
       </div>
 
