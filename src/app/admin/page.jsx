@@ -102,6 +102,7 @@ export default function AdminPage() {
         {[
           { k: 'drops', l: '📦 Drops' },
           { k: 'waifu', l: '👑 Waifu' },
+          { k: 'bulk', l: '🚀 Caricamento Massivo' },
           { k: 'outfit', l: '✦ Outfit' },
           { k: 'pose', l: '⚜ Pose' },
           { k: 'distrib', l: '📊 Distribuzione' },
@@ -120,6 +121,7 @@ export default function AdminPage() {
       <div style={{ padding: '16px', maxWidth: 1400, margin: '0 auto' }}>
         {tab === 'drops' && <DropsTab drops={drops} waifu={waifu} outfit={outfit} pose={pose} ricarica={carica} flash={flash} />}
         {tab === 'waifu' && <WaifuTab waifu={waifu} ricarica={carica} flash={flash} />}
+        {tab === 'bulk' && <BulkUploadTab waifu={waifu} ricarica={carica} flash={flash} />}
         {tab === 'outfit' && <OutfitTab outfit={outfit} ricarica={carica} flash={flash} />}
         {tab === 'pose' && <PoseTab pose={pose} waifu={waifu} ricarica={carica} flash={flash} />}
         {tab === 'distrib' && <DistribTab waifu={waifu} />}
@@ -1016,6 +1018,526 @@ function MotoriTab() {
     </div>
   );
 }
+
+// ============================================================
+// TAB: CARICAMENTO MASSIVO
+// Permette di caricare fino a 200 immagini e creare waifu automaticamente.
+// Usa l'API Anthropic per analizzare le immagini e estrarre stats (tette, età, capelli)
+// Se l'API non è disponibile, usa generazione random distribuita.
+// ============================================================
+
+// === NOMI WAIFU CASUALI (pool di ~250 nomi anime-style) ===
+const NOMI_POOL = [
+  'Akira','Yuki','Sakura','Hana','Rei','Miku','Sora','Luna','Nyx','Aria','Kaede','Aoi','Rin','Kira','Mei','Yui','Nana','Hime','Runa','Mio',
+  'Tsubaki','Ayame','Shiori','Akane','Hotaru','Hinata','Asuka','Misaki','Nagisa','Chihiro','Izumi','Kohaku','Tamaki','Madoka','Sumire','Tsumugi','Kurumi','Shion','Amane','Hibiki',
+  'Kazuha','Fubuki','Tsukiko','Hikari','Miyu','Nanami','Haruka','Kotone','Ayaka','Setsuna','Mitsuki','Suzume','Kaguya','Yuzuki','Chiaki','Minori','Tohka','Shinobu','Kokona','Kanon',
+  'Elysia','Vesper','Seraphina','Astrid','Freya','Morgana','Isolde','Celeste','Lilith','Vivienne','Cordelia','Evangeline','Artemis','Calypso','Ophelia','Rowena','Elara','Aurelia','Sylene','Nephira',
+  'Crimson','Velvet','Zephyra','Tempest','Eclipse','Solana','Nebula','Vortex','Blaze','Frost','Shadow','Ember','Dawn','Dusk','Storm','Crystal','Phantom','Raven','Phoenix','Iris',
+  'Miyako','Chiyo','Tomoe','Katsumi','Ryoko','Momiji','Utaha','Futaba','Ichika','Natsuki','Sayuri','Wakana','Suzuha','Mashiro','Tomoyo','Yuzuha','Kirari','Himari','Riko','Saki',
+  'Valentina','Rosaria','Beatrix','Cassandra','Theodora','Lucretia','Anastasia','Gabriella','Isadora','Penelope','Seraphine','Lysandra','Demetria','Calliope','Andromeda','Persephone','Alcyone','Iphigenia','Xanthe','Melisande',
+  'Raijin','Tsukuyomi','Amaterasu','Benzaiten','Kushinada','Tamamo','Inari','Byakko','Suzaku','Genbu','Seiryu','Komachi','Otohime','Yaegashi','Murasaki','Kagero','Shizuka','Tokiwa','Yugiri','Koruri',
+  'Blade','Cipher','Neon','Pixel','Glitch','Data','Binary','Chrome','Surge','Pulse','Flux','Hexa','Volt','Quartz','Nexus','Onyx','Prism','Zenith','Nova','Astra',
+  'Titania','Oberon','Gloriana','Bramble','Clover','Wren','Lark','Ivy','Fern','Dahlia','Jasmine','Violet','Orchid','Marigold','Petunia','Heather','Laurel','Willow','Azalea','Camellia',
+  'Zara','Kali','Indira','Priya','Lakshmi','Savitri','Radha','Durga','Parvati','Sita','Kamala','Ananya','Tara','Maya','Devi','Nisha','Asha','Chandra','Ganga','Saraswati',
+  'Lyra','Cleo','Thalia','Zoe','Selene','Athena','Hera','Aphrodite','Demeter','Hestia','Nike','Rhea','Gaia','Eos','Nyx','Iris','Tyche','Aura','Bia','Metis',
+  'Yuna','Lulu','Tifa','Aerith','Rinoa','Garnet','Beatrix','Quistis','Fang','Vanille',
+];
+
+function generaNomeUnico(usati) {
+  const disponibili = NOMI_POOL.filter(n => !usati.has(n));
+  if (disponibili.length === 0) {
+    // Fallback: aggiungi suffisso
+    const base = NOMI_POOL[Math.floor(Math.random() * NOMI_POOL.length)];
+    let suff = 2;
+    while (usati.has(`${base} ${suff}`)) suff++;
+    return `${base} ${suff}`;
+  }
+  return disponibili[Math.floor(Math.random() * disponibili.length)];
+}
+
+// === DISTRIBUZIONE RARITÀ BILANCIATA ===
+function assegnaRaritaDistribuita(indice, totale) {
+  // Distribuzione: ~55% comune, ~27% raro, ~12% epico, ~5% legg, ~1% immersivo
+  const pct = indice / totale;
+  if (pct < 0.55) return 'comune';
+  if (pct < 0.82) return 'raro';
+  if (pct < 0.94) return 'epico';
+  if (pct < 0.99) return 'leggendario';
+  return 'immersivo';
+}
+
+// === GENERAZIONE STATS RANDOM CON DISTRIBUZIONE ===
+function generaStatsRandom(indice, totale) {
+  // Distribuzione variata per evitare clustering
+  const seed = indice * 7919 + 1013; // numeri primi per distribuzione
+  return {
+    tette: 1 + ((seed) % 7),                                   // 1-7
+    taglia_piedi: 34 + ((seed >> 3) % 11),                      // 34-44
+    eta: 18 + ((seed >> 5) % 83),                               // 18-100
+    colore_capelli: 1 + ((seed >> 8) % 10),                     // 1-10
+    esperienza: 20 + ((seed >> 10) % 231),                      // 20-250
+  };
+}
+
+// === PROMPT PER ANALISI AI ===
+const ANALYSIS_SYSTEM_PROMPT = `Sei un analizzatore di immagini anime. Data un'immagine di un personaggio anime, devi stimare queste statistiche. Rispondi SOLO con un JSON valido, niente altro testo.
+
+Il JSON deve avere questi campi:
+- "tette": intero da 1 a 7 (1=piatte/petite, 3=medie, 5=grandi, 7=enormi fantasy)
+- "eta": intero tra 18 e 100 (età apparente del personaggio, la maggior parte 18-30)
+- "colore_capelli": intero da 1 a 10 (1=castano, 2=nero, 3=biondo, 4=rosso, 5=argento, 6=blu, 7=viola, 8=rosa, 9=bicolore, 10=fantasy/arcobaleno)
+
+Esempio di risposta: {"tette":4,"eta":22,"colore_capelli":3}`;
+
+function BulkUploadTab({ waifu, ricarica, flash }) {
+  const [files, setFiles] = useState([]);          // File[] delle immagini selezionate
+  const [previews, setPreviews] = useState([]);     // {file, url, nome, stats, rarita, status}[]
+  const [fase, setFase] = useState('select');       // 'select' | 'preview' | 'uploading' | 'done'
+  const [progresso, setProgresso] = useState({ fatto: 0, totale: 0, errori: 0 });
+  const [usaAI, setUsaAI] = useState(true);
+  const [aiAnalisi, setAiAnalisi] = useState(false); // sta analizzando con AI?
+  const [risultati, setRisultati] = useState([]);    // waifu create con successo
+
+  const nomiUsati = new Set(waifu.map(w => w.nome));
+
+  // Seleziona file
+  const handleFileSelect = (e) => {
+    const selected = Array.from(e.target.files || []);
+    if (selected.length === 0) return;
+    if (selected.length > 200) {
+      flash('Massimo 200 immagini alla volta!', '#ef4444');
+      return;
+    }
+    setFiles(selected);
+
+    // Genera previews con stats random iniziali e nomi
+    const nomiLocali = new Set([...nomiUsati]);
+    const shuffled = [...Array(selected.length).keys()].sort(() => Math.random() - 0.5);
+
+    const prev = selected.map((file, i) => {
+      const nome = generaNomeUnico(nomiLocali);
+      nomiLocali.add(nome);
+      const stats = generaStatsRandom(shuffled[i], selected.length);
+      const rarita = assegnaRaritaDistribuita(shuffled[i], selected.length);
+      return {
+        file,
+        url: URL.createObjectURL(file),
+        nome,
+        stats,
+        rarita,
+        archetipo: ARCHETIPI[i % ARCHETIPI.length].id,
+        palette: PALETTE[i % PALETTE.length].id,
+        status: 'pending',   // pending | analyzing | ready | uploading | done | error
+        aiStats: null,
+      };
+    });
+    setPreviews(prev);
+    setFase('preview');
+  };
+
+  // Analisi AI delle immagini (opzionale)
+  const analizzaConAI = async () => {
+    setAiAnalisi(true);
+    const aggiornati = [...previews];
+    let analizzati = 0;
+
+    for (let i = 0; i < aggiornati.length; i++) {
+      aggiornati[i].status = 'analyzing';
+      setPreviews([...aggiornati]);
+
+      try {
+        // Converti l'immagine in base64
+        const base64 = await fileToBase64(aggiornati[i].file);
+        const mediaType = aggiornati[i].file.type || 'image/jpeg';
+
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 200,
+            system: ANALYSIS_SYSTEM_PROMPT,
+            messages: [{
+              role: 'user',
+              content: [
+                { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+                { type: 'text', text: 'Analizza questa immagine anime e stima le statistiche. Rispondi SOLO con il JSON.' }
+              ]
+            }]
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const text = data.content?.map(c => c.text || '').join('') || '';
+          const clean = text.replace(/```json|```/g, '').trim();
+          const parsed = JSON.parse(clean);
+
+          // Valida e clamp i valori
+          aggiornati[i].stats = {
+            ...aggiornati[i].stats,
+            tette: Math.max(1, Math.min(7, parsed.tette || aggiornati[i].stats.tette)),
+            eta: Math.max(18, Math.min(100, parsed.eta || aggiornati[i].stats.eta)),
+            colore_capelli: Math.max(1, Math.min(10, parsed.colore_capelli || aggiornati[i].stats.colore_capelli)),
+          };
+          aggiornati[i].aiStats = parsed;
+          aggiornati[i].status = 'ready';
+          analizzati++;
+        } else {
+          aggiornati[i].status = 'ready'; // Fallback: usa stats random
+        }
+      } catch (err) {
+        console.warn(`Analisi AI fallita per ${aggiornati[i].nome}:`, err.message);
+        aggiornati[i].status = 'ready'; // Fallback: usa stats random
+      }
+
+      setPreviews([...aggiornati]);
+
+      // Piccola pausa per non saturare l'API
+      if (i < aggiornati.length - 1) await sleep(300);
+    }
+
+    setAiAnalisi(false);
+    flash(`Analisi completata: ${analizzati}/${aggiornati.length} con AI`, '#06d6a0');
+  };
+
+  // Upload massivo + creazione waifu
+  const avviaUpload = async () => {
+    setFase('uploading');
+    setProgresso({ fatto: 0, totale: previews.length, errori: 0 });
+    const riusciti = [];
+    let errori = 0;
+
+    for (let i = 0; i < previews.length; i++) {
+      const p = previews[i];
+      try {
+        // 1) Upload immagine su Cloudinary
+        const formData = new FormData();
+        formData.append('file', p.file);
+        formData.append('folder', 'waifu');
+        formData.append('publicId', `bulk_${p.nome.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`);
+
+        const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
+        if (!uploadRes.ok) throw new Error('Upload immagine fallito');
+        const { url } = await uploadRes.json();
+
+        // 2) Crea waifu in Firestore
+        const waifuData = {
+          nome: p.nome,
+          rarita: p.rarita,
+          tette: p.stats.tette,
+          taglia_piedi: p.stats.taglia_piedi,
+          eta: p.stats.eta,
+          colore_capelli: p.stats.colore_capelli,
+          esperienza: p.stats.esperienza,
+          archetipo: p.archetipo,
+          palette: p.palette,
+          asset_statica: url,
+          asset_paperdoll: '',
+          asset_immersiva: p.rarita === 'leggendario' || p.rarita === 'immersivo' ? url : '',
+          fillers: { outfit: '', fanservice: '', posa: '' },
+        };
+
+        const newId = await upsertWaifu(null, waifuData);
+        riusciti.push({ ...waifuData, id: newId, imageUrl: url });
+
+        // Aggiorna preview
+        previews[i].status = 'done';
+        setPreviews([...previews]);
+      } catch (err) {
+        console.error(`Errore waifu ${p.nome}:`, err);
+        previews[i].status = 'error';
+        setPreviews([...previews]);
+        errori++;
+      }
+
+      setProgresso({ fatto: i + 1, totale: previews.length, errori });
+
+      // Piccola pausa per non sovraccaricare
+      if (i < previews.length - 1) await sleep(200);
+    }
+
+    setRisultati(riusciti);
+    setFase('done');
+    ricarica();
+    flash(`${riusciti.length} waifu create! (${errori} errori)`, errori > 0 ? '#f59e0b' : '#06d6a0');
+  };
+
+  // Modifica singola preview
+  const aggiornaPreview = (index, campo, valore) => {
+    const nuovo = [...previews];
+    if (campo.startsWith('stats.')) {
+      const statKey = campo.split('.')[1];
+      nuovo[index].stats[statKey] = parseInt(valore) || 0;
+    } else {
+      nuovo[index][campo] = valore;
+    }
+    setPreviews(nuovo);
+  };
+
+  // Rimuovi singola preview
+  const rimuoviPreview = (index) => {
+    const nuovo = previews.filter((_, i) => i !== index);
+    setPreviews(nuovo);
+  };
+
+  // Rigenerazione random di tutte le stats
+  const rigeneraStats = () => {
+    const shuffled = [...Array(previews.length).keys()].sort(() => Math.random() - 0.5);
+    const nuovo = previews.map((p, i) => ({
+      ...p,
+      stats: generaStatsRandom(shuffled[i] + Date.now(), previews.length),
+      rarita: assegnaRaritaDistribuita(shuffled[i], previews.length),
+    }));
+    setPreviews(nuovo);
+    flash('Stats rigenerate!');
+  };
+
+  // Reset
+  const reset = () => {
+    setFiles([]); setPreviews([]); setFase('select');
+    setProgresso({ fatto: 0, totale: 0, errori: 0 }); setRisultati([]);
+  };
+
+  // ======== RENDER ========
+
+  // FASE: SELEZIONE FILE
+  if (fase === 'select') {
+    return (
+      <div>
+        <h2 style={titoloSec}>🚀 CARICAMENTO MASSIVO WAIFU</h2>
+        <div style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 8, padding: 14, marginBottom: 16, marginTop: 12 }}>
+          <div style={{ fontFamily: 'Cinzel, serif', color: '#a855f7', letterSpacing: 2, fontSize: 12, marginBottom: 6 }}>ℹ COME FUNZIONA</div>
+          <div style={{ fontSize: 12, lineHeight: 1.8, opacity: 0.85 }}>
+            1. <strong>Seleziona fino a 200 immagini</strong> di waifu/personaggi anime<br/>
+            2. Il sistema <strong>genera automaticamente</strong> nome, statistiche e rarità per ogni waifu<br/>
+            3. <strong>(Opzionale)</strong> L'AI analizza le immagini e stima tette, età e colore capelli dall'immagine<br/>
+            4. <strong>Puoi rivedere e modificare</strong> manualmente ogni waifu prima del caricamento<br/>
+            5. <strong>Caricamento in batch</strong>: upload immagine su Cloudinary + creazione waifu in Firestore
+          </div>
+        </div>
+
+        <div style={{
+          border: '3px dashed rgba(245,158,11,0.4)',
+          borderRadius: 16, padding: 60, textAlign: 'center',
+          background: 'rgba(245,158,11,0.03)',
+          cursor: 'pointer',
+          transition: 'all 0.3s',
+        }}
+          onClick={() => document.getElementById('bulk-file-input').click()}
+          onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = '#f59e0b'; e.currentTarget.style.background = 'rgba(245,158,11,0.08)'; }}
+          onDragLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(245,158,11,0.4)'; e.currentTarget.style.background = 'rgba(245,158,11,0.03)'; }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.currentTarget.style.borderColor = 'rgba(245,158,11,0.4)';
+            e.currentTarget.style.background = 'rgba(245,158,11,0.03)';
+            const dt = e.dataTransfer;
+            const input = document.getElementById('bulk-file-input');
+            input.files = dt.files;
+            handleFileSelect({ target: { files: dt.files } });
+          }}
+        >
+          <div style={{ fontSize: 60, marginBottom: 12 }}>📁</div>
+          <div style={{ fontFamily: 'Cinzel, serif', color: '#f59e0b', fontSize: 18, letterSpacing: 3, marginBottom: 8 }}>
+            TRASCINA O CLICCA
+          </div>
+          <div style={{ fontSize: 13, opacity: 0.7 }}>
+            Seleziona fino a 200 immagini (.jpg, .png, .webp)
+          </div>
+          <input id="bulk-file-input" type="file" multiple accept="image/*" style={{ display: 'none' }} onChange={handleFileSelect} />
+        </div>
+
+        <div style={{ marginTop: 16, textAlign: 'center', fontSize: 11, opacity: 0.5 }}>
+          Waifu attuali nel catalogo: <strong>{waifu.length}</strong>
+        </div>
+      </div>
+    );
+  }
+
+  // FASE: PREVIEW / REVISIONE
+  if (fase === 'preview') {
+    const countByRarity = {};
+    previews.forEach(p => { countByRarity[p.rarita] = (countByRarity[p.rarita] || 0) + 1; });
+
+    return (
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+          <h2 style={titoloSec}>🔍 REVISIONE ({previews.length} waifu)</h2>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button onClick={reset} style={btnSecondario}>← INDIETRO</button>
+            <button onClick={rigeneraStats} style={btnSecondario}>🎲 RIGENERA STATS</button>
+            {!aiAnalisi && (
+              <button onClick={analizzaConAI} style={{ ...btnPrimario, background: 'linear-gradient(135deg, #a855f7, #3b82f6)' }}>
+                🤖 ANALIZZA CON AI ({previews.length} img)
+              </button>
+            )}
+            <button onClick={avviaUpload} style={btnPrimario} disabled={aiAnalisi}>
+              🚀 CARICA TUTTE ({previews.length})
+            </button>
+          </div>
+        </div>
+
+        {/* Distribuzione rarità */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+          {Object.entries(RARITA).map(([k, v]) => (
+            <div key={k} style={{ padding: '4px 12px', borderRadius: 12, border: `1px solid ${v.colore}60`, fontSize: 11, color: v.colore }}>
+              {'★'.repeat(v.stelle)} {v.nome}: <strong>{countByRarity[k] || 0}</strong>
+            </div>
+          ))}
+        </div>
+
+        {/* AI Analysis progress */}
+        {aiAnalisi && (
+          <div style={{ padding: 12, background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 8, marginBottom: 14 }}>
+            <div style={{ fontSize: 12, color: '#a855f7', fontWeight: 600, marginBottom: 6 }}>
+              🤖 Analisi AI in corso... {previews.filter(p => p.status === 'ready' || p.status === 'done').length}/{previews.length}
+            </div>
+            <div style={{ height: 4, background: 'rgba(0,0,0,0.4)', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{
+                width: `${(previews.filter(p => p.status !== 'pending' && p.status !== 'analyzing').length / previews.length) * 100}%`,
+                height: '100%', background: 'linear-gradient(90deg, #a855f7, #3b82f6)', transition: 'width 0.3s',
+              }} />
+            </div>
+          </div>
+        )}
+
+        {/* Griglia waifu preview */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8, maxHeight: '70vh', overflowY: 'auto', padding: 4 }}>
+          {previews.map((p, i) => {
+            const rar = RARITA[p.rarita] || RARITA.comune;
+            return (
+              <div key={i} style={{
+                padding: 8, borderRadius: 8,
+                background: 'rgba(0,0,0,0.4)',
+                border: `1px solid ${p.status === 'analyzing' ? '#a855f7' : p.status === 'error' ? '#ef4444' : rar.colore}60`,
+                opacity: p.status === 'analyzing' ? 0.7 : 1,
+                position: 'relative',
+              }}>
+                {/* Status badge */}
+                {p.status === 'analyzing' && <div style={{ position: 'absolute', top: 4, right: 4, background: '#a855f7', color: '#fff', padding: '2px 6px', borderRadius: 8, fontSize: 8, letterSpacing: 1 }}>🤖 AI...</div>}
+                {p.aiStats && <div style={{ position: 'absolute', top: 4, right: 4, background: '#06d6a0', color: '#000', padding: '2px 6px', borderRadius: 8, fontSize: 8, letterSpacing: 1 }}>✓ AI</div>}
+
+                {/* Preview immagine */}
+                <img src={p.url} alt={p.nome} style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 6, marginBottom: 6 }} />
+
+                {/* Nome (editabile) */}
+                <input value={p.nome} onChange={e => aggiornaPreview(i, 'nome', e.target.value)}
+                  style={{ ...inputStyle, padding: 4, fontSize: 11, marginBottom: 4, fontWeight: 600 }} />
+
+                {/* Rarità */}
+                <select value={p.rarita} onChange={e => aggiornaPreview(i, 'rarita', e.target.value)}
+                  style={{ ...inputStyle, padding: 3, fontSize: 10, marginBottom: 4 }}>
+                  {Object.entries(RARITA).map(([k, v]) => <option key={k} value={k}>{v.nome}</option>)}
+                </select>
+
+                {/* Stats mini */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, fontSize: 9 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <span>💗</span>
+                    <input type="number" min="1" max="7" value={p.stats.tette}
+                      onChange={e => aggiornaPreview(i, 'stats.tette', e.target.value)}
+                      style={{ ...inputStyle, padding: 2, fontSize: 9, width: '100%' }} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <span>🦶</span>
+                    <input type="number" min="34" max="44" value={p.stats.taglia_piedi}
+                      onChange={e => aggiornaPreview(i, 'stats.taglia_piedi', e.target.value)}
+                      style={{ ...inputStyle, padding: 2, fontSize: 9, width: '100%' }} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <span>⏳</span>
+                    <input type="number" min="18" max="100" value={p.stats.eta}
+                      onChange={e => aggiornaPreview(i, 'stats.eta', e.target.value)}
+                      style={{ ...inputStyle, padding: 2, fontSize: 9, width: '100%' }} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <span>💇</span>
+                    <input type="number" min="1" max="10" value={p.stats.colore_capelli}
+                      onChange={e => aggiornaPreview(i, 'stats.colore_capelli', e.target.value)}
+                      style={{ ...inputStyle, padding: 2, fontSize: 9, width: '100%' }} />
+                  </div>
+                </div>
+
+                {/* Bottone rimuovi */}
+                <button onClick={() => rimuoviPreview(i)} style={{ ...btnSecondario, width: '100%', marginTop: 4, padding: '3px 0', fontSize: 9, borderColor: '#ef444440', color: '#ef4444' }}>✕ RIMUOVI</button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // FASE: UPLOADING
+  if (fase === 'uploading') {
+    const pct = progresso.totale > 0 ? Math.round((progresso.fatto / progresso.totale) * 100) : 0;
+    return (
+      <div style={{ textAlign: 'center', padding: 40 }}>
+        <div style={{ fontSize: 60, marginBottom: 16 }}>🚀</div>
+        <h2 style={{ ...titoloSec, marginBottom: 12 }}>CARICAMENTO IN CORSO...</h2>
+        <div style={{ maxWidth: 400, margin: '0 auto' }}>
+          <div style={{ height: 8, background: 'rgba(0,0,0,0.4)', borderRadius: 4, overflow: 'hidden', marginBottom: 12 }}>
+            <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, #f59e0b, #06d6a0)', transition: 'width 0.3s', borderRadius: 4 }} />
+          </div>
+          <div style={{ fontSize: 24, fontFamily: 'Cinzel, serif', color: '#f59e0b', fontWeight: 700 }}>{pct}%</div>
+          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
+            {progresso.fatto} / {progresso.totale} completate
+            {progresso.errori > 0 && <span style={{ color: '#ef4444' }}> · {progresso.errori} errori</span>}
+          </div>
+          <div style={{ fontSize: 11, opacity: 0.5, marginTop: 12 }}>Non chiudere questa pagina durante il caricamento</div>
+        </div>
+      </div>
+    );
+  }
+
+  // FASE: COMPLETATO
+  if (fase === 'done') {
+    return (
+      <div style={{ textAlign: 'center', padding: 40 }}>
+        <div style={{ fontSize: 60, marginBottom: 16 }}>🎉</div>
+        <h2 style={{ ...titoloSec, marginBottom: 12, color: '#06d6a0' }}>CARICAMENTO COMPLETATO!</h2>
+        <div style={{ fontSize: 14, marginBottom: 6 }}>
+          <span style={{ color: '#06d6a0', fontWeight: 700 }}>{risultati.length}</span> waifu create con successo
+        </div>
+        {progresso.errori > 0 && (
+          <div style={{ fontSize: 13, color: '#ef4444', marginBottom: 12 }}>{progresso.errori} errori durante il caricamento</div>
+        )}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16 }}>
+          <button onClick={reset} style={btnPrimario}>📁 CARICA ALTRE</button>
+          <button onClick={() => setFase('select')} style={btnSecondario}>← TORNA</button>
+        </div>
+
+        {/* Anteprima risultati */}
+        {risultati.length > 0 && (
+          <div style={{ marginTop: 24, textAlign: 'left' }}>
+            <div style={{ fontSize: 12, color: '#a855f7', letterSpacing: 2, marginBottom: 8 }}>ULTIME CREATE:</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 6, maxHeight: 400, overflowY: 'auto' }}>
+              {risultati.slice(-20).map((w, i) => (
+                <div key={i} style={{ padding: 6, background: 'rgba(0,0,0,0.3)', borderRadius: 6, border: `1px solid ${RARITA[w.rarita]?.colore || '#666'}40` }}>
+                  <img src={w.imageUrl} alt={w.nome} style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 4, marginBottom: 4 }} />
+                  <div style={{ fontSize: 10, fontWeight: 600, color: RARITA[w.rarita]?.colore }}>{w.nome}</div>
+                  <div style={{ fontSize: 9, opacity: 0.6 }}>{'★'.repeat(RARITA[w.rarita]?.stelle || 1)} {RARITA[w.rarita]?.nome}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+}
+
+// Helper: File -> Base64
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ============================================================
 // HELPERS
