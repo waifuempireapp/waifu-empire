@@ -12,8 +12,9 @@ import React from 'react';
 import { TERRITORI, COLORI_CONTINENTI, NOMI_CONTINENTI } from '@/lib/constants';
 
 export default function MappaMondoArt({
-  territoriUtente = {},          // { [territorioId]: { conquistato: bool, defendente?: waifuId } }
+  territoriUtente = {},
   coloreImpero = '#f59e0b',
+  nomeImpero = 'Il Tuo Impero',
   onTerritorioClick,
   territorioSelezionato,
   width = '100%',
@@ -195,36 +196,45 @@ export default function MappaMondoArt({
           const selez = territorioSelezionato === t.id;
 
           // Colore territorio basato sull'impero che lo possiede
-          let fillCol, strokeCol, opac;
+          let fillCol, strokeCol, opac, strokeW;
           if (conquistato) {
+            // PROPRI: molto evidenti
             fillCol = coloreImpero;
-            strokeCol = lighten(coloreImpero, 30);
-            opac = 0.85;
+            strokeCol = lighten(coloreImpero, 40);
+            opac = 0.95;
+            strokeW = 2.5;
           } else if (datiUt?.coloreImpero) {
             fillCol = datiUt.coloreImpero;
-            strokeCol = lighten(datiUt.coloreImpero, 20);
-            opac = 0.65;
+            strokeCol = lighten(datiUt.coloreImpero, 15);
+            opac = 0.5;
+            strokeW = 1;
           } else {
             fillCol = `url(#cont-${t.cont})`;
-            strokeCol = '#555';
-            opac = 0.4;
+            strokeCol = '#444';
+            opac = 0.3;
+            strokeW = 0.8;
           }
 
-          // Check se confinante con territori del player (pulsazione)
+          // Check se confinante con territori del player (pulsazione forte)
           const mieiTerrIds = Object.entries(territoriUtente).filter(([, v]) => v?.conquistato).map(([k]) => k);
           const primoAttacco = mieiTerrIds.length === 0;
           const eConfinante = !conquistato && (primoAttacco || (t.conf || []).some(cId => mieiTerrIds.includes(cId)));
 
           return (
             <g key={t.id} style={{ cursor: 'pointer' }} onClick={() => onTerritorioClick && onTerritorioClick(t)}>
+              {/* Glow esterno per propri territori */}
+              {conquistato && (
+                <path d={t.path} fill="none" stroke={coloreImpero} strokeWidth="4" opacity="0.3" filter="url(#glow-strong)" />
+              )}
               <path d={t.path}
                 fill={fillCol}
-                stroke={selez ? '#fbbf24' : strokeCol}
-                strokeWidth={selez ? 2.5 : eConfinante ? 2 : 1.2}
+                stroke={selez ? '#fbbf24' : eConfinante ? '#fbbf24' : strokeCol}
+                strokeWidth={selez ? 3 : eConfinante ? 2.5 : strokeW}
                 opacity={opac}
                 filter={selez ? 'url(#glow-strong)' : undefined}
               >
-                {eConfinante && <animate attributeName="opacity" values={`${opac};${Math.min(1, opac + 0.3)};${opac}`} dur="2s" repeatCount="indefinite" />}
+                {eConfinante && <animate attributeName="opacity" values="0.5;0.85;0.5" dur="1.5s" repeatCount="indefinite" />}
+                {eConfinante && <animate attributeName="stroke-width" values="2;3.5;2" dur="1.5s" repeatCount="indefinite" />}
               </path>
               {conquistato && <use href="#castle" x={t.cx - 10} y={t.cy - 10} width="20" height="20" opacity="0.85" />}
               {!conquistato && (t.cont === 'NA' || t.cont === 'EU' || t.cont === 'AS') && <use href="#mountain" x={t.cx - 8} y={t.cy - 8} width="16" height="16" opacity="0.5" />}
@@ -280,33 +290,37 @@ export default function MappaMondoArt({
         ))}
 
         {/* === LEGENDA IMPERI (in basso a sinistra) === */}
-        <g transform="translate(20, 570)">
+        <g transform="translate(20, 545)">
           {(() => {
-            // Raccogli imperi unici dalla mappa
             const imperiMap = {};
+            let mioCount = 0;
             Object.values(territoriUtente).forEach(v => {
+              if (v?.conquistato) { mioCount++; return; }
               if (v?.impero && v?.coloreImpero) {
                 if (!imperiMap[v.impero]) imperiMap[v.impero] = { colore: v.coloreImpero, count: 0 };
                 imperiMap[v.impero].count++;
               }
             });
-            const imperiList = Object.entries(imperiMap);
-            const rows = Math.ceil(imperiList.length / 2);
-            const h = Math.max(50, rows * 18 + 28);
+            // Max 4 imperi avversari + il mio = 5 totali
+            const avversari = Object.entries(imperiMap).sort((a, b) => b[1].count - a[1].count).slice(0, 4);
+            // Proprio impero sempre primo
+            const lista = [];
+            if (mioCount > 0) lista.push([nomeImpero, { colore: coloreImpero, count: mioCount, mio: true }]);
+            avversari.forEach(([n, d]) => lista.push([n, d]));
+            const h = lista.length * 20 + 30;
             return (
               <>
-                <rect x="0" y="0" width="260" height={h} rx="3" fill="rgba(10,5,21,0.88)" stroke="#f59e0b" strokeWidth="0.8" opacity="0.95" />
-                <text x="130" y="14" textAnchor="middle" fontSize="9" fontFamily="Cinzel, serif" fill="#f59e0b" letterSpacing="2">⚜ IMPERI ⚜</text>
-                {imperiList.map(([nome, { colore, count }], i) => {
-                  const x = (i % 2) * 125 + 10;
-                  const y = Math.floor(i / 2) * 18 + 28;
-                  return (
-                    <g key={nome} transform={`translate(${x}, ${y})`}>
-                      <rect x="0" y="0" width="10" height="10" rx="2" fill={colore} stroke="#f5e6d3" strokeWidth="0.3" />
-                      <text x="14" y="8" fontSize="7.5" fill="#f5e6d3" fontFamily="Inter, sans-serif">{nome} ({count})</text>
-                    </g>
-                  );
-                })}
+                <rect x="-4" y="-4" width="280" height={h + 8} rx="6" fill="rgba(10,5,21,0.92)" stroke="#f59e0b" strokeWidth="0.8" />
+                <text x="136" y="14" textAnchor="middle" fontSize="9" fontFamily="Cinzel, serif" fill="#f59e0b" letterSpacing="2">⚜ IMPERI ⚜</text>
+                {lista.map(([nome, { colore, count, mio }], i) => (
+                  <g key={nome} transform={`translate(8, ${i * 20 + 26})`}>
+                    <rect x="0" y="0" width="14" height="14" rx="3" fill={colore} stroke={mio ? '#fbbf24' : '#f5e6d3'} strokeWidth={mio ? 1.5 : 0.3} />
+                    {mio && <text x="7" y="11" textAnchor="middle" fontSize="8" fill="#000" fontWeight="700">★</text>}
+                    <text x="20" y="11" fontSize={mio ? '9' : '8'} fill={mio ? '#fbbf24' : '#f5e6d3'} fontFamily="Inter, sans-serif" fontWeight={mio ? '700' : '400'}>
+                      {nome} ({count})
+                    </text>
+                  </g>
+                ))}
               </>
             );
           })()}
@@ -314,10 +328,10 @@ export default function MappaMondoArt({
 
         {/* === TITOLO MAPPA in alto === */}
         <g transform="translate(525, 38)">
-          <rect x="-160" y="-22" width="320" height="40" rx="4"
-                fill="rgba(10,5,21,0.92)" stroke="#f59e0b" strokeWidth="1" />
-          <text textAnchor="middle" y="5" fontSize="16"
-                fontFamily="Cinzel, serif" fill="#f59e0b" letterSpacing="5"
+          <rect x="-190" y="-24" width="380" height="44" rx="5"
+                fill="rgba(10,5,21,0.94)" stroke="#f59e0b" strokeWidth="1.2" />
+          <text textAnchor="middle" y="6" fontSize="17"
+                fontFamily="Cinzel, serif" fill="#f59e0b" letterSpacing="4"
                 style={{ fontWeight: 700 }}>
             ⚔ MONDO CONOSCIUTO ⚔
           </text>

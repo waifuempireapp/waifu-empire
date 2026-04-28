@@ -992,8 +992,8 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
   const [timeLeft, setTimeLeft] = useState(10);
   const [nomeImperoAvversario, setNomeImperoAvversario] = useState('');
 
-  const NOMI_IMPERI = ['Drago Nero', 'Rosa d\'Oro', 'Ombra Viola', 'Fenice Rossa', 'Luna d\'Argento', 'Serpente Verde', 'Tuono Celeste', 'Stella Cadente', 'Lupo Bianco', 'Fiamma Blu'];
-  const COLORI_IMPERI = ['#ef4444', '#a855f7', '#3b82f6', '#ec4899', '#06d6a0', '#f97316', '#8b5cf6', '#14b8a6', '#e11d48', '#6366f1'];
+  const NOMI_IMPERI = ['Drago Nero', 'Rosa d\'Oro', 'Ombra Viola', 'Fenice Rossa'];
+  const COLORI_IMPERI = ['#ef4444', '#a855f7', '#3b82f6', '#ec4899'];
 
   // Carica dati mappa da profilo Firestore + inizializza imperi avversari
   useEffect(() => {
@@ -1011,6 +1011,13 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
           // Se è già mio (conquistato), mantieni
           if (terr[t.id]?.conquistato) {
             nuoviTerritori[t.id] = terr[t.id];
+          } else if (Math.random() < 0.15) {
+            // ~15% territori liberi (non conquistati da nessuno)
+            nuoviTerritori[t.id] = {
+              conquistato: false,
+              impero: 'Terra di Nessuno',
+              coloreImpero: '#444444',
+            };
           } else {
             const imperoIdx = idx % NOMI_IMPERI.length;
             nuoviTerritori[t.id] = {
@@ -1311,7 +1318,6 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
         livelloMappa: livelloMappa,
         livelloCPU: livelloCPU,
       });
-      mostraNotif(`${terrSel.nome} conquistato! +1 pacchetto sfida`, '#06d6a0');
 
       // Check mappa completa
       const numConq = Object.values(nuoviTerritori).filter(t => t?.conquistato).length;
@@ -1323,8 +1329,12 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
           // Reset mappa con nuovi imperi
           const nuoviTerr = {};
           TERRITORI.forEach((t, idx) => {
-            const imperoIdx = idx % NOMI_IMPERI.length;
-            nuoviTerr[t.id] = { conquistato: false, impero: NOMI_IMPERI[imperoIdx], coloreImpero: COLORI_IMPERI[imperoIdx] };
+            if (Math.random() < 0.15) {
+              nuoviTerr[t.id] = { conquistato: false, impero: 'Terra di Nessuno', coloreImpero: '#444444' };
+            } else {
+              const imperoIdx = idx % NOMI_IMPERI.length;
+              nuoviTerr[t.id] = { conquistato: false, impero: NOMI_IMPERI[imperoIdx], coloreImpero: COLORI_IMPERI[imperoIdx] };
+            }
           });
           setTerritoriUtente(nuoviTerr);
           setLivelloMappa(nuovoLivMappa);
@@ -1338,7 +1348,6 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
         setProfilo({ ...profilo, energia: nuovaEnergia });
         await updateUserProfile(user.uid, { energia: nuovaEnergia });
       }
-      mostraNotif('Sconfitta! -1 energia', '#ef4444');
     }
   };
 
@@ -1651,24 +1660,19 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
           </div>
         )}
 
-        {/* Bottone prossimo round - bar fissa in basso */}
+        {/* Bottone prossimo round - bar fissa in basso con timer */}
         {fase === 'roundEnd' && (
-          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 70, padding: '12px 16px', background: 'linear-gradient(0deg, rgba(10,5,21,0.98), rgba(10,5,21,0.9))', borderTop: `2px solid ${vincitoreRound === 'player' ? '#06d6a0' : vincitoreRound === 'cpu' ? '#ef4444' : '#fbbf24'}` }}>
-            <div style={{ maxWidth: 500, margin: '0 auto', textAlign: 'center' }}>
-              <div style={{ fontSize: 14, fontFamily: 'Fredoka', fontWeight: 700, marginBottom: 4, color: vincitoreRound === 'player' ? '#06d6a0' : vincitoreRound === 'cpu' ? '#ef4444' : '#fbbf24' }}>
-                {vincitoreRound === 'player' ? '✅ HAI VINTO IL ROUND!' : vincitoreRound === 'cpu' ? '❌ ROUND PERSO' : '🤝 PAREGGIO'}
-              </div>
-              <div style={{ fontSize: 11, color: '#d4c5b9', marginBottom: 8 }}>
-                {STATS_BATTAGLIA.find(s => s.key === statScelta)?.icon} {STATS_BATTAGLIA.find(s => s.key === statScelta)?.label} {direzione === 'piu' ? '▲' : '▼'} — Tu: <strong>{carteP[statScelta]}</strong> vs CPU: <strong>{carteC[statScelta]}</strong>
-              </div>
-              <button onClick={prossimoRound} style={{
-                padding: '10px 28px', background: 'linear-gradient(135deg, #f59e0b, #ec4899)', border: 'none',
-                borderRadius: 8, cursor: 'pointer', color: '#000', fontFamily: 'Fredoka', fontSize: 13, fontWeight: 700, letterSpacing: 2,
-              }}>
-                {(round >= 5 || punteggio.player >= 3 || punteggio.cpu >= 3) ? 'FINE PARTITA' : 'PROSSIMO ROUND →'}
-              </button>
-            </div>
-          </div>
+          <RoundEndBar
+            vincitoreRound={vincitoreRound}
+            statScelta={statScelta}
+            direzione={direzione}
+            carteP={carteP}
+            carteC={carteC}
+            round={round}
+            punteggio={punteggio}
+            STATS_BATTAGLIA={STATS_BATTAGLIA}
+            onProssimoRound={prossimoRound}
+          />
         )}
       </div>
     );
@@ -1777,7 +1781,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
             <Chip colore="#f59e0b" icon="✦">{profilo.energia ?? 0}/10</Chip>
           </div>
         </div>
-        <MappaMondoArt territoriUtente={territoriUtente} coloreImpero={profilo.coloreImpero} territorioSelezionato={terrSel?.id} onTerritorioClick={(t) => setTerrSel(t)} />
+        <MappaMondoArt territoriUtente={territoriUtente} coloreImpero={profilo.coloreImpero} nomeImpero={profilo.nomeImpero} territorioSelezionato={terrSel?.id} onTerritorioClick={(t) => setTerrSel(t)} />
         
         {/* POPUP OVERLAY TERRITORIO */}
         {terrSel && (() => {
@@ -1874,3 +1878,39 @@ function CountdownPacchettiOmaggio({ ultimaRicarica }) {
   );
 }
 
+// ============================================================
+// COMPONENTE: ROUND END BAR con timer 30s
+// ============================================================
+function RoundEndBar({ vincitoreRound, statScelta, direzione, carteP, carteC, round, punteggio, STATS_BATTAGLIA, onProssimoRound }) {
+  const [timer, setTimer] = useState(30);
+  const colore = vincitoreRound === 'player' ? '#06d6a0' : vincitoreRound === 'cpu' ? '#ef4444' : '#fbbf24';
+
+  useEffect(() => {
+    if (timer <= 0) { onProssimoRound(); return; }
+    const t = setTimeout(() => setTimer(s => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [timer]);
+
+  const statInfo = STATS_BATTAGLIA.find(s => s.key === statScelta);
+  const eFine = round >= 5 || punteggio.player >= 3 || punteggio.cpu >= 3;
+
+  return (
+    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 70, padding: '12px 16px', background: 'linear-gradient(0deg, rgba(10,5,21,0.98), rgba(10,5,21,0.9))', borderTop: `2px solid ${colore}` }}>
+      <div style={{ maxWidth: 500, margin: '0 auto', textAlign: 'center' }}>
+        <div style={{ fontSize: 14, fontFamily: 'Fredoka', fontWeight: 700, marginBottom: 4, color: colore }}>
+          {vincitoreRound === 'player' ? '✅ HAI VINTO IL ROUND!' : vincitoreRound === 'cpu' ? '❌ ROUND PERSO' : '🤝 PAREGGIO'}
+          <span style={{ fontSize: 12, marginLeft: 8, opacity: 0.8 }}>({timer}s)</span>
+        </div>
+        <div style={{ fontSize: 11, color: '#d4c5b9', marginBottom: 8 }}>
+          {statInfo?.icon} {statInfo?.label} {direzione === 'piu' ? '▲' : '▼'} — Tu: <strong>{carteP[statScelta]}</strong> vs CPU: <strong>{carteC[statScelta]}</strong>
+        </div>
+        <button onClick={onProssimoRound} style={{
+          padding: '10px 28px', background: 'linear-gradient(135deg, #f59e0b, #ec4899)', border: 'none',
+          borderRadius: 8, cursor: 'pointer', color: '#000', fontFamily: 'Fredoka', fontSize: 13, fontWeight: 700, letterSpacing: 2,
+        }}>
+          {eFine ? 'FINE PARTITA' : 'PROSSIMO ROUND →'}
+        </button>
+      </div>
+    </div>
+  );
+}
