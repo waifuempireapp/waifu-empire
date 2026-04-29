@@ -23,9 +23,11 @@ export function pickElementoConRarita(catalogo, raritaTarget, esclusi = []) {
   return candidati[Math.floor(Math.random() * candidati.length)];
 }
 
-// Genera il contenuto di un pacchetto: 2 waifu + 2 outfit + 1 posa
+// Genera il contenuto di un pacchetto: 2 waifu + 2 outfit + 1 posa, in ordine casuale
 export function generaPacchetto({ waifuPool, outfitPool, posePool, escludiDoppioniWaifu = false, waifuPossedute = [] }) {
-  const carte = [];
+  const waifuCarte = [];
+  const outfitCarte = [];
+  const poseCarte = [];
   const waifuEstratte = [];
   for (let i = 0; i < 2; i++) {
     const r = pickRaritaCasuale();
@@ -33,21 +35,27 @@ export function generaPacchetto({ waifuPool, outfitPool, posePool, escludiDoppio
     if (escludiDoppioniWaifu) esclusi.push(...waifuPossedute);
     const w = pickElementoConRarita(waifuPool, r, esclusi);
     if (w) {
-      carte.push({ tipo: 'waifu', data: w });
+      waifuCarte.push({ tipo: 'waifu', data: w });
       waifuEstratte.push(w);
     }
   }
   for (let i = 0; i < 2; i++) {
     const r = pickRaritaCasuale();
     const o = pickElementoConRarita(outfitPool, r);
-    if (o) carte.push({ tipo: 'outfit', data: o });
+    if (o) outfitCarte.push({ tipo: 'outfit', data: o });
   }
   if (posePool.length > 0) {
     const r = pickRaritaCasuale();
     const p = pickElementoConRarita(posePool, r);
-    if (p) carte.push({ tipo: 'posa', data: p });
+    if (p) poseCarte.push({ tipo: 'posa', data: p });
   }
-  return carte;
+  // 16: mescola le 5 carte mantenendo la composizione (2w + 2o + 1p)
+  const allCarte = [...waifuCarte, ...outfitCarte, ...poseCarte];
+  for (let i = allCarte.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [allCarte[i], allCarte[j]] = [allCarte[j], allCarte[i]];
+  }
+  return allCarte;
 }
 
 // Calcola quanti pacchetti ricaricare in base al timestamp dell'ultima ricarica

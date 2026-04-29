@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, getDropAttivo, getClassifica, premioPerPosizione } from '@/lib/firestoreService';
+import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, getDropAttivo, getClassifica, premioPerPosizione, deleteTeamFromCollezione } from '@/lib/firestoreService';
 import { calcolaRicaricaPacchetti, calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, INCREMENTI_LEVELUP } from '@/lib/gameLogic';
 import { TIMER, RARITA, COLORI_CAPELLI, CATEGORIE_TETTE, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI } from '@/lib/constants';
 import PaperDoll from '@/components/PaperDoll';
@@ -95,7 +95,7 @@ export default function GiocoPage() {
         <NavTabs tab={tab} setTab={setTab} />
 
         <div style={{ padding: '12px 16px', maxWidth: 1400, margin: '0 auto' }}>
-          {tab === 'home' && <HomeTab profilo={profilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} setTab={setTab} setColezSubTab={setColezSubTab} />}
+          {tab === 'home' && <HomeTab profilo={profilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} setTab={setTab} setColezSubTab={setColezSubTab} user={user} />}
           {tab === 'sbusta' && <SbustaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} user={user} mostraNotif={mostraNotif} />}
           {tab === 'collezione' && <CollezioneTab collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} profilo={profilo} setProfilo={setProfilo} user={user} mostraNotif={mostraNotif} initialSubTab={colezSubTab} />}
           {tab === 'mappa' && <MappaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} user={user} mostraNotif={mostraNotif} />}
@@ -113,12 +113,33 @@ export default function GiocoPage() {
 // ============================================================
 function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
   const [popupEnergia, setPopupEnergia] = useState(false);
+  const [popupImpero, setPopupImpero] = useState(false);
   const [tempoRefill, setTempoRefill] = useState('');
   const energiaRef = useRef(null);
   const popupRef = useRef(null);
+  const imperoRef = useRef(null);
+  const popupImperoRef = useRef(null);
   const energiaMax = TIMER.MAX_ENERGIA;
   const energiaAttuale = profilo.energia ?? 0;
   const energiaPiena = energiaAttuale >= energiaMax;
+
+  // Tronca il nome dell'impero a 20 caratteri
+  const nomeImperoDisplay = profilo.nomeImpero && profilo.nomeImpero.length > 20
+    ? profilo.nomeImpero.slice(0, 20) + '…'
+    : profilo.nomeImpero;
+
+  // Chiudi popup nome impero cliccando fuori
+  useEffect(() => {
+    if (!popupImpero) return;
+    const handler = (e) => {
+      if (popupImperoRef.current && !popupImperoRef.current.contains(e.target) &&
+          imperoRef.current && !imperoRef.current.contains(e.target)) {
+        setPopupImpero(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [popupImpero]);
 
   // Calcola tempo al prossimo refill energia
   useEffect(() => {
@@ -169,18 +190,46 @@ function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
         <FramePersonaggio colore={profilo.coloreImpero} dimensione={38}>
           <span style={{ fontSize: 18, fontFamily: 'Orbitron', color: profilo.coloreImpero, fontWeight: 700 }}>♛</span>
         </FramePersonaggio>
-        <div style={{ minWidth: 0 }}>
-          {/* NOME IMPERO in grassetto e più grande */}
-          <div style={{
-            fontFamily: 'Orbitron, sans-serif',
-            fontSize: 14,
-            fontWeight: 900,
-            color: profilo.coloreImpero,
-            letterSpacing: 2,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            textShadow: `0 0 14px ${profilo.coloreImpero}80, 0 0 4px ${profilo.coloreImpero}60`,
-          }}>{profilo.nomeImpero}</div>
+        <div ref={imperoRef} style={{ minWidth: 0, position: 'relative' }}>
+          {/* NOME IMPERO in grassetto e più grande — cliccabile su mobile per popup Esci */}
+          <div
+            onClick={() => setPopupImpero(v => !v)}
+            style={{
+              fontFamily: 'Orbitron, sans-serif',
+              fontSize: 14,
+              fontWeight: 900,
+              color: profilo.coloreImpero,
+              letterSpacing: 2,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              textShadow: `0 0 14px ${profilo.coloreImpero}80, 0 0 4px ${profilo.coloreImpero}60`,
+              cursor: 'pointer',
+              userSelect: 'none',
+            }}>{nomeImperoDisplay}</div>
           <div style={{ fontSize: 8, opacity: 0.35, letterSpacing: 1, fontFamily: 'Fredoka' }}>{profilo.email}</div>
+
+          {/* Popup nome impero — mostra Esci (e admin se necessario), visibile solo su mobile */}
+          {popupImpero && (
+            <div ref={popupImperoRef} className="fade-up impero-nome-popup" style={{
+              position: 'absolute', top: 'calc(100% + 8px)', left: 0,
+              background: 'rgba(6,3,15,0.97)', backdropFilter: 'blur(20px)',
+              border: `1px solid ${profilo.coloreImpero}40`,
+              borderRadius: 12, padding: '10px 14px', minWidth: 160, zIndex: 200,
+              boxShadow: `0 8px 40px ${profilo.coloreImpero}25`,
+              display: 'flex', flexDirection: 'column', gap: 8,
+            }}>
+              <div style={{ fontFamily: 'Orbitron', fontSize: 8, letterSpacing: 2, color: profilo.coloreImpero, opacity: 0.6, marginBottom: 2 }}>
+                ⚜ {profilo.nomeImpero}
+              </div>
+              {isAdmin && (
+                <a href="/admin" style={{ textDecoration: 'none' }}>
+                  <BtnDecorato variant="secondary" size="sm" style={{ width: '100%' }}>⚙ ADMIN</BtnDecorato>
+                </a>
+              )}
+              <BtnDecorato variant="danger" size="sm" onClick={() => { setPopupImpero(false); onLogout(); }}>
+                ESCI
+              </BtnDecorato>
+            </div>
+          )}
         </div>
       </div>
 
@@ -278,8 +327,8 @@ function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
         {/* Separatore visivo */}
         <div style={{ width: 1, height: 28, background: 'rgba(245,166,35,0.15)', flexShrink: 0 }} />
 
-        {isAdmin && <a href="/admin" style={{ textDecoration: 'none' }}><BtnDecorato variant="secondary" size="sm">⚙ ADMIN</BtnDecorato></a>}
-        <BtnDecorato variant="danger" size="sm" onClick={onLogout}>ESCI</BtnDecorato>
+        {isAdmin && <a href="/admin" style={{ textDecoration: 'none' }} className="header-desktop-only"><BtnDecorato variant="secondary" size="sm">⚙ ADMIN</BtnDecorato></a>}
+        <BtnDecorato variant="danger" size="sm" onClick={onLogout} className="header-desktop-only">ESCI</BtnDecorato>
       </div>
     </div>
   );
@@ -329,10 +378,10 @@ function PackBlock({ profilo }) {
 // NAV TABS — Desktop orizzontale + evento goto da Header
 // ============================================================
 const TAB_DEFS = [
-  { id: 'home',       label: 'Home',       icon: '♛',  iconBig: '♛' },
+  { id: 'home',       label: 'Home',       icon: '🏠',  iconBig: '🏠' },
   { id: 'mappa',      label: 'Mappa',      icon: '⚔',  iconBig: '⚔' },
-  { id: 'sbusta',     label: 'Sbusta',     icon: '◈',  iconBig: '◈' },
-  { id: 'collezione', label: 'Collezione', icon: '☷',  iconBig: '☷' },
+  { id: 'sbusta',     label: 'Sbusta',     icon: '🎁',  iconBig: '🎁' },
+  { id: 'collezione', label: 'Collezione', icon: '💎',  iconBig: '💎' },
   { id: 'classifica', label: 'Classifica', icon: '🏆', iconBig: '🏆' },
 ];
 
@@ -406,7 +455,7 @@ function BottomNav({ tab, setTab, isAdmin }) {
             )}
             {/* Cerchio glow per l'icona attiva */}
             <div style={{
-              width: 36, height: 36, borderRadius: '50%',
+              width: 40, height: 40, borderRadius: '50%',
               background: isActive ? 'rgba(245,166,35,0.12)' : 'transparent',
               border: isActive ? '1px solid rgba(245,166,35,0.3)' : '1px solid transparent',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -414,7 +463,7 @@ function BottomNav({ tab, setTab, isAdmin }) {
               boxShadow: isActive ? '0 0 12px rgba(245,166,35,0.25)' : 'none',
             }}>
               <span style={{
-                fontSize: 18,
+                fontSize: 22,
                 filter: isActive ? 'drop-shadow(0 0 6px #ffd666)' : 'none',
                 transition: 'all 0.18s',
               }}>{t.icon}</span>
@@ -432,11 +481,21 @@ function BottomNav({ tab, setTab, isAdmin }) {
 // ============================================================
 // TAB: HOME — FASE 2
 // ============================================================
-function HomeTab({ profilo, collezione, waifuCat, outfitCat, poseCat, setTab, setColezSubTab }) {
+function HomeTab({ profilo, collezione, waifuCat, outfitCat, poseCat, setTab, setColezSubTab, user }) {
   const numWaifu = Object.keys(collezione.waifu || {}).length;
-  const numOutfit = Object.values(collezione.outfit || {}).reduce((s, v) => s + (v.quantita || 0), 0);
-  const numPose = Object.values(collezione.pose || {}).reduce((s, v) => s + (v.quantita || 0), 0);
+  const numOutfit = Object.keys(collezione.outfit || {}).length;
+  const numPose = Object.keys(collezione.pose || {}).length;
   const totalPack = (profilo.pacchettiOmaggio ?? 0) + (profilo.pacchettiBenvenuto ?? 0) + (profilo.pacchettiSfida ?? 0);
+
+  const [posizioneClassifica, setPosizioneClassifica] = useState(null);
+
+  useEffect(() => {
+    if (!user) return;
+    getClassifica(200).then(classifica => {
+      const idx = classifica.findIndex(u => u.id === user.uid);
+      setPosizioneClassifica(idx >= 0 ? idx + 1 : null);
+    }).catch(() => {});
+  }, [user]);
 
   // Costruisce la lista di tutte le carte per il banner (waifu + outfit + pose)
   const tutteLeWaifu = Object.entries(collezione.waifu || {}).map(([id, dati]) => {
@@ -474,7 +533,7 @@ function HomeTab({ profilo, collezione, waifuCat, outfitCat, poseCat, setTab, se
       </div>
 
       {/* ── STATISTICHE COMBATTIMENTO ── */}
-      <StatCombattimento profilo={profilo} territoriConquistati={territoriConquistati} setTab={setTab} />
+      <StatCombattimento profilo={profilo} territoriConquistati={territoriConquistati} setTab={setTab} posizioneClassifica={posizioneClassifica} />
 
       {/* ── CTA MAPPA ── */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
@@ -554,25 +613,66 @@ function HomeTab({ profilo, collezione, waifuCat, outfitCat, poseCat, setTab, se
 }
 
 // ── Statistiche Combattimento (Fase 2) ──────────────────────
-function StatCombattimento({ profilo, territoriConquistati, setTab }) {
+function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneClassifica }) {
   const vittorie = profilo.vittorie ?? 0;
   const sconfitte = profilo.sconfitte ?? 0;
   const livelloMappa = profilo.livelloMappa ?? 1;
 
-  const statItems = [
-    { icon: '✅', val: vittorie,             label: 'VITTORIE',    col: '#00e676' },
-    { icon: '❌', val: sconfitte,            label: 'SCONFITTE',   col: '#ff3d3d' },
+  const row1 = [
     { icon: '🗺', val: `Lv.${livelloMappa}`, label: 'LIV. MAPPA',  col: '#9b59ff' },
     { icon: '🏴', val: territoriConquistati, label: 'TERRITORI',   col: '#ffd666' },
+  ];
+
+  const row2 = [
+    { icon: '✅', val: vittorie,             label: 'VITTORIE',    col: '#00e676' },
+    { icon: '❌', val: sconfitte,            label: 'SCONFITTE',   col: '#ff3d3d' },
     {
       icon: '🏆',
-      val: '—',
+      val: posizioneClassifica != null ? `#${posizioneClassifica}` : '—',
       label: 'CLASSIFICA',
       col: '#ff2d78',
       onClick: () => setTab('classifica'),
       clickable: true,
     },
   ];
+
+  const StatBox = ({ s }) => (
+    <div
+      key={s.label}
+      onClick={s.clickable ? s.onClick : undefined}
+      style={{
+        flex: 1,
+        textAlign: 'center',
+        padding: '8px 4px',
+        borderRadius: 10,
+        background: s.clickable ? 'rgba(255,45,120,0.06)' : 'rgba(255,255,255,0.02)',
+        border: `1px solid ${s.clickable ? 'rgba(255,45,120,0.25)' : 'rgba(255,255,255,0.05)'}`,
+        cursor: s.clickable ? 'pointer' : 'default',
+        transition: 'all 0.18s',
+      }}
+      onMouseEnter={s.clickable ? e => {
+        e.currentTarget.style.background = 'rgba(255,45,120,0.14)';
+        e.currentTarget.style.borderColor = 'rgba(255,45,120,0.5)';
+      } : undefined}
+      onMouseLeave={s.clickable ? e => {
+        e.currentTarget.style.background = 'rgba(255,45,120,0.06)';
+        e.currentTarget.style.borderColor = 'rgba(255,45,120,0.25)';
+      } : undefined}
+    >
+      <div style={{ fontSize: 14, marginBottom: 2 }}>{s.icon}</div>
+      <div style={{
+        fontFamily: 'Orbitron', fontSize: 13, fontWeight: 700,
+        color: s.col, lineHeight: 1,
+      }}>{s.val}</div>
+      <div style={{
+        fontSize: 6, opacity: 0.45, letterSpacing: 1.5,
+        marginTop: 3, fontFamily: 'Orbitron', color: s.col,
+      }}>{s.label}</div>
+      {s.clickable && (
+        <div style={{ fontSize: 7, color: s.col, opacity: 0.6, marginTop: 2 }}>›</div>
+      )}
+    </div>
+  );
 
   return (
     <div style={{
@@ -589,44 +689,20 @@ function StatCombattimento({ profilo, territoriConquistati, setTab }) {
       }}>
         ⚔ STATISTICHE COMBATTIMENTO
       </div>
-      <div style={{ display: 'flex', gap: 6, justifyContent: 'space-between' }}>
-        {statItems.map(s => (
-          <div
-            key={s.label}
-            onClick={s.clickable ? s.onClick : undefined}
-            style={{
-              flex: 1,
-              textAlign: 'center',
-              padding: '8px 4px',
-              borderRadius: 10,
-              background: s.clickable ? 'rgba(255,45,120,0.06)' : 'rgba(255,255,255,0.02)',
-              border: `1px solid ${s.clickable ? 'rgba(255,45,120,0.25)' : 'rgba(255,255,255,0.05)'}`,
-              cursor: s.clickable ? 'pointer' : 'default',
-              transition: 'all 0.18s',
-            }}
-            onMouseEnter={s.clickable ? e => {
-              e.currentTarget.style.background = 'rgba(255,45,120,0.14)';
-              e.currentTarget.style.borderColor = 'rgba(255,45,120,0.5)';
-            } : undefined}
-            onMouseLeave={s.clickable ? e => {
-              e.currentTarget.style.background = 'rgba(255,45,120,0.06)';
-              e.currentTarget.style.borderColor = 'rgba(255,45,120,0.25)';
-            } : undefined}
-          >
-            <div style={{ fontSize: 14, marginBottom: 2 }}>{s.icon}</div>
-            <div style={{
-              fontFamily: 'Orbitron', fontSize: 13, fontWeight: 700,
-              color: s.col, lineHeight: 1,
-            }}>{s.val}</div>
-            <div style={{
-              fontSize: 6, opacity: 0.45, letterSpacing: 1.5,
-              marginTop: 3, fontFamily: 'Orbitron', color: s.col,
-            }}>{s.label}</div>
-            {s.clickable && (
-              <div style={{ fontSize: 7, color: s.col, opacity: 0.6, marginTop: 2 }}>›</div>
-            )}
-          </div>
-        ))}
+
+      {/* Layout mobile: 2 righe; desktop: 1 riga con tutti e 5 */}
+      <div className="stat-combat-desktop" style={{ display: 'flex', gap: 6, justifyContent: 'space-between' }}>
+        {[...row1, ...row2].map(s => <StatBox key={s.label} s={s} />)}
+      </div>
+      <div className="stat-combat-mobile">
+        {/* Riga 1: Lv.Mappa + Territori */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+          {row1.map(s => <StatBox key={s.label} s={s} />)}
+        </div>
+        {/* Riga 2: Vittorie + Sconfitte + Classifica */}
+        <div style={{ display: 'flex', gap: 6 }}>
+          {row2.map(s => <StatBox key={s.label} s={s} />)}
+        </div>
       </div>
     </div>
   );
@@ -635,7 +711,15 @@ function StatCombattimento({ profilo, territoriConquistati, setTab }) {
 // ── Banner Ultime Carte (Fase 2 + Fase 3: modal click) ─────
 function BannerUltimeCarte({ tutteLeWaifu, tuttiGliOutfit, tutteLePose, outfitCat, poseCat, collezione, profilo, totalPack, setTab }) {
   const [cartaSel, setCartaSel] = useState(null); // Fase 3: carta selezionata per modal
-  const hasAnyCard = tutteLeWaifu.length > 0 || tuttiGliOutfit.length > 0 || tutteLePose.length > 0;
+
+  // Ultime 20 carte: mescola waifu+outfit+posa, ordinate per acquisito (più recente prima) e limita a 20
+  const tutteOrdinatePerData = [
+    ...tutteLeWaifu.map(item => ({ ...item, _ts: item.dati?.acquisito?.toMillis ? item.dati.acquisito.toMillis() : Number(item.dati?.acquisito) || 0 })),
+    ...tuttiGliOutfit.map(item => ({ ...item, _ts: item.dati?.acquisito?.toMillis ? item.dati.acquisito.toMillis() : Number(item.dati?.acquisito) || 0 })),
+    ...tutteLePose.map(item => ({ ...item, _ts: item.dati?.acquisito?.toMillis ? item.dati.acquisito.toMillis() : Number(item.dati?.acquisito) || 0 })),
+  ].sort((a, b) => b._ts - a._ts).slice(0, 20);
+
+  const hasAnyCard = tutteOrdinatePerData.length > 0;
 
   return (
     <PannelloOrnato glow="#9b59ff" variant="purple">
@@ -653,35 +737,43 @@ function BannerUltimeCarte({ tutteLeWaifu, tuttiGliOutfit, tutteLePose, outfitCa
           <CardPacchettoOverlay profilo={profilo} totalPack={totalPack} setTab={setTab} />
         </div>
 
-        {/* Waifu */}
-        {tutteLeWaifu.map(({ id, w, dati }) => (
-          <div key={`w-${id}`} style={{ flexShrink: 0 }}>
-            <CartaWaifu
-              waifu={w}
-              datiCollezione={dati}
-              dimensione="piccola"
-              tipo="auto"
-              outfitCatalogo={outfitCat}
-              poseCatalogo={poseCat}
-              equip={collezione.equipaggiamento?.[id]}
-              onClick={() => setCartaSel({ tipo: 'waifu', w, dati })}
-            />
-          </div>
-        ))}
-
-        {/* Outfit */}
-        {tuttiGliOutfit.map(({ id, o }) => (
-          <div key={`o-${id}`} style={{ flexShrink: 0 }}>
-            <CartaOutfit outfit={o} onClick={() => setCartaSel({ tipo: 'outfit', o })} />
-          </div>
-        ))}
-
-        {/* Pose */}
-        {tutteLePose.map(({ id, p }) => (
-          <div key={`p-${id}`} style={{ flexShrink: 0 }}>
-            <CartaPosa posa={p} onClick={() => setCartaSel({ tipo: 'posa', p })} />
-          </div>
-        ))}
+        {/* Ultime 20 carte miste, ordinate per data acquisizione */}
+        {tutteOrdinatePerData.map((item) => {
+          if (item.tipo === 'waifu') {
+            const { id, w, dati } = item;
+            return (
+              <div key={`w-${id}`} style={{ flexShrink: 0 }}>
+                <CartaWaifu
+                  waifu={w}
+                  datiCollezione={dati}
+                  dimensione="piccola"
+                  tipo="auto"
+                  outfitCatalogo={outfitCat}
+                  poseCatalogo={poseCat}
+                  equip={collezione.equipaggiamento?.[id]}
+                  onClick={() => setCartaSel({ tipo: 'waifu', w, dati })}
+                />
+              </div>
+            );
+          }
+          if (item.tipo === 'outfit') {
+            const { id, o } = item;
+            return (
+              <div key={`o-${id}`} style={{ flexShrink: 0 }}>
+                <CartaOutfit outfit={o} dimensione="piccola" onClick={() => setCartaSel({ tipo: 'outfit', o })} />
+              </div>
+            );
+          }
+          if (item.tipo === 'posa') {
+            const { id, p } = item;
+            return (
+              <div key={`p-${id}`} style={{ flexShrink: 0 }}>
+                <CartaPosa posa={p} dimensione="piccola" onClick={() => setCartaSel({ tipo: 'posa', p })} />
+              </div>
+            );
+          }
+          return null;
+        })}
 
         {!hasAnyCard && (
           <div style={{ padding: '30px 20px', textAlign: 'center', opacity: 0.4, fontSize: 12, minWidth: 200 }}>
@@ -838,8 +930,9 @@ function ModaleCarta({ carta, onClose }) {
         background: 'rgba(6,3,15,0.88)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         backdropFilter: 'blur(12px)',
-        padding: 16,
+        padding: '16px 16px 80px 16px', /* padding bottom per non finire sotto la navbar */
         animation: 'fadeIn 0.18s ease',
+        overflowY: 'auto',
       }}
     >
       <div style={{
@@ -850,7 +943,7 @@ function ModaleCarta({ carta, onClose }) {
         padding: 24,
         maxWidth: 420,
         width: '100%',
-        maxHeight: '90vh',
+        maxHeight: 'calc(100vh - 96px)', /* 80px navbar + 16px top padding */
         overflowY: 'auto',
         boxShadow: '0 0 60px rgba(245,166,35,0.12), 0 0 120px rgba(155,89,255,0.08)',
       }}>
@@ -1070,9 +1163,10 @@ function ClassificaTab({ user }) {
     lun.setDate(ora.getDate() + diff);
     lun.setHours(0, 0, 0, 0);
     const diffMs = lun - ora;
-    const ore = Math.floor(diffMs / 3600000);
+    const giorni = Math.floor(diffMs / 86400000);
+    const ore = Math.floor((diffMs % 86400000) / 3600000);
     const min = Math.floor((diffMs % 3600000) / 60000);
-    return `${ore}h ${min}m`;
+    return giorni > 0 ? `${giorni}d ${ore}h ${min}m` : `${ore}h ${min}m`;
   })();
 
   return (
@@ -1104,7 +1198,7 @@ function ClassificaTab({ user }) {
             }}>
               <div style={{ fontSize: 11, color: p.col, fontWeight: 700, fontFamily: 'Orbitron' }}>{p.label}</div>
               <div style={{ fontSize: 16, color: '#fff', fontFamily: 'Orbitron', fontWeight: 900, marginTop: 2 }}>{p.pack}</div>
-              <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', letterSpacing: 1 }}>PACK</div>
+              <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', letterSpacing: 1 }}>🎴 PREMIO</div>
             </div>
           ))}
         </div>
@@ -1129,7 +1223,7 @@ function ClassificaTab({ user }) {
             const u = classifica[idx];
             const col = podiumColors[idx];
             const isMe = user && u.id === user.uid;
-            const altezze = [110, 140, 95];
+            const altezze = [150, 120, 95];
             return (
               <div key={idx} style={{
                 flex: 1, maxWidth: 130,
@@ -1187,7 +1281,7 @@ function ClassificaTab({ user }) {
                 <Chip colore="#ffd666" size="xs">🏴{classifica[mioIndice]?._territori}</Chip>
               </div>
               <div style={{ fontSize: 9, color: '#ffd666', fontFamily: 'Orbitron' }}>
-                {premioPerPosizione(mioIndice + 1)}📦
+                {premioPerPosizione(mioIndice + 1)}🎴
               </div>
             </div>
           )}
@@ -1198,7 +1292,7 @@ function ClassificaTab({ user }) {
             <div style={{ flex: 1, fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron' }}>GIOCATORE</div>
             <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', minWidth: 40, textAlign: 'center' }}>MAPPA</div>
             <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', minWidth: 40, textAlign: 'center' }}>🏴</div>
-            <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', minWidth: 30, textAlign: 'right' }}>PACK</div>
+            <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', minWidth: 30, textAlign: 'right' }}>🎴</div>
           </div>
 
           <div style={{ maxHeight: 420, overflowY: 'auto' }}>
@@ -1260,7 +1354,7 @@ function ClassificaTab({ user }) {
                     color: premio >= 3 ? '#ffd666' : 'rgba(238,232,220,0.4)',
                     fontWeight: premio >= 3 ? 700 : 400,
                   }}>
-                    {premio}📦
+                    {premio}🎴
                   </div>
                 </div>
               );
@@ -1332,6 +1426,12 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     const carte = generaPacchetto({ waifuPool: wp, outfitPool: op, posePool: pp, escludiDoppioniWaifu: escludiDoppioni, waifuPossedute });
     setCarteRivelate(carte); setIndiceRivelato(-1); setStato('reveal');
     const nuova = JSON.parse(JSON.stringify(collezione));
+    // 15: segna le carte nuove (prima di aggiornarle nella collezione)
+    carte.forEach(c => {
+      if (c.tipo === 'waifu') { c.isNuova = !nuova.waifu[c.data.id]; }
+      else if (c.tipo === 'outfit') { c.isNuova = !(nuova.outfit[c.data.id]?.quantita > 0); }
+      else if (c.tipo === 'posa') { c.isNuova = !(nuova.pose[c.data.id]?.quantita > 0); }
+    });
     carte.forEach(c => {
       if (c.tipo === 'waifu') { if (nuova.waifu[c.data.id]) nuova.waifu[c.data.id].copie++; else nuova.waifu[c.data.id] = { copie: 1, livello: 1, stat_bonus: {} }; }
       else if (c.tipo === 'outfit') { nuova.outfit[c.data.id] = { quantita: (nuova.outfit[c.data.id]?.quantita || 0) + 1 }; }
@@ -1378,6 +1478,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
             return (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                 <div style={{
+                  position: 'relative',
                   opacity: rivelata ? 1 : 0.2,
                   transform: rivelata ? 'scale(1)' : 'scale(0.85)',
                   transition: 'all 0.6s',
@@ -1387,6 +1488,25 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
                     c.tipo === 'waifu' ? <CartaWaifu waifu={c.data} dimensione="piccola" tipo="auto" /> :
                     c.tipo === 'outfit' ? <CartaOutfit outfit={c.data} dimensione="piccola" /> :
                     <CartaPosa posa={c.data} dimensione="piccola" />}
+                  {/* 15: badge NEW! per carte nuove */}
+                  {rivelata && c.isNuova && (
+                    <div style={{
+                      position: 'absolute', top: 6, right: 6,
+                      background: 'linear-gradient(135deg, #f5a623cc, #ff2d78cc)',
+                      color: '#fff',
+                      fontFamily: 'Orbitron, monospace',
+                      fontSize: 7,
+                      fontWeight: 900,
+                      letterSpacing: 1,
+                      padding: '2px 5px',
+                      borderRadius: 4,
+                      border: '1px solid rgba(255,255,255,0.35)',
+                      boxShadow: '0 0 8px rgba(245,166,35,0.5)',
+                      pointerEvents: 'none',
+                      zIndex: 10,
+                      textTransform: 'uppercase',
+                    }}>NEW!</div>
+                  )}
                 </div>
                 {rivelata && isWaifu && (
                   <div style={{ textAlign: 'center', minHeight: 16 }}>
@@ -1529,7 +1649,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
       )}
 
       {/* 3 PACCHETTI AFFIANCATI — Stile Pokémon Pocket */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 14, justifyContent: 'center' }}>
+      <div className="pack-cards-container" style={{ display: 'flex', gap: 10, marginBottom: 14, justifyContent: 'center' }}>
 
         {/* PACCHETTO OMAGGIO */}
         <PackCard
@@ -1695,6 +1815,7 @@ function PackCard({ tipo, count, max, colore, colore2, icona, label, sub, esauri
       onClick={!esaurito ? onClick : undefined}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
+      className="pack-card-item"
       style={{
         flex: 1, minWidth: 95, maxWidth: 130,
         background: esaurito
@@ -1720,19 +1841,21 @@ function PackCard({ tipo, count, max, colore, colore2, icona, label, sub, esauri
       </svg>
 
       {/* Immagine bustina o icona */}
-      <div style={{ position: 'relative', marginBottom: 8, zIndex: 1 }}>
+      <div style={{ position: 'relative', marginBottom: 8, zIndex: 1, width: '100%', display: 'flex', justifyContent: 'center' }}>
         {asset ? (
-          <img src={asset} alt="" style={{
-            width: 56, height: 56, objectFit: 'cover', borderRadius: 10,
+          <img src={asset} alt="" className="pack-card-img" style={{
+            width: 56, objectFit: 'contain', borderRadius: 10,
             border: `1.5px solid ${colore}50`,
             filter: esaurito ? 'brightness(0.5)' : 'none',
+            display: 'block',
           }} />
         ) : (
-          <div style={{
-            width: 56, height: 56, borderRadius: 10,
+          <div className="pack-card-img" style={{
+            width: 56, borderRadius: 10,
             background: `linear-gradient(135deg, ${colore}30, ${colore2}20)`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 28, border: `1.5px solid ${colore}40`,
+            aspectRatio: '2/3',
           }}>{icona}</div>
         )}
         {/* Pulsa quando disponibile */}
@@ -1845,7 +1968,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
   const eliminaTeam = async (teamId) => {
     const nuova = JSON.parse(JSON.stringify(collezione));
     delete nuova.teams[teamId]; setColl(nuova);
-    await saveCollezione(user.uid, nuova);
+    await deleteTeamFromCollezione(user.uid, teamId);
     mostraNotif('Team eliminato', '#ff3d3d');
   };
 
@@ -1967,9 +2090,9 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
               </div>
               <span style={{ fontSize: 9, color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron', marginLeft: 4 }}>{waifuEntries.length} carte</span>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
+            <div className="collection-card-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
               {visibili.map(({ id, dati, w }, idx) => (
-                <div key={id} className="card-fade-up card-clickable" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', animationDelay: `${idx * 45}ms` }}>
+                <div key={id} className="card-fade-up card-clickable collection-card-item" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', animationDelay: `${idx * 45}ms` }}>
                   <CartaWaifu waifu={w} datiCollezione={dati} dimensione="piccola" tipo="auto" onClick={() => setWaifuSel(id)} outfitCatalogo={outfitCat} poseCatalogo={poseCat} equip={collezione.equipaggiamento?.[id]} />
                   <div style={{ textAlign: 'center', marginTop: 4 }}>
                     {dati.copie >= 3 ? (
@@ -2020,10 +2143,10 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
               </div>
               <span style={{ fontSize: 9, color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron' }}>{outfitEntries.length} outfit</span>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
+            <div className="collection-card-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
               {visibili.map(({ id, dati, o }, idx) => (
-                <div key={id} className="card-fade-up card-clickable" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, animationDelay: `${idx * 45}ms` }}>
-                  <CartaOutfit outfit={o} quantita={dati.quantita} />
+                <div key={id} className="card-fade-up card-clickable collection-card-item" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, animationDelay: `${idx * 45}ms` }}>
+                  <CartaOutfit outfit={o} quantita={dati.quantita} dimensione="piccola" />
                   <span style={{ fontFamily: 'Orbitron', fontSize: 8, color: '#9b59ff' }}>
                     x<strong style={{ color: '#ffd666' }}>{dati.quantita}</strong> copie
                   </span>
@@ -2068,10 +2191,10 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
               </div>
               <span style={{ fontSize: 9, color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron' }}>{poseEntries.length} pose</span>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
+            <div className="collection-card-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
               {visibili.map(({ id, dati, p }, idx) => (
-                <div key={id} className="card-fade-up card-clickable" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, animationDelay: `${idx * 45}ms` }}>
-                  <CartaPosa posa={p} quantita={dati.quantita} />
+                <div key={id} className="card-fade-up card-clickable collection-card-item" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, animationDelay: `${idx * 45}ms` }}>
+                  <CartaPosa posa={p} quantita={dati.quantita} dimensione="piccola" />
                   <span style={{ fontFamily: 'Orbitron', fontSize: 8, color: '#ff2d78' }}>
                     x<strong style={{ color: '#ffd666' }}>{dati.quantita}</strong> copie
                   </span>
@@ -2637,7 +2760,7 @@ function RoundEndBar({ vincitoreRound, statScelta, direzione, carteP, carteC, ro
   const eFine = round >= 5 || punteggio.player >= 3 || punteggio.cpu >= 3;;
 
   return (
-    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 70, padding: '10px 16px', background: 'rgba(6,3,15,0.96)', borderTop: `2px solid ${colore}` }}>
+    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 110, padding: '10px 16px 74px 16px', background: 'rgba(6,3,15,0.96)', borderTop: `2px solid ${colore}` }}>
       <div style={{ maxWidth: 500, margin: '0 auto', textAlign: 'center' }}>
         <div style={{ fontSize: 13, fontFamily: 'Orbitron', fontWeight: 700, marginBottom: 4, color: colore }}>
           {vincitoreRound === 'player' ? '✅ HAI VINTO!' : vincitoreRound === 'cpu' ? '❌ ROUND PERSO' : '🤝 PAREGGIO'}
@@ -2968,8 +3091,9 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
       const nt = { ...territoriUtente, [terrSel.id]: { conquistato: true, impero: profilo.nomeImpero, coloreImpero: profilo.coloreImpero || '#f5a623' } };
       setTerritoriUtente(nt);
       const nps = (profilo.pacchettiSfida ?? 0) + 1;
-      setProfilo({ ...profilo, pacchettiSfida: nps, territoriUtente: nt });
-      await updateUserProfile(user.uid, { territoriUtente: nt, pacchettiSfida: nps, livelloMappa, livelloCPU });
+      const nv = (profilo.vittorie ?? 0) + 1;
+      setProfilo({ ...profilo, pacchettiSfida: nps, territoriUtente: nt, vittorie: nv });
+      await updateUserProfile(user.uid, { territoriUtente: nt, pacchettiSfida: nps, livelloMappa, livelloCPU, vittorie: nv });
       const numConq = Object.values(nt).filter(t => t?.conquistato).length;
       if (numConq >= TERRITORI.length) {
         setTimeout(async () => {
@@ -2987,8 +3111,13 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
     } else {
       if ((profilo.energia ?? 0) >= 1) {
         const ne = (profilo.energia ?? 0) - 1;
-        setProfilo({ ...profilo, energia: ne });
-        await updateUserProfile(user.uid, { energia: ne });
+        const ns = (profilo.sconfitte ?? 0) + 1;
+        setProfilo({ ...profilo, energia: ne, sconfitte: ns });
+        await updateUserProfile(user.uid, { energia: ne, sconfitte: ns });
+      } else {
+        const ns = (profilo.sconfitte ?? 0) + 1;
+        setProfilo({ ...profilo, sconfitte: ns });
+        await updateUserProfile(user.uid, { sconfitte: ns });
       }
     }
   };
@@ -3267,7 +3396,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
 
         {/* ── Campo di battaglia: carte ── */}
         <PannelloOrnato style={{ padding: 14, marginBottom: 10 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', flexWrap: 'nowrap', gap: 8, overflowX: 'auto' }}>
             {/* Carta Player */}
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 8, letterSpacing: 2, opacity: 0.4, marginBottom: 4, fontFamily: 'Orbitron' }}>TU</div>

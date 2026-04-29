@@ -33,6 +33,20 @@ html, body {
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  /* 13: disabilita selezione testo e zoom */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  touch-action: pan-x pan-y;
+  -webkit-touch-callout: none;
+}
+/* Consenti selezione solo negli input */
+input, textarea, [contenteditable] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
 }
 
 /* Blocca lo scroll del body quando una modale è aperta */
@@ -252,7 +266,7 @@ input:focus, textarea:focus, select:focus {
     padding-bottom: 72px;
   }
 
-  /* Header compatto su mobile */
+/* Header compatto su mobile */
   .game-header {
     padding: 8px 12px !important;
   }
@@ -260,6 +274,26 @@ input:focus, textarea:focus, select:focus {
     font-size: 11px !important;
   }
 
+  /* Nascondi bottone Esci e Admin nell'header su mobile — appaiono nel popup nome impero */
+  .header-desktop-only {
+    display: none !important;
+  }
+
+  /* Il popup del nome impero è visibile solo su mobile */
+  .impero-nome-popup {
+    display: flex !important;
+  }
+
+  /* Bustine più grandi su mobile: riempiono lo spazio orizzontale */
+  .pack-cards-container {
+    gap: 8px !important;
+    padding: 0 4px;
+  }
+  .pack-card-item {
+    min-width: 0 !important;
+    max-width: none !important;
+    flex: 1 !important;
+  }
   /* Nascondi nav tabs desktop su mobile */
   .nav-tabs-desktop { display: none !important; }
 
@@ -277,11 +311,54 @@ input:focus, textarea:focus, select:focus {
   .game-container { display: block !important; }
   .nav-tabs-desktop { display: flex !important; }
   .bottom-nav-mobile { display: none !important; }
+  /* Su desktop: mostra stat in 1 riga, nascondi layout mobile */
+  .stat-combat-desktop { display: flex !important; }
+  .stat-combat-mobile { display: none !important; }
+  /* Su desktop: mostra ESCI/Admin nell'header, nascondi popup nome impero */
+  .header-desktop-only { display: inline-flex !important; }
+  .impero-nome-popup { display: none !important; }
+}
+
+/* Mobile: 2 righe per le stat */
+@media (max-width: 768px) {
+  .stat-combat-desktop { display: none !important; }
+  .stat-combat-mobile { display: block !important; }
 }
 
 /* Landscape mobile: comportamento desktop (opzionale, per compatibilità tablet) */
 @media (max-width: 768px) and (orientation: landscape) {
   .bottom-nav-mobile {
     height: 52px;
+  }
+}
+
+/* ── Fix 9: Griglia collezione — 3 carte per riga su mobile portrait ── */
+@media (max-width: 768px) and (orientation: portrait) {
+  .collection-card-grid {
+    gap: 6px !important;
+  }
+  .collection-card-item {
+    width: calc(33.333% - 6px) !important;
+    min-width: 0 !important;
+  }
+  /* Scale down cards to fit 3 per row */
+  .collection-card-item .carta-waifu-root,
+  .collection-card-item > div:first-child > div,
+  .collection-card-item > div:first-child {
+    transform: scale(0.88);
+    transform-origin: top center;
+  }
+}
+
+/* ── Fix 12: Campo battaglia mobile — single row ── */
+@media (max-width: 768px) and (orientation: portrait) {
+  .battle-field-row {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+  }
+  /* Scala giù le carte nel campo battaglia */
+  .battle-field-row .carta-waifu-root {
+    transform: scale(0.7);
+    transform-origin: top center;
   }
 }

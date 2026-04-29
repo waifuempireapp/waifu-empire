@@ -5,6 +5,7 @@ import {
   doc, getDoc, setDoc, updateDoc, deleteDoc,
   collection, query, where, getDocs, addDoc,
   serverTimestamp, Timestamp, orderBy, limit,
+  deleteField,
 } from 'firebase/firestore';
 
 // =================== UTENTI ===================
@@ -150,4 +151,10 @@ export function premioPerPosizione(pos) {
   if (pos === 3) return 3;
   if (pos <= 100) return 2;
   return 1;
+}
+
+// Elimina un team singolo dal DB usando deleteField per rimozione effettiva
+export async function deleteTeamFromCollezione(uid, teamId) {
+  const ref = doc(db, 'users', uid, 'collezione', 'main');
+  await updateDoc(ref, { [`teams.${teamId}`]: deleteField() });
 }
