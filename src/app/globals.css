@@ -1,4 +1,4 @@
-/* src/app/globals.css — REWORK COMPLETO UI/UX */
+/* src/app/globals.css — FASE 1: Mobile verticale + fix UX */
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Fredoka:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
 
 :root {
@@ -33,6 +33,11 @@ html, body {
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Blocca lo scroll del body quando una modale è aperta */
+body.modal-open {
+  overflow: hidden !important;
 }
 
 body {
@@ -80,7 +85,15 @@ h1, h2, h3, h4 {
 @keyframes glowPulse { 0%,100% { filter:drop-shadow(0 0 8px currentColor); } 50% { filter:drop-shadow(0 0 24px currentColor); } }
 @keyframes spin { from { transform:rotateY(0); } to { transform:rotateY(2160deg); } }
 @keyframes floatUp { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-8px); } }
-@keyframes rotatePhone { 0%,100% { transform:rotate(0deg); } 25% { transform:rotate(-90deg); } 50% { transform:rotate(-90deg); } 75% { transform:rotate(0deg); } }
+
+/* Pulsazione territori conquistabili (più intensa) */
+@keyframes territorioPulse {
+  0%,100% { opacity: 1; filter: brightness(1) drop-shadow(0 0 6px currentColor); }
+  50% { opacity: 0.75; filter: brightness(1.35) drop-shadow(0 0 18px currentColor); }
+}
+.territorio-pulse {
+  animation: territorioPulse 1.1s ease-in-out infinite;
+}
 
 .fade-in { animation: fadeIn 0.4s ease-out; }
 .fade-up { animation: fadeUp 0.5s ease-out forwards; }
@@ -125,65 +138,102 @@ input:focus, textarea:focus, select:focus {
   background-clip:text;
 }
 
-/* ========== MOBILE: SOLO LANDSCAPE + OVERLAY ROTAZIONE ========== */
-.rotate-overlay {
-  display:none;
-  position:fixed; inset:0; z-index:99999;
-  background:rgba(6,3,15,0.98);
-  backdrop-filter:blur(20px);
-  flex-direction:column;
-  align-items:center; justify-content:center;
-  gap:20px;
-  color:var(--gold);
-  font-family:'Orbitron',sans-serif;
+/* ========== MAPPA: contenitore scrollabile con zoom ========== */
+.mappa-scroll-container {
+  width: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  cursor: grab;
+  position: relative;
 }
-.rotate-overlay .rotate-phone {
-  font-size:64px;
-  animation:rotatePhone 3s ease-in-out infinite;
-  filter:drop-shadow(0 0 20px var(--gold));
+.mappa-scroll-container:active {
+  cursor: grabbing;
 }
-.rotate-overlay .rotate-text {
-  font-size:14px;
-  letter-spacing:4px;
-  text-transform:uppercase;
-  text-align:center;
-  line-height:1.8;
-}
-.rotate-overlay .rotate-sub {
-  font-size:10px;
-  color:var(--text-dim);
-  letter-spacing:2px;
+.mappa-scroll-container::-webkit-scrollbar {
+  width: 4px; height: 4px;
 }
 
-@media (max-width:1024px) and (orientation:portrait) {
-  .rotate-overlay { display:flex !important; }
-  .game-container { display:none !important; }
-}
-@media (max-width:1024px) and (orientation:landscape) {
-  .rotate-overlay { display:none !important; }
-  .game-container { display:block !important; }
-  body { font-size:12px; }
-  /* No-scroll mobile landscape: tutto dentro il viewport */
-  .game-container {
-    height: 100vh;
-    height: 100dvh;
-    overflow: hidden;
+/* ========== MOBILE: VERTICALE — NAVBAR BOTTOM Clash Royale style ========== */
+
+/* Su mobile (portrait) nascondiamo overlay "ruota" e mostriamo tutto in verticale */
+@media (max-width: 768px) {
+  /* La rotate-overlay non serve più */
+  .rotate-overlay { display: none !important; }
+  .game-container { display: block !important; }
+
+  /* Navbar bottom stile Clash Royale */
+  .bottom-nav-mobile {
     display: flex !important;
-    flex-direction: column;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 64px;
+    background: rgba(6,3,15,0.97);
+    backdrop-filter: blur(24px);
+    border-top: 1px solid rgba(245,166,35,0.18);
+    z-index: 100;
+    padding: 0;
+    align-items: stretch;
   }
-  .game-container > div:last-child {
+  .bottom-nav-mobile button {
     flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 6px 4px 10px;
+    background: none;
+    border: none;
+    position: relative;
+    transition: all 0.18s;
   }
-  /* Compact header */
-  .game-container > div:first-child {
-    flex-shrink: 0;
+  .bottom-nav-mobile button.active-tab {
+    background: rgba(245,166,35,0.07);
   }
-  /* Hide bottom nav padding */
-  .game-container { padding-bottom: 0 !important; }
+  .bottom-nav-mobile button.active-tab::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 15%; right: 15%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--gold), var(--magenta));
+    border-radius: 0 0 3px 3px;
+  }
+
+  /* Padding bottom per non essere coperto dalla navbar */
+  .game-container > div:last-child {
+    padding-bottom: 72px;
+  }
+
+  /* Header compatto su mobile */
+  .game-header {
+    padding: 8px 12px !important;
+  }
+  .game-header .impero-nome {
+    font-size: 11px !important;
+  }
+
+  /* Nascondi nav tabs desktop su mobile */
+  .nav-tabs-desktop { display: none !important; }
+
+  /* Mappa: occupa tutto lo schermo e si può scrollare */
+  .mappa-scroll-container {
+    width: 100%;
+    max-height: calc(100vh - 140px);
+    overflow: auto;
+  }
 }
-@media (min-width:1025px) {
-  .rotate-overlay { display:none !important; }
-  .game-container { display:block !important; }
+
+/* Desktop: nascondi bottom nav mobile, mostra nav tabs desktop */
+@media (min-width: 769px) {
+  .rotate-overlay { display: none !important; }
+  .game-container { display: block !important; }
+  .nav-tabs-desktop { display: flex !important; }
+  .bottom-nav-mobile { display: none !important; }
+}
+
+/* Landscape mobile: comportamento desktop (opzionale, per compatibilità tablet) */
+@media (max-width: 768px) and (orientation: landscape) {
+  .bottom-nav-mobile {
+    height: 52px;
+  }
 }

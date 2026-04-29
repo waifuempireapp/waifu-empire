@@ -118,3 +118,36 @@ export async function upsertDrop(id, data) {
 export async function deleteCatalogo(coll, id) {
   await deleteDoc(doc(db, coll, id));
 }
+
+// =================== CLASSIFICA ===================
+export async function getClassifica(limitN = 100) {
+  // Legge i profili utenti ordinati per livelloMappa desc, poi altri criteri applicati lato client
+  const q = query(collection(db, 'users'), limit(200));
+  const snap = await getDocs(q);
+  const utenti = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // Calcola score per ordinamento
+  const conScore = utenti.map(u => {
+    const livelloMappa = u.livelloMappa ?? 1;
+    const territori = Object.values(u.territoriUtente || {}).filter(t => t?.conquistato).length;
+    const creatoTs = u.creato?.toMillis ? u.creato.toMillis() : Number(u.creato) || 0;
+    return { ...u, _livelloMappa: livelloMappa, _territori: territori, _creatoTs: creatoTs };
+  });
+
+  conScore.sort((a, b) => {
+    if (b._livelloMappa !== a._livelloMappa) return b._livelloMappa - a._livelloMappa;
+    if (b._territori !== a._territori) return b._territori - a._territori;
+    return a._creatoTs - b._creatoTs;
+  });
+
+  return conScore.slice(0, limitN);
+}
+
+// Premi settimanali per posizione
+export function premioPerPosizione(pos) {
+  if (pos === 1) return 10;
+  if (pos === 2) return 5;
+  if (pos === 3) return 3;
+  if (pos <= 100) return 2;
+  return 1;
+}

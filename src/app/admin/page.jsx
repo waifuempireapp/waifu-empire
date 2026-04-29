@@ -143,6 +143,8 @@ function DropsTab({ drops, waifu, outfit, pose, ricarica, flash }) {
     inizio: new Date().toISOString().split('T')[0],
     fine: '',
     attivo: false,
+    colore: '#9b59ff',
+    colore2: '#ff2d78',
     waifuIds: [],
     outfitIds: [],
     poseIds: [],
@@ -262,6 +264,18 @@ function DropEditor({ drop, setDrop, waifu, outfit, pose, onSalva, onAnnulla, fl
             <input type="checkbox" checked={drop.attivo || false} onChange={e => setDrop({ ...drop, attivo: e.target.checked })} />
             <span style={{ fontSize: 12 }}>Drop ATTIVO (pescabile dai pacchetti)</span>
           </label>
+        </Field>
+        <Field label="Colore primario (hex)">
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input type="color" value={drop.colore || '#9b59ff'} onChange={e => setDrop({ ...drop, colore: e.target.value })} style={{ ...inputStyle, padding: 4, height: 42, width: 56, cursor: 'pointer' }} />
+            <input value={drop.colore || '#9b59ff'} onChange={e => setDrop({ ...drop, colore: e.target.value })} style={{ ...inputStyle, flex: 1 }} placeholder="#9b59ff" />
+          </div>
+        </Field>
+        <Field label="Colore secondario (hex)">
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input type="color" value={drop.colore2 || '#ff2d78'} onChange={e => setDrop({ ...drop, colore2: e.target.value })} style={{ ...inputStyle, padding: 4, height: 42, width: 56, cursor: 'pointer' }} />
+            <input value={drop.colore2 || '#ff2d78'} onChange={e => setDrop({ ...drop, colore2: e.target.value })} style={{ ...inputStyle, flex: 1 }} placeholder="#ff2d78" />
+          </div>
         </Field>
       </div>
 
@@ -403,6 +417,7 @@ function WaifuTab({ waifu, ricarica, flash }) {
     asset_paperdoll: '',
     asset_statica: '',
     asset_immersiva: '',
+    asset_video: '', // ★ FASE 4: video per effetto Pokémon Pocket su carte immersive
   });
 
   const salva = async (w) => {
@@ -668,18 +683,55 @@ function WaifuEditor({ waifu, setWaifu, esistenti, onSalva, onAnnulla, flash }) 
       )}
 
       {tab === 'immersiva' && (
-        <PromptPanel
-          titolo={promptImm.titolo}
-          note={promptImm.note}
-          prompt={promptImm.prompt}
-          negative={promptImm.negative}
-          parametri={promptImm.parametri_consigliati}
-          assetUrl={waifu.asset_immersiva}
-          onAssetChange={url => setWaifu({ ...waifu, asset_immersiva: url })}
-          onUpload={file => handleUpload('immersiva', file)}
-          uploading={uploading === 'immersiva'}
-          motoreConsigliato="ComfyUI con hires_fix per qualità cinematografica"
-        />
+        <>
+          <PromptPanel
+            titolo={promptImm.titolo}
+            note={promptImm.note}
+            prompt={promptImm.prompt}
+            negative={promptImm.negative}
+            parametri={promptImm.parametri_consigliati}
+            assetUrl={waifu.asset_immersiva}
+            onAssetChange={url => setWaifu({ ...waifu, asset_immersiva: url })}
+            onUpload={file => handleUpload('immersiva', file)}
+            uploading={uploading === 'immersiva'}
+            motoreConsigliato="ComfyUI con hires_fix per qualità cinematografica"
+          />
+          {/* ★ FASE 4: Video per carte immersive (Pokémon Pocket style) */}
+          <div style={{ marginTop: 16, background: 'rgba(236,72,153,0.06)', border: '1px solid rgba(236,72,153,0.3)', borderRadius: 8, padding: 14 }}>
+            <div style={{ fontFamily: 'Cinzel, serif', color: '#ec4899', letterSpacing: 2, fontSize: 13, marginBottom: 8 }}>
+              🎬 VIDEO CARTA IMMERSIVA
+            </div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginBottom: 10, lineHeight: 1.5 }}>
+              Video animato (MP4/WebM) per l'effetto Pokémon Pocket. Al click sulla carta statica, il video parte e gira dentro la grafica della carta nascondendo nome, rarità e statistiche. Al termine torna alla grafica normale.<br/>
+              <strong style={{ color: 'rgba(236,72,153,0.8)' }}>Consigliato:</strong> 3–8 secondi, 9:16 o 1:1, senza audio.
+            </div>
+            {waifu.asset_video && (
+              <div style={{ marginBottom: 10 }}>
+                <video src={waifu.asset_video} style={{ maxWidth: 120, maxHeight: 180, borderRadius: 6, border: '1px solid rgba(236,72,153,0.4)' }} controls muted />
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>{waifu.asset_video.substring(0, 60)}…</div>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <label style={{
+                background: 'rgba(236,72,153,0.15)', border: '1px solid rgba(236,72,153,0.5)',
+                color: '#ec4899', padding: '6px 14px', borderRadius: 6, cursor: 'pointer',
+                fontSize: 11, fontFamily: 'Orbitron, sans-serif',
+              }}>
+                {uploading === 'video' ? '⏳ CARICAMENTO...' : '▶ CARICA VIDEO'}
+                <input type="file" accept="video/mp4,video/webm" style={{ display: 'none' }}
+                  onChange={e => e.target.files[0] && handleUpload('video', e.target.files[0])}
+                  disabled={uploading === 'video'}
+                />
+              </label>
+              {waifu.asset_video && (
+                <button onClick={() => setWaifu({ ...waifu, asset_video: '' })}
+                  style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', padding: '6px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 10 }}>
+                  ✕ Rimuovi video
+                </button>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
@@ -765,6 +817,8 @@ function OutfitTab({ outfit, ricarica, flash }) {
     slot: 'petto',
     forma: 'tshirt',
     colore: '#ec4899',
+    archetipo_compatibile: '', // ★ FASE 4
+    abilita: null,             // ★ FASE 4 — null per comune, oggetto per rarità superiori
     fillers: { descrizione: '' },
     asset: '',
   });
@@ -885,7 +939,55 @@ function OutfitEditor({ outfit, setOutfit, onSalva, onAnnulla, flash }) {
           </select>
         </Field>
         <Field label="Colore primario"><input type="color" value={outfit.colore} onChange={e => setOutfit({ ...outfit, colore: e.target.value })} style={{ ...inputStyle, padding: 4, height: 42 }} /></Field>
+        {/* ★ FASE 4: Archetipo compatibile (senza la parola "archetipo" nella grafica) */}
+        <Field label="Stile compatibile (archetipo)">
+          <select value={outfit.archetipo_compatibile || ''} onChange={e => setOutfit({ ...outfit, archetipo_compatibile: e.target.value })} style={inputStyle}>
+            <option value="">— Nessuno (generico) —</option>
+            {ARCHETIPI.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
+          </select>
+        </Field>
       </div>
+
+      {/* ★ FASE 4: Abilità outfit (solo rarità non comune) */}
+      {outfit.rarita && outfit.rarita !== 'comune' && (
+        <div style={{ background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.25)', borderRadius: 8, padding: 14, marginBottom: 14 }}>
+          <div style={{ fontFamily: 'Cinzel, serif', color: '#a855f7', letterSpacing: 2, fontSize: 12, marginBottom: 10 }}>✦ ABILITÀ OUTFIT</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+            <Field label="Tipo abilità">
+              <select value={outfit.abilita?.tipo || ''} onChange={e => setOutfit({ ...outfit, abilita: { ...outfit.abilita, tipo: e.target.value } })} style={inputStyle}>
+                <option value="">— Nessuna abilità —</option>
+                <option value="stat_up">↑ Boost stat propria</option>
+                <option value="stat_down">↓ Indebolisci stat propria</option>
+                <option value="opp_up">⬆ Boost stat avversario</option>
+                <option value="opp_down">⬇ Indebolisci stat avversario</option>
+                <option value="reuse_stat">↺ Riusa stat già usata</option>
+                {(outfit.rarita === 'leggendario' || outfit.rarita === 'immersivo') && (
+                  <option value="reuse_waifu">♻ Riusa waifu già usata</option>
+                )}
+              </select>
+            </Field>
+            <Field label="Stat target">
+              <select value={outfit.abilita?.stat || ''} onChange={e => setOutfit({ ...outfit, abilita: { ...outfit.abilita, stat: e.target.value } })} style={inputStyle}
+                disabled={!outfit.abilita?.tipo || outfit.abilita?.tipo === 'reuse_stat' || outfit.abilita?.tipo === 'reuse_waifu'}>
+                <option value="">— Seleziona stat —</option>
+                <option value="tette">💗 Tette</option>
+                <option value="taglia_piedi">🦶 Taglia Piedi</option>
+                <option value="eta">⏳ Età</option>
+                <option value="colore_capelli">💇 Capelli</option>
+                <option value="esperienza">⭐ Esperienza</option>
+              </select>
+            </Field>
+            <Field label="Bonus/Malus (valore numerico, es. +2 o -1)">
+              <input type="number" value={outfit.abilita?.valore || ''} onChange={e => setOutfit({ ...outfit, abilita: { ...outfit.abilita, valore: parseInt(e.target.value) || 0 } })} style={inputStyle}
+                placeholder="es. 2" min="-10" max="10"
+                disabled={!outfit.abilita?.tipo || outfit.abilita?.tipo === 'reuse_stat' || outfit.abilita?.tipo === 'reuse_waifu'} />
+            </Field>
+            <Field label="Descrizione visibile in carta (max 30 car)">
+              <input type="text" maxLength={30} value={outfit.abilita?.descrizione || ''} onChange={e => setOutfit({ ...outfit, abilita: { ...outfit.abilita, descrizione: e.target.value } })} style={inputStyle} placeholder="es. +2 Esperienza" />
+            </Field>
+          </div>
+        </div>
+      )}
 
       <Field label="Descrizione dettagliata (in inglese, per il prompt)">
         <textarea value={outfit.fillers?.descrizione || ''} onChange={e => setOutfit({ ...outfit, fillers: { ...outfit.fillers, descrizione: e.target.value } })} style={{ ...inputStyle, minHeight: 60 }} placeholder="es. 'long flowing kimono dress with cherry blossom embroidery, silk material, traditional cut'" />
