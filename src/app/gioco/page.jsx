@@ -1344,7 +1344,26 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     carte.forEach((_, i) => { setTimeout(() => setIndiceRivelato(i), 500 + i * 700); });
   };
 
+  // Sbustamento: stato video carta immersiva
+  const [sbusVideoAttivo, setSbusVideoAttivo] = useState(false);
+  const [sbusVideoFinito, setSbusVideoFinito] = useState(false);
+  const [sbusCartaImmersiva, setSbusCartaImmersiva] = useState(null);
+  const sbusVideoRef = useRef(null);
+
+  const avviaVideoSbusto = (carta) => {
+    setSbusCartaImmersiva(carta);
+    setSbusVideoFinito(false);
+    setSbusVideoAttivo(true);
+    setTimeout(() => sbusVideoRef.current?.play(), 50);
+  };
+  const rivediVideoSbusto = () => {
+    setSbusVideoFinito(false);
+    if (sbusVideoRef.current) { sbusVideoRef.current.currentTime = 0; sbusVideoRef.current.play(); }
+  };
+  const chiudiVideoSbusto = () => { setSbusVideoAttivo(false); setSbusVideoFinito(false); setSbusCartaImmersiva(null); };
+
   if (stato === 'reveal') {
+    const IMMC = '#ec4899';
     return (
       <div className="fade-in" style={{ padding: 16 }}>
         <TitoloOrnato livello={1} colore="#f5a623">APERTURA PACCHETTO</TitoloOrnato>
@@ -1353,20 +1372,23 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
             const isWaifu = c.tipo === 'waifu';
             const copieAttuali = isWaifu ? (collezione.waifu?.[c.data.id]?.copie ?? 0) : 0;
             const isLevelUpReady = isWaifu && copieAttuali >= 3;
+            const isImmersiva = isWaifu && c.data.rarita === 'immersivo';
+            const hasVideo = isImmersiva && !!(c.data.asset_video);
+            const rivelata = i <= indiceRivelato;
             return (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                 <div style={{
-                  opacity: i <= indiceRivelato ? 1 : 0.2,
-                  transform: i <= indiceRivelato ? 'scale(1)' : 'scale(0.85)',
+                  opacity: rivelata ? 1 : 0.2,
+                  transform: rivelata ? 'scale(1)' : 'scale(0.85)',
                   transition: 'all 0.6s',
-                  animation: i <= indiceRivelato && (c.data.rarita === 'leggendario' || c.data.rarita === 'immersivo') ? 'pulseStrong 1.2s infinite' : 'none',
+                  animation: rivelata && (c.data.rarita === 'leggendario' || c.data.rarita === 'immersivo') ? 'pulseStrong 1.2s infinite' : 'none',
                 }}>
-                  {i > indiceRivelato ? <CartaCoperta /> :
+                  {!rivelata ? <CartaCoperta /> :
                     c.tipo === 'waifu' ? <CartaWaifu waifu={c.data} dimensione="piccola" tipo="auto" /> :
-                    c.tipo === 'outfit' ? <CartaOutfit outfit={c.data} /> :
-                    <CartaPosa posa={c.data} />}
+                    c.tipo === 'outfit' ? <CartaOutfit outfit={c.data} dimensione="piccola" /> :
+                    <CartaPosa posa={c.data} dimensione="piccola" />}
                 </div>
-                {i <= indiceRivelato && isWaifu && (
+                {rivelata && isWaifu && (
                   <div style={{ textAlign: 'center', minHeight: 16 }}>
                     {isLevelUpReady ? (
                       <span style={{ ...stileLevelUp, fontSize: 8, color: '#00e676' }}>⚡ LEVEL UP!</span>
@@ -1377,6 +1399,35 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
                     )}
                   </div>
                 )}
+                {rivelata && isImmersiva && (
+                  <button
+                    onClick={hasVideo ? () => avviaVideoSbusto(c.data) : undefined}
+                    style={{
+                      background: hasVideo
+                        ? `linear-gradient(135deg, ${IMMC}33, ${IMMC}18)`
+                        : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${hasVideo ? IMMC + '99' : IMMC + '30'}`,
+                      borderRadius: 10,
+                      color: hasVideo ? IMMC : `${IMMC}44`,
+                      fontFamily: 'Orbitron, monospace',
+                      fontSize: 8,
+                      fontWeight: 700,
+                      letterSpacing: 1.5,
+                      padding: '6px 12px',
+                      cursor: hasVideo ? 'pointer' : 'not-allowed',
+                      boxShadow: hasVideo ? `0 0 14px ${IMMC}30` : 'none',
+                      transition: 'all 0.2s ease',
+                      textTransform: 'uppercase',
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      marginTop: 2,
+                    }}
+                    onMouseEnter={e => { if (!hasVideo) return; e.currentTarget.style.background = `linear-gradient(135deg, ${IMMC}55, ${IMMC}33)`; e.currentTarget.style.boxShadow = `0 0 24px ${IMMC}55`; }}
+                    onMouseLeave={e => { if (!hasVideo) return; e.currentTarget.style.background = `linear-gradient(135deg, ${IMMC}33, ${IMMC}18)`; e.currentTarget.style.boxShadow = `0 0 14px ${IMMC}30`; }}
+                  >
+                    <span style={{ fontSize: 10 }}>▶</span>
+                    {hasVideo ? 'VEDI CARTA IMMERSIVA' : 'VIDEO NON DISPONIBILE'}
+                  </button>
+                )}
               </div>
             );
           })}
@@ -1384,6 +1435,46 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
         {indiceRivelato >= carteRivelate.length - 1 && (
           <div style={{ textAlign: 'center', marginTop: 24 }}>
             <BtnDecorato variant="primary" size="lg" onClick={() => { setStato('idle'); setCarteRivelate([]); }}>CONTINUA</BtnDecorato>
+          </div>
+        )}
+
+        {/* Overlay video carta immersiva durante sbustamento */}
+        {sbusVideoAttivo && sbusCartaImmersiva && (
+          <div
+            onClick={() => { if (sbusVideoFinito) chiudiVideoSbusto(); }}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.96)',
+              backdropFilter: 'blur(20px)', zIndex: 300,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: 0,
+            }}
+          >
+            <style>{`@keyframes scaleIn { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
+            <div onClick={e => e.stopPropagation()} style={{ animation: 'scaleIn 0.2s ease-out' }}>
+              <CartaWaifu
+                waifu={sbusCartaImmersiva}
+                dimensione="grande"
+                tipo="auto"
+                videoAttivo={sbusVideoAttivo}
+                videoRef={sbusVideoRef}
+                onVideoEnd={() => setSbusVideoFinito(true)}
+              />
+            </div>
+            {!sbusVideoFinito && (
+              <div style={{ marginTop: 16, fontSize: 9, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', letterSpacing: 2 }}>
+                In riproduzione…
+              </div>
+            )}
+            {sbusVideoFinito && (
+              <div onClick={e => e.stopPropagation()} style={{ marginTop: 16, display: 'flex', gap: 10 }}>
+                <button onClick={rivediVideoSbusto} style={{ background: `linear-gradient(135deg, ${IMMC}33, ${IMMC}18)`, border: `1px solid ${IMMC}88`, borderRadius: 10, color: IMMC, fontFamily: 'Orbitron, monospace', fontSize: 10, fontWeight: 700, letterSpacing: 2, padding: '10px 22px', cursor: 'pointer' }}>
+                  ↺ RIVEDI
+                </button>
+                <button onClick={chiudiVideoSbusto} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: 'rgba(238,232,220,0.7)', fontFamily: 'Orbitron, monospace', fontSize: 10, fontWeight: 700, letterSpacing: 2, padding: '10px 22px', cursor: 'pointer' }}>
+                  ✕ CHIUDI
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1578,8 +1669,8 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', maxHeight: 400, overflowY: 'auto', padding: 4 }}>
             {catalogoFiltrato.map((c, i) => (
               c._tipo === 'waifu' ? <CartaWaifu key={c.id} waifu={c} dimensione="piccola" tipo="auto" /> :
-              c._tipo === 'outfit' ? <CartaOutfit key={c.id} outfit={c} /> :
-              <CartaPosa key={c.id} posa={c} />
+              c._tipo === 'outfit' ? <CartaOutfit key={c.id} outfit={c} dimensione="piccola" /> :
+              <CartaPosa key={c.id} posa={c} dimensione="piccola" />
             ))}
             {catalogoFiltrato.length === 0 && (
               <div style={{ padding: 40, textAlign: 'center' }}>
