@@ -2143,18 +2143,8 @@ function ZoomCartaOverlay({ w, dati, outfitCat, poseCat, equip, onClose }) {
           equip={equip}
           videoAttivo={videoAttivo}
           videoRef={videoRef}
+          onVideoEnd={handleVideoEnd}
         />
-        {/* Video element collegato alla carta tramite ref */}
-        {hasVideo && (
-          <video
-            ref={videoRef}
-            src={w.asset_video}
-            style={{ display: 'none' }}
-            onEnded={handleVideoEnd}
-            muted
-            playsInline
-          />
-        )}
       </div>
 
       {/* Bottone VEDI CARTA IMMERSIVA — solo per rarità immersivo, sopra a "Tocca per chiudere" */}

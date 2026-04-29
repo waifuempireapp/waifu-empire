@@ -145,7 +145,7 @@ function ArchetipoTag({ archetipoId, rarColor, scale = 1 }) {
 // ====================================================================
 // videoAttivo e videoRef sono ora gestiti esternamente (dalla CartaImmersiva nel modale).
 // CartaWaifu riceve videoAttivo (bool) e videoRef come prop opzionali per il solo rendering.
-export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onClick, evidenziato = false, tipo = 'auto', outfitCatalogo = [], poseCatalogo = [], equip, videoAttivo = false, videoRef = null }) {
+export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onClick, evidenziato = false, tipo = 'auto', outfitCatalogo = [], poseCatalogo = [], equip, videoAttivo = false, videoRef = null, onVideoEnd }) {
   const [videoFinito, setVideoFinito] = useState(false);
 
   if (!waifu) return null;
@@ -181,13 +181,10 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
 
   const handleVideoEnd = () => {
     setVideoFinito(true);
-    setTimeout(() => {
-      setVideoFinito(false);
-    }, 600);
+    onVideoEnd?.();
   };
 
-  // Indicatore "ha video" (badge ▶ angolo) — solo in modalità normale, non durante il video
-  const showVideoHint = hasVideo && !videoAttivo && dimensione !== 'piccola';
+
 
   return (
     <div
@@ -357,21 +354,6 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
           <StatCircle value={expEff} statKey="exp" icon="⭐" color="#ce93d8" size={statSize} />
         </div>
       </div>
-
-      {/* --- HINT VIDEO (angolo in alto a sx) --- */}
-      {showVideoHint && (
-        <div style={{
-          position: 'absolute', top: Math.round(6 * scale), left: Math.round(6 * scale),
-          zIndex: 6,
-          width: Math.round(18 * scale), height: Math.round(18 * scale),
-          borderRadius: '50%',
-          background: 'rgba(236,72,153,0.85)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: Math.round(9 * scale),
-          boxShadow: '0 0 8px rgba(236,72,153,0.8)',
-          animation: 'pulse 2s infinite',
-        }}>▶</div>
-      )}
 
       {/* --- EFFETTO ANGOLI DIGIMON --- */}
       {[
