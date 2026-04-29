@@ -1827,8 +1827,6 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
         ))}
       </div>
 
-      </div>
-
       <Divider colore="#f5a623" spazio={4} />
 
       {tabSub === 'waifu' && (() => {
