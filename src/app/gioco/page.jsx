@@ -918,6 +918,7 @@ function ModaleCarta({ carta, onClose }) {
     return () => { document.body.style.overflow = ''; };
   }, []);
 
+  // Chiudi toccando il backdrop
   const handleBackdrop = (e) => {
     if (e.target === e.currentTarget) onClose();
   };
@@ -927,44 +928,64 @@ function ModaleCarta({ carta, onClose }) {
       onClick={handleBackdrop}
       style={{
         position: 'fixed', inset: 0, zIndex: 9999,
-        background: 'rgba(6,3,15,0.88)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        backdropFilter: 'blur(12px)',
-        padding: '16px 16px 80px 16px', /* padding bottom per non finire sotto la navbar */
+        background: 'rgba(6,3,15,0.85)',
+        backdropFilter: 'blur(14px)',
+        display: 'flex',
+        alignItems: 'flex-end',   /* bottom-sheet: parte dal basso */
+        justifyContent: 'center',
         animation: 'fadeIn 0.18s ease',
-        overflowY: 'auto',
       }}
     >
-      <div style={{
-        position: 'relative',
-        background: 'linear-gradient(160deg, rgba(30,20,50,0.98) 0%, rgba(10,5,20,0.99) 100%)',
-        border: '1px solid rgba(245,166,35,0.25)',
-        borderRadius: 20,
-        padding: 24,
-        maxWidth: 420,
-        width: '100%',
-        maxHeight: 'calc(100vh - 96px)', /* 80px navbar + 16px top padding */
-        overflowY: 'auto',
-        boxShadow: '0 0 60px rgba(245,166,35,0.12), 0 0 120px rgba(155,89,255,0.08)',
-      }}>
+      {/* Sheet */}
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          position: 'relative',
+          background: 'linear-gradient(170deg, rgba(28,16,48,0.99) 0%, rgba(8,4,18,1) 100%)',
+          border: '1px solid rgba(245,166,35,0.22)',
+          borderRadius: '22px 22px 0 0',
+          width: '100%',
+          maxWidth: 480,
+          maxHeight: 'calc(100vh - 60px)',
+          overflowY: 'auto',
+          paddingBottom: 80,   /* spazio navbar */
+          boxShadow: '0 -6px 50px rgba(245,166,35,0.14), 0 -2px 80px rgba(155,89,255,0.09)',
+          animation: 'sheetUp 0.28s cubic-bezier(0.22,1,0.36,1)',
+        }}
+      >
+        {/* Handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 6px' }}>
+          <div style={{ width: 36, height: 4, borderRadius: 3, background: 'rgba(255,255,255,0.18)' }} />
+        </div>
+
         {/* Bottone chiudi */}
         <button onClick={onClose} style={{
-          position: 'absolute', top: 14, right: 14,
-          background: 'rgba(255,255,255,0.06)',
-          border: '1px solid rgba(255,255,255,0.12)',
+          position: 'absolute', top: 12, right: 14,
+          background: 'rgba(255,255,255,0.07)',
+          border: '1px solid rgba(255,255,255,0.13)',
           borderRadius: '50%', width: 32, height: 32,
-          color: 'rgba(238,232,220,0.6)', fontSize: 16, cursor: 'pointer',
+          color: 'rgba(238,232,220,0.55)', fontSize: 15, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'all 0.15s',
         }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,45,120,0.2)'; e.currentTarget.style.color = '#ff2d78'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(238,232,220,0.6)'; }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,45,120,0.22)'; e.currentTarget.style.color = '#ff2d78'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = 'rgba(238,232,220,0.55)'; }}
         >✕</button>
 
-        {carta.tipo === 'waifu' && <ModaleWaifu waifu={carta.w} dati={carta.dati} />}
-        {carta.tipo === 'outfit' && <ModaleOutfit outfit={carta.o} />}
-        {carta.tipo === 'posa' && <MadalePosa posa={carta.p} />}
+        {/* Contenuto */}
+        <div style={{ padding: '4px 20px 0' }}>
+          {carta.tipo === 'waifu' && <ModaleWaifu waifu={carta.w} dati={carta.dati} />}
+          {carta.tipo === 'outfit' && <ModaleOutfit outfit={carta.o} />}
+          {carta.tipo === 'posa' && <MadalePosa posa={carta.p} />}
+        </div>
       </div>
+
+      <style>{`
+        @keyframes sheetUp {
+          from { transform: translateY(100%); opacity: 0.6; }
+          to   { transform: translateY(0);    opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -1292,7 +1313,7 @@ function ClassificaTab({ user }) {
             <div style={{ flex: 1, fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron' }}>GIOCATORE</div>
             <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', minWidth: 40, textAlign: 'center' }}>MAPPA</div>
             <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', minWidth: 40, textAlign: 'center' }}>🏴</div>
-            <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', minWidth: 30, textAlign: 'right' }}>🎴</div>
+            <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', minWidth: 30, textAlign: 'right' }}>PREMIO</div>
           </div>
 
           <div style={{ maxHeight: 420, overflowY: 'auto' }}>
@@ -3396,18 +3417,18 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
 
         {/* ── Campo di battaglia: carte ── */}
         <PannelloOrnato style={{ padding: 14, marginBottom: 10 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', flexWrap: 'nowrap', gap: 8, overflowX: 'auto' }}>
+          <div className="battle-campo-wrapper" style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-start', flexWrap: 'nowrap', gap: 8 }}>
             {/* Carta Player */}
-            <div style={{ textAlign: 'center' }}>
+            <div style={{ textAlign: 'center', flexShrink: 0 }}>
               <div style={{ fontSize: 8, letterSpacing: 2, opacity: 0.4, marginBottom: 4, fontFamily: 'Orbitron' }}>TU</div>
               {carteP
-                ? <CartaWaifu waifu={carteP} dimensione="piccola" evidenziaStat={(fase === 'reveal' || fase === 'roundEnd' || fase === 'suddenDeathReveal') ? statScelta : null} perdente={fase === 'roundEnd' && vincitoreRound === 'cpu'} />
+                ? <div className="battle-carta-scelta"><CartaWaifu waifu={carteP} dimensione="piccola" evidenziaStat={(fase === 'reveal' || fase === 'roundEnd' || fase === 'suddenDeathReveal') ? statScelta : null} perdente={fase === 'roundEnd' && vincitoreRound === 'cpu'} /></div>
                 : <div style={{ width: 130, height: 195, border: '1px dashed rgba(245,166,35,0.25)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(245,166,35,0.3)', fontFamily: 'Orbitron', fontSize: 9 }} className="pulse">SCEGLI</div>
               }
             </div>
 
             {/* Centro VS + risultato */}
-            <div style={{ textAlign: 'center', minWidth: 120 }}>
+            <div className="battle-vs-center" style={{ textAlign: 'center', minWidth: 120, flexShrink: 0 }}>
               <div style={{ fontSize: 28, fontFamily: 'Orbitron', background: 'linear-gradient(135deg, #f5a623, #ff2d78)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>VS</div>
               {(fase === 'reveal' || fase === 'roundEnd' || fase === 'suddenDeathReveal') && statScelta && (
                 <div className="fade-up" style={{ marginTop: 10, padding: 8, background: 'rgba(245,166,35,0.06)', borderRadius: 8, border: '1px solid rgba(245,166,35,0.2)' }}>
@@ -3446,11 +3467,11 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
             </div>
 
             {/* Carta CPU */}
-            <div style={{ textAlign: 'center' }}>
+            <div style={{ textAlign: 'center', flexShrink: 0 }}>
               <div style={{ fontSize: 8, letterSpacing: 2, opacity: 0.4, marginBottom: 4, fontFamily: 'Orbitron' }}>CPU</div>
               {carteC
                 ? ((fase === 'reveal' || fase === 'roundEnd' || fase === 'suddenDeathReveal')
-                    ? <CartaWaifu waifu={carteC} dimensione="piccola" evidenziaStat={statScelta} perdente={fase === 'roundEnd' && vincitoreRound === 'player'} />
+                    ? <div className="battle-carta-scelta"><CartaWaifu waifu={carteC} dimensione="piccola" evidenziaStat={statScelta} perdente={fase === 'roundEnd' && vincitoreRound === 'player'} /></div>
                     : <div style={{ width: 130, height: 195, background: 'linear-gradient(160deg, #130a24, #06030f)', border: '1px solid rgba(155,89,255,0.3)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: 'rgba(155,89,255,0.5)' }}>?</div>
                   )
                 : <div style={{ width: 130, height: 195, border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.2)', fontSize: 9 }}>ATTESA</div>

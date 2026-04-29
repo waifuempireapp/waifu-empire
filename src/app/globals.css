@@ -129,6 +129,11 @@ h1, h2, h3, h4 {
 }
 .card-clickable:hover { transform: translateY(-3px) scale(1.03); }
 .card-clickable:active { transform: scale(0.96); }
+/* Fix 2: su touch device disabilita hover sticky — resetta sempre a transform:none */
+@media (hover: none) and (pointer: coarse) {
+  .card-clickable:hover { transform: none; }
+  .card-clickable:focus { transform: none; outline: none; }
+}
 
 /* FASE 8 — Tooltip stile */
 .iw-tooltip-wrap {
@@ -340,12 +345,31 @@ input:focus, textarea:focus, select:focus {
   .collection-card-item {
     width: calc(33.333% - 6px) !important;
     min-width: 0 !important;
+    /* Fix 2: blocca qualsiasi transform sul contenitore figlio, solo scale fissa */
+    transform: none !important;
   }
   /* Scale down cards to fit 3 per row */
   .collection-card-item .carta-waifu-root,
   .collection-card-item > div:first-child > div,
   .collection-card-item > div:first-child {
-    transform: scale(0.88);
+    transform: scale(0.88) !important;
+    transform-origin: top center;
+  }
+  /* Fix 2: dopo qualsiasi interazione touch (hover sticky, focus, active)
+     il wrapper item NON deve scalare — sovrascrive card-clickable */
+  .collection-card-item:hover,
+  .collection-card-item:focus,
+  .collection-card-item:active,
+  .collection-card-item:focus-within {
+    transform: none !important;
+  }
+  /* Fix 2: e le carte interne restano sempre a scale 0.88 */
+  .collection-card-item:hover .carta-waifu-root,
+  .collection-card-item:hover > div:first-child > div,
+  .collection-card-item:hover > div:first-child,
+  .collection-card-item:focus .carta-waifu-root,
+  .collection-card-item:active .carta-waifu-root {
+    transform: scale(0.88) !important;
     transform-origin: top center;
   }
 }
@@ -360,5 +384,34 @@ input:focus, textarea:focus, select:focus {
   .battle-field-row .carta-waifu-root {
     transform: scale(0.7);
     transform-origin: top center;
+  }
+}
+
+/* ── Fix 4: Carte scelte nel combattimento — ridotte e centrate su mobile ── */
+@media (max-width: 768px) and (orientation: portrait) {
+  /* Contenitore campo battaglia: centra tutto */
+  .battle-campo-wrapper {
+    justify-content: center !important;
+    gap: 4px !important;
+    padding: 0 !important;
+  }
+  /* Carta player e CPU scelte: scala a 0.68 e togli margini */
+  .battle-carta-scelta {
+    transform: scale(0.68);
+    transform-origin: top center;
+    display: block;
+    /* compensa lo spazio negativo dello scale */
+    margin-bottom: -56px;
+    margin-top: 0;
+  }
+  /* Blocco VS centrale più stretto */
+  .battle-vs-center {
+    min-width: 80px !important;
+    max-width: 90px;
+    flex-shrink: 0;
+    font-size: 22px !important;
+  }
+  .battle-vs-center .fade-up {
+    padding: 5px 6px !important;
   }
 }
