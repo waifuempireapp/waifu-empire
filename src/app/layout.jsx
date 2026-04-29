@@ -1,11 +1,21 @@
 // src/app/layout.jsx
+'use client';
 import './globals.css';
 import { AuthProvider } from '@/lib/AuthContext';
+import { useEffect } from 'react';
 
-export const metadata = {
-  title: 'Impero delle Waifu',
-  description: 'Conquista il mondo. Una waifu alla volta.',
-};
+// Registra il Service Worker per la cache locale degli asset Cloudinary
+function ServiceWorkerRegistrar() {
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then((reg) => console.log('[SW] Registrato, scope:', reg.scope))
+        .catch((err) => console.warn('[SW] Registrazione fallita:', err));
+    }
+  }, []);
+  return null;
+}
 
 export default function RootLayout({ children }) {
   return (
@@ -18,7 +28,10 @@ export default function RootLayout({ children }) {
         <meta name="theme-color" content="#0a0515" />
       </head>
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ServiceWorkerRegistrar />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

@@ -881,6 +881,47 @@ function ModaleWaifu({ waifu, dati }) {
   const rarInfo = RARITA_DATA[waifu.rarita] || RARITA_DATA.comune;
   const statBonus = dati?.stat_bonus || {};
 
+  // Stato per carta immersiva: zoom + video
+  const [zoomAttivo, setZoomAttivo] = useState(false);
+  const [videoAttivo, setVideoAttivo] = useState(false);
+  const [videoFinito, setVideoFinito] = useState(false);
+  const videoRef = useRef(null);
+
+  const hasVideo = !!(waifu.asset_video);
+
+  const avviaImmersiva = () => {
+    setZoomAttivo(true);
+    setVideoAttivo(false);
+    setVideoFinito(false);
+    // Parte lo zoom: dopo 600ms (fine animazione zoom) avvia il video
+    setTimeout(() => {
+      setVideoAttivo(true);
+      setTimeout(() => videoRef.current?.play(), 50);
+    }, 600);
+  };
+
+  const chiudiZoom = () => {
+    setZoomAttivo(false);
+    setVideoAttivo(false);
+    setVideoFinito(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
+
+  const handleVideoEnd = () => {
+    setVideoFinito(true);
+  };
+
+  const rivediVideo = () => {
+    setVideoFinito(false);
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play();
+    }
+  };
+
   // Calcola stat effettive
   const stats = [
     { key: 'tette',          label: 'Tette',        icon: '✦', val: Math.min(7, (waifu.tette || 3) + (statBonus.tette || 0)),                         max: 7    },
@@ -907,10 +948,142 @@ function ModaleWaifu({ waifu, dati }) {
 
   return (
     <div>
-      {/* Carta grande al centro */}
+      {/* Overlay zoom carta immersiva con video */}
+      {zoomAttivo && (
+        <div
+          onClick={chiudiZoom}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 99999,
+            background: 'rgba(0,0,0,0.92)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            backdropFilter: 'blur(16px)',
+            animation: 'fadeIn 0.2s ease',
+          }}
+        >
+          {/* Carta ingrandita con video integrato */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              animation: 'zoomInCard 0.55s cubic-bezier(0.22,1,0.36,1) forwards',
+            }}
+          >
+            <CartaWaifu
+              waifu={waifu}
+              datiCollezione={dati}
+              dimensione="grande"
+              tipo="auto"
+              videoAttivo={videoAttivo}
+              videoRef={videoRef}
+            />
+            {/* Video element — fuori dalla carta ma referenziato tramite ref */}
+            {hasVideo && (
+              <video
+                ref={videoRef}
+                src={waifu.asset_video}
+                style={{ display: 'none' }}
+                onEnded={handleVideoEnd}
+                muted
+                playsInline
+              />
+            )}
+          </div>
+
+          {/* Overlay fine video: bottone Rivedi */}
+          {videoFinito && (
+            <div style={{
+              position: 'absolute',
+              bottom: 60,
+              display: 'flex', gap: 12,
+              animation: 'fadeIn 0.3s ease',
+            }}>
+              <button
+                onClick={rivediVideo}
+                style={{
+                  background: 'rgba(236,72,153,0.2)',
+                  border: '1px solid rgba(236,72,153,0.6)',
+                  borderRadius: 10, color: '#f472b6',
+                  fontFamily: 'Orbitron, monospace', fontSize: 11,
+                  fontWeight: 700, letterSpacing: 2,
+                  padding: '10px 22px', cursor: 'pointer',
+                  boxShadow: '0 0 20px rgba(236,72,153,0.3)',
+                }}
+              >◀ RIVEDI</button>
+              <button
+                onClick={chiudiZoom}
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  borderRadius: 10, color: 'rgba(238,232,220,0.7)',
+                  fontFamily: 'Orbitron, monospace', fontSize: 11,
+                  fontWeight: 700, letterSpacing: 2,
+                  padding: '10px 22px', cursor: 'pointer',
+                }}
+              >✕ CHIUDI</button>
+            </div>
+          )}
+
+          {/* Tap area per chiudere (quando il video è in play) */}
+          {videoAttivo && !videoFinito && (
+            <div style={{
+              position: 'absolute', bottom: 24,
+              color: 'rgba(255,255,255,0.3)',
+              fontFamily: 'Orbitron, monospace', fontSize: 9,
+              letterSpacing: 2,
+            }}>
+              TAP PER CHIUDERE
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Stili animazione zoom carta */}
+      <style>{`
+        @keyframes zoomInCard {
+          from { transform: scale(0.3); opacity: 0; }
+          to   { transform: scale(1);   opacity: 1; }
+        }
+      `}</style>
+
+      {/* Carta normale al centro */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
         <CartaWaifu waifu={waifu} datiCollezione={dati} dimensione="normale" tipo="auto" />
       </div>
+
+      {/* Bottone Vedi Carta Immersiva — solo se la waifu ha un video */}
+      {hasVideo && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+          <button
+            onClick={avviaImmersiva}
+            style={{
+              background: 'linear-gradient(135deg, rgba(236,72,153,0.25), rgba(168,85,247,0.25))',
+              border: '1px solid rgba(236,72,153,0.55)',
+              borderRadius: 12,
+              color: '#f472b6',
+              fontFamily: 'Orbitron, monospace',
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: 2,
+              padding: '11px 28px',
+              cursor: 'pointer',
+              boxShadow: '0 0 24px rgba(236,72,153,0.25)',
+              transition: 'all 0.2s ease',
+              textTransform: 'uppercase',
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(236,72,153,0.4), rgba(168,85,247,0.4))';
+              e.currentTarget.style.boxShadow = '0 0 36px rgba(236,72,153,0.45)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(236,72,153,0.25), rgba(168,85,247,0.25))';
+              e.currentTarget.style.boxShadow = '0 0 24px rgba(236,72,153,0.25)';
+            }}
+          >
+            <span style={{ fontSize: 14 }}>▶</span>
+            VEDI CARTA IMMERSIVA
+          </button>
+        </div>
+      )}
 
       {/* Nome e rarità */}
       <div style={{ textAlign: 'center', marginBottom: 16 }}>

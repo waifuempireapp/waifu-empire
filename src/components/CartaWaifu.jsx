@@ -5,7 +5,7 @@
 //   • Outfit: stile waifu full-art, immagine dal nome, archetipo compatibile, abilità
 //   • Posa: placeholder silhouette grigio per slot posa, preview waifu associata
 'use client';
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { RARITA } from '@/lib/constants';
 import { ARCHETIPI } from '@/lib/promptGenerator';
 
@@ -143,16 +143,15 @@ function ArchetipoTag({ archetipoId, rarColor, scale = 1 }) {
 // CARTA WAIFU PRINCIPALE — Full-art Digimon/Pokémon Pocket style
 // Fase 4: simbolo archetipo + modalità immersiva con video
 // ====================================================================
-export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onClick, evidenziato = false, tipo = 'auto', outfitCatalogo = [], poseCatalogo = [], equip }) {
-  const [videoAttivo, setVideoAttivo] = useState(false);
+// videoAttivo e videoRef sono ora gestiti esternamente (dalla CartaImmersiva nel modale).
+// CartaWaifu riceve videoAttivo (bool) e videoRef come prop opzionali per il solo rendering.
+export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onClick, evidenziato = false, tipo = 'auto', outfitCatalogo = [], poseCatalogo = [], equip, videoAttivo = false, videoRef = null }) {
   const [videoFinito, setVideoFinito] = useState(false);
-  const videoRef = useRef(null);
 
   if (!waifu) return null;
   const rar = RARITA[waifu.rarita] || RARITA.comune;
   const rb = RARITY_BORDER[waifu.rarita] || RARITY_BORDER.comune;
 
-  // Determina se la carta ha capacità immersiva (video)
   const hasVideo = !!(waifu.asset_video);
   let usaImmersiva = false;
   if (tipo === 'immersiva') usaImmersiva = true;
@@ -175,30 +174,19 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
   const imgSrc = usaImmersiva ? waifu.asset_immersiva : (waifu.asset_statica || null);
   const statSize = Math.round(34 * scale);
 
-  // Gestione click: se ha video → avvia video; altrimenti → onClick esterno
+  // Click sulla carta: va sempre all'onClick esterno (il video non parte dal click sulla carta)
   const handleClick = () => {
-    if (hasVideo && !videoAttivo) {
-      setVideoAttivo(true);
-      setVideoFinito(false);
-      setTimeout(() => videoRef.current?.play(), 50);
-    } else if (videoAttivo) {
-      // Click durante video → ferma e torna
-      setVideoAttivo(false);
-      setVideoFinito(false);
-    } else {
-      onClick?.();
-    }
+    onClick?.();
   };
 
   const handleVideoEnd = () => {
     setVideoFinito(true);
     setTimeout(() => {
-      setVideoAttivo(false);
       setVideoFinito(false);
     }, 600);
   };
 
-  // Indicatore che la carta ha video (piccola icona angolo)
+  // Indicatore "ha video" (badge ▶ angolo) — solo in modalità normale, non durante il video
   const showVideoHint = hasVideo && !videoAttivo && dimensione !== 'piccola';
 
   return (
