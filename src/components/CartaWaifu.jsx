@@ -60,7 +60,7 @@ function getArchetipoSym(archetipoId, rarColor) {
 function StatCircle({ value, statKey, icon, color, size = 34 }) {
   const r = (size - 4) / 2;
   const circ = 2 * Math.PI * r;
-  const maxVal = statKey === 'piedi' ? 44 : statKey === 'eta' ? 100 : statKey === 'exp' ? 250 : statKey === 'capelli' ? 10 : 7;
+  const maxVal = statKey === 'piedi' ? 45 : statKey === 'eta' ? 5000 : statKey === 'exp' ? 5000 : statKey === 'capelli' ? 10 : 7;
   const pct = Math.min(1, value / maxVal);
 
   return (
@@ -165,11 +165,11 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
   const borderW = dimensione === 'piccola' ? 2 : 3;
 
   const statBonus = datiCollezione?.stat_bonus || {};
-  const tetteEff = Math.min(7, (waifu.tette || 3) + (statBonus.tette || 0));
-  const piediEff = (waifu.taglia_piedi || 38) + (statBonus.taglia_piedi || 0);
-  const etaEff = (waifu.eta || 20) + (statBonus.eta || 0);
-  const capelliEff = Math.min(10, (waifu.colore_capelli || 1) + (statBonus.colore_capelli || 0));
-  const expEff = (waifu.esperienza || 50) + (statBonus.esperienza || 0);
+  const tetteEff = Math.min(7, (waifu.tette ?? 3) + (statBonus.tette || 0));
+  const piediEff = (waifu.taglia_piedi ?? 38) + (statBonus.taglia_piedi || 0);
+  const etaEff = (waifu.eta ?? 18) + (statBonus.eta || 0);
+  const capelliEff = Math.min(10, (waifu.colore_capelli ?? 1) + (statBonus.colore_capelli || 0));
+  const expEff = (waifu.esperienza ?? 0) + (statBonus.esperienza || 0);
 
   const imgSrc = usaImmersiva ? waifu.asset_immersiva : (waifu.asset_statica || null);
   const statSize = Math.round(34 * scale);

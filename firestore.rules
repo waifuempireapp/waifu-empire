@@ -14,15 +14,23 @@ service cloud.firestore {
 
     // === Profili utente ===
     match /users/{uid} {
-      allow read: if isOwner(uid) || isAdmin();
+      // Lettura pubblica (per classifica) per tutti gli utenti autenticati;
+      // scrittura solo al proprietario o all'admin
+      allow read: if isSignedIn();
       allow create: if isOwner(uid);
       allow update: if isOwner(uid);
       allow delete: if isAdmin();
 
-      // Subcollections: collezione, mappa
+      // Subcollections: collezione, mappa — solo owner/admin
       match /{sub=**} {
         allow read, write: if isOwner(uid) || isAdmin();
       }
+    }
+
+    // === Configurazione di gioco (range stat, ecc.) — lettura pubblica, scrittura admin ===
+    match /config/{doc} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     // === Cataloghi (lettura pubblica, scrittura solo admin) ===

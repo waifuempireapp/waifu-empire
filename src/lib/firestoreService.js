@@ -120,7 +120,13 @@ export async function deleteCatalogo(coll, id) {
   await deleteDoc(doc(db, coll, id));
 }
 
-// =================== CLASSIFICA ===================
+// =================== CONFIGURAZIONE ===================
+export async function getConfig(docId) {
+  const ref = doc(db, 'config', docId);
+  const snap = await getDoc(ref);
+  return snap.exists() ? snap.data() : null;
+}
+
 export async function getClassifica(limitN = 100) {
   // Legge i profili utenti ordinati per livelloMappa desc, poi altri criteri applicati lato client
   const q = query(collection(db, 'users'), limit(200));

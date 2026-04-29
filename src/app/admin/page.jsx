@@ -14,7 +14,9 @@ import {
   buildPromptOutfit, buildPromptPosa, buildPromptBustina,
   ARCHETIPI, PALETTE, MOTORI_AI, suggerisciDiversificazione,
 } from '@/lib/promptGenerator';
-import { RARITA, COLORI_CAPELLI, SLOT_OUTFIT } from '@/lib/constants';
+import { RARITA, COLORI_CAPELLI, SLOT_OUTFIT, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT } from '@/lib/constants';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -107,6 +109,7 @@ export default function AdminPage() {
           { k: 'pose', l: '⚜ Pose' },
           { k: 'distrib', l: '📊 Distribuzione' },
           { k: 'motori', l: '🤖 Motori AI' },
+          { k: 'config', l: '⚙ Config' },
         ].map(t => (
           <button key={t.k} onClick={() => setTab(t.k)} style={{
             padding: '6px 16px',
@@ -126,6 +129,7 @@ export default function AdminPage() {
         {tab === 'pose' && <PoseTab pose={pose} waifu={waifu} ricarica={carica} flash={flash} />}
         {tab === 'distrib' && <DistribTab waifu={waifu} outfit={outfit} pose={pose} />}
         {tab === 'motori' && <MotoriTab />}
+        {tab === 'config' && <ConfigTab waifu={waifu} ricarica={carica} flash={flash} />}
       </div>
     </div>
   );
@@ -410,7 +414,7 @@ function WaifuTab({ waifu, ricarica, flash }) {
     taglia_piedi: 38,
     eta: 22,
     colore_capelli: 1,
-    esperienza: 50,
+    esperienza: 0,
     archetipo: ARCHETIPI[0].id,
     palette: PALETTE[0].id,
     fillers: { outfit: '', fanservice: '', posa: '' },
@@ -617,14 +621,14 @@ function WaifuEditor({ waifu, setWaifu, esistenti, onSalva, onAnnulla, flash }) 
             </select>
           </Field>
           <Field label="Tette (1-7)"><input type="number" min="1" max="7" value={waifu.tette} onChange={e => setWaifu({ ...waifu, tette: +e.target.value })} style={inputStyle} /></Field>
-          <Field label="Taglia piedi (33-44)"><input type="number" min="33" max="44" value={waifu.taglia_piedi} onChange={e => setWaifu({ ...waifu, taglia_piedi: +e.target.value })} style={inputStyle} /></Field>
+          <Field label="Taglia piedi (34-45)"><input type="number" min="34" max="45" value={waifu.taglia_piedi} onChange={e => setWaifu({ ...waifu, taglia_piedi: +e.target.value })} style={inputStyle} /></Field>
           <Field label="Età (18-2000)"><input type="number" min="18" max="2000" value={waifu.eta} onChange={e => setWaifu({ ...waifu, eta: +e.target.value })} style={inputStyle} /></Field>
           <Field label="Colore capelli">
             <select value={waifu.colore_capelli} onChange={e => setWaifu({ ...waifu, colore_capelli: +e.target.value })} style={inputStyle}>
               {Object.entries(COLORI_CAPELLI).map(([k, v]) => <option key={k} value={k}>{k} - {v.nome}</option>)}
             </select>
           </Field>
-          <Field label="Esperienza (0-250)"><input type="number" min="0" max="250" value={waifu.esperienza} onChange={e => setWaifu({ ...waifu, esperienza: +e.target.value })} style={inputStyle} /></Field>
+          <Field label="Esperienza (0-5000)"><input type="number" min="0" max="5000" value={waifu.esperienza} onChange={e => setWaifu({ ...waifu, esperienza: +e.target.value })} style={inputStyle} /></Field>
         </div>
       )}
 
@@ -1344,11 +1348,11 @@ function generaStatsRandom(indice, totale) {
   // Distribuzione variata per evitare clustering
   const seed = indice * 7919 + 1013; // numeri primi per distribuzione
   return {
-    tette: 1 + ((seed) % 7),                                   // 1-7
-    taglia_piedi: 34 + ((seed >> 3) % 11),                      // 34-44
-    eta: 18 + ((seed >> 5) % 83),                               // 18-100
-    colore_capelli: 1 + ((seed >> 8) % 10),                     // 1-10
-    esperienza: 20 + ((seed >> 10) % 231),                      // 20-250
+    tette:          Math.max(1,  Math.min(7,    1  + ((seed)      % 7))),   // 1-7
+    taglia_piedi:   Math.max(34, Math.min(45,   34 + ((seed >> 3) % 12))),  // 34-45
+    eta:            Math.max(1,  Math.min(5000, 1  + ((seed >> 5) % 100))), // 1-5000 (inizialmente valori ragionevoli 1-100)
+    colore_capelli: Math.max(1,  Math.min(10,   1  + ((seed >> 8) % 10))),  // 1-10
+    esperienza:     Math.max(0,  Math.min(5000, 0  + ((seed >> 10) % 201))),// 0-5000 (inizialmente 0-200)
   };
 }
 
@@ -1357,7 +1361,7 @@ const ANALYSIS_SYSTEM_PROMPT = `Sei un analizzatore di immagini anime. Data un'i
 
 Il JSON deve avere questi campi:
 - "tette": intero da 1 a 7 (1=piatte/petite, 3=medie, 5=grandi, 7=enormi fantasy)
-- "eta": intero tra 18 e 100 (età apparente del personaggio, la maggior parte 18-30)
+- "eta": intero tra 1 e 5000 (età apparente, la maggior parte 14-30; valori > 100 per creature antiche/non umane)
 - "colore_capelli": intero da 1 a 10 (1=castano, 2=nero, 3=biondo, 4=rosso, 5=argento, 6=blu, 7=viola, 8=rosa, 9=bicolore, 10=fantasy/arcobaleno)
 
 Esempio di risposta: {"tette":4,"eta":22,"colore_capelli":3}`;
@@ -1446,11 +1450,11 @@ function BulkUploadTab({ waifu, ricarica, flash }) {
           const clean = text.replace(/```json|```/g, '').trim();
           const parsed = JSON.parse(clean);
 
-          // Valida e clamp i valori
+          // Valida e clamp i valori sui nuovi range
           aggiornati[i].stats = {
             ...aggiornati[i].stats,
             tette: Math.max(1, Math.min(7, parsed.tette || aggiornati[i].stats.tette)),
-            eta: Math.max(18, Math.min(100, parsed.eta || aggiornati[i].stats.eta)),
+            eta: Math.max(1, Math.min(5000, parsed.eta || aggiornati[i].stats.eta)),
             colore_capelli: Math.max(1, Math.min(10, parsed.colore_capelli || aggiornati[i].stats.colore_capelli)),
           };
           aggiornati[i].aiStats = parsed;
@@ -1830,3 +1834,176 @@ const btnPrimario = { padding: '8px 18px', background: 'linear-gradient(135deg, 
 const btnSecondario = { padding: '5px 12px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(245,158,11,0.4)', color: '#f5e6d3', fontFamily: 'Cinzel, serif', fontSize: 10, letterSpacing: 1, borderRadius: 4, cursor: 'pointer', display: 'inline-block', textAlign: 'center' };
 const btnPiccolo = { padding: '4px 10px', background: 'linear-gradient(135deg, #f59e0b, #ec4899)', border: 'none', color: '#000', fontFamily: 'Cinzel, serif', fontSize: 10, letterSpacing: 1, borderRadius: 4, cursor: 'pointer', fontWeight: 600 };
 const cardStat = { padding: 14, background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 10 };
+
+// ============================================================
+// TAB: CONFIGURAZIONE RANGE E UPGRADE STEPS
+// ============================================================
+function ConfigTab({ waifu, ricarica, flash }) {
+  const STAT_KEYS = [
+    { key: 'tette',          label: 'Tette',        icon: '✦' },
+    { key: 'colore_capelli', label: 'Capelli',       icon: '✿' },
+    { key: 'eta',            label: 'Età',           icon: '⌛' },
+    { key: 'taglia_piedi',   label: 'Taglia Piedi',  icon: '⚘' },
+    { key: 'esperienza',     label: 'Esperienza',    icon: '★' },
+  ];
+
+  const [ranges, setRanges] = useState({ ...STAT_RANGES_DEFAULT });
+  const [steps, setSteps] = useState({ ...UPGRADE_STEPS_DEFAULT });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [bonifica, setBonifica] = useState(null); // null | { inCorso, risultati[] }
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const rDoc = await getDoc(doc(db, 'config', 'stat_ranges'));
+        if (rDoc.exists()) setRanges({ ...STAT_RANGES_DEFAULT, ...rDoc.data() });
+        const sDoc = await getDoc(doc(db, 'config', 'upgrade_steps'));
+        if (sDoc.exists()) setSteps({ ...UPGRADE_STEPS_DEFAULT, ...sDoc.data() });
+      } catch (e) { /* usa defaults */ }
+      setLoading(false);
+    })();
+  }, []);
+
+  const salvaConfig = async () => {
+    setSaving(true);
+    try {
+      await setDoc(doc(db, 'config', 'stat_ranges'), ranges);
+      await setDoc(doc(db, 'config', 'upgrade_steps'), steps);
+      flash('Configurazione salvata!', '#06d6a0');
+    } catch (e) { flash('Errore salvataggio: ' + e.message, '#ef4444'); }
+    setSaving(false);
+  };
+
+  const avviaBonifica = async () => {
+    if (!confirm(`Bonificare ${waifu.length} waifu con i range correnti?\nLe statistiche fuori range saranno clampate.`)) return;
+    setBonifica({ inCorso: true, risultati: [] });
+    const risultati = [];
+    for (const w of waifu) {
+      const patch = {};
+      let modificata = false;
+      for (const { key } of STAT_KEYS) {
+        const r = ranges[key];
+        if (!r) continue;
+        const val = w[key];
+        if (val === undefined || val === null) continue;
+        const clamped = Math.max(r.min, Math.min(r.max, val));
+        if (clamped !== val) { patch[key] = clamped; modificata = true; }
+      }
+      if (modificata) {
+        try {
+          await upsertWaifu(w.id, patch);
+          risultati.push({ nome: w.nome, patch, ok: true });
+        } catch (e) {
+          risultati.push({ nome: w.nome, errore: e.message, ok: false });
+        }
+      }
+    }
+    setBonifica({ inCorso: false, risultati });
+    ricarica();
+    flash(`Bonifica completata: ${risultati.filter(r => r.ok).length} waifu corrette`, '#06d6a0');
+  };
+
+  const resetDefaults = () => {
+    setRanges({ ...STAT_RANGES_DEFAULT });
+    setSteps({ ...UPGRADE_STEPS_DEFAULT });
+    flash('Valori resettati ai default (non ancora salvati)', '#f59e0b');
+  };
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 40, color: '#f59e0b', fontFamily: 'Cinzel, serif' }}>⏳ Caricamento configurazione...</div>;
+
+  return (
+    <div style={{ maxWidth: 800, margin: '0 auto' }}>
+      <h2 style={{ ...titoloSec, marginBottom: 6 }}>⚙ CONFIGURAZIONE</h2>
+      <p style={{ color: 'rgba(245,230,211,0.5)', fontSize: 12, marginBottom: 24 }}>
+        Modifica i range delle statistiche e gli step di upgrade. Dopo aver salvato, usa la bonifica per correggere le waifu esistenti.
+      </p>
+
+      {/* Range statistiche */}
+      <div style={{ ...cardStat, marginBottom: 20 }}>
+        <h3 style={{ fontFamily: 'Cinzel, serif', color: '#a855f7', fontSize: 13, letterSpacing: 2, marginBottom: 16 }}>📊 RANGE STATISTICHE</h3>
+        <div style={{ display: 'grid', gap: 14 }}>
+          {STAT_KEYS.map(({ key, label, icon }) => (
+            <div key={key} style={{ display: 'grid', gridTemplateColumns: '130px 1fr 1fr', gap: 10, alignItems: 'center' }}>
+              <div style={{ fontFamily: 'Cinzel, serif', color: '#f5e6d3', fontSize: 11 }}>{icon} {label}</div>
+              <div>
+                <label style={{ display: 'block', fontSize: 9, color: '#a855f7', marginBottom: 3, fontFamily: 'Cinzel, serif' }}>MIN</label>
+                <input type="number" value={ranges[key]?.min ?? ''} style={{ ...inputStyle, padding: '6px 8px' }}
+                  onChange={e => setRanges(r => ({ ...r, [key]: { ...r[key], min: +e.target.value } }))} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 9, color: '#a855f7', marginBottom: 3, fontFamily: 'Cinzel, serif' }}>MAX</label>
+                <input type="number" value={ranges[key]?.max ?? ''} style={{ ...inputStyle, padding: '6px 8px' }}
+                  onChange={e => setRanges(r => ({ ...r, [key]: { ...r[key], max: +e.target.value } }))} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Step upgrade */}
+      <div style={{ ...cardStat, marginBottom: 20 }}>
+        <h3 style={{ fontFamily: 'Cinzel, serif', color: '#a855f7', fontSize: 13, letterSpacing: 2, marginBottom: 16 }}>⚡ STEP UPGRADE (valore per +/-)</h3>
+        <div style={{ display: 'grid', gap: 10 }}>
+          {STAT_KEYS.map(({ key, label, icon }) => (
+            <div key={key} style={{ display: 'grid', gridTemplateColumns: '130px 1fr 200px', gap: 10, alignItems: 'center' }}>
+              <div style={{ fontFamily: 'Cinzel, serif', color: '#f5e6d3', fontSize: 11 }}>{icon} {label}</div>
+              <input type="number" min="1" value={steps[key] ?? ''} style={{ ...inputStyle, padding: '6px 8px' }}
+                onChange={e => setSteps(s => ({ ...s, [key]: +e.target.value }))} />
+              <div style={{ fontSize: 10, color: 'rgba(245,230,211,0.4)', fontFamily: 'Cinzel, serif' }}>
+                range: {ranges[key]?.min}–{ranges[key]?.max}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Azioni */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
+        <button onClick={salvaConfig} disabled={saving} style={btnPrimario}>
+          {saving ? '⏳ Salvataggio...' : '💾 SALVA CONFIGURAZIONE'}
+        </button>
+        <button onClick={resetDefaults} style={btnSecondario}>↺ RESET DEFAULT</button>
+        <button onClick={avviaBonifica} disabled={bonifica?.inCorso} style={{
+          ...btnSecondario, borderColor: 'rgba(239,68,68,0.5)', color: '#fca5a5',
+        }}>
+          {bonifica?.inCorso ? '⏳ Bonifica in corso...' : `🔧 BONIFICA WAIFU (${waifu.length})`}
+        </button>
+      </div>
+
+      {/* Risultati bonifica */}
+      {bonifica && !bonifica.inCorso && (
+        <div style={{ ...cardStat }}>
+          <h3 style={{ fontFamily: 'Cinzel, serif', color: '#06d6a0', fontSize: 12, letterSpacing: 2, marginBottom: 12 }}>
+            ✅ RISULTATI BONIFICA ({bonifica.risultati.length} waifu modificate)
+          </h3>
+          {bonifica.risultati.length === 0 ? (
+            <div style={{ color: 'rgba(245,230,211,0.5)', fontSize: 12, fontFamily: 'Cinzel, serif' }}>
+              Nessuna waifu fuori range — catalogo già conforme! ✓
+            </div>
+          ) : (
+            <div style={{ maxHeight: 300, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {bonifica.risultati.map((r, i) => (
+                <div key={i} style={{
+                  padding: '8px 12px', borderRadius: 6,
+                  background: r.ok ? 'rgba(6,214,160,0.08)' : 'rgba(239,68,68,0.08)',
+                  border: `1px solid ${r.ok ? 'rgba(6,214,160,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                  fontSize: 11, fontFamily: 'Cinzel, serif',
+                }}>
+                  <span style={{ color: r.ok ? '#06d6a0' : '#fca5a5', marginRight: 8 }}>{r.ok ? '✓' : '✗'}</span>
+                  <span style={{ color: '#f5e6d3' }}>{r.nome}</span>
+                  {r.ok && r.patch && (
+                    <span style={{ color: 'rgba(245,230,211,0.5)', marginLeft: 8 }}>
+                      {Object.entries(r.patch).map(([k, v]) => `${k}: →${v}`).join(', ')}
+                    </span>
+                  )}
+                  {r.errore && <span style={{ color: '#fca5a5', marginLeft: 8 }}>— {r.errore}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

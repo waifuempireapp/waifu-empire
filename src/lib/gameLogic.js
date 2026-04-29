@@ -1,6 +1,6 @@
 // src/lib/gameLogic.js
 // Logica di gioco condivisa
-import { RARITA, TIMER, ENERGIA_SCARTO } from './constants.js';
+import { RARITA, TIMER, ENERGIA_SCARTO, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT } from './constants.js';
 
 export function pickRaritaCasuale() {
   const r = Math.random();
@@ -101,14 +101,51 @@ export function pronto_levelUp(datiWaifu) {
   return datiWaifu && datiWaifu.copie >= 3;
 }
 
-// Incrementi stat per level up
+// Incrementi stat per level up (bilanciati per i nuovi range)
+// Tette: +/-1, Capelli: +/-1, Piedi: +/-1, Età: +/-25, Esperienza: +/-50
 export const INCREMENTI_LEVELUP = {
   tette: 1,
   taglia_piedi: 1,
-  eta: 5,
+  eta: 25,
   colore_capelli: 1,
-  esperienza: 20,
+  esperienza: 50,
 };
+
+// Clamp una statistica entro i range consentiti
+export function clampStat(key, value, ranges = STAT_RANGES_DEFAULT) {
+  const r = ranges[key] || STAT_RANGES_DEFAULT[key];
+  if (!r) return value;
+  return Math.max(r.min, Math.min(r.max, value));
+}
+
+// Clamp tutte le statistiche di una waifu
+export function clampWaifuStats(waifu, ranges = STAT_RANGES_DEFAULT) {
+  return {
+    ...waifu,
+    tette:          clampStat('tette',          waifu.tette          ?? 3, ranges),
+    colore_capelli: clampStat('colore_capelli', waifu.colore_capelli ?? 1, ranges),
+    eta:            clampStat('eta',            waifu.eta            ?? 18, ranges),
+    taglia_piedi:   clampStat('taglia_piedi',   waifu.taglia_piedi   ?? 38, ranges),
+    esperienza:     clampStat('esperienza',     waifu.esperienza     ?? 0, ranges),
+  };
+}
+
+// Genera stats random rispettando i range configurati
+export function generaStatsRandom_conRange(indice, totale, ranges = STAT_RANGES_DEFAULT) {
+  const seed = indice * 7919 + 1013;
+  const r = ranges;
+  const rand = (rng, shift) => {
+    const span = rng.max - rng.min;
+    return rng.min + ((seed >> shift) % (span + 1));
+  };
+  return {
+    tette:          clampStat('tette',          rand(r.tette, 0),          ranges),
+    taglia_piedi:   clampStat('taglia_piedi',   rand(r.taglia_piedi, 3),   ranges),
+    eta:            clampStat('eta',            rand(r.eta, 5),            ranges),
+    colore_capelli: clampStat('colore_capelli', rand(r.colore_capelli, 8), ranges),
+    esperienza:     clampStat('esperienza',     rand(r.esperienza, 10),    ranges),
+  };
+}
 
 // Ricarica pacchetti omaggio: 2 ogni 12 ore
 export function calcolaRicaricaPacchettiOmaggio(ultimaRicarica, attualiPacchetti = 0) {

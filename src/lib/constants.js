@@ -27,6 +27,25 @@ export const CATEGORIE_TETTE = {
   5: 'Large', 6: 'Very Large', 7: 'Oppai Fantasy',
 };
 
+// Range statistiche waifu (modificabili da admin via Firestore /config/stat_ranges)
+// Questi sono i valori di default; il gioco carica i valori reali da Firestore se disponibili
+export const STAT_RANGES_DEFAULT = {
+  tette:          { min: 1,  max: 7    },
+  colore_capelli: { min: 1,  max: 10   },
+  eta:            { min: 1,  max: 5000 },
+  taglia_piedi:   { min: 34, max: 45   },
+  esperienza:     { min: 0,  max: 5000 },
+};
+
+// Incrementi di default per il level-up (modificabili da admin via Firestore /config/upgrade_steps)
+export const UPGRADE_STEPS_DEFAULT = {
+  tette:          1,
+  colore_capelli: 1,
+  taglia_piedi:   1,
+  eta:            25,
+  esperienza:     50,
+};
+
 export const SLOT_OUTFIT = {
   faccia: { nome: 'Faccia', icon: '👁' },
   petto:  { nome: 'Petto',  icon: '✦' },
