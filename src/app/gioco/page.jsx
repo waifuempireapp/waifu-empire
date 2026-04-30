@@ -2530,7 +2530,8 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
   const [tabDettaglio, setTabDettaglio] = useState('carta'); // 'carta' | 'babydoll'
   const [tabSlot, setTabSlot] = useState('petto');
   const [mostraLU, setMostraLU] = useState(false);
-  const [statSel, setStatSel] = useState(null);
+  const [statSel, setStatSel] = useState(null); // formato: { key: 'taglia_piedi', dir: 'plus' }
+  const [modificheUsate, setModificheUsate] = useState(0);
   const [zoomCarta, setZoomCarta] = useState(false);
 
   useEffect(() => {
@@ -2565,6 +2566,8 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
 
   const copiePerLevelUp = 3;
   const canLevelUp = dati.copie >= copiePerLevelUp;
+  const nLivelli = Math.floor(dati.copie / copiePerLevelUp); // quante modifiche posso fare
+  const modificheRimaste = nLivelli - modificheUsate;
   const copieMancantiMsg = !canLevelUp ? `Mancano ${copiePerLevelUp - dati.copie} ${copiePerLevelUp - dati.copie === 1 ? 'copia' : 'copie'} per il Level Up` : null;
 
   return (
@@ -2587,8 +2590,9 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
         display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
         overflowY: 'auto',
         paddingTop: 'env(safe-area-inset-top, 0)',
+        paddingBottom: 'max(80px, env(safe-area-inset-bottom, 0px))',
       }}>
-        <div onClick={e => e.stopPropagation()} className="fade-up" style={{
+        <div onClick={e => e.stopPropagation()} className="fade-up modal-dettaglio-waifu" style={{
           width: '100%', maxWidth: 520,
           margin: '0 auto',
           paddingBottom: 24,
@@ -2709,8 +2713,11 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
                 {mostraLU && (
                   <PannelloOrnato variant="accent" glow="#f5a623" style={{ width: '100%', padding: '14px 12px' }}>
                     <TitoloOrnato livello={3} colore="#ffd666">MODIFICA STATISTICHE</TitoloOrnato>
-                    <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.45)', fontFamily: 'Orbitron', textAlign: 'center', marginBottom: 12, letterSpacing: 1 }}>
-                      Scegli stat e direzione · costo: 3 copie
+                    <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.45)', fontFamily: 'Orbitron', textAlign: 'center', marginBottom: 4, letterSpacing: 1 }}>
+                      Scegli stat e direzione · costo: 3 copie per modifica
+                    </div>
+                    <div style={{ fontSize: 9, color: modificheRimaste > 0 ? '#ffd666' : '#ff6b6b', fontFamily: 'Orbitron', textAlign: 'center', marginBottom: 12, letterSpacing: 1, fontWeight: 700 }}>
+                      {modificheRimaste > 0 ? `⚡ ${modificheRimaste} modific${modificheRimaste === 1 ? 'a' : 'he'} disponibil${modificheRimaste === 1 ? 'e' : 'i'}` : '✕ Limite modifiche raggiunto'}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
                       {STATS_INFO.map(s => {
@@ -2718,10 +2725,10 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
                         const bonus = dati.stat_bonus?.[s.key] || 0;
                         const corrente = base + bonus;
                         const step = statConfig.steps[s.key] ?? INCREMENTI_LEVELUP[s.key];
-                        const puoSalire   = corrente + step <= s.max;
-                        const puoScendere = corrente - step >= s.min;
-                        const selPlus  = statSel === s.key + '_plus';
-                        const selMinus = statSel === s.key + '_minus';
+                        const puoSalire   = corrente + step <= s.max && modificheRimaste > 0;
+                        const puoScendere = corrente - step >= s.min && modificheRimaste > 0;
+                        const selPlus  = statSel?.key === s.key && statSel?.dir === 'plus';
+                        const selMinus = statSel?.key === s.key && statSel?.dir === 'minus';
                         return (
                           <div key={s.key} style={{
                             display: 'grid', gridTemplateColumns: '1fr auto auto',
@@ -2741,20 +2748,20 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
                                 range {s.min}–{s.max} · step ±{step}
                               </div>
                             </div>
-                            <button onClick={() => setStatSel(selPlus ? null : s.key + '_plus')} disabled={!puoSalire} style={{
+                            <button onClick={() => setStatSel(selPlus ? null : { key: s.key, dir: 'plus' })} disabled={!puoSalire && !selPlus} style={{
                               width: 34, height: 34, borderRadius: 8,
                               background: selPlus ? rar.colore : puoSalire ? 'rgba(0,230,118,0.12)' : 'rgba(255,255,255,0.03)',
                               border: `1px solid ${selPlus ? rar.colore : puoSalire ? 'rgba(0,230,118,0.4)' : 'rgba(255,255,255,0.06)'}`,
                               color: selPlus ? '#000' : puoSalire ? '#00e676' : 'rgba(255,255,255,0.15)',
-                              fontSize: 16, fontWeight: 900, cursor: puoSalire ? 'pointer' : 'not-allowed',
+                              fontSize: 16, fontWeight: 900, cursor: (puoSalire || selPlus) ? 'pointer' : 'not-allowed',
                               display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
                             }}>+</button>
-                            <button onClick={() => setStatSel(selMinus ? null : s.key + '_minus')} disabled={!puoScendere} style={{
+                            <button onClick={() => setStatSel(selMinus ? null : { key: s.key, dir: 'minus' })} disabled={!puoScendere && !selMinus} style={{
                               width: 34, height: 34, borderRadius: 8,
                               background: selMinus ? '#ff6b6b' : puoScendere ? 'rgba(255,107,107,0.12)' : 'rgba(255,255,255,0.03)',
                               border: `1px solid ${selMinus ? '#ff6b6b' : puoScendere ? 'rgba(255,107,107,0.4)' : 'rgba(255,255,255,0.06)'}`,
                               color: selMinus ? '#000' : puoScendere ? '#ff6b6b' : 'rgba(255,255,255,0.15)',
-                              fontSize: 16, fontWeight: 900, cursor: puoScendere ? 'pointer' : 'not-allowed',
+                              fontSize: 16, fontWeight: 900, cursor: (puoScendere || selMinus) ? 'pointer' : 'not-allowed',
                               display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
                             }}>−</button>
                           </div>
@@ -2763,9 +2770,10 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
                     </div>
                     {/* Preview modifica */}
                     {statSel && (() => {
-                      const [sKey, dir] = statSel.split('_');
-                      const isDirPlus = dir === 'plus';
+                      const sKey = statSel.key;
+                      const isDirPlus = statSel.dir === 'plus';
                       const s = STATS_INFO.find(x => x.key === sKey);
+                      if (!s) return null;
                       const step = statConfig.steps[sKey] ?? INCREMENTI_LEVELUP[sKey];
                       const corrente = (w[sKey] ?? s.min) + (dati.stat_bonus?.[sKey] || 0);
                       const dopo = isDirPlus ? corrente + step : corrente - step;
@@ -2778,32 +2786,42 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
                         </div>
                       );
                     })()}
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                      <BtnDecorato variant="secondary" onClick={() => { setMostraLU(false); setStatSel(null); }}>ANNULLA</BtnDecorato>
-                      <BtnDecorato variant="primary" disabled={!statSel} onClick={() => {
-                        if (!statSel) return;
-                        const [sKey, dir] = statSel.split('_');
-                        onLevelUp(waifuId, sKey, dir === 'plus' ? 1 : -1);
-                        setMostraLU(false); setStatSel(null);
-                      }}>CONFERMA</BtnDecorato>
-                    </div>
                   </PannelloOrnato>
                 )}
 
-                {/* 7. BOTTONE LEVEL UP */}
+                {/* 7. BOTTONE LEVEL UP / ANNULLA+CONFERMA */}
                 <div style={{ width: '100%', textAlign: 'center' }}>
-                  <BtnDecorato
-                    variant="primary"
-                    size="md"
-                    disabled={!canLevelUp}
-                    onClick={() => canLevelUp && setMostraLU(v => !v)}
-                    style={{ opacity: canLevelUp ? 1 : 0.45, cursor: canLevelUp ? 'pointer' : 'not-allowed' }}
-                  >
-                    {mostraLU ? '✕ ANNULLA MODIFICA' : 'LEVEL UP'}
-                  </BtnDecorato>
-                  {!canLevelUp && copieMancantiMsg && (
-                    <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.4)', marginTop: 6, letterSpacing: 0.5 }}>
-                      {copieMancantiMsg}
+                  {!mostraLU ? (
+                    <>
+                      <BtnDecorato
+                        variant="primary"
+                        size="md"
+                        disabled={!canLevelUp}
+                        onClick={() => canLevelUp && (setMostraLU(true), setStatSel(null), setModificheUsate(0))}
+                        style={{ opacity: canLevelUp ? 1 : 0.45, cursor: canLevelUp ? 'pointer' : 'not-allowed' }}
+                      >
+                        LEVEL UP
+                      </BtnDecorato>
+                      {!canLevelUp && copieMancantiMsg && (
+                        <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.4)', marginTop: 6, letterSpacing: 0.5 }}>
+                          {copieMancantiMsg}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                      <BtnDecorato variant="secondary" onClick={() => { setMostraLU(false); setStatSel(null); setModificheUsate(0); }}>ANNULLA</BtnDecorato>
+                      <BtnDecorato variant="primary" disabled={!statSel} onClick={() => {
+                        if (!statSel) return;
+                        onLevelUp(waifuId, statSel.key, statSel.dir === 'plus' ? 1 : -1);
+                        const nuoveUsate = modificheUsate + 1;
+                        setModificheUsate(nuoveUsate);
+                        setStatSel(null);
+                        // Se non ci sono più modifiche disponibili, chiudi il pannello
+                        if (nuoveUsate >= nLivelli) {
+                          setMostraLU(false);
+                        }
+                      }}>CONFERMA</BtnDecorato>
                     </div>
                   )}
                 </div>
@@ -2879,7 +2897,7 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
                       const livOutfit = tabSlot !== 'pose' ? calcolaLivelloOutfit(item._copie || 1, item.rarita, OUTFIT_CONFIG_DEFAULT) : 1;
                       const tuttiAIds = [...new Set(outfitCat.flatMap(o => o.archetipi_compatibili || (o.archetipo_compatibile ? [o.archetipo_compatibile] : [])))];
                       // Verifica compatibilità con la waifu corrente
-                      const waifuCorrente = datiCollezione ? w : null;
+                      const waifuCorrente = dati ? w : null;
                       let compatibile = true;
                       let motivoIncompat = '';
                       if (tabSlot !== 'pose' && waifuCorrente) {

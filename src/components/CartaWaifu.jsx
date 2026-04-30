@@ -95,18 +95,16 @@ function StatCircle({ value, statKey, icon, color, size = 34 }) {
 // ====================================================================
 function ArchetipoTag({ archetipoId, rarColor, scale = 1 }) {
   const sym = getArchetipoSym(archetipoId, rarColor);
-  const arcData = ARCHETIPI_MAP[archetipoId];
-  const nome = arcData?.nome || archetipoId?.replace(/_/g, ' ') || '';
   const sz = Math.round(28 * scale);
 
   if (!archetipoId) return null;
 
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: Math.round(4 * scale),
+      display: 'flex', alignItems: 'center',
       marginTop: Math.round(4 * scale),
     }}>
-      {/* Cerchio simbolo — dimensione analoga ai cerchi stat */}
+      {/* Solo cerchio simbolo — nessun nome */}
       <div style={{
         width: sz, height: sz,
         borderRadius: '50%',
@@ -119,22 +117,6 @@ function ArchetipoTag({ archetipoId, rarColor, scale = 1 }) {
       }}>
         {sym.sym}
       </div>
-      {/* Nome archetipo in piccolo */}
-      {nome && (
-        <div style={{
-          fontSize: Math.round(7 * scale),
-          color: sym.color,
-          fontFamily: 'Orbitron, monospace',
-          letterSpacing: 0.5,
-          textShadow: `0 0 4px ${sym.color}88`,
-          textTransform: 'uppercase',
-          opacity: 0.9,
-          maxWidth: Math.round(80 * scale),
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}>{nome}</div>
-      )}
     </div>
   );
 }
@@ -300,8 +282,8 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
               textShadow: '0 1px 3px rgba(0,0,0,0.8)',
             }}>LV.{datiCollezione.livello || 1}</div>
           )}
-          {/* ★ FASE 4: Simbolo archetipo sotto nome/livello */}
-          {waifu.archetipo && dimensione !== 'piccola' && (
+          {/* ★ FASE 4: Simbolo archetipo sotto nome/livello — visibile sempre */}
+          {waifu.archetipo && (
             <ArchetipoTag archetipoId={waifu.archetipo} rarColor={rb.inner} scale={scale} />
           )}
         </div>

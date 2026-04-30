@@ -415,3 +415,10 @@ input:focus, textarea:focus, select:focus {
     padding: 5px 6px !important;
   }
 }
+
+/* ── Modale dettaglio waifu: su mobile inizia leggermente in basso ── */
+@media (max-width: 768px) {
+  .modal-dettaglio-waifu {
+    margin-top: 48px !important;
+  }
+}
