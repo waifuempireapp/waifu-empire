@@ -2368,26 +2368,99 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
 const IMMERSIVA_COLOR = '#ec4899'; // stesso rosa usato in RARITY_BORDER.immersivo
 const HARD_COLOR = '#ef4444'; // rosso per bottone/video hard
 
-// Modale acquisto pass hard
-function ModalAcquistoPass({ onClose, onAcquistato }) {
-  const [loading, setLoading] = useState(false);
-  const [fatto, setFatto] = useState(false);
+// Modale acquisto pass hard — usa PayPal JS SDK nativo (bottone inline)
+// Flusso: createOrder (server) → PayPal approva → captureOrder (server) → pass assegnato
+function ModalAcquistoPass({ onClose, onAcquistato, user }) {
+  const containerRef  = useRef(null);
+  const sdkLoadedRef  = useRef(false);
+  const [stato, setStato]   = useState('idle'); // idle | loading | success | error
+  const [errMsg, setErrMsg] = useState('');
 
-  const apriPayPal = () => {
-    // Apre PayPal in una nuova finestra. L'URL va sostituito con il link reale del bottone/prodotto PayPal.
-    window.open('https://www.paypal.com/checkoutnow?amount=4.99&currency=EUR&description=ImperoWaifu+Hard+Pass', '_blank');
-    setLoading(true);
-  };
+  useEffect(() => {
+    if (sdkLoadedRef.current) return;
 
-  const confermaPagamento = async () => {
-    // L'utente dichiara di aver pagato — in produzione questa logica andrà validata lato server
-    setFatto(true);
-    await onAcquistato();
-  };
+    const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
+    if (!clientId) {
+      setErrMsg('Configurazione PayPal mancante. Contatta il supporto.');
+      setStato('error');
+      return;
+    }
+
+    // Evita duplicati dello script
+    const existingScript = document.getElementById('paypal-sdk');
+    const loadSdk = (cb) => {
+      if (existingScript && window.paypal) { cb(); return; }
+      if (existingScript) { existingScript.onload = cb; return; }
+      const script = document.createElement('script');
+      script.id  = 'paypal-sdk';
+      script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=EUR&locale=it_IT&disable-funding=credit,card`;
+      script.onload  = cb;
+      script.onerror = () => { setErrMsg('Impossibile caricare PayPal. Controlla la connessione.'); setStato('error'); };
+      document.head.appendChild(script);
+    };
+
+    setStato('loading');
+    loadSdk(() => {
+      if (!containerRef.current || !window.paypal) return;
+      sdkLoadedRef.current = true;
+      setStato('idle');
+
+      window.paypal.Buttons({
+        style: {
+          layout: 'vertical',
+          color:  'gold',
+          shape:  'rect',
+          label:  'pay',
+          height: 45,
+        },
+
+        // Step 1: crea l'ordine sul nostro backend
+        createOrder: async () => {
+          const res = await fetch('/api/paypal/create-order', { method: 'POST' });
+          if (!res.ok) throw new Error('Errore creazione ordine');
+          const { orderID } = await res.json();
+          return orderID;
+        },
+
+        // Step 2: utente ha approvato su PayPal → cattura lato server
+        onApprove: async (data) => {
+          setStato('loading');
+          try {
+            const res = await fetch('/api/paypal/capture-order', {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify({ orderID: data.orderID, uid: user?.uid }),
+            });
+            const result = await res.json();
+            if (!res.ok || !result.success) {
+              throw new Error(result.error || 'Pagamento non completato');
+            }
+            setStato('success');
+            // Aspetta un momento per mostrare il feedback, poi notifica il parent
+            setTimeout(() => onAcquistato(), 1500);
+          } catch (e) {
+            setErrMsg(e.message || 'Errore durante il pagamento');
+            setStato('error');
+          }
+        },
+
+        onError: (err) => {
+          console.error('[PayPal onError]', err);
+          setErrMsg('Si è verificato un errore con PayPal. Riprova.');
+          setStato('error');
+        },
+
+        onCancel: () => {
+          // L'utente ha chiuso PayPal senza pagare — non facciamo nulla
+          setStato('idle');
+        },
+      }).render(containerRef.current);
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div
-      onClick={onClose}
+      onClick={stato === 'loading' ? undefined : onClose}
       style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)',
         backdropFilter: 'blur(18px)', zIndex: 500,
@@ -2401,7 +2474,7 @@ function ModalAcquistoPass({ onClose, onAcquistato }) {
           border: `1px solid ${HARD_COLOR}55`,
           borderRadius: 18,
           padding: '32px 28px',
-          maxWidth: 360,
+          maxWidth: 380,
           width: '90%',
           textAlign: 'center',
           boxShadow: `0 0 60px ${HARD_COLOR}25`,
@@ -2410,108 +2483,77 @@ function ModalAcquistoPass({ onClose, onAcquistato }) {
       >
         <div style={{ fontSize: 36, marginBottom: 12 }}>🔞</div>
         <div style={{
-          fontFamily: 'Cinzel, serif',
-          color: HARD_COLOR,
-          fontSize: 16,
-          letterSpacing: 3,
-          fontWeight: 700,
-          marginBottom: 8,
-          textTransform: 'uppercase',
+          fontFamily: 'Cinzel, serif', color: HARD_COLOR,
+          fontSize: 16, letterSpacing: 3, fontWeight: 700,
+          marginBottom: 8, textTransform: 'uppercase',
         }}>
           HARD PASS
         </div>
-        <div style={{
-          color: 'rgba(238,232,220,0.6)',
-          fontSize: 12,
-          lineHeight: 1.7,
-          marginBottom: 20,
-        }}>
+        <div style={{ color: 'rgba(238,232,220,0.6)', fontSize: 12, lineHeight: 1.7, marginBottom: 16 }}>
           Sblocca l'accesso illimitato a tutti i video immersivi hard per tutte le waifu, ora e in futuro.
         </div>
         <div style={{
-          fontFamily: 'Orbitron, monospace',
-          color: '#fff',
-          fontSize: 28,
-          fontWeight: 900,
-          marginBottom: 20,
-          letterSpacing: 1,
+          fontFamily: 'Orbitron, monospace', color: '#fff',
+          fontSize: 28, fontWeight: 900, marginBottom: 20, letterSpacing: 1,
         }}>
           € 4,99 <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontWeight: 400 }}>una-tantum</span>
         </div>
 
-        {!fatto ? (
-          <>
-            {!loading ? (
-              <button
-                onClick={apriPayPal}
-                style={{
-                  background: '#0070ba',
-                  border: 'none',
-                  borderRadius: 10,
-                  color: '#fff',
-                  fontFamily: 'Orbitron, monospace',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  letterSpacing: 2,
-                  padding: '13px 32px',
-                  cursor: 'pointer',
-                  width: '100%',
-                  marginBottom: 10,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  boxShadow: '0 4px 18px rgba(0,112,186,0.4)',
-                }}
-              >
-                <span style={{ fontSize: 18 }}>🅿</span> PAGA CON PAYPAL
-              </button>
-            ) : (
-              <button
-                onClick={confermaPagamento}
-                style={{
-                  background: `linear-gradient(135deg, ${HARD_COLOR}88, ${HARD_COLOR}55)`,
-                  border: `1px solid ${HARD_COLOR}`,
-                  borderRadius: 10,
-                  color: '#fff',
-                  fontFamily: 'Orbitron, monospace',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  letterSpacing: 2,
-                  padding: '13px 32px',
-                  cursor: 'pointer',
-                  width: '100%',
-                  marginBottom: 10,
-                  boxShadow: `0 4px 18px ${HARD_COLOR}30`,
-                }}
-              >
-                ✓ HO COMPLETATO IL PAGAMENTO
-              </button>
-            )}
-          </>
-        ) : (
-          <div style={{ color: '#4ade80', fontFamily: 'Orbitron', fontSize: 12, letterSpacing: 2, padding: '13px 0' }}>
+        {/* Stato: successo */}
+        {stato === 'success' && (
+          <div style={{
+            color: '#4ade80', fontFamily: 'Orbitron', fontSize: 13,
+            letterSpacing: 2, padding: '16px 0', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}>
             ✓ PASS ATTIVATO!
           </div>
         )}
 
-        <button
-          onClick={onClose}
-          style={{
-            background: 'transparent',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 8,
-            color: 'rgba(238,232,220,0.4)',
-            fontFamily: 'Orbitron, monospace',
-            fontSize: 10,
-            padding: '8px 20px',
-            cursor: 'pointer',
-            width: '100%',
-            letterSpacing: 1,
-          }}
-        >
-          ANNULLA
-        </button>
+        {/* Stato: errore */}
+        {stato === 'error' && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ color: HARD_COLOR, fontFamily: 'Orbitron', fontSize: 11, letterSpacing: 1, marginBottom: 8 }}>
+              ✕ {errMsg}
+            </div>
+            <button
+              onClick={() => { setStato('idle'); setErrMsg(''); sdkLoadedRef.current = false; }}
+              style={{
+                background: 'rgba(239,68,68,0.15)', border: `1px solid ${HARD_COLOR}55`,
+                borderRadius: 8, color: HARD_COLOR, fontFamily: 'Orbitron',
+                fontSize: 10, padding: '8px 18px', cursor: 'pointer', letterSpacing: 1,
+              }}
+            >↻ RIPROVA</button>
+          </div>
+        )}
+
+        {/* Stato: caricamento SDK o cattura */}
+        {stato === 'loading' && (
+          <div style={{ color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', fontSize: 10, letterSpacing: 2, padding: '16px 0' }}>
+            ⏳ ELABORAZIONE...
+          </div>
+        )}
+
+        {/* Contenitore bottone PayPal — nascosto durante loading/success/error */}
+        <div
+          ref={containerRef}
+          style={{ display: stato === 'idle' ? 'block' : 'none', marginBottom: 12 }}
+        />
+
+        {stato !== 'success' && stato !== 'loading' && (
+          <button
+            onClick={onClose}
+            style={{
+              background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 8, color: 'rgba(238,232,220,0.4)',
+              fontFamily: 'Orbitron, monospace', fontSize: 10,
+              padding: '8px 20px', cursor: 'pointer', width: '100%', letterSpacing: 1,
+              marginTop: 4,
+            }}
+          >
+            ANNULLA
+          </button>
+        )}
       </div>
     </div>
   );
@@ -2571,16 +2613,13 @@ function ZoomCartaOverlay({ w, dati, outfitCat, poseCat, equip, onClose, profilo
   };
 
   const onAcquistatoPass = async () => {
-    if (user && setProfilo) {
-      try {
-        await updateUserProfile(user.uid, { hardPass: true });
-        setProfilo(prev => ({ ...prev, hardPass: true }));
-      } catch (e) { console.error('Errore salvataggio pass:', e); }
+    // Il backend ha già salvato hardPass:true su Firestore nella capture-order
+    // Aggiorniamo solo lo stato locale per non richiedere un reload
+    if (setProfilo) {
+      setProfilo(prev => ({ ...prev, hardPass: true }));
     }
-    setTimeout(() => {
-      setMostraModalPass(false);
-      avviaVideoHard();
-    }, 1200);
+    setMostraModalPass(false);
+    avviaVideoHard();
   };
 
   return (
@@ -2820,6 +2859,7 @@ function ZoomCartaOverlay({ w, dati, outfitCat, poseCat, equip, onClose, profilo
       <ModalAcquistoPass
         onClose={() => setMostraModalPass(false)}
         onAcquistato={onAcquistatoPass}
+        user={user}
       />
     )}
     </>
