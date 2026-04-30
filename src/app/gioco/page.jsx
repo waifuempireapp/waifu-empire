@@ -3471,11 +3471,11 @@ function RoundEndBar({ vincitoreRound, statScelta, direzione, carteP, carteC, ro
 const TEAM_PAGE_SIZE = 12;
 
 function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxSel = 5, accentColor = '#ffd666', labelSel = 'SCEGLI 5 WAIFU' }) {
-  const [filtroRar, setFiltroRar] = React.useState('tutte');
-  const [filtroStat, setFiltroStat] = React.useState('');
-  const [ordine, setOrdine] = React.useState('default');
-  const [visibili, setVisibili] = React.useState(TEAM_PAGE_SIZE);
-  const loaderRef = React.useRef(null);
+  const [filtroRar, setFiltroRar] = useState('tutte');
+  const [filtroStat, setFiltroStat] = useState('');
+  const [ordine, setOrdine] = useState('default');
+  const [visibili, setVisibili] = useState(TEAM_PAGE_SIZE);
+  const loaderRef = useRef(null);
 
   // Filtra e ordina
   const rarOrder = ['comune','raro','epico','leggendario','immersivo'];
@@ -3491,7 +3491,7 @@ function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxS
   const haAltri = visibili < lista.length;
 
   // Infinite scroll con IntersectionObserver
-  React.useEffect(() => {
+  useEffect(() => {
     const el = loaderRef.current;
     if (!el) return;
     const obs = new IntersectionObserver(entries => {
@@ -3502,7 +3502,7 @@ function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxS
   }, [haAltri]);
 
   // Reset visibili quando cambiano i filtri
-  React.useEffect(() => { setVisibili(TEAM_PAGE_SIZE); }, [filtroRar, filtroStat, ordine]);
+  useEffect(() => { setVisibili(TEAM_PAGE_SIZE); }, [filtroRar, filtroStat, ordine]);
 
   const selCount = waifuSelezionate.length;
 
