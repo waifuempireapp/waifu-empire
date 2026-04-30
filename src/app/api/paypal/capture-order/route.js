@@ -5,13 +5,23 @@ import { NextResponse } from 'next/server';
 import { getFirestore }  from 'firebase-admin/firestore';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 
+// La PRIVATE_KEY su Vercel può arrivare con \n letterali o con newline reali —
+// normalizePrivateKey gestisce entrambi i casi.
+function normalizePrivateKey(key) {
+  if (!key) return undefined;
+  // Se contiene già newline reali, restituisci così com'è
+  if (key.includes('\n')) return key;
+  // Altrimenti sostituisci i \n letterali con newline reali
+  return key.replace(/\\n/g, '\n');
+}
+
 // Inizializza Firebase Admin (singleton)
 if (!getApps().length) {
   initializeApp({
     credential: cert({
       projectId:   process.env.FIREBASE_ADMIN_PROJECT_ID,
       clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-      privateKey:  process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      privateKey:  normalizePrivateKey(process.env.FIREBASE_ADMIN_PRIVATE_KEY),
     }),
   });
 }
@@ -89,8 +99,8 @@ export async function POST(request) {
     const db  = getFirestore();
     const ref = db.collection('users').doc(uid);
     await ref.update({
-      hardPass:          true,
-      hardPassOrderId:   orderID,
+      hardPass:           true,
+      hardPassOrderId:    orderID,
       hardPassAcquistato: new Date().toISOString(),
     });
 
