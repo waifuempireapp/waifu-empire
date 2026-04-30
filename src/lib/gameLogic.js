@@ -23,8 +23,31 @@ export function pickElementoConRarita(catalogo, raritaTarget, esclusi = []) {
   return candidati[Math.floor(Math.random() * candidati.length)];
 }
 
+// Probabilità di default per il God Pack (5 waifu invece di 2w+2o+1p)
+export const GOD_PACK_PROB_DEFAULT = 0.005; // 0.5%
+
 // Genera il contenuto di un pacchetto: 2 waifu + 2 outfit + 1 posa, in ordine casuale
-export function generaPacchetto({ waifuPool, outfitPool, posePool, escludiDoppioniWaifu = false, waifuPossedute = [] }) {
+// Se godPackProb > 0 e il dado lo vuole: 5 waifu (God Pack)
+export function generaPacchetto({ waifuPool, outfitPool, posePool, escludiDoppioniWaifu = false, waifuPossedute = [], godPackProb = GOD_PACK_PROB_DEFAULT }) {
+  // Controlla God Pack
+  const isGodPack = godPackProb > 0 && Math.random() < godPackProb;
+  if (isGodPack) {
+    const waifuCarte = [];
+    const waifuEstratte = [];
+    for (let i = 0; i < 5; i++) {
+      const r = pickRaritaCasuale();
+      const esclusi = [...waifuEstratte.map(w => w.id)];
+      if (escludiDoppioniWaifu) esclusi.push(...waifuPossedute);
+      const w = pickElementoConRarita(waifuPool, r, esclusi);
+      if (w) { waifuCarte.push({ tipo: 'waifu', data: w, isGodPack: true }); waifuEstratte.push(w); }
+    }
+    // Mescola
+    for (let i = waifuCarte.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [waifuCarte[i], waifuCarte[j]] = [waifuCarte[j], waifuCarte[i]];
+    }
+    return waifuCarte;
+  }
   const waifuCarte = [];
   const outfitCarte = [];
   const poseCarte = [];

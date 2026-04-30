@@ -2032,6 +2032,7 @@ function ConfigTab({ waifu, ricarica, flash }) {
   const [ranges, setRanges] = useState({ ...STAT_RANGES_DEFAULT });
   const [steps, setSteps] = useState({ ...UPGRADE_STEPS_DEFAULT });
   const [outfitConf, setOutfitConf] = useState({ ...OUTFIT_CONFIG_DEFAULT });
+  const [godPackProb, setGodPackProb] = useState(0.005); // default 0.5%
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [bonifica, setBonifica] = useState(null); // null | { inCorso, risultati[] }
@@ -2045,6 +2046,10 @@ function ConfigTab({ waifu, ricarica, flash }) {
         if (sDoc.exists()) setSteps({ ...UPGRADE_STEPS_DEFAULT, ...sDoc.data() });
         const oDoc = await getDoc(doc(db, 'config', 'outfit_config'));
         if (oDoc.exists()) setOutfitConf({ ...OUTFIT_CONFIG_DEFAULT, ...oDoc.data() });
+        const gDoc = await getDoc(doc(db, 'config', 'pack_config'));
+        if (gDoc.exists() && gDoc.data().god_pack_prob !== undefined) {
+          setGodPackProb(Number(gDoc.data().god_pack_prob));
+        }
       } catch (e) { /* usa defaults */ }
       setLoading(false);
     })();
@@ -2056,6 +2061,7 @@ function ConfigTab({ waifu, ricarica, flash }) {
       await setDoc(doc(db, 'config', 'stat_ranges'), ranges);
       await setDoc(doc(db, 'config', 'upgrade_steps'), steps);
       await setDoc(doc(db, 'config', 'outfit_config'), outfitConf);
+      await setDoc(doc(db, 'config', 'pack_config'), { god_pack_prob: Number(godPackProb) });
       flash('Configurazione salvata!', '#06d6a0');
     } catch (e) { flash('Errore salvataggio: ' + e.message, '#ef4444'); }
     setSaving(false);
@@ -2219,6 +2225,46 @@ function ConfigTab({ waifu, ricarica, flash }) {
         </div>
         <div style={{ fontSize: 9, color: 'rgba(245,230,211,0.3)', marginTop: 10, fontFamily: 'Orbitron', lineHeight: 1.6 }}>
           ℹ Leggendario/Immersivo: logica speciale — Lv.8→9: 10→15 archetipi, Lv.9→10: 15→TUTTI
+        </div>
+      </div>
+
+      {/* God Pack / Waifu Pack */}
+      <div style={{ ...cardStat, marginBottom: 20 }}>
+        <h3 style={{ fontFamily: 'Cinzel, serif', color: '#f59e0b', fontSize: 13, letterSpacing: 2, marginBottom: 8 }}>
+          ✦ WAIFU PACK (God Pack)
+        </h3>
+        <p style={{ color: 'rgba(245,230,211,0.5)', fontSize: 11, marginBottom: 16, lineHeight: 1.6 }}>
+          Aprendo qualsiasi pacchetto, c'è una probabilità di trovare un <strong style={{ color: '#f59e0b' }}>Waifu Pack</strong>:
+          invece di 2 waifu + 2 outfit + 1 posa, il giocatore trova <strong style={{ color: '#f59e0b' }}>5 waifu</strong>.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 12, alignItems: 'center' }}>
+          <label style={{ fontFamily: 'Cinzel, serif', color: '#f5e6d3', fontSize: 12 }}>
+            🎴 Probabilità Waifu Pack
+          </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <input
+              type="number"
+              min="0" max="1" step="0.001"
+              value={godPackProb}
+              onChange={e => setGodPackProb(Math.max(0, Math.min(1, Number(e.target.value))))}
+              style={{
+                width: 100, padding: '6px 10px',
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(245,158,11,0.3)',
+                borderRadius: 6, color: '#f5e6d3',
+                fontFamily: 'Orbitron, monospace', fontSize: 12,
+              }}
+            />
+            <span style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#f59e0b' }}>
+              = {(godPackProb * 100).toFixed(2)}%
+            </span>
+            <span style={{ fontSize: 10, color: 'rgba(245,230,211,0.4)', fontFamily: 'Cinzel, serif' }}>
+              (0 = disabilitato, 0.005 = default 0.5%)
+            </span>
+          </div>
+        </div>
+        <div style={{ fontSize: 9, color: 'rgba(245,230,211,0.3)', marginTop: 10, fontFamily: 'Orbitron', lineHeight: 1.6 }}>
+          ℹ Valore tra 0 e 1. Esempio: 0.01 = 1% di probabilità ad ogni apertura.
         </div>
       </div>
 

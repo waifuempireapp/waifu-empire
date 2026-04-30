@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, getDropAttivo, getClassifica, premioPerPosizione, deleteTeamFromCollezione } from '@/lib/firestoreService';
-import { calcolaRicaricaPacchetti, calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, INCREMENTI_LEVELUP, clampStat, clampWaifuStats } from '@/lib/gameLogic';
+import { calcolaRicaricaPacchetti, calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, INCREMENTI_LEVELUP, clampStat, clampWaifuStats, GOD_PACK_PROB_DEFAULT } from '@/lib/gameLogic';
 import { TIMER, RARITA, COLORI_CAPELLI, CATEGORIE_TETTE, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, OUTFIT_CONFIG_DEFAULT, ABILITA_TIPI } from '@/lib/constants';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -34,6 +34,7 @@ export default function GiocoPage() {
   const [notif, setNotif] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [statConfig, setStatConfig] = useState({ ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT });
+  const [godPackProb, setGodPackProb] = useState(GOD_PACK_PROB_DEFAULT);
 
   useEffect(() => { if (!loading && !user) router.replace('/login'); }, [user, loading]);
   useEffect(() => { if (user) caricaTutto(); }, [user]);
@@ -64,13 +65,17 @@ export default function GiocoPage() {
     setWaifuCat(ws); setOutfitCat(os); setPoseCat(ps);
     // Carica configurazioni stat_ranges e upgrade_steps da Firestore
     try {
-      const [rDoc, sDoc] = await Promise.all([
+      const [rDoc, sDoc, gDoc] = await Promise.all([
         getDoc(doc(db, 'config', 'stat_ranges')),
         getDoc(doc(db, 'config', 'upgrade_steps')),
+        getDoc(doc(db, 'config', 'pack_config')),
       ]);
       const loadedRanges = rDoc.exists() ? { ...STAT_RANGES_DEFAULT, ...rDoc.data() } : STAT_RANGES_DEFAULT;
       const loadedSteps  = sDoc.exists() ? { ...UPGRADE_STEPS_DEFAULT, ...sDoc.data() } : UPGRADE_STEPS_DEFAULT;
       setStatConfig({ ranges: loadedRanges, steps: loadedSteps });
+      if (gDoc.exists() && gDoc.data().god_pack_prob !== undefined) {
+        setGodPackProb(Number(gDoc.data().god_pack_prob));
+      }
     } catch (e) { /* usa defaults */ }
   };
 
@@ -109,8 +114,8 @@ export default function GiocoPage() {
         <NavTabs tab={tab} setTab={setTab} />
 
         <div style={{ padding: '12px 16px', maxWidth: 1400, margin: '0 auto' }}>
-          {tab === 'home' && <HomeTab profilo={profilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} setTab={setTab} setColezSubTab={setColezSubTab} user={user} />}
-          {tab === 'sbusta' && <SbustaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} user={user} mostraNotif={mostraNotif} />}
+          {tab === 'home' && <HomeTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} setTab={setTab} setColezSubTab={setColezSubTab} user={user} />}
+          {tab === 'sbusta' && <SbustaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} user={user} mostraNotif={mostraNotif} godPackProb={godPackProb} />}
           {tab === 'collezione' && <CollezioneTab collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} profilo={profilo} setProfilo={setProfilo} user={user} mostraNotif={mostraNotif} initialSubTab={colezSubTab} statConfig={statConfig} />}
           {tab === 'mappa' && <MappaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} user={user} mostraNotif={mostraNotif} />}
           {tab === 'classifica' && <ClassificaTab user={user} />}
@@ -495,7 +500,7 @@ function BottomNav({ tab, setTab, isAdmin }) {
 // ============================================================
 // TAB: HOME — FASE 2
 // ============================================================
-function HomeTab({ profilo, collezione, waifuCat, outfitCat, poseCat, setTab, setColezSubTab, user }) {
+function HomeTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, poseCat, setTab, setColezSubTab, user }) {
   const numWaifu = Object.keys(collezione.waifu || {}).length;
   const numOutfit = Object.keys(collezione.outfit || {}).length;
   const numPose = Object.keys(collezione.pose || {}).length;
@@ -619,6 +624,8 @@ function HomeTab({ profilo, collezione, waifuCat, outfitCat, poseCat, setTab, se
         poseCat={poseCat}
         collezione={collezione}
         profilo={profilo}
+        setProfilo={setProfilo}
+        user={user}
         totalPack={totalPack}
         setTab={setTab}
       />
@@ -723,7 +730,7 @@ function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneCla
 }
 
 // ── Banner Ultime Carte (Fase 2 + Fase 3: modal click) ─────
-function BannerUltimeCarte({ tutteLeWaifu, tuttiGliOutfit, tutteLePose, outfitCat, poseCat, collezione, profilo, totalPack, setTab }) {
+function BannerUltimeCarte({ tutteLeWaifu, tuttiGliOutfit, tutteLePose, outfitCat, poseCat, collezione, profilo, setProfilo, user, totalPack, setTab }) {
   const [cartaSel, setCartaSel] = useState(null); // Fase 3: carta selezionata per modal
 
   // Ultime 20 carte: mescola waifu+outfit+posa, ordinate per acquisito (più recente prima) e limita a 20
@@ -802,7 +809,16 @@ function BannerUltimeCarte({ tutteLeWaifu, tuttiGliOutfit, tutteLePose, outfitCa
 
       {/* Fase 3: Modal dettaglio carta */}
       {cartaSel && (
-        <ModaleCarta carta={cartaSel} onClose={() => setCartaSel(null)} />
+        <ModaleCarta
+          carta={cartaSel}
+          onClose={() => setCartaSel(null)}
+          outfitCat={outfitCat}
+          poseCat={poseCat}
+          collezione={collezione}
+          profilo={profilo}
+          setProfilo={setProfilo}
+          user={user}
+        />
       )}
     </PannelloOrnato>
   );
@@ -925,7 +941,7 @@ function CardPacchettoOverlay({ profilo, totalPack, setTab }) {
 // ============================================================
 // FASE 3: MODALE DETTAGLIO CARTA (click da banner home)
 // ============================================================
-function ModaleCarta({ carta, onClose }) {
+function ModaleCarta({ carta, onClose, outfitCat, poseCat, collezione, profilo, setProfilo, user }) {
   // Blocca scroll body quando modal aperto
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -988,7 +1004,7 @@ function ModaleCarta({ carta, onClose }) {
 
         {/* Contenuto */}
         <div style={{ padding: '4px 20px 0' }}>
-          {carta.tipo === 'waifu' && <ModaleWaifu waifu={carta.w} dati={carta.dati} />}
+          {carta.tipo === 'waifu' && <ModaleWaifu waifu={carta.w} dati={carta.dati} outfitCat={outfitCat} poseCat={poseCat} equip={collezione?.equipaggiamento?.[carta.w?.id]} profilo={profilo} setProfilo={setProfilo} user={user} />}
           {carta.tipo === 'outfit' && <ModaleOutfit outfit={carta.o} />}
           {carta.tipo === 'posa' && <MadalePosa posa={carta.p} />}
         </div>
@@ -1005,7 +1021,8 @@ function ModaleCarta({ carta, onClose }) {
 }
 
 // Contenuto modale per carta Waifu
-function ModaleWaifu({ waifu, dati }) {
+function ModaleWaifu({ waifu, dati, outfitCat, poseCat, equip, profilo, setProfilo, user }) {
+  const [zoomCarta, setZoomCarta] = useState(false);
   const rarInfo = RARITA_DATA[waifu.rarita] || RARITA_DATA.comune;
   const statBonus = dati?.stat_bonus || {};
 
@@ -1035,8 +1052,27 @@ function ModaleWaifu({ waifu, dati }) {
 
   return (
     <div>
-      {/* Carta normale al centro */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+      {/* ZoomCartaOverlay — si apre cliccando sulla carta (punto 5) */}
+      {zoomCarta && profilo && (
+        <ZoomCartaOverlay
+          w={waifu}
+          dati={dati || { copie: 1, livello: 1, stat_bonus: {} }}
+          outfitCat={outfitCat || []}
+          poseCat={poseCat || []}
+          equip={equip || {}}
+          onClose={() => setZoomCarta(false)}
+          profilo={profilo}
+          setProfilo={setProfilo}
+          user={user}
+        />
+      )}
+
+      {/* Carta normale al centro — cliccabile per lo zoom */}
+      <div
+        style={{ display: 'flex', justifyContent: 'center', marginBottom: 20, cursor: 'zoom-in' }}
+        onClick={() => setZoomCarta(true)}
+        title="Clicca per ingrandire"
+      >
         <CartaWaifu waifu={waifu} datiCollezione={dati} dimensione="normale" tipo="auto" />
       </div>
 
@@ -1416,7 +1452,7 @@ function ClassificaTab({ user }) {
 // ============================================================
 // TAB: SBUSTAMENTO — Fase 6 (stile Pokémon Pocket)
 // ============================================================
-function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitCat, poseCat, user, mostraNotif }) {
+function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitCat, poseCat, user, mostraNotif, godPackProb = GOD_PACK_PROB_DEFAULT }) {
   const [stato, setStato] = useState('idle');
   const [carteRivelate, setCarteRivelate] = useState([]);
   const [indiceRivelato, setIndiceRivelato] = useState(-1);
@@ -1425,6 +1461,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
   const [filtroRarita, setFiltroRarita] = useState('tutte');
   const [ordine, setOrdine] = useState('nome');
   const [dropAttivo, setDropAttivo] = useState(null);
+  const [isGodPackAperto, setIsGodPackAperto] = useState(false);
 
   useEffect(() => { getDropAttivo().then(d => setDropAttivo(d)); }, []);
 
@@ -1458,7 +1495,9 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     if (wp.length === 0) { mostraNotif('Nessuna waifu nel drop attivo.', '#ff3d3d'); return; }
     const escludiDoppioni = tipoPacchetto === 'benvenuto';
     const waifuPossedute = escludiDoppioni ? Object.keys(collezione.waifu || {}) : [];
-    const carte = generaPacchetto({ waifuPool: wp, outfitPool: op, posePool: pp, escludiDoppioniWaifu: escludiDoppioni, waifuPossedute });
+    const carte = generaPacchetto({ waifuPool: wp, outfitPool: op, posePool: pp, escludiDoppioniWaifu: escludiDoppioni, waifuPossedute, godPackProb });
+    const godPack = carte.length === 5 && carte.every(c => c.tipo === 'waifu' && c.isGodPack);
+    setIsGodPackAperto(godPack);
     setCarteRivelate(carte); setIndiceRivelato(-1); setStato('reveal');
     const nuova = JSON.parse(JSON.stringify(collezione));
     // 15: segna le carte nuove (prima di aggiornarle nella collezione)
@@ -1478,6 +1517,9 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     else { const n = (profilo.pacchettiSfida ?? 0) - 1; setProfilo(p => ({ ...p, pacchettiSfida: n })); await updateUserProfile(user.uid, { pacchettiSfida: n }); }
     carte.forEach((_, i) => { setTimeout(() => setIndiceRivelato(i), 500 + i * 700); });
   };
+
+  // Sbustamento: modal dettaglio waifu (click carta waifu rivelata)
+  const [cartaDettaglioSbus, setCartaDettaglioSbus] = useState(null);
 
   // Sbustamento: stato video carta immersiva
   const [sbusVideoAttivo, setSbusVideoAttivo] = useState(false);
@@ -1502,6 +1544,24 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     return (
       <div className="fade-in" style={{ padding: 16 }}>
         <TitoloOrnato livello={1} colore="#f5a623">APERTURA PACCHETTO</TitoloOrnato>
+        {/* God Pack banner */}
+        {isGodPackAperto && (
+          <div style={{
+            textAlign: 'center', marginBottom: 18, padding: '14px 20px',
+            background: 'linear-gradient(135deg, rgba(245,166,35,0.18), rgba(236,72,153,0.18))',
+            border: '1.5px solid rgba(245,166,35,0.55)',
+            borderRadius: 14,
+            boxShadow: '0 0 30px rgba(245,166,35,0.25)',
+            animation: 'pulseStrong 1.5s infinite',
+          }}>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 13, fontWeight: 900, letterSpacing: 3, color: '#f5a623', textShadow: '0 0 16px rgba(245,166,35,0.8)' }}>
+              ✦ WAIFU PACK ✦
+            </div>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.6)', letterSpacing: 2, marginTop: 4 }}>
+              5 WAIFU TROVATE!
+            </div>
+          </div>
+        )}
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12, marginTop: 20 }}>
           {carteRivelate.map((c, i) => {
             const isWaifu = c.tipo === 'waifu';
@@ -1520,7 +1580,14 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
                   animation: rivelata && (c.data.rarita === 'leggendario' || c.data.rarita === 'immersivo') ? 'pulseStrong 1.2s infinite' : 'none',
                 }}>
                   {!rivelata ? <CartaCoperta /> :
-                    c.tipo === 'waifu' ? <CartaWaifu waifu={c.data} dimensione="piccola" tipo="auto" /> :
+                    c.tipo === 'waifu' ? (
+                      <div
+                        onClick={() => rivelata && setCartaDettaglioSbus({ tipo: 'waifu', w: c.data, dati: collezione.waifu?.[c.data.id] || { copie: 1, livello: 1, stat_bonus: {} } })}
+                        style={{ cursor: rivelata ? 'pointer' : 'default' }}
+                      >
+                        <CartaWaifu waifu={c.data} dimensione="piccola" tipo="auto" />
+                      </div>
+                    ) :
                     c.tipo === 'outfit' ? <CartaOutfit outfit={c.data} dimensione="piccola" /> :
                     <CartaPosa posa={c.data} dimensione="piccola" />}
                   {/* 15: badge NEW! per carte nuove */}
@@ -1591,6 +1658,20 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
           <div style={{ textAlign: 'center', marginTop: 24 }}>
             <BtnDecorato variant="primary" size="lg" onClick={() => { setStato('idle'); setCarteRivelate([]); }}>CONTINUA</BtnDecorato>
           </div>
+        )}
+
+        {/* Modal dettaglio waifu cliccata durante sbustamento (punto 4) */}
+        {cartaDettaglioSbus && (
+          <ModaleCarta
+            carta={cartaDettaglioSbus}
+            onClose={() => setCartaDettaglioSbus(null)}
+            outfitCat={outfitCat}
+            poseCat={poseCat}
+            collezione={collezione}
+            profilo={profilo}
+            setProfilo={setProfilo}
+            user={user}
+          />
         )}
 
         {/* Overlay video carta immersiva durante sbustamento */}
@@ -2280,26 +2361,20 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
       })()}
 
       {tabSub === 'team' && (
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 12, position: 'relative' }}>
           {teamInEdit ? (
             <PannelloOrnato glow="#00e676" style={{ padding: 20 }}>
               <TitoloOrnato livello={3} colore="#00e676">{teamInEdit === 'new' ? 'CREA TEAM' : 'MODIFICA TEAM'}</TitoloOrnato>
               <input value={teamNome} onChange={e => setTeamNome(e.target.value)} placeholder="Nome team..." style={{ width: '100%', marginBottom: 12 }} />
-              <div style={{ fontSize: 10, color: '#00e676', letterSpacing: 2, marginBottom: 8, textAlign: 'center' }}>SELEZIONA WAIFU ({teamWaifu.length}/5 min)</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 14 }}>
-                {Object.entries(collezione.waifu || {}).map(([id]) => {
-                  const w = waifuCat.find(x => x.id === id); if (!w) return null;
-                  const sel = teamWaifu.includes(id);
-                  return <div key={id} onClick={() => toggleWaifuTeam(id)} style={{ cursor: 'pointer', opacity: sel ? 1 : 0.4, transform: sel ? 'scale(1.05)' : 'scale(1)', transition: 'all 0.2s', position: 'relative' }}>
-                    <CartaWaifu waifu={w} dimensione="piccola" />
-                    {sel && <div style={{ position: 'absolute', top: -4, right: -4, background: '#00e676', color: '#000', width: 18, height: 18, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>✓</div>}
-                  </div>;
-                })}
-              </div>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                <BtnDecorato variant="secondary" onClick={() => { setTeamInEdit(null); setTeamNome(''); setTeamWaifu([]); }}>ANNULLA</BtnDecorato>
-                <BtnDecorato variant="primary" onClick={salvaTeam} disabled={teamWaifu.length < 5 || !teamNome.trim()}>SALVA ({teamWaifu.length}/5)</BtnDecorato>
-              </div>
+              {/* Lista waifu con filtri e infinite scroll */}
+              <SelezioneWaifuTeam
+                waifuDisponibili={Object.entries(collezione.waifu || {}).map(([id]) => { const w = waifuCat.find(x => x.id === id); return w || null; }).filter(Boolean)}
+                waifuSelezionate={teamWaifu}
+                onToggle={toggleWaifuTeam}
+                maxSel={Infinity}
+                accentColor="#00e676"
+                labelSel="SELEZIONA WAIFU"
+              />
             </PannelloOrnato>
           ) : (
             <>
@@ -2330,6 +2405,19 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
                 ))}
               </div>
             </>
+          )}
+          {/* Bottoni sticky overlay — visibili durante la creazione/modifica team */}
+          {teamInEdit && (
+            <div style={{
+              position: 'sticky', bottom: 16, zIndex: 50,
+              display: 'flex', gap: 8, justifyContent: 'center',
+              pointerEvents: 'none',
+            }}>
+              <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', background: 'rgba(10,12,18,0.92)', backdropFilter: 'blur(12px)', borderRadius: 14, padding: '10px 18px', border: '1px solid rgba(0,230,118,0.3)', boxShadow: '0 4px 24px rgba(0,0,0,0.6)' }}>
+                <BtnDecorato variant="secondary" onClick={() => { setTeamInEdit(null); setTeamNome(''); setTeamWaifu([]); }}>ANNULLA</BtnDecorato>
+                <BtnDecorato variant="primary" onClick={salvaTeam} disabled={teamWaifu.length < 5 || !teamNome.trim()}>SALVA ({teamWaifu.length}/5)</BtnDecorato>
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -3233,10 +3321,19 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
                       }}>VUOTO</button>
                     )}
                     {(tabSlot === 'pose'
-                      ? Object.entries(collezione.pose || {}).map(([id]) => poseCat.find(p => p.id === id)).filter(Boolean).filter(p => p.waifu_id === waifuId)
+                      ? Object.entries(collezione.pose || {}).map(([id]) => poseCat.find(p => p.id === id)).filter(Boolean).filter(p => !p.waifu_id || p.waifu_id === waifuId)
                       : Object.entries(collezione.outfit || {}).map(([id, datiO]) => {
                           const o = outfitCat.find(x => x.id === id);
                           if (!o || o.slot !== tabSlot) return null;
+                          // Filtra per compatibilità archetipo: mostra solo outfit compatibili con la waifu
+                          const _livO = calcolaLivelloOutfit(datiO.quantita || 1, o.rarita, OUTFIT_CONFIG_DEFAULT);
+                          const _tuttiAIds = [...new Set(outfitCat.flatMap(x => x.archetipi_compatibili || (x.archetipo_compatibile ? [x.archetipo_compatibile] : [])))];
+                          const _archComp = getArchetipiCompatibili(
+                            o.archetipi_compatibili || (o.archetipo_compatibile ? [o.archetipo_compatibile] : []),
+                            _livO, o.rarita, _tuttiAIds, OUTFIT_CONFIG_DEFAULT
+                          );
+                          // Se la lista archetipi compatibili include l'archetipo della waifu (o è universale), mostra l'outfit
+                          if (_archComp.length > 0 && _archComp.length < _tuttiAIds.length && !_archComp.includes(w.archetipo)) return null;
                           return { ...o, _copie: datiO.quantita || 1 };
                         }).filter(Boolean)
                     ).map(item => {
@@ -3365,6 +3462,114 @@ function RoundEndBar({ vincitoreRound, statScelta, direzione, carteP, carteC, ro
   );
 }
 
+
+// ============================================================
+// COMPONENTE RIUTILIZZABILE: Selezione Waifu per Team
+// Usato in CollezionaTab (crea/modifica team) e MappaTab (selezione prima battaglia)
+// Include: filtri (rarità, stat, ordinamento), infinite scroll, bottoni sticky overlay
+// ============================================================
+const TEAM_PAGE_SIZE = 12;
+
+function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxSel = 5, accentColor = '#ffd666', labelSel = 'SCEGLI 5 WAIFU' }) {
+  const [filtroRar, setFiltroRar] = React.useState('tutte');
+  const [filtroStat, setFiltroStat] = React.useState('');
+  const [ordine, setOrdine] = React.useState('default');
+  const [visibili, setVisibili] = React.useState(TEAM_PAGE_SIZE);
+  const loaderRef = React.useRef(null);
+
+  // Filtra e ordina
+  const rarOrder = ['comune','raro','epico','leggendario','immersivo'];
+  let lista = [...waifuDisponibili];
+  if (filtroRar !== 'tutte') lista = lista.filter(w => w.rarita === filtroRar);
+  if (ordine === 'rarita_desc') lista.sort((a, b) => rarOrder.indexOf(b.rarita) - rarOrder.indexOf(a.rarita));
+  else if (ordine === 'rarita_asc') lista.sort((a, b) => rarOrder.indexOf(a.rarita) - rarOrder.indexOf(b.rarita));
+  else if (ordine === 'livello') lista.sort((a, b) => (b.livello || b.datiCollezione?.livello || 0) - (a.livello || a.datiCollezione?.livello || 0));
+  else if (ordine === 'copie') lista.sort((a, b) => (b.copie || b.datiCollezione?.copie || 0) - (a.copie || a.datiCollezione?.copie || 0));
+  else if (filtroStat) lista.sort((a, b) => ((b[filtroStat] || 0) + (b.stat_bonus?.[filtroStat] || 0)) - ((a[filtroStat] || 0) + (a.stat_bonus?.[filtroStat] || 0)));
+
+  const slice = lista.slice(0, visibili);
+  const haAltri = visibili < lista.length;
+
+  // Infinite scroll con IntersectionObserver
+  React.useEffect(() => {
+    const el = loaderRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && haAltri) setVisibili(v => v + TEAM_PAGE_SIZE);
+    }, { threshold: 0.1 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [haAltri]);
+
+  // Reset visibili quando cambiano i filtri
+  React.useEffect(() => { setVisibili(TEAM_PAGE_SIZE); }, [filtroRar, filtroStat, ordine]);
+
+  const selCount = waifuSelezionate.length;
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {/* Label */}
+      <div style={{ fontSize: 10, color: accentColor, letterSpacing: 2, marginBottom: 8, textAlign: 'center', fontFamily: 'Orbitron' }}>
+        {labelSel} ({selCount}/{maxSel})
+      </div>
+
+      {/* Barra filtri */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center', justifyContent: 'center' }}>
+        <select value={filtroRar} onChange={e => setFiltroRar(e.target.value)} style={{ background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.25)', color: '#f5a623', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
+          <option value="tutte">Tutte le rarità</option>
+          {['comune','raro','epico','leggendario','immersivo'].map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+        </select>
+        <select value={filtroStat} onChange={e => { setFiltroStat(e.target.value); setOrdine(''); }} style={{ background: 'rgba(155,89,255,0.06)', border: '1px solid rgba(155,89,255,0.25)', color: '#9b59ff', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
+          <option value="">Ordina per stat...</option>
+          <option value="tette">✦ Tette</option>
+          <option value="taglia_piedi">⚘ Piedi</option>
+          <option value="eta">⌛ Età</option>
+          <option value="colore_capelli">✿ Capelli</option>
+          <option value="esperienza">★ Esperienza</option>
+        </select>
+        <select value={ordine} onChange={e => { setOrdine(e.target.value); setFiltroStat(''); }} style={{ background: 'rgba(0,229,255,0.06)', border: '1px solid rgba(0,229,255,0.25)', color: '#00e5ff', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
+          <option value="default">Ordinamento default</option>
+          <option value="rarita_desc">Rarità (alta→bassa)</option>
+          <option value="rarita_asc">Rarità (bassa→alta)</option>
+          <option value="livello">Livello (alto→basso)</option>
+          <option value="copie">Copie (alto→basso)</option>
+        </select>
+        <span style={{ fontSize: 9, color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron' }}>{lista.length} waifu</span>
+      </div>
+
+      {/* Griglia carte */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', paddingBottom: 72 }}>
+        {slice.map(w => {
+          const sel = waifuSelezionate.includes(w.id);
+          const disabilitata = !sel && selCount >= maxSel;
+          return (
+            <div key={w.id}
+              onClick={() => !disabilitata && onToggle(w.id)}
+              style={{ cursor: disabilitata ? 'default' : 'pointer', opacity: disabilitata ? 0.25 : sel ? 1 : 0.5, transform: sel ? 'scale(1.03)' : 'scale(1)', transition: 'all 0.2s', position: 'relative' }}>
+              <CartaWaifu waifu={w} dimensione="piccola" />
+              {sel && (
+                <div style={{ position: 'absolute', top: -4, right: -4, background: accentColor, color: '#000', width: 18, height: 18, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, zIndex: 10 }}>✓</div>
+              )}
+            </div>
+          );
+        })}
+        {lista.length === 0 && (
+          <div style={{ textAlign: 'center', padding: 30, opacity: 0.4, fontFamily: 'Orbitron', fontSize: 10, color: accentColor }}>
+            Nessuna waifu trovata con questi filtri
+          </div>
+        )}
+        {/* Sentinel per infinite scroll */}
+        <div ref={loaderRef} style={{ width: '100%', height: 1 }} />
+        {haAltri && (
+          <div style={{ width: '100%', textAlign: 'center', fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.3)', padding: '8px 0' }}>
+            Scorri per caricare altre…
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ============================================================
 // TAB: MAPPA — Tutto il codice battaglia invariato, solo UI reworkata
 // ============================================================
@@ -3419,6 +3624,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   const [vincitoreRound, setVincitoreRound] = useState(null);
   const [coinResult, setCoinResult] = useState(null);
   const [risultatiWaifu, setRisultatiWaifu] = useState({});
+  const [inSuddenDeath, setInSuddenDeath] = useState(false);
   // FIX: stat già usate nell'intera partita (nessuna ripetizione)
   const [statsUsatePartita, setStatsUsatePartita] = useState([]);
   const [timeLeft, setTimeLeft] = useState(30);
@@ -3496,7 +3702,9 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
 
   // ── AUTO-COMPLETA SCELTA SE TIMER SCADE ───────────────────
   const autoCompletaScelta = () => {
-    const pDisp = mazzoP.filter(w => !risultatiWaifu[w.id]);
+    const pDisp = inSuddenDeath
+      ? mazzoP.filter(w => w.id !== carteP?.id)   // SD: tutte tranne quella già in uso
+      : mazzoP.filter(w => !risultatiWaifu[w.id]);
     if (fase === 'playerScegliWaifu') {
       // Turno player: auto-scegli waifu player
       const pick = pDisp[Math.floor(Math.random() * pDisp.length)];
@@ -3663,6 +3871,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   const avviaSuddenDeath = () => {
     setCarteP(null); setCarteC(null);
     setStatScelta(null); setDirezione(null); setVincitoreRound(null);
+    setInSuddenDeath(true); // abilita tutte le waifu per SD
     // FIX: CPU sceglie stat non ancora usata nella partita (Sudden Death)
     const cpuDispSD = mazzoC.filter(w => !risultatiWaifu[w.id]);
     const cpuW = cpuDispSD.length > 0
@@ -3723,7 +3932,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
     setTeamSelezionato(null); setWaifuSelezionate([]);
     setCarteP(null); setCarteC(null);
     setStatScelta(null); setDirezione(null); setVincitoreRound(null);
-    setCoinResult(null); setRisultatiWaifu({});
+    setCoinResult(null); setRisultatiWaifu({}); setInSuddenDeath(false);
     setStatsUsatePartita([]); // FIX: reset stat usate
     setCpuWaifuPending(null); setCpuStatPending(null); setCpuDirPending(null);
     setPunteggio({ player: 0, cpu: 0 }); setRound(1);
@@ -3796,7 +4005,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
 
     // Reset stato battaglia
     setMazzoP(mazzoUtente); setMazzoC(mazzoCPU); setModoBattaglia(false);
-    setPunteggio({ player: 0, cpu: 0 }); setRound(1); setRisultatiWaifu({});
+    setPunteggio({ player: 0, cpu: 0 }); setRound(1); setRisultatiWaifu({}); setInSuddenDeath(false);
     setStatsUsatePartita([]); // FIX: reset stat usate
     setCarteP(null); setCarteC(null); setStatScelta(null); setDirezione(null); setVincitoreRound(null);
     setCpuWaifuPending(null); setCpuStatPending(null); setCpuDirPending(null);
@@ -3827,6 +4036,11 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   const teams = collezione.teams || {};
 
   const getStatoWaifu = (waifuId) => {
+    if (inSuddenDeath) {
+      // In Sudden Death tutte le waifu sono disponibili, eccetto quella attualmente in uso
+      if (carteP?.id === waifuId && !vincitoreRound) return 'inUso';
+      return 'disponibile';
+    }
     if (carteP?.id === waifuId && !vincitoreRound) return 'inUso';
     if (risultatiWaifu[waifuId]) return risultatiWaifu[waifuId];
     return 'disponibile';
@@ -3844,8 +4058,11 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   // ================================================================
   // RENDER: SELEZIONE TEAM
   if (modoBattaglia) {
+    const canConfirmBattaglia = teamSelezionato && teamSelezionato !== 'manuale'
+      ? !!teams[teamSelezionato]
+      : waifuSelezionate.length === 5;
     return (
-      <div className="fade-in">
+      <div className="fade-in" style={{ position: 'relative' }}>
         <PannelloOrnato glow="#f5a623">
           <TitoloOrnato livello={2} colore="#f5a623">PREPARA LA SQUADRA</TitoloOrnato>
           {Object.keys(teams).length > 0 && (
@@ -3868,30 +4085,32 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
             </div>
           )}
           {(teamSelezionato === 'manuale' || Object.keys(teams).length === 0) && (
-            <>
-              <div style={{ fontSize: 10, color: '#ffd666', letterSpacing: 2, marginBottom: 6, textAlign: 'center', fontFamily: 'Orbitron' }}>SCEGLI 5 WAIFU</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginBottom: 14 }}>
-                {waifuDisponibili.map(w => {
-                  const sel = waifuSelezionate.includes(w.id);
-                  return <div key={w.id} onClick={() => { if (sel) setWaifuSelezionate(waifuSelezionate.filter(id => id !== w.id)); else if (waifuSelezionate.length < 5) setWaifuSelezionate([...waifuSelezionate, w.id]); }}
-                    style={{ cursor: 'pointer', opacity: sel ? 1 : 0.4, transform: sel ? 'scale(1.03)' : 'scale(1)', transition: 'all 0.2s', position: 'relative' }}>
-                    <CartaWaifu waifu={w} dimensione="piccola" />
-                    {sel && <div style={{ position: 'absolute', top: -4, right: -4, background: '#ffd666', color: '#000', width: 18, height: 18, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>✓</div>}
-                  </div>;
-                })}
-              </div>
-            </>
+            <SelezioneWaifuTeam
+              waifuDisponibili={waifuDisponibili}
+              waifuSelezionate={waifuSelezionate}
+              onToggle={id => { if (waifuSelezionate.includes(id)) setWaifuSelezionate(waifuSelezionate.filter(x => x !== id)); else if (waifuSelezionate.length < 5) setWaifuSelezionate([...waifuSelezionate, id]); }}
+              maxSel={5}
+              accentColor="#ffd666"
+              labelSel="SCEGLI 5 WAIFU"
+            />
           )}
           {teamSelezionato && teamSelezionato !== 'manuale' && teams[teamSelezionato] && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginBottom: 14 }}>
               {teams[teamSelezionato].waifu.map(id => { const w = waifuCat.find(x => x.id === id); return w ? <CartaWaifu key={id} waifu={w} dimensione="piccola" /> : null; })}
             </div>
           )}
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-            <BtnDecorato variant="secondary" onClick={() => { setModoBattaglia(false); setTeamSelezionato(null); setWaifuSelezionate([]); }}>ANNULLA</BtnDecorato>
-            <BtnDecorato variant="primary" onClick={confermaEAvvia} disabled={teamSelezionato === 'manuale' ? waifuSelezionate.length !== 5 : !teamSelezionato && waifuSelezionate.length !== 5}>⚔ BATTAGLIA!</BtnDecorato>
-          </div>
         </PannelloOrnato>
+        {/* Bottoni sticky overlay sempre visibili */}
+        <div style={{
+          position: 'sticky', bottom: 16, zIndex: 50,
+          display: 'flex', gap: 8, justifyContent: 'center',
+          pointerEvents: 'none',
+        }}>
+          <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', background: 'rgba(10,12,18,0.92)', backdropFilter: 'blur(12px)', borderRadius: 14, padding: '10px 18px', border: '1px solid rgba(245,166,35,0.3)', boxShadow: '0 4px 24px rgba(0,0,0,0.6)' }}>
+            <BtnDecorato variant="secondary" onClick={() => { setModoBattaglia(false); setTeamSelezionato(null); setWaifuSelezionate([]); }}>ANNULLA</BtnDecorato>
+            <BtnDecorato variant="primary" onClick={confermaEAvvia} disabled={!canConfirmBattaglia}>⚔ BATTAGLIA!</BtnDecorato>
+          </div>
+        </div>
       </div>
     );
   }
@@ -3915,7 +4134,9 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   // ================================================================
   const fasiBattaglia = ['playerScegliWaifu','playerScegliStat','playerScegliDir','cpuRispondeWaifu','cpuSceglieTutto','playerScegliWaifuVsCPU','reveal','roundEnd','suddenDeathWaifu','suddenDeathReveal'];
   if (fasiBattaglia.includes(fase)) {
-    const waifuPDisponibili = mazzoP.filter(w => !risultatiWaifu[w.id]);
+    const waifuPDisponibili = inSuddenDeath
+      ? mazzoP.filter(w => w.id !== carteP?.id)
+      : mazzoP.filter(w => !risultatiWaifu[w.id]);
     const statInfoScelta = STATS_BATTAGLIA.find(s => s.key === statScelta);
     // FIX: statistiche ancora disponibili (non usate nella partita)
     const statsAncoraDisponibili = STATS_BATTAGLIA.filter(s => !statsUsatePartita.includes(s.key));
