@@ -8,6 +8,8 @@ import { useAuth } from '@/lib/AuthContext';
 import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, getDropAttivo, getClassifica, premioPerPosizione, deleteTeamFromCollezione } from '@/lib/firestoreService';
 import { calcolaRicaricaPacchetti, calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, INCREMENTI_LEVELUP, clampStat, clampWaifuStats } from '@/lib/gameLogic';
 import { TIMER, RARITA, COLORI_CAPELLI, CATEGORIE_TETTE, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, OUTFIT_CONFIG_DEFAULT, ABILITA_TIPI } from '@/lib/constants';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { calcolaLivelloOutfit, getArchetipiCompatibili, puoEquipaggiare, applicaAbilitaOutfit, applicaModificatoriOpp } from '@/lib/gameLogic';
 import PaperDoll from '@/components/PaperDoll';
 // CODICE LINK CARTA -> BABY DOLL: importo BabyDoll separata dalla CartaWaifu
@@ -31,6 +33,7 @@ export default function GiocoPage() {
   const [colezSubTab, setColezSubTab] = useState('waifu'); // Fase 3: navigazione diretta ai sotto-tab collezione
   const [notif, setNotif] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [statConfig, setStatConfig] = useState({ ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT });
 
   useEffect(() => { if (!loading && !user) router.replace('/login'); }, [user, loading]);
   useEffect(() => { if (user) caricaTutto(); }, [user]);
@@ -59,6 +62,16 @@ export default function GiocoPage() {
     setProfilo(updatedProfile);
     setColl(c);
     setWaifuCat(ws); setOutfitCat(os); setPoseCat(ps);
+    // Carica configurazioni stat_ranges e upgrade_steps da Firestore
+    try {
+      const [rDoc, sDoc] = await Promise.all([
+        getDoc(doc(db, 'config', 'stat_ranges')),
+        getDoc(doc(db, 'config', 'upgrade_steps')),
+      ]);
+      const loadedRanges = rDoc.exists() ? { ...STAT_RANGES_DEFAULT, ...rDoc.data() } : STAT_RANGES_DEFAULT;
+      const loadedSteps  = sDoc.exists() ? { ...UPGRADE_STEPS_DEFAULT, ...sDoc.data() } : UPGRADE_STEPS_DEFAULT;
+      setStatConfig({ ranges: loadedRanges, steps: loadedSteps });
+    } catch (e) { /* usa defaults */ }
   };
 
   const mostraNotif = (testo, colore = '#00e676') => {
@@ -98,7 +111,7 @@ export default function GiocoPage() {
         <div style={{ padding: '12px 16px', maxWidth: 1400, margin: '0 auto' }}>
           {tab === 'home' && <HomeTab profilo={profilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} setTab={setTab} setColezSubTab={setColezSubTab} user={user} />}
           {tab === 'sbusta' && <SbustaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} user={user} mostraNotif={mostraNotif} />}
-          {tab === 'collezione' && <CollezioneTab collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} profilo={profilo} setProfilo={setProfilo} user={user} mostraNotif={mostraNotif} initialSubTab={colezSubTab} />}
+          {tab === 'collezione' && <CollezioneTab collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} profilo={profilo} setProfilo={setProfilo} user={user} mostraNotif={mostraNotif} initialSubTab={colezSubTab} statConfig={statConfig} />}
           {tab === 'mappa' && <MappaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} user={user} mostraNotif={mostraNotif} />}
           {tab === 'classifica' && <ClassificaTab user={user} />}
         </div>
@@ -1952,7 +1965,7 @@ const stileLevelUp = {
   textShadow: '0 0 12px rgba(0,230,118,0.7), 0 0 4px rgba(0,230,118,0.4)',
 };
 
-function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, profilo, setProfilo, user, mostraNotif, initialSubTab = 'waifu' }) {
+function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, profilo, setProfilo, user, mostraNotif, initialSubTab = 'waifu', statConfig = { ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT } }) {
   const [tabSub, setTabSub] = useState(initialSubTab);
   const [waifuSel, setWaifuSel] = useState(null);
   const [teamInEdit, setTeamInEdit] = useState(null);
@@ -2050,7 +2063,9 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
   const handleLevelUp = async (waifuId, statKey, direzione = 1) => {
     const nuova = JSON.parse(JSON.stringify(collezione));
     const w = nuova.waifu[waifuId];
-    const incr = INCREMENTI_LEVELUP[statKey] * direzione;
+    // Usa gli step caricati da Firestore (o fallback a INCREMENTI_LEVELUP hardcoded)
+    const stepConfigurato = statConfig.steps[statKey] ?? INCREMENTI_LEVELUP[statKey];
+    const incr = stepConfigurato * direzione;
     w.copie -= 3; w.livello += 1;
     const nuovoBonus = (w.stat_bonus[statKey] || 0) + incr;
     w.stat_bonus[statKey] = nuovoBonus;
@@ -2328,6 +2343,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
           onChiudi={() => setWaifuSel(null)}
           onEquipaggia={handleEquipaggia}
           onLevelUp={handleLevelUp}
+          statConfig={statConfig}
         />
       )}
     </div>
@@ -2507,7 +2523,7 @@ function ZoomCartaOverlay({ w, dati, outfitCat, poseCat, equip, onClose }) {
 // Tab Carta: carta con livello/copie, statistiche, descrizione, zoom
 // Tab Baby-doll: outfit per zona + abilità, pose
 // ============================================================
-function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseCat, onChiudi, onEquipaggia, onLevelUp }) {
+function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseCat, onChiudi, onEquipaggia, onLevelUp, statConfig = { ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT } }) {
   const w = waifuCat.find(x => x.id === waifuId);
   const dati = collezione.waifu[waifuId];
   const equip = collezione.equipaggiamento[waifuId] || { faccia: null, petto: null, gambe: null, piedi: null, posa: null };
@@ -2526,12 +2542,30 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
   const rar = RARITA[w.rarita];
 
   const STATS_INFO = [
-    { key: 'tette',          label: 'Tette',        icon: '✦', max: 7,    min: 1  },
-    { key: 'taglia_piedi',   label: 'Taglia Piedi', icon: '⚘', max: 45,   min: 34 },
-    { key: 'eta',            label: 'Età',          icon: '⌛', max: 5000, min: 1  },
-    { key: 'colore_capelli', label: 'Capelli',      icon: '✿', max: 10,   min: 1  },
-    { key: 'esperienza',     label: 'Esperienza',   icon: '★', max: 5000, min: 0  },
+    { key: 'tette',          label: 'Tette',        icon: '✦', min: statConfig.ranges.tette?.min          ?? 1,  max: statConfig.ranges.tette?.max          ?? 7    },
+    { key: 'taglia_piedi',   label: 'Taglia Piedi', icon: '⚘', min: statConfig.ranges.taglia_piedi?.min   ?? 34, max: statConfig.ranges.taglia_piedi?.max   ?? 45   },
+    { key: 'eta',            label: 'Età',          icon: '⌛', min: statConfig.ranges.eta?.min            ?? 1,  max: statConfig.ranges.eta?.max            ?? 5000 },
+    { key: 'colore_capelli', label: 'Capelli',      icon: '✿', min: statConfig.ranges.colore_capelli?.min ?? 1,  max: statConfig.ranges.colore_capelli?.max ?? 10   },
+    { key: 'esperienza',     label: 'Esperienza',   icon: '★', min: statConfig.ranges.esperienza?.min     ?? 0,  max: statConfig.ranges.esperienza?.max     ?? 5000 },
   ];
+
+  // Nomi archetipi
+  const ARCHE_NOMI = {
+    guerriera_stoica: 'Guerriera Stoica', maga_timida: 'Maga Timida',
+    regina_imperiosa: 'Regina Imperiosa', studiosa_pensosa: 'Studiosa Pensosa',
+    viaggiatrice_solare: 'Viaggiatrice Solare', idol_radiante: 'Idol Radiante',
+    sacerdotessa_etera: 'Sacerdotessa Eterea', spadaccina_audace: 'Spadaccina Audace',
+    principessa_drago: 'Principessa del Drago', ladra_furtiva: 'Ladra Furtiva',
+    oracolo_mistico: 'Oracolo Mistico', pirata_temeraria: 'Pirata Temeraria',
+    fata_giocosa: 'Fata Giocosa', ninja_letale: 'Ninja Letale',
+    dea_celestiale: 'Dea Celestiale', cyber_hacker: 'Cyber Hacker',
+    tsundere_classica: 'Tsundere Classica', demone_seducente: 'Demone Seducente',
+    sciamana_natura: 'Sciamana della Natura', samurai_onorata: 'Samurai Onorata',
+  };
+
+  const copiePerLevelUp = 3;
+  const canLevelUp = dati.copie >= copiePerLevelUp;
+  const copieMancantiMsg = !canLevelUp ? `Mancano ${copiePerLevelUp - dati.copie} ${copiePerLevelUp - dati.copie === 1 ? 'copia' : 'copie'} per il Level Up` : null;
 
   return (
     <>
@@ -2550,13 +2584,16 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
       <div onClick={onChiudi} style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)',
         backdropFilter: 'blur(14px)', zIndex: 100,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 16, overflowY: 'auto',
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+        overflowY: 'auto',
+        paddingTop: 'env(safe-area-inset-top, 0)',
       }}>
         <div onClick={e => e.stopPropagation()} className="fade-up" style={{
-          width: '100%', maxWidth: 900, maxHeight: '94vh', overflowY: 'auto',
+          width: '100%', maxWidth: 520,
+          margin: '0 auto',
+          paddingBottom: 24,
         }}>
-          <PannelloOrnato glow={rar.colore} style={{ padding: 20 }}>
+          <PannelloOrnato glow={rar.colore} style={{ padding: 20, borderRadius: 0 }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -2582,70 +2619,117 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
 
             {/* ── TAB CARTA ── */}
             {tabDettaglio === 'carta' && (
-              <div>
-                {/* Rarità + Archetipo */}
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-                  <Chip colore={rar.colore} size="sm">{'★'.repeat(rar.stelle)} {rar.nome}</Chip>
-                  <Chip colore="#9b59ff" size="sm">⚜ {(() => {
-                    const ARCHE_NOMI = {
-                      guerriera_stoica: 'Guerriera Stoica', maga_timida: 'Maga Timida',
-                      regina_imperiosa: 'Regina Imperiosa', studiosa_pensosa: 'Studiosa Pensosa',
-                      viaggiatrice_solare: 'Viaggiatrice Solare', idol_radiante: 'Idol Radiante',
-                      sacerdotessa_etera: 'Sacerdotessa Eterea', spadaccina_audace: 'Spadaccina Audace',
-                      principessa_drago: 'Principessa del Drago', ladra_furtiva: 'Ladra Furtiva',
-                      oracolo_mistico: 'Oracolo Mistico', pirata_temeraria: 'Pirata Temeraria',
-                      fata_giocosa: 'Fata Giocosa', ninja_letale: 'Ninja Letale',
-                      dea_celestiale: 'Dea Celestiale', cyber_hacker: 'Cyber Hacker',
-                      tsundere_classica: 'Tsundere Classica', demone_seducente: 'Demone Seducente',
-                      sciamana_natura: 'Sciamana della Natura', samurai_onorata: 'Samurai Onorata',
-                    };
-                    return ARCHE_NOMI[w.archetipo] || w.archetipo || '—';
-                  })()}</Chip>
-                </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
 
-                {/* Level Up banner / Pannello Upgrade */}
-                {dati.copie >= 3 && !mostraLU && (
+                {/* 1. BANNER UPGRADE (solo titolo + descrizione, senza bottone) */}
+                {canLevelUp && !mostraLU && (
                   <div style={{
+                    width: '100%',
                     background: 'linear-gradient(135deg, rgba(245,166,35,0.12), rgba(255,45,120,0.06))',
-                    border: '1px solid rgba(245,166,35,0.45)', borderRadius: 12, padding: '12px 14px', marginBottom: 14, textAlign: 'center',
+                    border: '1px solid rgba(245,166,35,0.45)', borderRadius: 12, padding: '12px 14px', textAlign: 'center',
                   }}>
-                    <div style={{ ...stileLevelUp, fontSize: 12, color: '#ffd666', marginBottom: 6 }}>⚡ LEVEL UP DISPONIBILE</div>
-                    <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', marginBottom: 10 }}>
+                    <div style={{ ...stileLevelUp, fontSize: 12, color: '#ffd666', marginBottom: 4 }}>⚡ LEVEL UP DISPONIBILE</div>
+                    <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron' }}>
                       {dati.copie} copie disponibili · usa 3 per potenziare o abbassare una stat
                     </div>
-                    <BtnDecorato variant="primary" size="md" onClick={() => setMostraLU(true)}>POTENZIA / ABBASSA</BtnDecorato>
                   </div>
                 )}
 
+                {/* 2. BANNER RARITÀ + ARCHETIPO */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap', width: '100%' }}>
+                  <Chip colore={rar.colore} size="sm">{'★'.repeat(rar.stelle)} {rar.nome}</Chip>
+                  <Chip colore="#9b59ff" size="sm">⚜ {ARCHE_NOMI[w.archetipo] || w.archetipo || '—'}</Chip>
+                </div>
+
+                {/* 3. IMMAGINE CARTA */}
+                <div onClick={() => setZoomCarta(true)} style={{ cursor: 'zoom-in', transition: 'transform 0.2s', flexShrink: 0 }}
+                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.03)'}
+                  onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  <CartaWaifu waifu={w} datiCollezione={dati} dimensione="normale" tipo="auto" outfitCatalogo={outfitCat} poseCatalogo={poseCat} equip={equip} />
+                </div>
+
+                {/* 4. INDICAZIONE ZOOM */}
+                <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', letterSpacing: 1 }}>🔍 Click per zoom</div>
+
+                {/* 5. LIVELLO E COPIE */}
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ ...stileLevelUp, fontSize: 13, color: rar.colore }}>LV.{dati.livello}</div>
+                  <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: '#9b59ff', marginTop: 2 }}>
+                    {canLevelUp
+                      ? <span style={{ ...stileLevelUp, color: '#00e676', fontSize: 9 }}>⚡ {dati.copie} copie · LEVEL UP!</span>
+                      : <span>{dati.copie}/3 copie → LV<strong style={{ color: '#ffd666' }}>{dati.livello + 1}</strong></span>
+                    }
+                  </div>
+                </div>
+
+                {/* 6. BANNER STATISTICHE — stile upgrade quando mostraLU è false */}
+                {!mostraLU && (
+                  <PannelloOrnato variant="accent" glow={rar.colore} style={{ width: '100%', padding: '14px 12px' }}>
+                    <div style={{ fontSize: 9, letterSpacing: 2, color: rar.colore, fontFamily: 'Orbitron', marginBottom: 10 }}>📊 STATISTICHE</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {STATS_INFO.map(s => {
+                        const base = w[s.key] ?? s.min;
+                        const bonus = dati.stat_bonus?.[s.key] || 0;
+                        const corrente = base + bonus;
+                        const pct = Math.min(1, Math.max(0, (corrente - s.min) / (s.max - s.min)));
+                        return (
+                          <div key={s.key} style={{
+                            display: 'grid', gridTemplateColumns: '1fr auto',
+                            gap: 6, alignItems: 'center',
+                            background: 'rgba(255,255,255,0.02)',
+                            border: '1px solid rgba(255,255,255,0.06)',
+                            borderRadius: 8, padding: '8px 10px',
+                          }}>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                <span style={{ fontSize: 13 }}>{s.icon}</span>
+                                <span style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,0.7)', letterSpacing: 1 }}>{s.label.toUpperCase()}</span>
+                              </div>
+                              <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${pct * 100}%`, background: `linear-gradient(90deg, ${rar.colore}, ${rar.colore}80)`, borderRadius: 2, transition: 'width 0.5s ease', boxShadow: `0 0 6px ${rar.glow}` }} />
+                              </div>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ display: 'flex', gap: 4, alignItems: 'center', justifyContent: 'flex-end' }}>
+                                <span style={{ fontFamily: 'Orbitron', fontSize: 14, color: '#fff', fontWeight: 700 }}>{corrente}</span>
+                                {bonus > 0 && <span style={{ fontSize: 8, color: '#00e676', fontFamily: 'Orbitron' }}>+{bonus}</span>}
+                                {bonus < 0 && <span style={{ fontSize: 8, color: '#ff6b6b', fontFamily: 'Orbitron' }}>{bonus}</span>}
+                              </div>
+                              <div style={{ fontSize: 7, color: 'rgba(238,232,220,0.25)', fontFamily: 'Orbitron' }}>/{s.max}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </PannelloOrnato>
+                )}
+
+                {/* 6b. BANNER STATISTICHE IN MODALITÀ MODIFICA (quando mostraLU = true) */}
                 {mostraLU && (
-                  <PannelloOrnato variant="accent" glow="#f5a623" style={{ marginBottom: 14, padding: '14px 12px' }}>
+                  <PannelloOrnato variant="accent" glow="#f5a623" style={{ width: '100%', padding: '14px 12px' }}>
                     <TitoloOrnato livello={3} colore="#ffd666">MODIFICA STATISTICHE</TitoloOrnato>
                     <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.45)', fontFamily: 'Orbitron', textAlign: 'center', marginBottom: 12, letterSpacing: 1 }}>
                       Scegli stat e direzione · costo: 3 copie
                     </div>
-
-                    {/* Griglia stat con +/- per ogni riga */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
                       {STATS_INFO.map(s => {
                         const base = w[s.key] ?? s.min;
                         const bonus = dati.stat_bonus?.[s.key] || 0;
                         const corrente = base + bonus;
-                        const step = INCREMENTI_LEVELUP[s.key];
-                        const puoSalire = corrente + step <= s.max;
+                        const step = statConfig.steps[s.key] ?? INCREMENTI_LEVELUP[s.key];
+                        const puoSalire   = corrente + step <= s.max;
                         const puoScendere = corrente - step >= s.min;
                         const selPlus  = statSel === s.key + '_plus';
                         const selMinus = statSel === s.key + '_minus';
                         return (
                           <div key={s.key} style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr auto auto',
+                            display: 'grid', gridTemplateColumns: '1fr auto auto',
                             gap: 6, alignItems: 'center',
                             background: (selPlus || selMinus) ? `${rar.colore}18` : 'rgba(255,255,255,0.02)',
                             border: `1px solid ${(selPlus || selMinus) ? rar.colore + '60' : 'rgba(255,255,255,0.06)'}`,
-                            borderRadius: 8, padding: '8px 10px',
-                            transition: 'all 0.2s',
+                            borderRadius: 8, padding: '8px 10px', transition: 'all 0.2s',
                           }}>
-                            {/* Info stat */}
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                                 <span style={{ fontSize: 13 }}>{s.icon}</span>
@@ -2657,45 +2741,32 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
                                 range {s.min}–{s.max} · step ±{step}
                               </div>
                             </div>
-                            {/* Bottone + */}
-                            <button
-                              onClick={() => setStatSel(selPlus ? null : s.key + '_plus')}
-                              disabled={!puoSalire}
-                              style={{
-                                width: 34, height: 34, borderRadius: 8,
-                                background: selPlus ? rar.colore : puoSalire ? 'rgba(0,230,118,0.12)' : 'rgba(255,255,255,0.03)',
-                                border: `1px solid ${selPlus ? rar.colore : puoSalire ? 'rgba(0,230,118,0.4)' : 'rgba(255,255,255,0.06)'}`,
-                                color: selPlus ? '#000' : puoSalire ? '#00e676' : 'rgba(255,255,255,0.15)',
-                                fontSize: 16, fontWeight: 900, cursor: puoSalire ? 'pointer' : 'not-allowed',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                transition: 'all 0.15s',
-                              }}
-                            >+</button>
-                            {/* Bottone - */}
-                            <button
-                              onClick={() => setStatSel(selMinus ? null : s.key + '_minus')}
-                              disabled={!puoScendere}
-                              style={{
-                                width: 34, height: 34, borderRadius: 8,
-                                background: selMinus ? '#ff6b6b' : puoScendere ? 'rgba(255,107,107,0.12)' : 'rgba(255,255,255,0.03)',
-                                border: `1px solid ${selMinus ? '#ff6b6b' : puoScendere ? 'rgba(255,107,107,0.4)' : 'rgba(255,255,255,0.06)'}`,
-                                color: selMinus ? '#000' : puoScendere ? '#ff6b6b' : 'rgba(255,255,255,0.15)',
-                                fontSize: 16, fontWeight: 900, cursor: puoScendere ? 'pointer' : 'not-allowed',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                transition: 'all 0.15s',
-                              }}
-                            >−</button>
+                            <button onClick={() => setStatSel(selPlus ? null : s.key + '_plus')} disabled={!puoSalire} style={{
+                              width: 34, height: 34, borderRadius: 8,
+                              background: selPlus ? rar.colore : puoSalire ? 'rgba(0,230,118,0.12)' : 'rgba(255,255,255,0.03)',
+                              border: `1px solid ${selPlus ? rar.colore : puoSalire ? 'rgba(0,230,118,0.4)' : 'rgba(255,255,255,0.06)'}`,
+                              color: selPlus ? '#000' : puoSalire ? '#00e676' : 'rgba(255,255,255,0.15)',
+                              fontSize: 16, fontWeight: 900, cursor: puoSalire ? 'pointer' : 'not-allowed',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
+                            }}>+</button>
+                            <button onClick={() => setStatSel(selMinus ? null : s.key + '_minus')} disabled={!puoScendere} style={{
+                              width: 34, height: 34, borderRadius: 8,
+                              background: selMinus ? '#ff6b6b' : puoScendere ? 'rgba(255,107,107,0.12)' : 'rgba(255,255,255,0.03)',
+                              border: `1px solid ${selMinus ? '#ff6b6b' : puoScendere ? 'rgba(255,107,107,0.4)' : 'rgba(255,255,255,0.06)'}`,
+                              color: selMinus ? '#000' : puoScendere ? '#ff6b6b' : 'rgba(255,255,255,0.15)',
+                              fontSize: 16, fontWeight: 900, cursor: puoScendere ? 'pointer' : 'not-allowed',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
+                            }}>−</button>
                           </div>
                         );
                       })}
                     </div>
-
-                    {/* Preview della modifica selezionata */}
+                    {/* Preview modifica */}
                     {statSel && (() => {
                       const [sKey, dir] = statSel.split('_');
                       const isDirPlus = dir === 'plus';
                       const s = STATS_INFO.find(x => x.key === sKey);
-                      const step = INCREMENTI_LEVELUP[sKey];
+                      const step = statConfig.steps[sKey] ?? INCREMENTI_LEVELUP[sKey];
                       const corrente = (w[sKey] ?? s.min) + (dati.stat_bonus?.[sKey] || 0);
                       const dopo = isDirPlus ? corrente + step : corrente - step;
                       return (
@@ -2707,7 +2778,6 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
                         </div>
                       );
                     })()}
-
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
                       <BtnDecorato variant="secondary" onClick={() => { setMostraLU(false); setStatSel(null); }}>ANNULLA</BtnDecorato>
                       <BtnDecorato variant="primary" disabled={!statSel} onClick={() => {
@@ -2720,74 +2790,31 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
                   </PannelloOrnato>
                 )}
 
-                {/* Layout responsive: colonna singola su mobile, grid su desktop */}
-                <div style={{
-                  display: 'flex', flexDirection: 'column', gap: 14,
-                }}>
-                  {/* Riga superiore: carta + info livello */}
-                  <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    {/* Carta con zoom al click */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                      <div onClick={() => setZoomCarta(true)} style={{ cursor: 'zoom-in', transition: 'transform 0.2s' }}
-                        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.03)'}
-                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                      >
-                        <CartaWaifu waifu={w} datiCollezione={dati} dimensione="normale" tipo="auto" outfitCatalogo={outfitCat} poseCatalogo={poseCat} equip={equip} />
-                      </div>
-                      <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', letterSpacing: 1 }}>🔍 Click per zoom</div>
-                      {/* Livello e copie */}
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ ...stileLevelUp, fontSize: 13, color: rar.colore }}>LV.{dati.livello}</div>
-                        <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: '#9b59ff', marginTop: 2 }}>
-                          {dati.copie >= 3
-                            ? <span style={{ ...stileLevelUp, color: '#00e676', fontSize: 9 }}>⚡ {dati.copie} copie · LEVEL UP!</span>
-                            : <span>{dati.copie}/3 copie → LV<strong style={{ color: '#ffd666' }}>{dati.livello + 1}</strong></span>
-                          }
-                        </div>
-                      </div>
+                {/* 7. BOTTONE LEVEL UP */}
+                <div style={{ width: '100%', textAlign: 'center' }}>
+                  <BtnDecorato
+                    variant="primary"
+                    size="md"
+                    disabled={!canLevelUp}
+                    onClick={() => canLevelUp && setMostraLU(v => !v)}
+                    style={{ opacity: canLevelUp ? 1 : 0.45, cursor: canLevelUp ? 'pointer' : 'not-allowed' }}
+                  >
+                    {mostraLU ? '✕ ANNULLA MODIFICA' : 'LEVEL UP'}
+                  </BtnDecorato>
+                  {!canLevelUp && copieMancantiMsg && (
+                    <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.4)', marginTop: 6, letterSpacing: 0.5 }}>
+                      {copieMancantiMsg}
                     </div>
-
-                    {/* Pannello destra: stat + descrizione */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minWidth: 180 }}>
-                      {/* Statistiche */}
-                      <PannelloOrnato style={{ padding: 14 }}>
-                        <div style={{ fontSize: 9, letterSpacing: 2, color: rar.colore, fontFamily: 'Orbitron', marginBottom: 10 }}>📊 STATISTICHE</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-                          {STATS_INFO.map(s => {
-                            const base = w[s.key] ?? s.min;
-                            const bonus = dati.stat_bonus?.[s.key] || 0;
-                            const totale = base + bonus;
-                            const pct = Math.min(1, Math.max(0, (totale - s.min) / (s.max - s.min)));
-                            return (
-                              <div key={s.key}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                                  <span style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,0.65)', letterSpacing: 0.5 }}>{s.icon} {s.label}</span>
-                                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                                    <span style={{ fontFamily: 'Orbitron', fontSize: 12, color: '#fff', fontWeight: 700 }}>{totale}</span>
-                                    {bonus > 0 && <span style={{ fontSize: 8, color: '#00e676', fontFamily: 'Orbitron' }}>+{bonus}</span>}
-                                    {bonus < 0 && <span style={{ fontSize: 8, color: '#ff6b6b', fontFamily: 'Orbitron' }}>{bonus}</span>}
-                                    <span style={{ fontSize: 7, color: 'rgba(238,232,220,0.25)', fontFamily: 'Orbitron' }}>/{s.max}</span>
-                                  </div>
-                                </div>
-                                <div style={{ height: 5, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
-                                  <div style={{ height: '100%', width: `${pct * 100}%`, background: `linear-gradient(90deg, ${rar.colore}, ${rar.colore}80)`, borderRadius: 3, transition: 'width 0.5s ease', boxShadow: `0 0 6px ${rar.glow}` }} />
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </PannelloOrnato>
-
-                      {/* Descrizione waifu */}
-                      {w.descrizione && (
-                        <PannelloOrnato style={{ padding: 14 }}>
-                          <div style={{ fontSize: 9, letterSpacing: 2, color: '#9b59ff', fontFamily: 'Orbitron', marginBottom: 8 }}>📖 DESCRIZIONE</div>
-                          <p style={{ fontFamily: 'Fredoka', fontSize: 13, color: 'rgba(238,232,220,0.75)', lineHeight: 1.6, margin: 0 }}>{w.descrizione}</p>
-                        </PannelloOrnato>
-                      )}
-                    </div>
-                  </div>
+                  )}
                 </div>
+
+                {/* Descrizione waifu */}
+                {w.descrizione && (
+                  <PannelloOrnato style={{ padding: 14, width: '100%' }}>
+                    <div style={{ fontSize: 9, letterSpacing: 2, color: '#9b59ff', fontFamily: 'Orbitron', marginBottom: 8 }}>📖 DESCRIZIONE</div>
+                    <p style={{ fontFamily: 'Fredoka', fontSize: 13, color: 'rgba(238,232,220,0.75)', lineHeight: 1.6, margin: 0 }}>{w.descrizione}</p>
+                  </PannelloOrnato>
+                )}
               </div>
             )}
 

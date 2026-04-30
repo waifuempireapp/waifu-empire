@@ -2031,6 +2031,7 @@ function ConfigTab({ waifu, ricarica, flash }) {
     const risultati = [];
     for (const w of waifu) {
       const patch = {};
+      const dettagli = {}; // { key: { prima, dopo } }
       let modificata = false;
       for (const { key } of STAT_KEYS) {
         const r = ranges[key];
@@ -2038,14 +2039,18 @@ function ConfigTab({ waifu, ricarica, flash }) {
         const val = w[key];
         if (val === undefined || val === null) continue;
         const clamped = Math.max(r.min, Math.min(r.max, val));
-        if (clamped !== val) { patch[key] = clamped; modificata = true; }
+        if (clamped !== val) {
+          patch[key] = clamped;
+          dettagli[key] = { prima: val, dopo: clamped };
+          modificata = true;
+        }
       }
       if (modificata) {
         try {
           await upsertWaifu(w.id, patch);
-          risultati.push({ nome: w.nome, patch, ok: true });
+          risultati.push({ nome: w.nome, patch, dettagli, ok: true });
         } catch (e) {
-          risultati.push({ nome: w.nome, errore: e.message, ok: false });
+          risultati.push({ nome: w.nome, dettagli, errore: e.message, ok: false });
         }
       }
     }
@@ -2215,10 +2220,20 @@ function ConfigTab({ waifu, ricarica, flash }) {
                 }}>
                   <span style={{ color: r.ok ? '#06d6a0' : '#fca5a5', marginRight: 8 }}>{r.ok ? '✓' : '✗'}</span>
                   <span style={{ color: '#f5e6d3' }}>{r.nome}</span>
-                  {r.ok && r.patch && (
-                    <span style={{ color: 'rgba(245,230,211,0.5)', marginLeft: 8 }}>
-                      {Object.entries(r.patch).map(([k, v]) => `${k}: →${v}`).join(', ')}
-                    </span>
+                  {r.ok && r.dettagli && (
+                    <div style={{ marginLeft: 8, display: 'inline-flex', flexWrap: 'wrap', gap: '4px 12px' }}>
+                      {Object.entries(r.dettagli).map(([k, { prima, dopo }]) => {
+                        const statLabel = STAT_KEYS.find(s => s.key === k)?.label || k;
+                        return (
+                          <span key={k} style={{ color: 'rgba(245,230,211,0.6)', fontSize: 10 }}>
+                            <span style={{ color: '#a0a0a0' }}>{statLabel}:</span>{' '}
+                            <span style={{ color: '#fca5a5', fontWeight: 700 }}>{prima}</span>
+                            <span style={{ color: '#a0a0a0' }}> → </span>
+                            <span style={{ color: '#06d6a0', fontWeight: 700 }}>{dopo}</span>
+                          </span>
+                        );
+                      })}
+                    </div>
                   )}
                   {r.errore && <span style={{ color: '#fca5a5', marginLeft: 8 }}>— {r.errore}</span>}
                 </div>
