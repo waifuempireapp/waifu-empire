@@ -112,7 +112,7 @@ export default function GiocoPage() {
           {tab === 'home' && <HomeTab profilo={profilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} setTab={setTab} setColezSubTab={setColezSubTab} user={user} />}
           {tab === 'sbusta' && <SbustaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} user={user} mostraNotif={mostraNotif} />}
           {tab === 'collezione' && <CollezioneTab collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} profilo={profilo} setProfilo={setProfilo} user={user} mostraNotif={mostraNotif} initialSubTab={colezSubTab} statConfig={statConfig} />}
-          {tab === 'mappa' && <MappaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} user={user} mostraNotif={mostraNotif} />}
+          {tab === 'mappa' && <MappaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} user={user} mostraNotif={mostraNotif} />}
           {tab === 'classifica' && <ClassificaTab user={user} />}
         </div>
 
@@ -3019,7 +3019,7 @@ function RoundEndBar({ vincitoreRound, statScelta, direzione, carteP, carteC, ro
 // ============================================================
 // TAB: MAPPA — Tutto il codice battaglia invariato, solo UI reworkata
 // ============================================================
-function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif }) {
+function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, mostraNotif }) {
   // ── STATO MAPPA ────────────────────────────────────────────
   const [territoriUtente, setTerritoriUtente] = useState({});
   const [terrSel, setTerrSel] = useState(null);
