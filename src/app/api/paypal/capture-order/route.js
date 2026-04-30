@@ -5,27 +5,20 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 
 function normalizePrivateKey(key) {
   if (!key) return undefined;
-  if (key.includes('\n')) return key;
-  return key.replace(/\\n/g, '\n');
+  // Rimuovi eventuali virgolette iniziali/finali aggiunte da Vercel
+  let k = key.trim().replace(/^"+|"+$/g, '');
+  // Converti \n letterali in newline reali se necessario
+  if (!k.includes('\n')) k = k.replace(/\\n/g, '\n');
+  return k;
 }
 
 function getFirebaseApp() {
   if (getApps().length) return getApps()[0];
-
-  const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
-
-  // Log diagnostico — rimuovere dopo il fix
-  console.log('[Firebase Admin] privateKey present:', !!privateKey);
-  console.log('[Firebase Admin] privateKey length:', privateKey?.length);
-  console.log('[Firebase Admin] contains real newlines:', privateKey?.includes('\n'));
-  console.log('[Firebase Admin] contains literal \\n:', privateKey?.includes('\\n'));
-  console.log('[Firebase Admin] first 60 chars:', privateKey?.substring(0, 60));
-
   return initializeApp({
     credential: cert({
       projectId:   process.env.FIREBASE_ADMIN_PROJECT_ID,
       clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-      privateKey:  normalizePrivateKey(privateKey),
+      privateKey:  normalizePrivateKey(process.env.FIREBASE_ADMIN_PRIVATE_KEY),
     }),
   });
 }
