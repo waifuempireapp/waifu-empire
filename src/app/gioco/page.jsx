@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, getDropAttivo, getClassifica, premioPerPosizione, deleteTeamFromCollezione } from '@/lib/firestoreService';
 import { calcolaRicaricaPacchetti, calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, INCREMENTI_LEVELUP, clampStat, clampWaifuStats } from '@/lib/gameLogic';
-import { TIMER, RARITA, COLORI_CAPELLI, CATEGORIE_TETTE, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT } from '@/lib/constants';
+import { TIMER, RARITA, COLORI_CAPELLI, CATEGORIE_TETTE, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, OUTFIT_CONFIG_DEFAULT, ABILITA_TIPI } from '@/lib/constants';
+import { calcolaLivelloOutfit, getArchetipiCompatibili, puoEquipaggiare, applicaAbilitaOutfit, applicaModificatoriOpp } from '@/lib/gameLogic';
 import PaperDoll from '@/components/PaperDoll';
 // CODICE LINK CARTA -> BABY DOLL: importo BabyDoll separata dalla CartaWaifu
 import BabyDoll from '@/components/BabyDoll';
@@ -1266,7 +1267,7 @@ function ClassificaTab({ user }) {
                 )}
                 <div style={{ fontSize: idx === 0 ? 28 : 22 }}>{podiumIcons[idx]}</div>
                 <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: col, fontWeight: 700, textAlign: 'center', marginTop: 4, wordBreak: 'break-all', lineHeight: 1.2 }}>
-                  {(u.nome || u.email?.split('@')[0] || 'Giocatore').slice(0, 12)}
+                  {(u._nomeDisplay || u.nomeImpero || u.nome || u.email?.split('@')[0] || 'Giocatore').slice(0, 12)}
                 </div>
                 <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
                   <span style={{ fontSize: 8, color: 'rgba(238,232,220,0.5)', background: 'rgba(0,0,0,0.3)', padding: '1px 5px', borderRadius: 4 }}>
@@ -1345,7 +1346,7 @@ function ClassificaTab({ user }) {
                       color: col || 'rgba(238,232,220,0.8)',
                       fontWeight: isMe || isTop3 ? 700 : 400,
                     }}>
-                      {(u.nome || u.email?.split('@')[0] || 'Giocatore').slice(0, 18)}
+                      {(u._nomeDisplay || u.nomeImpero || u.nome || u.email?.split('@')[0] || 'Giocatore').slice(0, 18)}
                       {isMe && <span style={{ marginLeft: 6, fontSize: 8, color: '#f5a623' }}>← TU</span>}
                     </div>
                   </div>
@@ -2017,6 +2018,27 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
   // CODICE LINK CARTA -> BABY DOLL: equipaggiamento si modifica nella baby-doll,
   // si salva in collezione.equipaggiamento[waifuId] e la carta legge stat_bonus
   const handleEquipaggia = async (waifuId, slot, outfitId) => {
+    // Se sta rimuovendo l'outfit (outfitId null) non serve validare
+    if (outfitId) {
+      const waifu = waifuCat.find(x => x.id === waifuId);
+      const outfit = outfitCat.find(o => o.id === outfitId);
+      if (waifu && outfit) {
+        const datiOutfit = collezione.outfit?.[outfitId] || {};
+        const copie = datiOutfit.quantita || 1;
+        const livelloOutfit = calcolaLivelloOutfit(copie, outfit.rarita, OUTFIT_CONFIG_DEFAULT);
+        const tuttiArchetipiIds = outfitCat.length > 0
+          ? [...new Set(outfitCat.flatMap(o => o.archetipi_compatibili || (o.archetipo_compatibile ? [o.archetipo_compatibile] : [])))]
+          : [];
+        const equipCorrente = collezione.equipaggiamento?.[waifuId] || {};
+        // Temporaneamente svuota lo slot corrente per non bloccare la sostituzione
+        const equipPerCheck = { ...equipCorrente, [slot]: null };
+        const check = puoEquipaggiare(outfit, waifu, equipPerCheck, livelloOutfit, outfit.rarita, tuttiArchetipiIds, OUTFIT_CONFIG_DEFAULT);
+        if (!check.ok) {
+          mostraNotif(check.motivo || 'Non puoi equipaggiare questo outfit', '#ff3d3d');
+          return;
+        }
+      }
+    }
     const nuova = JSON.parse(JSON.stringify(collezione));
     if (!nuova.equipaggiamento[waifuId]) nuova.equipaggiamento[waifuId] = { faccia: null, petto: null, gambe: null, piedi: null, posa: null };
     nuova.equipaggiamento[waifuId][slot] = outfitId;
@@ -2818,26 +2840,61 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
                     )}
                     {(tabSlot === 'pose'
                       ? Object.entries(collezione.pose || {}).map(([id]) => poseCat.find(p => p.id === id)).filter(Boolean).filter(p => p.waifu_id === waifuId)
-                      : Object.entries(collezione.outfit || {}).map(([id]) => outfitCat.find(o => o.id === id)).filter(Boolean).filter(o => o.slot === tabSlot)
+                      : Object.entries(collezione.outfit || {}).map(([id, datiO]) => {
+                          const o = outfitCat.find(x => x.id === id);
+                          if (!o || o.slot !== tabSlot) return null;
+                          return { ...o, _copie: datiO.quantita || 1 };
+                        }).filter(Boolean)
                     ).map(item => {
                       const isEq = tabSlot === 'pose' ? equip.posa === item.id : equip[tabSlot] === item.id;
                       const itemRar = RARITA[item.rarita] || RARITA.comune;
+                      // Calcola livello outfit e archetipi compatibili
+                      const livOutfit = tabSlot !== 'pose' ? calcolaLivelloOutfit(item._copie || 1, item.rarita, OUTFIT_CONFIG_DEFAULT) : 1;
+                      const tuttiAIds = [...new Set(outfitCat.flatMap(o => o.archetipi_compatibili || (o.archetipo_compatibile ? [o.archetipo_compatibile] : [])))];
+                      // Verifica compatibilità con la waifu corrente
+                      const waifuCorrente = datiCollezione ? w : null;
+                      let compatibile = true;
+                      let motivoIncompat = '';
+                      if (tabSlot !== 'pose' && waifuCorrente) {
+                        const check = puoEquipaggiare(item, waifuCorrente, { ...equip, [tabSlot]: null }, livOutfit, item.rarita, tuttiAIds, OUTFIT_CONFIG_DEFAULT);
+                        compatibile = check.ok;
+                        motivoIncompat = check.motivo || '';
+                      }
+                      // Descrizione abilità
+                      const abDesc = item.abilita
+                        ? (item.abilita.tipo === 'doppia'
+                            ? item.abilita.effetti?.map(e => e.descrizione || `${e.tipo} ${e.stat}`).join(' | ')
+                            : item.abilita.descrizione || `${item.abilita.tipo} ${item.abilita.stat}`)
+                        : null;
                       return (
-                        <div key={item.id} onClick={() => tabSlot === 'pose' ? onEquipaggia(waifuId, 'posa', item.id) : onEquipaggia(waifuId, tabSlot, item.id)}
+                        <div key={item.id}
+                          onClick={() => compatibile ? (tabSlot === 'pose' ? onEquipaggia(waifuId, 'posa', item.id) : onEquipaggia(waifuId, tabSlot, item.id)) : null}
+                          title={!compatibile ? motivoIncompat : ''}
                           style={{
-                            padding: 10, cursor: 'pointer',
-                            background: isEq ? `${itemRar.colore}20` : 'rgba(255,255,255,0.02)',
-                            border: `1px solid ${isEq ? '#ffd666' : itemRar.colore + '40'}`,
+                            padding: 10, cursor: compatibile ? 'pointer' : 'not-allowed',
+                            background: isEq ? `${itemRar.colore}20` : compatibile ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.2)',
+                            border: `1px solid ${isEq ? '#ffd666' : compatibile ? itemRar.colore + '40' : 'rgba(255,255,255,0.08)'}`,
                             borderRadius: 8, transition: 'all 0.2s',
+                            opacity: compatibile ? 1 : 0.45,
                           }}>
-                          <div style={{ fontFamily: 'Fredoka', fontSize: 10, color: isEq ? '#ffd666' : '#fff', textAlign: 'center', marginBottom: 2 }}>{item.nome}</div>
-                          <div style={{ textAlign: 'center', marginBottom: 4 }}>
+                          <div style={{ fontFamily: 'Fredoka', fontSize: 10, color: isEq ? '#ffd666' : compatibile ? '#fff' : 'rgba(238,232,220,0.4)', textAlign: 'center', marginBottom: 2 }}>{item.nome}</div>
+                          <div style={{ textAlign: 'center', marginBottom: 2 }}>
                             <StelleRarita stelle={itemRar.stelle} colore={itemRar.colore} dimensione={8} />
                           </div>
+                          {tabSlot !== 'pose' && (
+                            <div style={{ textAlign: 'center', fontSize: 7, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>
+                              Lv.{livOutfit}
+                            </div>
+                          )}
                           {/* Abilità visibile */}
-                          {item.abilita && (
-                            <div style={{ fontSize: 8, color: itemRar.colore, fontFamily: 'Fredoka', textAlign: 'center', opacity: 0.8, lineHeight: 1.3 }}>
-                              ✨ {item.abilita}
+                          {abDesc && (
+                            <div style={{ fontSize: 7, color: item.abilita?.tipo === 'doppia' ? '#ffd666' : itemRar.colore, fontFamily: 'Fredoka', textAlign: 'center', opacity: 0.9, lineHeight: 1.3 }}>
+                              ✨ {abDesc}
+                            </div>
+                          )}
+                          {!compatibile && (
+                            <div style={{ fontSize: 7, color: '#ff6b6b', textAlign: 'center', fontFamily: 'Orbitron', marginTop: 3, lineHeight: 1.2 }}>
+                              🔒 {motivoIncompat}
                             </div>
                           )}
                           {isEq && <div style={{ textAlign: 'center', marginTop: 4, fontSize: 8, color: '#ffd666', fontFamily: 'Orbitron' }}>✓ EQUIPAGGIATO</div>}
@@ -3154,8 +3211,15 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
   const eseguiRisoluzione = (waifuP, waifuC, stat, dir) => {
     setFase('reveal');
     setTimeout(() => {
-      const valP = waifuP[stat];
-      const valC = waifuC[stat];
+      // Applica modificatori avversari dagli outfit (gli effetti self sono già stati applicati a confermaEAvvia)
+      const { modOpp: modOppFromP } = applicaAbilitaOutfit(waifuP, waifuP._outfitEquipIds || [], outfitCat, STAT_RANGES_DEFAULT);
+      const { modOpp: modOppFromC } = applicaAbilitaOutfit(waifuC, waifuC._outfitEquipIds || [], outfitCat, STAT_RANGES_DEFAULT);
+      // Applica modificatori: gli outfit del player possono peggiorare le stat della CPU e viceversa
+      const waifuPEffettiva = applicaModificatoriOpp(waifuP, modOppFromC, STAT_RANGES_DEFAULT);
+      const waifuCEffettiva = applicaModificatoriOpp(waifuC, modOppFromP, STAT_RANGES_DEFAULT);
+
+      const valP = waifuPEffettiva[stat];
+      const valC = waifuCEffettiva[stat];
       let vince;
       if (valP === valC) vince = 'pareggio';
       else if (dir === 'piu') vince = valP > valC ? 'player' : 'cpu';
@@ -3283,35 +3347,34 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, user, mostraNotif
 
   // ── CONFERMA TEAM E AVVIA ──────────────────────────────────
   const confermaEAvvia = () => {
+    // Helper: costruisce una waifu da battaglia applicando stat_bonus + abilità outfit
+    const buildWaifuBattaglia = (id) => {
+      const w = waifuDisponibili.find(x => x.id === id);
+      const dati = collezione.waifu[id];
+      if (!w) return null;
+      const equipIds = Object.values(collezione.equipaggiamento?.[id] || {}).filter(Boolean);
+      // Stat base + bonus livello
+      let wb = {
+        ...w,
+        tette:          Math.min(7,    w.tette          + (dati?.stat_bonus?.tette          || 0)),
+        taglia_piedi:   Math.min(45,   w.taglia_piedi   + (dati?.stat_bonus?.taglia_piedi   || 0)),
+        eta:            Math.min(5000, w.eta             + (dati?.stat_bonus?.eta             || 0)),
+        colore_capelli: Math.min(10,   w.colore_capelli  + (dati?.stat_bonus?.colore_capelli  || 0)),
+        esperienza:     Math.min(5000, w.esperienza      + (dati?.stat_bonus?.esperienza      || 0)),
+        _outfitEquipIds: equipIds, // conserva per applicazione abilità in battaglia
+      };
+      // Applica abilità outfit self (modificano le stat proprie prima del round)
+      const { waifuModificata } = applicaAbilitaOutfit(wb, equipIds, outfitCat, STAT_RANGES_DEFAULT);
+      return { ...waifuModificata, _outfitEquipIds: equipIds };
+    };
+
     let mazzoUtente;
     if (teamSelezionato && teamSelezionato !== 'manuale') {
       const team = teams[teamSelezionato];
-      mazzoUtente = team.waifu.map(id => {
-        const w = waifuDisponibili.find(x => x.id === id);
-        const dati = collezione.waifu[id];
-        return w ? {
-          ...w,
-          tette:          Math.min(7,    w.tette          + (dati?.stat_bonus?.tette          || 0)),
-          taglia_piedi:   Math.min(45,   w.taglia_piedi   + (dati?.stat_bonus?.taglia_piedi   || 0)),
-          eta:            Math.min(5000, w.eta             + (dati?.stat_bonus?.eta             || 0)),
-          colore_capelli: Math.min(10,   w.colore_capelli  + (dati?.stat_bonus?.colore_capelli  || 0)),
-          esperienza:     Math.min(5000, w.esperienza      + (dati?.stat_bonus?.esperienza      || 0)),
-        } : null;
-      }).filter(Boolean);
+      mazzoUtente = team.waifu.map(buildWaifuBattaglia).filter(Boolean);
     } else {
       if (waifuSelezionate.length !== 5) { mostraNotif('Seleziona esattamente 5 waifu!', '#ff3d3d'); return; }
-      mazzoUtente = waifuSelezionate.map(id => {
-        const w = waifuDisponibili.find(x => x.id === id);
-        const dati = collezione.waifu[id];
-        return {
-          ...w,
-          tette:          Math.min(7,    w.tette          + (dati?.stat_bonus?.tette          || 0)),
-          taglia_piedi:   Math.min(45,   w.taglia_piedi   + (dati?.stat_bonus?.taglia_piedi   || 0)),
-          eta:            Math.min(5000, w.eta             + (dati?.stat_bonus?.eta             || 0)),
-          colore_capelli: Math.min(10,   w.colore_capelli  + (dati?.stat_bonus?.colore_capelli  || 0)),
-          esperienza:     Math.min(5000, w.esperienza      + (dati?.stat_bonus?.esperienza      || 0)),
-        };
-      });
+      mazzoUtente = waifuSelezionate.map(buildWaifuBattaglia).filter(Boolean);
     }
     if (mazzoUtente.length < 5) { mostraNotif('Team insufficiente!', '#ff3d3d'); return; }
 

@@ -14,7 +14,8 @@ import {
   buildPromptOutfit, buildPromptPosa, buildPromptBustina,
   ARCHETIPI, PALETTE, MOTORI_AI, suggerisciDiversificazione,
 } from '@/lib/promptGenerator';
-import { RARITA, COLORI_CAPELLI, SLOT_OUTFIT, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT } from '@/lib/constants';
+import { RARITA, COLORI_CAPELLI, SLOT_OUTFIT, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, OUTFIT_CONFIG_DEFAULT, ABILITA_TIPI, ABILITA_VALORI } from '@/lib/constants';
+import { calcolaLivelloOutfit, calcolaNumArchetipi, autoGeneraAbilita } from '@/lib/gameLogic';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -821,8 +822,8 @@ function OutfitTab({ outfit, ricarica, flash }) {
     slot: 'petto',
     forma: 'tshirt',
     colore: '#ec4899',
-    archetipo_compatibile: '', // ★ FASE 4
-    abilita: null,             // ★ FASE 4 — null per comune, oggetto per rarità superiori
+    archetipi_compatibili: [],  // array invece di singolo archetipo_compatibile
+    abilita: null,
     fillers: { descrizione: '' },
     asset: '',
   });
@@ -841,7 +842,7 @@ function OutfitTab({ outfit, ricarica, flash }) {
     ricarica();
   };
 
-  if (ed) return <OutfitEditor outfit={ed} setOutfit={setEd} onSalva={salva} onAnnulla={() => setEd(null)} flash={flash} />;
+  if (ed) return <OutfitEditor outfit={ed} setOutfit={setEd} onSalva={salva} onAnnulla={() => setEd(null)} flash={flash} outfitEsistenti={outfit} />;
 
   let filtrati = outfit;
   if (filtroRarita !== 'tutte') filtrati = filtrati.filter(o => o.rarita === filtroRarita);
@@ -882,6 +883,14 @@ function OutfitTab({ outfit, ricarica, flash }) {
           }}>
             <div style={{ fontFamily: 'Cinzel, serif', color: rar.colore, fontSize: 13 }}>{o.nome}</div>
             <div style={{ fontSize: 10, opacity: 0.7 }}>{SLOT_OUTFIT[o.slot]?.nome} · {o.forma}</div>
+            <div style={{ fontSize: 9, marginTop: 3, opacity: 0.55 }}>
+              Archetipi: {(o.archetipi_compatibili || (o.archetipo_compatibile ? [o.archetipo_compatibile] : [])).length || 0} ⚜
+            </div>
+            {o.abilita && (
+              <div style={{ fontSize: 9, color: rar.colore, marginTop: 2, opacity: 0.8 }}>
+                ✨ {o.abilita.tipo === 'doppia' ? o.abilita.descrizione : o.abilita.descrizione || o.abilita.tipo}
+              </div>
+            )}
             <div style={{ fontSize: 10, marginTop: 4, opacity: 0.6 }}>Asset: {o.asset ? '✓' : '✗'}</div>
             <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
               <button onClick={() => setEd(o)} style={btnSecondario}>MOD</button>
@@ -895,7 +904,7 @@ function OutfitTab({ outfit, ricarica, flash }) {
   );
 }
 
-function OutfitEditor({ outfit, setOutfit, onSalva, onAnnulla, flash }) {
+function OutfitEditor({ outfit, setOutfit, onSalva, onAnnulla, flash, outfitEsistenti = [] }) {
   const [uploading, setUploading] = useState(false);
   const handleUpload = async (file) => {
     if (!file) return;
@@ -912,6 +921,74 @@ function OutfitEditor({ outfit, setOutfit, onSalva, onAnnulla, flash }) {
 
   const promptInfo = buildPromptOutfit(outfit, outfit.fillers || {});
 
+  // Archetipi correnti (array)
+  const archetipiCorr = outfit.archetipi_compatibili || (outfit.archetipo_compatibile ? [outfit.archetipo_compatibile] : []);
+  const rarConf = OUTFIT_CONFIG_DEFAULT.rarità[outfit.rarita] || OUTFIT_CONFIG_DEFAULT.rarità.comune;
+  const maxArchetipiAdmin = rarConf.archetipiMax < 0 ? ARCHETIPI.length : rarConf.archetipiMax;
+
+  const toggleArchetipo = (id) => {
+    const curr = [...archetipiCorr];
+    const idx = curr.indexOf(id);
+    if (idx >= 0) {
+      curr.splice(idx, 1);
+    } else {
+      if (curr.length >= maxArchetipiAdmin) {
+        flash(`Massimo ${maxArchetipiAdmin} archetipi per rarità ${outfit.rarita}`, '#f59e0b');
+        return;
+      }
+      curr.push(id);
+    }
+    setOutfit({ ...outfit, archetipi_compatibili: curr, archetipo_compatibile: curr[0] || '' });
+  };
+
+  // Auto-generazione abilità
+  const autoGenera = () => {
+    if (outfit.rarita === 'comune') { flash('I comuni non hanno abilità', '#f59e0b'); return; }
+    const abilita = autoGeneraAbilita(outfit.rarita, archetipiCorr[0] || '', outfitEsistenti);
+    setOutfit({ ...outfit, abilita });
+    flash('Abilità auto-generata! Puoi modificarla.', '#06d6a0');
+  };
+
+  // Abilità: gestione effetti (singolo o doppio)
+  const isDoppia = outfit.rarita === 'leggendario' || outfit.rarita === 'immersivo';
+  const STAT_OPTS = [
+    { v: 'tette', l: '💗 Tette' }, { v: 'taglia_piedi', l: '🦶 Piedi' },
+    { v: 'eta', l: '⏳ Età' }, { v: 'colore_capelli', l: '💇 Capelli' },
+    { v: 'esperienza', l: '⭐ Esperienza' },
+  ];
+  const TIPO_OPTS = [
+    { v: 'stat_up_self',   l: '↑ Boost stat propria' },
+    { v: 'stat_down_self', l: '↓ Abbassa stat propria' },
+    { v: 'stat_up_opp',   l: '⬆ Boost stat avversaria' },
+    { v: 'stat_down_opp', l: '⬇ Abbassa stat avversaria' },
+  ];
+
+  const effetti = outfit.abilita?.tipo === 'doppia'
+    ? (outfit.abilita.effetti || [{}, {}])
+    : outfit.abilita ? [outfit.abilita] : [{}];
+
+  const setEffetto = (i, patch) => {
+    if (!isDoppia || (outfit.abilita?.tipo !== 'doppia' && i === 0)) {
+      // abilità singola
+      setOutfit({ ...outfit, abilita: { ...(outfit.abilita || {}), ...patch } });
+    } else {
+      const newEff = [...effetti];
+      newEff[i] = { ...newEff[i], ...patch };
+      const descParts = newEff.map(e => e.descrizione || `${e.tipo || ''} ${e.stat || ''}`).join(' | ');
+      setOutfit({ ...outfit, abilita: { tipo: 'doppia', effetti: newEff, descrizione: descParts } });
+    }
+  };
+
+  const switchTipoDoppia = (usaDoppia) => {
+    if (usaDoppia) {
+      const eff1 = { tipo: 'stat_up_self', stat: 'esperienza', valore: 2, descrizione: '+2 Esp.' };
+      const eff2 = { tipo: 'stat_down_opp', stat: 'tette', valore: 1, descrizione: '-1 Tette avv.' };
+      setOutfit({ ...outfit, abilita: { tipo: 'doppia', effetti: [eff1, eff2], descrizione: '+2 Esp. | -1 Tette avv.' } });
+    } else {
+      setOutfit({ ...outfit, abilita: { tipo: 'stat_up_self', stat: 'esperienza', valore: 2, descrizione: '+2 Esperienza' } });
+    }
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
@@ -922,10 +999,11 @@ function OutfitEditor({ outfit, setOutfit, onSalva, onAnnulla, flash }) {
         </div>
       </div>
 
+      {/* Campi base */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 14 }}>
         <Field label="Nome"><input value={outfit.nome} onChange={e => setOutfit({ ...outfit, nome: e.target.value })} style={inputStyle} /></Field>
         <Field label="Rarità">
-          <select value={outfit.rarita} onChange={e => setOutfit({ ...outfit, rarita: e.target.value })} style={inputStyle}>
+          <select value={outfit.rarita} onChange={e => setOutfit({ ...outfit, rarita: e.target.value, archetipi_compatibili: [] })} style={inputStyle}>
             {Object.entries(RARITA).map(([k, v]) => <option key={k} value={k}>{v.nome}</option>)}
           </select>
         </Field>
@@ -934,7 +1012,7 @@ function OutfitEditor({ outfit, setOutfit, onSalva, onAnnulla, flash }) {
             {Object.entries(SLOT_OUTFIT).map(([k, v]) => <option key={k} value={k}>{v.nome}</option>)}
           </select>
         </Field>
-        <Field label="Forma SVG (per fallback senza asset)">
+        <Field label="Forma SVG (fallback senza asset)">
           <select value={outfit.forma} onChange={e => setOutfit({ ...outfit, forma: e.target.value })} style={inputStyle}>
             {outfit.slot === 'faccia' && ['glasses', 'tiara', 'earrings', 'hat', 'mask'].map(f => <option key={f} value={f}>{f}</option>)}
             {outfit.slot === 'petto' && ['tshirt', 'dress', 'bikini', 'corset', 'armor'].map(f => <option key={f} value={f}>{f}</option>)}
@@ -943,53 +1021,121 @@ function OutfitEditor({ outfit, setOutfit, onSalva, onAnnulla, flash }) {
           </select>
         </Field>
         <Field label="Colore primario"><input type="color" value={outfit.colore} onChange={e => setOutfit({ ...outfit, colore: e.target.value })} style={{ ...inputStyle, padding: 4, height: 42 }} /></Field>
-        {/* ★ FASE 4: Archetipo compatibile (senza la parola "archetipo" nella grafica) */}
-        <Field label="Stile compatibile (archetipo)">
-          <select value={outfit.archetipo_compatibile || ''} onChange={e => setOutfit({ ...outfit, archetipo_compatibile: e.target.value })} style={inputStyle}>
-            <option value="">— Nessuno (generico) —</option>
-            {ARCHETIPI.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
-          </select>
-        </Field>
       </div>
 
-      {/* ★ FASE 4: Abilità outfit (solo rarità non comune) */}
+      {/* ── ARCHETIPI COMPATIBILI ── */}
+      <div style={{ background: 'rgba(155,89,255,0.06)', border: '1px solid rgba(155,89,255,0.25)', borderRadius: 8, padding: 14, marginBottom: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <div style={{ fontFamily: 'Cinzel, serif', color: '#9b59ff', letterSpacing: 2, fontSize: 12 }}>
+            ⚜ ARCHETIPI COMPATIBILI ({archetipiCorr.length}/{maxArchetipiAdmin})
+          </div>
+          <div style={{ fontSize: 10, color: 'rgba(245,230,211,0.4)', fontFamily: 'Orbitron' }}>
+            {outfit.rarita === 'comune' ? 'Max 1 al Lv.1, fino a 5' :
+             outfit.rarita === 'raro' ? 'Parte da 2, max 7' :
+             outfit.rarita === 'epico' ? 'Parte da 2, max 10' :
+             'Parte da 3 — Lv.10 = tutti'}
+          </div>
+        </div>
+        <div style={{ fontSize: 9, color: 'rgba(245,230,211,0.35)', marginBottom: 10, fontFamily: 'Orbitron' }}>
+          L'ordine conta: il 1° è il principale. Gli archetipi si sbloccano col livello outfit (ogni {OUTFIT_CONFIG_DEFAULT.copiePerLivello} copie).
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {ARCHETIPI.map(a => {
+            const sel = archetipiCorr.includes(a.id);
+            const posizione = archetipiCorr.indexOf(a.id);
+            return (
+              <button key={a.id} onClick={() => toggleArchetipo(a.id)} style={{
+                padding: '4px 10px', fontSize: 10, borderRadius: 6, cursor: 'pointer',
+                background: sel ? 'rgba(155,89,255,0.3)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${sel ? '#9b59ff' : 'rgba(255,255,255,0.1)'}`,
+                color: sel ? '#c084fc' : 'rgba(245,230,211,0.5)',
+                fontFamily: 'Orbitron', fontWeight: sel ? 700 : 400,
+              }}>
+                {sel && <span style={{ color: '#ffd666', marginRight: 4 }}>#{posizione + 1}</span>}
+                {a.nome}
+              </button>
+            );
+          })}
+        </div>
+        {archetipiCorr.length === 0 && (
+          <div style={{ fontSize: 9, color: '#f59e0b', marginTop: 8, fontFamily: 'Orbitron' }}>
+            ⚠ Nessun archetipo selezionato: l'outfit non potrà essere equipaggiato.
+          </div>
+        )}
+      </div>
+
+      {/* ── ABILITÀ OUTFIT (solo non-comune) ── */}
       {outfit.rarita && outfit.rarita !== 'comune' && (
         <div style={{ background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.25)', borderRadius: 8, padding: 14, marginBottom: 14 }}>
-          <div style={{ fontFamily: 'Cinzel, serif', color: '#a855f7', letterSpacing: 2, fontSize: 12, marginBottom: 10 }}>✦ ABILITÀ OUTFIT</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
-            <Field label="Tipo abilità">
-              <select value={outfit.abilita?.tipo || ''} onChange={e => setOutfit({ ...outfit, abilita: { ...outfit.abilita, tipo: e.target.value } })} style={inputStyle}>
-                <option value="">— Nessuna abilità —</option>
-                <option value="stat_up">↑ Boost stat propria</option>
-                <option value="stat_down">↓ Indebolisci stat propria</option>
-                <option value="opp_up">⬆ Boost stat avversario</option>
-                <option value="opp_down">⬇ Indebolisci stat avversario</option>
-                <option value="reuse_stat">↺ Riusa stat già usata</option>
-                {(outfit.rarita === 'leggendario' || outfit.rarita === 'immersivo') && (
-                  <option value="reuse_waifu">♻ Riusa waifu già usata</option>
-                )}
-              </select>
-            </Field>
-            <Field label="Stat target">
-              <select value={outfit.abilita?.stat || ''} onChange={e => setOutfit({ ...outfit, abilita: { ...outfit.abilita, stat: e.target.value } })} style={inputStyle}
-                disabled={!outfit.abilita?.tipo || outfit.abilita?.tipo === 'reuse_stat' || outfit.abilita?.tipo === 'reuse_waifu'}>
-                <option value="">— Seleziona stat —</option>
-                <option value="tette">💗 Tette</option>
-                <option value="taglia_piedi">🦶 Taglia Piedi</option>
-                <option value="eta">⏳ Età</option>
-                <option value="colore_capelli">💇 Capelli</option>
-                <option value="esperienza">⭐ Esperienza</option>
-              </select>
-            </Field>
-            <Field label="Bonus/Malus (valore numerico, es. +2 o -1)">
-              <input type="number" value={outfit.abilita?.valore || ''} onChange={e => setOutfit({ ...outfit, abilita: { ...outfit.abilita, valore: parseInt(e.target.value) || 0 } })} style={inputStyle}
-                placeholder="es. 2" min="-10" max="10"
-                disabled={!outfit.abilita?.tipo || outfit.abilita?.tipo === 'reuse_stat' || outfit.abilita?.tipo === 'reuse_waifu'} />
-            </Field>
-            <Field label="Descrizione visibile in carta (max 30 car)">
-              <input type="text" maxLength={30} value={outfit.abilita?.descrizione || ''} onChange={e => setOutfit({ ...outfit, abilita: { ...outfit.abilita, descrizione: e.target.value } })} style={inputStyle} placeholder="es. +2 Esperienza" />
-            </Field>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ fontFamily: 'Cinzel, serif', color: '#a855f7', letterSpacing: 2, fontSize: 12 }}>✦ ABILITÀ OUTFIT (IN BATTAGLIA)</div>
+            <button onClick={autoGenera} style={{ ...btnSecondario, fontSize: 10, padding: '4px 10px' }}>🎲 AUTO-GENERA</button>
           </div>
+
+          {/* Switch singola / doppia (solo leggendario/immersivo) */}
+          {isDoppia && (
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+              <button onClick={() => switchTipoDoppia(false)} style={{
+                ...btnSecondario, fontSize: 10, padding: '4px 12px',
+                background: outfit.abilita?.tipo !== 'doppia' ? 'rgba(168,85,247,0.25)' : 'transparent',
+                border: `1px solid ${outfit.abilita?.tipo !== 'doppia' ? '#a855f7' : 'rgba(255,255,255,0.1)'}`,
+              }}>1 Effetto</button>
+              <button onClick={() => switchTipoDoppia(true)} style={{
+                ...btnSecondario, fontSize: 10, padding: '4px 12px',
+                background: outfit.abilita?.tipo === 'doppia' ? 'rgba(245,158,11,0.25)' : 'transparent',
+                border: `1px solid ${outfit.abilita?.tipo === 'doppia' ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`,
+              }}>✦ 2 Effetti (Doppia)</button>
+            </div>
+          )}
+
+          {/* Griglia effetti */}
+          {(outfit.abilita?.tipo === 'doppia' ? [0, 1] : [0]).map(i => (
+            <div key={i} style={{
+              background: 'rgba(0,0,0,0.2)', borderRadius: 6, padding: 12, marginBottom: 8,
+              border: i === 0 ? '1px solid rgba(168,85,247,0.3)' : '1px solid rgba(245,158,11,0.3)',
+            }}>
+              {outfit.abilita?.tipo === 'doppia' && (
+                <div style={{ fontSize: 9, color: i === 0 ? '#a855f7' : '#f59e0b', fontFamily: 'Orbitron', marginBottom: 8, letterSpacing: 1 }}>
+                  {i === 0 ? '● EFFETTO 1' : '● EFFETTO 2'}
+                </div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
+                <Field label="Tipo">
+                  <select value={effetti[i]?.tipo || ''} onChange={e => setEffetto(i, { tipo: e.target.value })} style={inputStyle}>
+                    <option value="">— Nessuna —</option>
+                    {TIPO_OPTS.map(t => <option key={t.v} value={t.v}>{t.l}</option>)}
+                  </select>
+                </Field>
+                <Field label="Statistica">
+                  <select value={effetti[i]?.stat || ''} onChange={e => setEffetto(i, { stat: e.target.value })} style={inputStyle}>
+                    <option value="">— Seleziona —</option>
+                    {STAT_OPTS.map(s => <option key={s.v} value={s.v}>{s.l}</option>)}
+                  </select>
+                </Field>
+                <Field label="Valore">
+                  <input type="number" min={1} max={10}
+                    value={effetti[i]?.valore || ''}
+                    onChange={e => setEffetto(i, { valore: parseInt(e.target.value) || 0 })}
+                    style={inputStyle} placeholder="es. 2" />
+                </Field>
+                <Field label="Descrizione (max 30 car)">
+                  <input type="text" maxLength={30}
+                    value={effetti[i]?.descrizione || ''}
+                    onChange={e => setEffetto(i, { descrizione: e.target.value })}
+                    style={inputStyle} placeholder="es. +2 Esperienza" />
+                </Field>
+              </div>
+            </div>
+          ))}
+
+          {/* Anteprima abilità */}
+          {outfit.abilita && (
+            <div style={{ marginTop: 6, fontSize: 9, color: '#a855f7', fontFamily: 'Orbitron', letterSpacing: 1 }}>
+              📋 Preview: {outfit.abilita.tipo === 'doppia'
+                ? outfit.abilita.effetti?.map(e => e.descrizione || '-').join(' | ')
+                : outfit.abilita.descrizione || `${outfit.abilita.tipo} su ${outfit.abilita.stat}`}
+            </div>
+          )}
         </div>
       )}
 
@@ -1849,6 +1995,7 @@ function ConfigTab({ waifu, ricarica, flash }) {
 
   const [ranges, setRanges] = useState({ ...STAT_RANGES_DEFAULT });
   const [steps, setSteps] = useState({ ...UPGRADE_STEPS_DEFAULT });
+  const [outfitConf, setOutfitConf] = useState({ ...OUTFIT_CONFIG_DEFAULT });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [bonifica, setBonifica] = useState(null); // null | { inCorso, risultati[] }
@@ -1860,6 +2007,8 @@ function ConfigTab({ waifu, ricarica, flash }) {
         if (rDoc.exists()) setRanges({ ...STAT_RANGES_DEFAULT, ...rDoc.data() });
         const sDoc = await getDoc(doc(db, 'config', 'upgrade_steps'));
         if (sDoc.exists()) setSteps({ ...UPGRADE_STEPS_DEFAULT, ...sDoc.data() });
+        const oDoc = await getDoc(doc(db, 'config', 'outfit_config'));
+        if (oDoc.exists()) setOutfitConf({ ...OUTFIT_CONFIG_DEFAULT, ...oDoc.data() });
       } catch (e) { /* usa defaults */ }
       setLoading(false);
     })();
@@ -1870,6 +2019,7 @@ function ConfigTab({ waifu, ricarica, flash }) {
     try {
       await setDoc(doc(db, 'config', 'stat_ranges'), ranges);
       await setDoc(doc(db, 'config', 'upgrade_steps'), steps);
+      await setDoc(doc(db, 'config', 'outfit_config'), outfitConf);
       flash('Configurazione salvata!', '#06d6a0');
     } catch (e) { flash('Errore salvataggio: ' + e.message, '#ef4444'); }
     setSaving(false);
@@ -1907,6 +2057,7 @@ function ConfigTab({ waifu, ricarica, flash }) {
   const resetDefaults = () => {
     setRanges({ ...STAT_RANGES_DEFAULT });
     setSteps({ ...UPGRADE_STEPS_DEFAULT });
+    setOutfitConf({ ...OUTFIT_CONFIG_DEFAULT });
     flash('Valori resettati ai default (non ancora salvati)', '#f59e0b');
   };
 
@@ -1955,6 +2106,78 @@ function ConfigTab({ waifu, ricarica, flash }) {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* ── CONFIGURAZIONE OUTFIT ── */}
+      <div style={{ background: 'rgba(155,89,255,0.06)', border: '1px solid rgba(155,89,255,0.2)', borderRadius: 10, padding: 20, marginBottom: 24 }}>
+        <h3 style={{ fontFamily: 'Cinzel, serif', color: '#9b59ff', fontSize: 13, letterSpacing: 2, marginBottom: 6 }}>✦ CONFIGURAZIONE OUTFIT</h3>
+        <p style={{ fontSize: 10, color: 'rgba(245,230,211,0.4)', marginBottom: 16, fontFamily: 'Orbitron' }}>
+          Modifica le soglie di livello e archetipi degli outfit. Le modifiche si applicano al nuovo calcolo live.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}>
+          <Field label="Copie per salire di livello">
+            <input type="number" min={1} max={100}
+              value={outfitConf.copiePerLivello ?? OUTFIT_CONFIG_DEFAULT.copiePerLivello}
+              onChange={e => setOutfitConf({ ...outfitConf, copiePerLivello: parseInt(e.target.value) || 15 })}
+              style={inputStyle} />
+          </Field>
+        </div>
+
+        {/* Tabella rarità */}
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
+            <thead>
+              <tr style={{ color: 'rgba(245,230,211,0.5)', fontFamily: 'Orbitron', letterSpacing: 1, fontSize: 9 }}>
+                {['RARITÀ', 'MAX LIV', 'ARCHE. START (Lv.1)', 'ARCHE. MAX', 'ARCHE./LIV'].map(h => (
+                  <th key={h} style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(RARITA).map(([rk, rv]) => {
+                const def = OUTFIT_CONFIG_DEFAULT.rarità[rk] || {};
+                const curr = outfitConf.rarità?.[rk] || def;
+                const set = (patch) => setOutfitConf(prev => ({
+                  ...prev,
+                  rarità: { ...prev.rarità, [rk]: { ...curr, ...patch } },
+                }));
+                const isSpeciale = rk === 'leggendario' || rk === 'immersivo';
+                return (
+                  <tr key={rk} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '8px 10px', color: rv.colore, fontFamily: 'Cinzel, serif', fontWeight: 700 }}>{rv.nome}</td>
+                    <td style={{ padding: '8px 10px' }}>
+                      <input type="number" min={1} max={15} value={curr.maxLivello ?? def.maxLivello}
+                        onChange={e => set({ maxLivello: parseInt(e.target.value) || def.maxLivello })}
+                        style={{ ...inputStyle, width: 60, padding: '4px 6px' }} />
+                    </td>
+                    <td style={{ padding: '8px 10px' }}>
+                      <input type="number" min={1} max={20} value={curr.archetipiStart ?? def.archetipiStart}
+                        onChange={e => set({ archetipiStart: parseInt(e.target.value) || def.archetipiStart })}
+                        style={{ ...inputStyle, width: 60, padding: '4px 6px' }} />
+                    </td>
+                    <td style={{ padding: '8px 10px' }}>
+                      {isSpeciale
+                        ? <span style={{ color: '#ffd666', fontFamily: 'Orbitron', fontSize: 9 }}>TUTTI (Lv.10)</span>
+                        : <input type="number" min={1} max={20} value={curr.archetipiMax ?? def.archetipiMax}
+                            onChange={e => set({ archetipiMax: parseInt(e.target.value) || def.archetipiMax })}
+                            style={{ ...inputStyle, width: 60, padding: '4px 6px' }} />
+                      }
+                    </td>
+                    <td style={{ padding: '8px 10px' }}>
+                      <input type="number" min={1} max={5} value={curr.archetipiPerLivello ?? def.archetipiPerLivello}
+                        onChange={e => set({ archetipiPerLivello: parseInt(e.target.value) || def.archetipiPerLivello })}
+                        style={{ ...inputStyle, width: 60, padding: '4px 6px' }} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ fontSize: 9, color: 'rgba(245,230,211,0.3)', marginTop: 10, fontFamily: 'Orbitron', lineHeight: 1.6 }}>
+          ℹ Leggendario/Immersivo: logica speciale — Lv.8→9: 10→15 archetipi, Lv.9→10: 15→TUTTI
         </div>
       </div>
 

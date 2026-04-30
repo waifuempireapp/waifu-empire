@@ -182,3 +182,53 @@ export function getTerritori_ForLivello(livello) {
   }
   return territori;
 }
+
+// ============================================================
+// CONFIGURAZIONE OUTFIT (modificabile da admin via Firestore /config/outfit_config)
+// ============================================================
+// Numero di copie per salire di livello
+// maxArchetipi[livello] = quanti archetipi compatibili ha l'outfit a quel livello
+// maxLivello = quanti livelli può raggiungere l'outfit
+// archetipiStart = quanti archetipi ha al livello 1
+
+export const OUTFIT_CONFIG_DEFAULT = {
+  copiePerLivello: 15, // copie necessarie per passare al livello successivo
+
+  // Per rarità: { maxLivello, archetipiStart, archetipiMax }
+  // - archetipiStart: quanti archetipi ha al livello 1
+  // - maxLivello:     quanti livelli può raggiungere
+  // - archetipiMax:   quanti archetipi al livello massimo
+  // Nota: i leggendari hanno logica speciale (livello 8→9: 10→15, 9→10: 15→tutti)
+  rarità: {
+    comune:      { maxLivello: 5,  archetipiStart: 1, archetipiMax: 5,  archetipiPerLivello: 1 },
+    raro:        { maxLivello: 6,  archetipiStart: 2, archetipiMax: 7,  archetipiPerLivello: 1 },
+    epico:       { maxLivello: 9,  archetipiStart: 2, archetipiMax: 10, archetipiPerLivello: 1 },
+    leggendario: {
+      maxLivello: 10, archetipiStart: 3,
+      // speciale: liv 1-7: +1/liv, liv 7-8: →10, liv 8-9: →15, liv 9-10: →ALL
+      archetipiPerLivello: 1, archetipiMax: -1, // -1 = tutti
+    },
+    immersivo:   {
+      maxLivello: 10, archetipiStart: 3,
+      archetipiPerLivello: 1, archetipiMax: -1,
+    },
+  },
+};
+
+// Tipi di abilità outfit (usati sia in admin che in battaglia)
+export const ABILITA_TIPI = {
+  stat_up_self:   { label: '↑ Boost stat propria',       target: 'self',  direzione: +1 },
+  stat_down_self: { label: '↓ Abbassa stat propria',      target: 'self',  direzione: -1 },
+  stat_up_opp:    { label: '⬆ Boost stat avversaria',    target: 'opp',   direzione: +1 },
+  stat_down_opp:  { label: '⬇ Abbassa stat avversaria',  target: 'opp',   direzione: -1 },
+  // doppia (solo leggendario/immersivo): agisce su 2 stat
+  doppia:         { label: '✦ Doppia (2 stat)',           target: 'dual',  direzione: 0  },
+};
+
+// Valori abilità per rarità (valore assoluto della modifica)
+export const ABILITA_VALORI = {
+  raro:        { min: 1, max: 2 },
+  epico:       { min: 2, max: 4 },
+  leggendario: { min: 3, max: 6 },
+  immersivo:   { min: 4, max: 8 },
+};

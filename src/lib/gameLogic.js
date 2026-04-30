@@ -171,3 +171,227 @@ export function calcolaRicaricaPacchettiOmaggio(ultimaRicarica, attualiPacchetti
     deveAggiornare: true 
   };
 }
+
+// ============================================================
+// LOGICA OUTFIT — LIVELLO E ARCHETIPI COMPATIBILI
+// ============================================================
+import { OUTFIT_CONFIG_DEFAULT, ABILITA_TIPI, ABILITA_VALORI } from './constants.js';
+
+/**
+ * Calcola il livello corrente di un outfit dato il numero di copie possedute.
+ * @param {number} copie - copie totali accumulata (non consumate)
+ * @param {string} rarita - rarità dell'outfit
+ * @param {object} config - OUTFIT_CONFIG dal DB (o default)
+ */
+export function calcolaLivelloOutfit(copie, rarita, config = OUTFIT_CONFIG_DEFAULT) {
+  const rarConf = config.rarità?.[rarita] || OUTFIT_CONFIG_DEFAULT.rarità[rarita] || OUTFIT_CONFIG_DEFAULT.rarità.comune;
+  const copiePerLiv = config.copiePerLivello || OUTFIT_CONFIG_DEFAULT.copiePerLivello;
+  const maxLiv = rarConf.maxLivello;
+  const livello = Math.min(maxLiv, 1 + Math.floor((copie - 1) / copiePerLiv));
+  return Math.max(1, livello);
+}
+
+/**
+ * Calcola quanti archetipi compatibili ha un outfit dato il livello corrente.
+ * Per i leggendari applica la logica speciale (livello 8→9: 10→15, 9→10: →tutti).
+ * @param {number} livello
+ * @param {string} rarita
+ * @param {number} totaleArchetipi - numero totale di archetipi nel gioco
+ * @param {object} config
+ * @returns {number} - numero di archetipi compatibili (-1 = tutti)
+ */
+export function calcolaNumArchetipi(livello, rarita, totaleArchetipi = 20, config = OUTFIT_CONFIG_DEFAULT) {
+  const rarConf = config.rarità?.[rarita] || OUTFIT_CONFIG_DEFAULT.rarità[rarita] || OUTFIT_CONFIG_DEFAULT.rarità.comune;
+
+  if (rarita === 'leggendario' || rarita === 'immersivo') {
+    const start = rarConf.archetipiStart || 3;
+    if (livello <= 7) return Math.min(start + (livello - 1), 10);
+    if (livello === 8) return 10;
+    if (livello === 9) return 15;
+    return totaleArchetipi; // livello 10 = tutti
+  }
+
+  const start = rarConf.archetipiStart || 1;
+  const perLiv = rarConf.archetipiPerLivello || 1;
+  const max = rarConf.archetipiMax || start;
+  return Math.min(max, start + (livello - 1) * perLiv);
+}
+
+/**
+ * Data la lista base degli archetipi di un outfit (dall'admin) e il livello corrente,
+ * restituisce l'array di archetipi attualmente compatibili.
+ * Se l'outfit ha archetipiBase[] (array), usa quelli fino al numero calcolato.
+ * Se numArchetipi >= totaleArchetipi, compatibile con tutti.
+ * @param {string[]} archetipiBase - array di id archetipi dell'outfit (ordinati per priorità)
+ * @param {number} livello
+ * @param {string} rarita
+ * @param {string[]} tuttiArchetipiIds - lista completa id archetipi
+ * @param {object} config
+ */
+export function getArchetipiCompatibili(archetipiBase, livello, rarita, tuttiArchetipiIds = [], config = OUTFIT_CONFIG_DEFAULT) {
+  const totale = tuttiArchetipiIds.length || 20;
+  const numComp = calcolaNumArchetipi(livello, rarita, totale, config);
+  if (numComp >= totale) return tuttiArchetipiIds; // compatibile con tutti
+  // Usa i primi numComp archetipi dalla lista base
+  return (archetipiBase || []).slice(0, numComp);
+}
+
+/**
+ * Verifica se un outfit può essere equipaggiato su una waifu.
+ * Condizioni:
+ *  1. L'archetipo della waifu è compatibile con l'outfit (o l'outfit è tutti-archetipi)
+ *  2. Lo slot dell'outfit è libero nella baby-doll
+ * @param {object} outfit - dati outfit dal catalogo (con archetipi_compatibili[] e slot)
+ * @param {object} waifu - dati waifu (con archetipo)
+ * @param {object} equipCorrente - { faccia, petto, gambe, piedi }
+ * @param {number} livelloOutfit
+ * @param {string} rarita
+ * @param {string[]} tuttiArchetipiIds
+ * @param {object} config
+ * @returns {{ ok: boolean, motivo?: string }}
+ */
+export function puoEquipaggiare(outfit, waifu, equipCorrente, livelloOutfit = 1, rarita, tuttiArchetipiIds = [], config = OUTFIT_CONFIG_DEFAULT) {
+  const archetipiComp = getArchetipiCompatibili(
+    outfit.archetipi_compatibili || (outfit.archetipo_compatibile ? [outfit.archetipo_compatibile] : []),
+    livelloOutfit, rarita || outfit.rarita, tuttiArchetipiIds, config
+  );
+  const totale = tuttiArchetipiIds.length || 20;
+  const numComp = calcolaNumArchetipi(livelloOutfit, rarita || outfit.rarita, totale, config);
+
+  // Controllo archetipo
+  if (numComp < totale && !archetipiComp.includes(waifu.archetipo)) {
+    return { ok: false, motivo: 'Archetipo non compatibile con questo outfit' };
+  }
+
+  // Controllo slot libero
+  const slot = outfit.slot;
+  if (slot && equipCorrente && equipCorrente[slot]) {
+    return { ok: false, motivo: `Lo slot ${slot} è già occupato` };
+  }
+
+  return { ok: true };
+}
+
+// ============================================================
+// ABILITÀ OUTFIT — APPLICATE IN BATTAGLIA
+// ============================================================
+
+/**
+ * Applica le abilità degli outfit equipaggiati a una waifu (per la fase pre-round).
+ * Restituisce le stat modificate della waifu stessa (self) e i modificatori
+ * da applicare alla waifu avversaria (opp).
+ *
+ * @param {object} waifu - waifu player con stat già clamped
+ * @param {string[]} outfitEquipIds - ids outfit equipaggiati (faccia/petto/gambe/piedi)
+ * @param {object[]} outfitCatalogo - catalogo outfit
+ * @param {object} statRanges - ranges per clamping
+ * @returns {{ waifuModificata: object, modOpp: object }} modOpp = { stat: valore }
+ */
+export function applicaAbilitaOutfit(waifu, outfitEquipIds = [], outfitCatalogo = [], statRanges = STAT_RANGES_DEFAULT) {
+  let w = { ...waifu };
+  const modOpp = {}; // modificatori da applicare all'avversaria
+
+  for (const outfitId of outfitEquipIds) {
+    if (!outfitId) continue;
+    const outfit = outfitCatalogo.find(o => o.id === outfitId);
+    if (!outfit?.abilita) continue;
+    const { abilita } = outfit;
+
+    // abilita singola: { tipo, stat, valore, descrizione }
+    // abilita doppia: { tipo: 'doppia', effetti: [{ tipo, stat, valore }, { tipo, stat, valore }] }
+    const effetti = abilita.tipo === 'doppia' ? (abilita.effetti || []) : [abilita];
+
+    for (const eff of effetti) {
+      if (!eff.tipo || !eff.stat || !eff.valore) continue;
+      const r = statRanges[eff.stat] || STAT_RANGES_DEFAULT[eff.stat];
+      if (eff.tipo === 'stat_up_self') {
+        w[eff.stat] = r ? Math.min(r.max, (w[eff.stat] || 0) + eff.valore) : (w[eff.stat] || 0) + eff.valore;
+      } else if (eff.tipo === 'stat_down_self') {
+        w[eff.stat] = r ? Math.max(r.min, (w[eff.stat] || 0) - eff.valore) : (w[eff.stat] || 0) - eff.valore;
+      } else if (eff.tipo === 'stat_up_opp') {
+        modOpp[eff.stat] = (modOpp[eff.stat] || 0) + eff.valore;
+      } else if (eff.tipo === 'stat_down_opp') {
+        modOpp[eff.stat] = (modOpp[eff.stat] || 0) - eff.valore;
+      }
+    }
+  }
+
+  return { waifuModificata: w, modOpp };
+}
+
+/**
+ * Applica i modificatori avversari a una waifu (delta da modOpp dell'avversaria).
+ */
+export function applicaModificatoriOpp(waifu, modOpp = {}, statRanges = STAT_RANGES_DEFAULT) {
+  let w = { ...waifu };
+  for (const [stat, delta] of Object.entries(modOpp)) {
+    const r = statRanges[stat] || STAT_RANGES_DEFAULT[stat];
+    if (r) w[stat] = Math.max(r.min, Math.min(r.max, (w[stat] || 0) + delta));
+    else w[stat] = (w[stat] || 0) + delta;
+  }
+  return w;
+}
+
+// ============================================================
+// AUTO-GENERAZIONE ABILITÀ OUTFIT
+// ============================================================
+
+/**
+ * Genera automaticamente un'abilità per un outfit in base alla rarità e all'archetipo principale.
+ * Per i leggendari genera un'abilità doppia.
+ * Garantisce diversificazione di tipo e stat rispetto agli outfit esistenti.
+ *
+ * @param {string} rarita
+ * @param {string} archetipoPrincipale - primo archetipo dell'outfit
+ * @param {object[]} outfitEsistenti - altri outfit per evitare duplicazioni
+ * @returns {object} abilita
+ */
+export function autoGeneraAbilita(rarita, archetipoPrincipale = '', outfitEsistenti = []) {
+  if (rarita === 'comune') return null;
+
+  const STATS = ['tette', 'taglia_piedi', 'eta', 'colore_capelli', 'esperienza'];
+  const TIPI_SINGOLI = ['stat_up_self', 'stat_down_opp', 'stat_up_opp', 'stat_down_self'];
+
+  // Conta le abilità già usate per diversificare
+  const usati = {};
+  for (const o of outfitEsistenti) {
+    if (!o.abilita) continue;
+    const effetti = o.abilita.tipo === 'doppia' ? (o.abilita.effetti || []) : [o.abilita];
+    for (const e of effetti) {
+      if (e.tipo) usati[e.tipo] = (usati[e.tipo] || 0) + 1;
+      if (e.stat) usati[e.stat] = (usati[e.stat] || 0) + 1;
+    }
+  }
+
+  // Scegli il tipo meno usato
+  const tipoScelto = TIPI_SINGOLI.sort((a, b) => (usati[a] || 0) - (usati[b] || 0))[0];
+  // Scegli la stat meno usata
+  const statScelta = STATS.sort((a, b) => (usati[a] || 0) - (usati[b] || 0))[0];
+  const val = ABILITA_VALORI[rarita] || { min: 1, max: 2 };
+  const valore = Math.floor(Math.random() * (val.max - val.min + 1)) + val.min;
+
+  if (rarita === 'leggendario' || rarita === 'immersivo') {
+    // Doppia: tipo1 su stat1, tipo2 su stat2 (diversa)
+    const stat2 = STATS.filter(s => s !== statScelta).sort((a, b) => (usati[a] || 0) - (usati[b] || 0))[0];
+    const tipo2 = tipoScelto.includes('self') ? TIPI_SINGOLI.find(t => t.includes('opp')) : TIPI_SINGOLI.find(t => t.includes('self'));
+    const valore2 = Math.floor(Math.random() * (val.max - val.min + 1)) + val.min;
+    return {
+      tipo: 'doppia',
+      effetti: [
+        { tipo: tipoScelto, stat: statScelta, valore },
+        { tipo: tipo2 || 'stat_down_opp', stat: stat2, valore: valore2 },
+      ],
+      descrizione: `+${valore} ${statScelta} / -${valore2} ${stat2} avv.`,
+    };
+  }
+
+  const labelStat = { tette: 'Tette', taglia_piedi: 'Piedi', eta: 'Età', colore_capelli: 'Capelli', esperienza: 'Esp.' };
+  const prefixLabel = tipoScelto.includes('up') ? '+' : '-';
+  const targetLabel = tipoScelto.includes('opp') ? ' avv.' : '';
+  return {
+    tipo: tipoScelto,
+    stat: statScelta,
+    valore,
+    descrizione: `${prefixLabel}${valore} ${labelStat[statScelta]}${targetLabel}`,
+  };
+}

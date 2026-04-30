@@ -138,7 +138,7 @@ export async function getClassifica(limitN = 100) {
     const livelloMappa = u.livelloMappa ?? 1;
     const territori = Object.values(u.territoriUtente || {}).filter(t => t?.conquistato).length;
     const creatoTs = u.creato?.toMillis ? u.creato.toMillis() : Number(u.creato) || 0;
-    return { ...u, _livelloMappa: livelloMappa, _territori: territori, _creatoTs: creatoTs };
+    return { ...u, _livelloMappa: livelloMappa, _territori: territori, _creatoTs: creatoTs, _nomeDisplay: u.nomeImpero || u.nome || (u.email?.split("@")[0]) || "Giocatore" };
   });
 
   conScore.sort((a, b) => {
