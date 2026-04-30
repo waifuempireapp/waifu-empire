@@ -1,34 +1,38 @@
 // src/app/api/paypal/capture-order/route.js
-// Cattura (finalizza) il pagamento di un ordine PayPal già approvato dall'utente.
-// Solo se la capture ha successo aggiorniamo il profilo utente su Firestore.
 import { NextResponse } from 'next/server';
 import { getFirestore }  from 'firebase-admin/firestore';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 
-// La PRIVATE_KEY su Vercel può arrivare con \n letterali o con newline reali —
-// normalizePrivateKey gestisce entrambi i casi.
 function normalizePrivateKey(key) {
   if (!key) return undefined;
-  // Se contiene già newline reali, restituisci così com'è
   if (key.includes('\n')) return key;
-  // Altrimenti sostituisci i \n letterali con newline reali
   return key.replace(/\\n/g, '\n');
 }
 
-// Inizializza Firebase Admin (singleton)
-if (!getApps().length) {
-  initializeApp({
+function getFirebaseApp() {
+  if (getApps().length) return getApps()[0];
+
+  const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
+
+  // Log diagnostico — rimuovere dopo il fix
+  console.log('[Firebase Admin] privateKey present:', !!privateKey);
+  console.log('[Firebase Admin] privateKey length:', privateKey?.length);
+  console.log('[Firebase Admin] contains real newlines:', privateKey?.includes('\n'));
+  console.log('[Firebase Admin] contains literal \\n:', privateKey?.includes('\\n'));
+  console.log('[Firebase Admin] first 60 chars:', privateKey?.substring(0, 60));
+
+  return initializeApp({
     credential: cert({
       projectId:   process.env.FIREBASE_ADMIN_PROJECT_ID,
       clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-      privateKey:  normalizePrivateKey(process.env.FIREBASE_ADMIN_PRIVATE_KEY),
+      privateKey:  normalizePrivateKey(privateKey),
     }),
   });
 }
 
-const PAYPAL_BASE_URL  = process.env.PAYPAL_BASE_URL || 'https://api-m.sandbox.paypal.com';
-const CLIENT_ID        = process.env.PAYPAL_CLIENT_ID;
-const CLIENT_SECRET    = process.env.PAYPAL_CLIENT_SECRET;
+const PAYPAL_BASE_URL = process.env.PAYPAL_BASE_URL || 'https://api-m.sandbox.paypal.com';
+const CLIENT_ID       = process.env.PAYPAL_CLIENT_ID;
+const CLIENT_SECRET   = process.env.PAYPAL_CLIENT_SECRET;
 
 async function getAccessToken() {
   const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
@@ -50,10 +54,7 @@ async function getAccessToken() {
 
 export async function POST(request) {
   if (!CLIENT_ID || !CLIENT_SECRET) {
-    return NextResponse.json(
-      { error: 'Credenziali PayPal mancanti sul server' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Credenziali PayPal mancanti sul server' }, { status: 500 });
   }
 
   let orderID, uid;
@@ -66,16 +67,12 @@ export async function POST(request) {
   }
 
   if (!orderID || !uid) {
-    return NextResponse.json(
-      { error: 'orderID e uid sono obbligatori' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'orderID e uid sono obbligatori' }, { status: 400 });
   }
 
   try {
     const accessToken = await getAccessToken();
 
-    // Cattura il pagamento
     const res = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders/${orderID}/capture`, {
       method: 'POST',
       headers: {
@@ -86,16 +83,13 @@ export async function POST(request) {
 
     const capture = await res.json();
 
-    // Verifica che la capture sia andata a buon fine
     if (!res.ok || capture.status !== 'COMPLETED') {
       console.error('[PayPal capture] Fallita:', capture);
-      return NextResponse.json(
-        { error: 'Pagamento non completato', details: capture },
-        { status: 402 }
-      );
+      return NextResponse.json({ error: 'Pagamento non completato', details: capture }, { status: 402 });
     }
 
-    // Pagamento verificato lato server → assegna il pass su Firestore
+    // Pagamento verificato → assegna il pass su Firestore
+    getFirebaseApp();
     const db  = getFirestore();
     const ref = db.collection('users').doc(uid);
     await ref.update({
@@ -106,10 +100,7 @@ export async function POST(request) {
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    console.error('[PayPal capture-order]', error);
-    return NextResponse.json(
-      { error: error.message || 'Errore cattura ordine PayPal' },
-      { status: 500 }
-    );
+    console.error('[PayPal capture-order] Errore:', error.message);
+    return NextResponse.json({ error: error.message || 'Errore cattura ordine PayPal' }, { status: 500 });
   }
 }
