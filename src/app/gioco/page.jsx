@@ -2344,6 +2344,9 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
           onEquipaggia={handleEquipaggia}
           onLevelUp={handleLevelUp}
           statConfig={statConfig}
+          profilo={profilo}
+          setProfilo={setProfilo}
+          user={user}
         />
       )}
     </div>
@@ -2363,14 +2366,172 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
 // Per rarità "immersivo" con video: mostra il bottone "▶ VEDI CARTA IMMERSIVA"
 // ============================================================
 const IMMERSIVA_COLOR = '#ec4899'; // stesso rosa usato in RARITY_BORDER.immersivo
+const HARD_COLOR = '#ef4444'; // rosso per bottone/video hard
 
-function ZoomCartaOverlay({ w, dati, outfitCat, poseCat, equip, onClose }) {
+// Modale acquisto pass hard
+function ModalAcquistoPass({ onClose, onAcquistato }) {
+  const [loading, setLoading] = useState(false);
+  const [fatto, setFatto] = useState(false);
+
+  const apriPayPal = () => {
+    // Apre PayPal in una nuova finestra. L'URL va sostituito con il link reale del bottone/prodotto PayPal.
+    window.open('https://www.paypal.com/checkoutnow?amount=4.99&currency=EUR&description=ImperoWaifu+Hard+Pass', '_blank');
+    setLoading(true);
+  };
+
+  const confermaPagamento = async () => {
+    // L'utente dichiara di aver pagato — in produzione questa logica andrà validata lato server
+    setFatto(true);
+    await onAcquistato();
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)',
+        backdropFilter: 'blur(18px)', zIndex: 500,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'linear-gradient(160deg, #1a0505 0%, #0d0d0d 100%)',
+          border: `1px solid ${HARD_COLOR}55`,
+          borderRadius: 18,
+          padding: '32px 28px',
+          maxWidth: 360,
+          width: '90%',
+          textAlign: 'center',
+          boxShadow: `0 0 60px ${HARD_COLOR}25`,
+          animation: 'scaleIn 0.2s ease-out',
+        }}
+      >
+        <div style={{ fontSize: 36, marginBottom: 12 }}>🔞</div>
+        <div style={{
+          fontFamily: 'Cinzel, serif',
+          color: HARD_COLOR,
+          fontSize: 16,
+          letterSpacing: 3,
+          fontWeight: 700,
+          marginBottom: 8,
+          textTransform: 'uppercase',
+        }}>
+          HARD PASS
+        </div>
+        <div style={{
+          color: 'rgba(238,232,220,0.6)',
+          fontSize: 12,
+          lineHeight: 1.7,
+          marginBottom: 20,
+        }}>
+          Sblocca l'accesso illimitato a tutti i video immersivi hard per tutte le waifu, ora e in futuro.
+        </div>
+        <div style={{
+          fontFamily: 'Orbitron, monospace',
+          color: '#fff',
+          fontSize: 28,
+          fontWeight: 900,
+          marginBottom: 20,
+          letterSpacing: 1,
+        }}>
+          € 4,99 <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontWeight: 400 }}>una-tantum</span>
+        </div>
+
+        {!fatto ? (
+          <>
+            {!loading ? (
+              <button
+                onClick={apriPayPal}
+                style={{
+                  background: '#0070ba',
+                  border: 'none',
+                  borderRadius: 10,
+                  color: '#fff',
+                  fontFamily: 'Orbitron, monospace',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  letterSpacing: 2,
+                  padding: '13px 32px',
+                  cursor: 'pointer',
+                  width: '100%',
+                  marginBottom: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  boxShadow: '0 4px 18px rgba(0,112,186,0.4)',
+                }}
+              >
+                <span style={{ fontSize: 18 }}>🅿</span> PAGA CON PAYPAL
+              </button>
+            ) : (
+              <button
+                onClick={confermaPagamento}
+                style={{
+                  background: `linear-gradient(135deg, ${HARD_COLOR}88, ${HARD_COLOR}55)`,
+                  border: `1px solid ${HARD_COLOR}`,
+                  borderRadius: 10,
+                  color: '#fff',
+                  fontFamily: 'Orbitron, monospace',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: 2,
+                  padding: '13px 32px',
+                  cursor: 'pointer',
+                  width: '100%',
+                  marginBottom: 10,
+                  boxShadow: `0 4px 18px ${HARD_COLOR}30`,
+                }}
+              >
+                ✓ HO COMPLETATO IL PAGAMENTO
+              </button>
+            )}
+          </>
+        ) : (
+          <div style={{ color: '#4ade80', fontFamily: 'Orbitron', fontSize: 12, letterSpacing: 2, padding: '13px 0' }}>
+            ✓ PASS ATTIVATO!
+          </div>
+        )}
+
+        <button
+          onClick={onClose}
+          style={{
+            background: 'transparent',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 8,
+            color: 'rgba(238,232,220,0.4)',
+            fontFamily: 'Orbitron, monospace',
+            fontSize: 10,
+            padding: '8px 20px',
+            cursor: 'pointer',
+            width: '100%',
+            letterSpacing: 1,
+          }}
+        >
+          ANNULLA
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ZoomCartaOverlay({ w, dati, outfitCat, poseCat, equip, onClose, profilo, setProfilo, user }) {
   const [videoAttivo, setVideoAttivo] = useState(false);
   const [videoFinito, setVideoFinito] = useState(false);
   const videoRef = useRef(null);
 
+  // Hard video state
+  const [videoHardAttivo, setVideoHardAttivo] = useState(false);
+  const [videoHardFinito, setVideoHardFinito] = useState(false);
+  const videoHardRef = useRef(null);
+  const [mostraModalPass, setMostraModalPass] = useState(false);
+
   const isImmersiva = w.rarita === 'immersivo';
   const hasVideo = !!(w.asset_video);
+  const hasVideoHard = !!(w.asset_video_hard);
+  const hasPass = !!(profilo?.hardPass);
 
   const avviaVideo = () => {
     if (!hasVideo) return;
@@ -2389,7 +2550,41 @@ function ZoomCartaOverlay({ w, dati, outfitCat, poseCat, equip, onClose }) {
 
   const handleVideoEnd = () => setVideoFinito(true);
 
+  const avviaVideoHard = () => {
+    setVideoHardFinito(false);
+    setVideoHardAttivo(true);
+    setTimeout(() => videoHardRef.current?.play(), 50);
+  };
+
+  const rivediVideoHard = () => {
+    setVideoHardFinito(false);
+    if (videoHardRef.current) { videoHardRef.current.currentTime = 0; videoHardRef.current.play(); }
+  };
+
+  const handleClickHard = () => {
+    if (!hasVideoHard) return;
+    if (hasPass) {
+      avviaVideoHard();
+    } else {
+      setMostraModalPass(true);
+    }
+  };
+
+  const onAcquistatoPass = async () => {
+    if (user && setProfilo) {
+      try {
+        await updateUserProfile(user.uid, { hardPass: true });
+        setProfilo(prev => ({ ...prev, hardPass: true }));
+      } catch (e) { console.error('Errore salvataggio pass:', e); }
+    }
+    setTimeout(() => {
+      setMostraModalPass(false);
+      avviaVideoHard();
+    }, 1200);
+  };
+
   return (
+    <>
     <div
       onClick={() => { if (!videoAttivo || videoFinito) onClose(); }}
       style={{
@@ -2405,8 +2600,8 @@ function ZoomCartaOverlay({ w, dati, outfitCat, poseCat, equip, onClose }) {
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
-      {/* Carta ingrandita */}
-      <div onClick={e => e.stopPropagation()} style={{ animation: 'scaleIn 0.2s ease-out' }}>
+      {/* Carta ingrandita — mostra video hard se attivo */}
+      <div onClick={e => e.stopPropagation()} style={{ animation: 'scaleIn 0.2s ease-out', position: 'relative' }}>
         <CartaWaifu
           waifu={w}
           datiCollezione={dati}
@@ -2419,53 +2614,114 @@ function ZoomCartaOverlay({ w, dati, outfitCat, poseCat, equip, onClose }) {
           videoRef={videoRef}
           onVideoEnd={handleVideoEnd}
         />
+        {/* Video hard sovrapposto alla carta quando attivo */}
+        {videoHardAttivo && (
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: 'inherit',
+            overflow: 'hidden', zIndex: 20,
+            background: '#000',
+          }}>
+            <video
+              ref={videoHardRef}
+              src={w.asset_video_hard}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              playsInline
+              muted
+              onEnded={() => setVideoHardFinito(true)}
+            />
+          </div>
+        )}
       </div>
 
-      {/* Bottone VEDI CARTA IMMERSIVA — solo per rarità immersivo, sopra a "Tocca per chiudere" */}
-      {isImmersiva && !videoAttivo && !videoFinito && (
-        <div
-          onClick={e => e.stopPropagation()}
-          style={{ marginTop: 16, animation: 'fadeInUp 0.3s ease' }}
-        >
-          <button
-            onClick={hasVideo ? avviaVideo : undefined}
-            style={{
-              background: hasVideo
-                ? `linear-gradient(135deg, ${IMMERSIVA_COLOR}33, ${IMMERSIVA_COLOR}18)`
-                : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${hasVideo ? IMMERSIVA_COLOR + '99' : IMMERSIVA_COLOR + '30'}`,
-              borderRadius: 12,
-              color: hasVideo ? IMMERSIVA_COLOR : `${IMMERSIVA_COLOR}44`,
-              fontFamily: 'Orbitron, monospace',
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: 2,
-              padding: '11px 28px',
-              cursor: hasVideo ? 'pointer' : 'not-allowed',
-              boxShadow: hasVideo ? `0 0 20px ${IMMERSIVA_COLOR}30` : 'none',
-              transition: 'all 0.2s ease',
-              textTransform: 'uppercase',
-              display: 'flex', alignItems: 'center', gap: 8,
-            }}
-            onMouseEnter={e => {
-              if (!hasVideo) return;
-              e.currentTarget.style.background = `linear-gradient(135deg, ${IMMERSIVA_COLOR}55, ${IMMERSIVA_COLOR}33)`;
-              e.currentTarget.style.boxShadow = `0 0 32px ${IMMERSIVA_COLOR}55`;
-            }}
-            onMouseLeave={e => {
-              if (!hasVideo) return;
-              e.currentTarget.style.background = `linear-gradient(135deg, ${IMMERSIVA_COLOR}33, ${IMMERSIVA_COLOR}18)`;
-              e.currentTarget.style.boxShadow = `0 0 20px ${IMMERSIVA_COLOR}30`;
-            }}
-          >
-            <span style={{ fontSize: 13 }}>▶</span>
-            {hasVideo ? 'VEDI CARTA IMMERSIVA' : 'VIDEO NON DISPONIBILE'}
-          </button>
+      {/* Bottoni sotto la carta — visibili solo quando nessun video è attivo/finito */}
+      {!videoAttivo && !videoFinito && !videoHardAttivo && (
+        <div onClick={e => e.stopPropagation()} style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center', animation: 'fadeInUp 0.3s ease' }}>
+          {/* Bottone VEDI CARTA IMMERSIVA */}
+          {isImmersiva && (
+            <button
+              onClick={hasVideo ? avviaVideo : undefined}
+              style={{
+                background: hasVideo
+                  ? `linear-gradient(135deg, ${IMMERSIVA_COLOR}33, ${IMMERSIVA_COLOR}18)`
+                  : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${hasVideo ? IMMERSIVA_COLOR + '99' : IMMERSIVA_COLOR + '30'}`,
+                borderRadius: 12,
+                color: hasVideo ? IMMERSIVA_COLOR : `${IMMERSIVA_COLOR}44`,
+                fontFamily: 'Orbitron, monospace',
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: 2,
+                padding: '11px 28px',
+                cursor: hasVideo ? 'pointer' : 'not-allowed',
+                boxShadow: hasVideo ? `0 0 20px ${IMMERSIVA_COLOR}30` : 'none',
+                transition: 'all 0.2s ease',
+                textTransform: 'uppercase',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}
+              onMouseEnter={e => {
+                if (!hasVideo) return;
+                e.currentTarget.style.background = `linear-gradient(135deg, ${IMMERSIVA_COLOR}55, ${IMMERSIVA_COLOR}33)`;
+                e.currentTarget.style.boxShadow = `0 0 32px ${IMMERSIVA_COLOR}55`;
+              }}
+              onMouseLeave={e => {
+                if (!hasVideo) return;
+                e.currentTarget.style.background = `linear-gradient(135deg, ${IMMERSIVA_COLOR}33, ${IMMERSIVA_COLOR}18)`;
+                e.currentTarget.style.boxShadow = `0 0 20px ${IMMERSIVA_COLOR}30`;
+              }}
+            >
+              <span style={{ fontSize: 13 }}>▶</span>
+              {hasVideo ? 'VEDI CARTA IMMERSIVA' : 'VIDEO NON DISPONIBILE'}
+            </button>
+          )}
+
+          {/* Bottone VEDI CARTA HARD — sempre visibile per rarità immersivo, disabilitato solo se non c'è il video hard */}
+          {isImmersiva && (
+            <button
+              onClick={handleClickHard}
+              disabled={!hasVideoHard}
+              style={{
+                background: hasVideoHard
+                  ? (hasPass
+                    ? `linear-gradient(135deg, ${HARD_COLOR}33, ${HARD_COLOR}18)`
+                    : `linear-gradient(135deg, ${HARD_COLOR}22, ${HARD_COLOR}10)`)
+                  : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${hasVideoHard ? HARD_COLOR + '88' : HARD_COLOR + '20'}`,
+                borderRadius: 12,
+                color: hasVideoHard ? HARD_COLOR : `${HARD_COLOR}30`,
+                fontFamily: 'Orbitron, monospace',
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: 2,
+                padding: '11px 28px',
+                cursor: hasVideoHard ? 'pointer' : 'not-allowed',
+                boxShadow: hasVideoHard ? `0 0 20px ${HARD_COLOR}25` : 'none',
+                transition: 'all 0.2s ease',
+                textTransform: 'uppercase',
+                display: 'flex', alignItems: 'center', gap: 8,
+                opacity: hasVideoHard ? 1 : 0.4,
+              }}
+              onMouseEnter={e => {
+                if (!hasVideoHard) return;
+                e.currentTarget.style.background = `linear-gradient(135deg, ${HARD_COLOR}55, ${HARD_COLOR}33)`;
+                e.currentTarget.style.boxShadow = `0 0 32px ${HARD_COLOR}45`;
+              }}
+              onMouseLeave={e => {
+                if (!hasVideoHard) return;
+                e.currentTarget.style.background = hasPass
+                  ? `linear-gradient(135deg, ${HARD_COLOR}33, ${HARD_COLOR}18)`
+                  : `linear-gradient(135deg, ${HARD_COLOR}22, ${HARD_COLOR}10)`;
+                e.currentTarget.style.boxShadow = `0 0 20px ${HARD_COLOR}25`;
+              }}
+            >
+              <span style={{ fontSize: 13 }}>🔞</span>
+              {!hasVideoHard ? 'HARD NON DISPONIBILE' : (hasPass ? 'VEDI CARTA HARD' : '🔒 VEDI CARTA HARD')}
+            </button>
+          )}
         </div>
       )}
 
-      {/* Bottoni fine video: Rivedi + Chiudi */}
-      {videoFinito && (
+      {/* Bottoni fine video immersiva: Rivedi + Chiudi */}
+      {videoFinito && !videoHardAttivo && (
         <div
           onClick={e => e.stopPropagation()}
           style={{ marginTop: 16, display: 'flex', gap: 10, animation: 'fadeInUp 0.3s ease' }}
@@ -2496,8 +2752,40 @@ function ZoomCartaOverlay({ w, dati, outfitCat, poseCat, equip, onClose }) {
         </div>
       )}
 
-      {/* "Tocca per chiudere" — nascosto durante il video */}
-      {!videoAttivo && !videoFinito && (
+      {/* Bottoni fine video hard */}
+      {videoHardFinito && (
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{ marginTop: 16, display: 'flex', gap: 10, animation: 'fadeInUp 0.3s ease', zIndex: 30, position: 'relative' }}
+        >
+          <button
+            onClick={rivediVideoHard}
+            style={{
+              background: `rgba(239,68,68,0.18)`,
+              border: `1px solid ${HARD_COLOR}88`,
+              borderRadius: 10, color: HARD_COLOR,
+              fontFamily: 'Orbitron, monospace', fontSize: 11,
+              fontWeight: 700, letterSpacing: 2,
+              padding: '10px 22px', cursor: 'pointer',
+              boxShadow: `0 0 16px ${HARD_COLOR}25`,
+            }}
+          >◀ RIVEDI</button>
+          <button
+            onClick={() => { setVideoHardAttivo(false); setVideoHardFinito(false); }}
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 10, color: 'rgba(238,232,220,0.6)',
+              fontFamily: 'Orbitron, monospace', fontSize: 11,
+              fontWeight: 700, letterSpacing: 2,
+              padding: '10px 22px', cursor: 'pointer',
+            }}
+          >✕ CHIUDI</button>
+        </div>
+      )}
+
+      {/* "Tocca per chiudere" — nascosto durante i video */}
+      {!videoAttivo && !videoFinito && !videoHardAttivo && !videoHardFinito && (
         <div style={{
           marginTop: isImmersiva ? 10 : 10,
           color: 'rgba(238,232,220,0.25)', fontSize: 10,
@@ -2508,7 +2796,7 @@ function ZoomCartaOverlay({ w, dati, outfitCat, poseCat, equip, onClose }) {
         </div>
       )}
 
-      {/* Indicazione durante la riproduzione */}
+      {/* Indicazione durante riproduzione video normale */}
       {videoAttivo && !videoFinito && (
         <div style={{
           marginTop: 14,
@@ -2516,14 +2804,32 @@ function ZoomCartaOverlay({ w, dati, outfitCat, poseCat, equip, onClose }) {
           fontFamily: 'Orbitron', letterSpacing: 1,
         }}>TAP PER CHIUDERE</div>
       )}
+
+      {/* Indicazione durante riproduzione video hard */}
+      {videoHardAttivo && !videoHardFinito && (
+        <div style={{
+          marginTop: 14,
+          color: `${HARD_COLOR}55`, fontSize: 9,
+          fontFamily: 'Orbitron', letterSpacing: 1,
+        }}>🔞 IN RIPRODUZIONE</div>
+      )}
     </div>
+
+    {/* Modale acquisto pass hard */}
+    {mostraModalPass && (
+      <ModalAcquistoPass
+        onClose={() => setMostraModalPass(false)}
+        onAcquistato={onAcquistatoPass}
+      />
+    )}
+    </>
   );
 }
 
 // Tab Carta: carta con livello/copie, statistiche, descrizione, zoom
 // Tab Baby-doll: outfit per zona + abilità, pose
 // ============================================================
-function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseCat, onChiudi, onEquipaggia, onLevelUp, statConfig = { ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT } }) {
+function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseCat, onChiudi, onEquipaggia, onLevelUp, statConfig = { ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT }, profilo, setProfilo, user }) {
   const w = waifuCat.find(x => x.id === waifuId);
   const dati = collezione.waifu[waifuId];
   const equip = collezione.equipaggiamento[waifuId] || { faccia: null, petto: null, gambe: null, piedi: null, posa: null };
@@ -2581,6 +2887,9 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
           poseCat={poseCat}
           equip={equip}
           onClose={() => setZoomCarta(false)}
+          profilo={profilo}
+          setProfilo={setProfilo}
+          user={user}
         />
       )}
 

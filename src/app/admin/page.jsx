@@ -423,6 +423,7 @@ function WaifuTab({ waifu, ricarica, flash }) {
     asset_statica: '',
     asset_immersiva: '',
     asset_video: '', // ★ FASE 4: video per effetto Pokémon Pocket su carte immersive
+    asset_video_hard: '', // ★ Video hard immersivo (visibile solo con pass acquistato)
   });
 
   const salva = async (w) => {
@@ -732,6 +733,41 @@ function WaifuEditor({ waifu, setWaifu, esistenti, onSalva, onAnnulla, flash }) 
                 <button onClick={() => setWaifu({ ...waifu, asset_video: '' })}
                   style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', padding: '6px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 10 }}>
                   ✕ Rimuovi video
+                </button>
+              )}
+            </div>
+          </div>
+          {/* ★ Video HARD immersivo (visibile solo con pass acquistato) */}
+          <div style={{ marginTop: 16, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: 14 }}>
+            <div style={{ fontFamily: 'Cinzel, serif', color: '#ef4444', letterSpacing: 2, fontSize: 13, marginBottom: 8 }}>
+              🔞 VIDEO CARTA HARD (pass richiesto)
+            </div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginBottom: 10, lineHeight: 1.5 }}>
+              Video hard immersivo (MP4/WebM). Visibile solo agli utenti che hanno acquistato il pass. Il bottone "VEDI CARTA HARD" è sempre visibile nella collezione ma il video è bloccato senza pass.<br/>
+              <strong style={{ color: 'rgba(239,68,68,0.8)' }}>Consigliato:</strong> 3–8 secondi, 9:16 o 1:1, senza audio.
+            </div>
+            {waifu.asset_video_hard && (
+              <div style={{ marginBottom: 10 }}>
+                <video src={waifu.asset_video_hard} style={{ maxWidth: 120, maxHeight: 180, borderRadius: 6, border: '1px solid rgba(239,68,68,0.4)' }} controls muted />
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>{waifu.asset_video_hard.substring(0, 60)}…</div>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <label style={{
+                background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.5)',
+                color: '#ef4444', padding: '6px 14px', borderRadius: 6, cursor: 'pointer',
+                fontSize: 11, fontFamily: 'Orbitron, sans-serif',
+              }}>
+                {uploading === 'video_hard' ? '⏳ CARICAMENTO...' : '🔞 CARICA VIDEO HARD'}
+                <input type="file" accept="video/mp4,video/webm" style={{ display: 'none' }}
+                  onChange={e => e.target.files[0] && handleUpload('video_hard', e.target.files[0])}
+                  disabled={uploading === 'video_hard'}
+                />
+              </label>
+              {waifu.asset_video_hard && (
+                <button onClick={() => setWaifu({ ...waifu, asset_video_hard: '' })}
+                  style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', padding: '6px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 10 }}>
+                  ✕ Rimuovi video hard
                 </button>
               )}
             </div>
