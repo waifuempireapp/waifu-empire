@@ -2374,6 +2374,10 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
                 maxSel={Infinity}
                 accentColor="#00e676"
                 labelSel="SELEZIONA WAIFU"
+                onAnnulla={() => { setTeamInEdit(null); setTeamNome(''); setTeamWaifu([]); }}
+                onConferma={salvaTeam}
+                labelConferma={`SALVA (${teamWaifu.length}/5)`}
+                disabledConferma={teamWaifu.length < 5 || !teamNome.trim()}
               />
             </PannelloOrnato>
           ) : (
@@ -2405,19 +2409,6 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
                 ))}
               </div>
             </>
-          )}
-          {/* Bottoni sticky overlay — visibili durante la creazione/modifica team */}
-          {teamInEdit && (
-            <div style={{
-              position: 'sticky', bottom: 16, zIndex: 50,
-              display: 'flex', gap: 8, justifyContent: 'center',
-              pointerEvents: 'none',
-            }}>
-              <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', background: 'rgba(10,12,18,0.92)', backdropFilter: 'blur(12px)', borderRadius: 14, padding: '10px 18px', border: '1px solid rgba(0,230,118,0.3)', boxShadow: '0 4px 24px rgba(0,0,0,0.6)' }}>
-                <BtnDecorato variant="secondary" onClick={() => { setTeamInEdit(null); setTeamNome(''); setTeamWaifu([]); }}>ANNULLA</BtnDecorato>
-                <BtnDecorato variant="primary" onClick={salvaTeam} disabled={teamWaifu.length < 5 || !teamNome.trim()}>SALVA ({teamWaifu.length}/5)</BtnDecorato>
-              </div>
-            </div>
           )}
         </div>
       )}
@@ -3470,7 +3461,7 @@ function RoundEndBar({ vincitoreRound, statScelta, direzione, carteP, carteC, ro
 // ============================================================
 const TEAM_PAGE_SIZE = 12;
 
-function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxSel = 5, accentColor = '#ffd666', labelSel = 'SCEGLI 5 WAIFU' }) {
+function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxSel = 5, accentColor = '#ffd666', labelSel = 'SCEGLI 5 WAIFU', onConferma, onAnnulla, labelConferma = 'CONFERMA', disabledConferma = false }) {
   const [filtroRar, setFiltroRar] = useState('tutte');
   const [filtroStat, setFiltroStat] = useState('');
   const [ordine, setOrdine] = useState('default');
@@ -3538,7 +3529,7 @@ function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxS
       </div>
 
       {/* Griglia carte */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', paddingBottom: 72 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', paddingBottom: (onConferma || onAnnulla) ? 80 : 0 }}>
         {slice.map(w => {
           const sel = waifuSelezionate.includes(w.id);
           const disabilitata = !sel && selCount >= maxSel;
@@ -3566,6 +3557,24 @@ function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxS
           </div>
         )}
       </div>
+      {/* Sticky Conferma/Annulla overlay */}
+      {(onConferma || onAnnulla) && (
+        <div style={{
+          position: 'sticky', bottom: 16, zIndex: 50,
+          display: 'flex', gap: 8, justifyContent: 'center',
+          pointerEvents: 'none',
+          marginTop: 8,
+        }}>
+          <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', background: 'rgba(10,12,18,0.92)', backdropFilter: 'blur(12px)', borderRadius: 14, padding: '10px 18px', border: `1px solid ${accentColor}4d`, boxShadow: '0 4px 24px rgba(0,0,0,0.6)' }}>
+            {onAnnulla && (
+              <BtnDecorato variant="secondary" onClick={onAnnulla}>ANNULLA</BtnDecorato>
+            )}
+            {onConferma && (
+              <BtnDecorato variant="primary" onClick={onConferma} disabled={disabledConferma}>{labelConferma}</BtnDecorato>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -4092,6 +4101,10 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
               maxSel={5}
               accentColor="#ffd666"
               labelSel="SCEGLI 5 WAIFU"
+              onAnnulla={() => { setModoBattaglia(false); setTeamSelezionato(null); setWaifuSelezionate([]); }}
+              onConferma={confermaEAvvia}
+              labelConferma="⚔ BATTAGLIA!"
+              disabledConferma={!canConfirmBattaglia}
             />
           )}
           {teamSelezionato && teamSelezionato !== 'manuale' && teams[teamSelezionato] && (
@@ -4100,17 +4113,19 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
             </div>
           )}
         </PannelloOrnato>
-        {/* Bottoni sticky overlay sempre visibili */}
-        <div style={{
-          position: 'sticky', bottom: 16, zIndex: 50,
-          display: 'flex', gap: 8, justifyContent: 'center',
-          pointerEvents: 'none',
-        }}>
-          <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', background: 'rgba(10,12,18,0.92)', backdropFilter: 'blur(12px)', borderRadius: 14, padding: '10px 18px', border: '1px solid rgba(245,166,35,0.3)', boxShadow: '0 4px 24px rgba(0,0,0,0.6)' }}>
-            <BtnDecorato variant="secondary" onClick={() => { setModoBattaglia(false); setTeamSelezionato(null); setWaifuSelezionate([]); }}>ANNULLA</BtnDecorato>
-            <BtnDecorato variant="primary" onClick={confermaEAvvia} disabled={!canConfirmBattaglia}>⚔ BATTAGLIA!</BtnDecorato>
+        {/* Bottoni sticky overlay — visibili quando è selezionato un team salvato (per manuale sono dentro SelezioneWaifuTeam) */}
+        {!(teamSelezionato === 'manuale' || Object.keys(teams).length === 0) && (
+          <div style={{
+            position: 'sticky', bottom: 16, zIndex: 50,
+            display: 'flex', gap: 8, justifyContent: 'center',
+            pointerEvents: 'none',
+          }}>
+            <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', background: 'rgba(10,12,18,0.92)', backdropFilter: 'blur(12px)', borderRadius: 14, padding: '10px 18px', border: '1px solid rgba(245,166,35,0.3)', boxShadow: '0 4px 24px rgba(0,0,0,0.6)' }}>
+              <BtnDecorato variant="secondary" onClick={() => { setModoBattaglia(false); setTeamSelezionato(null); setWaifuSelezionate([]); }}>ANNULLA</BtnDecorato>
+              <BtnDecorato variant="primary" onClick={confermaEAvvia} disabled={!canConfirmBattaglia}>⚔ BATTAGLIA!</BtnDecorato>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   }
