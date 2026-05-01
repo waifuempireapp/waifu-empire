@@ -84,6 +84,12 @@ export async function listDrops() {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+export async function listDropsAttivi() {
+  const q = query(collection(db, 'drops'), where('attivo', '==', true), orderBy('creato', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
 export async function getDropAttivo() {
   const q = query(collection(db, 'drops'), where('attivo', '==', true), limit(1));
   const snap = await getDocs(q);

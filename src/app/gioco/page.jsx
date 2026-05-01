@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, getDropAttivo, getClassifica, premioPerPosizione, deleteTeamFromCollezione } from '@/lib/firestoreService';
+import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, listDropsAttivi, getDropAttivo, getClassifica, premioPerPosizione, deleteTeamFromCollezione } from '@/lib/firestoreService';
 import { calcolaRicaricaPacchetti, calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, INCREMENTI_LEVELUP, clampStat, clampWaifuStats, GOD_PACK_PROB_DEFAULT } from '@/lib/gameLogic';
 import { TIMER, RARITA, COLORI_CAPELLI, CATEGORIE_TETTE, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, OUTFIT_CONFIG_DEFAULT, ABILITA_TIPI } from '@/lib/constants';
 import { db } from '@/lib/firebase';
@@ -1460,10 +1460,18 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
   const [catTab, setCatTab] = useState('tutte');
   const [filtroRarita, setFiltroRarita] = useState('tutte');
   const [ordine, setOrdine] = useState('nome');
-  const [dropAttivo, setDropAttivo] = useState(null);
+  const [dropsAttivi, setDropsAttivi] = useState([]);
+  const [dropSelId, setDropSelId] = useState(null); // id del drop selezionato dall'utente
   const [isGodPackAperto, setIsGodPackAperto] = useState(false);
 
-  useEffect(() => { getDropAttivo().then(d => setDropAttivo(d)); }, []);
+  useEffect(() => {
+    listDropsAttivi().then(lista => {
+      setDropsAttivi(lista);
+      if (lista.length > 0) setDropSelId(lista[0].id);
+    });
+  }, []);
+
+  const dropAttivo = dropsAttivi.find(d => d.id === dropSelId) || dropsAttivi[0] || null;
 
   const dropWaifu = dropAttivo?.waifuIds ? waifuCat.filter(w => dropAttivo.waifuIds.includes(w.id)) : waifuCat;
   const dropOutfit = dropAttivo?.outfitIds ? outfitCat.filter(o => dropAttivo.outfitIds.includes(o.id)) : outfitCat;
@@ -1488,7 +1496,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     });
 
   const apri = async (tipoPacchetto) => {
-    const drop = await getDropAttivo();
+    const drop = dropAttivo;
     const wp = drop?.waifuIds ? waifuCat.filter(w => drop.waifuIds.includes(w.id)) : waifuCat;
     const op = drop?.outfitIds ? outfitCat.filter(o => drop.outfitIds.includes(o.id)) : outfitCat;
     const pp = drop?.poseIds ? poseCat.filter(p => drop.poseIds.includes(p.id)) : poseCat;
@@ -1729,23 +1737,23 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
   return (
     <div className="fade-in" style={{ padding: '8px 0' }}>
 
-      {/* SELEZIONE DROP ATTIVO */}
-      {dropAttivo && (
+      {/* SELEZIONE DROP */}
+      {dropsAttivi.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '10px', marginBottom: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, fontSize: 9, color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron', letterSpacing: 2 }}>
+          NESSUN DROP ATTIVO — TUTTE LE CARTE DISPONIBILI
+        </div>
+      )}
+      {dropsAttivi.length === 1 && dropAttivo && (
         <div style={{
           background: `linear-gradient(135deg, ${dropColore}18, ${dropColore2}10)`,
           border: `1px solid ${dropColore}40`,
           borderRadius: 14, padding: '10px 14px', marginBottom: 14,
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
-          {dropAttivo.asset_bustina && (
+          {dropAttivo.asset_bustina ? (
             <img src={dropAttivo.asset_bustina} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', border: `1px solid ${dropColore}40` }} />
-          )}
-          {!dropAttivo.asset_bustina && (
-            <div style={{
-              width: 44, height: 44, borderRadius: 8,
-              background: `linear-gradient(135deg, ${dropColore}40, ${dropColore2}30)`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
-            }}>🌸</div>
+          ) : (
+            <div style={{ width: 44, height: 44, borderRadius: 8, background: `linear-gradient(135deg, ${dropColore}40, ${dropColore2}30)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🌸</div>
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: dropColore, letterSpacing: 2, marginBottom: 2 }}>DROP ATTIVO</div>
@@ -1758,9 +1766,47 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
           </div>
         </div>
       )}
-      {!dropAttivo && (
-        <div style={{ textAlign: 'center', padding: '10px', marginBottom: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, fontSize: 9, color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron', letterSpacing: 2 }}>
-          NESSUN DROP ATTIVO — TUTTE LE CARTE DISPONIBILI
+      {dropsAttivi.length > 1 && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,0.4)', letterSpacing: 2, marginBottom: 8, textAlign: 'center' }}>
+            SCEGLI IL DROP DA SBUSTARE
+          </div>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+            {dropsAttivi.map(d => {
+              const c1 = d.colore || '#9b59ff';
+              const c2 = d.colore2 || '#ff2d78';
+              const sel = d.id === dropSelId;
+              const nWaifu = d.waifuIds?.length || 0;
+              return (
+                <div
+                  key={d.id}
+                  onClick={() => setDropSelId(d.id)}
+                  style={{
+                    flexShrink: 0, cursor: 'pointer', borderRadius: 12, padding: '10px 12px',
+                    minWidth: 120,
+                    background: sel
+                      ? `linear-gradient(135deg, ${c1}35, ${c2}20)`
+                      : 'rgba(255,255,255,0.03)',
+                    border: sel ? `2px solid ${c1}` : '1px solid rgba(255,255,255,0.1)',
+                    boxShadow: sel ? `0 0 16px ${c1}50` : 'none',
+                    transition: 'all 0.2s',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                  }}
+                >
+                  {d.asset_bustina ? (
+                    <img src={d.asset_bustina} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', border: `1px solid ${c1}50` }} />
+                  ) : (
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: `linear-gradient(135deg, ${c1}50, ${c2}30)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🌸</div>
+                  )}
+                  <div style={{ fontFamily: 'Orbitron', fontSize: 9, fontWeight: 700, color: sel ? '#fff' : 'rgba(238,232,220,0.6)', textAlign: 'center', lineHeight: 1.3 }}>{d.nome}</div>
+                  <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: c1 }}>{nWaifu} waifu</div>
+                  {sel && (
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: c1, boxShadow: `0 0 8px ${c1}` }} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

@@ -183,14 +183,6 @@ function DropsTab({ drops, waifu, outfit, pose, ricarica, flash }) {
   };
 
   const salva = async (d) => {
-    // Se attivo: disattiva tutti gli altri
-    if (d.attivo) {
-      for (const altro of drops) {
-        if (altro.id !== d.id && altro.attivo) {
-          await upsertDrop(altro.id, { ...altro, attivo: false });
-        }
-      }
-    }
     await upsertDrop(d.id || null, { ...d, creato: d.creato || new Date() });
     flash('Drop salvato');
     setEd(null);
@@ -219,8 +211,9 @@ function DropsTab({ drops, waifu, outfit, pose, ricarica, flash }) {
       <div style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 8, padding: 14, marginBottom: 16 }}>
         <div style={{ fontFamily: 'Cinzel, serif', color: '#a855f7', letterSpacing: 2, fontSize: 12, marginBottom: 6 }}>ℹ COME FUNZIONANO I DROP</div>
         <div style={{ fontSize: 12, lineHeight: 1.6, opacity: 0.85 }}>
-          Ogni drop è un set tematico di waifu, outfit e pose. <strong>Solo un drop alla volta può essere attivo</strong>.
-          Quando un drop è attivo, i pacchetti pescano <strong>esclusivamente</strong> dai contenuti inclusi nel drop.
+          Ogni drop è un set tematico di waifu, outfit e pose. <strong>Possono essere attivi più drop contemporaneamente</strong>.
+          Quando un drop è attivo, appare nella schermata di sbustamento e il giocatore può scegliere quale drop sbustare.
+          I pacchetti pescano <strong>esclusivamente</strong> dai contenuti del drop selezionato.
           I giocatori conservano per sempre i contenuti già ottenuti dai drop precedenti.
         </div>
       </div>
