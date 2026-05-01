@@ -85,9 +85,31 @@ export async function listDrops() {
 }
 
 export async function listDropsAttivi() {
-  const q = query(collection(db, 'drops'), where('attivo', '==', true), orderBy('creato', 'desc'));
+  const q = query(collection(db, 'drops'), where('attivo', '==', true));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const now = new Date();
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(d => {
+      // Data inizio: deve essere nel passato (o oggi)
+      if (d.inizio) {
+        const inizio = new Date(d.inizio);
+        if (inizio > now) return false;
+      }
+      // Data fine: se impostata, deve essere nel futuro (o oggi)
+      if (d.fine) {
+        const fine = new Date(d.fine);
+        // fine è una stringa "YYYY-MM-DD": la trattiamo come fine giornata
+        fine.setHours(23, 59, 59, 999);
+        if (fine < now) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const ta = a.creato?.seconds ?? 0;
+      const tb = b.creato?.seconds ?? 0;
+      return tb - ta;
+    });
 }
 
 export async function getDropAttivo() {
