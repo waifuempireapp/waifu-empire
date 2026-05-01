@@ -16,6 +16,7 @@ import {
 } from '@/lib/promptGenerator';
 import { RARITA, COLORI_CAPELLI, SLOT_OUTFIT, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, OUTFIT_CONFIG_DEFAULT, ABILITA_TIPI, ABILITA_VALORI } from '@/lib/constants';
 import { calcolaLivelloOutfit, calcolaNumArchetipi, autoGeneraAbilita } from '@/lib/gameLogic';
+import { CartaWaifu } from '@/components/CartaWaifu';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -124,7 +125,7 @@ export default function AdminPage() {
 
       <div style={{ padding: '16px', maxWidth: 1400, margin: '0 auto' }}>
         {tab === 'drops' && <DropsTab drops={drops} waifu={waifu} outfit={outfit} pose={pose} ricarica={carica} flash={flash} />}
-        {tab === 'waifu' && <WaifuTab waifu={waifu} ricarica={carica} flash={flash} />}
+        {tab === 'waifu' && <WaifuTab waifu={waifu} drops={drops} ricarica={carica} flash={flash} />}
         {tab === 'bulk' && <BulkUploadTab waifu={waifu} ricarica={carica} flash={flash} />}
         {tab === 'outfit' && <OutfitTab outfit={outfit} ricarica={carica} flash={flash} />}
         {tab === 'pose' && <PoseTab pose={pose} waifu={waifu} ricarica={carica} flash={flash} />}
@@ -142,18 +143,44 @@ export default function AdminPage() {
 function DropsTab({ drops, waifu, outfit, pose, ricarica, flash }) {
   const [ed, setEd] = useState(null);
 
-  const nuovo = () => setEd({
-    nome: 'Nuovo Drop',
-    descrizione: '',
-    inizio: new Date().toISOString().split('T')[0],
-    fine: '',
-    attivo: false,
-    colore: '#9b59ff',
-    colore2: '#ff2d78',
-    waifuIds: [],
-    outfitIds: [],
-    poseIds: [],
-  });
+  const nuovo = () => {
+    // Prepopola con colori diversificati: ruota tra palette predefinite per non replicare
+    const paletteColori = [
+      { c1: '#9b59ff', c2: '#ff2d78' },
+      { c1: '#f59e0b', c2: '#06d6a0' },
+      { c1: '#3b82f6', c2: '#ec4899' },
+      { c1: '#dc2626', c2: '#eab308' },
+      { c1: '#14b8a6', c2: '#a855f7' },
+      { c1: '#f97316', c2: '#8b5cf6' },
+    ];
+    // Scegli palette non usata dagli ultimi drop
+    const usateC1 = new Set(drops.map(d => d.colore).filter(Boolean));
+    const palette = paletteColori.find(p => !usateC1.has(p.c1)) || paletteColori[drops.length % paletteColori.length];
+
+    // Stagioni/temi per nome autogenerato
+    const stagioniBase = ['Primavera', 'Estate', 'Autunno', 'Inverno', 'Sakura', 'Notte', 'Aurora', 'Solstizio'];
+    const nomiUsati = new Set(drops.map(d => (d.nome || '').split(' ')[0]));
+    const stagione = stagioniBase.find(s => !nomiUsati.has(s)) || `Stagione ${drops.length + 1}`;
+
+    // Data inizio oggi, fine +30 giorni
+    const oggi = new Date();
+    const fine = new Date(oggi);
+    fine.setDate(fine.getDate() + 30);
+    const fmt = d => d.toISOString().split('T')[0];
+
+    setEd({
+      nome: `Drop ${stagione}`,
+      descrizione: `Collezione tematica ${stagione.toLowerCase()} con waifu esclusive.`,
+      inizio: fmt(oggi),
+      fine: fmt(fine),
+      attivo: false,
+      colore: palette.c1,
+      colore2: palette.c2,
+      waifuIds: [],
+      outfitIds: [],
+      poseIds: [],
+    });
+  };
 
   const salva = async (d) => {
     // Se attivo: disattiva tutti gli altri
@@ -233,6 +260,11 @@ function DropsTab({ drops, waifu, outfit, pose, ricarica, flash }) {
 
 function DropEditor({ drop, setDrop, waifu, outfit, pose, onSalva, onAnnulla, flash }) {
   const [tabSel, setTabSel] = useState('waifu');
+  // Filtri per la tab waifu
+  const [filtroRarita, setFiltroRarita] = useState('tutte');
+  const [filtroPresenza, setFiltroPresenza] = useState('tutte'); // tutte | presenti | assenti
+  const [filtroNome, setFiltroNome] = useState('');
+  const [vistaCard, setVistaCard] = useState(false); // false=lista, true=card
 
   const toggleId = (campo, id) => {
     const arr = drop[campo] || [];
@@ -243,6 +275,15 @@ function DropEditor({ drop, setDrop, waifu, outfit, pose, onSalva, onAnnulla, fl
   // Suggerimenti diversificazione: solo waifu del drop
   const waifuDelDrop = waifu.filter(w => drop.waifuIds?.includes(w.id));
   const sugg = suggerisciDiversificazione(waifuDelDrop);
+
+  // Waifu filtrate
+  const waifuFiltrate = waifu.filter(w => {
+    if (filtroRarita !== 'tutte' && w.rarita !== filtroRarita) return false;
+    if (filtroPresenza === 'presenti' && !drop.waifuIds?.includes(w.id)) return false;
+    if (filtroPresenza === 'assenti' && drop.waifuIds?.includes(w.id)) return false;
+    if (filtroNome && !w.nome?.toLowerCase().includes(filtroNome.toLowerCase())) return false;
+    return true;
+  });
 
   return (
     <div>
@@ -297,20 +338,13 @@ function DropEditor({ drop, setDrop, waifu, outfit, pose, onSalva, onAnnulla, fl
             onChange={async (e) => {
               const file = e.target.files?.[0];
               if (!file) return;
-
               try {
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('folder', 'bustine');
-
-                const res = await fetch('/api/upload', {
-                  method: 'POST',
-                  body: formData,
-                });
-
+                const res = await fetch('/api/upload', { method: 'POST', body: formData });
                 if (!res.ok) throw new Error('Upload fallito');
                 const data = await res.json();
-
                 setDrop({ ...drop, asset_bustina: data.url });
                 flash('Immagine bustina caricata!', '#06d6a0');
               } catch (err) {
@@ -319,7 +353,6 @@ function DropEditor({ drop, setDrop, waifu, outfit, pose, onSalva, onAnnulla, fl
             }}
             style={{ ...inputStyle, padding: 8 }}
           />
-
           {drop.asset_bustina && (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <img src={drop.asset_bustina} alt="Bustina" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '2px solid #f59e0b' }} />
@@ -355,9 +388,9 @@ function DropEditor({ drop, setDrop, waifu, outfit, pose, onSalva, onAnnulla, fl
       {/* Tabs selezione contenuti */}
       <div style={{ display: 'flex', gap: 6, marginTop: 16, marginBottom: 12, flexWrap: 'wrap' }}>
         {[
-          { k: 'waifu', l: `👑 Waifu (${drop.waifuIds?.length || 0})`, items: waifu, campo: 'waifuIds' },
-          { k: 'outfit', l: `✦ Outfit (${drop.outfitIds?.length || 0})`, items: outfit, campo: 'outfitIds' },
-          { k: 'pose', l: `⚜ Pose (${drop.poseIds?.length || 0})`, items: pose, campo: 'poseIds' },
+          { k: 'waifu', l: `👑 Waifu (${drop.waifuIds?.length || 0})` },
+          { k: 'outfit', l: `✦ Outfit (${drop.outfitIds?.length || 0})` },
+          { k: 'pose', l: `⚜ Pose (${drop.poseIds?.length || 0})` },
         ].map(t => (
           <button key={t.k} onClick={() => setTabSel(t.k)} style={{
             padding: '6px 14px',
@@ -369,31 +402,169 @@ function DropEditor({ drop, setDrop, waifu, outfit, pose, onSalva, onAnnulla, fl
         ))}
       </div>
 
-      {[
-        { k: 'waifu', items: waifu, campo: 'waifuIds' },
-        { k: 'outfit', items: outfit, campo: 'outfitIds' },
-        { k: 'pose', items: pose, campo: 'poseIds' },
-      ].filter(t => t.k === tabSel).map(t => (
-        <div key={t.k} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 6, maxHeight: 400, overflowY: 'auto', padding: 6 }}>
-          {t.items.length === 0 && <div style={{ gridColumn: '1/-1', padding: 20, textAlign: 'center', opacity: 0.6 }}>Nessun {t.k} creato. Crea {t.k} dalle altre tab.</div>}
-          {t.items.map(item => {
-            const sel = drop[t.campo]?.includes(item.id);
+      {/* ── BARRA FILTRI (solo tab waifu) ── */}
+      {tabSel === 'waifu' && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10, padding: '10px 12px', background: 'rgba(0,0,0,0.3)', borderRadius: 8, border: '1px solid rgba(245,158,11,0.15)' }}>
+          {/* Filtro nome */}
+          <input
+            value={filtroNome}
+            onChange={e => setFiltroNome(e.target.value)}
+            placeholder="🔍 Cerca per nome..."
+            style={{ ...inputStyle, flex: '1 1 160px', minWidth: 140, padding: '6px 10px', fontSize: 12 }}
+          />
+          {/* Filtro rarità */}
+          <select
+            value={filtroRarita}
+            onChange={e => setFiltroRarita(e.target.value)}
+            style={{ ...inputStyle, flex: '0 0 auto', width: 'auto', padding: '6px 10px', fontSize: 12 }}
+          >
+            <option value="tutte">⭐ Tutte le rarità</option>
+            {Object.entries(RARITA).map(([k, v]) => (
+              <option key={k} value={k}>{'★'.repeat(v.stelle)} {v.nome}</option>
+            ))}
+          </select>
+          {/* Filtro presenza nel drop */}
+          <select
+            value={filtroPresenza}
+            onChange={e => setFiltroPresenza(e.target.value)}
+            style={{ ...inputStyle, flex: '0 0 auto', width: 'auto', padding: '6px 10px', fontSize: 12 }}
+          >
+            <option value="tutte">📦 Tutte</option>
+            <option value="presenti">✅ Nel drop</option>
+            <option value="assenti">➕ Non nel drop</option>
+          </select>
+          {/* Toggle vista */}
+          <button
+            onClick={() => setVistaCard(v => !v)}
+            style={{ ...btnSecondario, padding: '6px 12px', fontSize: 11, background: vistaCard ? 'rgba(245,158,11,0.15)' : 'rgba(0,0,0,0.4)' }}
+            title="Alterna tra vista card e lista"
+          >
+            {vistaCard ? '☰ Lista' : '🃏 Card'}
+          </button>
+          {/* Contatore risultati */}
+          <div style={{ fontSize: 11, opacity: 0.6, display: 'flex', alignItems: 'center', paddingLeft: 4 }}>
+            {waifuFiltrate.length}/{waifu.length} waifu
+          </div>
+        </div>
+      )}
+
+      {/* ── LISTA WAIFU con filtri e card ── */}
+      {tabSel === 'waifu' && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: vistaCard
+            ? 'repeat(auto-fill, minmax(200px, 1fr))'
+            : 'repeat(auto-fill, minmax(220px, 1fr))',
+          gap: vistaCard ? 12 : 6,
+          maxHeight: vistaCard ? 640 : 420,
+          overflowY: 'auto',
+          padding: 6,
+        }}>
+          {waifuFiltrate.length === 0 && (
+            <div style={{ gridColumn: '1/-1', padding: 20, textAlign: 'center', opacity: 0.6 }}>
+              Nessuna waifu corrisponde ai filtri selezionati.
+            </div>
+          )}
+          {waifuFiltrate.map(item => {
+            const sel = drop.waifuIds?.includes(item.id);
             const rar = RARITA[item.rarita] || RARITA.comune;
-            return <div key={item.id} onClick={() => toggleId(t.campo, item.id)} style={{
-              padding: 8, cursor: 'pointer',
-              background: sel ? `linear-gradient(135deg, ${rar.colore}30, transparent)` : 'rgba(0,0,0,0.3)',
-              border: sel ? `2px solid ${rar.colore}` : '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 6,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input type="checkbox" checked={sel || false} readOnly style={{ accentColor: rar.colore }} />
-                <span style={{ fontSize: 12, fontWeight: 600 }}>{item.nome}</span>
+            if (vistaCard) {
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => toggleId('waifuIds', item.id)}
+                  style={{
+                    cursor: 'pointer',
+                    position: 'relative',
+                    borderRadius: 10,
+                    border: sel ? `2px solid ${rar.colore}` : '2px solid transparent',
+                    boxShadow: sel ? `0 0 12px ${rar.glow}` : 'none',
+                    transition: 'box-shadow 0.2s, border-color 0.2s',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {/* Badge selezione */}
+                  <div style={{
+                    position: 'absolute', top: 6, right: 6, zIndex: 10,
+                    width: 22, height: 22, borderRadius: '50%',
+                    background: sel ? rar.colore : 'rgba(0,0,0,0.6)',
+                    border: `2px solid ${sel ? '#fff' : 'rgba(255,255,255,0.3)'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 12, color: '#fff', fontWeight: 700,
+                  }}>
+                    {sel ? '✓' : '+'}
+                  </div>
+                  {/* Carta waifu */}
+                  <CartaWaifu waifu={item} dimensione="piccola" tipo="statica" />
+                </div>
+              );
+            }
+            // Vista lista
+            return (
+              <div key={item.id} onClick={() => toggleId('waifuIds', item.id)} style={{
+                padding: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
+                background: sel ? `linear-gradient(135deg, ${rar.colore}22, transparent)` : 'rgba(0,0,0,0.3)',
+                border: sel ? `2px solid ${rar.colore}` : '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 6,
+              }}>
+                {/* Miniatura immagine */}
+                {item.asset_statica || item.asset_paperdoll ? (
+                  <img
+                    src={item.asset_statica || item.asset_paperdoll}
+                    alt={item.nome}
+                    style={{ width: 40, height: 56, objectFit: 'cover', borderRadius: 4, border: `1px solid ${rar.colore}60`, flexShrink: 0 }}
+                  />
+                ) : (
+                  <div style={{ width: 40, height: 56, borderRadius: 4, background: `${rar.colore}20`, border: `1px solid ${rar.colore}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                    👑
+                  </div>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input type="checkbox" checked={sel || false} readOnly style={{ accentColor: rar.colore, flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.nome}</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: rar.colore, marginTop: 2 }}>{'★'.repeat(rar.stelle)} {rar.nome}</div>
+                </div>
               </div>
-              <div style={{ fontSize: 10, color: rar.colore, marginTop: 2 }}>{'★'.repeat(rar.stelle)} {rar.nome}</div>
-            </div>;
+            );
           })}
         </div>
-      ))}
+      )}
+
+      {/* ── OUTFIT e POSE (tab non-waifu, invariate) ── */}
+      {tabSel !== 'waifu' && (() => {
+        const t = tabSel === 'outfit'
+          ? { items: outfit, campo: 'outfitIds', label: 'outfit' }
+          : { items: pose, campo: 'poseIds', label: 'pose' };
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 6, maxHeight: 400, overflowY: 'auto', padding: 6 }}>
+            {t.items.length === 0 && (
+              <div style={{ gridColumn: '1/-1', padding: 20, textAlign: 'center', opacity: 0.6 }}>
+                Nessun {t.label} creato. Crea {t.label} dalle altre tab.
+              </div>
+            )}
+            {t.items.map(item => {
+              const sel = drop[t.campo]?.includes(item.id);
+              const rar = RARITA[item.rarita] || RARITA.comune;
+              return (
+                <div key={item.id} onClick={() => toggleId(t.campo, item.id)} style={{
+                  padding: 8, cursor: 'pointer',
+                  background: sel ? `linear-gradient(135deg, ${rar.colore}30, transparent)` : 'rgba(0,0,0,0.3)',
+                  border: sel ? `2px solid ${rar.colore}` : '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 6,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input type="checkbox" checked={sel || false} readOnly style={{ accentColor: rar.colore }} />
+                    <span style={{ fontSize: 12, fontWeight: 600 }}>{item.nome}</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: rar.colore, marginTop: 2 }}>{'★'.repeat(rar.stelle)} {rar.nome}</div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -401,11 +572,12 @@ function DropEditor({ drop, setDrop, waifu, outfit, pose, onSalva, onAnnulla, fl
 // ============================================================
 // TAB: WAIFU
 // ============================================================
-function WaifuTab({ waifu, ricarica, flash }) {
+function WaifuTab({ waifu, drops, ricarica, flash }) {
   const [ed, setEd] = useState(null);
   const [filtroRarita, setFiltroRarita] = useState('tutte');
   const [filtroAsset, setFiltroAsset] = useState('tutti'); // tutti | presenti | mancanti
   const [filtroNome, setFiltroNome] = useState('');
+  const [filtroDropId, setFiltroDropId] = useState('tutti'); // tutti | <dropId> | '__nessuno__'
   const [vistaCard, setVistaCard] = useState(true); // true=card preview, false=list
 
   const nuova = () => setEd({
@@ -448,6 +620,13 @@ function WaifuTab({ waifu, ricarica, flash }) {
   if (filtroAsset === 'presenti') filtrate = filtrate.filter(w => w.asset_statica || w.asset_immersiva);
   if (filtroAsset === 'mancanti') filtrate = filtrate.filter(w => !w.asset_statica && !w.asset_immersiva);
   if (filtroNome) filtrate = filtrate.filter(w => w.nome.toLowerCase().includes(filtroNome.toLowerCase()));
+  if (filtroDropId === '__nessuno__') {
+    const tutteLeWaifuInDrop = new Set((drops || []).flatMap(d => d.waifuIds || []));
+    filtrate = filtrate.filter(w => !tutteLeWaifuInDrop.has(w.id));
+  } else if (filtroDropId !== 'tutti') {
+    const dropSel = (drops || []).find(d => d.id === filtroDropId);
+    filtrate = filtrate.filter(w => dropSel?.waifuIds?.includes(w.id));
+  }
 
   return (
     <div>
@@ -470,6 +649,15 @@ function WaifuTab({ waifu, ricarica, flash }) {
           <option value="tutti">Tutti gli asset</option>
           <option value="presenti">✓ Con immagine</option>
           <option value="mancanti">✗ Senza immagine</option>
+        </select>
+        <select value={filtroDropId} onChange={e => setFiltroDropId(e.target.value)} style={{ ...inputStyle, width: 160, padding: 6, fontSize: 11 }}>
+          <option value="tutti">📦 Tutti i drop</option>
+          <option value="__nessuno__">🚫 Senza drop</option>
+          {(drops || []).map(d => (
+            <option key={d.id} value={d.id}>
+              {d.attivo ? '● ' : ''}{d.nome || d.id}
+            </option>
+          ))}
         </select>
       </div>
 
