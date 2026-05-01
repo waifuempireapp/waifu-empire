@@ -8,7 +8,7 @@ import {
   upsertWaifu, upsertOutfit, upsertPosa, upsertDrop,
   deleteCatalogo,
 } from '@/lib/firestoreService';
-import { uploadAsset, pathWaifu, pathOutfit, pathPosa } from '@/lib/storageService';
+import { uploadAsset, pathWaifu, pathOutfit, pathPosa, uploadLargeAsset } from '@/lib/storageService';
 import {
   buildPromptPaperDoll, buildPromptCartaStatica, buildPromptCartaImmersiva,
   buildPromptOutfit, buildPromptPosa, buildPromptBustina,
@@ -197,7 +197,7 @@ function DropsTab({ drops, waifu, outfit, pose, ricarica, flash }) {
   };
 
   if (ed) {
-    return <DropEditor drop={ed} setDrop={setEd} waifu={waifu} outfit={outfit} pose={pose}
+    return <DropEditor drop={ed} setDrop={setEd} waifu={waifu} outfit={outfit} pose={pose} drops={drops}
       onSalva={salva} onAnnulla={() => setEd(null)} flash={flash} />;
   }
 
@@ -251,13 +251,14 @@ function DropsTab({ drops, waifu, outfit, pose, ricarica, flash }) {
   );
 }
 
-function DropEditor({ drop, setDrop, waifu, outfit, pose, onSalva, onAnnulla, flash }) {
+function DropEditor({ drop, setDrop, waifu, outfit, pose, drops, onSalva, onAnnulla, flash }) {
   const [tabSel, setTabSel] = useState('waifu');
   // Filtri per la tab waifu
   const [filtroRarita, setFiltroRarita] = useState('tutte');
   const [filtroPresenza, setFiltroPresenza] = useState('tutte'); // tutte | presenti | assenti
   const [filtroNome, setFiltroNome] = useState('');
   const [vistaCard, setVistaCard] = useState(false); // false=lista, true=card
+  const [uploadMangaProgress, setUploadMangaProgress] = useState(null); // null | 0-100
 
   const toggleId = (campo, id) => {
     const arr = drop[campo] || [];
@@ -269,11 +270,16 @@ function DropEditor({ drop, setDrop, waifu, outfit, pose, onSalva, onAnnulla, fl
   const waifuDelDrop = waifu.filter(w => drop.waifuIds?.includes(w.id));
   const sugg = suggerisciDiversificazione(waifuDelDrop);
 
+  // Waifu presenti in qualsiasi drop esistente
+  const waifuInQualsiasidrop = new Set(
+    (drops || []).flatMap(d => d.waifuIds || [])
+  );
+
   // Waifu filtrate
   const waifuFiltrate = waifu.filter(w => {
     if (filtroRarita !== 'tutte' && w.rarita !== filtroRarita) return false;
     if (filtroPresenza === 'presenti' && !drop.waifuIds?.includes(w.id)) return false;
-    if (filtroPresenza === 'assenti' && drop.waifuIds?.includes(w.id)) return false;
+    if (filtroPresenza === 'assenti' && waifuInQualsiasidrop.has(w.id)) return false;
     if (filtroNome && !w.nome?.toLowerCase().includes(filtroNome.toLowerCase())) return false;
     return true;
   });
@@ -328,26 +334,30 @@ function DropEditor({ drop, setDrop, waifu, outfit, pose, onSalva, onAnnulla, fl
           <input
             type="file"
             accept="application/pdf"
+            disabled={uploadMangaProgress !== null}
             onChange={async (e) => {
               const file = e.target.files?.[0];
               if (!file) return;
               try {
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('folder', 'manga');
-                formData.append('publicId', `drop_${drop.id || Date.now()}_manga`);
-                const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                if (!res.ok) throw new Error('Upload fallito');
-                const data = await res.json();
-                setDrop({ ...drop, asset_manga: data.url });
+                setUploadMangaProgress(0);
+                const url = await uploadLargeAsset(
+                  'manga',
+                  `drop_${drop.id || Date.now()}_manga`,
+                  file,
+                  (pct) => setUploadMangaProgress(pct),
+                );
+                setDrop({ ...drop, asset_manga: url });
                 flash('PDF manga caricato!', '#06d6a0');
               } catch (err) {
                 flash('Errore upload PDF: ' + err.message, '#ef4444');
+              } finally {
+                setUploadMangaProgress(null);
+                e.target.value = '';
               }
             }}
-            style={{ ...inputStyle, padding: 8 }}
+            style={{ ...inputStyle, padding: 8, opacity: uploadMangaProgress !== null ? 0.4 : 1 }}
           />
-          {drop.asset_manga && (
+          {drop.asset_manga && uploadMangaProgress === null && (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <div style={{ padding: '6px 12px', background: 'rgba(6,214,160,0.12)', border: '1px solid rgba(6,214,160,0.4)', borderRadius: 6, fontSize: 11, color: '#06d6a0' }}>
                 📄 PDF caricato
@@ -357,7 +367,23 @@ function DropEditor({ drop, setDrop, waifu, outfit, pose, onSalva, onAnnulla, fl
             </div>
           )}
         </div>
-        {drop.asset_manga && (
+        {/* Barra progresso upload */}
+        {uploadMangaProgress !== null && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', borderRadius: 3,
+                width: `${uploadMangaProgress}%`,
+                background: 'linear-gradient(90deg, #06d6a0, #3b82f6)',
+                transition: 'width 0.2s ease',
+              }} />
+            </div>
+            <div style={{ fontSize: 10, color: '#06d6a0', marginTop: 4 }}>
+              {uploadMangaProgress < 100 ? `⏳ Upload in corso... ${uploadMangaProgress}%` : '✓ Elaborazione...'}
+            </div>
+          </div>
+        )}
+        {drop.asset_manga && uploadMangaProgress === null && (
           <div style={{ marginTop: 6, fontSize: 10, color: 'rgba(245,230,211,0.45)', lineHeight: 1.5 }}>
             Gli utenti che collezionano <strong style={{ color: 'rgba(245,230,211,0.7)' }}>tutte le waifu, outfit e pose</strong> di questo drop sbloccano automaticamente il download del PDF.
           </div>
@@ -466,7 +492,7 @@ function DropEditor({ drop, setDrop, waifu, outfit, pose, onSalva, onAnnulla, fl
           >
             <option value="tutte">📦 Tutte</option>
             <option value="presenti">✅ Nel drop</option>
-            <option value="assenti">➕ Non nel drop</option>
+            <option value="assenti">🆓 In nessun drop</option>
           </select>
           {/* Toggle vista */}
           <button
