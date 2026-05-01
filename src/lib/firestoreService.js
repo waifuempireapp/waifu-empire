@@ -84,6 +84,30 @@ export async function listDrops() {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+// Restituisce true se l'utente possiede tutte le waifu, outfit e pose del drop
+export function isDropCompleto(drop, collezione) {
+  if (!drop) return false;
+  const waifuOk = (drop.waifuIds || []).every(id => collezione?.waifu?.[id]);
+  const outfitOk = (drop.outfitIds || []).every(id => (collezione?.outfit?.[id]?.quantita ?? 0) > 0);
+  const poseOk = (drop.poseIds || []).every(id => (collezione?.pose?.[id]?.quantita ?? 0) > 0);
+  return waifuOk && outfitOk && poseOk;
+}
+
+// Progressione drop: quante carte su totale l'utente possiede
+export function progressioneDrop(drop, collezione) {
+  if (!drop) return { possedute: 0, totale: 0, percentuale: 0 };
+  const waifu = drop.waifuIds || [];
+  const outfit = drop.outfitIds || [];
+  const pose = drop.poseIds || [];
+  const totale = waifu.length + outfit.length + pose.length;
+  if (totale === 0) return { possedute: 0, totale: 0, percentuale: 0 };
+  const possedute =
+    waifu.filter(id => collezione?.waifu?.[id]).length +
+    outfit.filter(id => (collezione?.outfit?.[id]?.quantita ?? 0) > 0).length +
+    pose.filter(id => (collezione?.pose?.[id]?.quantita ?? 0) > 0).length;
+  return { possedute, totale, percentuale: Math.round((possedute / totale) * 100) };
+}
+
 export async function listDropsAttivi() {
   const q = query(collection(db, 'drops'), where('attivo', '==', true));
   const snap = await getDocs(q);

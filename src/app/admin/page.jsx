@@ -322,6 +322,48 @@ function DropEditor({ drop, setDrop, waifu, outfit, pose, onSalva, onAnnulla, fl
         <textarea value={drop.descrizione || ''} onChange={e => setDrop({ ...drop, descrizione: e.target.value })} style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }} />
       </Field>
 
+      {/* UPLOAD PDF MANGA */}
+      <Field label="📖 Capitolo Manga (PDF) — sbloccato completando il drop">
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('folder', 'manga');
+                formData.append('publicId', `drop_${drop.id || Date.now()}_manga`);
+                const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                if (!res.ok) throw new Error('Upload fallito');
+                const data = await res.json();
+                setDrop({ ...drop, asset_manga: data.url });
+                flash('PDF manga caricato!', '#06d6a0');
+              } catch (err) {
+                flash('Errore upload PDF: ' + err.message, '#ef4444');
+              }
+            }}
+            style={{ ...inputStyle, padding: 8 }}
+          />
+          {drop.asset_manga && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ padding: '6px 12px', background: 'rgba(6,214,160,0.12)', border: '1px solid rgba(6,214,160,0.4)', borderRadius: 6, fontSize: 11, color: '#06d6a0' }}>
+                📄 PDF caricato
+              </div>
+              <a href={drop.asset_manga} target="_blank" rel="noreferrer" style={{ ...btnSecondario, fontSize: 10, padding: '4px 8px', textDecoration: 'none' }}>👁 Anteprima</a>
+              <button onClick={() => setDrop({ ...drop, asset_manga: '' })} style={{ ...btnSecondario, fontSize: 11, padding: '4px 8px', borderColor: '#ef444480', color: '#ef4444' }}>✕ Rimuovi</button>
+            </div>
+          )}
+        </div>
+        {drop.asset_manga && (
+          <div style={{ marginTop: 6, fontSize: 10, color: 'rgba(245,230,211,0.45)', lineHeight: 1.5 }}>
+            Gli utenti che collezionano <strong style={{ color: 'rgba(245,230,211,0.7)' }}>tutte le waifu, outfit e pose</strong> di questo drop sbloccano automaticamente il download del PDF.
+          </div>
+        )}
+      </Field>
+
       {/* UPLOAD IMMAGINE BUSTINA */}
       <Field label="Immagine Bustina (opzionale)">
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1667,32 +1709,107 @@ function MotoriTab() {
 // ============================================================
 
 // === NOMI WAIFU CASUALI (pool di ~250 nomi anime-style) ===
-const NOMI_POOL = [
-  'Akira','Yuki','Sakura','Hana','Rei','Miku','Sora','Luna','Nyx','Aria','Kaede','Aoi','Rin','Kira','Mei','Yui','Nana','Hime','Runa','Mio',
+// ============================================================
+// SISTEMA NOMI — capacità >2500 nomi unici stilisticamente coerenti
+// Livello 1: pool di nomi singoli (~400)
+// Livello 2: combinazioni Kanji-prefisso + suffisso giapponese (~900)
+// Livello 3: titolo + nome dal pool (~800)
+// Livello 4: nome + epiteto (~illimitato)
+// ============================================================
+
+const _NOMI_GIAPPONESI = [
+  'Akira','Yuki','Sakura','Hana','Rei','Miku','Sora','Luna','Aria','Kaede','Aoi','Rin','Kira','Mei','Yui','Nana','Hime','Runa','Mio',
   'Tsubaki','Ayame','Shiori','Akane','Hotaru','Hinata','Asuka','Misaki','Nagisa','Chihiro','Izumi','Kohaku','Tamaki','Madoka','Sumire','Tsumugi','Kurumi','Shion','Amane','Hibiki',
   'Kazuha','Fubuki','Tsukiko','Hikari','Miyu','Nanami','Haruka','Kotone','Ayaka','Setsuna','Mitsuki','Suzume','Kaguya','Yuzuki','Chiaki','Minori','Tohka','Shinobu','Kokona','Kanon',
-  'Elysia','Vesper','Seraphina','Astrid','Freya','Morgana','Isolde','Celeste','Lilith','Vivienne','Cordelia','Evangeline','Artemis','Calypso','Ophelia','Rowena','Elara','Aurelia','Sylene','Nephira',
-  'Crimson','Velvet','Zephyra','Tempest','Eclipse','Solana','Nebula','Vortex','Blaze','Frost','Shadow','Ember','Dawn','Dusk','Storm','Crystal','Phantom','Raven','Phoenix','Iris',
   'Miyako','Chiyo','Tomoe','Katsumi','Ryoko','Momiji','Utaha','Futaba','Ichika','Natsuki','Sayuri','Wakana','Suzuha','Mashiro','Tomoyo','Yuzuha','Kirari','Himari','Riko','Saki',
-  'Valentina','Rosaria','Beatrix','Cassandra','Theodora','Lucretia','Anastasia','Gabriella','Isadora','Penelope','Seraphine','Lysandra','Demetria','Calliope','Andromeda','Persephone','Alcyone','Iphigenia','Xanthe','Melisande',
-  'Raijin','Tsukuyomi','Amaterasu','Benzaiten','Kushinada','Tamamo','Inari','Byakko','Suzaku','Genbu','Seiryu','Komachi','Otohime','Yaegashi','Murasaki','Kagero','Shizuka','Tokiwa','Yugiri','Koruri',
-  'Blade','Cipher','Neon','Pixel','Glitch','Data','Binary','Chrome','Surge','Pulse','Flux','Hexa','Volt','Quartz','Nexus','Onyx','Prism','Zenith','Nova','Astra',
-  'Titania','Oberon','Gloriana','Bramble','Clover','Wren','Lark','Ivy','Fern','Dahlia','Jasmine','Violet','Orchid','Marigold','Petunia','Heather','Laurel','Willow','Azalea','Camellia',
+  'Raijin','Tsukuyomi','Amaterasu','Benzaiten','Kushinada','Tamamo','Inari','Komachi','Otohime','Murasaki','Kagero','Shizuka','Tokiwa','Yugiri','Koruri','Yaegashi',
+  'Kohana','Asahi','Mizuki','Tsuki','Hoshi','Naomi','Fumika','Suzu','Akemi','Tomoka','Haruna','Kazane','Yukino','Kotoha','Satsuki','Futami','Asuka','Honoka','Kasumi','Akiha',
+  'Yuna','Lulu','Tifa','Aerith','Rinoa','Garnet','Quistis','Fang','Vanille','Rem','Ram','Emilia','Beatrice','Shiro','Zero','Echidna','Petra','Felt','Crusch','Priscilla',
+];
+
+const _NOMI_FANTASY_OCCIDENTALI = [
+  'Elysia','Vesper','Seraphina','Astrid','Freya','Morgana','Isolde','Celeste','Lilith','Vivienne','Cordelia','Evangeline','Artemis','Calypso','Ophelia','Rowena','Elara','Aurelia','Sylene','Nephira',
+  'Valentina','Rosaria','Cassandra','Theodora','Lucretia','Anastasia','Gabriella','Isadora','Penelope','Seraphine','Lysandra','Demetria','Calliope','Andromeda','Persephone','Alcyone','Iphigenia','Xanthe','Melisande',
+  'Lyra','Cleo','Thalia','Zoe','Selene','Athena','Hera','Aphrodite','Demeter','Hestia','Nike','Rhea','Gaia','Eos','Nyx','Tyche','Aura','Metis','Bia','Iris',
+  'Titania','Gloriana','Bramble','Clover','Wren','Lark','Ivy','Fern','Dahlia','Jasmine','Violet','Orchid','Marigold','Heather','Laurel','Willow','Azalea','Camellia','Petunia','Wisteria',
+  'Elira','Vespera','Soleil','Lunara','Stellara','Aurore','Celestine','Serenelle','Mirabelle','Vivara','Thalindra','Elyndra','Veloris','Sylvara','Arandel','Lirien','Faelith','Caldwen','Mirveth','Aerindel',
+  'Beatrix','Rowena','Isolde','Gwendolyn','Imogen','Cecily','Rosalind','Guinevere','Elspeth','Matilda','Constance','Philippa','Meredith','Sybil','Aveline','Odette','Genevieve','Arabella','Claudine','Adeline',
+];
+
+const _NOMI_FANTASY_ORIENTALI = [
   'Zara','Kali','Indira','Priya','Lakshmi','Savitri','Radha','Durga','Parvati','Sita','Kamala','Ananya','Tara','Maya','Devi','Nisha','Asha','Chandra','Ganga','Saraswati',
-  'Lyra','Cleo','Thalia','Zoe','Selene','Athena','Hera','Aphrodite','Demeter','Hestia','Nike','Rhea','Gaia','Eos','Nyx','Iris','Tyche','Aura','Bia','Metis',
-  'Yuna','Lulu','Tifa','Aerith','Rinoa','Garnet','Beatrix','Quistis','Fang','Vanille',
+  'Crimson','Velvet','Zephyra','Tempest','Eclipse','Solana','Nebula','Vortex','Blaze','Frost','Shadow','Ember','Dawn','Dusk','Storm','Crystal','Phantom','Raven','Phoenix',
+  'Cipher','Neon','Pixel','Glitch','Chrome','Surge','Pulse','Flux','Hexa','Volt','Quartz','Nexus','Onyx','Prism','Zenith','Nova','Astra','Binary','Blade','Data',
+  'Byakko','Suzaku','Genbu','Seiryu','Kirin','Raiju','Tengu','Yatagarasu','Baku','Kitsune','Tanuki','Yamabiko','Itachi','Karura','Mizuchi','Orochi','Ryujin','Fujin','Raiden','Izanami',
+];
+
+// Pool unico deduplicato (Livello 1: ~400 nomi)
+const NOMI_POOL = [...new Set([..._NOMI_GIAPPONESI, ..._NOMI_FANTASY_OCCIDENTALI, ..._NOMI_FANTASY_ORIENTALI])];
+
+// Livello 2: combinazioni kanji-radice + suffisso (~900 combinazioni)
+const _RADICI = [
+  'Aka','Ao','Haku','Kuro','Shiro','Kin','Gin','Hi','Tsuki','Hoshi','Yoru','Asa','Kaze','Umi','Yama',
+  'Mizu','Tori','Hana','Sora','Kumo','Kage','Hono','Kori','Ishi','Kawa','Mori','Seki','Kusa','Yuki','Fune',
+];
+const _SUFFISSI = [
+  'hime','ko','mi','ka','na','ra','ha','no','ki','ri','ya','sa','wa','ne','to',
+  'yo','ru','me','chi','su','fu','ma','ho','re','ni','ta','se','ka','shi','zu',
+];
+
+// Livello 3: titoli + nome dal pool (~800 combinazioni)
+const _TITOLI = [
+  'Dark','Iron','Silver','Golden','Crimson','Shadow','Void','Star','Moon','Sun',
+  'Storm','Frost','Flame','Night','Dawn','Dusk','Azure','Scarlet','Obsidian','Ivory',
+  'Phantom','Crystal','Arcane','Divine','Fallen','Sacred','Ancient','Eternal','Celestial','Infernal',
+];
+
+// Livello 4: epiteti unici da appendere
+const _EPITETI = [
+  'the Unyielding','the Radiant','the Silent','the Fierce','the Wanderer','the Forgotten',
+  'the Eternal','the Cursed','the Blessed','the Unbroken','the Vanished','the Reborn',
+  'of the Abyss','of the Stars','of the Void','of the Dawn','of the Dusk','of the Storm',
+  'the Undying','the Exiled','the Chosen','the Lost','the Awakened','the Sealed',
 ];
 
 function generaNomeUnico(usati) {
+  // Livello 1: pool diretto
   const disponibili = NOMI_POOL.filter(n => !usati.has(n));
-  if (disponibili.length === 0) {
-    // Fallback: aggiungi suffisso
-    const base = NOMI_POOL[Math.floor(Math.random() * NOMI_POOL.length)];
-    let suff = 2;
-    while (usati.has(`${base} ${suff}`)) suff++;
-    return `${base} ${suff}`;
+  if (disponibili.length > 0) {
+    return disponibili[Math.floor(Math.random() * disponibili.length)];
   }
-  return disponibili[Math.floor(Math.random() * disponibili.length)];
+
+  // Livello 2: radice + suffisso (~900 combinazioni)
+  const radiciShuf = [..._RADICI].sort(() => Math.random() - 0.5);
+  const sufShuf = [..._SUFFISSI].sort(() => Math.random() - 0.5);
+  for (const r of radiciShuf) {
+    for (const s of sufShuf) {
+      const c = r.charAt(0).toUpperCase() + r.slice(1) + s;
+      if (!usati.has(c)) return c;
+    }
+  }
+
+  // Livello 3: titolo + nome dal pool (~800 combinazioni)
+  const titoliShuf = [..._TITOLI].sort(() => Math.random() - 0.5);
+  const nomiShuf = [...NOMI_POOL].sort(() => Math.random() - 0.5);
+  for (const t of titoliShuf) {
+    for (const n of nomiShuf) {
+      const c = `${t} ${n}`;
+      if (!usati.has(c)) return c;
+    }
+  }
+
+  // Livello 4: nome + epiteto (~400 × 24 = ~9600 combinazioni, copre qualsiasi scenario)
+  for (const n of nomiShuf) {
+    for (const e of _EPITETI) {
+      const c = `${n} ${e}`;
+      if (!usati.has(c)) return c;
+    }
+  }
+
+  // Ultimo fallback numerico (non raggiungibile in pratica)
+  let i = 1;
+  while (usati.has(`Waifu ${i}`)) i++;
+  return `Waifu ${i}`;
 }
 
 // === DISTRIBUZIONE RARITÀ BILANCIATA ===
@@ -1843,6 +1960,15 @@ function BulkUploadTab({ waifu, ricarica, flash }) {
 
   // Upload massivo + creazione waifu
   const avviaUpload = async () => {
+    // Controlla unicità nomi prima di partire
+    const nomiNelBatch = previews.map(p => p.nome);
+    const duplicatiNelBatch = nomiNelBatch.filter((n, i) => nomiNelBatch.indexOf(n) !== i);
+    const duplicatiConFirestore = nomiNelBatch.filter(n => nomiUsati.has(n));
+    const tuttiDuplicati = [...new Set([...duplicatiNelBatch, ...duplicatiConFirestore])];
+    if (tuttiDuplicati.length > 0) {
+      flash(`Nomi duplicati: ${tuttiDuplicati.slice(0, 3).join(', ')}${tuttiDuplicati.length > 3 ? ` +${tuttiDuplicati.length - 3} altri` : ''}. Correggi prima di caricare.`, '#ef4444');
+      return;
+    }
     setFase('uploading');
     setProgresso({ fatto: 0, totale: previews.length, errori: 0 });
     const riusciti = [];
@@ -1914,6 +2040,15 @@ function BulkUploadTab({ waifu, ricarica, flash }) {
     }
     setPreviews(nuovo);
   };
+
+  // Nomi duplicati: set di nomi che compaiono più di una volta nel batch o già in Firestore
+  const nomiDuplicati = (() => {
+    const contatore = {};
+    previews.forEach(p => { contatore[p.nome] = (contatore[p.nome] || 0) + 1; });
+    const duplicatiNelBatch = new Set(Object.keys(contatore).filter(n => contatore[n] > 1));
+    const duplicatiInFirestore = new Set(previews.map(p => p.nome).filter(n => nomiUsati.has(n)));
+    return new Set([...duplicatiNelBatch, ...duplicatiInFirestore]);
+  })();
 
   // Rimuovi singola preview
   const rimuoviPreview = (index) => {
@@ -2011,8 +2146,8 @@ function BulkUploadTab({ waifu, ricarica, flash }) {
                 🤖 ANALIZZA CON AI ({previews.length} img)
               </button>
             )}
-            <button onClick={avviaUpload} style={btnPrimario} disabled={aiAnalisi}>
-              🚀 CARICA TUTTE ({previews.length})
+            <button onClick={avviaUpload} style={{ ...btnPrimario, opacity: (aiAnalisi || nomiDuplicati.size > 0) ? 0.5 : 1 }} disabled={aiAnalisi || nomiDuplicati.size > 0}>
+              🚀 CARICA TUTTE ({previews.length}){nomiDuplicati.size > 0 ? ` — ⚠ ${nomiDuplicati.size} duplicati` : ''}
             </button>
           </div>
         </div>
@@ -2041,28 +2176,50 @@ function BulkUploadTab({ waifu, ricarica, flash }) {
           </div>
         )}
 
+        {/* Banner duplicati */}
+        {nomiDuplicati.size > 0 && (
+          <div style={{ marginBottom: 10, padding: '10px 14px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.5)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 18 }}>⚠</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: 'Cinzel, serif', color: '#ef4444', fontSize: 11, fontWeight: 700, marginBottom: 2 }}>
+                {nomiDuplicati.size} {nomiDuplicati.size === 1 ? 'nome duplicato' : 'nomi duplicati'} — correggi per poter caricare
+              </div>
+              <div style={{ fontSize: 10, color: 'rgba(239,68,68,0.7)' }}>
+                {[...nomiDuplicati].slice(0, 5).join(', ')}{nomiDuplicati.size > 5 ? ` +${nomiDuplicati.size - 5} altri` : ''}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Griglia waifu preview */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8, maxHeight: '70vh', overflowY: 'auto', padding: 4 }}>
           {previews.map((p, i) => {
             const rar = RARITA[p.rarita] || RARITA.comune;
+            const nomeDuplicato = nomiDuplicati.has(p.nome);
             return (
               <div key={i} style={{
                 padding: 8, borderRadius: 8,
-                background: 'rgba(0,0,0,0.4)',
-                border: `1px solid ${p.status === 'analyzing' ? '#a855f7' : p.status === 'error' ? '#ef4444' : rar.colore}60`,
+                background: nomeDuplicato ? 'rgba(239,68,68,0.08)' : 'rgba(0,0,0,0.4)',
+                border: `1px solid ${nomeDuplicato ? '#ef4444' : p.status === 'analyzing' ? '#a855f7' : p.status === 'error' ? '#ef4444' : rar.colore}60`,
                 opacity: p.status === 'analyzing' ? 0.7 : 1,
                 position: 'relative',
               }}>
                 {/* Status badge */}
                 {p.status === 'analyzing' && <div style={{ position: 'absolute', top: 4, right: 4, background: '#a855f7', color: '#fff', padding: '2px 6px', borderRadius: 8, fontSize: 8, letterSpacing: 1 }}>🤖 AI...</div>}
-                {p.aiStats && <div style={{ position: 'absolute', top: 4, right: 4, background: '#06d6a0', color: '#000', padding: '2px 6px', borderRadius: 8, fontSize: 8, letterSpacing: 1 }}>✓ AI</div>}
+                {p.aiStats && !nomeDuplicato && <div style={{ position: 'absolute', top: 4, right: 4, background: '#06d6a0', color: '#000', padding: '2px 6px', borderRadius: 8, fontSize: 8, letterSpacing: 1 }}>✓ AI</div>}
+                {nomeDuplicato && <div style={{ position: 'absolute', top: 4, right: 4, background: '#ef4444', color: '#fff', padding: '2px 6px', borderRadius: 8, fontSize: 8, letterSpacing: 1 }}>⚠ DUPLICATO</div>}
 
                 {/* Preview immagine */}
                 <img src={p.url} alt={p.nome} style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 6, marginBottom: 6 }} />
 
                 {/* Nome (editabile) */}
                 <input value={p.nome} onChange={e => aggiornaPreview(i, 'nome', e.target.value)}
-                  style={{ ...inputStyle, padding: 4, fontSize: 11, marginBottom: 4, fontWeight: 600 }} />
+                  style={{ ...inputStyle, padding: 4, fontSize: 11, marginBottom: nomeDuplicato ? 2 : 4, fontWeight: 600, borderColor: nomeDuplicato ? '#ef4444' : undefined }} />
+                {nomeDuplicato && (
+                  <div style={{ fontSize: 9, color: '#ef4444', marginBottom: 4, lineHeight: 1.3 }}>
+                    {nomiUsati.has(p.nome) ? '⚠ Esiste già in catalogo' : '⚠ Duplicato nel batch'}
+                  </div>
+                )}
 
                 {/* Rarità */}
                 <select value={p.rarita} onChange={e => aggiornaPreview(i, 'rarita', e.target.value)}

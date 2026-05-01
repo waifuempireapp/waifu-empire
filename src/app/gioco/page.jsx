@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, listDropsAttivi, getDropAttivo, getClassifica, premioPerPosizione, deleteTeamFromCollezione } from '@/lib/firestoreService';
+import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, listDropsAttivi, getDropAttivo, getClassifica, premioPerPosizione, deleteTeamFromCollezione, isDropCompleto, progressioneDrop } from '@/lib/firestoreService';
 import { calcolaRicaricaPacchetti, calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, INCREMENTI_LEVELUP, clampStat, clampWaifuStats, GOD_PACK_PROB_DEFAULT } from '@/lib/gameLogic';
 import { TIMER, RARITA, COLORI_CAPELLI, CATEGORIE_TETTE, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, OUTFIT_CONFIG_DEFAULT, ABILITA_TIPI } from '@/lib/constants';
 import { db } from '@/lib/firebase';
@@ -1870,6 +1870,119 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
           />
         )}
       </div>
+
+      {/* BANNER MANGA — CTA completamento drop */}
+      {dropAttivo?.asset_manga && (() => {
+        const prog = progressioneDrop(dropAttivo, collezione);
+        const completo = isDropCompleto(dropAttivo, collezione);
+        const c1 = dropColore;
+        const c2 = dropColore2;
+        return (
+          <div style={{
+            margin: '4px 0 14px',
+            borderRadius: 14,
+            background: completo
+              ? `linear-gradient(135deg, ${c1}30, ${c2}20)`
+              : `linear-gradient(135deg, rgba(20,10,40,0.9), rgba(10,5,20,0.9))`,
+            border: completo
+              ? `1.5px solid ${c1}`
+              : `1px solid rgba(155,89,255,0.25)`,
+            boxShadow: completo ? `0 0 20px ${c1}40` : 'none',
+            overflow: 'hidden',
+            position: 'relative',
+          }}>
+            {/* Decorazione top */}
+            <div style={{
+              position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+              background: completo
+                ? `linear-gradient(90deg, ${c1}, ${c2}, ${c1})`
+                : 'linear-gradient(90deg, rgba(155,89,255,0.3), rgba(236,72,153,0.3))',
+            }} />
+
+            <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              {/* Icona libro */}
+              <div style={{
+                flexShrink: 0, width: 48, height: 48, borderRadius: 10,
+                background: completo
+                  ? `linear-gradient(135deg, ${c1}60, ${c2}40)`
+                  : 'rgba(155,89,255,0.15)',
+                border: `1px solid ${completo ? c1 : 'rgba(155,89,255,0.3)'}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 24,
+                boxShadow: completo ? `0 0 12px ${c1}50` : 'none',
+              }}>
+                {completo ? '📖' : '🔒'}
+              </div>
+
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'Orbitron', fontSize: 8, letterSpacing: 2, color: completo ? c1 : 'rgba(238,232,220,0.4)', marginBottom: 3 }}>
+                  {completo ? '✦ CAPITOLO SBLOCCATO' : 'CAPITOLO MANGA'}
+                </div>
+                <div style={{ fontFamily: 'Orbitron', fontSize: 11, fontWeight: 700, color: completo ? '#fff' : 'rgba(238,232,220,0.7)', marginBottom: 5 }}>
+                  {dropAttivo.nome}
+                </div>
+
+                {completo ? (
+                  <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.55)', lineHeight: 1.4 }}>
+                    Hai completato il drop! Il capitolo è tuo.
+                  </div>
+                ) : (
+                  <>
+                    {/* Barra progresso */}
+                    <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden', marginBottom: 4 }}>
+                      <div style={{
+                        height: '100%', borderRadius: 2,
+                        width: `${prog.percentuale}%`,
+                        background: `linear-gradient(90deg, ${c1}, ${c2})`,
+                        transition: 'width 0.5s ease',
+                        boxShadow: `0 0 6px ${c1}80`,
+                      }} />
+                    </div>
+                    <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,0.4)' }}>
+                      {prog.possedute}/{prog.totale} carte · {prog.percentuale}% completato
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* CTA button */}
+              <div style={{ flexShrink: 0 }}>
+                {completo ? (
+                  <a
+                    href={dropAttivo.asset_manga}
+                    target="_blank"
+                    rel="noreferrer"
+                    download
+                    style={{
+                      display: 'block', padding: '8px 12px',
+                      background: `linear-gradient(135deg, ${c1}, ${c2})`,
+                      color: '#000', fontFamily: 'Orbitron', fontSize: 8,
+                      fontWeight: 700, letterSpacing: 1, borderRadius: 8,
+                      textDecoration: 'none', textAlign: 'center',
+                      boxShadow: `0 0 12px ${c1}60`,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    ⬇ SCARICA
+                  </a>
+                ) : (
+                  <div style={{
+                    padding: '8px 10px',
+                    background: 'rgba(155,89,255,0.1)',
+                    border: '1px solid rgba(155,89,255,0.25)',
+                    borderRadius: 8, textAlign: 'center',
+                    fontFamily: 'Orbitron', fontSize: 7,
+                    color: 'rgba(238,232,220,0.35)', letterSpacing: 1,
+                    whiteSpace: 'nowrap',
+                  }}>
+                    ANCORA<br/>{prog.totale - prog.possedute} CARTE
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* BOTTONE CATALOGO */}
       <div style={{ textAlign: 'center', marginBottom: 10 }}>
