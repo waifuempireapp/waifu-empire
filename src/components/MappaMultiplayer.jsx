@@ -662,6 +662,11 @@ function SchermataPartita({
     } catch (e) { mostraNotif(e.message, '#ff3d3d'); }
   };
 
+  // Chiudi popup se il turno passa ad un altro giocatore
+  React.useEffect(() => {
+    if (!isMioTurno) setTerrSel(null);
+  }, [isMioTurno]);
+
   return (
     <div className="fade-in">
       {/* Header partita */}
@@ -707,6 +712,35 @@ function SchermataPartita({
           mappaMulti={mappaTerritori}
           myUid={myUid}
         />
+
+        {/* ── Overlay "non è il tuo turno" ── */}
+        {!isMioTurno && !sonoEliminato && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 30,
+            background: 'rgba(6,3,15,0.72)', backdropFilter: 'blur(3px)',
+            borderRadius: 10,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: 10,
+          }}>
+            <div style={{ fontSize: 28 }}>⏳</div>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 13, fontWeight: 700, color: giocatori[turnoUid]?.coloreImpero || '#f5a623', letterSpacing: 2, textAlign: 'center' }}>
+              TURNO DI {(giocatori[turnoUid]?.nomeImpero || '…').toUpperCase()}
+            </div>
+            <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', textAlign: 'center' }}>
+              In attesa che scelga il territorio da attaccare…
+            </div>
+            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+              {[0,1,2].map(i => (
+                <div key={i} style={{
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: giocatori[turnoUid]?.coloreImpero || '#f5a623',
+                  animation: `mmpulse 1.2s ease-in-out ${i*0.4}s infinite`,
+                }} />
+              ))}
+            </div>
+            <style>{`@keyframes mmpulse{0%,100%{opacity:0.2;transform:scale(0.8)}50%{opacity:1;transform:scale(1.2)}}`}</style>
+          </div>
+        )}
 
         {/* Popup territorio */}
         {terrSel && (() => {
@@ -1640,22 +1674,45 @@ function BattagliaMultiplayer({
   // ── Fine battaglia ────────────────────────────────────────────────
   if (fase === 'gameEnd') {
     const vittoria = punteggio.player > punteggio.cpu;
+    const coloreRisultato = vittoria ? '#00e676' : '#ff3d3d';
+    const testoTerritori = vittoria
+      ? `🏴 ${terrData?.nome} conquistato!`
+      : `❌ Hai perso ${terrData?.nome}`;
     return (
       <div className="fade-in" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
-        <div style={{ background: 'rgba(6,3,15,0.97)', border: `2px solid ${vittoria ? '#00e676' : '#ff3d3d'}40`, borderRadius: 20, padding: 36, textAlign: 'center', maxWidth: 360 }}>
+        <div style={{
+          background: 'rgba(6,3,15,0.97)',
+          border: `2px solid ${coloreRisultato}40`,
+          borderRadius: 20, padding: 36, textAlign: 'center', maxWidth: 360,
+          boxShadow: `0 0 40px ${coloreRisultato}20`,
+        }}>
           <div style={{ fontSize: 52, marginBottom: 10 }}>{vittoria ? '👑' : '💔'}</div>
-          <div style={{ fontFamily: 'Orbitron', fontSize: 22, fontWeight: 700, color: vittoria ? '#00e676' : '#ff3d3d', letterSpacing: 3 }}>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 22, fontWeight: 700, color: coloreRisultato, letterSpacing: 3, marginBottom: 8 }}>
             {vittoria ? 'VITTORIA!' : 'SCONFITTA'}
           </div>
-          <div style={{ fontSize: 28, fontFamily: 'Orbitron', fontWeight: 700, marginTop: 8 }}>
-            <span style={{ color: '#00e676' }}>{punteggio.player}</span>
-            <span style={{ color: '#444', margin: '0 8px' }}>—</span>
-            <span style={{ color: '#ff3d3d' }}>{punteggio.cpu}</span>
+          {/* Punteggio */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 14 }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>TU</div>
+              <div style={{ fontSize: 32, fontFamily: 'Orbitron', fontWeight: 800, color: '#00e676' }}>{punteggio.player}</div>
+            </div>
+            <div style={{ fontSize: 16, color: '#444', fontFamily: 'Orbitron' }}>—</div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>{nomeAvversario.toUpperCase()}</div>
+              <div style={{ fontSize: 32, fontFamily: 'Orbitron', fontWeight: 800, color: coloreAvversario }}>{punteggio.cpu}</div>
+            </div>
           </div>
-          <div style={{ marginTop: 14, fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron' }}>
-            {vittoria ? `${terrData?.nome} conquistato!` : `${nomeAvversario} ha resistito!`}
+          {/* Territorio */}
+          <div style={{
+            padding: '10px 18px', borderRadius: 10,
+            background: `${coloreRisultato}12`,
+            border: `1px solid ${coloreRisultato}30`,
+            fontSize: 11, fontFamily: 'Orbitron', fontWeight: 700,
+            color: coloreRisultato, letterSpacing: 1,
+          }}>
+            {testoTerritori}
           </div>
-          <div style={{ marginTop: 20, fontSize: 10, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron' }}>
+          <div style={{ marginTop: 14, fontSize: 9, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron' }}>
             Aggiornamento mappa in corso…
           </div>
         </div>
@@ -1998,32 +2055,101 @@ function BattagliaMultiplayer({
         </div>
       )}
 
-      {/* ── Pulsante Prosegui turno (PvP roundEnd) ── */}
-      {!isCpu && fase === 'roundEnd' && (
-        <div style={{ textAlign: 'center', marginTop: 8 }}>
-          <button onClick={prossimoRound} style={{ ...btnStyle('#ff2d78'), maxWidth: 300, margin: '0 auto' }}>✅ PROSEGUI TURNO</button>
-        </div>
+      {/* ── BANNER FINE ROUND (stile RoundEndBar vs CPU) ── */}
+      {(fase === 'roundEnd' || fase === 'pvpAttesaProsegui' || (isCpu && fase === 'roundEnd')) && vincitoreRound && (
+        <RoundEndBarMulti
+          vincitoreRound={vincitoreRound}
+          statScelta={statScelta}
+          direzione={direzione}
+          carteP={carteP}
+          carteC={carteC}
+          round={round}
+          punteggio={punteggio}
+          STATS_BATTAGLIA={STATS_BATTAGLIA}
+          isCpu={isCpu}
+          nomeAvversario={nomeAvversario}
+          coloreAvversario={coloreAvversario}
+          pvpHoPremutoProsegui={pvpHoPremutoProsegui}
+          onProssimoRound={prossimoRound}
+        />
       )}
-      {isCpu && fase === 'roundEnd' && (
-        <div style={{ textAlign: 'center', marginTop: 8 }}>
-          <button onClick={prossimoRound} style={{ ...btnStyle('#ff2d78'), maxWidth: 300, margin: '0 auto' }}>PROSSIMO ROUND →</button>
-        </div>
-      )}
+    </div>
+  );
+}
 
-      {/* ── Attesa Prosegui turno (PvP) ── */}
-      {!isCpu && fase === 'pvpAttesaProsegui' && (
-        <div style={{ textAlign: 'center', marginTop: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 8 }}>
-            {[0, 1, 2].map(i => (
-              <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: coloreAvversario, animation: `pulse 1.2s ease-in-out ${i * 0.4}s infinite` }} />
-            ))}
-          </div>
-          <style>{`@keyframes pulse { 0%,100%{opacity:0.2;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }`}</style>
-          <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron' }}>
-            In attesa di {nomeAvversario}…
-          </div>
+// ════════════════════════════════════════════════════════════════════
+// BANNER FINE ROUND — stile identico a RoundEndBar vs CPU
+// Gestisce sia il caso CPU (auto-avanza) sia PvP (attende entrambi)
+// ════════════════════════════════════════════════════════════════════
+function RoundEndBarMulti({ vincitoreRound, statScelta, direzione, carteP, carteC, round, punteggio, STATS_BATTAGLIA, isCpu, nomeAvversario, coloreAvversario, pvpHoPremutoProsegui, onProssimoRound }) {
+  const [timer, setTimer] = useState(isCpu ? 30 : null); // timer solo vs CPU
+  useEffect(() => {
+    if (!isCpu) return;
+    if (timer <= 0) { onProssimoRound(); return; }
+    const t = setTimeout(() => setTimer(s => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [timer, isCpu]);
+
+  const colore = vincitoreRound === 'player' ? '#00e676' : vincitoreRound === 'cpu' ? '#ff3d3d' : '#ffd666';
+  const statInfo = STATS_BATTAGLIA.find(s => s.key === statScelta);
+  const eFine = round >= 5 || punteggio.player >= 3 || punteggio.cpu >= 3;
+
+  const testoEsito = vincitoreRound === 'player'
+    ? '✅ ROUND VINTO!'
+    : vincitoreRound === 'cpu'
+    ? '❌ ROUND PERSO'
+    : '🤝 PAREGGIO';
+
+  const testoPulsante = isCpu
+    ? (eFine ? 'FINE PARTITA' : 'PROSSIMO ROUND →')
+    : pvpHoPremutoProsegui
+    ? `⏳ In attesa di ${nomeAvversario}…`
+    : (eFine ? 'FINE PARTITA' : '✅ PROSEGUI TURNO');
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 110,
+      padding: '10px 16px 74px 16px',
+      background: 'rgba(6,3,15,0.96)',
+      borderTop: `2px solid ${colore}`,
+    }}>
+      <div style={{ maxWidth: 500, margin: '0 auto', textAlign: 'center' }}>
+        {/* Esito round */}
+        <div style={{ fontSize: 13, fontFamily: 'Orbitron', fontWeight: 700, marginBottom: 4, color: colore }}>
+          {testoEsito}
+          {isCpu && timer !== null && <span style={{ fontSize: 11, marginLeft: 8, opacity: 0.6 }}>({timer}s)</span>}
         </div>
-      )}
+        {/* Stat confronto */}
+        {statInfo && carteP && carteC && (
+          <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.6)', marginBottom: 8 }}>
+            {statInfo.icon} {statInfo.label} {direzione === 'piu' ? '▲' : '▼'} — Tu: <strong>{carteP[statScelta]}</strong> vs {nomeAvversario}: <strong>{carteC[statScelta]}</strong>
+          </div>
+        )}
+        {/* Punteggio mini */}
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, marginBottom: 10 }}>
+          <span style={{ fontFamily: 'Orbitron', fontWeight: 700, color: '#00e676', fontSize: 18 }}>{punteggio.player}</span>
+          <span style={{ fontFamily: 'Orbitron', fontSize: 11, color: 'rgba(238,232,220,0.3)' }}>—</span>
+          <span style={{ fontFamily: 'Orbitron', fontWeight: 700, color: coloreAvversario, fontSize: 18 }}>{punteggio.cpu}</span>
+        </div>
+        {/* Pulsante / stato attesa PvP */}
+        {!isCpu && pvpHoPremutoProsegui ? (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 6 }}>
+              {[0,1,2].map(i => (
+                <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: coloreAvversario, animation: `reb_pulse 1.2s ease-in-out ${i*0.4}s infinite` }} />
+              ))}
+            </div>
+            <style>{`@keyframes reb_pulse{0%,100%{opacity:0.2;transform:scale(0.8)}50%{opacity:1;transform:scale(1.2)}}`}</style>
+            <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron' }}>
+              In attesa di {nomeAvversario}…
+            </div>
+          </div>
+        ) : (
+          <BtnDecorato variant="primary" size="md" onClick={onProssimoRound}>
+            {testoPulsante}
+          </BtnDecorato>
+        )}
+      </div>
     </div>
   );
 }
