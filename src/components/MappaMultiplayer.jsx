@@ -35,27 +35,39 @@ export default function MappaMultiplayer({
   const [vista, setVista] = useState(vistaIniziale);
   const [partita, setPartita] = useState(null);
   const [codicePartita, setCodicePartita] = useState('');
-  const [unsubscribe, setUnsubscribe] = useState(null);
+  // useRef per il listener: evita problemi con setState che chiama la funzione come updater
+  const unsubscribeRef = useRef(null);
 
-  // Pulisce il listener quando cambia partita
+  // Cleanup al unmount
   useEffect(() => {
-    return () => { if (unsubscribe) unsubscribe(); };
-  }, [unsubscribe]);
+    return () => { if (unsubscribeRef.current) unsubscribeRef.current(); };
+  }, []);
 
-  // Avvia listener realtime
+  // Sanitizza i dati Firestore: converte Timestamp in millisecondi (numeri serializzabili)
+  const sanitizzaPartita = useCallback((p) => {
+    if (!p) return p;
+    const conv = (v) => {
+      if (v && typeof v === 'object' && typeof v.toMillis === 'function') return v.toMillis();
+      if (v && typeof v === 'object' && typeof v.seconds === 'number') return v.seconds * 1000;
+      return v;
+    };
+    return { ...p, creato: conv(p.creato), aggiornato: conv(p.aggiornato) };
+  }, []);
+
+  // Avvia listener realtime — usa ref per evitare React error #300
   const avviaListener = useCallback((codice) => {
-    if (unsubscribe) unsubscribe();
+    if (unsubscribeRef.current) unsubscribeRef.current();
     const unsub = ascoltaPartita(codice, (p) => {
-      if (p) setPartita(p);
+      if (p) setPartita(sanitizzaPartita(p));
     });
-    setUnsubscribe(() => unsub);
-  }, [unsubscribe]);
+    unsubscribeRef.current = unsub;
+  }, [sanitizzaPartita]);
 
   const handleEsciESalva = async () => {
     if (partita?.codice) {
       await salvaPartita(partita.codice);
       await setGiocatoreInLobby(partita.codice, user.uid, false);
-      if (unsubscribe) unsubscribe();
+      if (unsubscribeRef.current) unsubscribeRef.current();
     }
     onEsci();
   };
