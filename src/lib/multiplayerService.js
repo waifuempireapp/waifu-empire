@@ -315,3 +315,83 @@ export async function getColoriUsatiLobby(codice) {
   if (!snap.exists()) return [];
   return Object.values(snap.data().giocatori || {}).map(g => g.coloreImpero);
 }
+
+// ── PvP: salva che un giocatore ha premuto "Prosegui turno" ─────────────
+// Struttura: battagliaCorrente.proseguiRound[roundKey][uid] = true
+// Quando entrambi i giocatori hanno segnalato, il round avanza.
+export async function salvaProseguiTurnoRound(codice, uid, roundKey) {
+  const ref = doc(db, 'partite_multi', codice);
+  await updateDoc(ref, {
+    [`battagliaCorrente.proseguiRound.${roundKey}.${uid}`]: true,
+    aggiornato: serverTimestamp(),
+  });
+}
+
+// ── PvP: registra risultato battaglia senza scalare energia al perdente ─
+// Aggiorna il territorio, segna con pvp:true (escluso dalla classifica settimanale).
+export async function registraRisultatoBattagliaPvp({ codice, vincitoreUid, territorioId }) {
+  const ref = doc(db, 'partite_multi', codice);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return {};
+  const p = snap.data();
+  const mappaTerritori = { ...p.mappaTerritori };
+  const giocatori = { ...p.giocatori };
+  const attaccanteUid = p.battagliaCorrente?.attaccanteUid;
+  const difensoreUid = p.battagliaCorrente?.difensoreUid;
+
+  if (vincitoreUid === attaccanteUid) {
+    // Attaccante vince: prende il territorio (marcato pvp)
+    mappaTerritori[territorioId] = {
+      uid: attaccanteUid,
+      nomeImpero: giocatori[attaccanteUid]?.nomeImpero,
+      coloreImpero: giocatori[attaccanteUid]?.coloreImpero,
+      pvp: true, // non conta per la classifica settimanale
+    };
+    if (giocatori[attaccanteUid]) {
+      giocatori[attaccanteUid] = {
+        ...giocatori[attaccanteUid],
+        territoriIds: [...(giocatori[attaccanteUid].territoriIds || []), territorioId],
+      };
+    }
+    if (difensoreUid && difensoreUid !== 'cpu' && giocatori[difensoreUid]) {
+      const nuoviTerritori = (giocatori[difensoreUid].territoriIds || []).filter(t => t !== territorioId);
+      giocatori[difensoreUid] = {
+        ...giocatori[difensoreUid],
+        territoriIds: nuoviTerritori,
+        eliminato: nuoviTerritori.length === 0,
+      };
+    }
+  }
+
+  const giocatoriAttivi = Object.values(giocatori).filter(g => g.uid !== 'cpu' && !g.eliminato);
+  const vincitoreFinale = giocatoriAttivi.length === 1 ? giocatoriAttivi[0].uid : null;
+
+  let ordine = p.ordineGiocatori || [];
+  let turnoCorrente = p.turnoCorrente ?? 0;
+  let prossimo = (turnoCorrente + 1) % ordine.length;
+  let tentativi = 0;
+  while (tentativi < ordine.length) {
+    const candidato = ordine[prossimo];
+    const g = giocatori[candidato];
+    if (g && !g.eliminato) break;
+    prossimo = (prossimo + 1) % ordine.length;
+    tentativi++;
+  }
+
+  const logEntry = vincitoreUid === attaccanteUid
+    ? `[PvP] ${giocatori[attaccanteUid]?.nomeImpero} conquista ${TERRITORI.find(t => t.id === territorioId)?.nome}`
+    : `[PvP] ${giocatori[difensoreUid]?.nomeImpero ?? 'Avversario'} difende ${TERRITORI.find(t => t.id === territorioId)?.nome}`;
+
+  await updateDoc(ref, {
+    mappaTerritori,
+    giocatori,
+    battagliaCorrente: null,
+    turnoCorrente: prossimo,
+    stato: vincitoreFinale ? 'terminata' : 'in_gioco',
+    vincitore: vincitoreFinale || null,
+    aggiornato: serverTimestamp(),
+    log: [...(p.log || []).slice(-50), logEntry],
+  });
+
+  return { vincitoreFinale, attaccanteUid, difensoreUid };
+}
