@@ -54,11 +54,16 @@ export default function MappaMultiplayer({
     return { ...p, creato: conv(p.creato), aggiornato: conv(p.aggiornato) };
   }, []);
 
-  // Avvia listener realtime — usa ref per evitare React error #300
+  // Avvia listener realtime.
+  // Il callback di onSnapshot può essere chiamato sincronicamente da Firestore
+  // durante un ciclo di update React, causando React error #300 ("Cannot update
+  // a component while rendering a different component").
+  // setTimeout(0) garantisce che setPartita venga eseguito in un nuovo task,
+  // fuori dal ciclo di rendering corrente.
   const avviaListener = useCallback((codice) => {
     if (unsubscribeRef.current) unsubscribeRef.current();
     const unsub = ascoltaPartita(codice, (p) => {
-      if (p) setPartita(sanitizzaPartita(p));
+      if (p) setTimeout(() => setPartita(sanitizzaPartita(p)), 0);
     });
     unsubscribeRef.current = unsub;
   }, [sanitizzaPartita]);
