@@ -1585,6 +1585,7 @@ function BattagliaMultiplayer({
   const waifuPDisp = inSuddenDeath ? mazzoP.filter(w => w.id !== carteP?.id) : mazzoP.filter(w => !risultatiWaifu[w.id]);
   const statsDisp = STATS_BATTAGLIA.filter(s => !statsUsatePartita.includes(s.key));
   const statInfo = STATS_BATTAGLIA.find(s => s.key === statScelta);
+  const showTimer = FASI_TIMER_ACTIVE.includes(fase);
 
   // Helpers stato waifu (come vs CPU)
   const getStatoWaifu = (id) => {
