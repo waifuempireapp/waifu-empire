@@ -889,8 +889,9 @@ function BattagliaMultiplayer({
   const [pvpHoScelto, setPvpHoScelto] = useState(false);
   const [pvpHoPremutoProsegui, setPvpHoPremutoProsegui] = useState(false);
   // Ref per guard — NON stato React (evita stale closure)
-  const pvpRoundRisoltoRef = useRef('');     // roundKey già risolto
-  const pvpProseguiEseguitoRef = useRef(''); // roundKey già avanzato
+  const pvpScriviRef = useRef('');           // roundKey già inviato a Firestore (solo attaccante)
+  const pvpRoundRisoltoRef = useRef('');     // roundKey già applicato localmente (tutti)
+  const pvpProseguiEseguitoRef = useRef(''); // roundKey già avanzato al prossimo round
   // Ref per i valori critici usati nella risoluzione (evita stale closure)
   const mazzoPRef = useRef([]);
   const mazzoCRef = useRef([]);
@@ -939,6 +940,7 @@ function BattagliaMultiplayer({
   useEffect(() => { statsUsateRef.current = statsUsatePartita; }, [statsUsatePartita]);
 
   // Listener principale: reagisce a OGNI cambio di battagliaCorrente su Firestore
+  // FLUSSO: scelte → [attaccante scrive risultato] → tutti leggono risultato → reveal → roundEnd → prosegui → next round
   useEffect(() => {
     if (isCpu || !iniziata) return;
     const batt = partita?.battagliaCorrente;
@@ -950,10 +952,11 @@ function BattagliaMultiplayer({
     const miaScelta = scelteRound[myUid];
     const sceltaAvv = scelteRound[avversarioUid];
     const entrambiHannoScelto = !!(miaScelta && sceltaAvv);
+    const pvpRisultato = batt.pvpRisultato || {};
+    const risultatoRound = pvpRisultato[roundKey];
 
-    // ── 1. Primo turno: chi inizia? (scritto su Firestore dall'attaccante) ──
-    const faseCorrente = fase; // capture per closure
-    if (!primoTurnoRef.current && batt.primoTurno && faseCorrente === 'coin') {
+    // ── 1. Primo turno: chi inizia? ──
+    if (!primoTurnoRef.current && batt.primoTurno && fase === 'coin') {
       const pt = batt.primoTurno === myUid ? 'player' : 'cpu';
       setCoinResult(pt);
       setPrimoTurno(pt);
@@ -967,33 +970,29 @@ function BattagliaMultiplayer({
       return;
     }
 
-    // ── 2. Mostra waifu avversario appena disponibile (durante selezione stat/dir) ──
-    if ((faseCorrente === 'pvpScegliStat' || faseCorrente === 'pvpScegliDir') && sceltaAvv) {
+    // ── 2. Preview waifu avversario durante selezione stat/dir ──
+    if ((fase === 'pvpScegliStat' || fase === 'pvpScegliDir') && sceltaAvv) {
       const wAvv = mazzoCRef.current.find(w => w.id === sceltaAvv.waifuId || w.id === `opp_${sceltaAvv.waifuId}`);
       if (wAvv) setCarteC(wAvv);
     }
 
-    // ── 3. Risoluzione round: entrambi hanno scelto ──
-    // Guard: usa ref stringa, non stato React
-    if (entrambiHannoScelto && pvpRoundRisoltoRef.current !== roundKey) {
-      // Solo l'attaccante risolve e scrive il risultato (evita race condition)
-      if (sonoAttaccante) {
-        pvpRoundRisoltoRef.current = roundKey; // lock immediato
-        _risolviERiscrivi(scelteRound, roundKey);
-      }
-      // Non-attaccante: aspetta che batt.pvpRisultato[roundKey] appaia
+    // ── 3. Attaccante: quando entrambi hanno scelto, risolve e scrive su Firestore ──
+    // pvpScriviRef evita doppia scrittura; è SEPARATO da pvpRoundRisoltoRef (che serve per l'applicazione)
+    if (sonoAttaccante && entrambiHannoScelto && pvpScriviRef.current !== roundKey) {
+      pvpScriviRef.current = roundKey;
+      _risolviERiscrivi(scelteRound, roundKey);
+      // NON usciamo: continuiamo a controllare se risultatoRound è già disponibile
     }
 
-    // ── 4. Leggo risultato scritto dall'attaccante ──
-    const pvpRisultato = batt.pvpRisultato || {};
-    const risultatoRound = pvpRisultato[roundKey];
+    // ── 4. TUTTI (attaccante e difensore): appena risultatoRound appare, applica ──
     if (risultatoRound && pvpRoundRisoltoRef.current !== roundKey) {
       pvpRoundRisoltoRef.current = roundKey;
       _applicaRisultato(risultatoRound, roundKey);
+      return;
     }
 
     // ── 5. Prosegui turno: entrambi hanno premuto ──
-    if (faseCorrente === 'pvpAttesaProsegui') {
+    if (fase === 'pvpAttesaProsegui') {
       const proseguiData = batt.proseguiRound || {};
       const proseguiRound = proseguiData[roundKey] || {};
       if (proseguiRound[myUid] && proseguiRound[avversarioUid] && pvpProseguiEseguitoRef.current !== roundKey) {
@@ -1030,12 +1029,21 @@ function BattagliaMultiplayer({
     const valC = cEff[statKey];
     const vince = valP === valC ? 'pareggio' : dir === 'piu' ? (valP > valC ? 'player' : 'cpu') : (valP < valC ? 'player' : 'cpu');
 
-    // Scrivi risultato su Firestore — lo leggeranno entrambi
+    // Scrivi risultato su Firestore — lo leggeranno entrambi tramite il listener
     try {
       await salvaRisultatoPvpRound(codice, roundKey, { wMyId, wAvvId, statKey, dir, vince });
+      // Applica anche localmente subito (l'attaccante non aspetta il proprio onSnapshot)
+      // Il listener del difensore applicherà quando riceve l'aggiornamento Firestore
+      if (pvpRoundRisoltoRef.current !== roundKey) {
+        pvpRoundRisoltoRef.current = roundKey;
+        _applicaRisultato({ wMyId, wAvvId, statKey, dir, vince }, roundKey);
+      }
     } catch (e) {
-      // fallback: applica localmente anche se Firestore fallisce
-      _applicaRisultato({ wMyId, wAvvId, statKey, dir, vince }, roundKey);
+      // fallback se Firestore fallisce
+      if (pvpRoundRisoltoRef.current !== roundKey) {
+        pvpRoundRisoltoRef.current = roundKey;
+        _applicaRisultato({ wMyId, wAvvId, statKey, dir, vince }, roundKey);
+      }
     }
   };
 
@@ -1101,6 +1109,9 @@ function BattagliaMultiplayer({
 
     setCarteP(null); setCarteC(null); setStatScelta(null);
     setDirezione(null); setVincitoreRound(null);
+    pvpScriviRef.current = '';
+    pvpRoundRisoltoRef.current = '';
+    pvpProseguiEseguitoRef.current = '';
     _pvpResetRound();
     setRound(nr);
     roundRef.current = nr;
@@ -1308,7 +1319,8 @@ function BattagliaMultiplayer({
     setCarteP(null); setCarteC(null); setStatScelta(null); setDirezione(null); setVincitoreRound(null);
     setInSuddenDeath(true);
     inSuddenDeathRef.current = true;
-    pvpRoundRisoltoRef.current = ''; // reset guard per il nuovo roundKey 'sd'
+    pvpScriviRef.current = ''; // reset per il nuovo roundKey 'sd'
+    pvpRoundRisoltoRef.current = '';
     pvpProseguiEseguitoRef.current = '';
     const stats = statsUsateRef.current;
     const pool = STATS_BATTAGLIA.filter(s => !stats.includes(s.key));
@@ -1395,6 +1407,7 @@ function BattagliaMultiplayer({
     setInSuddenDeath(false); inSuddenDeathRef.current = false;
     setPrimoTurno(null); primoTurnoRef.current = null;
     setTurno(null); turnoRef.current = null;
+    pvpScriviRef.current = '';
     pvpRoundRisoltoRef.current = '';
     pvpProseguiEseguitoRef.current = '';
     setPvpHoScelto(false);
