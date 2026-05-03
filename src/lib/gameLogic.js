@@ -12,6 +12,21 @@ export function pickRaritaCasuale() {
   return 'comune';
 }
 
+// Versione per i waifu pack: esclude le waifu comuni (epico compreso in su).
+// Le probabilità vengono rinormalizzate escludendo la quota di "comune".
+export function pickRaritaWaifu() {
+  const escluse = new Set(['comune']);
+  const voci = Object.entries(RARITA).filter(([key]) => !escluse.has(key));
+  const totale = voci.reduce((s, [, val]) => s + val.prob, 0);
+  const r = Math.random() * totale;
+  let cumul = 0;
+  for (const [key, val] of voci) {
+    cumul += val.prob;
+    if (r <= cumul) return key;
+  }
+  return voci[voci.length - 1][0]; // fallback all'ultima rarità disponibile
+}
+
 // Estrae elemento casuale dal catalogo filtrato per rarità (nessun doppione opzionale)
 export function pickElementoConRarita(catalogo, raritaTarget, esclusi = []) {
   const candidati = catalogo.filter(c => c.rarita === raritaTarget && !esclusi.includes(c.id));
@@ -35,7 +50,7 @@ export function generaPacchetto({ waifuPool, outfitPool, posePool, escludiDoppio
     const waifuCarte = [];
     const waifuEstratte = [];
     for (let i = 0; i < 5; i++) {
-      const r = pickRaritaCasuale();
+      const r = pickRaritaWaifu();
       const esclusi = [...waifuEstratte.map(w => w.id)];
       if (escludiDoppioniWaifu) esclusi.push(...waifuPossedute);
       const w = pickElementoConRarita(waifuPool, r, esclusi);
@@ -53,7 +68,7 @@ export function generaPacchetto({ waifuPool, outfitPool, posePool, escludiDoppio
   const poseCarte = [];
   const waifuEstratte = [];
   for (let i = 0; i < 2; i++) {
-    const r = pickRaritaCasuale();
+    const r = pickRaritaWaifu();
     const esclusi = [...waifuEstratte.map(w => w.id)];
     if (escludiDoppioniWaifu) esclusi.push(...waifuPossedute);
     const w = pickElementoConRarita(waifuPool, r, esclusi);
