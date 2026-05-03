@@ -172,6 +172,9 @@ export async function scegliAttacco({ codice, attaccanteUid, territorioId }) {
       territorioId,
       statoFase: 'in_attesa',  // in_attesa → in_corso → risolta
       risultato: null,
+      // mazzi[uid] = array di waifuId scelti da ciascun giocatore
+      mazzi: {},
+      rounds: [],
     },
     aggiornato: serverTimestamp(),
   });
@@ -250,6 +253,30 @@ export async function registraRisultatoBattaglia({ codice, vincitoreUid, territo
 export async function salvaPartita(codice) {
   const ref = doc(db, 'partite_multi', codice);
   await updateDoc(ref, { salvata: true, aggiornato: serverTimestamp() });
+}
+
+// ── Salva il mazzo di un giocatore nella battaglia corrente ───────────
+// Usato per condividere il mazzo con l'avversario umano in tempo reale
+export async function salvaMazzoBattaglia(codice, uid, mazzoIds) {
+  const ref = doc(db, 'partite_multi', codice);
+  await updateDoc(ref, {
+    [`battagliaCorrente.mazzi.${uid}`]: mazzoIds,
+    aggiornato: serverTimestamp(),
+  });
+}
+
+// ── Salva il risultato del round nella battaglia corrente ─────────────
+// Usato per sincronizzare l'esito di ogni round tra i due giocatori
+export async function salvaRisultatoRound(codice, { round, attaccanteWaifuId, difensoreWaifuId, stat, direzione, vincitoreRound }) {
+  const ref = doc(db, 'partite_multi', codice);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+  const p = snap.data();
+  const roundsEsistenti = p.battagliaCorrente?.rounds || [];
+  await updateDoc(ref, {
+    'battagliaCorrente.rounds': [...roundsEsistenti, { round, attaccanteWaifuId, difensoreWaifuId, stat, direzione, vincitoreRound }],
+    aggiornato: serverTimestamp(),
+  });
 }
 
 // ── Segnala che un giocatore è in lobby ───────────────────────────────

@@ -7,7 +7,7 @@ import {
   creaPartitaMultiplayer, uniscitiPartita, avviaPartitaMultiplayer,
   caricaPartita, ascoltaPartita, scegliAttacco,
   registraRisultatoBattaglia, salvaPartita, setGiocatoreInLobby,
-  getColoriUsatiLobby,
+  getColoriUsatiLobby, salvaMazzoBattaglia,
 } from '@/lib/multiplayerService';
 import { TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT } from '@/lib/constants';
 import { applicaAbilitaOutfit, applicaModificatoriOpp } from '@/lib/gameLogic';
@@ -902,7 +902,51 @@ function BattagliaMultiplayer({
     return { ...waifuModificata, _outfitEquipIds: equipIds };
   };
 
-  const confermaEAvvia = () => {
+  // Stato per la modalità giocatore reale: attesa del mazzo avversario
+  const [attesaMazzoAvv, setAttesaMazzoAvv] = useState(false);
+  const [mazzoSalvato, setMazzoSalvato] = useState(false);
+
+  // Quando la partita si aggiorna e siamo in attesa del mazzo avversario,
+  // controlliamo se è arrivato
+  useEffect(() => {
+    if (!attesaMazzoAvv || isCpu) return;
+    const mazziPartita = partita?.battagliaCorrente?.mazzi || {};
+    const mazzoAvv = mazziPartita[avversarioUid];
+    if (!mazzoAvv || mazzoAvv.length === 0) return;
+
+    // Il mazzo avversario è arrivato: costruiamolo e avviamo la battaglia
+    const mazzoAvversario = mazzoAvv.map(id => {
+      const w = waifuCat.find(x => x.id === id);
+      if (!w) return null;
+      // Costruiamo la waifu avversaria base (senza bonus di collezione, che non abbiamo)
+      return { ...w, id: `opp_${w.id}`, _outfitEquipIds: [] };
+    }).filter(Boolean);
+
+    if (mazzoAvversario.length < 5) return; // attendi ancora
+
+    setMazzoC(mazzoAvversario);
+    setAttesaMazzoAvv(false);
+    setModoBattaglia(false);
+    setIniziata(true);
+    setPunteggio({ player: 0, cpu: 0 }); setRound(1);
+    setRisultatiWaifu({}); setStatsUsatePartita([]);
+    setCarteP(null); setCarteC(null); setStatScelta(null);
+    setDirezione(null); setVincitoreRound(null);
+    setCpuWaifuPending(null); setCpuStatPending(null); setCpuDirPending(null);
+    setCoinResult(null); setInSuddenDeath(false);
+    setFase('coin');
+    setTimeout(() => {
+      // L'attaccante inizia sempre per primo nelle battaglie tra giocatori reali
+      const result = sonoAttaccante ? 'player' : 'cpu';
+      setCoinResult(result); setPrimoTurno(result);
+      setTimeout(() => {
+        setTurno(result); setTimeLeft(30);
+        setFase(result === 'player' ? 'playerScegliWaifu' : 'cpuSceglieTutto');
+      }, 1800);
+    }, 200);
+  }, [partita?.battagliaCorrente?.mazzi, attesaMazzoAvv]);
+
+  const confermaEAvvia = async () => {
     let mazzoUtente;
     if (teamSel && teamSel !== 'manuale') {
       const team = teams[teamSel];
@@ -913,7 +957,56 @@ function BattagliaMultiplayer({
     }
     if (mazzoUtente.length < 5) { mostraNotif('Team insufficiente!', '#ff3d3d'); return; }
 
-    // Mazzo avversario (CPU o simulato)
+    setMazzoP(mazzoUtente);
+
+    if (!isCpu) {
+      // ── Battaglia contro giocatore reale ──
+      // 1. Salva il nostro mazzo su Firestore (lista di id originali, senza prefisso opp_)
+      const mazzoIds = mazzoUtente.map(w => w.id);
+      try {
+        await salvaMazzoBattaglia(codice, myUid, mazzoIds);
+        setMazzoSalvato(true);
+      } catch (e) {
+        mostraNotif('Errore salvataggio mazzo', '#ff3d3d');
+        return;
+      }
+
+      // 2. Controlla se il mazzo dell'avversario è già disponibile
+      const mazziPartita = partita?.battagliaCorrente?.mazzi || {};
+      const mazzoAvv = mazziPartita[avversarioUid];
+
+      if (mazzoAvv && mazzoAvv.length >= 5) {
+        // Il mazzo avversario è già presente (lui ha scelto prima di noi)
+        const mazzoAvversario = mazzoAvv.map(id => {
+          const w = waifuCat.find(x => x.id === id);
+          return w ? { ...w, id: `opp_${w.id}`, _outfitEquipIds: [] } : null;
+        }).filter(Boolean);
+
+        setMazzoC(mazzoAvversario);
+        setModoBattaglia(false); setIniziata(true);
+        setPunteggio({ player: 0, cpu: 0 }); setRound(1);
+        setRisultatiWaifu({}); setStatsUsatePartita([]);
+        setCarteP(null); setCarteC(null); setStatScelta(null);
+        setDirezione(null); setVincitoreRound(null);
+        setCpuWaifuPending(null); setCpuStatPending(null); setCpuDirPending(null);
+        setCoinResult(null); setInSuddenDeath(false);
+        setFase('coin');
+        setTimeout(() => {
+          const result = sonoAttaccante ? 'player' : 'cpu';
+          setCoinResult(result); setPrimoTurno(result);
+          setTimeout(() => {
+            setTurno(result); setTimeLeft(30);
+            setFase(result === 'player' ? 'playerScegliWaifu' : 'cpuSceglieTutto');
+          }, 1800);
+        }, 200);
+      } else {
+        // Aspettiamo che l'avversario scelga il suo mazzo
+        setAttesaMazzoAvv(true);
+      }
+      return;
+    }
+
+    // ── Battaglia contro CPU ──
     const playerIds = new Set(mazzoUtente.map(w => w.id));
     const cpuPool = waifuCat.filter(w => !playerIds.has(w.id));
     const cpuShuffled = [...cpuPool].sort(() => Math.random() - 0.5).slice(0, 5);
@@ -921,7 +1014,7 @@ function BattagliaMultiplayer({
       ...w, id: `opp_${w.id}`,
     }));
 
-    setMazzoP(mazzoUtente); setMazzoC(mazzoCPU);
+    setMazzoC(mazzoCPU);
     setModoBattaglia(false); setIniziata(true);
     setPunteggio({ player: 0, cpu: 0 }); setRound(1);
     setRisultatiWaifu({}); setStatsUsatePartita([]);
@@ -1043,6 +1136,38 @@ function BattagliaMultiplayer({
 
   // Selezione team
   if (modoBattaglia) {
+    // Schermata di attesa: mazzo inviato, aspettiamo l'avversario
+    if (attesaMazzoAvv) {
+      return (
+        <div className="fade-in">
+          <PannelloOrnato glow="#ff2d78" style={{ padding: 28, textAlign: 'center' }}>
+            <TitoloOrnato livello={2} colore="#ff2d78">BATTAGLIA PER {terrData?.nome}</TitoloOrnato>
+            <div style={{ fontSize: 36, margin: '20px 0' }}>⏳</div>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#ffd666', letterSpacing: 2, marginBottom: 8 }}>
+              MAZZO INVIATO!
+            </div>
+            <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', marginBottom: 20 }}>
+              In attesa che <span style={{ color: coloreAvversario }}>{nomeAvversario}</span> scelga il suo team…
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}>
+              {[0, 1, 2].map(i => (
+                <div key={i} style={{
+                  width: 8, height: 8, borderRadius: '50%', background: coloreAvversario,
+                  animation: `pulse 1.2s ease-in-out ${i * 0.4}s infinite`,
+                }} />
+              ))}
+            </div>
+            <style>{`@keyframes pulse { 0%,100%{opacity:0.2;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }`}</style>
+            <div style={{ marginTop: 24 }}>
+              <button onClick={() => { setAttesaMazzoAvv(false); setMazzoSalvato(false); onBattagliaFinita(null); }} style={btnStyle('#666', true)}>
+                ANNULLA
+              </button>
+            </div>
+          </PannelloOrnato>
+        </div>
+      );
+    }
+
     const canConfirm = teamSel && teamSel !== 'manuale' ? !!teams[teamSel] : waifuSel.length === 5;
     return (
       <div className="fade-in">
@@ -1051,6 +1176,11 @@ function BattagliaMultiplayer({
           <div style={{ textAlign: 'center', marginBottom: 12 }}>
             <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron' }}>
               vs <span style={{ color: coloreAvversario }}>{nomeAvversario}</span>
+              {!isCpu && (
+                <span style={{ display: 'block', marginTop: 4, color: '#ffd666', fontSize: 9 }}>
+                  ⚡ SFIDA CONTRO GIOCATORE REALE
+                </span>
+              )}
             </div>
           </div>
           {Object.keys(teams).length > 0 && (
