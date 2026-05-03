@@ -395,3 +395,14 @@ export async function registraRisultatoBattagliaPvp({ codice, vincitoreUid, terr
 
   return { vincitoreFinale, attaccanteUid, difensoreUid };
 }
+
+// ── PvP: salva il risultato calcolato del round (solo l'attaccante lo scrive) ─
+// Struttura: battagliaCorrente.pvpRisultato[roundKey] = { wMyId, wAvvId, statKey, dir, vince }
+// Entrambi i client leggono questo valore via listener e applicano il risultato.
+export async function salvaRisultatoPvpRound(codice, roundKey, risultato) {
+  const ref = doc(db, 'partite_multi', codice);
+  await updateDoc(ref, {
+    [`battagliaCorrente.pvpRisultato.${roundKey}`]: risultato,
+    aggiornato: serverTimestamp(),
+  });
+}
