@@ -279,6 +279,26 @@ export async function salvaRisultatoRound(codice, { round, attaccanteWaifuId, di
   });
 }
 
+// ── Salva la scelta di un giocatore per il round PvP corrente ─────────
+// Struttura: battagliaCorrente.sceltePvp[round][uid] = { waifuId, stat, direzione }
+// Il round viene risolto solo quando entrambi i giocatori hanno scelto.
+export async function salvaSceltaPvpRound(codice, uid, roundNum, scelta) {
+  const ref = doc(db, 'partite_multi', codice);
+  await updateDoc(ref, {
+    [`battagliaCorrente.sceltePvp.${roundNum}.${uid}`]: scelta,
+    aggiornato: serverTimestamp(),
+  });
+}
+
+// ── Salva il chi inizia (primo turno) della battaglia PvP ────────────
+export async function salvaPrimoTurnoPvp(codice, primoUid) {
+  const ref = doc(db, 'partite_multi', codice);
+  await updateDoc(ref, {
+    'battagliaCorrente.primoTurno': primoUid,
+    aggiornato: serverTimestamp(),
+  });
+}
+
 // ── Segnala che un giocatore è in lobby ───────────────────────────────
 export async function setGiocatoreInLobby(codice, uid, inLobby) {
   const ref = doc(db, 'partite_multi', codice);

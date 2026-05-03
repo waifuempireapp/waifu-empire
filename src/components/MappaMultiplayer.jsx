@@ -8,6 +8,7 @@ import {
   caricaPartita, ascoltaPartita, scegliAttacco,
   registraRisultatoBattaglia, salvaPartita, setGiocatoreInLobby,
   getColoriUsatiLobby, salvaMazzoBattaglia,
+  salvaSceltaPvpRound, salvaPrimoTurnoPvp,
 } from '@/lib/multiplayerService';
 import { TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT } from '@/lib/constants';
 import { applicaAbilitaOutfit, applicaModificatoriOpp } from '@/lib/gameLogic';
@@ -807,7 +808,7 @@ function CartaTerritorio({ territorio, infoImpero }) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// BATTAGLIA MULTIPLAYER — stessa logica della battaglia vs CPU
+// BATTAGLIA MULTIPLAYER — PvP vero tra 2 giocatori (o vs CPU)
 // ════════════════════════════════════════════════════════════════════
 function BattagliaMultiplayer({
   partita, codice, user, profilo, collezione, waifuCat, outfitCat,
@@ -830,11 +831,13 @@ function BattagliaMultiplayer({
     { key: 'esperienza', label: 'Esperienza', icon: '⭐' },
   ];
 
+  // ── Stato battaglia ────────────────────────────────────────────────
   const [fase, setFase] = useState('coin');
   const [coinResult, setCoinResult] = useState(null);
-  const [primoTurno, setPrimoTurno] = useState(null);
-  const [turno, setTurno] = useState(null);
+  const [primoTurno, setPrimoTurno] = useState(null);   // 'player' | 'cpu'
+  const [turno, setTurno] = useState(null);             // chi sceglie stat+dir in questo round
   const [round, setRound] = useState(1);
+  // Per PvP: { player: N, cpu: N } dove 'cpu' = avversario umano per coerenza UI
   const [punteggio, setPunteggio] = useState({ player: 0, cpu: 0 });
   const [mazzoP, setMazzoP] = useState([]);
   const [mazzoC, setMazzoC] = useState([]);
@@ -842,6 +845,7 @@ function BattagliaMultiplayer({
   const [carteC, setCarteC] = useState(null);
   const [statScelta, setStatScelta] = useState(null);
   const [direzione, setDirezione] = useState(null);
+  // CPU only
   const [cpuWaifuPending, setCpuWaifuPending] = useState(null);
   const [cpuStatPending, setCpuStatPending] = useState(null);
   const [cpuDirPending, setCpuDirPending] = useState(null);
@@ -855,28 +859,132 @@ function BattagliaMultiplayer({
   const [modoBattaglia, setModoBattaglia] = useState(true);
   const [iniziata, setIniziata] = useState(false);
 
-  const FASI_TIMER = ['playerScegliWaifu', 'playerScegliStat', 'playerScegliDir', 'playerScegliWaifuVsCPU', 'suddenDeathWaifu'];
+  // ── Stato PvP ─────────────────────────────────────────────────────
+  // In modalità PvP, le scelte vengono salvate su Firestore e lette dall'altra parte.
+  // Fasi PvP per chi ha il turno (sceglie stat+dir):
+  //   'pvpScegliWaifu' → 'pvpScegliStat' → 'pvpScegliDir' → 'pvpAttesaAvv'
+  // Fasi PvP per chi NON ha il turno (sceglie solo la propria waifu):
+  //   'pvpScegliWaifuRispondi' → 'pvpAttesaRisoluzione'
+  // Dopo che entrambi hanno scelto, il giocatore con turno risolve localmente
+  // e poi entrambi vedono il reveal.
+  const [pvpHoScelto, setPvpHoScelto] = useState(false);    // true = ho già inviato la mia scelta
+  const [pvpRoundProcessato, setPvpRoundProcessato] = useState(0); // ultimo round già risolto
 
-  // Timer
+  const FASI_TIMER_ACTIVE = isCpu
+    ? ['playerScegliWaifu', 'playerScegliStat', 'playerScegliDir', 'playerScegliWaifuVsCPU', 'suddenDeathWaifu']
+    : ['pvpScegliWaifu', 'pvpScegliStat', 'pvpScegliDir', 'pvpScegliWaifuRispondi', 'suddenDeathWaifu'];
+
+  // ── Timer ─────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!FASI_TIMER.includes(fase)) return;
+    if (!FASI_TIMER_ACTIVE.includes(fase)) return;
     if (timeLeft <= 0) { autoCompleta(); return; }
     const t = setTimeout(() => setTimeLeft(p => p - 1), 1000);
     return () => clearTimeout(t);
   }, [fase, timeLeft]);
 
-  // CPU turno
+  // ── CPU turno (solo vs CPU) ───────────────────────────────────────
   useEffect(() => {
-    if (fase !== 'cpuSceglieTutto') return;
-    const cpuDisp = mazzoC.filter(w => !risultatiWaifu[w.id]);
-    const cpuW = cpuDisp[Math.floor(Math.random() * cpuDisp.length)];
-    if (!cpuW) return;
-    const pool = STATS_BATTAGLIA.filter(s => !statsUsatePartita.includes(s.key));
-    const stat = (pool.length > 0 ? pool : STATS_BATTAGLIA)[Math.floor(Math.random() * (pool.length || STATS_BATTAGLIA.length))];
-    const dir = Math.random() < 0.5 ? 'piu' : 'meno';
-    setCpuWaifuPending(cpuW); setCpuStatPending(stat.key); setCpuDirPending(dir);
-    setTimeout(() => { setTimeLeft(30); setFase('playerScegliWaifuVsCPU'); }, 400);
+    if (isCpu && fase === 'cpuSceglieTutto') {
+      const cpuDisp = mazzoC.filter(w => !risultatiWaifu[w.id]);
+      const cpuW = cpuDisp[Math.floor(Math.random() * cpuDisp.length)];
+      if (!cpuW) return;
+      const pool = STATS_BATTAGLIA.filter(s => !statsUsatePartita.includes(s.key));
+      const stat = (pool.length > 0 ? pool : STATS_BATTAGLIA)[Math.floor(Math.random() * (pool.length || STATS_BATTAGLIA.length))];
+      const dir = Math.random() < 0.5 ? 'piu' : 'meno';
+      setCpuWaifuPending(cpuW); setCpuStatPending(stat.key); setCpuDirPending(dir);
+      setTimeout(() => { setTimeLeft(30); setFase('playerScegliWaifuVsCPU'); }, 400);
+    }
   }, [fase]);
+
+  // ── PvP: osserva Firestore per le scelte dell'avversario ──────────
+  useEffect(() => {
+    if (isCpu || !iniziata) return;
+    const sceltePvp = battaglia?.sceltePvp || {};
+    const roundKey = inSuddenDeath ? 'sd' : String(round);
+    const scelteRound = sceltePvp[roundKey] || {};
+    const miaScelta = scelteRound[myUid];
+    const sceltaAvv = scelteRound[avversarioUid];
+
+    // Ricezione scelta avversario mentre aspetto
+    if (fase === 'pvpAttesaAvv' && sceltaAvv && pvpRoundProcessato < (inSuddenDeath ? 999 : round)) {
+      // Ho scelto io, ora è arrivata la scelta dell'avversario → risolvi
+      _risolviPvpRound(scelteRound, roundKey);
+    }
+    if (fase === 'pvpAttesaRisoluzione' && sceltaAvv && miaScelta && pvpRoundProcessato < (inSuddenDeath ? 999 : round)) {
+      // L'avversario (chi ha turno) ha già risolto? Guarda se c'è un vincitore nel risultato
+      // In realtà entrambi vedranno il reveal quando le scelte sono presenti;
+      // il reveal lo triggera chiunque legga per primo entrambe le scelte.
+      _risolviPvpRound(scelteRound, roundKey);
+    }
+
+    // Avversario ha scelto la propria waifu mentre io sto ancora scegliendo stat/dir
+    if ((fase === 'pvpScegliStat' || fase === 'pvpScegliDir') && sceltaAvv) {
+      const wAvv = mazzoC.find(w => w.id === sceltaAvv.waifuId || w.id === `opp_${sceltaAvv.waifuId}`);
+      if (wAvv) setCarteC(wAvv);
+    }
+
+    // Primo turno PvP: leggo chi inizia da Firestore
+    if (!primoTurno && battaglia?.primoTurno && iniziata && fase === 'coin') {
+      const pt = battaglia.primoTurno === myUid ? 'player' : 'cpu';
+      setCoinResult(pt); setPrimoTurno(pt);
+      setTimeout(() => {
+        setTurno(pt); setTimeLeft(30);
+        setFase(pt === 'player' ? 'pvpScegliWaifu' : 'pvpScegliWaifuRispondi');
+      }, 1800);
+    }
+  }, [partita?.battagliaCorrente, fase, iniziata, round, inSuddenDeath]);
+
+  const _risolviPvpRound = (scelteRound, roundKey) => {
+    // Evita doppia risoluzione
+    const rKey = inSuddenDeath ? 999 : round;
+    if (pvpRoundProcessato >= rKey) return;
+    setPvpRoundProcessato(rKey);
+
+    const miaScelta = scelteRound[myUid];
+    const sceltaAvv = scelteRound[avversarioUid];
+    if (!miaScelta || !sceltaAvv) return;
+
+    // Chi ha il turno ha scelto stat e dir; l'altro ha scelto solo waifu
+    const sceltaTurno = turno === 'player' ? miaScelta : sceltaAvv;
+    const statKey = sceltaTurno.stat;
+    const dir = sceltaTurno.direzione;
+
+    const wMyId = miaScelta.waifuId;
+    const wAvvId = sceltaAvv.waifuId;
+    const wMy = mazzoP.find(w => w.id === wMyId);
+    const wAvv = mazzoC.find(w => w.id === wAvvId || w.id === `opp_${wAvvId}`);
+
+    if (!wMy || !wAvv) return;
+
+    setCarteP(wMy);
+    setCarteC(wAvv);
+    setStatScelta(statKey);
+    setDirezione(dir);
+    setStatsUsatePartita(prev => prev.includes(statKey) ? prev : [...prev, statKey]);
+    setFase('reveal');
+
+    setTimeout(() => {
+      const { modOpp: modP } = applicaAbilitaOutfit(wMy, wMy._outfitEquipIds || [], outfitCat, STAT_RANGES_DEFAULT);
+      const { modOpp: modC } = applicaAbilitaOutfit(wAvv, wAvv._outfitEquipIds || [], outfitCat, STAT_RANGES_DEFAULT);
+      const pEff = applicaModificatoriOpp(wMy, modC, STAT_RANGES_DEFAULT);
+      const cEff = applicaModificatoriOpp(wAvv, modP, STAT_RANGES_DEFAULT);
+      const valP = pEff[statKey]; const valC = cEff[statKey];
+      let vince = valP === valC ? 'pareggio' : dir === 'piu' ? (valP > valC ? 'player' : 'cpu') : (valP < valC ? 'player' : 'cpu');
+      setVincitoreRound(vince);
+      setPunteggio(prev => ({ player: prev.player + (vince === 'player' ? 1 : 0), cpu: prev.cpu + (vince === 'cpu' ? 1 : 0) }));
+      setRisultatiWaifu(prev => ({
+        ...prev,
+        [wMy.id]: vince === 'player' ? 'vinta' : vince === 'cpu' ? 'persa' : 'pareggio',
+        [wAvv.id]: vince === 'cpu' ? 'vinta' : vince === 'player' ? 'persa' : 'pareggio',
+      }));
+      if (inSuddenDeath) {
+        if (vince === 'pareggio') setTimeout(() => avviaSuddenDeath(), 2500);
+        else setTimeout(() => fineBattaglia(vince === 'player'), 2500);
+      } else {
+        setFase('roundEnd');
+      }
+    }, 1500);
+  };
 
   const waifuDisponibili = Object.entries(collezione?.waifu || {}).map(([id, dati]) => {
     const w = waifuCat.find(x => x.id === id);
@@ -902,27 +1010,21 @@ function BattagliaMultiplayer({
     return { ...waifuModificata, _outfitEquipIds: equipIds };
   };
 
-  // Stato per la modalità giocatore reale: attesa del mazzo avversario
+  // ── Attesa mazzo avversario ────────────────────────────────────────
   const [attesaMazzoAvv, setAttesaMazzoAvv] = useState(false);
   const [mazzoSalvato, setMazzoSalvato] = useState(false);
 
-  // Quando la partita si aggiorna e siamo in attesa del mazzo avversario,
-  // controlliamo se è arrivato
   useEffect(() => {
     if (!attesaMazzoAvv || isCpu) return;
     const mazziPartita = partita?.battagliaCorrente?.mazzi || {};
     const mazzoAvv = mazziPartita[avversarioUid];
     if (!mazzoAvv || mazzoAvv.length === 0) return;
 
-    // Il mazzo avversario è arrivato: costruiamolo e avviamo la battaglia
     const mazzoAvversario = mazzoAvv.map(id => {
       const w = waifuCat.find(x => x.id === id);
-      if (!w) return null;
-      // Costruiamo la waifu avversaria base (senza bonus di collezione, che non abbiamo)
-      return { ...w, id: `opp_${w.id}`, _outfitEquipIds: [] };
+      return w ? { ...w, id: `opp_${w.id}`, _outfitEquipIds: [] } : null;
     }).filter(Boolean);
-
-    if (mazzoAvversario.length < 5) return; // attendi ancora
+    if (mazzoAvversario.length < 5) return;
 
     setMazzoC(mazzoAvversario);
     setAttesaMazzoAvv(false);
@@ -934,16 +1036,14 @@ function BattagliaMultiplayer({
     setDirezione(null); setVincitoreRound(null);
     setCpuWaifuPending(null); setCpuStatPending(null); setCpuDirPending(null);
     setCoinResult(null); setInSuddenDeath(false);
+    setPvpHoScelto(false); setPvpRoundProcessato(0);
     setFase('coin');
-    setTimeout(() => {
-      // L'attaccante inizia sempre per primo nelle battaglie tra giocatori reali
-      const result = sonoAttaccante ? 'player' : 'cpu';
-      setCoinResult(result); setPrimoTurno(result);
-      setTimeout(() => {
-        setTurno(result); setTimeLeft(30);
-        setFase(result === 'player' ? 'playerScegliWaifu' : 'cpuSceglieTutto');
-      }, 1800);
-    }, 200);
+
+    // Solo l'attaccante scrive primoTurno su Firestore (evita race condition)
+    if (sonoAttaccante) {
+      // L'attaccante inizia sempre in PvP
+      salvaPrimoTurnoPvp(codice, myUid).catch(() => {});
+    }
   }, [partita?.battagliaCorrente?.mazzi, attesaMazzoAvv]);
 
   const confermaEAvvia = async () => {
@@ -960,8 +1060,7 @@ function BattagliaMultiplayer({
     setMazzoP(mazzoUtente);
 
     if (!isCpu) {
-      // ── Battaglia contro giocatore reale ──
-      // 1. Salva il nostro mazzo su Firestore (lista di id originali, senza prefisso opp_)
+      // ── Battaglia PvP ──
       const mazzoIds = mazzoUtente.map(w => w.id);
       try {
         await salvaMazzoBattaglia(codice, myUid, mazzoIds);
@@ -971,12 +1070,10 @@ function BattagliaMultiplayer({
         return;
       }
 
-      // 2. Controlla se il mazzo dell'avversario è già disponibile
       const mazziPartita = partita?.battagliaCorrente?.mazzi || {};
       const mazzoAvv = mazziPartita[avversarioUid];
 
       if (mazzoAvv && mazzoAvv.length >= 5) {
-        // Il mazzo avversario è già presente (lui ha scelto prima di noi)
         const mazzoAvversario = mazzoAvv.map(id => {
           const w = waifuCat.find(x => x.id === id);
           return w ? { ...w, id: `opp_${w.id}`, _outfitEquipIds: [] } : null;
@@ -990,30 +1087,22 @@ function BattagliaMultiplayer({
         setDirezione(null); setVincitoreRound(null);
         setCpuWaifuPending(null); setCpuStatPending(null); setCpuDirPending(null);
         setCoinResult(null); setInSuddenDeath(false);
+        setPvpHoScelto(false); setPvpRoundProcessato(0);
         setFase('coin');
-        setTimeout(() => {
-          const result = sonoAttaccante ? 'player' : 'cpu';
-          setCoinResult(result); setPrimoTurno(result);
-          setTimeout(() => {
-            setTurno(result); setTimeLeft(30);
-            setFase(result === 'player' ? 'playerScegliWaifu' : 'cpuSceglieTutto');
-          }, 1800);
-        }, 200);
+        if (sonoAttaccante) {
+          salvaPrimoTurnoPvp(codice, myUid).catch(() => {});
+        }
       } else {
-        // Aspettiamo che l'avversario scelga il suo mazzo
         setAttesaMazzoAvv(true);
       }
       return;
     }
 
-    // ── Battaglia contro CPU ──
+    // ── Battaglia vs CPU ──
     const playerIds = new Set(mazzoUtente.map(w => w.id));
     const cpuPool = waifuCat.filter(w => !playerIds.has(w.id));
     const cpuShuffled = [...cpuPool].sort(() => Math.random() - 0.5).slice(0, 5);
-    const mazzoCPU = cpuShuffled.map(w => ({
-      ...w, id: `opp_${w.id}`,
-    }));
-
+    const mazzoCPU = cpuShuffled.map(w => ({ ...w, _outfitEquipIds: [] }));
     setMazzoC(mazzoCPU);
     setModoBattaglia(false); setIniziata(true);
     setPunteggio({ player: 0, cpu: 0 }); setRound(1);
@@ -1033,45 +1122,56 @@ function BattagliaMultiplayer({
     }, 200);
   };
 
+  // ── Auto-completa (timer scaduto) ─────────────────────────────────
   const autoCompleta = () => {
-    const pDisp = inSuddenDeath ? mazzoP.filter(w => w.id !== carteP?.id) : mazzoP.filter(w => !risultatiWaifu[w.id]);
-    if (fase === 'playerScegliWaifu') { const p = pDisp[Math.floor(Math.random() * pDisp.length)]; if (p) onScegliWaifu(p); }
-    else if (fase === 'playerScegliStat') { onScegliStat(STATS_BATTAGLIA[Math.floor(Math.random() * STATS_BATTAGLIA.length)].key); }
-    else if (fase === 'playerScegliDir') { onScegliDir(Math.random() < 0.5 ? 'piu' : 'meno'); }
-    else if (fase === 'playerScegliWaifuVsCPU') { const p = pDisp[Math.floor(Math.random() * pDisp.length)]; if (p) onScegliWaifuVsCpu(p); }
-    else if (fase === 'suddenDeathWaifu') { const p = pDisp.length > 0 ? pDisp[Math.floor(Math.random() * pDisp.length)] : mazzoP[0]; if (p) onScegliWaifuSD(p); }
+    if (isCpu) {
+      const pDisp = mazzoP.filter(w => !risultatiWaifu[w.id]);
+      if (fase === 'playerScegliWaifu') { const p = pDisp[Math.floor(Math.random() * pDisp.length)]; if (p) onScegliWaifuCpu(p); }
+      else if (fase === 'playerScegliStat') { onScegliStatCpu(STATS_BATTAGLIA[Math.floor(Math.random() * STATS_BATTAGLIA.length)].key); }
+      else if (fase === 'playerScegliDir') { onScegliDirCpu(Math.random() < 0.5 ? 'piu' : 'meno'); }
+      else if (fase === 'playerScegliWaifuVsCPU') { const p = pDisp[Math.floor(Math.random() * pDisp.length)]; if (p) onScegliWaifuVsCpu(p); }
+    } else {
+      // PvP: scegli casuale e invia
+      const pDisp = mazzoP.filter(w => !risultatiWaifu[w.id]);
+      if (fase === 'pvpScegliWaifu') {
+        const p = pDisp[Math.floor(Math.random() * pDisp.length)];
+        if (p) pvpScegliWaifu(p);
+      } else if (fase === 'pvpScegliStat') {
+        const statsDisp = STATS_BATTAGLIA.filter(s => !statsUsatePartita.includes(s.key));
+        const s = statsDisp[Math.floor(Math.random() * statsDisp.length)] || STATS_BATTAGLIA[0];
+        pvpScegliStat(s.key);
+      } else if (fase === 'pvpScegliDir') {
+        pvpScegliDir(Math.random() < 0.5 ? 'piu' : 'meno');
+      } else if (fase === 'pvpScegliWaifuRispondi') {
+        const p = pDisp[Math.floor(Math.random() * pDisp.length)];
+        if (p) pvpRispondiWaifu(p);
+      } else if (fase === 'suddenDeathWaifu') {
+        const p = pDisp[Math.floor(Math.random() * pDisp.length)];
+        if (p) pvpScegliWaifuSD(p);
+      }
+    }
   };
 
-  const onScegliWaifu = (w) => { if (fase !== 'playerScegliWaifu') return; setCarteP(w); setTimeLeft(30); setFase('playerScegliStat'); };
-  const onScegliStat = (k) => { if (fase !== 'playerScegliStat') return; setStatScelta(k); setStatsUsatePartita(prev => prev.includes(k) ? prev : [...prev, k]); setTimeLeft(30); setFase('playerScegliDir'); };
-  const onScegliDir = (dir) => {
+  // ── Handlers CPU ──────────────────────────────────────────────────
+  const onScegliWaifuCpu = (w) => { if (fase !== 'playerScegliWaifu') return; setCarteP(w); setTimeLeft(30); setFase('playerScegliStat'); };
+  const onScegliStatCpu = (k) => { if (fase !== 'playerScegliStat') return; setStatScelta(k); setStatsUsatePartita(prev => prev.includes(k) ? prev : [...prev, k]); setTimeLeft(30); setFase('playerScegliDir'); };
+  const onScegliDirCpu = (dir) => {
     if (fase !== 'playerScegliDir') return;
     setDirezione(dir);
     const cpuDisp = mazzoC.filter(w => !risultatiWaifu[w.id]);
     const cpuW = cpuDisp[Math.floor(Math.random() * cpuDisp.length)];
     setCarteC(cpuW); setFase('cpuRispondeWaifu');
-    setTimeout(() => risolvi(carteP, cpuW, statScelta, dir), 1200);
+    setTimeout(() => risolviCpu(carteP, cpuW, statScelta, dir), 1200);
   };
   const onScegliWaifuVsCpu = (w) => {
     if (fase !== 'playerScegliWaifuVsCPU') return;
     setCarteP(w); setCarteC(cpuWaifuPending); setStatScelta(cpuStatPending); setDirezione(cpuDirPending);
     setStatsUsatePartita(prev => prev.includes(cpuStatPending) ? prev : [...prev, cpuStatPending]);
     setFase('reveal');
-    setTimeout(() => risolvi(w, cpuWaifuPending, cpuStatPending, cpuDirPending), 1400);
-  };
-  const onScegliWaifuSD = (w) => {
-    if (fase !== 'suddenDeathWaifu') return;
-    setCarteP(w); setStatScelta(cpuStatPending); setDirezione(cpuDirPending); setFase('suddenDeathReveal');
-    setTimeout(() => {
-      const valP = w[cpuStatPending]; const valC = cpuWaifuPending[cpuStatPending];
-      let vince = valP === valC ? 'pareggio' : cpuDirPending === 'piu' ? (valP > valC ? 'player' : 'cpu') : (valP < valC ? 'player' : 'cpu');
-      setVincitoreRound(vince);
-      if (vince === 'pareggio') setTimeout(() => avviaSuddenDeath(), 2500);
-      else setTimeout(() => fineBattaglia(vince === 'player'), 2500);
-    }, 1800);
+    setTimeout(() => risolviCpu(w, cpuWaifuPending, cpuStatPending, cpuDirPending), 1400);
   };
 
-  const risolvi = (waifuP, waifuC, stat, dir) => {
+  const risolviCpu = (waifuP, waifuC, stat, dir) => {
     setFase('reveal');
     setTimeout(() => {
       const { modOpp: modP } = applicaAbilitaOutfit(waifuP, waifuP._outfitEquipIds || [], outfitCat, STAT_RANGES_DEFAULT);
@@ -1091,18 +1191,106 @@ function BattagliaMultiplayer({
     }, 1500);
   };
 
-  const prossimoRound = () => {
-    if (round >= 5 || punteggio.player >= 3 || punteggio.cpu >= 3) {
-      if (punteggio.player === punteggio.cpu) avviaSuddenDeath();
-      else fineBattaglia(punteggio.player > punteggio.cpu);
-      return;
+  // ── Handlers PvP ─────────────────────────────────────────────────
+  // Chi ha il turno: sceglie waifu → stat → dir → invia tutto
+  const pvpScegliWaifu = (w) => {
+    if (fase !== 'pvpScegliWaifu') return;
+    setCarteP(w);
+    setTimeLeft(30);
+    setFase('pvpScegliStat');
+  };
+
+  const pvpScegliStat = (k) => {
+    if (fase !== 'pvpScegliStat') return;
+    setStatScelta(k);
+    setStatsUsatePartita(prev => prev.includes(k) ? prev : [...prev, k]);
+    setTimeLeft(30);
+    setFase('pvpScegliDir');
+  };
+
+  const pvpScegliDir = async (dir) => {
+    if (fase !== 'pvpScegliDir') return;
+    setDirezione(dir);
+    setFase('pvpAttesaAvv');
+    setPvpHoScelto(true);
+    const roundKey = inSuddenDeath ? 'sd' : String(round);
+    try {
+      await salvaSceltaPvpRound(codice, myUid, roundKey, {
+        waifuId: carteP.id,
+        stat: statScelta,
+        direzione: dir,
+      });
+    } catch (e) {
+      mostraNotif('Errore sincronizzazione', '#ff3d3d');
     }
-    const nr = round + 1;
-    const ts = primoTurno === 'player' ? (nr % 2 === 1 ? 'player' : 'cpu') : (nr % 2 === 1 ? 'cpu' : 'player');
-    setCarteP(null); setCarteC(null); setStatScelta(null); setDirezione(null); setVincitoreRound(null);
-    setCpuWaifuPending(null); setCpuStatPending(null); setCpuDirPending(null);
-    setRound(nr); setTurno(ts); setTimeLeft(30);
-    setFase(ts === 'player' ? 'playerScegliWaifu' : 'cpuSceglieTutto');
+  };
+
+  // Chi NON ha il turno: sceglie solo la propria waifu e aspetta
+  const pvpRispondiWaifu = async (w) => {
+    if (fase !== 'pvpScegliWaifuRispondi') return;
+    setCarteP(w);
+    setFase('pvpAttesaRisoluzione');
+    setPvpHoScelto(true);
+    const roundKey = inSuddenDeath ? 'sd' : String(round);
+    try {
+      await salvaSceltaPvpRound(codice, myUid, roundKey, {
+        waifuId: w.id,
+        stat: null,
+        direzione: null,
+      });
+    } catch (e) {
+      mostraNotif('Errore sincronizzazione', '#ff3d3d');
+    }
+  };
+
+  // Sudden death PvP: chi NON ha turno sceglie waifu
+  const pvpScegliWaifuSD = async (w) => {
+    if (fase !== 'suddenDeathWaifu') return;
+    setCarteP(w);
+    setFase('pvpAttesaRisoluzione');
+    setPvpHoScelto(true);
+    try {
+      await salvaSceltaPvpRound(codice, myUid, 'sd', {
+        waifuId: w.id,
+        stat: null,
+        direzione: null,
+      });
+    } catch (e) {
+      mostraNotif('Errore sincronizzazione', '#ff3d3d');
+    }
+  };
+
+  const prossimoRound = () => {
+    if (isCpu) {
+      if (round >= 5 || punteggio.player >= 3 || punteggio.cpu >= 3) {
+        if (punteggio.player === punteggio.cpu) avviaSuddenDeath();
+        else fineBattaglia(punteggio.player > punteggio.cpu);
+        return;
+      }
+      const nr = round + 1;
+      const ts = primoTurno === 'player' ? (nr % 2 === 1 ? 'player' : 'cpu') : (nr % 2 === 1 ? 'cpu' : 'player');
+      setCarteP(null); setCarteC(null); setStatScelta(null); setDirezione(null); setVincitoreRound(null);
+      setCpuWaifuPending(null); setCpuStatPending(null); setCpuDirPending(null);
+      setRound(nr); setTurno(ts); setTimeLeft(30);
+      setFase(ts === 'player' ? 'playerScegliWaifu' : 'cpuSceglieTutto');
+    } else {
+      // PvP
+      if (round >= 5 || punteggio.player >= 3 || punteggio.cpu >= 3) {
+        if (punteggio.player === punteggio.cpu) avviaSuddenDeath();
+        else fineBattaglia(punteggio.player > punteggio.cpu);
+        return;
+      }
+      const nr = round + 1;
+      // I turni si alternano: chi ha iniziato (primoTurno) alterna ogni round
+      const ptUid = primoTurno === 'player' ? myUid : avversarioUid;
+      const turnoUid = nr % 2 === 1 ? ptUid : (ptUid === myUid ? avversarioUid : myUid);
+      const nuovoTurno = turnoUid === myUid ? 'player' : 'cpu';
+      setCarteP(null); setCarteC(null); setStatScelta(null); setDirezione(null); setVincitoreRound(null);
+      setPvpHoScelto(false);
+      setPvpRoundProcessato(nr - 1);
+      setRound(nr); setTurno(nuovoTurno); setTimeLeft(30);
+      setFase(nuovoTurno === 'player' ? 'pvpScegliWaifu' : 'pvpScegliWaifuRispondi');
+    }
   };
 
   const avviaSuddenDeath = () => {
@@ -1111,10 +1299,67 @@ function BattagliaMultiplayer({
     const pool = STATS_BATTAGLIA.filter(s => !statsUsatePartita.includes(s.key));
     const stat = (pool.length > 0 ? pool : STATS_BATTAGLIA)[Math.floor(Math.random() * (pool.length || STATS_BATTAGLIA.length))];
     const dir = Math.random() < 0.5 ? 'piu' : 'meno';
-    const cpuDisp = mazzoC.filter(w => !risultatiWaifu[w.id]);
-    const cpuW = cpuDisp.length > 0 ? cpuDisp[Math.floor(Math.random() * cpuDisp.length)] : mazzoC[Math.floor(Math.random() * mazzoC.length)];
-    setCpuWaifuPending(cpuW); setCpuStatPending(stat.key); setCpuDirPending(dir);
-    setCarteC(cpuW); setTimeLeft(30); setFase('suddenDeathWaifu');
+
+    if (isCpu) {
+      const cpuDisp = mazzoC.filter(w => !risultatiWaifu[w.id]);
+      const cpuW = cpuDisp.length > 0 ? cpuDisp[Math.floor(Math.random() * cpuDisp.length)] : mazzoC[Math.floor(Math.random() * mazzoC.length)];
+      setCpuWaifuPending(cpuW); setCpuStatPending(stat.key); setCpuDirPending(dir);
+      setCarteC(cpuW); setTimeLeft(30); setFase('suddenDeathWaifu');
+    } else {
+      // PvP Sudden Death: chi ha il turno (alternato) sceglie stat+dir via Firestore già salvato
+      // Usiamo l'attaccante come "chi ha turno in SD" per semplicità
+      const turnoSD = sonoAttaccante ? 'player' : 'cpu';
+      setTurno(turnoSD);
+      setPvpHoScelto(false);
+      setPvpRoundProcessato(998);
+
+      if (turnoSD === 'player') {
+        // Io ho il turno: scelgo la mia waifu + invio stat/dir automatici (random, annunciato)
+        // In SD il chi-ha-turno sceglie waifu e poi invia scelta completa
+        setTimeLeft(30);
+        // Salvo stat e dir come "pending" locali, verranno inclusi quando scelgo waifu
+        setCpuStatPending(stat.key); setCpuDirPending(dir);
+        setStatScelta(stat.key); setDirezione(dir);
+        setFase('suddenDeathWaifu');
+      } else {
+        // L'avversario ha il turno: aspetto che scelga e poi scelgo la mia waifu
+        // Ma devo mostrare a me la selezione waifu
+        setCpuStatPending(stat.key); setCpuDirPending(dir);
+        setStatScelta(stat.key); setDirezione(dir);
+        setTimeLeft(30);
+        setFase('suddenDeathWaifu');
+      }
+    }
+  };
+
+  // Sudden death vs CPU
+  const onScegliWaifuSD = (w) => {
+    if (fase !== 'suddenDeathWaifu' || !isCpu) return;
+    setCarteP(w); setStatScelta(cpuStatPending); setDirezione(cpuDirPending); setFase('suddenDeathReveal');
+    setTimeout(() => {
+      const valP = w[cpuStatPending]; const valC = cpuWaifuPending[cpuStatPending];
+      let vince = valP === valC ? 'pareggio' : cpuDirPending === 'piu' ? (valP > valC ? 'player' : 'cpu') : (valP < valC ? 'player' : 'cpu');
+      setVincitoreRound(vince);
+      if (vince === 'pareggio') setTimeout(() => avviaSuddenDeath(), 2500);
+      else setTimeout(() => fineBattaglia(vince === 'player'), 2500);
+    }, 1800);
+  };
+
+  // Sudden death PvP: chi ha turno sceglie waifu e invia tutto
+  const pvpScegliWaifuSDTurno = async (w) => {
+    if (fase !== 'suddenDeathWaifu' || isCpu) return;
+    setCarteP(w);
+    setFase('pvpAttesaAvv');
+    setPvpHoScelto(true);
+    try {
+      await salvaSceltaPvpRound(codice, myUid, 'sd', {
+        waifuId: w.id,
+        stat: cpuStatPending || statScelta,
+        direzione: cpuDirPending || direzione,
+      });
+    } catch (e) {
+      mostraNotif('Errore sincronizzazione', '#ff3d3d');
+    }
   };
 
   const fineBattaglia = (vittoria) => {
@@ -1134,9 +1379,8 @@ function BattagliaMultiplayer({
   const nomeAvversario = isCpu ? 'CPU' : (avversario?.nomeImpero || 'Avversario');
   const coloreAvversario = isCpu ? '#666' : (avversario?.coloreImpero || '#ff3d3d');
 
-  // Selezione team
+  // ── Selezione team ────────────────────────────────────────────────
   if (modoBattaglia) {
-    // Schermata di attesa: mazzo inviato, aspettiamo l'avversario
     if (attesaMazzoAvv) {
       return (
         <div className="fade-in">
@@ -1234,7 +1478,7 @@ function BattagliaMultiplayer({
     );
   }
 
-  // Coin flip
+  // ── Coin flip ─────────────────────────────────────────────────────
   if (fase === 'coin') {
     return (
       <div className="fade-in" style={{ textAlign: 'center', padding: 40 }}>
@@ -1250,7 +1494,7 @@ function BattagliaMultiplayer({
     );
   }
 
-  // Fine battaglia
+  // ── Fine battaglia ────────────────────────────────────────────────
   if (fase === 'gameEnd') {
     const vittoria = punteggio.player > punteggio.cpu;
     return (
@@ -1276,15 +1520,26 @@ function BattagliaMultiplayer({
     );
   }
 
-  // Battaglia attiva
-  const fasiBattaglia = ['playerScegliWaifu', 'playerScegliStat', 'playerScegliDir', 'cpuRispondeWaifu', 'cpuSceglieTutto', 'playerScegliWaifuVsCPU', 'reveal', 'roundEnd', 'suddenDeathWaifu', 'suddenDeathReveal'];
-  if (!fasiBattaglia.includes(fase)) return null;
+  // ── Battaglia attiva ──────────────────────────────────────────────
+  const fasiBattagliaAttive = isCpu
+    ? ['playerScegliWaifu', 'playerScegliStat', 'playerScegliDir', 'cpuRispondeWaifu', 'cpuSceglieTutto', 'playerScegliWaifuVsCPU', 'reveal', 'roundEnd', 'suddenDeathWaifu', 'suddenDeathReveal']
+    : ['pvpScegliWaifu', 'pvpScegliStat', 'pvpScegliDir', 'pvpAttesaAvv', 'pvpScegliWaifuRispondi', 'pvpAttesaRisoluzione', 'reveal', 'roundEnd', 'suddenDeathWaifu', 'suddenDeathReveal'];
+  if (!fasiBattagliaAttive.includes(fase)) return null;
 
   const waifuPDisp = inSuddenDeath ? mazzoP.filter(w => w.id !== carteP?.id) : mazzoP.filter(w => !risultatiWaifu[w.id]);
   const statsDisp = STATS_BATTAGLIA.filter(s => !statsUsatePartita.includes(s.key));
   const statInfo = STATS_BATTAGLIA.find(s => s.key === statScelta);
 
   const labelFase = () => {
+    if (!isCpu) {
+      if (fase === 'pvpScegliWaifu') return '👇 Scegli la tua waifu';
+      if (fase === 'pvpScegliStat') return '🎯 Scegli la statistica';
+      if (fase === 'pvpScegliDir') return '📊 Scegli la direzione';
+      if (fase === 'pvpAttesaAvv') return `⏳ In attesa di ${nomeAvversario}…`;
+      if (fase === 'pvpScegliWaifuRispondi') return '👇 Scegli la tua waifu';
+      if (fase === 'pvpAttesaRisoluzione') return `⏳ In attesa di ${nomeAvversario}…`;
+      if (fase === 'suddenDeathWaifu') return turno === 'player' ? '⚡ SUDDEN DEATH — Scegli waifu!' : '⚡ SUDDEN DEATH — Scegli waifu!';
+    }
     if (fase === 'playerScegliWaifu') return '👇 Scegli la tua waifu';
     if (fase === 'playerScegliStat') return '🎯 Scegli la statistica';
     if (fase === 'playerScegliDir') return '📊 Scegli la direzione';
@@ -1296,6 +1551,9 @@ function BattagliaMultiplayer({
     if (fase === 'suddenDeathReveal') return '⚡ Risoluzione Sudden Death...';
     return '';
   };
+
+  // Determine se mostrare il timer (solo nelle fasi interattive per questo giocatore)
+  const showTimer = FASI_TIMER_ACTIVE.includes(fase);
 
   return (
     <div className="fade-in">
@@ -1312,7 +1570,7 @@ function BattagliaMultiplayer({
             <div style={{ fontSize: 9, opacity: 0.5, marginTop: 2, fontFamily: 'Orbitron' }}>
               {turno === 'player' ? 'TUO TURNO' : `TURNO ${nomeAvversario.toUpperCase()}`}
             </div>
-            {FASI_TIMER.includes(fase) && (
+            {showTimer && (
               <div style={{ fontSize: 20, color: timeLeft <= 5 ? '#ff3d3d' : '#ffd666', fontFamily: 'Orbitron', fontWeight: 700, marginTop: 2 }}>
                 ⏱ {timeLeft}s
               </div>
@@ -1337,15 +1595,12 @@ function BattagliaMultiplayer({
         </div>
       )}
 
-      {/* Selezione waifu */}
-      {(fase === 'playerScegliWaifu' || fase === 'playerScegliWaifuVsCPU' || fase === 'suddenDeathWaifu') && (
+      {/* ── Selezione waifu (chi ha il turno) ── */}
+      {(fase === 'playerScegliWaifu' || fase === 'pvpScegliWaifu') && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
           {waifuPDisp.map(w => (
-            <div key={w.id} onClick={() => {
-              if (fase === 'playerScegliWaifu') onScegliWaifu(w);
-              else if (fase === 'playerScegliWaifuVsCPU') onScegliWaifuVsCpu(w);
-              else if (fase === 'suddenDeathWaifu') onScegliWaifuSD(w);
-            }} style={{ cursor: 'pointer', transform: 'scale(1)', transition: 'transform 0.15s' }}
+            <div key={w.id} onClick={() => isCpu ? onScegliWaifuCpu(w) : pvpScegliWaifu(w)}
+              style={{ cursor: 'pointer', transform: 'scale(1)', transition: 'transform 0.15s' }}
               onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
               <CartaWaifu waifu={w} dimensione="piccola" />
@@ -1354,15 +1609,66 @@ function BattagliaMultiplayer({
         </div>
       )}
 
-      {/* Selezione stat */}
-      {fase === 'playerScegliStat' && carteP && (
+      {/* ── Selezione waifu (chi risponde - PvP) ── */}
+      {fase === 'pvpScegliWaifuRispondi' && (
+        <div>
+          <div style={{ textAlign: 'center', marginBottom: 8, fontSize: 9, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron' }}>
+            {nomeAvversario} sta scegliendo stat e direzione…
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
+            {waifuPDisp.map(w => (
+              <div key={w.id} onClick={() => pvpRispondiWaifu(w)}
+                style={{ cursor: 'pointer', transform: 'scale(1)', transition: 'transform 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+                <CartaWaifu waifu={w} dimensione="piccola" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Selezione waifu vs CPU (risposta) ── */}
+      {fase === 'playerScegliWaifuVsCPU' && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
+          {waifuPDisp.map(w => (
+            <div key={w.id} onClick={() => onScegliWaifuVsCpu(w)}
+              style={{ cursor: 'pointer', transform: 'scale(1)', transition: 'transform 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+              <CartaWaifu waifu={w} dimensione="piccola" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Sudden Death selezione waifu ── */}
+      {fase === 'suddenDeathWaifu' && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
+          {waifuPDisp.map(w => (
+            <div key={w.id} onClick={() => {
+              if (isCpu) onScegliWaifuSD(w);
+              else if (turno === 'player') pvpScegliWaifuSDTurno(w);
+              else pvpScegliWaifuSD(w);
+            }}
+              style={{ cursor: 'pointer', transform: 'scale(1)', transition: 'transform 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+              <CartaWaifu waifu={w} dimensione="piccola" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Selezione stat ── */}
+      {(fase === 'playerScegliStat' || fase === 'pvpScegliStat') && carteP && (
         <div>
           <div style={{ textAlign: 'center', marginBottom: 10 }}>
             <CartaWaifu waifu={carteP} dimensione="piccola" />
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
             {statsDisp.map(s => (
-              <button key={s.key} onClick={() => onScegliStat(s.key)} style={{
+              <button key={s.key} onClick={() => isCpu ? onScegliStatCpu(s.key) : pvpScegliStat(s.key)} style={{
                 padding: '10px 18px', borderRadius: 10, border: '1px solid rgba(245,166,35,0.3)',
                 background: 'rgba(245,166,35,0.08)', color: '#ffd666', fontFamily: 'Orbitron', fontSize: 11,
                 cursor: 'pointer', letterSpacing: 1,
@@ -1372,20 +1678,36 @@ function BattagliaMultiplayer({
         </div>
       )}
 
-      {/* Selezione direzione */}
-      {fase === 'playerScegliDir' && statInfo && (
+      {/* ── Selezione direzione ── */}
+      {(fase === 'playerScegliDir' || fase === 'pvpScegliDir') && statInfo && (
         <div>
           <div style={{ textAlign: 'center', marginBottom: 10 }}>
             <Chip colore="#ffd666">{statInfo.icon} {statInfo.label}</Chip>
           </div>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-            <button onClick={() => onScegliDir('piu')} style={{ ...btnStyle('#00e676'), flex: 1, maxWidth: 140 }}>↑ PIÙ ALTA</button>
-            <button onClick={() => onScegliDir('meno')} style={{ ...btnStyle('#ff3d3d'), flex: 1, maxWidth: 140 }}>↓ PIÙ BASSA</button>
+            <button onClick={() => isCpu ? onScegliDirCpu('piu') : pvpScegliDir('piu')} style={{ ...btnStyle('#00e676'), flex: 1, maxWidth: 140 }}>↑ PIÙ ALTA</button>
+            <button onClick={() => isCpu ? onScegliDirCpu('meno') : pvpScegliDir('meno')} style={{ ...btnStyle('#ff3d3d'), flex: 1, maxWidth: 140 }}>↓ PIÙ BASSA</button>
           </div>
         </div>
       )}
 
-      {/* Reveal */}
+      {/* ── Attesa avversario PvP ── */}
+      {(fase === 'pvpAttesaAvv' || fase === 'pvpAttesaRisoluzione') && (
+        <div style={{ textAlign: 'center', padding: 20 }}>
+          {carteP && <div style={{ marginBottom: 10 }}><CartaWaifu waifu={carteP} dimensione="piccola" /></div>}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 10 }}>
+            {[0, 1, 2].map(i => (
+              <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: coloreAvversario, animation: `pulse 1.2s ease-in-out ${i * 0.4}s infinite` }} />
+            ))}
+          </div>
+          <style>{`@keyframes pulse { 0%,100%{opacity:0.2;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }`}</style>
+          <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron' }}>
+            In attesa di {nomeAvversario}…
+          </div>
+        </div>
+      )}
+
+      {/* ── Reveal ── */}
       {(fase === 'reveal' || fase === 'roundEnd' || fase === 'cpuRispondeWaifu' || fase === 'suddenDeathReveal') && carteP && carteC && statScelta && (
         <div>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 10 }}>
