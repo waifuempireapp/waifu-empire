@@ -887,7 +887,8 @@ function BattagliaMultiplayer({
   // Dopo che entrambi hanno scelto, il giocatore con turno risolve localmente
   // e poi entrambi vedono il reveal.
   const [pvpHoScelto, setPvpHoScelto] = useState(false);    // true = ho già inviato la mia scelta
-  const [pvpRoundProcessato, setPvpRoundProcessato] = useState(0); // ultimo round già risolto
+  const [pvpRoundProcessato, setPvpRoundProcessato] = useState(''); // ultimo roundKey risolto (stringa)
+  const pvpRoundProcessatoRef = useRef(''); // versione sincrona per guard in _risolviPvpRound
   const [pvpHoPremutoProsegui, setPvpHoPremutoProsegui] = useState(false); // true = ho premuto "Prosegui turno"
   const proseguiEseguitoRef = useRef(false); // guard doppia chiamata _eseguiProssimoRound
 
@@ -927,14 +928,14 @@ function BattagliaMultiplayer({
     const sceltaAvv = scelteRound[avversarioUid];
 
     // Ricezione scelta avversario mentre aspetto
-    if (fase === 'pvpAttesaAvv' && sceltaAvv && pvpRoundProcessato < (inSuddenDeath ? 999 : round)) {
+    // Guard: usa il ref sincrono (non lo stato React che potrebbe essere stale)
+    const giaRisolto = pvpRoundProcessatoRef.current === roundKey;
+    if (fase === 'pvpAttesaAvv' && sceltaAvv && !giaRisolto) {
       // Ho scelto io, ora è arrivata la scelta dell'avversario → risolvi
       _risolviPvpRound(scelteRound, roundKey);
     }
-    if (fase === 'pvpAttesaRisoluzione' && sceltaAvv && miaScelta && pvpRoundProcessato < (inSuddenDeath ? 999 : round)) {
-      // L'avversario (chi ha turno) ha già risolto? Guarda se c'è un vincitore nel risultato
-      // In realtà entrambi vedranno il reveal quando le scelte sono presenti;
-      // il reveal lo triggera chiunque legga per primo entrambe le scelte.
+    if (fase === 'pvpAttesaRisoluzione' && sceltaAvv && miaScelta && !giaRisolto) {
+      // L'avversario (chi ha turno) ha scelto → risolvi
       _risolviPvpRound(scelteRound, roundKey);
     }
 
@@ -967,9 +968,10 @@ function BattagliaMultiplayer({
   }, [partita?.battagliaCorrente, fase, iniziata, round, inSuddenDeath]);
 
   const _risolviPvpRound = (scelteRound, roundKey) => {
-    // Evita doppia risoluzione
-    const rKey = inSuddenDeath ? 999 : round;
-    if (pvpRoundProcessato >= rKey) return;
+    // Evita doppia risoluzione — usa roundKey stringa come chiave, non round (che potrebbe essere stale)
+    const rKey = roundKey; // 'sd' | '1' | '2' | ...
+    if (pvpRoundProcessatoRef.current === rKey) return;
+    pvpRoundProcessatoRef.current = rKey;
     setPvpRoundProcessato(rKey);
 
     const miaScelta = scelteRound[myUid];
@@ -1068,7 +1070,7 @@ function BattagliaMultiplayer({
     setDirezione(null); setVincitoreRound(null);
     setCpuWaifuPending(null); setCpuStatPending(null); setCpuDirPending(null);
     setCoinResult(null); setInSuddenDeath(false);
-    setPvpHoScelto(false); setPvpRoundProcessato(0); setPvpHoPremutoProsegui(false);
+    setPvpHoScelto(false); setPvpRoundProcessato(''); pvpRoundProcessatoRef.current = ''; setPvpHoPremutoProsegui(false);
     setFase('coin');
 
     // Solo l'attaccante scrive primoTurno su Firestore (evita race condition)
@@ -1119,7 +1121,7 @@ function BattagliaMultiplayer({
         setDirezione(null); setVincitoreRound(null);
         setCpuWaifuPending(null); setCpuStatPending(null); setCpuDirPending(null);
         setCoinResult(null); setInSuddenDeath(false);
-        setPvpHoScelto(false); setPvpRoundProcessato(0); setPvpHoPremutoProsegui(false);
+        setPvpHoScelto(false); setPvpRoundProcessato(''); pvpRoundProcessatoRef.current = ''; setPvpHoPremutoProsegui(false);
         setFase('coin');
         if (sonoAttaccante) {
           salvaPrimoTurnoPvp(codice, myUid).catch(() => {});
@@ -1345,7 +1347,8 @@ function BattagliaMultiplayer({
     setCarteP(null); setCarteC(null); setStatScelta(null); setDirezione(null); setVincitoreRound(null);
     setPvpHoScelto(false);
     setPvpHoPremutoProsegui(false);
-    setPvpRoundProcessato(nr - 1);
+    pvpRoundProcessatoRef.current = ''; // reset per il nuovo round
+    setPvpRoundProcessato('');
     proseguiEseguitoRef.current = false;
     setRound(nr); setTurno(nuovoTurno); setTimeLeft(30);
     setFase(nuovoTurno === 'player' ? 'pvpScegliWaifu' : 'pvpScegliWaifuRispondi');
@@ -1369,7 +1372,7 @@ function BattagliaMultiplayer({
       const turnoSD = sonoAttaccante ? 'player' : 'cpu';
       setTurno(turnoSD);
       setPvpHoScelto(false);
-      setPvpRoundProcessato(998);
+      pvpRoundProcessatoRef.current = ''; setPvpRoundProcessato('');
 
       if (turnoSD === 'player') {
         // Io ho il turno: scelgo la mia waifu + invio stat/dir automatici (random, annunciato)
