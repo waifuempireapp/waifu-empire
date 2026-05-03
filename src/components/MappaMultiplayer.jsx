@@ -68,6 +68,15 @@ export default function MappaMultiplayer({
     unsubscribeRef.current = unsub;
   }, [sanitizzaPartita]);
 
+  // Quando il listener riceve partita.stato === 'in_gioco' e il giocatore
+  // è ancora in lobby, passa automaticamente alla schermata di gioco.
+  useEffect(() => {
+    if (vista === 'lobby' && partita?.stato === 'in_gioco') {
+      setGiocatoreInLobby(partita.codice, user.uid, true).catch(() => {});
+      setVista('partita');
+    }
+  }, [partita?.stato, vista]);
+
   const handleEsciESalva = async () => {
     if (partita?.codice) {
       await salvaPartita(partita.codice);
