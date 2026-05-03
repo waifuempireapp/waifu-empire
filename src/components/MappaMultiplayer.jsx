@@ -1432,14 +1432,6 @@ function BattagliaMultiplayer({
     onBattagliaFinita(vincitoreUid);
   };
 
-  const getStatoWaifu = (id) => {
-    if (inSuddenDeath) { if (carteP?.id === id && !vincitoreRound) return 'inUso'; return 'disponibile'; }
-    if (carteP?.id === id && !vincitoreRound) return 'inUso';
-    if (risultatiWaifu[id]) return risultatiWaifu[id];
-    return 'disponibile';
-  };
-  const getColoreBordo = (stato) => ({ vinta: '#00e676', persa: '#ff3d3d', pareggio: '#ffd666', inUso: '#9b59ff' }[stato] || 'rgba(245,166,35,0.2)');
-
   const nomeAvversario = isCpu ? 'CPU' : (avversario?.nomeImpero || 'Avversario');
   const coloreAvversario = isCpu ? '#666' : (avversario?.coloreImpero || '#ff3d3d');
 
