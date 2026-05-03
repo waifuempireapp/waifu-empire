@@ -66,11 +66,13 @@ service cloud.firestore {
       allow create: if isSignedIn()
                     && request.resource.data.creatore == request.auth.uid;
 
-      // Aggiornamento: solo giocatori già presenti nella partita o il creatore
+      // Aggiornamento: il creatore, giocatori già presenti, o un nuovo giocatore
+      // che si sta aggiungendo (lobby aperta, non ancora iniziata)
       allow update: if isSignedIn()
                     && (
                       resource.data.creatore == request.auth.uid
                       || resource.data.giocatori.keys().hasAny([request.auth.uid])
+                      || resource.data.stato == 'lobby'
                     );
 
       // Eliminazione: solo il creatore o admin
