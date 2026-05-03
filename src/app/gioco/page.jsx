@@ -16,6 +16,7 @@ import PaperDoll from '@/components/PaperDoll';
 import BabyDoll from '@/components/BabyDoll';
 import { CartaWaifu, CartaOutfit, CartaPosa } from '@/components/CartaWaifu';
 import MappaMondoArt from '@/components/MappaMondoArt';
+import MappaMultiplayer from '@/components/MappaMultiplayer';
 import {
   PannelloOrnato, TitoloOrnato, BtnDecorato, Chip,
   BarraRisorsa, CardInfo, Divider, StelleRarita, FramePersonaggio,
@@ -3742,6 +3743,28 @@ function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxS
 // TAB: MAPPA — Tutto il codice battaglia invariato, solo UI reworkata
 // ============================================================
 function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, mostraNotif }) {
+  // ── STATO MULTIPLAYER ──────────────────────────────────────
+  const [modalitaMulti, setModalitaMulti] = useState(false); // true quando si entra nel multiplayer
+  const [vistaMultiIniziale, setVistaMultiIniziale] = useState('menu');
+
+  const apriMulti = (vista = 'menu') => { setVistaMultiIniziale(vista); setModalitaMulti(true); };
+
+  // Se multiplayer attivo, mostra il componente dedicato
+  if (modalitaMulti) {
+    return (
+      <MappaMultiplayer
+        profilo={profilo}
+        user={user}
+        collezione={collezione}
+        waifuCat={waifuCat}
+        outfitCat={outfitCat}
+        mostraNotif={mostraNotif}
+        vistaIniziale={vistaMultiIniziale}
+        onEsci={() => setModalitaMulti(false)}
+      />
+    );
+  }
+
   // ── STATO MAPPA ────────────────────────────────────────────
   const [territoriUtente, setTerritoriUtente] = useState({});
   const [terrSel, setTerrSel] = useState(null);
@@ -4637,6 +4660,30 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   // ================================================================
   return (
     <div className="fade-in">
+      {/* Bottoni modalità multiplayer */}
+      <PannelloOrnato glow="#9b59ff" style={{ padding: '10px 14px', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', letterSpacing: 2 }}>MODALITÀ</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button onClick={() => apriMulti('crea')} style={{
+              padding: '6px 14px', background: 'linear-gradient(135deg, #9b59ff, #9b59ffaa)',
+              border: '1px solid #9b59ff60', borderRadius: 8, cursor: 'pointer',
+              color: '#fff', fontFamily: 'Orbitron', fontSize: 9, fontWeight: 700, letterSpacing: 1,
+            }}>🏰 CREA PARTITA</button>
+            <button onClick={() => apriMulti('unisciti')} style={{
+              padding: '6px 14px', background: 'rgba(0,230,118,0.08)',
+              border: '1px solid rgba(0,230,118,0.3)', borderRadius: 8, cursor: 'pointer',
+              color: '#00e676', fontFamily: 'Orbitron', fontSize: 9, fontWeight: 700, letterSpacing: 1,
+            }}>🔑 UNISCITI</button>
+            <button onClick={() => apriMulti('carica')} style={{
+              padding: '6px 14px', background: 'rgba(245,166,35,0.08)',
+              border: '1px solid rgba(245,166,35,0.3)', borderRadius: 8, cursor: 'pointer',
+              color: '#f5a623', fontFamily: 'Orbitron', fontSize: 9, fontWeight: 700, letterSpacing: 1,
+            }}>💾 CARICA</button>
+          </div>
+        </div>
+      </PannelloOrnato>
+
       <PannelloOrnato glow="#f5a623" style={{ padding: 8, marginBottom: 10, position: 'relative' }}>
         <div style={{ padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
           <Chip colore="#9b59ff" icon="🗺" size="md">MAPPA LV.{livelloMappa}</Chip>
