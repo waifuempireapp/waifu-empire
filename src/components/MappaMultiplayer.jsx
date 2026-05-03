@@ -663,7 +663,7 @@ function SchermataPartita({
   };
 
   // Chiudi popup se il turno passa ad un altro giocatore
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isMioTurno) setTerrSel(null);
   }, [isMioTurno]);
 
