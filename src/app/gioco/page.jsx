@@ -2218,10 +2218,23 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
   const [filtroRaritaOutfit, setFiltroRaritaOutfit] = useState('tutte');
   // Filtri pose
   const [filtroRaritaPose, setFiltroRaritaPose] = useState('tutte');
+  // Filtro drop (condiviso tra waifu/outfit/pose)
+  const [drops, setDrops] = useState([]);
+  const [filtroDropId, setFiltroDropId] = useState('tutti');
   // Infinite scroll
   const [visibiliWaifu, setVisibiliWaifu] = useState(12);
   const [visibiliOutfit, setVisibiliOutfit] = useState(12);
   const [visibiliPose, setVisibiliPose] = useState(12);
+
+  useEffect(() => {
+    listDropsAttivi().then(lista => setDrops(lista)).catch(() => {});
+  }, []);
+
+  // IDs degli elementi presenti nel drop selezionato (null = tutti)
+  const dropSelezionato = drops.find(d => d.id === filtroDropId) || null;
+  const dropWaifuIds = dropSelezionato ? new Set(dropSelezionato.waifuIds || []) : null;
+  const dropOutfitIds = dropSelezionato ? new Set(dropSelezionato.outfitIds || []) : null;
+  const dropPoseIds = dropSelezionato ? new Set(dropSelezionato.poseIds || []) : null;
 
   const [teamNome, setTeamNome] = useState('');
   const [teamWaifu, setTeamWaifu] = useState([]);
@@ -2350,6 +2363,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
           return w ? { id, dati, w } : null;
         }).filter(Boolean);
         if (filtroRarita !== 'tutte') waifuEntries = waifuEntries.filter(({ w }) => w.rarita === filtroRarita);
+        if (dropWaifuIds) waifuEntries = waifuEntries.filter(({ w }) => dropWaifuIds.has(w.id));
         if (ordinamento === 'rarita_desc') waifuEntries.sort((a, b) => rarOrder.indexOf(b.w.rarita) - rarOrder.indexOf(a.w.rarita));
         else if (ordinamento === 'rarita_asc') waifuEntries.sort((a, b) => rarOrder.indexOf(a.w.rarita) - rarOrder.indexOf(b.w.rarita));
         else if (ordinamento === 'livello') waifuEntries.sort((a, b) => b.dati.livello - a.dati.livello);
@@ -2388,6 +2402,15 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
                 </select>
                 <span className="iw-tooltip">Cambia ordinamento</span>
               </div>
+              {drops.length > 0 && (
+                <div className="iw-tooltip-wrap">
+                  <select value={filtroDropId} onChange={e => { setFiltroDropId(e.target.value); setVisibiliWaifu(12); }} style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
+                    <option value="tutti">Tutti i drop</option>
+                    {drops.map(d => <option key={d.id} value={d.id}>{d.nome || d.id}</option>)}
+                  </select>
+                  <span className="iw-tooltip">Filtra per drop</span>
+                </div>
+              )}
               <span style={{ fontSize: 9, color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron', marginLeft: 4 }}>{waifuEntries.length} carte</span>
             </div>
             <div className="collection-card-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
@@ -2430,6 +2453,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
           return o ? { id, dati, o } : null;
         }).filter(Boolean);
         if (filtroRaritaOutfit !== 'tutte') outfitEntries = outfitEntries.filter(({ o }) => o.rarita === filtroRaritaOutfit);
+        if (dropOutfitIds) outfitEntries = outfitEntries.filter(({ o }) => dropOutfitIds.has(o.id));
         const visibili = outfitEntries.slice(0, visibiliOutfit);
         return (
           <div style={{ marginTop: 12 }}>
@@ -2441,6 +2465,15 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
                 </select>
                 <span className="iw-tooltip">Filtra per rarità</span>
               </div>
+              {drops.length > 0 && (
+                <div className="iw-tooltip-wrap">
+                  <select value={filtroDropId} onChange={e => { setFiltroDropId(e.target.value); setVisibiliOutfit(12); }} style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
+                    <option value="tutti">Tutti i drop</option>
+                    {drops.map(d => <option key={d.id} value={d.id}>{d.nome || d.id}</option>)}
+                  </select>
+                  <span className="iw-tooltip">Filtra per drop</span>
+                </div>
+              )}
               <span style={{ fontSize: 9, color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron' }}>{outfitEntries.length} outfit</span>
             </div>
             <div className="collection-card-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
@@ -2478,6 +2511,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
           return p ? { id, dati, p } : null;
         }).filter(Boolean);
         if (filtroRaritaPose !== 'tutte') poseEntries = poseEntries.filter(({ p }) => p.rarita === filtroRaritaPose);
+        if (dropPoseIds) poseEntries = poseEntries.filter(({ p }) => dropPoseIds.has(p.id));
         const visibili = poseEntries.slice(0, visibiliPose);
         return (
           <div style={{ marginTop: 12 }}>
@@ -2489,6 +2523,15 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
                 </select>
                 <span className="iw-tooltip">Filtra per rarità</span>
               </div>
+              {drops.length > 0 && (
+                <div className="iw-tooltip-wrap">
+                  <select value={filtroDropId} onChange={e => { setFiltroDropId(e.target.value); setVisibiliPose(12); }} style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
+                    <option value="tutti">Tutti i drop</option>
+                    {drops.map(d => <option key={d.id} value={d.id}>{d.nome || d.id}</option>)}
+                  </select>
+                  <span className="iw-tooltip">Filtra per drop</span>
+                </div>
+              )}
               <span style={{ fontSize: 9, color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron' }}>{poseEntries.length} pose</span>
             </div>
             <div className="collection-card-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
