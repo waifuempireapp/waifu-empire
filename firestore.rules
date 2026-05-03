@@ -57,6 +57,27 @@ service cloud.firestore {
       allow write: if false; // gestito solo dalla console Firebase
     }
 
+    // === Partite multiplayer ===
+    match /partite_multi/{codice} {
+      // Lettura: qualsiasi utente autenticato (serve per unirsi e per il listener)
+      allow read: if isSignedIn();
+
+      // Creazione: qualsiasi utente autenticato, purché si metta come creatore
+      allow create: if isSignedIn()
+                    && request.resource.data.creatore == request.auth.uid;
+
+      // Aggiornamento: solo giocatori già presenti nella partita o il creatore
+      allow update: if isSignedIn()
+                    && (
+                      resource.data.creatore == request.auth.uid
+                      || resource.data.giocatori.keys().hasAny([request.auth.uid])
+                    );
+
+      // Eliminazione: solo il creatore o admin
+      allow delete: if isSignedIn()
+                    && (resource.data.creatore == request.auth.uid || isAdmin());
+    }
+
     // Default: nega tutto
     match /{document=**} {
       allow read, write: if false;
