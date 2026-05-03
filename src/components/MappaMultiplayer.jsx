@@ -1594,13 +1594,38 @@ function BattagliaMultiplayer({
   const statsDisp = STATS_BATTAGLIA.filter(s => !statsUsatePartita.includes(s.key));
   const statInfo = STATS_BATTAGLIA.find(s => s.key === statScelta);
 
+  // Helpers stato waifu (come vs CPU)
+  const getStatoWaifu = (id) => {
+    const r = risultatiWaifu[id];
+    if (!r) return 'disponibile';
+    return r; // 'vinta' | 'persa' | 'pareggio'
+  };
+  const getColoreBordo = (stato) => {
+    if (stato === 'disponibile') return 'rgba(255,255,255,0.08)';
+    if (stato === 'vinta') return '#00e676';
+    if (stato === 'persa') return '#ff3d3d';
+    return '#ffd666';
+  };
+  const getIconaStato = (stato) => {
+    if (stato === 'vinta') return '✅';
+    if (stato === 'persa') return '❌';
+    if (stato === 'pareggio') return '🤝';
+    return '';
+  };
+
+  // Chi deve scegliere waifu in questo momento
+  const pvpDeveScegliereWaifu = ['pvpScegliWaifu', 'pvpScegliWaifuRispondi', 'suddenDeathWaifu'].includes(fase);
+
+  // Fase "attesa avversario" (PvP)
+  const pvpInAttesa = fase === 'pvpAttesaAvv' || fase === 'pvpAttesaRisoluzione';
+
   const labelFase = () => {
     if (!isCpu) {
       if (fase === 'pvpScegliWaifu') return '👇 Scegli la tua waifu';
       if (fase === 'pvpScegliStat') return '🎯 Scegli la statistica';
       if (fase === 'pvpScegliDir') return '📊 Scegli la direzione';
       if (fase === 'pvpAttesaAvv') return `⏳ In attesa di ${nomeAvversario}…`;
-      if (fase === 'pvpScegliWaifuRispondi') return '👇 Scegli la tua waifu';
+      if (fase === 'pvpScegliWaifuRispondi') return `👇 Scegli la tua waifu (${nomeAvversario} sta scegliendo…)`;
       if (fase === 'pvpAttesaRisoluzione') return `⏳ In attesa di ${nomeAvversario}…`;
       if (fase === 'roundEnd') return '🏁 Risultato round';
       if (fase === 'pvpAttesaProsegui') return `⏳ In attesa che ${nomeAvversario} prosegua…`;
@@ -1609,8 +1634,8 @@ function BattagliaMultiplayer({
     if (fase === 'playerScegliWaifu') return '👇 Scegli la tua waifu';
     if (fase === 'playerScegliStat') return '🎯 Scegli la statistica';
     if (fase === 'playerScegliDir') return '📊 Scegli la direzione';
-    if (fase === 'cpuRispondeWaifu') return `🎴 ${nomeAvversario} sceglie...`;
-    if (fase === 'cpuSceglieTutto') return `🎴 ${nomeAvversario} sta decidendo...`;
+    if (fase === 'cpuRispondeWaifu') return `🤖 ${nomeAvversario} sceglie...`;
+    if (fase === 'cpuSceglieTutto') return `🤖 ${nomeAvversario} sta decidendo...`;
     if (fase === 'playerScegliWaifuVsCPU') return '👇 Scegli la tua waifu';
     if (fase === 'reveal') return '⚡ Risoluzione...';
     if (fase === 'suddenDeathWaifu') return '⚡ SUDDEN DEATH — Scegli!';
@@ -1618,11 +1643,9 @@ function BattagliaMultiplayer({
     return '';
   };
 
-  // Determine se mostrare il timer (solo nelle fasi interattive per questo giocatore)
-  const showTimer = FASI_TIMER_ACTIVE.includes(fase);
-
   return (
     <div className="fade-in">
+      {/* ── Header punteggio ── */}
       <PannelloOrnato glow="#ff2d78" style={{ padding: 10, marginBottom: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ textAlign: 'left' }}>
@@ -1648,10 +1671,28 @@ function BattagliaMultiplayer({
           </div>
         </div>
         {labelFase() && (
-          <div style={{ textAlign: 'center', marginTop: 6, fontSize: 10, color: '#ffd666', fontFamily: 'Orbitron' }}>
+          <div style={{ textAlign: 'center', marginTop: 6, fontSize: 10, color: '#ffd666', fontFamily: 'Orbitron', letterSpacing: 1 }}>
             {labelFase()}
           </div>
         )}
+        {/* HUD stat usate */}
+        <div style={{ display: 'flex', gap: 4, justifyContent: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+          {STATS_BATTAGLIA.map(s => {
+            const usata = statsUsatePartita.includes(s.key);
+            return (
+              <div key={s.key} style={{
+                padding: '2px 7px', borderRadius: 5, fontSize: 8, fontFamily: 'Orbitron',
+                background: usata ? 'rgba(255,61,61,0.08)' : 'rgba(0,230,118,0.10)',
+                border: `1px solid ${usata ? '#ff3d3d30' : '#00e67630'}`,
+                color: usata ? '#ff3d3d50' : '#00e676',
+                textDecoration: usata ? 'line-through' : 'none',
+                opacity: usata ? 0.4 : 0.9,
+              }}>
+                {s.icon} {s.label}
+              </div>
+            );
+          })}
+        </div>
       </PannelloOrnato>
 
       {/* Territorio in gioco */}
@@ -1661,107 +1702,239 @@ function BattagliaMultiplayer({
         </div>
       )}
 
-      {/* ── Selezione waifu (chi ha il turno) ── */}
-      {(fase === 'playerScegliWaifu' || fase === 'pvpScegliWaifu') && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
-          {waifuPDisp.map(w => (
-            <div key={w.id} onClick={() => isCpu ? onScegliWaifuCpu(w) : pvpScegliWaifu(w)}
-              style={{ cursor: 'pointer', transform: 'scale(1)', transition: 'transform 0.15s' }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-              <CartaWaifu waifu={w} dimensione="piccola" />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── Selezione waifu (chi risponde - PvP) ── */}
-      {fase === 'pvpScegliWaifuRispondi' && (
-        <div>
-          <div style={{ textAlign: 'center', marginBottom: 8, fontSize: 9, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron' }}>
-            {nomeAvversario} sta scegliendo stat e direzione…
+      {/* ── Campo di battaglia: carte ── */}
+      <PannelloOrnato style={{ padding: 14, marginBottom: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-start', flexWrap: 'nowrap', gap: 8 }}>
+          {/* Carta Player */}
+          <div style={{ textAlign: 'center', flexShrink: 0 }}>
+            <div style={{ fontSize: 8, letterSpacing: 2, opacity: 0.4, marginBottom: 4, fontFamily: 'Orbitron' }}>TU</div>
+            {carteP
+              ? <div className="battle-carta-scelta"><CartaWaifu waifu={carteP} dimensione="piccola"
+                  evidenziaStat={(['reveal', 'roundEnd', 'pvpAttesaProsegui', 'suddenDeathReveal'].includes(fase)) ? statScelta : null}
+                  perdente={fase === 'roundEnd' && vincitoreRound === 'cpu'} /></div>
+              : <div style={{ width: 130, height: 195, border: '1px dashed rgba(255,45,120,0.25)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,45,120,0.4)', fontFamily: 'Orbitron', fontSize: 9 }} className="pulse">SCEGLI</div>
+            }
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
-            {waifuPDisp.map(w => (
-              <div key={w.id} onClick={() => pvpRispondiWaifu(w)}
-                style={{ cursor: 'pointer', transform: 'scale(1)', transition: 'transform 0.15s' }}
-                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-                <CartaWaifu waifu={w} dimensione="piccola" />
+
+          {/* Centro VS + stat/risultato */}
+          <div style={{ textAlign: 'center', minWidth: 100, flexShrink: 0 }}>
+            <div style={{ fontSize: 28, fontFamily: 'Orbitron', background: 'linear-gradient(135deg, #ff2d78, #9b59ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>VS</div>
+            {(['reveal', 'roundEnd', 'pvpAttesaProsegui', 'suddenDeathReveal'].includes(fase)) && statScelta && (
+              <div className="fade-up" style={{ marginTop: 10, padding: 8, background: 'rgba(245,166,35,0.06)', borderRadius: 8, border: '1px solid rgba(245,166,35,0.2)' }}>
+                <div style={{ fontSize: 8, opacity: 0.5, letterSpacing: 2, fontFamily: 'Orbitron' }}>STAT</div>
+                <div style={{ fontFamily: 'Orbitron', fontSize: 12, color: '#f5a623', marginTop: 2 }}>
+                  {statInfo?.icon} {statInfo?.label}
+                </div>
+                <div style={{ fontSize: 11, marginTop: 2, color: direzione === 'piu' ? '#00e676' : '#ff3d3d' }}>
+                  {direzione === 'piu' ? '▲ PIÙ' : '▼ MENO'}
+                </div>
               </div>
-            ))}
+            )}
+            {(fase === 'roundEnd' || fase === 'pvpAttesaProsegui') && vincitoreRound && (
+              <div className="fade-up" style={{ marginTop: 8 }}>
+                <div style={{ fontFamily: 'Orbitron', fontSize: 13, fontWeight: 700, color: vincitoreRound === 'player' ? '#00e676' : vincitoreRound === 'cpu' ? coloreAvversario : '#ffd666' }}>
+                  {vincitoreRound === 'player' ? '✅ VINTO!' : vincitoreRound === 'cpu' ? '❌ PERSO' : '🤝 PARI'}
+                </div>
+                {carteP && carteC && statScelta && (
+                  <div style={{ fontSize: 10, marginTop: 4, color: 'rgba(238,232,220,0.7)' }}>
+                    Tu: <strong>{carteP[statScelta]}</strong> vs <strong>{carteC[statScelta]}</strong>
+                  </div>
+                )}
+              </div>
+            )}
+            {fase === 'suddenDeathReveal' && vincitoreRound && (
+              <div className="fade-up" style={{ marginTop: 8 }}>
+                <div style={{ fontFamily: 'Orbitron', fontSize: 13, fontWeight: 700, color: vincitoreRound === 'player' ? '#00e676' : vincitoreRound === 'cpu' ? coloreAvversario : '#ffd666' }}>
+                  {vincitoreRound === 'player' ? '✅ VINCI!' : vincitoreRound === 'cpu' ? '❌ PERDI' : '🤝 ANCORA!'}
+                </div>
+                {carteP && carteC && statScelta && (
+                  <div style={{ fontSize: 10, marginTop: 4 }}>Tu: <strong>{carteP[statScelta]}</strong> vs <strong>{carteC[statScelta]}</strong></div>
+                )}
+              </div>
+            )}
+            {pvpInAttesa && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 8 }}>
+                  {[0, 1, 2].map(i => (
+                    <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: coloreAvversario, animation: `pulse 1.2s ease-in-out ${i * 0.4}s infinite` }} />
+                  ))}
+                </div>
+                <style>{`@keyframes pulse { 0%,100%{opacity:0.2;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }`}</style>
+              </div>
+            )}
+          </div>
+
+          {/* Carta Avversario */}
+          <div style={{ textAlign: 'center', flexShrink: 0 }}>
+            <div style={{ fontSize: 8, letterSpacing: 2, opacity: 0.4, marginBottom: 4, fontFamily: 'Orbitron' }}>{nomeAvversario.toUpperCase()}</div>
+            {carteC
+              ? ((['reveal', 'roundEnd', 'pvpAttesaProsegui', 'suddenDeathReveal'].includes(fase))
+                  ? <div className="battle-carta-scelta"><CartaWaifu waifu={carteC} dimensione="piccola"
+                      evidenziaStat={statScelta}
+                      perdente={fase === 'roundEnd' && vincitoreRound === 'player'} /></div>
+                  : <div style={{ width: 130, height: 195, background: `linear-gradient(160deg, rgba(${parseInt(coloreAvversario.slice(1,3),16)},${parseInt(coloreAvversario.slice(3,5),16)},${parseInt(coloreAvversario.slice(5,7),16)},0.05), #06030f)`, border: `1px solid ${coloreAvversario}40`, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: `${coloreAvversario}80` }}>?</div>
+                )
+              : <div style={{ width: 130, height: 195, border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.2)', fontSize: 9, fontFamily: 'Orbitron' }}>ATTESA</div>
+            }
           </div>
         </div>
-      )}
+      </PannelloOrnato>
 
-      {/* ── Selezione waifu vs CPU (risposta) ── */}
-      {fase === 'playerScegliWaifuVsCPU' && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
-          {waifuPDisp.map(w => (
-            <div key={w.id} onClick={() => onScegliWaifuVsCpu(w)}
-              style={{ cursor: 'pointer', transform: 'scale(1)', transition: 'transform 0.15s' }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-              <CartaWaifu waifu={w} dimensione="piccola" />
-            </div>
-          ))}
+      {/* ── Mazzo del player (sempre visibile con stati) ── */}
+      <PannelloOrnato style={{ padding: 10, marginBottom: 10 }}>
+        <div style={{ fontSize: 9, letterSpacing: 2, color: '#ff2d78', textAlign: 'center', marginBottom: 8, fontFamily: 'Orbitron' }}>
+          {pvpDeveScegliereWaifu || (!isCpu && ['playerScegliWaifu', 'playerScegliWaifuVsCPU', 'suddenDeathWaifu'].includes(fase))
+            ? '👇 SCEGLI LA TUA WAIFU' : 'IL TUO TEAM'}
         </div>
-      )}
-
-      {/* ── Sudden Death selezione waifu ── */}
-      {fase === 'suddenDeathWaifu' && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
-          {waifuPDisp.map(w => (
-            <div key={w.id} onClick={() => {
-              if (isCpu) onScegliWaifuSD(w);
-              else if (turno === 'player') pvpScegliWaifuSDTurno(w);
-              else pvpScegliWaifuSD(w);
-            }}
-              style={{ cursor: 'pointer', transform: 'scale(1)', transition: 'transform 0.15s' }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-              <CartaWaifu waifu={w} dimensione="piccola" />
-            </div>
-          ))}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+          {mazzoP.map(w => {
+            const stato = getStatoWaifu(w.id);
+            const usata = stato !== 'disponibile';
+            let cliccabile = false;
+            let handler = () => {};
+            if (!isCpu) {
+              cliccabile = pvpDeveScegliereWaifu && !usata && (!inSuddenDeath || w.id !== carteP?.id);
+              handler = () => {
+                if (!cliccabile) return;
+                if (fase === 'pvpScegliWaifu') pvpScegliWaifu(w);
+                else if (fase === 'pvpScegliWaifuRispondi') pvpRispondiWaifu(w);
+                else if (fase === 'suddenDeathWaifu') {
+                  if (turno === 'player') pvpScegliWaifuSDTurno(w);
+                  else pvpScegliWaifuSD(w);
+                }
+              };
+            } else {
+              const playerDeveScegliereWaifu = ['playerScegliWaifu', 'playerScegliWaifuVsCPU', 'suddenDeathWaifu'].includes(fase);
+              cliccabile = playerDeveScegliereWaifu && !usata;
+              handler = () => {
+                if (!cliccabile) return;
+                if (fase === 'playerScegliWaifu') onScegliWaifuCpu(w);
+                else if (fase === 'playerScegliWaifuVsCPU') onScegliWaifuVsCpu(w);
+                else if (fase === 'suddenDeathWaifu') onScegliWaifuSD(w);
+              };
+            }
+            return (
+              <div key={w.id} onClick={handler} style={{
+                position: 'relative', cursor: cliccabile ? 'pointer' : 'default',
+                opacity: usata ? 0.35 : 1, filter: usata ? 'grayscale(0.5)' : 'none',
+                transition: 'all 0.2s',
+                border: `2px solid ${getColoreBordo(stato)}`, borderRadius: 12, padding: 2,
+              }}
+              onMouseEnter={e => { if (cliccabile) e.currentTarget.style.transform = 'translateY(-8px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; }}
+              >
+                <CartaWaifu waifu={w} dimensione="piccola" />
+                {usata && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: 24, textShadow: '0 0 10px rgba(0,0,0,0.8)' }}>{getIconaStato(stato)}</div>}
+              </div>
+            );
+          })}
         </div>
-      )}
+      </PannelloOrnato>
 
-      {/* ── Selezione stat ── */}
+      {/* ── MODAL: Scelta statistica ── */}
       {(fase === 'playerScegliStat' || fase === 'pvpScegliStat') && carteP && (
-        <div>
-          <div style={{ textAlign: 'center', marginBottom: 10 }}>
-            <CartaWaifu waifu={carteP} dimensione="piccola" />
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-            {statsDisp.map(s => (
-              <button key={s.key} onClick={() => isCpu ? onScegliStatCpu(s.key) : pvpScegliStat(s.key)} style={{
-                padding: '10px 18px', borderRadius: 10, border: '1px solid rgba(245,166,35,0.3)',
-                background: 'rgba(245,166,35,0.08)', color: '#ffd666', fontFamily: 'Orbitron', fontSize: 11,
-                cursor: 'pointer', letterSpacing: 1,
-              }}>{s.icon} {s.label}</button>
-            ))}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(8px)', zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="fade-up" style={{ background: 'rgba(12,6,24,0.96)', border: '1px solid rgba(255,45,120,0.3)', borderRadius: 16, padding: 22, maxWidth: 380, width: '100%', boxShadow: '0 0 50px rgba(255,45,120,0.2)' }}>
+            <div style={{ textAlign: 'center', marginBottom: 14 }}>
+              <div style={{ fontSize: 11, letterSpacing: 3, color: '#ff2d78', fontFamily: 'Orbitron' }}>🎯 SCEGLI STATISTICA</div>
+              <div style={{ fontSize: 18, color: timeLeft <= 5 ? '#ff3d3d' : '#ffd666', fontFamily: 'Orbitron', fontWeight: 700, marginTop: 4 }}>⏱ {timeLeft}s</div>
+            </div>
+            {/* Stat usate */}
+            <div style={{ display: 'flex', gap: 4, justifyContent: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+              {STATS_BATTAGLIA.map(s => {
+                const usata = statsUsatePartita.includes(s.key);
+                return (
+                  <div key={s.key} style={{
+                    padding: '3px 8px', borderRadius: 6, fontSize: 9, fontFamily: 'Orbitron', letterSpacing: 1,
+                    background: usata ? 'rgba(255,61,61,0.08)' : 'rgba(0,230,118,0.12)',
+                    border: `1px solid ${usata ? '#ff3d3d40' : '#00e67640'}`,
+                    color: usata ? '#ff3d3d60' : '#00e676',
+                    textDecoration: usata ? 'line-through' : 'none',
+                    opacity: usata ? 0.5 : 1,
+                  }}>
+                    {s.icon} {s.label}
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {statsDisp.map(s => (
+                <button key={s.key}
+                  onClick={() => isCpu ? onScegliStatCpu(s.key) : pvpScegliStat(s.key)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '12px 16px', background: 'rgba(155,89,255,0.06)',
+                    border: '1px solid rgba(255,45,120,0.15)', borderRadius: 10, cursor: 'pointer',
+                    color: '#eee8dc', fontFamily: 'Orbitron', fontSize: 12, transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,45,120,0.12)'; e.currentTarget.style.borderColor = '#ff2d78'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(155,89,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,45,120,0.15)'; }}
+                >
+                  <span style={{ fontSize: 18, marginRight: 10 }}>{s.icon}</span>
+                  <span style={{ flex: 1, textAlign: 'left', fontWeight: 600 }}>{s.label}</span>
+                  <span style={{ fontSize: 16, color: '#ffd666', fontWeight: 700 }}>{carteP[s.key]}</span>
+                </button>
+              ))}
+              {statsDisp.length === 0 && (
+                <div style={{ textAlign: 'center', color: '#ff3d3d', fontFamily: 'Orbitron', fontSize: 11, padding: 12 }}>
+                  Tutte le stat sono state usate!<br/>
+                  <span style={{ fontSize: 9, opacity: 0.6 }}>Scelta automatica...</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* ── Selezione direzione ── */}
+      {/* ── MODAL: Scelta direzione ── */}
       {(fase === 'playerScegliDir' || fase === 'pvpScegliDir') && statInfo && (
-        <div>
-          <div style={{ textAlign: 'center', marginBottom: 10 }}>
-            <Chip colore="#ffd666">{statInfo.icon} {statInfo.label}</Chip>
-          </div>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-            <button onClick={() => isCpu ? onScegliDirCpu('piu') : pvpScegliDir('piu')} style={{ ...btnStyle('#00e676'), flex: 1, maxWidth: 140 }}>↑ PIÙ ALTA</button>
-            <button onClick={() => isCpu ? onScegliDirCpu('meno') : pvpScegliDir('meno')} style={{ ...btnStyle('#ff3d3d'), flex: 1, maxWidth: 140 }}>↓ PIÙ BASSA</button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(8px)', zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="fade-up" style={{ background: 'rgba(12,6,24,0.96)', border: '1px solid rgba(255,45,120,0.3)', borderRadius: 16, padding: 24, maxWidth: 340, width: '100%', textAlign: 'center', boxShadow: '0 0 50px rgba(255,45,120,0.2)' }}>
+            <div style={{ fontSize: 24, marginBottom: 6 }}>{statInfo?.icon}</div>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 13, color: '#ff2d78', letterSpacing: 2, marginBottom: 4 }}>
+              {statInfo?.label}: <strong>{carteP?.[statScelta]}</strong>
+            </div>
+            <div style={{ fontSize: 18, color: timeLeft <= 5 ? '#ff3d3d' : '#ffd666', fontFamily: 'Orbitron', fontWeight: 700, marginBottom: 16 }}>⏱ {timeLeft}s</div>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button
+                onClick={() => isCpu ? onScegliDirCpu('piu') : pvpScegliDir('piu')}
+                style={{ flex: 1, padding: '16px 12px', background: 'rgba(0,230,118,0.08)', border: '1px solid #00e676', borderRadius: 12, cursor: 'pointer', color: '#00e676', fontFamily: 'Orbitron', fontSize: 14, fontWeight: 700, transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,230,118,0.2)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,230,118,0.08)'; }}
+              >
+                <div style={{ fontSize: 24 }}>▲</div>
+                <div style={{ marginTop: 4, fontSize: 10 }}>PIÙ ALTO</div>
+              </button>
+              <button
+                onClick={() => isCpu ? onScegliDirCpu('meno') : pvpScegliDir('meno')}
+                style={{ flex: 1, padding: '16px 12px', background: 'rgba(255,61,61,0.08)', border: '1px solid #ff3d3d', borderRadius: 12, cursor: 'pointer', color: '#ff3d3d', fontFamily: 'Orbitron', fontSize: 14, fontWeight: 700, transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,61,61,0.2)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,61,61,0.08)'; }}
+              >
+                <div style={{ fontSize: 24 }}>▼</div>
+                <div style={{ marginTop: 4, fontSize: 10 }}>PIÙ BASSO</div>
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* ── Attesa avversario PvP ── */}
-      {(fase === 'pvpAttesaAvv' || fase === 'pvpAttesaRisoluzione') && (
-        <div style={{ textAlign: 'center', padding: 20 }}>
-          {carteP && <div style={{ marginBottom: 10 }}><CartaWaifu waifu={carteP} dimensione="piccola" /></div>}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 10 }}>
+      {/* ── Pulsante Prosegui turno (PvP roundEnd) ── */}
+      {!isCpu && fase === 'roundEnd' && (
+        <div style={{ textAlign: 'center', marginTop: 8 }}>
+          <button onClick={prossimoRound} style={{ ...btnStyle('#ff2d78'), maxWidth: 300, margin: '0 auto' }}>✅ PROSEGUI TURNO</button>
+        </div>
+      )}
+      {isCpu && fase === 'roundEnd' && (
+        <div style={{ textAlign: 'center', marginTop: 8 }}>
+          <button onClick={prossimoRound} style={{ ...btnStyle('#ff2d78'), maxWidth: 300, margin: '0 auto' }}>PROSSIMO ROUND →</button>
+        </div>
+      )}
+
+      {/* ── Attesa Prosegui turno (PvP) ── */}
+      {!isCpu && fase === 'pvpAttesaProsegui' && (
+        <div style={{ textAlign: 'center', marginTop: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 8 }}>
             {[0, 1, 2].map(i => (
               <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: coloreAvversario, animation: `pulse 1.2s ease-in-out ${i * 0.4}s infinite` }} />
             ))}
@@ -1770,58 +1943,6 @@ function BattagliaMultiplayer({
           <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron' }}>
             In attesa di {nomeAvversario}…
           </div>
-        </div>
-      )}
-
-      {/* ── Reveal ── */}
-      {(fase === 'reveal' || fase === 'roundEnd' || fase === 'pvpAttesaProsegui' || fase === 'cpuRispondeWaifu' || fase === 'suddenDeathReveal') && carteP && carteC && statScelta && (
-        <div>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 10 }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 9, fontFamily: 'Orbitron', color: '#00e676', marginBottom: 4 }}>TU</div>
-              <CartaWaifu waifu={carteP} dimensione="piccola" />
-              <div style={{ fontFamily: 'Orbitron', fontSize: 16, color: '#ffd666', marginTop: 4 }}>
-                {carteP[statScelta]}
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', fontSize: 24 }}>⚔</div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 9, fontFamily: 'Orbitron', color: coloreAvversario, marginBottom: 4 }}>{nomeAvversario.toUpperCase()}</div>
-              <CartaWaifu waifu={{ ...carteC, nome: (fase === 'cpuRispondeWaifu' ? '?' : carteC.nome) }} dimensione="piccola" />
-              <div style={{ fontFamily: 'Orbitron', fontSize: 16, color: '#ffd666', marginTop: 4 }}>
-                {['reveal', 'roundEnd', 'pvpAttesaProsegui', 'suddenDeathReveal'].includes(fase) ? carteC[statScelta] : '?'}
-              </div>
-            </div>
-          </div>
-          {(fase === 'roundEnd' || fase === 'pvpAttesaProsegui') && vincitoreRound && (
-            <div style={{ textAlign: 'center', marginBottom: 10 }}>
-              <div style={{ fontSize: 20, fontFamily: 'Orbitron', fontWeight: 700, color: vincitoreRound === 'player' ? '#00e676' : vincitoreRound === 'cpu' ? coloreAvversario : '#ffd666' }}>
-                {vincitoreRound === 'player' ? '✅ HAI VINTO IL ROUND' : vincitoreRound === 'cpu' ? `❌ ${nomeAvversario.toUpperCase()} HA VINTO` : '🤝 PAREGGIO'}
-              </div>
-            </div>
-          )}
-          {fase === 'roundEnd' && (
-            <div style={{ textAlign: 'center' }}>
-              {isCpu ? (
-                <button onClick={prossimoRound} style={btnStyle('#ff2d78')}>PROSSIMO ROUND →</button>
-              ) : (
-                <button onClick={prossimoRound} style={btnStyle('#ff2d78')}>✅ PROSEGUI TURNO</button>
-              )}
-            </div>
-          )}
-          {!isCpu && fase === 'pvpAttesaProsegui' && (
-            <div style={{ textAlign: 'center', marginTop: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 8 }}>
-                {[0, 1, 2].map(i => (
-                  <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: coloreAvversario, animation: `pulse 1.2s ease-in-out ${i * 0.4}s infinite` }} />
-                ))}
-              </div>
-              <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron' }}>
-                In attesa di {nomeAvversario}…
-              </div>
-              <style>{`@keyframes pulse { 0%,100%{opacity:0.2;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }`}</style>
-            </div>
-          )}
         </div>
       )}
     </div>
