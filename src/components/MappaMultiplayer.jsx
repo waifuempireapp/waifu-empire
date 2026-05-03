@@ -510,6 +510,15 @@ function SchermataPartita({
   const [teamSelezionato, setTeamSelezionato] = useState(null);
   const [waifuSelezionate, setWaifuSelezionate] = useState([]);
 
+  // NOTA: questo useEffect deve stare PRIMA di qualsiasi early return
+  // per rispettare la regola dei hook (stesso numero di hook per ogni render).
+  const _ordine = partita?.ordineGiocatori || [];
+  const _turnoUid = _ordine[partita?.turnoCorrente ?? 0];
+  const _isMioTurno = _turnoUid === user?.uid;
+  useEffect(() => {
+    if (!_isMioTurno) setTerrSel(null);
+  }, [_isMioTurno]);
+
   if (!partita) {
     return (
       <div style={{ padding: 40, textAlign: 'center', color: '#f5a623', fontFamily: 'Orbitron' }}>
@@ -661,11 +670,6 @@ function SchermataPartita({
       setTerrSel(null);
     } catch (e) { mostraNotif(e.message, '#ff3d3d'); }
   };
-
-  // Chiudi popup se il turno passa ad un altro giocatore
-  useEffect(() => {
-    if (!isMioTurno) setTerrSel(null);
-  }, [isMioTurno]);
 
   return (
     <div className="fade-in">
