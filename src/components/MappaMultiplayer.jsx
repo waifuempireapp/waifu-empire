@@ -1014,44 +1014,59 @@ function BattagliaMultiplayer({
     const statKey = sceltaTurno.stat;
     const dir = sceltaTurno.direzione;
 
-    const wMyId = miaScelta.waifuId;
-    const wAvvId = sceltaAvv.waifuId;
-    const wMy = mazzoPRef.current.find(w => w.id === wMyId);
-    const wAvv = mazzoCRef.current.find(w => w.id === wAvvId || w.id === `opp_${wAvvId}`);
+    // FIX PvP: usiamo ID assoluti (per uid) invece di relativi (wMyId/wAvvId dal punto di vista dell'attaccante).
+    // In questo modo entrambi i client (attaccante e difensore) sanno con certezza
+    // quale waifuId appartiene a quale giocatore, e cercano nel mazzoP/mazzoC corretto.
+    const attaccanteWaifuId = miaScelta.waifuId; // l'attaccante è sempre myUid in questo branch
+    const difensoreWaifuId  = sceltaAvv.waifuId;
 
-    if (!wMy || !wAvv) return;
+    const wAttaccante = mazzoPRef.current.find(w => w.id === attaccanteWaifuId);
+    const wDifensore  = mazzoCRef.current.find(w => w.id === difensoreWaifuId || w.id === `opp_${difensoreWaifuId}`);
 
-    const { modOpp: modP } = applicaAbilitaOutfit(wMy, wMy._outfitEquipIds || [], outfitCat, STAT_RANGES_DEFAULT);
-    const { modOpp: modC } = applicaAbilitaOutfit(wAvv, wAvv._outfitEquipIds || [], outfitCat, STAT_RANGES_DEFAULT);
-    const pEff = applicaModificatoriOpp(wMy, modC, STAT_RANGES_DEFAULT);
-    const cEff = applicaModificatoriOpp(wAvv, modP, STAT_RANGES_DEFAULT);
+    if (!wAttaccante || !wDifensore) return;
+
+    const { modOpp: modP } = applicaAbilitaOutfit(wAttaccante, wAttaccante._outfitEquipIds || [], outfitCat, STAT_RANGES_DEFAULT);
+    const { modOpp: modC } = applicaAbilitaOutfit(wDifensore,  wDifensore._outfitEquipIds  || [], outfitCat, STAT_RANGES_DEFAULT);
+    const pEff = applicaModificatoriOpp(wAttaccante, modC, STAT_RANGES_DEFAULT);
+    const cEff = applicaModificatoriOpp(wDifensore,  modP, STAT_RANGES_DEFAULT);
     const valP = pEff[statKey];
     const valC = cEff[statKey];
-    const vince = valP === valC ? 'pareggio' : dir === 'piu' ? (valP > valC ? 'player' : 'cpu') : (valP < valC ? 'player' : 'cpu');
+    // Calcola chi vince in modo assoluto (vincitoreUid) anziché relativo ('player'/'cpu')
+    const vinceAttaccante = valP === valC ? null : dir === 'piu' ? (valP > valC) : (valP < valC);
+    const vincitoreUid = valP === valC ? 'pareggio' : vinceAttaccante ? myUid : avversarioUid;
 
-    // Scrivi risultato su Firestore — lo leggeranno entrambi tramite il listener
+    // Salva su Firestore con ID assoluti: entrambi i client leggeranno e sapranno chi è chi
+    const risultato = { attaccanteUid: myUid, attaccanteWaifuId, difensoreWaifuId, statKey, dir, vincitoreUid };
     try {
-      await salvaRisultatoPvpRound(codice, roundKey, { wMyId, wAvvId, statKey, dir, vince });
-      // Applica anche localmente subito (l'attaccante non aspetta il proprio onSnapshot)
-      // Il listener del difensore applicherà quando riceve l'aggiornamento Firestore
+      await salvaRisultatoPvpRound(codice, roundKey, risultato);
+      // L'attaccante applica subito localmente senza aspettare il proprio onSnapshot
       if (pvpRoundRisoltoRef.current !== roundKey) {
         pvpRoundRisoltoRef.current = roundKey;
-        _applicaRisultato({ wMyId, wAvvId, statKey, dir, vince }, roundKey);
+        _applicaRisultato(risultato, roundKey);
       }
     } catch (e) {
       // fallback se Firestore fallisce
       if (pvpRoundRisoltoRef.current !== roundKey) {
         pvpRoundRisoltoRef.current = roundKey;
-        _applicaRisultato({ wMyId, wAvvId, statKey, dir, vince }, roundKey);
+        _applicaRisultato(risultato, roundKey);
       }
     }
   };
 
   // Applica il risultato scritto su Firestore (chiamato da entrambi i client)
+  // FIX PvP: il risultato ora contiene ID assoluti (attaccanteUid, attaccanteWaifuId, difensoreWaifuId).
+  // Ogni client sa se è l'attaccante e cerca la waifu nel mazzo corretto:
+  //   - waifu dell'attaccante → nel mazzoPRef del client attaccante, nel mazzoCRef (opp_) del difensore
+  //   - waifu del difensore   → nel mazzoCRef (opp_) del client attaccante, nel mazzoPRef del difensore
   const _applicaRisultato = (risultato, roundKey) => {
-    const { wMyId, wAvvId, statKey, dir, vince } = risultato;
-    const wMy = mazzoPRef.current.find(w => w.id === wMyId);
-    const wAvv = mazzoCRef.current.find(w => w.id === wAvvId || w.id === `opp_${wAvvId}`);
+    const { attaccanteUid, attaccanteWaifuId, difensoreWaifuId, statKey, dir, vincitoreUid } = risultato;
+    const sonoIoAttaccante = myUid === attaccanteUid;
+    const mioWaifuId  = sonoIoAttaccante ? attaccanteWaifuId : difensoreWaifuId;
+    const avvWaifuId  = sonoIoAttaccante ? difensoreWaifuId  : attaccanteWaifuId;
+    // Converti vincitoreUid nel valore locale 'player'/'cpu'/'pareggio'
+    const vince = vincitoreUid === 'pareggio' ? 'pareggio' : vincitoreUid === myUid ? 'player' : 'cpu';
+    const wMy = mazzoPRef.current.find(w => w.id === mioWaifuId);
+    const wAvv = mazzoCRef.current.find(w => w.id === avvWaifuId || w.id === `opp_${avvWaifuId}`);
     if (!wMy || !wAvv) return;
 
     setCarteP(wMy);
