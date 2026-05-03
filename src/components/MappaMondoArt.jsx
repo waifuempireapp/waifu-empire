@@ -19,11 +19,33 @@ export default function MappaMondoArt({
   territorioSelezionato,
   width = '100%',
   height = '70vh',
+  // ── Props multiplayer ──────────────────────────────────────────────────────
+  // mappaMulti: { [territorioId]: { uid, coloreImpero, nomeImpero } }
+  // Se presente, sovrascrive la logica conquisto/non-conquisto con i colori reali
+  mappaMulti = null,
+  myUid = null,
 }) {
   const mieiTerrIds = Object.entries(territoriUtente)
     .filter(([, v]) => v?.conquistato)
     .map(([k]) => k);
   const primoAttacco = mieiTerrIds.length === 0;
+
+  // ── Modalità Multiplayer: dati derivati da mappaMulti ─────────────────────
+  // imperiMulti: Map uid → { coloreImpero, nomeImpero, count }
+  // mieiTerrIdsMulti: array di territorioId posseduti da myUid
+  let imperiMulti = null;
+  let mieiTerrIdsMulti = [];
+  if (mappaMulti && myUid) {
+    const empMap = {};
+    Object.entries(mappaMulti).forEach(([tid, info]) => {
+      if (!info) return;
+      const uid = info.uid;
+      if (!empMap[uid]) empMap[uid] = { coloreImpero: info.coloreImpero, nomeImpero: info.nomeImpero, count: 0 };
+      empMap[uid].count++;
+      if (uid === myUid) mieiTerrIdsMulti.push(tid);
+    });
+    imperiMulti = empMap;
+  }
 
   // ── Calcoliamo legenda: il mio impero + avversari ───────────────────────────
   const imperiMap = {};
@@ -36,11 +58,26 @@ export default function MappaMondoArt({
     }
   });
   const avversari = Object.entries(imperiMap).sort((a, b) => b[1].count - a[1].count).slice(0, 5);
-  const listaImperi = [];
-  if (mioCount > 0) listaImperi.push([nomeImpero, { colore: coloreImpero, count: mioCount, mio: true }]);
-  avversari.forEach(([n, d]) => listaImperi.push([n, d]));
+  let listaImperi = [];
+  if (imperiMulti && myUid) {
+    // Modalità multiplayer: legenda con tutti gli imperi reali
+    const myEmp = imperiMulti[myUid];
+    if (myEmp) listaImperi.push([myEmp.nomeImpero, { colore: myEmp.coloreImpero, count: myEmp.count, mio: true }]);
+    Object.entries(imperiMulti)
+      .filter(([uid]) => uid !== myUid)
+      .sort((a, b) => b[1].count - a[1].count)
+      .forEach(([uid, emp]) => {
+        const label = uid === 'cpu' ? 'CPU' : emp.nomeImpero;
+        listaImperi.push([label, { colore: emp.coloreImpero, count: emp.count, mio: false }]);
+      });
+  } else {
+    if (mioCount > 0) listaImperi.push([nomeImpero, { colore: coloreImpero, count: mioCount, mio: true }]);
+    avversari.forEach(([n, d]) => listaImperi.push([n, d]));
+  }
 
-  const numConquistati = Object.values(territoriUtente).filter(t => t?.conquistato).length;
+  const numConquistati = imperiMulti && myUid
+    ? mieiTerrIdsMulti.length
+    : Object.values(territoriUtente).filter(t => t?.conquistato).length;
 
   return (
     <div style={{
@@ -111,6 +148,14 @@ export default function MappaMondoArt({
             <stop offset="100%" stopColor={darken(coloreImpero, 20)}  stopOpacity="0.8"/>
           </linearGradient>
 
+          {/* ── Gradienti per-impero multiplayer ── */}
+          {imperiMulti && Object.entries(imperiMulti).map(([uid, { coloreImpero: c }]) => (
+            <linearGradient key={`emp-g-${uid}`} id={`emp-g-${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%"   stopColor={lighten(c, 18)} stopOpacity="0.92"/>
+              <stop offset="100%" stopColor={darken(c, 22)}  stopOpacity="0.82"/>
+            </linearGradient>
+          ))}
+
           {/* ── Filtri glow ── */}
           <filter id="glow-s" x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur stdDeviation="3" result="blur"/>
@@ -173,6 +218,128 @@ export default function MappaMondoArt({
             TERRITORI
             ════════════════════════════════════════════════════ */}
         {TERRITORI.map(t => {
+          // ════════════════════════════════════════════════════
+          // MODALITÀ MULTIPLAYER
+          // ════════════════════════════════════════════════════
+          if (imperiMulti && myUid) {
+            const infoMulti = mappaMulti[t.id];
+            const proprietarioUid = infoMulti?.uid || 'cpu';
+            const isMio = proprietarioUid === myUid;
+            const isCpu = proprietarioUid === 'cpu';
+            const coloreProprietario = isCpu ? '#666666' : (infoMulti?.coloreImpero || '#666666');
+            const nomeProprietario = isCpu ? 'CPU' : (infoMulti?.nomeImpero || '?');
+            const selez = territorioSelezionato === t.id;
+
+            // Confinante = non mio E almeno un mio territorio è confinante (o non ho ancora territori)
+            const eConfinante = !isMio && (
+              mieiTerrIdsMulti.length === 0 ||
+              (t.conf || []).some(cId => mieiTerrIdsMulti.includes(cId))
+            );
+
+            let fillCol, strokeCol, strokeW, opac;
+            if (isMio) {
+              fillCol = `url(#emp-g-${myUid})`;
+              strokeCol = coloreImpero;
+              strokeW = 2.5;
+              opac = 1;
+            } else if (eConfinante) {
+              fillCol = `url(#emp-g-${proprietarioUid})`;
+              strokeCol = '#ffd666';
+              strokeW = 2;
+              opac = 0.75;
+            } else {
+              fillCol = `url(#emp-g-${proprietarioUid})`;
+              strokeCol = coloreProprietario + '50';
+              strokeW = 0.8;
+              opac = 0.30;
+            }
+
+            return (
+              <g key={t.id} style={{ cursor: isMio ? 'default' : 'pointer' }}
+                onClick={() => onTerritorioClick && onTerritorioClick(t)}>
+
+                {/* Glow halo mio territorio */}
+                {isMio && (
+                  <path d={t.path} fill="none"
+                    stroke={coloreImpero} strokeWidth="8" opacity="0.25"
+                    filter="url(#glow-xl)"/>
+                )}
+                {/* Glow halo confinante attaccabile */}
+                {eConfinante && (
+                  <path d={t.path} fill="none"
+                    stroke="#ffd666" strokeWidth="6" opacity="0.35"
+                    filter="url(#glow-m)"/>
+                )}
+
+                {/* Body territorio */}
+                <path
+                  d={t.path}
+                  fill={fillCol}
+                  stroke={selez ? '#fff' : strokeCol}
+                  strokeWidth={selez ? 3.5 : strokeW}
+                  opacity={isMio || selez ? 1 : opac}
+                  filter={selez ? 'url(#glow-s)' : undefined}
+                  className={eConfinante ? 'terr-conf' : undefined}
+                  style={{ transition: 'stroke 0.2s, stroke-width 0.2s' }}
+                />
+
+                {/* Overlay scuro per non confinanti non miei */}
+                {!isMio && !eConfinante && (
+                  <path d={t.path} fill="rgba(0,0,0,0.48)" stroke="none"/>
+                )}
+
+                {/* Bandierina mio territorio */}
+                {isMio && (
+                  <g transform={`translate(${t.cx},${t.cy - 18})`} filter="url(#glow-s)">
+                    <text fontSize="15" fill={coloreImpero} textAnchor="middle" y="0"
+                      style={{ filter: `drop-shadow(0 0 6px ${coloreImpero})` }}>⚑</text>
+                  </g>
+                )}
+
+                {/* Bandierina altri giocatori (visibile per confinanti) */}
+                {!isMio && !isCpu && eConfinante && (
+                  <g transform={`translate(${t.cx},${t.cy - 18})`}>
+                    <text fontSize="11" fill={coloreProprietario} textAnchor="middle" y="0"
+                      opacity="0.8">⚑</text>
+                  </g>
+                )}
+
+                {/* Nome territorio */}
+                <text
+                  x={t.cx} y={t.cy + (isMio ? 14 : eConfinante ? 8 : 6)}
+                  textAnchor="middle"
+                  fontSize={isMio || eConfinante ? '9.5' : '7.5'}
+                  fontFamily="Orbitron, sans-serif"
+                  fill={isMio ? '#ffd666' : eConfinante ? '#fff' : 'rgba(238,232,220,0.28)'}
+                  stroke="rgba(0,0,0,0.8)" strokeWidth="0.4" paintOrder="stroke"
+                  style={{ letterSpacing: 0.5, fontWeight: isMio || eConfinante ? 700 : 400 }}
+                >{t.nome}</text>
+
+                {/* Nome proprietario sotto il territorio (per confinanti non miei) */}
+                {eConfinante && !isMio && (
+                  <text
+                    x={t.cx} y={t.cy + 20}
+                    textAnchor="middle"
+                    fontSize="7"
+                    fontFamily="Orbitron, sans-serif"
+                    fill={coloreProprietario}
+                    stroke="rgba(0,0,0,0.9)" strokeWidth="0.5" paintOrder="stroke"
+                    opacity="0.85"
+                  >{nomeProprietario.length > 12 ? nomeProprietario.slice(0,10)+'…' : nomeProprietario}</text>
+                )}
+
+                {/* Punto pulsante confinante */}
+                {eConfinante && (
+                  <circle cx={t.cx} cy={t.cy - 16} r="3.5" fill="#ffd666"
+                    className="dot-pulse"/>
+                )}
+              </g>
+            );
+          }
+
+          // ════════════════════════════════════════════════════
+          // MODALITÀ SINGLE PLAYER (comportamento originale)
+          // ════════════════════════════════════════════════════
           const terrData = territoriUtente[t.id] || {};
           const conquistato = terrData.conquistato;
           const selez = territorioSelezionato === t.id;

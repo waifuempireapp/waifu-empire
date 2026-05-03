@@ -704,6 +704,8 @@ function SchermataPartita({
           territorioSelezionato={terrSel?.id}
           onTerritorioClick={handleTerritorioClick}
           mieiTerritori={mieiTerritori}
+          mappaMulti={mappaTerritori}
+          myUid={myUid}
         />
 
         {/* Popup territorio */}
@@ -2029,7 +2031,7 @@ function BattagliaMultiplayer({
 // ════════════════════════════════════════════════════════════════════
 // MAPPA SCROLLABILE MULTI (stessa logica di quella single player)
 // ════════════════════════════════════════════════════════════════════
-function MappaScrollabileMulti({ territoriUtente, coloreImpero, nomeImpero, territorioSelezionato, onTerritorioClick, mieiTerritori = [] }) {
+function MappaScrollabileMulti({ territoriUtente, coloreImpero, nomeImpero, territorioSelezionato, onTerritorioClick, mieiTerritori = [], mappaMulti = null, myUid = null }) {
   const [zoom, setZoom] = useState(1);
   const MIN_ZOOM = 0.6, MAX_ZOOM = 2.2, ZOOM_STEP = 0.2;
   const handleWheel = useCallback((e) => {
@@ -2052,6 +2054,8 @@ function MappaScrollabileMulti({ territoriUtente, coloreImpero, nomeImpero, terr
             territorioSelezionato={territorioSelezionato}
             onTerritorioClick={onTerritorioClick}
             mieiTerritori={mieiTerritori}
+            mappaMulti={mappaMulti}
+            myUid={myUid}
           />
         </div>
       </div>
