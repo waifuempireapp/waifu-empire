@@ -3749,23 +3749,9 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
 
   const apriMulti = (vista = 'menu') => { setVistaMultiIniziale(vista); setModalitaMulti(true); };
 
-  // Se multiplayer attivo, mostra il componente dedicato
-  if (modalitaMulti) {
-    return (
-      <MappaMultiplayer
-        profilo={profilo}
-        user={user}
-        collezione={collezione}
-        waifuCat={waifuCat}
-        outfitCat={outfitCat}
-        mostraNotif={mostraNotif}
-        vistaIniziale={vistaMultiIniziale}
-        onEsci={() => setModalitaMulti(false)}
-      />
-    );
-  }
-
   // ── STATO MAPPA ────────────────────────────────────────────
+  // NOTA: nessun early return prima degli hooks — regola fondamentale di React.
+  // Il render condizionale per il multiplayer avviene nel return finale.
   const [territoriUtente, setTerritoriUtente] = useState({});
   const [terrSel, setTerrSel] = useState(null);
   const [livelloCPU, setLivelloCPU] = useState(1);
@@ -4660,6 +4646,20 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   // ================================================================
   return (
     <div className="fade-in">
+      {/* Se multiplayer attivo, mostra il componente dedicato */}
+      {modalitaMulti ? (
+        <MappaMultiplayer
+          profilo={profilo}
+          user={user}
+          collezione={collezione}
+          waifuCat={waifuCat}
+          outfitCat={outfitCat}
+          mostraNotif={mostraNotif}
+          vistaIniziale={vistaMultiIniziale}
+          onEsci={() => setModalitaMulti(false)}
+        />
+      ) : (
+      <div>
       {/* Bottoni modalità multiplayer */}
       <PannelloOrnato glow="#9b59ff" style={{ padding: '10px 14px', marginBottom: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
@@ -4743,6 +4743,8 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
           <div style={{ fontSize: 40, marginBottom: 8 }}>🏆</div>
           <TitoloOrnato livello={1} colore="#00e676">MAPPA COMPLETATA!</TitoloOrnato>
         </PannelloOrnato>
+      )}
+      </div>
       )}
     </div>
   );
