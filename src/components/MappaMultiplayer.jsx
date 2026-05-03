@@ -6,11 +6,11 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   creaPartitaMultiplayer, uniscitiPartita, avviaPartitaMultiplayer,
   caricaPartita, ascoltaPartita, scegliAttacco,
-  registraRisultatoBattaglia, salvaPartita, setGiocatoreInLobby,
+  registraRisultatoBattaglia, salvaPartitaConNome, setGiocatoreInLobby,
   getColoriUsatiLobby, salvaMazzoBattaglia,
   salvaSceltaPvpRound, salvaPrimoTurnoPvp,
   salvaProseguiTurnoRound, registraRisultatoBattagliaPvp,
-  salvaRisultatoPvpRound,
+  salvaRisultatoPvpRound, getPartiteSalvateUtente,
 } from '@/lib/multiplayerService';
 import { TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT } from '@/lib/constants';
 import { applicaAbilitaOutfit, applicaModificatoriOpp } from '@/lib/gameLogic';
@@ -39,13 +39,29 @@ export default function MappaMultiplayer({
   const [vista, setVista] = useState(vistaIniziale);
   const [partita, setPartita] = useState(null);
   const [codicePartita, setCodicePartita] = useState('');
+  // Modale nome partita: { aperto, onConferma }
+  const [modaleNome, setModaleNome] = useState({ aperto: false, onConferma: null });
   // useRef per il listener: evita problemi con setState che chiama la funzione come updater
   const unsubscribeRef = useRef(null);
+  // Ref per accedere a partita/codice nei callback senza stale closure
+  const partitaRef = useRef(null);
+  const codiceRef = useRef('');
+  useEffect(() => { partitaRef.current = partita; }, [partita]);
+  useEffect(() => { codiceRef.current = codicePartita; }, [codicePartita]);
 
-  // Cleanup al unmount
+  // Cleanup al unmount — auto-save silenzioso senza nome
   useEffect(() => {
-    return () => { if (unsubscribeRef.current) unsubscribeRef.current(); };
-  }, []);
+    return () => {
+      if (unsubscribeRef.current) unsubscribeRef.current();
+      // Auto-save al dismount (es. navigazione fuori dal tab) senza bloccare il render
+      const p = partitaRef.current;
+      const c = codiceRef.current;
+      if (p?.codice && p.stato !== 'terminata') {
+        salvaPartitaConNome(c, user.uid, p.nomiPartita?.[user.uid] || p.codice).catch(() => {});
+        setGiocatoreInLobby(c, user.uid, false).catch(() => {});
+      }
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sanitizza i dati Firestore: converte Timestamp in millisecondi (numeri serializzabili)
   const sanitizzaPartita = useCallback((p) => {
@@ -59,11 +75,6 @@ export default function MappaMultiplayer({
   }, []);
 
   // Avvia listener realtime.
-  // Il callback di onSnapshot può essere chiamato sincronicamente da Firestore
-  // durante un ciclo di update React, causando React error #300 ("Cannot update
-  // a component while rendering a different component").
-  // setTimeout(0) garantisce che setPartita venga eseguito in un nuovo task,
-  // fuori dal ciclo di rendering corrente.
   const avviaListener = useCallback((codice) => {
     if (unsubscribeRef.current) unsubscribeRef.current();
     const unsub = ascoltaPartita(codice, (p) => {
@@ -81,115 +92,187 @@ export default function MappaMultiplayer({
     }
   }, [partita?.stato, vista]);
 
-  const handleEsciESalva = async () => {
-    if (partita?.codice) {
-      await salvaPartita(partita.codice);
-      await setGiocatoreInLobby(partita.codice, user.uid, false);
-      if (unsubscribeRef.current) unsubscribeRef.current();
+  // ── Salvataggio con modale nome ───────────────────────────────────
+  // Apre il modale, chiede il nome, poi esegue il salvataggio e chiama il callback.
+  const richiediNomeESalva = useCallback((codice, nomeDefault, onDopo) => {
+    setModaleNome({
+      aperto: true,
+      nomeDefault,
+      onConferma: async (nome) => {
+        setModaleNome({ aperto: false, onConferma: null });
+        try {
+          await salvaPartitaConNome(codice, user.uid, nome);
+          await setGiocatoreInLobby(codice, user.uid, false);
+        } catch (e) { /* non bloccare l'uscita */ }
+        if (unsubscribeRef.current) { unsubscribeRef.current(); unsubscribeRef.current = null; }
+        onDopo();
+      },
+      onAnnulla: () => setModaleNome({ aperto: false, onConferma: null }),
+    });
+  }, [user.uid]);
+
+  const handleEsciESalva = useCallback(() => {
+    const p = partitaRef.current;
+    const c = codiceRef.current;
+    if (c && p?.stato !== 'terminata') {
+      const nomeDefault = p?.nomiPartita?.[user.uid] || c;
+      richiediNomeESalva(c, nomeDefault, onEsci);
+    } else {
+      if (unsubscribeRef.current) { unsubscribeRef.current(); unsubscribeRef.current = null; }
+      onEsci();
     }
-    onEsci();
-  };
+  }, [richiediNomeESalva, onEsci, user.uid]);
 
   // ── Render viste ──────────────────────────────────────────────────
-  if (vista === 'menu') {
-    return (
-      <MenuMultiplayer
-        onCrea={() => setVista('crea')}
-        onUnisciti={() => setVista('unisciti')}
-        onCarica={() => setVista('carica')}
-        onIndietro={onEsci}
-      />
-    );
-  }
+  return (
+    <>
+      {/* Modale nome partita — sovrapposto a tutto */}
+      {modaleNome.aperto && (
+        <ModaleNomePartita
+          nomeDefault={modaleNome.nomeDefault || ''}
+          onConferma={modaleNome.onConferma}
+          onAnnulla={modaleNome.onAnnulla}
+        />
+      )}
 
-  if (vista === 'crea') {
-    return (
-      <CreaPartita
-        profilo={profilo}
-        user={user}
-        onCreata={async ({ codice }) => {
-          setCodicePartita(codice);
-          avviaListener(codice);
-          setVista('lobby');
-        }}
-        onAnnulla={() => setVista('menu')}
-      />
-    );
-  }
+      {vista === 'menu' && (
+        <MenuMultiplayer
+          onCrea={() => setVista('crea')}
+          onUnisciti={() => setVista('unisciti')}
+          onCarica={() => setVista('carica')}
+          onIndietro={onEsci}
+        />
+      )}
 
-  if (vista === 'unisciti') {
-    return (
-      <UniscitiPartita
-        profilo={profilo}
-        user={user}
-        onUnito={async ({ codice }) => {
-          setCodicePartita(codice);
-          avviaListener(codice);
-          setVista('lobby');
-        }}
-        onAnnulla={() => setVista('menu')}
-      />
-    );
-  }
-
-  if (vista === 'carica') {
-    return (
-      <CaricaPartita
-        user={user}
-        onCaricata={async (p) => {
-          setPartita(p);
-          setCodicePartita(p.codice);
-          avviaListener(p.codice);
-          // Se la partita è in gioco, check se tutti i giocatori necessari sono presenti
-          if (p.stato === 'in_gioco') {
-            await setGiocatoreInLobby(p.codice, user.uid, true);
-            setVista('partita');
-          } else {
+      {vista === 'crea' && (
+        <CreaPartita
+          profilo={profilo}
+          user={user}
+          onCreata={async ({ codice }) => {
+            setCodicePartita(codice);
+            avviaListener(codice);
             setVista('lobby');
-          }
-        }}
-        onAnnulla={() => setVista('menu')}
-      />
-    );
-  }
+          }}
+          onAnnulla={() => setVista('menu')}
+        />
+      )}
 
-  if (vista === 'lobby') {
-    return (
-      <Lobby
-        partita={partita}
-        codice={codicePartita}
-        user={user}
-        onAvvia={async () => {
-          try {
-            await avviaPartitaMultiplayer(codicePartita);
-            await setGiocatoreInLobby(codicePartita, user.uid, true);
-            setVista('partita');
-          } catch (e) { mostraNotif(e.message, '#ff3d3d'); }
-        }}
-        onEsci={handleEsciESalva}
-        mostraNotif={mostraNotif}
-      />
-    );
-  }
+      {vista === 'unisciti' && (
+        <UniscitiPartita
+          profilo={profilo}
+          user={user}
+          onUnito={async ({ codice }) => {
+            setCodicePartita(codice);
+            avviaListener(codice);
+            setVista('lobby');
+          }}
+          onAnnulla={() => setVista('menu')}
+        />
+      )}
 
-  if (vista === 'partita') {
-    return (
-      <SchermataPartita
-        partita={partita}
-        codice={codicePartita}
-        user={user}
-        profilo={profilo}
-        collezione={collezione}
-        waifuCat={waifuCat}
-        outfitCat={outfitCat}
-        mostraNotif={mostraNotif}
-        onEsciEsalva={handleEsciESalva}
-        onAggiornata={setPartita}
-      />
-    );
-  }
+      {vista === 'carica' && (
+        <CaricaPartita
+          user={user}
+          onCaricata={async (p) => {
+            setPartita(p);
+            setCodicePartita(p.codice);
+            avviaListener(p.codice);
+            if (p.stato === 'in_gioco') {
+              await setGiocatoreInLobby(p.codice, user.uid, true);
+              setVista('partita');
+            } else {
+              setVista('lobby');
+            }
+          }}
+          onAnnulla={() => setVista('menu')}
+        />
+      )}
 
-  return null;
+      {vista === 'lobby' && (
+        <Lobby
+          partita={partita}
+          codice={codicePartita}
+          user={user}
+          onAvvia={async () => {
+            try {
+              await avviaPartitaMultiplayer(codicePartita);
+              await setGiocatoreInLobby(codicePartita, user.uid, true);
+              setVista('partita');
+            } catch (e) { mostraNotif(e.message, '#ff3d3d'); }
+          }}
+          onEsci={handleEsciESalva}
+          mostraNotif={mostraNotif}
+        />
+      )}
+
+      {vista === 'partita' && (
+        <SchermataPartita
+          partita={partita}
+          codice={codicePartita}
+          user={user}
+          profilo={profilo}
+          collezione={collezione}
+          waifuCat={waifuCat}
+          outfitCat={outfitCat}
+          mostraNotif={mostraNotif}
+          onEsciEsalva={handleEsciESalva}
+          onAggiornata={setPartita}
+        />
+      )}
+    </>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MODALE NOME PARTITA
+// Chiede all'utente di dare un nome alla partita prima di salvarla.
+// ════════════════════════════════════════════════════════════════════
+function ModaleNomePartita({ nomeDefault, onConferma, onAnnulla }) {
+  const [nome, setNome] = useState(nomeDefault || '');
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(0,0,0,0.75)', display: 'flex',
+      alignItems: 'center', justifyContent: 'center', padding: 16,
+    }}>
+      <div style={{
+        background: 'linear-gradient(135deg, #0d0820, #06030f)',
+        border: '1px solid rgba(245,166,35,0.4)',
+        borderRadius: 16, padding: 28, maxWidth: 360, width: '100%',
+        boxShadow: '0 0 40px rgba(245,166,35,0.15)',
+      }}>
+        <div style={{ fontFamily: 'Orbitron', fontSize: 14, fontWeight: 700, color: '#f5a623', letterSpacing: 2, marginBottom: 6, textAlign: 'center' }}>
+          💾 SALVA PARTITA
+        </div>
+        <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', marginBottom: 16, textAlign: 'center' }}>
+          Dai un nome a questa partita — lo vedrai solo tu nella lista delle partite salvate
+        </div>
+        <input
+          value={nome}
+          onChange={e => setNome(e.target.value)}
+          placeholder="Es. Partita con Marco e Sara"
+          maxLength={40}
+          autoFocus
+          style={{
+            width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(245,166,35,0.3)', borderRadius: 8, color: '#eee8dc',
+            fontFamily: 'Orbitron', fontSize: 11, outline: 'none', boxSizing: 'border-box',
+            marginBottom: 16,
+          }}
+          onKeyDown={e => { if (e.key === 'Enter' && nome.trim()) onConferma(nome.trim()); }}
+        />
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onAnnulla} style={btnStyle('#666', true)}>ANNULLA</button>
+          <button
+            onClick={() => onConferma(nome.trim() || nomeDefault)}
+            style={btnStyle('#f5a623')}
+          >
+            💾 SALVA ED ESCI
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -365,52 +448,145 @@ function UniscitiPartita({ profilo, user, onUnito, onAnnulla }) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// CARICA PARTITA
+// CARICA PARTITA — mostra lista partite salvate dell'utente
 // ════════════════════════════════════════════════════════════════════
 function CaricaPartita({ user, onCaricata, onAnnulla }) {
-  const [codice, setCodice] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [partiteSalvate, setPartiteSalvate] = useState(null); // null = caricamento
+  const [errore, setErrore] = useState('');
+  const [loadingCodice, setLoadingCodice] = useState(''); // codice in caricamento
+  // Fallback manuale: se l'utente ha un codice "vecchio" non indicizzato
+  const [mostraFallback, setMostraFallback] = useState(false);
+  const [codiceFallback, setCodiceFallback] = useState('');
+  const [loadingFallback, setLoadingFallback] = useState(false);
 
-  const handleCarica = async () => {
-    if (codice.trim().length < 6) return;
-    setLoading(true);
+  useEffect(() => {
+    let attivo = true;
+    getPartiteSalvateUtente(user.uid)
+      .then(lista => { if (attivo) setPartiteSalvate(lista); })
+      .catch(() => { if (attivo) { setPartiteSalvate([]); setErrore('Errore nel caricamento della lista.'); } });
+    return () => { attivo = false; };
+  }, [user.uid]);
+
+  const entraInPartita = async (codice) => {
+    setLoadingCodice(codice);
     try {
-      const p = await caricaPartita(codice.trim());
-      // Verifica che l'utente faccia parte della partita
+      const p = await caricaPartita(codice);
       if (!p.giocatori?.[user.uid]) throw new Error('Non sei un giocatore di questa partita');
       if (p.stato === 'terminata') throw new Error('Questa partita è già terminata');
-      // Se è in_gioco, verifica che il suo impero non sia eliminato
-      if (p.stato === 'in_gioco' && p.giocatori[user.uid]?.eliminato) {
-        throw new Error('Il tuo impero è stato eliminato da questa partita');
-      }
+      if (p.stato === 'in_gioco' && p.giocatori[user.uid]?.eliminato) throw new Error('Il tuo impero è stato eliminato');
       onCaricata(p);
     } catch (e) {
-      alert(e.message);
-      setLoading(false);
+      setErrore(e.message);
+      setLoadingCodice('');
     }
+  };
+
+  const handleFallback = async () => {
+    if (codiceFallback.trim().length < 6) return;
+    setLoadingFallback(true);
+    await entraInPartita(codiceFallback.trim().toUpperCase());
+    setLoadingFallback(false);
+  };
+
+  const formatData = (ts) => {
+    if (!ts) return '';
+    const d = new Date(typeof ts === 'number' ? ts : ts * 1000);
+    return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
   };
 
   return (
     <div className="fade-in">
-      <PannelloOrnato glow="#f5a623" style={{ padding: 24 }}>
+      <PannelloOrnato glow="#f5a623" style={{ padding: 20 }}>
         <TitoloOrnato livello={2} colore="#f5a623">CARICA PARTITA</TitoloOrnato>
-        <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', marginBottom: 16, textAlign: 'center' }}>
-          Inserisci il codice della partita salvata
-        </div>
-        <label style={labelStyle}>CODICE PARTITA</label>
-        <input
-          value={codice}
-          onChange={e => setCodice(e.target.value.toUpperCase())}
-          placeholder="ES: AB3K7X"
-          maxLength={6}
-          style={{ ...inputStyle, letterSpacing: 8, textAlign: 'center', fontSize: 20, textTransform: 'uppercase' }}
-        />
-        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-          <button onClick={onAnnulla} style={btnStyle('#666', true)}>ANNULLA</button>
-          <button onClick={handleCarica} disabled={loading || codice.trim().length < 6} style={btnStyle('#f5a623')}>
-            {loading ? '...' : '💾 CARICA'}
+
+        {partiteSalvate === null && (
+          <div style={{ textAlign: 'center', padding: 32, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', fontSize: 10 }}>
+            ⏳ Caricamento partite…
+          </div>
+        )}
+
+        {partiteSalvate !== null && partiteSalvate.length === 0 && !errore && (
+          <div style={{ textAlign: 'center', padding: 24 }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>📭</div>
+            <div style={{ color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', fontSize: 10, marginBottom: 16 }}>
+              Nessuna partita salvata trovata
+            </div>
+          </div>
+        )}
+
+        {partiteSalvate !== null && partiteSalvate.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+            {partiteSalvate.map(p => {
+              const nomePersonale = p.nomiPartita?.[user.uid] || p.codice;
+              const numGiocatori = Object.keys(p.giocatori || {}).filter(k => k !== 'cpu').length;
+              const mieiTerritori = Object.values(p.mappaTerritori || {}).filter(t => t?.uid === user.uid).length;
+              const totTerritori = Object.keys(p.mappaTerritori || {}).length;
+              const isLoading = loadingCodice === p.codice;
+              return (
+                <div key={p.codice} style={{
+                  background: 'rgba(245,166,35,0.05)', border: '1px solid rgba(245,166,35,0.2)',
+                  borderRadius: 12, padding: '12px 14px',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'Orbitron', fontSize: 12, color: '#f5a623', fontWeight: 700, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {nomePersonale}
+                    </div>
+                    <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <span>🏴 {mieiTerritori}/{totTerritori}</span>
+                      <span>👥 {numGiocatori} giocatori</span>
+                      <span style={{ color: p.stato === 'in_gioco' ? '#00e676' : '#9b59ff' }}>
+                        {p.stato === 'in_gioco' ? '▶ In gioco' : '⏸ In lobby'}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.25)', fontFamily: 'Orbitron', marginTop: 2 }}>
+                      {formatData(p.aggiornato)} · {p.codice}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => entraInPartita(p.codice)}
+                    disabled={!!loadingCodice}
+                    style={btnStyle('#f5a623')}
+                  >
+                    {isLoading ? '⏳' : '▶ ENTRA'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {errore && (
+          <div style={{ color: '#ff3d3d', fontFamily: 'Orbitron', fontSize: 9, textAlign: 'center', marginBottom: 12 }}>
+            ⚠ {errore}
+          </div>
+        )}
+
+        {/* Fallback manuale con codice */}
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 14, marginTop: 4 }}>
+          <button
+            onClick={() => setMostraFallback(v => !v)}
+            style={{ background: 'none', border: 'none', color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer', letterSpacing: 1, width: '100%', textAlign: 'center' }}
+          >
+            {mostraFallback ? '▲ Nascondi' : '▼ Hai un codice partita? Inseriscilo manualmente'}
           </button>
+          {mostraFallback && (
+            <div style={{ marginTop: 10 }}>
+              <input
+                value={codiceFallback}
+                onChange={e => setCodiceFallback(e.target.value.toUpperCase())}
+                placeholder="ES: AB3K7X"
+                maxLength={6}
+                style={{ ...inputStyle, letterSpacing: 8, textAlign: 'center', fontSize: 18, textTransform: 'uppercase' }}
+              />
+              <button onClick={handleFallback} disabled={loadingFallback || codiceFallback.trim().length < 6} style={{ ...btnStyle('#f5a623'), marginTop: 8, width: '100%' }}>
+                {loadingFallback ? '⏳' : '💾 CARICA CON CODICE'}
+              </button>
+            </div>
+          )}
         </div>
+
+        <button onClick={onAnnulla} style={{ ...btnStyle('#666', true), marginTop: 14, width: '100%' }}>← ANNULLA</button>
       </PannelloOrnato>
     </div>
   );

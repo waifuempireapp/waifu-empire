@@ -50,6 +50,10 @@ export async function creaPartitaMultiplayer({ uid, nomeImpero, coloreImpero }) 
     log: [],
     // Salvataggio
     salvata: false,
+    // Array piatto di uid per query Firestore (array-contains)
+    partecipantiUid: [uid],
+    // Nomi personalizzati per ogni giocatore: { [uid]: 'Nome scelto dall\'utente' }
+    nomiPartita: {},
   };
 
   await setDoc(ref, partita);
@@ -81,6 +85,7 @@ export async function uniscitiPartita({ codice, uid, nomeImpero, coloreImpero })
       territoriIds: [],
       eliminato: false,
     },
+    partecipantiUid: arrayUnion(uid),
     aggiornato: serverTimestamp(),
   });
   return snap.data();
@@ -249,10 +254,31 @@ export async function registraRisultatoBattaglia({ codice, vincitoreUid, territo
   });
 }
 
-// ── Salva la partita (per continuarla dopo) ────────────────────────────
-export async function salvaPartita(codice) {
+// ── Salva la partita con nome personalizzato per l'utente ─────────────
+// nomePartita: stringa scelta dall'utente (es. "Partita con Marco")
+// Ogni giocatore può avere un nome diverso per la stessa partita.
+export async function salvaPartitaConNome(codice, uid, nomePartita) {
   const ref = doc(db, 'partite_multi', codice);
-  await updateDoc(ref, { salvata: true, aggiornato: serverTimestamp() });
+  await updateDoc(ref, {
+    salvata: true,
+    [`nomiPartita.${uid}`]: nomePartita.trim() || codice,
+    aggiornato: serverTimestamp(),
+  });
+}
+
+// ── Recupera le partite salvate di un utente (senza ricordare il codice) ─
+// Cerca tutte le partite dove l'utente è partecipante e la partita è salvata.
+export async function getPartiteSalvateUtente(uid) {
+  const q = query(
+    collection(db, 'partite_multi'),
+    where('partecipantiUid', 'array-contains', uid),
+    where('salvata', '==', true),
+  );
+  const snap = await getDocs(q);
+  return snap.docs
+    .map(d => ({ codice: d.id, ...d.data() }))
+    .filter(p => p.stato !== 'terminata' && !p.giocatori?.[uid]?.eliminato)
+    .sort((a, b) => (b.aggiornato?.seconds || 0) - (a.aggiornato?.seconds || 0));
 }
 
 // ── Salva il mazzo di un giocatore nella battaglia corrente ───────────
