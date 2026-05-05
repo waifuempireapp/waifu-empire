@@ -2104,52 +2104,17 @@ function BattagliaMultiplayer({
       testoTerritorio = sonoAttaccante ? `❌ Non hai conquistato ${terrData?.nome}` : `💔 Hai perso ${terrData?.nome}`;
     }
 
-    // Mostra direttamente il popup modale (nessuna schermata intermedia)
+    // Popup con timer locale indipendente (5s) — non influenzato dall'altro giocatore
     return (
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 9999,
-        background: 'rgba(0,0,0,0.85)', display: 'flex',
-        alignItems: 'center', justifyContent: 'center', padding: 16,
-      }}>
-        <div className="fade-in" style={{
-          background: 'linear-gradient(135deg, #0d0820, #06030f)',
-          border: `2px solid ${coloreRisultato}50`,
-          borderRadius: 20, padding: 32, maxWidth: 360, width: '100%',
-          textAlign: 'center',
-          boxShadow: `0 0 60px ${coloreRisultato}30`,
-        }}>
-          <div style={{ fontSize: 52, marginBottom: 12 }}>{vittoria ? '👑' : '💔'}</div>
-          <div style={{ fontFamily: 'Orbitron', fontSize: 20, fontWeight: 700, color: coloreRisultato, letterSpacing: 3, marginBottom: 6 }}>
-            {vittoria ? 'VITTORIA!' : 'SCONFITTA'}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 16 }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>TU</div>
-              <div style={{ fontSize: 34, fontFamily: 'Orbitron', fontWeight: 800, color: '#00e676' }}>{pFin.player}</div>
-            </div>
-            <div style={{ fontSize: 16, color: '#444', fontFamily: 'Orbitron' }}>—</div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>{nomeAvversario.toUpperCase()}</div>
-              <div style={{ fontSize: 34, fontFamily: 'Orbitron', fontWeight: 800, color: coloreAvversario }}>{pFin.cpu}</div>
-            </div>
-          </div>
-          <div style={{
-            padding: '12px 18px', borderRadius: 10, marginBottom: 24,
-            background: `${coloreRisultato}12`,
-            border: `1px solid ${coloreRisultato}35`,
-            fontSize: 12, fontFamily: 'Orbitron', fontWeight: 700,
-            color: coloreRisultato, letterSpacing: 1,
-          }}>
-            {testoTerritorio}
-          </div>
-          <button
-            onClick={() => onBattagliaFinita(risultatoFinale.vincitoreUid)}
-            style={{ ...btnStyle(coloreRisultato), width: '100%' }}
-          >
-            ✓ PROCEDI
-          </button>
-        </div>
-      </div>
+      <PopupGameEnd
+        vittoria={vittoria}
+        pFin={pFin}
+        coloreRisultato={coloreRisultato}
+        testoTerritorio={testoTerritorio}
+        nomeAvversario={nomeAvversario}
+        coloreAvversario={coloreAvversario}
+        onProcedi={() => onBattagliaFinita(risultatoFinale.vincitoreUid)}
+      />
     );
   }
 
@@ -2680,6 +2645,70 @@ function FormImpero({ nomeImpero, setNomeImpero, coloreImpero, setColoreImpero, 
 }
 
 // ════════════════════════════════════════════════════════════════════
+// POPUP GAME END — timer locale 5s indipendente per ogni client
+// Chiama onProcedi sia al click che allo scadere del timer.
+// Il comportamento di un client non influenza l'altro.
+// ════════════════════════════════════════════════════════════════════
+function PopupGameEnd({ vittoria, pFin, coloreRisultato, testoTerritorio, nomeAvversario, coloreAvversario, onProcedi }) {
+  const [timer, setTimer] = useState(5);
+  const chiamato = useRef(false);
+
+  const procedi = useCallback(() => {
+    if (chiamato.current) return;
+    chiamato.current = true;
+    onProcedi();
+  }, [onProcedi]);
+
+  useEffect(() => {
+    if (timer <= 0) { procedi(); return; }
+    const t = setTimeout(() => setTimer(s => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [timer, procedi]);
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(0,0,0,0.85)', display: 'flex',
+      alignItems: 'center', justifyContent: 'center', padding: 16,
+    }}>
+      <div className="fade-in" style={{
+        background: 'linear-gradient(135deg, #0d0820, #06030f)',
+        border: `2px solid ${coloreRisultato}50`,
+        borderRadius: 20, padding: 32, maxWidth: 360, width: '100%',
+        textAlign: 'center', boxShadow: `0 0 60px ${coloreRisultato}30`,
+      }}>
+        <div style={{ fontSize: 52, marginBottom: 12 }}>{vittoria ? '👑' : '💔'}</div>
+        <div style={{ fontFamily: 'Orbitron', fontSize: 20, fontWeight: 700, color: coloreRisultato, letterSpacing: 3, marginBottom: 6 }}>
+          {vittoria ? 'VITTORIA!' : 'SCONFITTA'}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 16 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>TU</div>
+            <div style={{ fontSize: 34, fontFamily: 'Orbitron', fontWeight: 800, color: '#00e676' }}>{pFin.player}</div>
+          </div>
+          <div style={{ fontSize: 16, color: '#444', fontFamily: 'Orbitron' }}>—</div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>{(nomeAvversario || 'AVVERSARIO').toUpperCase()}</div>
+            <div style={{ fontSize: 34, fontFamily: 'Orbitron', fontWeight: 800, color: coloreAvversario }}>{pFin.cpu}</div>
+          </div>
+        </div>
+        <div style={{
+          padding: '12px 18px', borderRadius: 10, marginBottom: 20,
+          background: `${coloreRisultato}12`, border: `1px solid ${coloreRisultato}35`,
+          fontSize: 12, fontFamily: 'Orbitron', fontWeight: 700,
+          color: coloreRisultato, letterSpacing: 1,
+        }}>
+          {testoTerritorio}
+        </div>
+        <button onClick={procedi} style={{ ...btnStyle(coloreRisultato), width: '100%' }}>
+          ✓ PROCEDI ({timer}s)
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════
 // SPETTATORE VIEW — visualizza la battaglia in real-time
 // Legge tutto da partita.battagliaCorrente (già aggiornato dal listener)
 // ════════════════════════════════════════════════════════════════════
@@ -2717,33 +2746,69 @@ function SpettatoreView({ partita, giocatori, battaglia, waifuCat, onAspetta, on
   const mazzoAltro = getMazzo(altroUid);
 
   // Ricalcola i risultati già giocati
+  // IMPORTANTE: un round è "completato" solo quando entrambi i giocatori hanno premuto
+  // "prosegui" (proseguiRound[roundKey][attUid] && proseguiRound[roundKey][difUid]).
+  // Finché non è così, il round è ancora "in corso" per lo spettatore.
   const pvpRisultato = battaglia.pvpRisultato || {};
+  const proseguiRound = battaglia.proseguiRound || {};
   const risWaifu = {}; // waifuId → 'vinta'|'persa'|'pareggio' dal punto di vista di guardoUid
   let playerScore = 0, cpuScore = 0;
-  let ultimoRound = 0;
-  Object.entries(pvpRisultato).forEach(([rKey, ris]) => {
+
+  // Determina il round corrente: l'ultimo round il cui risultato esiste
+  // ma i giocatori NON hanno ancora entrambi premuto "prosegui", oppure
+  // il primo round senza risultato.
+  let roundCorrente = 1;
+  let roundInSospeso = null; // round con risultato ma prosegui non completato
+
+  for (let r = 1; r <= 5; r++) {
+    const rKey = String(r);
+    const ris = pvpRisultato[rKey];
+    if (!ris) {
+      // Questo round non ha ancora risultato → è il round attuale
+      roundCorrente = r;
+      break;
+    }
+    // Il round ha un risultato: controlla se entrambi hanno premuto prosegui
+    const proseguiDati = proseguiRound[rKey] || {};
+    const entrambiProseguiti = proseguiDati[attUid] && proseguiDati[difUid !== 'cpu' ? difUid : attUid];
+    if (!entrambiProseguiti) {
+      // Risultato presente ma prosegui non completato → siamo ancora qui
+      roundCorrente = r;
+      roundInSospeso = rKey;
+      break;
+    }
+    // Round completato: accumula punteggio e waifu usate
     const vinceGuardo = ris.vincitoreUid === guardoUid;
-    const vinceAltro = ris.vincitoreUid !== 'pareggio' && ris.vincitoreUid !== guardoUid;
+    const vincePari = ris.vincitoreUid === 'pareggio';
     if (vinceGuardo) playerScore++;
-    else if (vinceAltro) cpuScore++;
-    // Waifu usate
+    else if (!vincePari) cpuScore++;
     const sonoGuardoAtt = ris.attaccanteUid === guardoUid;
     const guardoWId = sonoGuardoAtt ? ris.attaccanteWaifuId : ris.difensoreWaifuId;
     const altroWId = sonoGuardoAtt ? ris.difensoreWaifuId : ris.attaccanteWaifuId;
-    const vince = ris.vincitoreUid === 'pareggio' ? 'pareggio' : ris.vincitoreUid === guardoUid ? 'vinta' : 'persa';
+    const vince = vincePari ? 'pareggio' : vinceGuardo ? 'vinta' : 'persa';
     if (guardoWId) risWaifu[guardoWId] = vince;
     if (altroWId) risWaifu[altroWId] = vince === 'vinta' ? 'persa' : vince === 'persa' ? 'vinta' : 'pareggio';
-    if (rKey !== 'sd') { const n = parseInt(rKey, 10); if (!isNaN(n) && n > ultimoRound) ultimoRound = n; }
-  });
+    // Se siamo arrivati al round 5 senza trovare un round in sospeso, siamo al 5+
+    if (r === 5) roundCorrente = 6; // oltre i 5 round → sudden death o fine
+  }
 
-  const roundCorrente = ultimoRound + 1;
+  // Sudden death
+  const sdRis = pvpRisultato['sd'];
+  const sdProsegui = proseguiRound['sd'] || {};
+  const sdEntrambi = sdRis && sdProsegui[attUid] && sdProsegui[difUid !== 'cpu' ? difUid : attUid];
+  const inSuddenDeath = roundCorrente > 5 || (!sdEntrambi && sdRis);
+  if (inSuddenDeath && !roundInSospeso && sdRis) roundInSospeso = 'sd';
+
   const sceltePvp = battaglia.sceltePvp || {};
-  const scelteRound = sceltePvp[String(roundCorrente)] || {};
+  const roundKey = inSuddenDeath ? 'sd' : String(roundCorrente);
+  const scelteRound = sceltePvp[roundKey] || {};
 
-  // Carta scelta nel round corrente
-  const sceltaGuardo = scelteRound[guardoUid];
-  const sceltaAltro = scelteRound[altroUid];
-  const risultatoRound = pvpRisultato[String(roundCorrente)];
+  // Carta scelta nel round corrente (o in sospeso)
+  const rKeyAttuale = roundInSospeso || roundKey;
+  const scelteAttuale = sceltePvp[rKeyAttuale] || {};
+  const sceltaGuardo = scelteAttuale[guardoUid];
+  const sceltaAltro = scelteAttuale[altroUid];
+  const risultatoRound = pvpRisultato[rKeyAttuale];
 
   const cartaGuardoAttuale = risultatoRound
     ? (() => {
@@ -2772,14 +2837,6 @@ function SpettatoreView({ partita, giocatori, battaglia, waifuCat, onAspetta, on
   const coloreGuardo = guardoGiocatore.coloreImpero || '#ff2d78';
   const coloreAltro = altroGiocatore.coloreImpero || '#9b59ff';
 
-  const getColoreBordo = (id) => {
-    const r = risWaifu[id];
-    if (!r) return 'rgba(255,255,255,0.08)';
-    if (r === 'vinta') return '#00e676';
-    if (r === 'persa') return '#ff3d3d';
-    return '#ffd666';
-  };
-
   return (
     <div className="fade-in">
       {/* Header */}
@@ -2787,14 +2844,16 @@ function SpettatoreView({ partita, giocatori, battaglia, waifuCat, onAspetta, on
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ textAlign: 'left' }}>
             <div style={{ fontSize: 8, opacity: 0.5, letterSpacing: 2, fontFamily: 'Orbitron' }}>{gAtt.nomeImpero}</div>
-            <div style={{ fontSize: 28, color: gAtt.coloreImpero, fontFamily: 'Orbitron', fontWeight: 700 }}>{playerScore}</div>
+            <div style={{ fontSize: 28, color: gAtt.coloreImpero, fontFamily: 'Orbitron', fontWeight: 700 }}>
+              {guardoUid === attUid ? playerScore : cpuScore}
+            </div>
           </div>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontFamily: 'Orbitron', letterSpacing: 1, fontSize: 9, color: '#ff2d78', marginBottom: 2 }}>
               👁 SPETTATORE
             </div>
             <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#ffd666' }}>
-              ROUND {roundCorrente}/5
+              {inSuddenDeath ? '⚡ SUDDEN DEATH' : `ROUND ${Math.min(roundCorrente, 5)}/5`}
             </div>
             {terrData && (
               <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginTop: 2 }}>
@@ -2804,7 +2863,9 @@ function SpettatoreView({ partita, giocatori, battaglia, waifuCat, onAspetta, on
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 8, opacity: 0.5, letterSpacing: 2, fontFamily: 'Orbitron' }}>{gDif.nomeImpero}</div>
-            <div style={{ fontSize: 28, color: gDif.coloreImpero, fontFamily: 'Orbitron', fontWeight: 700 }}>{cpuScore}</div>
+            <div style={{ fontSize: 28, color: gDif.coloreImpero, fontFamily: 'Orbitron', fontWeight: 700 }}>
+              {guardoUid === attUid ? cpuScore : playerScore}
+            </div>
           </div>
         </div>
         {/* Stat usate */}
@@ -2853,6 +2914,11 @@ function SpettatoreView({ partita, giocatori, battaglia, waifuCat, onAspetta, on
                   color: vincitoreRound === 'player' ? gAtt.coloreImpero : vincitoreRound === 'cpu' ? gDif.coloreImpero : '#ffd666' }}>
                   {vincitoreRound === 'player' ? `✅ ${gAtt.nomeImpero}` : vincitoreRound === 'cpu' ? `✅ ${gDif.nomeImpero}` : '🤝 PARI'}
                 </div>
+                {roundInSospeso && (
+                  <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron', marginTop: 6, letterSpacing: 1 }}>
+                    ⏳ in attesa dei giocatori…
+                  </div>
+                )}
               </div>
             )}
             {!risultatoRound && (
@@ -2914,22 +2980,30 @@ function SpettatoreView({ partita, giocatori, battaglia, waifuCat, onAspetta, on
           </button>
         </div>
         {/* Mazzo del giocatore selezionato */}
-        <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
           {mazzoGuardo.map(w => {
             const r = risWaifu[w.id];
             const usata = !!r;
+            const icona = r === 'vinta' ? '✅' : r === 'persa' ? '❌' : r === 'pareggio' ? '🤝' : null;
+            const colBordo = !r ? 'rgba(255,255,255,0.08)' : r === 'vinta' ? '#00e676' : r === 'persa' ? '#ff3d3d' : '#ffd666';
             return (
               <div key={w.id} style={{
+                position: 'relative',
                 opacity: usata ? 0.35 : 1,
                 filter: usata ? 'grayscale(0.5)' : 'none',
-                border: `2px solid ${getColoreBordo(w.id)}`,
-                borderRadius: 10, padding: 2,
-                position: 'relative',
+                transition: 'all 0.2s',
+                border: `2px solid ${colBordo}`,
+                borderRadius: 12, padding: 2,
               }}>
-                <CartaWaifu waifu={w} dimensione="mini" />
-                {r && (
-                  <div style={{ position: 'absolute', top: 4, right: 4, fontSize: 12 }}>
-                    {r === 'vinta' ? '✅' : r === 'persa' ? '❌' : '🤝'}
+                <CartaWaifu waifu={w} dimensione="piccola" />
+                {usata && icona && (
+                  <div style={{
+                    position: 'absolute', top: '50%', left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    fontSize: 24, textShadow: '0 0 10px rgba(0,0,0,0.8)',
+                    pointerEvents: 'none',
+                  }}>
+                    {icona}
                   </div>
                 )}
               </div>
