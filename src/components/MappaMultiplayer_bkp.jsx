@@ -685,8 +685,6 @@ function SchermataPartita({
   const [battagliaInfo, setBattagliaInfo] = useState(null);
   const [teamSelezionato, setTeamSelezionato] = useState(null);
   const [waifuSelezionate, setWaifuSelezionate] = useState([]);
-  // Scelta spettatore: null = non ancora scelto, 'aspetta' | 'guarda'
-  const [sceltaSpettatore, setSceltaSpettatore] = useState(null);
 
   // NOTA: questo useEffect deve stare PRIMA di qualsiasi early return
   // per rispettare la regola dei hook (stesso numero di hook per ogni render).
@@ -696,12 +694,6 @@ function SchermataPartita({
   useEffect(() => {
     if (!_isMioTurno) setTerrSel(null);
   }, [_isMioTurno]);
-
-  // Reset scelta spettatore quando la battaglia finisce
-  const _battagliaCorrente = partita?.battagliaCorrente;
-  useEffect(() => {
-    if (!_battagliaCorrente) setSceltaSpettatore(null);
-  }, [_battagliaCorrente]);
 
   if (!partita) {
     return (
@@ -797,92 +789,6 @@ function SchermataPartita({
         mostraNotif={mostraNotif}
       />
     );
-  }
-
-  // ── Spettatore: battaglia in corso ma non sono coinvolto ──────────
-  if (battaglia && !sonoCoinvolto) {
-    const attUid = battaglia.attaccanteUid;
-    const difUid = battaglia.difensoreUid;
-    const gAtt = giocatori[attUid];
-    const gDif = difUid === 'cpu' ? { nomeImpero: 'CPU', coloreImpero: '#666666' } : giocatori[difUid];
-
-    if (sceltaSpettatore === null) {
-      // Mostra scelta: aspetta o guarda
-      return (
-        <div className="fade-in">
-          <PannelloOrnato glow="#9b59ff" style={{ padding: 28, textAlign: 'center' }}>
-            <div style={{ fontSize: 36, marginBottom: 10 }}>⚔️</div>
-            <TitoloOrnato livello={2} colore="#ff2d78">SFIDA IN CORSO</TitoloOrnato>
-            <div style={{ fontSize: 11, fontFamily: 'Orbitron', marginBottom: 6, marginTop: 4 }}>
-              <span style={{ color: gAtt?.coloreImpero }}>{gAtt?.nomeImpero}</span>
-              <span style={{ color: 'rgba(238,232,220,0.4)', margin: '0 8px' }}>vs</span>
-              <span style={{ color: gDif?.coloreImpero }}>{gDif?.nomeImpero}</span>
-            </div>
-            <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 24 }}>
-              per {TERRITORI.find(t => t.id === battaglia.territorioId)?.nome}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 280, margin: '0 auto' }}>
-              <button onClick={() => setSceltaSpettatore('guarda')} style={btnStyle('#ff2d78')}>
-                👁 GUARDA LA SFIDA
-              </button>
-              <button onClick={() => setSceltaSpettatore('aspetta')} style={btnStyle('#666', true)}>
-                ⏳ ASPETTA IL TUO TURNO
-              </button>
-            </div>
-            <div style={{ marginTop: 20 }}>
-              <button onClick={onEsciEsalva} style={{ background: 'none', border: 'none', color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer', letterSpacing: 1 }}>
-                💾 SALVA ED ESCI
-              </button>
-            </div>
-          </PannelloOrnato>
-        </div>
-      );
-    }
-
-    if (sceltaSpettatore === 'aspetta') {
-      return (
-        <div className="fade-in">
-          <PannelloOrnato glow="#9b59ff" style={{ padding: 24, textAlign: 'center' }}>
-            <div style={{ fontSize: 36, marginBottom: 10 }}>⏳</div>
-            <TitoloOrnato livello={2} colore="#f5a623">IN ATTESA</TitoloOrnato>
-            <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', marginBottom: 8 }}>
-              Sfida in corso tra
-            </div>
-            <div style={{ fontSize: 12, fontFamily: 'Orbitron', marginBottom: 20 }}>
-              <span style={{ color: gAtt?.coloreImpero }}>{gAtt?.nomeImpero}</span>
-              <span style={{ color: 'rgba(238,232,220,0.3)', margin: '0 8px' }}>vs</span>
-              <span style={{ color: gDif?.coloreImpero }}>{gDif?.nomeImpero}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 20 }}>
-              {[0,1,2].map(i => (
-                <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: '#f5a623', animation: `mmpulse 1.2s ease-in-out ${i*0.4}s infinite` }} />
-              ))}
-            </div>
-            <button onClick={() => setSceltaSpettatore('guarda')} style={{ ...btnStyle('#ff2d78'), marginBottom: 10 }}>
-              👁 GUARDA LA SFIDA
-            </button>
-            <div style={{ marginTop: 10 }}>
-              <button onClick={onEsciEsalva} style={{ background: 'none', border: 'none', color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer', letterSpacing: 1 }}>
-                💾 SALVA ED ESCI
-              </button>
-            </div>
-          </PannelloOrnato>
-        </div>
-      );
-    }
-
-    if (sceltaSpettatore === 'guarda') {
-      return (
-        <SpettatoreView
-          partita={partita}
-          giocatori={giocatori}
-          battaglia={battaglia}
-          waifuCat={waifuCat}
-          onAspetta={() => setSceltaSpettatore('aspetta')}
-          onEsci={onEsciEsalva}
-        />
-      );
-    }
   }
 
   // Mappa principale
@@ -1173,31 +1079,6 @@ function BattagliaMultiplayer({
   // Risultato finale per il popup "Fine partita"
   const [risultatoFinale, setRisultatoFinale] = useState(null);
 
-  // ── Helpers mazzo (definiti prima degli useEffect che li usano) ───
-  const waifuDisponibili = Object.entries(collezione?.waifu || {}).map(([id, dati]) => {
-    const w = waifuCat.find(x => x.id === id);
-    return w ? { ...w, ...dati } : null;
-  }).filter(Boolean);
-  const teams = collezione?.teams || {};
-
-  const buildWaifuBattaglia = (id) => {
-    const w = waifuDisponibili.find(x => x.id === id);
-    const dati = collezione?.waifu[id];
-    if (!w) return null;
-    const equipIds = Object.values(collezione?.equipaggiamento?.[id] || {}).filter(Boolean);
-    let wb = {
-      ...w,
-      tette: Math.min(7, w.tette + (dati?.stat_bonus?.tette || 0)),
-      taglia_piedi: Math.min(45, w.taglia_piedi + (dati?.stat_bonus?.taglia_piedi || 0)),
-      eta: Math.min(5000, w.eta + (dati?.stat_bonus?.eta || 0)),
-      colore_capelli: Math.min(10, w.colore_capelli + (dati?.stat_bonus?.colore_capelli || 0)),
-      esperienza: Math.min(5000, w.esperienza + (dati?.stat_bonus?.esperienza || 0)),
-      _outfitEquipIds: equipIds,
-    };
-    const { waifuModificata } = applicaAbilitaOutfit(wb, equipIds, outfitCat, STAT_RANGES_DEFAULT);
-    return { ...waifuModificata, _outfitEquipIds: equipIds };
-  };
-
   // ── Stato PvP (Firestore-driven) ──────────────────────────────────
   // ARCHITETTURA: Firestore è la fonte di verità.
   // 1. Ogni client scrive SOLO la propria scelta su Firestore
@@ -1232,146 +1113,6 @@ function BattagliaMultiplayer({
     const t = setTimeout(() => setTimeLeft(p => p - 1), 1000);
     return () => clearTimeout(t);
   }, [fase, timeLeft]);
-
-  // ── Ripristino stato alla riconnessione ───────────────────────────
-  // Se il componente viene smontato e rimontato (cambio sezione + ritorno),
-  // leggiamo Firestore per capire in quale punto della battaglia eravamo
-  // e saltiamo la selezione del team se avevamo già scelto il mazzo.
-  useEffect(() => {
-    if (isCpu) return; // vs CPU non ha senso: il mazzo CPU era generato localmente
-    const batt = partita?.battagliaCorrente;
-    if (!batt) return;
-
-    const mazziPartita = batt.mazzi || {};
-    const mioMazzoIds = mazziPartita[myUid];
-    if (!mioMazzoIds || mioMazzoIds.length < 5) return; // non avevo ancora scelto il mazzo
-
-    // Ricostruisco il mio mazzo
-    const mioMazzo = mioMazzoIds.map(id => buildWaifuBattaglia(id)).filter(Boolean);
-    if (mioMazzo.length < 5) return;
-
-    const mazzoAvvIds = mazziPartita[avversarioUid];
-    const mazzoAvversario = mazzoAvvIds && mazzoAvvIds.length >= 5
-      ? mazzoAvvIds.map(id => { const w = waifuCat.find(x => x.id === id); return w ? { ...w, id: `opp_${w.id}`, _outfitEquipIds: [] } : null; }).filter(Boolean)
-      : null;
-
-    // Imposto mio mazzo immediatamente
-    setMazzoP(mioMazzo);
-    mazzoPRef.current = mioMazzo;
-    setMazzoSalvato(true);
-
-    if (!mazzoAvversario || mazzoAvversario.length < 5) {
-      // Avversario non ha ancora scelto: torno alla schermata di attesa
-      setModoBattaglia(false); // nasconde selezione team
-      setAttesaMazzoAvv(true);
-      return;
-    }
-
-    // Entrambi i mazzi disponibili: ripristino la partita in corso
-    setMazzoC(mazzoAvversario);
-    mazzoCRef.current = mazzoAvversario;
-    setAttesaMazzoAvv(false);
-    setModoBattaglia(false);
-    setIniziata(true);
-
-    // Ripristino punteggio dai risultati dei round già salvati su Firestore
-    const pvpRisultato = batt.pvpRisultato || {};
-    const sceltePvp = batt.sceltePvp || {};
-    let playerScore = 0;
-    let cpuScore = 0;
-    let ultimoRound = 0;
-    let statsUsate = [];
-    const risWaifu = {};
-
-    // Ricalcola i risultati di tutti i round già giocati
-    Object.entries(pvpRisultato).forEach(([rKey, ris]) => {
-      const { vincitoreUid, attaccanteWaifuId, difensoreWaifuId, statKey } = ris;
-      if (statKey && !statsUsate.includes(statKey)) statsUsate.push(statKey);
-      const vincePlayer = vincitoreUid === myUid;
-      const vinceCpu = vincitoreUid !== 'pareggio' && vincitoreUid !== myUid;
-      if (vincePlayer) playerScore++;
-      else if (vinceCpu) cpuScore++;
-      // Traccia waifu usate (IDs assoluti attaccante/difensore)
-      const sonoIoAtt = ris.attaccanteUid === myUid;
-      const mioWId = sonoIoAtt ? attaccanteWaifuId : difensoreWaifuId;
-      const avvWId = sonoIoAtt ? difensoreWaifuId : attaccanteWaifuId;
-      const vince = vincitoreUid === 'pareggio' ? 'pareggio' : vincitoreUid === myUid ? 'player' : 'cpu';
-      if (mioWId) risWaifu[mioWId] = vince === 'player' ? 'vinta' : vince === 'cpu' ? 'persa' : 'pareggio';
-      if (avvWId) {
-        const avvWIdOpp = `opp_${avvWId}`;
-        risWaifu[avvWIdOpp] = vince === 'cpu' ? 'vinta' : vince === 'player' ? 'persa' : 'pareggio';
-      }
-      // Calcola il round numero massimo giocato
-      if (rKey !== 'sd') {
-        const n = parseInt(rKey, 10);
-        if (!isNaN(n) && n > ultimoRound) ultimoRound = n;
-      }
-    });
-
-    setPunteggio({ player: playerScore, cpu: cpuScore });
-    punteggioRef.current = { player: playerScore, cpu: cpuScore };
-    setStatsUsatePartita(statsUsate);
-    statsUsateRef.current = statsUsate;
-    setRisultatiWaifu(risWaifu);
-
-    // Ripristino primoTurno
-    if (batt.primoTurno) {
-      const pt = batt.primoTurno === myUid ? 'player' : 'cpu';
-      setPrimoTurno(pt);
-      primoTurnoRef.current = pt;
-    }
-
-    // Determina il round corrente e la fase da riprendere
-    const roundCorrente = ultimoRound + 1;
-    setRound(roundCorrente);
-    roundRef.current = roundCorrente;
-
-    const roundKey = String(roundCorrente);
-    const scelteRoundCorrente = sceltePvp[roundKey] || {};
-    const miaSceltaCorrente = scelteRoundCorrente[myUid];
-    const sceltaAvvCorrente = scelteRoundCorrente[avversarioUid];
-    const risultatoRoundCorrente = pvpRisultato[roundKey];
-
-    if (risultatoRoundCorrente) {
-      // Round già risolto: siamo in attesa di "prosegui"
-      pvpRoundRisoltoRef.current = roundKey;
-      const { attaccanteWaifuId, difensoreWaifuId, statKey, dir, vincitoreUid } = risultatoRoundCorrente;
-      const sonoIoAtt = risultatoRoundCorrente.attaccanteUid === myUid;
-      const mioWId = sonoIoAtt ? attaccanteWaifuId : difensoreWaifuId;
-      const avvWId = sonoIoAtt ? difensoreWaifuId : attaccanteWaifuId;
-      const wMy = mioMazzo.find(w => w.id === mioWId);
-      const wAvv = mazzoAvversario.find(w => w.id === avvWId || w.id === `opp_${avvWId}`);
-      const vince = vincitoreUid === 'pareggio' ? 'pareggio' : vincitoreUid === myUid ? 'player' : 'cpu';
-      if (wMy) setCarteP(wMy);
-      if (wAvv) setCarteC(wAvv);
-      setStatScelta(statKey);
-      setDirezione(dir);
-      setVincitoreRound(vince);
-      // Verifica se anche l'avversario ha già premuto "prosegui"
-      const proseguiData = batt.proseguiRound || {};
-      const proseguiRound = proseguiData[roundKey] || {};
-      if (proseguiRound[myUid]) {
-        setPvpHoPremutoProsegui(true);
-      }
-      setFase('pvpAttesaProsegui');
-    } else if (miaSceltaCorrente && !sceltaAvvCorrente) {
-      // Ho già scelto, aspetto l'avversario
-      setPvpHoScelto(true);
-      const sonoIoAtt = sonoAttaccante;
-      setFase(sonoIoAtt ? 'pvpAttesaAvv' : 'pvpAttesaRisoluzione');
-    } else if (!batt.primoTurno) {
-      // Coin flip non ancora avvenuto
-      setFase('coin');
-    } else {
-      // Ricomincia dal turno corretto
-      const pt = batt.primoTurno === myUid ? 'player' : 'cpu';
-      const nuovoTurno = roundCorrente % 2 === 1 ? pt : (pt === 'player' ? 'cpu' : 'player');
-      setTurno(nuovoTurno);
-      turnoRef.current = nuovoTurno;
-      setTimeLeft(30);
-      setFase(nuovoTurno === 'player' ? 'pvpScegliWaifu' : 'pvpScegliWaifuRispondi');
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── CPU turno (solo vs CPU) ───────────────────────────────────────
   useEffect(() => {
@@ -1857,6 +1598,30 @@ function BattagliaMultiplayer({
     // altrimenti Firestore azzerebbe battagliaCorrente e smonterebbe questo componente prima del popup)
     setRisultatoFinale({ vittoria, punteggioFinale: punteggioRef.current, vincitoreUid });
     setFase('gameEnd');
+  };
+
+  const waifuDisponibili = Object.entries(collezione?.waifu || {}).map(([id, dati]) => {
+    const w = waifuCat.find(x => x.id === id);
+    return w ? { ...w, ...dati } : null;
+  }).filter(Boolean);
+  const teams = collezione?.teams || {};
+
+  const buildWaifuBattaglia = (id) => {
+    const w = waifuDisponibili.find(x => x.id === id);
+    const dati = collezione?.waifu[id];
+    if (!w) return null;
+    const equipIds = Object.values(collezione?.equipaggiamento?.[id] || {}).filter(Boolean);
+    let wb = {
+      ...w,
+      tette: Math.min(7, w.tette + (dati?.stat_bonus?.tette || 0)),
+      taglia_piedi: Math.min(45, w.taglia_piedi + (dati?.stat_bonus?.taglia_piedi || 0)),
+      eta: Math.min(5000, w.eta + (dati?.stat_bonus?.eta || 0)),
+      colore_capelli: Math.min(10, w.colore_capelli + (dati?.stat_bonus?.colore_capelli || 0)),
+      esperienza: Math.min(5000, w.esperienza + (dati?.stat_bonus?.esperienza || 0)),
+      _outfitEquipIds: equipIds,
+    };
+    const { waifuModificata } = applicaAbilitaOutfit(wb, equipIds, outfitCat, STAT_RANGES_DEFAULT);
+    return { ...waifuModificata, _outfitEquipIds: equipIds };
   };
 
   // ── Attesa mazzo avversario ────────────────────────────────────────
@@ -2674,281 +2439,6 @@ function FormImpero({ nomeImpero, setNomeImpero, coloreImpero, setColoreImpero, 
       <div style={{ marginTop: 14, padding: '8px 14px', borderRadius: 8, background: `${coloreImpero}15`, border: `1px solid ${coloreImpero}40`, display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ width: 20, height: 20, borderRadius: '50%', background: coloreImpero }} />
         <span style={{ fontFamily: 'Orbitron', fontSize: 12, color: coloreImpero }}>{nomeImpero || 'Il tuo Impero'}</span>
-      </div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════
-// SPETTATORE VIEW — visualizza la battaglia in real-time
-// Legge tutto da partita.battagliaCorrente (già aggiornato dal listener)
-// ════════════════════════════════════════════════════════════════════
-function SpettatoreView({ partita, giocatori, battaglia, waifuCat, onAspetta, onEsci }) {
-  const attUid = battaglia.attaccanteUid;
-  const difUid = battaglia.difensoreUid;
-  const gAtt = giocatori[attUid] || { nomeImpero: 'Attaccante', coloreImpero: '#ff2d78' };
-  const gDif = difUid === 'cpu' ? { nomeImpero: 'CPU', coloreImpero: '#666666' } : (giocatori[difUid] || { nomeImpero: 'Difensore', coloreImpero: '#9b59ff' });
-  const terrData = TERRITORI.find(t => t.id === battaglia.territorioId);
-
-  // Quale giocatore sto guardando (le sue carte nel mazzo)
-  const [guardoUid, setGuardoUid] = useState(attUid);
-  const guardoGiocatore = guardoUid === attUid ? gAtt : gDif;
-  const altroUid = guardoUid === attUid ? difUid : attUid;
-  const altroGiocatore = guardoUid === attUid ? gDif : gAtt;
-
-  const STATS_BATTAGLIA = [
-    { key: 'tette', label: 'Tette', icon: '💗' },
-    { key: 'taglia_piedi', label: 'Piedi', icon: '👠' },
-    { key: 'eta', label: 'Età', icon: '📅' },
-    { key: 'colore_capelli', label: 'Capelli', icon: '💇' },
-    { key: 'esperienza', label: 'Esperienza', icon: '⭐' },
-  ];
-
-  // Ricostruisce il mazzo di un giocatore dai mazziIds salvati su Firestore
-  const getMazzo = (uid) => {
-    const ids = battaglia.mazzi?.[uid] || [];
-    return ids.map(id => {
-      const w = waifuCat.find(x => x.id === id);
-      return w || null;
-    }).filter(Boolean);
-  };
-
-  const mazzoGuardo = getMazzo(guardoUid);
-  const mazzoAltro = getMazzo(altroUid);
-
-  // Ricalcola i risultati già giocati
-  const pvpRisultato = battaglia.pvpRisultato || {};
-  const risWaifu = {}; // waifuId → 'vinta'|'persa'|'pareggio' dal punto di vista di guardoUid
-  let playerScore = 0, cpuScore = 0;
-  let ultimoRound = 0;
-  Object.entries(pvpRisultato).forEach(([rKey, ris]) => {
-    const vinceGuardo = ris.vincitoreUid === guardoUid;
-    const vinceAltro = ris.vincitoreUid !== 'pareggio' && ris.vincitoreUid !== guardoUid;
-    if (vinceGuardo) playerScore++;
-    else if (vinceAltro) cpuScore++;
-    // Waifu usate
-    const sonoGuardoAtt = ris.attaccanteUid === guardoUid;
-    const guardoWId = sonoGuardoAtt ? ris.attaccanteWaifuId : ris.difensoreWaifuId;
-    const altroWId = sonoGuardoAtt ? ris.difensoreWaifuId : ris.attaccanteWaifuId;
-    const vince = ris.vincitoreUid === 'pareggio' ? 'pareggio' : ris.vincitoreUid === guardoUid ? 'vinta' : 'persa';
-    if (guardoWId) risWaifu[guardoWId] = vince;
-    if (altroWId) risWaifu[altroWId] = vince === 'vinta' ? 'persa' : vince === 'persa' ? 'vinta' : 'pareggio';
-    if (rKey !== 'sd') { const n = parseInt(rKey, 10); if (!isNaN(n) && n > ultimoRound) ultimoRound = n; }
-  });
-
-  const roundCorrente = ultimoRound + 1;
-  const sceltePvp = battaglia.sceltePvp || {};
-  const scelteRound = sceltePvp[String(roundCorrente)] || {};
-
-  // Carta scelta nel round corrente
-  const sceltaGuardo = scelteRound[guardoUid];
-  const sceltaAltro = scelteRound[altroUid];
-  const risultatoRound = pvpRisultato[String(roundCorrente)];
-
-  const cartaGuardoAttuale = risultatoRound
-    ? (() => {
-        const sonoAtt = risultatoRound.attaccanteUid === guardoUid;
-        const wId = sonoAtt ? risultatoRound.attaccanteWaifuId : risultatoRound.difensoreWaifuId;
-        return mazzoGuardo.find(w => w.id === wId) || null;
-      })()
-    : sceltaGuardo ? (mazzoGuardo.find(w => w.id === sceltaGuardo.waifuId) || null) : null;
-
-  const cartaAltroAttuale = risultatoRound
-    ? (() => {
-        const sonoAtt = risultatoRound.attaccanteUid === altroUid;
-        const wId = sonoAtt ? risultatoRound.attaccanteWaifuId : risultatoRound.difensoreWaifuId;
-        return (mazzoAltro.find(w => w.id === wId) || mazzoAltro.find(w => w.id === `opp_${wId}`)) || null;
-      })()
-    : sceltaAltro ? (mazzoAltro.find(w => w.id === sceltaAltro.waifuId) || null) : null;
-
-  const statKey = risultatoRound?.statKey || sceltaGuardo?.stat || sceltaAltro?.stat || null;
-  const direzione = risultatoRound?.dir || sceltaGuardo?.direzione || sceltaAltro?.direzione || null;
-  const statInfo = STATS_BATTAGLIA.find(s => s.key === statKey);
-
-  const vincitoreRound = risultatoRound
-    ? (risultatoRound.vincitoreUid === 'pareggio' ? 'pareggio' : risultatoRound.vincitoreUid === guardoUid ? 'player' : 'cpu')
-    : null;
-
-  const coloreGuardo = guardoGiocatore.coloreImpero || '#ff2d78';
-  const coloreAltro = altroGiocatore.coloreImpero || '#9b59ff';
-
-  const getColoreBordo = (id) => {
-    const r = risWaifu[id];
-    if (!r) return 'rgba(255,255,255,0.08)';
-    if (r === 'vinta') return '#00e676';
-    if (r === 'persa') return '#ff3d3d';
-    return '#ffd666';
-  };
-
-  return (
-    <div className="fade-in">
-      {/* Header */}
-      <PannelloOrnato glow="#ff2d78" style={{ padding: 10, marginBottom: 10 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ textAlign: 'left' }}>
-            <div style={{ fontSize: 8, opacity: 0.5, letterSpacing: 2, fontFamily: 'Orbitron' }}>{gAtt.nomeImpero}</div>
-            <div style={{ fontSize: 28, color: gAtt.coloreImpero, fontFamily: 'Orbitron', fontWeight: 700 }}>{playerScore}</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontFamily: 'Orbitron', letterSpacing: 1, fontSize: 9, color: '#ff2d78', marginBottom: 2 }}>
-              👁 SPETTATORE
-            </div>
-            <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#ffd666' }}>
-              ROUND {roundCorrente}/5
-            </div>
-            {terrData && (
-              <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginTop: 2 }}>
-                ⚔ {terrData.nome}
-              </div>
-            )}
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 8, opacity: 0.5, letterSpacing: 2, fontFamily: 'Orbitron' }}>{gDif.nomeImpero}</div>
-            <div style={{ fontSize: 28, color: gDif.coloreImpero, fontFamily: 'Orbitron', fontWeight: 700 }}>{cpuScore}</div>
-          </div>
-        </div>
-        {/* Stat usate */}
-        <div style={{ display: 'flex', gap: 4, justifyContent: 'center', marginTop: 8, flexWrap: 'wrap' }}>
-          {STATS_BATTAGLIA.map(s => {
-            const usata = Object.values(pvpRisultato).some(r => r.statKey === s.key);
-            return (
-              <div key={s.key} style={{
-                padding: '2px 6px', borderRadius: 5, fontSize: 8, fontFamily: 'Orbitron',
-                background: usata ? 'rgba(255,61,61,0.08)' : 'rgba(0,230,118,0.10)',
-                border: `1px solid ${usata ? '#ff3d3d30' : '#00e67630'}`,
-                color: usata ? '#ff3d3d50' : '#00e676',
-                textDecoration: usata ? 'line-through' : 'none', opacity: usata ? 0.4 : 0.9,
-              }}>
-                {s.icon} {s.label}
-              </div>
-            );
-          })}
-        </div>
-      </PannelloOrnato>
-
-      {/* Campo di battaglia */}
-      <PannelloOrnato style={{ padding: 14, marginBottom: 10 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-start', gap: 8 }}>
-          {/* Carta attaccante */}
-          <div style={{ textAlign: 'center', flexShrink: 0 }}>
-            <div style={{ fontSize: 8, letterSpacing: 1, marginBottom: 4, fontFamily: 'Orbitron', color: gAtt.coloreImpero }}>{gAtt.nomeImpero.toUpperCase()}</div>
-            {cartaGuardoAttuale && guardoUid === attUid
-              ? <CartaWaifu waifu={cartaGuardoAttuale} dimensione="piccola" evidenziaStat={risultatoRound ? statKey : null} perdente={vincitoreRound === 'cpu'} />
-              : cartaAltroAttuale && guardoUid !== attUid
-              ? <CartaWaifu waifu={cartaAltroAttuale} dimensione="piccola" evidenziaStat={risultatoRound ? statKey : null} perdente={vincitoreRound === 'player'} />
-              : <div style={{ width: 130, height: 195, border: `1px dashed ${gAtt.coloreImpero}40`, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: `${gAtt.coloreImpero}60`, fontFamily: 'Orbitron', fontSize: 9 }}>
-                  {sceltaGuardo && guardoUid === attUid || sceltaAltro && guardoUid !== attUid ? '✓' : '?'}
-                </div>
-            }
-          </div>
-
-          {/* Centro VS */}
-          <div style={{ textAlign: 'center', minWidth: 90, flexShrink: 0 }}>
-            <div style={{ fontSize: 24, fontFamily: 'Orbitron', background: 'linear-gradient(135deg, #ff2d78, #9b59ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 700 }}>VS</div>
-            {risultatoRound && statInfo && (
-              <div className="fade-up" style={{ marginTop: 8, padding: 6, background: 'rgba(245,166,35,0.06)', borderRadius: 8, border: '1px solid rgba(245,166,35,0.2)' }}>
-                <div style={{ fontSize: 9, color: '#f5a623', fontFamily: 'Orbitron' }}>{statInfo.icon} {statInfo.label}</div>
-                <div style={{ fontSize: 10, color: direzione === 'piu' ? '#00e676' : '#ff3d3d', marginTop: 2 }}>{direzione === 'piu' ? '▲ PIÙ' : '▼ MENO'}</div>
-                <div style={{ fontFamily: 'Orbitron', fontSize: 12, fontWeight: 700, marginTop: 6,
-                  color: vincitoreRound === 'player' ? gAtt.coloreImpero : vincitoreRound === 'cpu' ? gDif.coloreImpero : '#ffd666' }}>
-                  {vincitoreRound === 'player' ? `✅ ${gAtt.nomeImpero}` : vincitoreRound === 'cpu' ? `✅ ${gDif.nomeImpero}` : '🤝 PARI'}
-                </div>
-              </div>
-            )}
-            {!risultatoRound && (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', marginBottom: 4 }}>IN CORSO</div>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 4 }}>
-                  {[0,1,2].map(i => <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: '#ff2d78', animation: `pulse 1.2s ease-in-out ${i*0.4}s infinite` }} />)}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Carta difensore */}
-          <div style={{ textAlign: 'center', flexShrink: 0 }}>
-            <div style={{ fontSize: 8, letterSpacing: 1, marginBottom: 4, fontFamily: 'Orbitron', color: gDif.coloreImpero }}>{gDif.nomeImpero.toUpperCase()}</div>
-            {cartaAltroAttuale && guardoUid === attUid
-              ? <CartaWaifu waifu={cartaAltroAttuale} dimensione="piccola" evidenziaStat={risultatoRound ? statKey : null} perdente={vincitoreRound === 'player'} />
-              : cartaGuardoAttuale && guardoUid !== attUid
-              ? <CartaWaifu waifu={cartaGuardoAttuale} dimensione="piccola" evidenziaStat={risultatoRound ? statKey : null} perdente={vincitoreRound === 'cpu'} />
-              : <div style={{ width: 130, height: 195, border: `1px dashed ${gDif.coloreImpero}40`, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: `${gDif.coloreImpero}60`, fontFamily: 'Orbitron', fontSize: 9 }}>
-                  {sceltaAltro && guardoUid === attUid || sceltaGuardo && guardoUid !== attUid ? '✓' : '?'}
-                </div>
-            }
-          </div>
-        </div>
-      </PannelloOrnato>
-
-      {/* Toggle: guarda le carte di chi */}
-      <PannelloOrnato style={{ padding: 10, marginBottom: 10 }}>
-        <div style={{ fontSize: 9, letterSpacing: 2, color: 'rgba(238,232,220,0.4)', textAlign: 'center', marginBottom: 8, fontFamily: 'Orbitron' }}>
-          CARTE DI
-        </div>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
-          <button
-            onClick={() => setGuardoUid(attUid)}
-            style={{
-              flex: 1, padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
-              background: guardoUid === attUid ? `${gAtt.coloreImpero}25` : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${guardoUid === attUid ? gAtt.coloreImpero : 'rgba(255,255,255,0.08)'}`,
-              color: guardoUid === attUid ? gAtt.coloreImpero : 'rgba(238,232,220,0.4)',
-              fontFamily: 'Orbitron', fontSize: 9, fontWeight: 700, letterSpacing: 1,
-              transition: 'all 0.15s',
-            }}
-          >
-            ⚔ {gAtt.nomeImpero}
-          </button>
-          <button
-            onClick={() => setGuardoUid(difUid === 'cpu' ? difUid : difUid)}
-            style={{
-              flex: 1, padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
-              background: guardoUid !== attUid ? `${gDif.coloreImpero}25` : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${guardoUid !== attUid ? gDif.coloreImpero : 'rgba(255,255,255,0.08)'}`,
-              color: guardoUid !== attUid ? gDif.coloreImpero : 'rgba(238,232,220,0.4)',
-              fontFamily: 'Orbitron', fontSize: 9, fontWeight: 700, letterSpacing: 1,
-              transition: 'all 0.15s',
-            }}
-          >
-            🛡 {gDif.nomeImpero}
-          </button>
-        </div>
-        {/* Mazzo del giocatore selezionato */}
-        <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
-          {mazzoGuardo.map(w => {
-            const r = risWaifu[w.id];
-            const usata = !!r;
-            return (
-              <div key={w.id} style={{
-                opacity: usata ? 0.35 : 1,
-                filter: usata ? 'grayscale(0.5)' : 'none',
-                border: `2px solid ${getColoreBordo(w.id)}`,
-                borderRadius: 10, padding: 2,
-                position: 'relative',
-              }}>
-                <CartaWaifu waifu={w} dimensione="mini" />
-                {r && (
-                  <div style={{ position: 'absolute', top: 4, right: 4, fontSize: 12 }}>
-                    {r === 'vinta' ? '✅' : r === 'persa' ? '❌' : '🤝'}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          {mazzoGuardo.length === 0 && (
-            <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', padding: 16, textAlign: 'center' }}>
-              ⏳ In attesa che {guardoGiocatore.nomeImpero} scelga il team…
-            </div>
-          )}
-        </div>
-      </PannelloOrnato>
-
-      {/* Azioni spettatore */}
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button onClick={onAspetta} style={{ ...btnStyle('#666', true), flex: 1 }}>⏳ ASPETTA</button>
-        <button onClick={onEsci} style={{ background: 'none', border: 'none', color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer', letterSpacing: 1 }}>
-          💾 ESCI
-        </button>
       </div>
     </div>
   );
