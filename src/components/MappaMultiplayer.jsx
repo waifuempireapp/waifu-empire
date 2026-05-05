@@ -1369,7 +1369,7 @@ function BattagliaMultiplayer({
         pvpScegliStat(s.key);
       } else if (fase === 'pvpScegliDir') { pvpScegliDir(Math.random() < 0.5 ? 'piu' : 'meno'); }
       else if (fase === 'pvpScegliWaifuRispondi') { const p = pDisp[Math.floor(Math.random() * pDisp.length)]; if (p) pvpRispondiWaifu(p); }
-      else if (fase === 'suddenDeathWaifu') { const p = pDisp[Math.floor(Math.random() * pDisp.length)]; if (p) pvpScegliWaifuSD(p); }
+      else if (fase === 'suddenDeathWaifu') { const p = mazzoP[Math.floor(Math.random() * mazzoP.length)]; if (p) pvpScegliWaifuSD(p); }
       else if (fase === 'pvpAttesaProsegui') { _pvpPremutoProsegui(); }
     }
   };
@@ -2110,7 +2110,12 @@ function BattagliaMultiplayer({
             let cliccabile = false;
             let handler = () => {};
             if (!isCpu) {
-              cliccabile = pvpDeveScegliereWaifu && !usata && (!inSuddenDeath || w.id !== carteP?.id);
+              // In suddenDeathWaifu tutti i round sono già finiti → risultatiWaifu pieno,
+              // ma in SD il giocatore deve poter scegliere qualsiasi waifu del mazzo.
+              const inSD = fase === 'suddenDeathWaifu';
+              cliccabile = inSD
+                ? pvpDeveScegliereWaifu && !pvpHoScelto
+                : pvpDeveScegliereWaifu && !usata;
               handler = () => {
                 if (!cliccabile) return;
                 if (fase === 'pvpScegliWaifu') pvpScegliWaifu(w);
@@ -2121,7 +2126,10 @@ function BattagliaMultiplayer({
               };
             } else {
               const playerDeveScegliereWaifu = ['playerScegliWaifu', 'playerScegliWaifuVsCPU', 'suddenDeathWaifu'].includes(fase);
-              cliccabile = playerDeveScegliereWaifu && !usata;
+              // In SD vs CPU: tutte le waifu sono rieleggibili
+              cliccabile = fase === 'suddenDeathWaifu'
+                ? playerDeveScegliereWaifu
+                : playerDeveScegliereWaifu && !usata;
               handler = () => {
                 if (!cliccabile) return;
                 if (fase === 'playerScegliWaifu') onScegliWaifuCpu(w);
@@ -2129,18 +2137,21 @@ function BattagliaMultiplayer({
                 else if (fase === 'suddenDeathWaifu') onScegliWaifuSD(w);
               };
             }
+            // In SD tutte le waifu appaiono disponibili (risultatiWaifu non conta)
+            const inSD = inSuddenDeath && fase === 'suddenDeathWaifu';
+            const mostraUsata = usata && !inSD;
             return (
               <div key={w.id} onClick={handler} style={{
                 position: 'relative', cursor: cliccabile ? 'pointer' : 'default',
-                opacity: usata ? 0.35 : 1, filter: usata ? 'grayscale(0.5)' : 'none',
+                opacity: mostraUsata ? 0.35 : 1, filter: mostraUsata ? 'grayscale(0.5)' : 'none',
                 transition: 'all 0.2s',
-                border: `2px solid ${getColoreBordo(stato)}`, borderRadius: 12, padding: 2,
+                border: `2px solid ${inSD ? 'rgba(255,214,102,0.4)' : getColoreBordo(stato)}`, borderRadius: 12, padding: 2,
               }}
               onMouseEnter={e => { if (cliccabile) e.currentTarget.style.transform = 'translateY(-8px)'; }}
               onMouseLeave={e => { e.currentTarget.style.transform = 'none'; }}
               >
                 <CartaWaifu waifu={w} dimensione="piccola" />
-                {usata && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: 24, textShadow: '0 0 10px rgba(0,0,0,0.8)' }}>{getIconaStato(stato)}</div>}
+                {mostraUsata && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: 24, textShadow: '0 0 10px rgba(0,0,0,0.8)' }}>{getIconaStato(stato)}</div>}
               </div>
             );
           })}
