@@ -11,7 +11,6 @@ import {
   salvaSceltaPvpRound, salvaPrimoTurnoPvp,
   salvaProseguiTurnoRound, registraRisultatoBattagliaPvp,
   salvaRisultatoPvpRound, getPartiteSalvateUtente,
-  setPresenzaBattaglia,
 } from '@/lib/multiplayerService';
 import { TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT } from '@/lib/constants';
 import { applicaAbilitaOutfit, applicaModificatoriOpp } from '@/lib/gameLogic';
@@ -739,98 +738,21 @@ function SchermataPartita({
     );
   }
 
-  // Verifica se è in attesa di giocatori per riprendere.
-  // REGOLA: blocca SOLO se uno dei 2 combattenti della battaglia corrente non è connesso.
-  // Se non c'è battaglia in corso, blocca solo se il giocatore del turno corrente non è connesso.
-  // I giocatori spettatori (non coinvolti nel turno/battaglia) NON bloccano mai la partita.
+  // Verifica presenza per riprendere dopo disconnessione.
+  // REGOLE:
+  // - I combattenti (attaccante/difensore) NON vedono mai la schermata "In attesa":
+  //   se sono tornati online è perché hanno caricato la partita e possono giocare subito.
+  // - Il giocatore del turno corrente non blocca la partita per gli altri:
+  //   gli spettatori vedono la mappa normalmente.
+  // - Nessuno schermo d'attesa per i non-coinvolti (spettatori in partite 3+).
   const battaglia = partita.battagliaCorrente;
   const sonoCoinvolto = battaglia && (battaglia.attaccanteUid === myUid || battaglia.difensoreUid === myUid);
   const sonoAttaccante = battaglia?.attaccanteUid === myUid;
   const sonoDifensore = battaglia?.difensoreUid === myUid;
 
-  // Determina quali giocatori devono essere presenti per proseguire
-  let giocatoriNecessari = [];
-  if (battaglia) {
-    // Durante la battaglia: solo i 2 combattenti devono essere presenti.
-    // Usiamo presenzaCombattenti se disponibile (più aggiornato di inLobby).
-    const attUid = battaglia.attaccanteUid;
-    const difUid = battaglia.difensoreUid;
-    const presenzaComb = battaglia.presenzaCombattenti || {};
-    if (difUid === 'cpu') {
-      // vs CPU: solo l'attaccante conta
-      giocatoriNecessari = giocatoriAttivi.filter(g => g.uid === attUid);
-    } else {
-      // PvP: entrambi i combattenti
-      giocatoriNecessari = giocatoriAttivi.filter(g => g.uid === attUid || g.uid === difUid);
-      // Override: se presenzaCombattenti è definita, usala (più precisa di inLobby)
-      if (Object.keys(presenzaComb).length > 0) {
-        const tuttiCombattentiPresenti = [attUid, difUid].every(uid => presenzaComb[uid] === true);
-        if (!tuttiCombattentiPresenti) {
-          const assentiComb = [attUid, difUid].filter(uid => !presenzaComb[uid]);
-          const sonoSpettatore = !sonoCoinvolto;
-          if (!sonoSpettatore) {
-            return (
-              <div className="fade-in">
-                <PannelloOrnato glow="#f5a623" style={{ padding: 24, textAlign: 'center' }}>
-                  <div style={{ fontSize: 36, marginBottom: 10 }}>⏳</div>
-                  <TitoloOrnato livello={2} colore="#f5a623">IN ATTESA</TitoloOrnato>
-                  <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', marginBottom: 16 }}>
-                    In attesa che l&apos;avversario si riconnetta alla battaglia
-                  </div>
-                  {assentiComb.map(uid => {
-                    const g = giocatori[uid];
-                    return g ? (
-                      <div key={uid} style={{ fontSize: 11, color: g.coloreImpero, fontFamily: 'Orbitron', marginBottom: 4 }}>
-                        ⏳ {g.nomeImpero}
-                      </div>
-                    ) : null;
-                  })}
-                  <div style={{ marginTop: 20 }}>
-                    <button onClick={onEsciEsalva} style={btnStyle('#666', true)}>💾 SALVA ED ESCI</button>
-                  </div>
-                </PannelloOrnato>
-              </div>
-            );
-          }
-        }
-        // Se presenzaCombattenti è definita e tutti presenti, non bloccare
-        // (il check inLobby sottostante gestirà il caso residuale)
-      }
-    }
-  } else {
-    // Fuori dalla battaglia: solo il giocatore del turno corrente deve essere presente
-    // (gli altri possono aspettare)
-    giocatoriNecessari = giocatoriAttivi.filter(g => g.uid === turnoUid);
-  }
-  const giocatoriPresenti = giocatoriNecessari.filter(g => g.inLobby);
-  const tuttiPresenti = giocatoriNecessari.length === 0 || giocatoriPresenti.length >= giocatoriNecessari.length;
-
-  if (!tuttiPresenti) {
-    const assenti = giocatoriNecessari.filter(g => !g.inLobby);
-    // Sono uno spettatore: posso vedere lo stato ma la partita non è bloccata per me
-    const sonoSpettatore = !sonoCoinvolto && turnoUid !== myUid;
-    if (!sonoSpettatore) {
-      return (
-        <div className="fade-in">
-          <PannelloOrnato glow="#f5a623" style={{ padding: 24, textAlign: 'center' }}>
-            <div style={{ fontSize: 36, marginBottom: 10 }}>⏳</div>
-            <TitoloOrnato livello={2} colore="#f5a623">IN ATTESA</TitoloOrnato>
-            <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', marginBottom: 16 }}>
-              In attesa che {battaglia ? 'i combattenti si riconnettano' : 'il giocatore di turno si riconnetta'}
-            </div>
-            {assenti.map(g => (
-              <div key={g.uid} style={{ fontSize: 11, color: g.coloreImpero, fontFamily: 'Orbitron', marginBottom: 4 }}>
-                ⏳ {g.nomeImpero}
-              </div>
-            ))}
-            <div style={{ marginTop: 20 }}>
-              <button onClick={onEsciEsalva} style={btnStyle('#666', true)}>💾 SALVA ED ESCI</button>
-            </div>
-          </PannelloOrnato>
-        </div>
-      );
-    }
-  }
+  // Se c'è una battaglia PvP e NON sono coinvolto: mostro solo che è in corso ma non blocco
+  // Se sono coinvolto: vado direttamente alla battaglia (nessun check presenza)
+  // Fuori dalla battaglia: nessuna schermata d'attesa — il giocatore del turno agirà quando torna
 
   if (battaglia && battaglia.statoFase === 'in_attesa' && (sonoAttaccante || (sonoDifensore && battaglia.difensoreUid !== 'cpu'))) {
     // Avvia battaglia locale
@@ -1191,23 +1113,6 @@ function BattagliaMultiplayer({
     const t = setTimeout(() => setTimeLeft(p => p - 1), 1000);
     return () => clearTimeout(t);
   }, [fase, timeLeft]);
-
-  // ── Presenza nella battaglia ──────────────────────────────────────
-  // Quando il componente si monta (combattente connesso), segnala presenza.
-  // Quando si smonta, segnala assenza.
-  useEffect(() => {
-    if (isCpu) return; // vs CPU non serve tracciare la presenza
-    const batt = partita?.battagliaCorrente;
-    if (!batt) return;
-    const eUnCombattente = batt.attaccanteUid === myUid || batt.difensoreUid === myUid;
-    if (!eUnCombattente) return;
-    // Segnala presenza
-    setPresenzaBattaglia(codice, myUid, true).catch(() => {});
-    return () => {
-      // Segnala assenza al dismount (navigazione fuori)
-      setPresenzaBattaglia(codice, myUid, false).catch(() => {});
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── CPU turno (solo vs CPU) ───────────────────────────────────────
   useEffect(() => {
@@ -1669,11 +1574,11 @@ function BattagliaMultiplayer({
   };
 
   const fineBattaglia = (vittoria) => {
-    setFase('gameEnd');
-    // Salva il risultato per il popup post-battaglia
-    setRisultatoFinale({ vittoria, punteggioFinale: punteggioRef.current });
     const vincitoreUid = vittoria ? myUid : avversarioUid;
-    onBattagliaFinita(vincitoreUid);
+    // Salva risultato e attendi che l'utente prema il pulsante (non chiamiamo subito onBattagliaFinita
+    // altrimenti Firestore azzerebbe battagliaCorrente e smonterebbe questo componente prima del popup)
+    setRisultatoFinale({ vittoria, punteggioFinale: punteggioRef.current, vincitoreUid });
+    setFase('gameEnd');
   };
 
   const waifuDisponibili = Object.entries(collezione?.waifu || {}).map(([id, dati]) => {
@@ -1991,7 +1896,7 @@ function BattagliaMultiplayer({
           <div style={{ marginBottom: 10, fontSize: 9, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron' }}>
             Aggiornamento mappa in corso…
           </div>
-          {/* Pulsante Fine partita — torna alla mappa multiplayer */}
+          {/* Pulsante Fine partita — il giocatore chiude e poi aggiorna Firestore */}
           <PopupFinePartita
             vittoria={vittoria}
             punteggio={pFin}
@@ -2000,6 +1905,7 @@ function BattagliaMultiplayer({
             nomeAvversario={nomeAvversario}
             coloreAvversario={coloreAvversario}
             coloreRisultato={coloreRisultato}
+            onProcedi={() => onBattagliaFinita(risultatoFinale.vincitoreUid)}
           />
         </div>
       </div>
@@ -2535,18 +2441,14 @@ function FormImpero({ nomeImpero, setNomeImpero, coloreImpero, setColoreImpero, 
 // ════════════════════════════════════════════════════════════════════
 // POPUP FINE PARTITA — mostra il risultato della battaglia con pulsante
 // ════════════════════════════════════════════════════════════════════
-function PopupFinePartita({ vittoria, punteggio, territorio, testoTerritorio, nomeAvversario, coloreAvversario, coloreRisultato }) {
+function PopupFinePartita({ vittoria, punteggio, territorio, testoTerritorio, nomeAvversario, coloreAvversario, coloreRisultato, onProcedi }) {
   const [mostraPopup, setMostraPopup] = useState(false);
 
   return (
     <>
       <button
         onClick={() => setMostraPopup(true)}
-        style={{
-          ...btnStyle(coloreRisultato),
-          marginTop: 6,
-          width: '100%',
-        }}
+        style={{ ...btnStyle(coloreRisultato), marginTop: 6, width: '100%' }}
       >
         🏁 FINE PARTITA
       </button>
@@ -2592,14 +2494,12 @@ function PopupFinePartita({ vittoria, punteggio, territorio, testoTerritorio, no
                 {testoTerritorio}
               </div>
             )}
-            <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', marginBottom: 20 }}>
-              La mappa è già stata aggiornata
-            </div>
+            {/* "Procedi" scrive su Firestore e torna alla mappa — lo smontaggio avviene dopo */}
             <button
-              onClick={() => setMostraPopup(false)}
+              onClick={() => { setMostraPopup(false); onProcedi(); }}
               style={{ ...btnStyle(coloreRisultato), width: '100%' }}
             >
-              ✓ CHIUDI
+              ✓ PROCEDI
             </button>
           </div>
         </div>
