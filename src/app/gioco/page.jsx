@@ -1465,6 +1465,13 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
   const [dropSelId, setDropSelId] = useState(null); // id del drop selezionato dall'utente
   const [isGodPackAperto, setIsGodPackAperto] = useState(false);
 
+  // Popup di conferma apertura pacchetto
+  const [popupApertura, setPopupApertura] = useState(null); // { tipoPacchetto }
+
+  // Stato apertura multi-pack (x10)
+  const [multiPackCarte, setMultiPackCarte] = useState([]); // array di array di carte (10 pacchetti)
+  const [multiPackIndice, setMultiPackIndice] = useState(0); // quale pacchetto sto guardando ora
+
   useEffect(() => {
     listDropsAttivi().then(lista => {
       setDropsAttivi(lista);
@@ -1496,35 +1503,72 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
       return 0;
     });
 
-  const apri = async (tipoPacchetto) => {
+  const _generaEAggiorna = async (tipoPacchetto, nuovaCollezione) => {
     const drop = dropAttivo;
     const wp = drop?.waifuIds ? waifuCat.filter(w => drop.waifuIds.includes(w.id)) : waifuCat;
     const op = drop?.outfitIds ? outfitCat.filter(o => drop.outfitIds.includes(o.id)) : outfitCat;
     const pp = drop?.poseIds ? poseCat.filter(p => drop.poseIds.includes(p.id)) : poseCat;
-    if (wp.length === 0) { mostraNotif('Nessuna waifu nel drop attivo.', '#ff3d3d'); return; }
+    if (wp.length === 0) { mostraNotif('Nessuna waifu nel drop attivo.', '#ff3d3d'); return null; }
     const escludiDoppioni = tipoPacchetto === 'benvenuto';
-    const waifuPossedute = escludiDoppioni ? Object.keys(collezione.waifu || {}) : [];
+    const waifuPossedute = escludiDoppioni ? Object.keys(nuovaCollezione.waifu || {}) : [];
     const carte = generaPacchetto({ waifuPool: wp, outfitPool: op, posePool: pp, escludiDoppioniWaifu: escludiDoppioni, waifuPossedute, godPackProb });
+    // segna isNuova prima di aggiornare la collezione
+    carte.forEach(c => {
+      if (c.tipo === 'waifu') { c.isNuova = !nuovaCollezione.waifu[c.data.id]; }
+      else if (c.tipo === 'outfit') { c.isNuova = !(nuovaCollezione.outfit[c.data.id]?.quantita > 0); }
+      else if (c.tipo === 'posa') { c.isNuova = !(nuovaCollezione.pose[c.data.id]?.quantita > 0); }
+    });
+    carte.forEach(c => {
+      if (c.tipo === 'waifu') { if (nuovaCollezione.waifu[c.data.id]) nuovaCollezione.waifu[c.data.id].copie++; else nuovaCollezione.waifu[c.data.id] = { copie: 1, livello: 1, stat_bonus: {} }; }
+      else if (c.tipo === 'outfit') { nuovaCollezione.outfit[c.data.id] = { quantita: (nuovaCollezione.outfit[c.data.id]?.quantita || 0) + 1 }; }
+      else if (c.tipo === 'posa') { nuovaCollezione.pose[c.data.id] = { quantita: (nuovaCollezione.pose[c.data.id]?.quantita || 0) + 1 }; }
+    });
+    return carte;
+  };
+
+  const apri = async (tipoPacchetto) => {
+    const nuova = JSON.parse(JSON.stringify(collezione));
+    const carte = await _generaEAggiorna(tipoPacchetto, nuova);
+    if (!carte) return;
     const godPack = carte.length === 5 && carte.every(c => c.tipo === 'waifu' && c.isGodPack);
     setIsGodPackAperto(godPack);
     setCarteRivelate(carte); setIndiceRivelato(-1); setStato('reveal');
-    const nuova = JSON.parse(JSON.stringify(collezione));
-    // 15: segna le carte nuove (prima di aggiornarle nella collezione)
-    carte.forEach(c => {
-      if (c.tipo === 'waifu') { c.isNuova = !nuova.waifu[c.data.id]; }
-      else if (c.tipo === 'outfit') { c.isNuova = !(nuova.outfit[c.data.id]?.quantita > 0); }
-      else if (c.tipo === 'posa') { c.isNuova = !(nuova.pose[c.data.id]?.quantita > 0); }
-    });
-    carte.forEach(c => {
-      if (c.tipo === 'waifu') { if (nuova.waifu[c.data.id]) nuova.waifu[c.data.id].copie++; else nuova.waifu[c.data.id] = { copie: 1, livello: 1, stat_bonus: {} }; }
-      else if (c.tipo === 'outfit') { nuova.outfit[c.data.id] = { quantita: (nuova.outfit[c.data.id]?.quantita || 0) + 1 }; }
-      else if (c.tipo === 'posa') { nuova.pose[c.data.id] = { quantita: (nuova.pose[c.data.id]?.quantita || 0) + 1 }; }
-    });
     setColl(nuova); await saveCollezione(user.uid, nuova);
     if (tipoPacchetto === 'benvenuto') { const n = (profilo.pacchettiBenvenuto ?? 0) - 1; setProfilo(p => ({ ...p, pacchettiBenvenuto: n })); await updateUserProfile(user.uid, { pacchettiBenvenuto: n }); }
     else if (tipoPacchetto === 'omaggio') { const n = (profilo.pacchettiOmaggio ?? 0) - 1; setProfilo(p => ({ ...p, pacchettiOmaggio: n })); await updateUserProfile(user.uid, { pacchettiOmaggio: n }); }
     else { const n = (profilo.pacchettiSfida ?? 0) - 1; setProfilo(p => ({ ...p, pacchettiSfida: n })); await updateUserProfile(user.uid, { pacchettiSfida: n }); }
     carte.forEach((_, i) => { setTimeout(() => setIndiceRivelato(i), 500 + i * 700); });
+  };
+
+  const apriMulti = async (tipoPacchetto) => {
+    const disponibili = tipoPacchetto === 'benvenuto' ? (profilo.pacchettiBenvenuto ?? 0)
+      : tipoPacchetto === 'omaggio' ? (profilo.pacchettiOmaggio ?? 0)
+      : (profilo.pacchettiSfida ?? 0);
+    const quanti = Math.min(10, disponibili);
+    if (quanti < 1) { mostraNotif('Nessun pacchetto disponibile.', '#ff3d3d'); return; }
+    const nuova = JSON.parse(JSON.stringify(collezione));
+    const tuttiIPacchetti = [];
+    for (let i = 0; i < quanti; i++) {
+      const carte = await _generaEAggiorna(tipoPacchetto, nuova);
+      if (!carte) break;
+      tuttiIPacchetti.push(carte);
+    }
+    if (tuttiIPacchetti.length === 0) return;
+    // Salva collezione e scala pacchetti tutti insieme
+    setColl(nuova); await saveCollezione(user.uid, nuova);
+    if (tipoPacchetto === 'benvenuto') { const n = (profilo.pacchettiBenvenuto ?? 0) - tuttiIPacchetti.length; setProfilo(p => ({ ...p, pacchettiBenvenuto: n })); await updateUserProfile(user.uid, { pacchettiBenvenuto: n }); }
+    else if (tipoPacchetto === 'omaggio') { const n = (profilo.pacchettiOmaggio ?? 0) - tuttiIPacchetti.length; setProfilo(p => ({ ...p, pacchettiOmaggio: n })); await updateUserProfile(user.uid, { pacchettiOmaggio: n }); }
+    else { const n = (profilo.pacchettiSfida ?? 0) - tuttiIPacchetti.length; setProfilo(p => ({ ...p, pacchettiSfida: n })); await updateUserProfile(user.uid, { pacchettiSfida: n }); }
+    // Avvia l'animazione del primo pacchetto
+    setMultiPackCarte(tuttiIPacchetti);
+    setMultiPackIndice(0);
+    const prime = tuttiIPacchetti[0];
+    const gp = prime.length === 5 && prime.every(c => c.tipo === 'waifu' && c.isGodPack);
+    setIsGodPackAperto(gp);
+    setCarteRivelate(prime);
+    setIndiceRivelato(-1);
+    setStato('reveal_multi');
+    prime.forEach((_, i) => { setTimeout(() => setIndiceRivelato(i), 500 + i * 700); });
   };
 
   // Sbustamento: modal dettaglio waifu (click carta waifu rivelata)
@@ -1548,11 +1592,21 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
   };
   const chiudiVideoSbusto = () => { setSbusVideoAttivo(false); setSbusVideoFinito(false); setSbusCartaImmersiva(null); };
 
-  if (stato === 'reveal') {
+  if (stato === 'reveal' || stato === 'reveal_multi') {
+    const isMulti = stato === 'reveal_multi';
+    const totPacchetti = multiPackCarte.length;
+    const packCorrente = multiPackIndice + 1;
     const IMMC = '#ec4899';
     return (
       <div className="fade-in" style={{ padding: 16 }}>
-        <TitoloOrnato livello={1} colore="#f5a623">APERTURA PACCHETTO</TitoloOrnato>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <TitoloOrnato livello={1} colore="#f5a623">APERTURA PACCHETTO</TitoloOrnato>
+          {isMulti && (
+            <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#f5a623', letterSpacing: 2, fontWeight: 700 }}>
+              {packCorrente}/{totPacchetti}
+            </div>
+          )}
+        </div>
         {/* God Pack banner */}
         {isGodPackAperto && (
           <div style={{
@@ -1665,7 +1719,26 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
         </div>
         {indiceRivelato >= carteRivelate.length - 1 && (
           <div style={{ textAlign: 'center', marginTop: 24 }}>
-            <BtnDecorato variant="primary" size="lg" onClick={() => { setStato('idle'); setCarteRivelate([]); }}>CONTINUA</BtnDecorato>
+            {isMulti && multiPackIndice < totPacchetti - 1 ? (
+              <BtnDecorato variant="primary" size="lg" onClick={() => {
+                const prossimo = multiPackIndice + 1;
+                const carte = multiPackCarte[prossimo];
+                const gp = carte.length === 5 && carte.every(c => c.tipo === 'waifu' && c.isGodPack);
+                setIsGodPackAperto(gp);
+                setCarteRivelate(carte);
+                setIndiceRivelato(-1);
+                setMultiPackIndice(prossimo);
+                carte.forEach((_, i) => { setTimeout(() => setIndiceRivelato(i), 500 + i * 700); });
+              }}>
+                PROSSIMO PACCHETTO ({multiPackIndice + 2}/{totPacchetti}) →
+              </BtnDecorato>
+            ) : (
+              <BtnDecorato variant="primary" size="lg" onClick={() => {
+                setStato('idle'); setCarteRivelate([]); setMultiPackCarte([]); setMultiPackIndice(0);
+              }}>
+                {isMulti ? `✅ FINE — ${totPacchetti} PACCHETTI APERTI` : 'CONTINUA'}
+              </BtnDecorato>
+            )}
           </div>
         )}
 
@@ -1828,7 +1901,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
           countdownTs={profilo.ultimaRicaricaPacchetti}
           ctaEsaurito={<CountdownPacchettiOmaggio ultimaRicarica={profilo.ultimaRicaricaPacchetti} />}
           dropColore={dropColore}
-          onClick={() => apri('omaggio')}
+          onClick={() => !( nOmag <= 0) && setPopupApertura({ tipoPacchetto: 'omaggio' })}
           asset={dropAttivo?.asset_bustina}
         />
 
@@ -1849,7 +1922,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
             </div>
           }
           dropColore={dropColore}
-          onClick={() => apri('sfida')}
+          onClick={() => !(nSfid <= 0) && setPopupApertura({ tipoPacchetto: 'sfida' })}
           asset={dropAttivo?.asset_bustina}
         />
 
@@ -1866,7 +1939,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
             sub="No doppioni"
             esaurito={false}
             dropColore={dropColore}
-            onClick={() => apri('benvenuto')}
+            onClick={() => setPopupApertura({ tipoPacchetto: 'benvenuto' })}
             asset={dropAttivo?.asset_bustina}
           />
         )}
@@ -2078,6 +2151,118 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
           </div>
         </PannelloOrnato>
       )}
+
+      {/* POPUP CONFERMA APERTURA PACCHETTO */}
+      {popupApertura && (() => {
+        const { tipoPacchetto } = popupApertura;
+        const coloreP = tipoPacchetto === 'omaggio' ? '#f5a623' : tipoPacchetto === 'sfida' ? '#ff2d78' : '#00e676';
+        const coloreP2 = tipoPacchetto === 'omaggio' ? '#ffd666' : tipoPacchetto === 'sfida' ? '#ff6b6b' : '#00bfa5';
+        const icona = tipoPacchetto === 'omaggio' ? '🎁' : tipoPacchetto === 'sfida' ? '⚔' : '⭐';
+        const label = tipoPacchetto === 'omaggio' ? 'OMAGGIO' : tipoPacchetto === 'sfida' ? 'SFIDA' : 'BENVENUTO';
+        const disponibili = tipoPacchetto === 'benvenuto' ? (profilo.pacchettiBenvenuto ?? 0)
+          : tipoPacchetto === 'omaggio' ? (profilo.pacchettiOmaggio ?? 0)
+          : (profilo.pacchettiSfida ?? 0);
+        const puoAprire10 = disponibili >= 10;
+        return (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.85)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', padding: 20,
+          }} onClick={() => setPopupApertura(null)}>
+            <div className="fade-in" onClick={e => e.stopPropagation()} style={{
+              background: 'linear-gradient(135deg, #0d0820, #06030f)',
+              border: `2px solid ${coloreP}50`,
+              borderRadius: 20, padding: 28, maxWidth: 340, width: '100%',
+              textAlign: 'center',
+              boxShadow: `0 0 60px ${coloreP}25`,
+            }}>
+              {/* Immagine bustina */}
+              {dropAttivo?.asset_bustina ? (
+                <img src={dropAttivo.asset_bustina} alt="" style={{
+                  width: 90, height: 90, borderRadius: 14, objectFit: 'cover',
+                  border: `2px solid ${coloreP}60`,
+                  boxShadow: `0 0 20px ${coloreP}40`,
+                  marginBottom: 14,
+                }} />
+              ) : (
+                <div style={{
+                  width: 90, height: 90, borderRadius: 14, margin: '0 auto 14px',
+                  background: `linear-gradient(135deg, ${coloreP}40, ${coloreP2}25)`,
+                  border: `2px solid ${coloreP}50`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 40, boxShadow: `0 0 20px ${coloreP}30`,
+                }}>{icona}</div>
+              )}
+              {/* Nome espansione */}
+              {dropAttivo && (
+                <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: coloreP, letterSpacing: 2, marginBottom: 4 }}>
+                  {dropAttivo.nome}
+                </div>
+              )}
+              {/* Tipo pacchetto */}
+              <div style={{ fontFamily: 'Orbitron', fontSize: 16, fontWeight: 700, color: '#fff', letterSpacing: 2, marginBottom: 6 }}>
+                {icona} PACCHETTO {label}
+              </div>
+              {/* Residuo */}
+              <div style={{
+                fontFamily: 'Orbitron', fontSize: 12, color: coloreP,
+                marginBottom: 22, fontWeight: 700,
+              }}>
+                {disponibili} {disponibili === 1 ? 'pacchetto disponibile' : 'pacchetti disponibili'}
+              </div>
+              {/* Pulsanti */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <button
+                  onClick={() => { setPopupApertura(null); apri(tipoPacchetto); }}
+                  style={{
+                    padding: '14px 20px', borderRadius: 12, cursor: 'pointer',
+                    background: `linear-gradient(135deg, ${coloreP}, ${coloreP2})`,
+                    border: 'none', color: '#000',
+                    fontFamily: 'Orbitron', fontSize: 12, fontWeight: 900,
+                    letterSpacing: 2, boxShadow: `0 0 20px ${coloreP}50`,
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  🎴 APRI 1 PACCHETTO
+                </button>
+                <button
+                  onClick={() => { setPopupApertura(null); apriMulti(tipoPacchetto); }}
+                  disabled={!puoAprire10}
+                  style={{
+                    padding: '14px 20px', borderRadius: 12, cursor: puoAprire10 ? 'pointer' : 'not-allowed',
+                    background: puoAprire10
+                      ? `linear-gradient(135deg, ${coloreP}30, ${coloreP2}20)`
+                      : 'rgba(255,255,255,0.03)',
+                    border: `2px solid ${puoAprire10 ? coloreP : 'rgba(255,255,255,0.1)'}`,
+                    color: puoAprire10 ? coloreP : 'rgba(238,232,220,0.25)',
+                    fontFamily: 'Orbitron', fontSize: 12, fontWeight: 900,
+                    letterSpacing: 2,
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  🎴×10 APRI 10 PACCHETTI
+                  {!puoAprire10 && (
+                    <div style={{ fontSize: 8, fontWeight: 400, marginTop: 4, letterSpacing: 1 }}>
+                      (servono almeno 10 pacchetti)
+                    </div>
+                  )}
+                </button>
+                <button
+                  onClick={() => setPopupApertura(null)}
+                  style={{
+                    padding: '8px', borderRadius: 8, cursor: 'pointer',
+                    background: 'none', border: 'none',
+                    color: 'rgba(238,232,220,0.3)',
+                    fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 1,
+                  }}
+                >
+                  ANNULLA
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
