@@ -334,6 +334,17 @@ export async function setGiocatoreInLobby(codice, uid, inLobby) {
   });
 }
 
+// ── Segnala la presenza di un giocatore durante la battaglia ──────────
+// Traccia solo i 2 combattenti (attaccante e difensore).
+// I giocatori spettatori NON vengono tracciati qui, così non bloccano la partita.
+export async function setPresenzaBattaglia(codice, uid, presente) {
+  const ref = doc(db, 'partite_multi', codice);
+  await updateDoc(ref, {
+    [`battagliaCorrente.presenzaCombattenti.${uid}`]: presente,
+    aggiornato: serverTimestamp(),
+  });
+}
+
 // ── Ottieni colori già usati in una lobby ──────────────────────────────
 export async function getColoriUsatiLobby(codice) {
   const ref = doc(db, 'partite_multi', codice.toUpperCase().trim());

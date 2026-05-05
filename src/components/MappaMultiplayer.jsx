@@ -11,6 +11,7 @@ import {
   salvaSceltaPvpRound, salvaPrimoTurnoPvp,
   salvaProseguiTurnoRound, registraRisultatoBattagliaPvp,
   salvaRisultatoPvpRound, getPartiteSalvateUtente,
+  setPresenzaBattaglia,
 } from '@/lib/multiplayerService';
 import { TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT } from '@/lib/constants';
 import { applicaAbilitaOutfit, applicaModificatoriOpp } from '@/lib/gameLogic';
@@ -738,39 +739,98 @@ function SchermataPartita({
     );
   }
 
-  // Verifica se è in attesa di giocatori per riprendere
-  const giocatoriNecessari = giocatoriAttivi;
-  const giocatoriPresenti = giocatoriNecessari.filter(g => g.inLobby);
-  const tuttiPresenti = giocatoriPresenti.length >= giocatoriNecessari.length;
-
-  if (!tuttiPresenti) {
-    const assenti = giocatoriNecessari.filter(g => !g.inLobby);
-    return (
-      <div className="fade-in">
-        <PannelloOrnato glow="#f5a623" style={{ padding: 24, textAlign: 'center' }}>
-          <div style={{ fontSize: 36, marginBottom: 10 }}>⏳</div>
-          <TitoloOrnato livello={2} colore="#f5a623">IN ATTESA</TitoloOrnato>
-          <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', marginBottom: 16 }}>
-            In attesa che tutti i giocatori si riconnettano
-          </div>
-          {assenti.map(g => (
-            <div key={g.uid} style={{ fontSize: 11, color: g.coloreImpero, fontFamily: 'Orbitron', marginBottom: 4 }}>
-              ⏳ {g.nomeImpero}
-            </div>
-          ))}
-          <div style={{ marginTop: 20 }}>
-            <button onClick={onEsciEsalva} style={btnStyle('#666', true)}>💾 SALVA ED ESCI</button>
-          </div>
-        </PannelloOrnato>
-      </div>
-    );
-  }
-
-  // Battaglia in corso (attivata da un altro giocatore o da me)
+  // Verifica se è in attesa di giocatori per riprendere.
+  // REGOLA: blocca SOLO se uno dei 2 combattenti della battaglia corrente non è connesso.
+  // Se non c'è battaglia in corso, blocca solo se il giocatore del turno corrente non è connesso.
+  // I giocatori spettatori (non coinvolti nel turno/battaglia) NON bloccano mai la partita.
   const battaglia = partita.battagliaCorrente;
   const sonoCoinvolto = battaglia && (battaglia.attaccanteUid === myUid || battaglia.difensoreUid === myUid);
   const sonoAttaccante = battaglia?.attaccanteUid === myUid;
   const sonoDifensore = battaglia?.difensoreUid === myUid;
+
+  // Determina quali giocatori devono essere presenti per proseguire
+  let giocatoriNecessari = [];
+  if (battaglia) {
+    // Durante la battaglia: solo i 2 combattenti devono essere presenti.
+    // Usiamo presenzaCombattenti se disponibile (più aggiornato di inLobby).
+    const attUid = battaglia.attaccanteUid;
+    const difUid = battaglia.difensoreUid;
+    const presenzaComb = battaglia.presenzaCombattenti || {};
+    if (difUid === 'cpu') {
+      // vs CPU: solo l'attaccante conta
+      giocatoriNecessari = giocatoriAttivi.filter(g => g.uid === attUid);
+    } else {
+      // PvP: entrambi i combattenti
+      giocatoriNecessari = giocatoriAttivi.filter(g => g.uid === attUid || g.uid === difUid);
+      // Override: se presenzaCombattenti è definita, usala (più precisa di inLobby)
+      if (Object.keys(presenzaComb).length > 0) {
+        const tuttiCombattentiPresenti = [attUid, difUid].every(uid => presenzaComb[uid] === true);
+        if (!tuttiCombattentiPresenti) {
+          const assentiComb = [attUid, difUid].filter(uid => !presenzaComb[uid]);
+          const sonoSpettatore = !sonoCoinvolto;
+          if (!sonoSpettatore) {
+            return (
+              <div className="fade-in">
+                <PannelloOrnato glow="#f5a623" style={{ padding: 24, textAlign: 'center' }}>
+                  <div style={{ fontSize: 36, marginBottom: 10 }}>⏳</div>
+                  <TitoloOrnato livello={2} colore="#f5a623">IN ATTESA</TitoloOrnato>
+                  <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', marginBottom: 16 }}>
+                    In attesa che l&apos;avversario si riconnetta alla battaglia
+                  </div>
+                  {assentiComb.map(uid => {
+                    const g = giocatori[uid];
+                    return g ? (
+                      <div key={uid} style={{ fontSize: 11, color: g.coloreImpero, fontFamily: 'Orbitron', marginBottom: 4 }}>
+                        ⏳ {g.nomeImpero}
+                      </div>
+                    ) : null;
+                  })}
+                  <div style={{ marginTop: 20 }}>
+                    <button onClick={onEsciEsalva} style={btnStyle('#666', true)}>💾 SALVA ED ESCI</button>
+                  </div>
+                </PannelloOrnato>
+              </div>
+            );
+          }
+        }
+        // Se presenzaCombattenti è definita e tutti presenti, non bloccare
+        // (il check inLobby sottostante gestirà il caso residuale)
+      }
+    }
+  } else {
+    // Fuori dalla battaglia: solo il giocatore del turno corrente deve essere presente
+    // (gli altri possono aspettare)
+    giocatoriNecessari = giocatoriAttivi.filter(g => g.uid === turnoUid);
+  }
+  const giocatoriPresenti = giocatoriNecessari.filter(g => g.inLobby);
+  const tuttiPresenti = giocatoriNecessari.length === 0 || giocatoriPresenti.length >= giocatoriNecessari.length;
+
+  if (!tuttiPresenti) {
+    const assenti = giocatoriNecessari.filter(g => !g.inLobby);
+    // Sono uno spettatore: posso vedere lo stato ma la partita non è bloccata per me
+    const sonoSpettatore = !sonoCoinvolto && turnoUid !== myUid;
+    if (!sonoSpettatore) {
+      return (
+        <div className="fade-in">
+          <PannelloOrnato glow="#f5a623" style={{ padding: 24, textAlign: 'center' }}>
+            <div style={{ fontSize: 36, marginBottom: 10 }}>⏳</div>
+            <TitoloOrnato livello={2} colore="#f5a623">IN ATTESA</TitoloOrnato>
+            <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', marginBottom: 16 }}>
+              In attesa che {battaglia ? 'i combattenti si riconnettano' : 'il giocatore di turno si riconnetta'}
+            </div>
+            {assenti.map(g => (
+              <div key={g.uid} style={{ fontSize: 11, color: g.coloreImpero, fontFamily: 'Orbitron', marginBottom: 4 }}>
+                ⏳ {g.nomeImpero}
+              </div>
+            ))}
+            <div style={{ marginTop: 20 }}>
+              <button onClick={onEsciEsalva} style={btnStyle('#666', true)}>💾 SALVA ED ESCI</button>
+            </div>
+          </PannelloOrnato>
+        </div>
+      );
+    }
+  }
 
   if (battaglia && battaglia.statoFase === 'in_attesa' && (sonoAttaccante || (sonoDifensore && battaglia.difensoreUid !== 'cpu'))) {
     // Avvia battaglia locale
@@ -1094,6 +1154,8 @@ function BattagliaMultiplayer({
   const [waifuSel, setWaifuSel] = useState([]);
   const [modoBattaglia, setModoBattaglia] = useState(true);
   const [iniziata, setIniziata] = useState(false);
+  // Risultato finale per il popup "Fine partita"
+  const [risultatoFinale, setRisultatoFinale] = useState(null);
 
   // ── Stato PvP (Firestore-driven) ──────────────────────────────────
   // ARCHITETTURA: Firestore è la fonte di verità.
@@ -1129,6 +1191,23 @@ function BattagliaMultiplayer({
     const t = setTimeout(() => setTimeLeft(p => p - 1), 1000);
     return () => clearTimeout(t);
   }, [fase, timeLeft]);
+
+  // ── Presenza nella battaglia ──────────────────────────────────────
+  // Quando il componente si monta (combattente connesso), segnala presenza.
+  // Quando si smonta, segnala assenza.
+  useEffect(() => {
+    if (isCpu) return; // vs CPU non serve tracciare la presenza
+    const batt = partita?.battagliaCorrente;
+    if (!batt) return;
+    const eUnCombattente = batt.attaccanteUid === myUid || batt.difensoreUid === myUid;
+    if (!eUnCombattente) return;
+    // Segnala presenza
+    setPresenzaBattaglia(codice, myUid, true).catch(() => {});
+    return () => {
+      // Segnala assenza al dismount (navigazione fuori)
+      setPresenzaBattaglia(codice, myUid, false).catch(() => {});
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── CPU turno (solo vs CPU) ───────────────────────────────────────
   useEffect(() => {
@@ -1591,6 +1670,8 @@ function BattagliaMultiplayer({
 
   const fineBattaglia = (vittoria) => {
     setFase('gameEnd');
+    // Salva il risultato per il popup post-battaglia
+    setRisultatoFinale({ vittoria, punteggioFinale: punteggioRef.current });
     const vincitoreUid = vittoria ? myUid : avversarioUid;
     onBattagliaFinita(vincitoreUid);
   };
@@ -1853,11 +1934,26 @@ function BattagliaMultiplayer({
 
   // ── Fine battaglia ────────────────────────────────────────────────
   if (fase === 'gameEnd') {
-    const vittoria = punteggio.player > punteggio.cpu;
+    const vittoria = risultatoFinale ? risultatoFinale.vittoria : punteggio.player > punteggio.cpu;
+    const pFin = risultatoFinale?.punteggioFinale || punteggio;
     const coloreRisultato = vittoria ? '#00e676' : '#ff3d3d';
-    const testoTerritori = vittoria
-      ? `🏴 ${terrData?.nome} conquistato!`
-      : `❌ Hai perso ${terrData?.nome}`;
+
+    // Calcola testo territorio in base a chi è attaccante/difensore
+    let testoTerritorio;
+    if (vittoria) {
+      if (sonoAttaccante) {
+        testoTerritorio = `🏴 Hai conquistato ${terrData?.nome}!`;
+      } else {
+        testoTerritorio = `🛡 Hai difeso ${terrData?.nome}!`;
+      }
+    } else {
+      if (sonoAttaccante) {
+        testoTerritorio = `❌ Non hai conquistato ${terrData?.nome}`;
+      } else {
+        testoTerritorio = `💔 Hai perso ${terrData?.nome}`;
+      }
+    }
+
     return (
       <div className="fade-in" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
         <div style={{
@@ -1874,12 +1970,12 @@ function BattagliaMultiplayer({
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 14 }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>TU</div>
-              <div style={{ fontSize: 32, fontFamily: 'Orbitron', fontWeight: 800, color: '#00e676' }}>{punteggio.player}</div>
+              <div style={{ fontSize: 32, fontFamily: 'Orbitron', fontWeight: 800, color: '#00e676' }}>{pFin.player}</div>
             </div>
             <div style={{ fontSize: 16, color: '#444', fontFamily: 'Orbitron' }}>—</div>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>{nomeAvversario.toUpperCase()}</div>
-              <div style={{ fontSize: 32, fontFamily: 'Orbitron', fontWeight: 800, color: coloreAvversario }}>{punteggio.cpu}</div>
+              <div style={{ fontSize: 32, fontFamily: 'Orbitron', fontWeight: 800, color: coloreAvversario }}>{pFin.cpu}</div>
             </div>
           </div>
           {/* Territorio */}
@@ -1888,13 +1984,23 @@ function BattagliaMultiplayer({
             background: `${coloreRisultato}12`,
             border: `1px solid ${coloreRisultato}30`,
             fontSize: 11, fontFamily: 'Orbitron', fontWeight: 700,
-            color: coloreRisultato, letterSpacing: 1,
+            color: coloreRisultato, letterSpacing: 1, marginBottom: 20,
           }}>
-            {testoTerritori}
+            {testoTerritorio}
           </div>
-          <div style={{ marginTop: 14, fontSize: 9, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron' }}>
+          <div style={{ marginBottom: 10, fontSize: 9, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron' }}>
             Aggiornamento mappa in corso…
           </div>
+          {/* Pulsante Fine partita — torna alla mappa multiplayer */}
+          <PopupFinePartita
+            vittoria={vittoria}
+            punteggio={pFin}
+            territorio={terrData}
+            testoTerritorio={testoTerritorio}
+            nomeAvversario={nomeAvversario}
+            coloreAvversario={coloreAvversario}
+            coloreRisultato={coloreRisultato}
+          />
         </div>
       </div>
     );
@@ -2423,6 +2529,82 @@ function FormImpero({ nomeImpero, setNomeImpero, coloreImpero, setColoreImpero, 
         <span style={{ fontFamily: 'Orbitron', fontSize: 12, color: coloreImpero }}>{nomeImpero || 'Il tuo Impero'}</span>
       </div>
     </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════
+// POPUP FINE PARTITA — mostra il risultato della battaglia con pulsante
+// ════════════════════════════════════════════════════════════════════
+function PopupFinePartita({ vittoria, punteggio, territorio, testoTerritorio, nomeAvversario, coloreAvversario, coloreRisultato }) {
+  const [mostraPopup, setMostraPopup] = useState(false);
+
+  return (
+    <>
+      <button
+        onClick={() => setMostraPopup(true)}
+        style={{
+          ...btnStyle(coloreRisultato),
+          marginTop: 6,
+          width: '100%',
+        }}
+      >
+        🏁 FINE PARTITA
+      </button>
+
+      {mostraPopup && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(0,0,0,0.85)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', padding: 16,
+        }}>
+          <div className="fade-in" style={{
+            background: 'linear-gradient(135deg, #0d0820, #06030f)',
+            border: `2px solid ${coloreRisultato}50`,
+            borderRadius: 20, padding: 32, maxWidth: 360, width: '100%',
+            textAlign: 'center',
+            boxShadow: `0 0 60px ${coloreRisultato}30`,
+          }}>
+            <div style={{ fontSize: 52, marginBottom: 12 }}>{vittoria ? '👑' : '💔'}</div>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 20, fontWeight: 700, color: coloreRisultato, letterSpacing: 3, marginBottom: 6 }}>
+              {vittoria ? 'VITTORIA!' : 'SCONFITTA'}
+            </div>
+            {/* Punteggio */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 16 }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>TU</div>
+                <div style={{ fontSize: 34, fontFamily: 'Orbitron', fontWeight: 800, color: '#00e676' }}>{punteggio.player}</div>
+              </div>
+              <div style={{ fontSize: 16, color: '#444', fontFamily: 'Orbitron' }}>—</div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>{(nomeAvversario || 'AVVERSARIO').toUpperCase()}</div>
+                <div style={{ fontSize: 34, fontFamily: 'Orbitron', fontWeight: 800, color: coloreAvversario }}>{punteggio.cpu}</div>
+              </div>
+            </div>
+            {/* Descrizione territorio */}
+            {territorio && (
+              <div style={{
+                padding: '12px 18px', borderRadius: 10, marginBottom: 20,
+                background: `${coloreRisultato}12`,
+                border: `1px solid ${coloreRisultato}35`,
+                fontSize: 12, fontFamily: 'Orbitron', fontWeight: 700,
+                color: coloreRisultato, letterSpacing: 1,
+              }}>
+                {testoTerritorio}
+              </div>
+            )}
+            <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', marginBottom: 20 }}>
+              La mappa è già stata aggiornata
+            </div>
+            <button
+              onClick={() => setMostraPopup(false)}
+              style={{ ...btnStyle(coloreRisultato), width: '100%' }}
+            >
+              ✓ CHIUDI
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
