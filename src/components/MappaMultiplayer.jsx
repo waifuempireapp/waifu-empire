@@ -1278,26 +1278,42 @@ function BattagliaMultiplayer({
       statsUsateRef.current = aggiornato;
       return aggiornato;
     });
+    // Mostra prima l'esito nel campo di gioco (fase reveal), poi dopo aggiorna punteggio e colori carte
     setVincitoreRound(vince);
-    setPunteggio(prev => {
-      const aggiornato = {
-        player: prev.player + (vince === 'player' ? 1 : 0),
-        cpu: prev.cpu + (vince === 'cpu' ? 1 : 0),
-      };
-      punteggioRef.current = aggiornato;
-      return aggiornato;
-    });
-    setRisultatiWaifu(prev => ({
-      ...prev,
-      [wMy.id]: vince === 'player' ? 'vinta' : vince === 'cpu' ? 'persa' : 'pareggio',
-      [wAvv.id]: vince === 'cpu' ? 'vinta' : vince === 'player' ? 'persa' : 'pareggio',
-    }));
 
     setTimeout(() => {
       if (inSuddenDeathRef.current) {
+        // In sudden death: aggiorna tutto e poi conclude
+        setPunteggio(prev => {
+          const aggiornato = {
+            player: prev.player + (vince === 'player' ? 1 : 0),
+            cpu: prev.cpu + (vince === 'cpu' ? 1 : 0),
+          };
+          punteggioRef.current = aggiornato;
+          return aggiornato;
+        });
+        setRisultatiWaifu(prev => ({
+          ...prev,
+          [wMy.id]: vince === 'player' ? 'vinta' : vince === 'cpu' ? 'persa' : 'pareggio',
+          [wAvv.id]: vince === 'cpu' ? 'vinta' : vince === 'player' ? 'persa' : 'pareggio',
+        }));
         if (vince === 'pareggio') setTimeout(() => avviaSuddenDeath(), 2500);
         else setTimeout(() => fineBattaglia(vince === 'player'), 2500);
       } else {
+        // Passa a roundEnd: qui aggiorniamo punteggio e colori carte (dopo il reveal)
+        setPunteggio(prev => {
+          const aggiornato = {
+            player: prev.player + (vince === 'player' ? 1 : 0),
+            cpu: prev.cpu + (vince === 'cpu' ? 1 : 0),
+          };
+          punteggioRef.current = aggiornato;
+          return aggiornato;
+        });
+        setRisultatiWaifu(prev => ({
+          ...prev,
+          [wMy.id]: vince === 'player' ? 'vinta' : vince === 'cpu' ? 'persa' : 'pareggio',
+          [wAvv.id]: vince === 'cpu' ? 'vinta' : vince === 'player' ? 'persa' : 'pareggio',
+        }));
         setFase('roundEnd');
       }
     }, 1500);
@@ -1392,16 +1408,19 @@ function BattagliaMultiplayer({
       const valP = pEff[stat]; const valC = cEff[stat];
       let vince = valP === valC ? 'pareggio' : dir === 'piu' ? (valP > valC ? 'player' : 'cpu') : (valP < valC ? 'player' : 'cpu');
       setVincitoreRound(vince);
-      setPunteggio(prev => {
-        const a = { player: prev.player + (vince === 'player' ? 1 : 0), cpu: prev.cpu + (vince === 'cpu' ? 1 : 0) };
-        punteggioRef.current = a; return a;
-      });
-      setRisultatiWaifu(prev => ({
-        ...prev,
-        [waifuP.id]: vince === 'player' ? 'vinta' : vince === 'cpu' ? 'persa' : 'pareggio',
-        [waifuC.id]: vince === 'cpu' ? 'vinta' : vince === 'player' ? 'persa' : 'pareggio',
-      }));
-      setFase('roundEnd');
+      // Aggiorna punteggio e colori dopo la fase reveal (non subito)
+      setTimeout(() => {
+        setPunteggio(prev => {
+          const a = { player: prev.player + (vince === 'player' ? 1 : 0), cpu: prev.cpu + (vince === 'cpu' ? 1 : 0) };
+          punteggioRef.current = a; return a;
+        });
+        setRisultatiWaifu(prev => ({
+          ...prev,
+          [waifuP.id]: vince === 'player' ? 'vinta' : vince === 'cpu' ? 'persa' : 'pareggio',
+          [waifuC.id]: vince === 'cpu' ? 'vinta' : vince === 'player' ? 'persa' : 'pareggio',
+        }));
+        setFase('roundEnd');
+      }, 1500);
     }, 1500);
   };
 
@@ -1838,75 +1857,62 @@ function BattagliaMultiplayer({
   }
 
   // ── Fine battaglia ────────────────────────────────────────────────
-  if (fase === 'gameEnd') {
-    const vittoria = risultatoFinale ? risultatoFinale.vittoria : punteggio.player > punteggio.cpu;
-    const pFin = risultatoFinale?.punteggioFinale || punteggio;
+  if (fase === 'gameEnd' && risultatoFinale) {
+    const vittoria = risultatoFinale.vittoria;
+    const pFin = risultatoFinale.punteggioFinale;
     const coloreRisultato = vittoria ? '#00e676' : '#ff3d3d';
 
-    // Calcola testo territorio in base a chi è attaccante/difensore
     let testoTerritorio;
     if (vittoria) {
-      if (sonoAttaccante) {
-        testoTerritorio = `🏴 Hai conquistato ${terrData?.nome}!`;
-      } else {
-        testoTerritorio = `🛡 Hai difeso ${terrData?.nome}!`;
-      }
+      testoTerritorio = sonoAttaccante ? `🏴 Hai conquistato ${terrData?.nome}!` : `🛡 Hai difeso ${terrData?.nome}!`;
     } else {
-      if (sonoAttaccante) {
-        testoTerritorio = `❌ Non hai conquistato ${terrData?.nome}`;
-      } else {
-        testoTerritorio = `💔 Hai perso ${terrData?.nome}`;
-      }
+      testoTerritorio = sonoAttaccante ? `❌ Non hai conquistato ${terrData?.nome}` : `💔 Hai perso ${terrData?.nome}`;
     }
 
+    // Mostra direttamente il popup modale (nessuna schermata intermedia)
     return (
-      <div className="fade-in" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
-        <div style={{
-          background: 'rgba(6,3,15,0.97)',
-          border: `2px solid ${coloreRisultato}40`,
-          borderRadius: 20, padding: 36, textAlign: 'center', maxWidth: 360,
-          boxShadow: `0 0 40px ${coloreRisultato}20`,
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: 'rgba(0,0,0,0.85)', display: 'flex',
+        alignItems: 'center', justifyContent: 'center', padding: 16,
+      }}>
+        <div className="fade-in" style={{
+          background: 'linear-gradient(135deg, #0d0820, #06030f)',
+          border: `2px solid ${coloreRisultato}50`,
+          borderRadius: 20, padding: 32, maxWidth: 360, width: '100%',
+          textAlign: 'center',
+          boxShadow: `0 0 60px ${coloreRisultato}30`,
         }}>
-          <div style={{ fontSize: 52, marginBottom: 10 }}>{vittoria ? '👑' : '💔'}</div>
-          <div style={{ fontFamily: 'Orbitron', fontSize: 22, fontWeight: 700, color: coloreRisultato, letterSpacing: 3, marginBottom: 8 }}>
+          <div style={{ fontSize: 52, marginBottom: 12 }}>{vittoria ? '👑' : '💔'}</div>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 20, fontWeight: 700, color: coloreRisultato, letterSpacing: 3, marginBottom: 6 }}>
             {vittoria ? 'VITTORIA!' : 'SCONFITTA'}
           </div>
-          {/* Punteggio */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 16 }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>TU</div>
-              <div style={{ fontSize: 32, fontFamily: 'Orbitron', fontWeight: 800, color: '#00e676' }}>{pFin.player}</div>
+              <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>TU</div>
+              <div style={{ fontSize: 34, fontFamily: 'Orbitron', fontWeight: 800, color: '#00e676' }}>{pFin.player}</div>
             </div>
             <div style={{ fontSize: 16, color: '#444', fontFamily: 'Orbitron' }}>—</div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>{nomeAvversario.toUpperCase()}</div>
-              <div style={{ fontSize: 32, fontFamily: 'Orbitron', fontWeight: 800, color: coloreAvversario }}>{pFin.cpu}</div>
+              <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>{nomeAvversario.toUpperCase()}</div>
+              <div style={{ fontSize: 34, fontFamily: 'Orbitron', fontWeight: 800, color: coloreAvversario }}>{pFin.cpu}</div>
             </div>
           </div>
-          {/* Territorio */}
           <div style={{
-            padding: '10px 18px', borderRadius: 10,
+            padding: '12px 18px', borderRadius: 10, marginBottom: 24,
             background: `${coloreRisultato}12`,
-            border: `1px solid ${coloreRisultato}30`,
-            fontSize: 11, fontFamily: 'Orbitron', fontWeight: 700,
-            color: coloreRisultato, letterSpacing: 1, marginBottom: 20,
+            border: `1px solid ${coloreRisultato}35`,
+            fontSize: 12, fontFamily: 'Orbitron', fontWeight: 700,
+            color: coloreRisultato, letterSpacing: 1,
           }}>
             {testoTerritorio}
           </div>
-          <div style={{ marginBottom: 10, fontSize: 9, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron' }}>
-            Aggiornamento mappa in corso…
-          </div>
-          {/* Pulsante Fine partita — il giocatore chiude e poi aggiorna Firestore */}
-          <PopupFinePartita
-            vittoria={vittoria}
-            punteggio={pFin}
-            territorio={terrData}
-            testoTerritorio={testoTerritorio}
-            nomeAvversario={nomeAvversario}
-            coloreAvversario={coloreAvversario}
-            coloreRisultato={coloreRisultato}
-            onProcedi={() => onBattagliaFinita(risultatoFinale.vincitoreUid)}
-          />
+          <button
+            onClick={() => onBattagliaFinita(risultatoFinale.vincitoreUid)}
+            style={{ ...btnStyle(coloreRisultato), width: '100%' }}
+          >
+            ✓ PROCEDI
+          </button>
         </div>
       </div>
     );
@@ -2059,7 +2065,7 @@ function BattagliaMultiplayer({
                 </div>
               </div>
             )}
-            {(fase === 'roundEnd' || fase === 'pvpAttesaProsegui') && vincitoreRound && (
+            {(fase === 'reveal' || fase === 'roundEnd' || fase === 'pvpAttesaProsegui') && vincitoreRound && (
               <div className="fade-up" style={{ marginTop: 8 }}>
                 <div style={{ fontFamily: 'Orbitron', fontSize: 13, fontWeight: 700, color: vincitoreRound === 'player' ? '#00e676' : vincitoreRound === 'cpu' ? coloreAvversario : '#ffd666' }}>
                   {vincitoreRound === 'player' ? '✅ VINTO!' : vincitoreRound === 'cpu' ? '❌ PERSO' : '🤝 PARI'}
@@ -2435,76 +2441,6 @@ function FormImpero({ nomeImpero, setNomeImpero, coloreImpero, setColoreImpero, 
         <span style={{ fontFamily: 'Orbitron', fontSize: 12, color: coloreImpero }}>{nomeImpero || 'Il tuo Impero'}</span>
       </div>
     </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════
-// POPUP FINE PARTITA — mostra il risultato della battaglia con pulsante
-// ════════════════════════════════════════════════════════════════════
-function PopupFinePartita({ vittoria, punteggio, territorio, testoTerritorio, nomeAvversario, coloreAvversario, coloreRisultato, onProcedi }) {
-  const [mostraPopup, setMostraPopup] = useState(false);
-
-  return (
-    <>
-      <button
-        onClick={() => setMostraPopup(true)}
-        style={{ ...btnStyle(coloreRisultato), marginTop: 6, width: '100%' }}
-      >
-        🏁 FINE PARTITA
-      </button>
-
-      {mostraPopup && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 9999,
-          background: 'rgba(0,0,0,0.85)', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', padding: 16,
-        }}>
-          <div className="fade-in" style={{
-            background: 'linear-gradient(135deg, #0d0820, #06030f)',
-            border: `2px solid ${coloreRisultato}50`,
-            borderRadius: 20, padding: 32, maxWidth: 360, width: '100%',
-            textAlign: 'center',
-            boxShadow: `0 0 60px ${coloreRisultato}30`,
-          }}>
-            <div style={{ fontSize: 52, marginBottom: 12 }}>{vittoria ? '👑' : '💔'}</div>
-            <div style={{ fontFamily: 'Orbitron', fontSize: 20, fontWeight: 700, color: coloreRisultato, letterSpacing: 3, marginBottom: 6 }}>
-              {vittoria ? 'VITTORIA!' : 'SCONFITTA'}
-            </div>
-            {/* Punteggio */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 16 }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>TU</div>
-                <div style={{ fontSize: 34, fontFamily: 'Orbitron', fontWeight: 800, color: '#00e676' }}>{punteggio.player}</div>
-              </div>
-              <div style={{ fontSize: 16, color: '#444', fontFamily: 'Orbitron' }}>—</div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>{(nomeAvversario || 'AVVERSARIO').toUpperCase()}</div>
-                <div style={{ fontSize: 34, fontFamily: 'Orbitron', fontWeight: 800, color: coloreAvversario }}>{punteggio.cpu}</div>
-              </div>
-            </div>
-            {/* Descrizione territorio */}
-            {territorio && (
-              <div style={{
-                padding: '12px 18px', borderRadius: 10, marginBottom: 20,
-                background: `${coloreRisultato}12`,
-                border: `1px solid ${coloreRisultato}35`,
-                fontSize: 12, fontFamily: 'Orbitron', fontWeight: 700,
-                color: coloreRisultato, letterSpacing: 1,
-              }}>
-                {testoTerritorio}
-              </div>
-            )}
-            {/* "Procedi" scrive su Firestore e torna alla mappa — lo smontaggio avviene dopo */}
-            <button
-              onClick={() => { setMostraPopup(false); onProcedi(); }}
-              style={{ ...btnStyle(coloreRisultato), width: '100%' }}
-            >
-              ✓ PROCEDI
-            </button>
-          </div>
-        </div>
-      )}
-    </>
   );
 }
 
