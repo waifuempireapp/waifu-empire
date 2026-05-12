@@ -33,73 +33,60 @@ function shuffle(arr) {
   return a;
 }
 
-async function buildGhostPack() {
-  // Carica catalogo
-  const [waifuSnap, outfitSnap, poseSnap] = await Promise.all([
+async function buildCatalogPools() {
+  const now = new Date();
+  const [waifuSnap, outfitSnap, poseSnap, dropSnap] = await Promise.all([
     adminDb.collection('catalogo_waifu').get(),
     adminDb.collection('catalogo_outfit').get(),
     adminDb.collection('catalogo_pose').get(),
+    adminDb.collection('drops').where('attivo', '==', true).get(),
   ]);
   const allWaifu = waifuSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   const allOutfit = outfitSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   const allPose = poseSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-  if (allWaifu.length === 0) return null;
+  let waifuPool = allWaifu, outfitPool = allOutfit, posePool = allPose;
 
-  // Filtra per drop attivo (se presente)
-  let waifuPool = allWaifu;
-  let outfitPool = allOutfit;
-  let posePool = allPose;
+  const activeDrops = dropSnap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(d => {
+      if (d.inizio && new Date(d.inizio) > now) return false;
+      if (d.fine) { const fine = new Date(d.fine); fine.setHours(23, 59, 59, 999); if (fine < now) return false; }
+      return true;
+    });
 
-  try {
-    const now = new Date();
-    const dropSnap = await adminDb.collection('drops').where('attivo', '==', true).get();
-    const activeDrops = dropSnap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .filter(d => {
-        if (d.inizio && new Date(d.inizio) > now) return false;
-        if (d.fine) {
-          const fine = new Date(d.fine);
-          fine.setHours(23, 59, 59, 999);
-          if (fine < now) return false;
-        }
-        return true;
-      });
+  if (activeDrops.length > 0) {
+    const drop = activeDrops[0];
+    if (drop.waifuIds?.length > 0) waifuPool = allWaifu.filter(w => drop.waifuIds.includes(w.id));
+    if (drop.outfitIds?.length > 0) outfitPool = allOutfit.filter(o => drop.outfitIds.includes(o.id));
+    if (drop.poseIds?.length > 0) posePool = allPose.filter(p => drop.poseIds.includes(p.id));
+  }
 
-    if (activeDrops.length > 0) {
-      const drop = activeDrops[0];
-      if (drop.waifuIds?.length > 0) waifuPool = allWaifu.filter(w => drop.waifuIds.includes(w.id));
-      if (drop.outfitIds?.length > 0) outfitPool = allOutfit.filter(o => drop.outfitIds.includes(o.id));
-      if (drop.poseIds?.length > 0) posePool = allPose.filter(p => drop.poseIds.includes(p.id));
-    }
-  } catch (_) { /* usa pool completo se drop non disponibile */ }
-
-  // Fallback: se il pool filtrato è vuoto, usa tutto il catalogo
   if (waifuPool.length === 0) waifuPool = allWaifu;
   if (outfitPool.length === 0) outfitPool = allOutfit;
   if (posePool.length === 0) posePool = allPose;
 
-  const toCard = (c, tipo) => {
-    let immagine = null;
-    if (tipo === 'waifu') immagine = c.asset_statica || c.asset_immersiva || c.immagine || null;
-    else if (tipo === 'outfit') immagine = c.asset || c.immagine || null;
-    else immagine = c.immagine || null;
-    return { tipo, id: c.id, rarita: c.rarita || 'comune', nome: c.nome || '', immagine };
-  };
+  return { waifuPool, outfitPool, posePool };
+}
 
-  // Componi il pack: 2 waifu + 2 outfit + 1 posa, poi mescola
+function cardUrl(c, tipo) {
+  if (tipo === 'waifu') return c.asset_statica || c.asset_immersiva || c.immagine || null;
+  if (tipo === 'outfit') return c.asset || c.immagine || null;
+  return c.immagine || null;
+}
+
+function buildPackFromPools(waifuPool, outfitPool, posePool) {
   const cards = [];
   for (let i = 0; i < 2; i++) {
     const w = randPick(waifuPool);
-    if (w) cards.push(toCard(w, 'waifu'));
+    if (w) cards.push({ tipo: 'waifu', id: w.id, rarita: w.rarita || 'comune', nome: w.nome || '', immagine: cardUrl(w, 'waifu') });
   }
   for (let i = 0; i < 2; i++) {
     const o = randPick(outfitPool);
-    if (o) cards.push(toCard(o, 'outfit'));
+    if (o) cards.push({ tipo: 'outfit', id: o.id, rarita: o.rarita || 'comune', nome: o.nome || '', immagine: cardUrl(o, 'outfit') });
   }
   const p = randPick(posePool);
-  if (p) cards.push(toCard(p, 'posa'));
-
+  if (p) cards.push({ tipo: 'posa', id: p.id, rarita: p.rarita || 'comune', nome: p.nome || '', immagine: cardUrl(p, 'posa') });
   return shuffle(cards);
 }
 
@@ -165,11 +152,14 @@ export async function GET(request) {
     }
 
     // Fallback ghost pack fino a raggiungere MIN_FEED_SIZE
+    // buildGhostPack viene chiamato UNA volta sola per caricare i pool, poi
+    // si genera il numero di pack necessari senza rileggere Firestore.
     if (packs.length < MIN_FEED_SIZE) {
       const needed = MIN_FEED_SIZE - packs.length;
-      for (let i = 0; i < needed; i++) {
-        try {
-          const cards = await buildGhostPack();
+      try {
+        const { waifuPool, outfitPool, posePool } = await buildCatalogPools();
+        for (let i = 0; i < needed; i++) {
+          const cards = buildPackFromPools(waifuPool, outfitPool, posePool);
           if (cards && cards.length > 0) {
             packs.push({
               id: `ghost-${Date.now()}-${i}`,
@@ -180,7 +170,9 @@ export async function GET(request) {
               createdAt: null,
             });
           }
-        } catch (_) { /* skip if ghost pack generation fails */ }
+        }
+      } catch (ghostErr) {
+        console.error('Ghost pack generation failed:', ghostErr);
       }
     }
 
