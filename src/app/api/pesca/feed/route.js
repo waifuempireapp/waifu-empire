@@ -79,13 +79,13 @@ async function buildGhostPack() {
   if (outfitPool.length === 0) outfitPool = allOutfit;
   if (posePool.length === 0) posePool = allPose;
 
-  const toCard = (c, tipo) => ({
-    tipo,
-    id: c.id,
-    rarita: c.rarita || 'comune',
-    nome: c.nome || '',
-    immagine: c.immagine || c.immagineFull || null,
-  });
+  const toCard = (c, tipo) => {
+    let immagine = null;
+    if (tipo === 'waifu') immagine = c.asset_statica || c.asset_immersiva || c.immagine || null;
+    else if (tipo === 'outfit') immagine = c.asset || c.immagine || null;
+    else immagine = c.immagine || null;
+    return { tipo, id: c.id, rarita: c.rarita || 'comune', nome: c.nome || '', immagine };
+  };
 
   // Componi il pack: 2 waifu + 2 outfit + 1 posa, poi mescola
   const cards = [];

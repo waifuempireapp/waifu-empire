@@ -17,6 +17,10 @@ import BabyDoll from '@/components/BabyDoll';
 import { CartaWaifu, CartaOutfit, CartaPosa } from '@/components/CartaWaifu';
 import KissesIcon from '@/components/KissesIcon';
 import PescaMisteriosaFeed from '@/components/PescaMisteriosaFeed';
+import FriendIdDisplay from '@/components/FriendIdDisplay';
+import AddFriendForm from '@/components/AddFriendForm';
+import FriendRequestsList from '@/components/FriendRequestsList';
+import FriendsList from '@/components/FriendsList';
 import MappaMondoArt from '@/components/MappaMondoArt';
 import MappaMultiplayer from '@/components/MappaMultiplayer';
 import {
@@ -121,6 +125,7 @@ export default function GiocoPage() {
           {tab === 'sbusta' && <SbustaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} user={user} mostraNotif={mostraNotif} godPackProb={godPackProb} />}
           {tab === 'collezione' && <CollezioneTab collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} profilo={profilo} setProfilo={setProfilo} user={user} mostraNotif={mostraNotif} initialSubTab={colezSubTab} statConfig={statConfig} />}
           {tab === 'mappa' && <MappaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} user={user} mostraNotif={mostraNotif} />}
+          {tab === 'amici' && <AmiciTab user={user} profilo={profilo} />}
           {tab === 'classifica' && <ClassificaTab user={user} />}
         </div>
 
@@ -247,9 +252,6 @@ function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
                   <BtnDecorato variant="secondary" size="sm" style={{ width: '100%' }}>⚙ ADMIN</BtnDecorato>
                 </a>
               )}
-              <a href="/amici" style={{ textDecoration: 'none' }}>
-                <BtnDecorato variant="secondary" size="sm" style={{ width: '100%' }}>♥ AMICI</BtnDecorato>
-              </a>
               <BtnDecorato variant="danger" size="sm" onClick={() => { setPopupImpero(false); onLogout(); }}>
                 ESCI
               </BtnDecorato>
@@ -346,9 +348,6 @@ function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
           )}
         </div>
 
-        {/* Blocco PACK — cliccabile → va a Sbusto (gestito nel parent via onGoSbusta) */}
-        <PackBlock profilo={profilo} />
-
         {/* Blocco KISSES */}
         <KissesBlock profilo={profilo} />
 
@@ -356,7 +355,6 @@ function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
         <div style={{ width: 1, height: 28, background: 'rgba(245,166,35,0.15)', flexShrink: 0 }} />
 
         {isAdmin && <a href="/admin" style={{ textDecoration: 'none' }} className="header-desktop-only"><BtnDecorato variant="secondary" size="sm">⚙ ADMIN</BtnDecorato></a>}
-        <a href="/amici" style={{ textDecoration: 'none' }} className="header-desktop-only"><BtnDecorato variant="secondary" size="sm">♥ AMICI</BtnDecorato></a>
         <BtnDecorato variant="danger" size="sm" onClick={onLogout} className="header-desktop-only">ESCI</BtnDecorato>
       </div>
     </div>
@@ -405,32 +403,25 @@ function PackBlock({ profilo }) {
 
 function KissesBlock({ profilo }) {
   return (
-    <a href="/amici" style={{ textDecoration: 'none' }}>
-      <div style={{
-        cursor: 'pointer',
-        padding: '6px 12px',
-        background: 'rgba(255,77,158,0.06)',
-        border: '1px solid rgba(255,77,158,0.25)',
-        borderRadius: 10,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-        transition: 'all 0.2s',
-      }}
-        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,77,158,0.13)'; e.currentTarget.style.borderColor = 'rgba(255,77,158,0.5)'; }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,77,158,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,77,158,0.25)'; }}
-      >
-        <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-          <KissesIcon size={14} />
-          <span style={{
-            fontFamily: 'Orbitron', fontSize: 13, fontWeight: 800,
-            color: '#ff4d9e', letterSpacing: 1,
-            textShadow: '0 0 8px rgba(255,77,158,0.7)',
-          }}>
-            {profilo.kisses ?? 0}
-          </span>
-        </div>
-        <div style={{ fontSize: 7, opacity: 0.5, letterSpacing: 2, fontFamily: 'Orbitron', color: '#ff4d9e' }}>KISSES</div>
+    <div style={{
+      padding: '6px 12px',
+      background: 'rgba(255,77,158,0.06)',
+      border: '1px solid rgba(255,77,158,0.25)',
+      borderRadius: 10,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+    }}>
+      <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+        <KissesIcon size={14} />
+        <span style={{
+          fontFamily: 'Orbitron', fontSize: 13, fontWeight: 800,
+          color: '#ff4d9e', letterSpacing: 1,
+          textShadow: '0 0 8px rgba(255,77,158,0.7)',
+        }}>
+          {profilo.kisses ?? 0}
+        </span>
       </div>
-    </a>
+      <div style={{ fontSize: 7, opacity: 0.5, letterSpacing: 2, fontFamily: 'Orbitron', color: '#ff4d9e' }}>KISSES</div>
+    </div>
   );
 }
 
@@ -442,6 +433,7 @@ const TAB_DEFS = [
   { id: 'mappa',      label: 'Mappa',      icon: '⚔',  iconBig: '⚔' },
   { id: 'sbusta',     label: 'Sbusta',     icon: '🎁',  iconBig: '🎁' },
   { id: 'collezione', label: 'Collezione', icon: '💎',  iconBig: '💎' },
+  { id: 'amici',      label: 'Amici',      icon: '♥',  iconBig: '♥' },
   { id: 'classifica', label: 'Classifica', icon: '🏆', iconBig: '🏆' },
 ];
 
@@ -1259,6 +1251,26 @@ function MadalePosa({ posa }) {
 }
 
 // ============================================================
+// TAB: AMICI
+// ============================================================
+function AmiciTab({ user, profilo }) {
+  const [refreshKey, setRefreshKey] = useState(0);
+  const onUpdate = () => setRefreshKey(k => k + 1);
+
+  return (
+    <div className="fade-in" style={{ maxWidth: 500, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
+      <div style={{ fontFamily: 'Orbitron', fontSize: 16, fontWeight: 900, color: '#ff2d78', letterSpacing: 3, marginBottom: 4 }}>
+        ♥ AMICI
+      </div>
+      <FriendIdDisplay friendId={profilo?.friendId} />
+      <AddFriendForm user={user} />
+      <FriendRequestsList key={`req-${refreshKey}`} user={user} onUpdate={onUpdate} />
+      <FriendsList key={`list-${refreshKey}`} user={user} />
+    </div>
+  );
+}
+
+// ============================================================
 // TAB: CLASSIFICA — Fase 6 (implementazione completa)
 // ============================================================
 function ClassificaTab({ user }) {
@@ -1589,7 +1601,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     else if (tipoPacchetto === 'omaggio') { const n = (profilo.pacchettiOmaggio ?? 0) - 1; setProfilo(p => ({ ...p, pacchettiOmaggio: n })); await updateUserProfile(user.uid, { pacchettiOmaggio: n }); }
     else { const n = (profilo.pacchettiSfida ?? 0) - 1; setProfilo(p => ({ ...p, pacchettiSfida: n })); await updateUserProfile(user.uid, { pacchettiSfida: n }); }
     // Snapshot asincrona: non blocca l'apertura se fallisce
-    createPackSnapshot(user.uid, carte).catch(() => {});
+    createPackSnapshot(user.uid, carte).catch(e => console.error('createPackSnapshot failed:', e));
     carte.forEach((_, i) => { setTimeout(() => setIndiceRivelato(i), 500 + i * 700); });
   };
 
@@ -1610,7 +1622,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     // Salva collezione e scala pacchetti tutti insieme
     setColl(nuova); await saveCollezione(user.uid, nuova);
     // Snapshot asincrona per ogni pack aperto
-    tuttiIPacchetti.forEach(carte => createPackSnapshot(user.uid, carte).catch(() => {}));
+    tuttiIPacchetti.forEach(carte => createPackSnapshot(user.uid, carte).catch(e => console.error('createPackSnapshot failed:', e)));
     if (tipoPacchetto === 'benvenuto') { const n = (profilo.pacchettiBenvenuto ?? 0) - tuttiIPacchetti.length; setProfilo(p => ({ ...p, pacchettiBenvenuto: n })); await updateUserProfile(user.uid, { pacchettiBenvenuto: n }); }
     else if (tipoPacchetto === 'omaggio') { const n = (profilo.pacchettiOmaggio ?? 0) - tuttiIPacchetti.length; setProfilo(p => ({ ...p, pacchettiOmaggio: n })); await updateUserProfile(user.uid, { pacchettiOmaggio: n }); }
     else { const n = (profilo.pacchettiSfida ?? 0) - tuttiIPacchetti.length; setProfilo(p => ({ ...p, pacchettiSfida: n })); await updateUserProfile(user.uid, { pacchettiSfida: n }); }

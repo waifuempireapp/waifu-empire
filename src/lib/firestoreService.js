@@ -262,13 +262,14 @@ export async function createPackSnapshot(ownerUid, cards) {
   const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   await addDoc(collection(db, 'pack_snapshots'), {
     ownerUid,
-    cards: cards.map(c => ({
-      tipo: c.tipo,
-      id: c.data?.id,
-      rarita: c.data?.rarita,
-      nome: c.data?.nome,
-      immagine: c.data?.immagine || c.data?.immagineFull || null,
-    })),
+    cards: cards.map(c => {
+      const d = c.data || {};
+      let immagine = null;
+      if (c.tipo === 'waifu') immagine = d.asset_statica || d.asset_immersiva || d.immagine || null;
+      else if (c.tipo === 'outfit') immagine = d.asset || d.immagine || null;
+      else immagine = d.immagine || null;
+      return { tipo: c.tipo, id: d.id, rarita: d.rarita, nome: d.nome, immagine };
+    }),
     isGhost: false,
     visibleToFriends: true,
     createdAt: serverTimestamp(),
