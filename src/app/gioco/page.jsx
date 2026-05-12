@@ -664,6 +664,33 @@ function HomeTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, poseCat
         setTab={setTab}
       />
 
+      {/* ── NEGOZIO ── */}
+      <div style={{ marginTop: 16 }}>
+        <a href="/negozio" style={{ textDecoration: 'none' }}>
+          <button style={{
+            width: '100%',
+            background: 'linear-gradient(135deg, rgba(245,166,35,0.13), rgba(245,166,35,0.06))',
+            border: '1px solid rgba(245,166,35,0.35)',
+            borderRadius: 14,
+            padding: '16px 24px',
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 12,
+            transition: 'all 0.2s',
+          }}>
+            <span style={{ fontSize: 22 }}>🛒</span>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontFamily: 'Orbitron', fontSize: 12, fontWeight: 900, color: '#f5a623', letterSpacing: 2 }}>
+                NEGOZIO
+              </div>
+              <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.45)', fontFamily: 'Fredoka', marginTop: 2 }}>
+                Acquista pack sfida, energia e Kisses
+              </div>
+            </div>
+            <span style={{ marginLeft: 'auto', color: '#f5a623', opacity: 0.6, fontSize: 16 }}>›</span>
+          </button>
+        </a>
+      </div>
+
       {/* ── PESCA MISTERIOSA (lazy: carica solo al click) ── */}
       {process.env.NEXT_PUBLIC_PESCA_ENABLED !== 'false' && (
         <div style={{ marginTop: 28 }}>

@@ -32,6 +32,7 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
+    // negozio_settings coperto dalla regola /config/{doc} sopra
 
     // === Cataloghi (lettura pubblica, scrittura solo admin) ===
     match /catalogo_waifu/{id} {

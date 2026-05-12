@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import PescaPackCard from './PescaPackCard';
 import PescaRevealAnimation from './PescaRevealAnimation';
 import KissesIcon from './KissesIcon';
+import KissesShortageModal from './KissesShortageModal';
 
 const KISSES_COST = 10;
 
@@ -98,6 +99,7 @@ export default function PescaMisteriosaFeed({ user, profilo, onKissesSpent }) {
   const [busy, setBusy] = useState(false);
   const [risultato, setRisultato] = useState(null); // { allCards, chosenIndex }
   const [notif, setNotif] = useState(null);
+  const [kissesShortage, setKissesShortage] = useState(null); // { pendingPack } per riprendere dopo ricarica
 
   const caricaFeed = useCallback(async () => {
     if (!user) return;
@@ -161,6 +163,24 @@ export default function PescaMisteriosaFeed({ user, profilo, onKissesSpent }) {
           padding: '10px 24px', borderRadius: 10,
           fontFamily: 'Orbitron', letterSpacing: 2, fontSize: 11, zIndex: 500,
         }}>{notif.testo}</div>
+      )}
+
+      {/* Modale Kisses insufficienti */}
+      {kissesShortage && (
+        <KissesShortageModal
+          missingKisses={KISSES_COST - kissesAttuali}
+          currentKisses={kissesAttuali}
+          user={user}
+          onSuccess={(newKisses) => {
+            onKissesSpent?.(0); // aggiorna saldo nel parent con il nuovo valore
+            // Simula la spesa per aggiornare il saldo locale (il parent ha già il nuovo valore)
+            const pack = kissesShortage.pendingPack;
+            setKissesShortage(null);
+            // Riprende automaticamente la pesca con il pack originale
+            setTimeout(() => { setSelectedPack(pack); setSelectedCardIndex(null); }, 200);
+          }}
+          onCancel={() => setKissesShortage(null)}
+        />
       )}
 
       {/* Animazione rivelazione */}
@@ -268,7 +288,13 @@ export default function PescaMisteriosaFeed({ user, profilo, onKissesSpent }) {
             pack={pack}
             kissesCost={KISSES_COST}
             userKisses={kissesAttuali}
-            onPesca={(p) => { setSelectedPack(p); setSelectedCardIndex(null); }}
+            onPesca={(p) => {
+              if (kissesAttuali < KISSES_COST) {
+                setKissesShortage({ pendingPack: p });
+              } else {
+                setSelectedPack(p); setSelectedCardIndex(null);
+              }
+            }}
           />
         ))}
       </div>

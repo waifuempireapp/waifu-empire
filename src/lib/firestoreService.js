@@ -221,6 +221,29 @@ export async function deleteTeamFromCollezione(uid, teamId) {
   await updateDoc(ref, { [`teams.${teamId}`]: deleteField() });
 }
 
+// =================== NEGOZIO CONFIG ===================
+const NEGOZIO_CONFIG_DEFAULTS = {
+  beni: {
+    pack_sfida:  { kisses: 50,  label: 'Pacchetto Sfida',  descrizione: '+1 pacchetto sfida' },
+    energia:     { kisses: 20,  label: 'Ricarica Energia', descrizione: 'Ricarica tutta la tua energia (+10)' },
+    pass_hard:   { kisses: 500, label: 'Hard Pass',        descrizione: 'Accesso illimitato ai video hard' },
+  },
+  tagli_kisses: [
+    { id: 'xs', kisses: 100,  price_eur: '0.99', label: '100 Kisses',  bonus: '' },
+    { id: 'sm', kisses: 300,  price_eur: '2.49', label: '300 Kisses',  bonus: '+30 bonus' },
+    { id: 'md', kisses: 600,  price_eur: '3.99', label: '600 Kisses',  bonus: '+80 bonus' },
+    { id: 'lg', kisses: 1400, price_eur: '7.99', label: '1400 Kisses', bonus: '+200 bonus' },
+  ],
+};
+
+export async function getNegozioConfig() {
+  try {
+    const snap = await getDoc(doc(db, 'config', 'negozio_settings'));
+    if (snap.exists()) return { ...NEGOZIO_CONFIG_DEFAULTS, ...snap.data() };
+  } catch (_) { /* fall through */ }
+  return NEGOZIO_CONFIG_DEFAULTS;
+}
+
 // =================== PESCA CONFIG ===================
 const PESCA_CONFIG_DEFAULTS = {
   kisses_pesca_cost: 10,
