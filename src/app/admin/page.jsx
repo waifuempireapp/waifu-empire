@@ -643,6 +643,8 @@ function DropEditor({ drop, setDrop, waifu, outfit, pose, drops, onSalva, onAnnu
 // ============================================================
 // TAB: WAIFU
 // ============================================================
+const WAIFU_PER_PAGE = 24;
+
 function WaifuTab({ waifu, drops, ricarica, flash }) {
   const [ed, setEd] = useState(null);
   const [filtroRarita, setFiltroRarita] = useState('tutte');
@@ -650,6 +652,10 @@ function WaifuTab({ waifu, drops, ricarica, flash }) {
   const [filtroNome, setFiltroNome] = useState('');
   const [filtroDropId, setFiltroDropId] = useState('tutti'); // tutti | <dropId> | '__nessuno__'
   const [vistaCard, setVistaCard] = useState(true); // true=card preview, false=list
+  const [visibiliWaifu, setVisibiliWaifu] = useState(WAIFU_PER_PAGE);
+
+  // Reset paginazione al cambio filtri
+  useEffect(() => { setVisibiliWaifu(WAIFU_PER_PAGE); }, [filtroRarita, filtroAsset, filtroNome, filtroDropId, vistaCard]);
 
   const nuova = () => setEd({
     nome: '',
@@ -732,10 +738,24 @@ function WaifuTab({ waifu, drops, ricarica, flash }) {
         </select>
       </div>
 
+      {(() => {
+        const visibili = filtrate.slice(0, visibiliWaifu);
+        const rimanenti = filtrate.length - visibiliWaifu;
+        const caricaAltreBtn = rimanenti > 0 && (
+          <div style={{ textAlign: 'center', marginTop: 18 }}>
+            <button
+              onClick={() => setVisibiliWaifu(v => v + WAIFU_PER_PAGE)}
+              style={{ ...btnSecondario, padding: '8px 20px', fontSize: 11 }}
+            >
+              Carica altre ({Math.min(rimanenti, WAIFU_PER_PAGE)} di {rimanenti} rimanenti)
+            </button>
+          </div>
+        );
+        return <>
       {vistaCard ? (
         /* CARD PREVIEW VIEW - Come le vedrebbe il giocatore */
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
-          {filtrate.map(w => {
+          {visibili.map(w => {
             const rar = RARITA[w.rarita] || RARITA.comune;
             return (
               <div key={w.id} style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setEd(w)}>
@@ -788,7 +808,7 @@ function WaifuTab({ waifu, drops, ricarica, flash }) {
       ) : (
         /* LIST VIEW - Compact */
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
-          {filtrate.map(w => {
+          {visibili.map(w => {
             const rar = RARITA[w.rarita] || RARITA.comune;
             return <div key={w.id} style={{ padding: 10, borderRadius: 8, background: 'rgba(0,0,0,0.4)', border: `1px solid ${rar.colore}60` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
@@ -808,6 +828,9 @@ function WaifuTab({ waifu, drops, ricarica, flash }) {
           {filtrate.length === 0 && <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 30, opacity: 0.6 }}>Nessuna waifu.</div>}
         </div>
       )}
+      {caricaAltreBtn}
+        </>;
+      })()}
     </div>
   );
 }
