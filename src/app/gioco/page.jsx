@@ -534,6 +534,7 @@ function BottomNav({ tab, setTab, isAdmin }) {
 // TAB: HOME — FASE 2
 // ============================================================
 function HomeTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, poseCat, setTab, setColezSubTab, user }) {
+  const [pescaAperta, setPescaAperta] = useState(false);
   const numWaifu = Object.keys(collezione.waifu || {}).length;
   const numOutfit = Object.keys(collezione.outfit || {}).length;
   const numPose = Object.keys(collezione.pose || {}).length;
@@ -663,14 +664,43 @@ function HomeTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, poseCat
         setTab={setTab}
       />
 
-      {/* ── PESCA MISTERIOSA ── */}
+      {/* ── PESCA MISTERIOSA (lazy: carica solo al click) ── */}
       {process.env.NEXT_PUBLIC_PESCA_ENABLED !== 'false' && (
         <div style={{ marginTop: 28 }}>
-          <PescaMisteriosaFeed
-            user={user}
-            profilo={profilo}
-            onKissesSpent={(amount) => setProfilo(p => ({ ...p, kisses: Math.max(0, (p.kisses ?? 0) - amount) }))}
-          />
+          {!pescaAperta ? (
+            <button
+              onClick={() => setPescaAperta(true)}
+              style={{
+                width: '100%',
+                background: 'linear-gradient(135deg, rgba(255,77,158,0.13), rgba(255,77,158,0.06))',
+                border: '1px solid rgba(255,77,158,0.35)',
+                borderRadius: 14,
+                padding: '18px 24px',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,77,158,0.18)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255,77,158,0.13), rgba(255,77,158,0.06))'; }}
+            >
+              <span style={{ fontSize: 22 }}>🎣</span>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontFamily: 'Orbitron', fontSize: 12, fontWeight: 900, color: '#ff4d9e', letterSpacing: 2 }}>
+                  PESCA MISTERIOSA
+                </div>
+                <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.45)', fontFamily: 'Fredoka', marginTop: 2 }}>
+                  Pesca una carta dalle bustine dei tuoi amici
+                </div>
+              </div>
+              <span style={{ marginLeft: 'auto', color: '#ff4d9e', opacity: 0.6, fontSize: 16 }}>›</span>
+            </button>
+          ) : (
+            <PescaMisteriosaFeed
+              user={user}
+              profilo={profilo}
+              onKissesSpent={(amount) => setProfilo(p => ({ ...p, kisses: Math.max(0, (p.kisses ?? 0) - amount) }))}
+            />
+          )}
         </div>
       )}
     </div>

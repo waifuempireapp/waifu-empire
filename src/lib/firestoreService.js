@@ -268,8 +268,6 @@ export async function createPackSnapshot(ownerUid, cards) {
       if (c.tipo === 'waifu') immagine = d.asset_statica || d.asset_immersiva || d.immagine || null;
       else if (c.tipo === 'outfit') immagine = d.asset || d.immagine || null;
       else immagine = d.immagine || null;
-      // DEBUG: rimuovere dopo verifica
-      if (c.tipo === 'waifu') console.log('[snapshot] waifu', d.nome, '| asset_statica:', d.asset_statica, '| immagine salvata:', immagine);
       return { tipo: c.tipo, id: d.id, rarita: d.rarita, nome: d.nome, immagine };
     }),
     isGhost: false,

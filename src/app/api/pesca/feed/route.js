@@ -3,6 +3,11 @@ import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 
 const MIN_FEED_SIZE = 5;
 
+// Cache del catalogo in memoria (valida 10 minuti, riusata tra request sulla stessa istanza warm)
+let _catalogCache = null;
+let _catalogCacheTs = 0;
+const CATALOG_TTL = 10 * 60 * 1000;
+
 async function getFriendUids(uid) {
   const [s1, s2] = await Promise.all([
     adminDb.collection('friendships').where('fromUid', '==', uid).get(),
@@ -34,6 +39,7 @@ function shuffle(arr) {
 }
 
 async function buildCatalogPools() {
+  if (_catalogCache && Date.now() - _catalogCacheTs < CATALOG_TTL) return _catalogCache;
   const now = new Date();
   const [waifuSnap, outfitSnap, poseSnap, dropSnap] = await Promise.all([
     adminDb.collection('catalogo_waifu').get(),
@@ -66,7 +72,9 @@ async function buildCatalogPools() {
   if (outfitPool.length === 0) outfitPool = allOutfit;
   if (posePool.length === 0) posePool = allPose;
 
-  return { waifuPool, outfitPool, posePool };
+  _catalogCache = { waifuPool, outfitPool, posePool };
+  _catalogCacheTs = Date.now();
+  return _catalogCache;
 }
 
 function cardUrl(c, tipo) {
