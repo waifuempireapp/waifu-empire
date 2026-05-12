@@ -2094,24 +2094,24 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
             onCancel={() => setSfidaShortage(false)}
           />
         )}
-        <PackCard
-          tipo="sfida"
-          count={nSfid}
-          max={null}
-          colore="#ff2d78"
-          colore2="#ff6b6b"
-          icona="⚔"
-          label="SFIDA"
-          sub="Vinci in battaglia"
-          esaurito={nSfid <= 0}
-          ctaEsaurito={null}
-          dropColore={dropColore}
-          onClick={() => !(nSfid <= 0) && setPopupApertura({ tipoPacchetto: 'sfida' })}
-          asset={dropAttivo?.asset_bustina}
-        />
-        {/* Bottone acquisto Kisses FUORI dalla card (non soggetto all'opacity) */}
-        {nSfid <= 0 && (
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 6 }}>
+        {/* Wrapper colonna: card sfida + bottone Kisses sotto */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+          <PackCard
+            tipo="sfida"
+            count={nSfid}
+            max={null}
+            colore="#ff2d78"
+            colore2="#ff6b6b"
+            icona="⚔"
+            label="SFIDA"
+            sub="Vinci in battaglia"
+            esaurito={nSfid <= 0}
+            ctaEsaurito={null}
+            dropColore={dropColore}
+            onClick={() => !(nSfid <= 0) && setPopupApertura({ tipoPacchetto: 'sfida' })}
+            asset={dropAttivo?.asset_bustina}
+          />
+          {nSfid <= 0 && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -2127,8 +2127,8 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
             >
               <KissesIcon size={10} /> {SFIDA_COSTO_KISSES} Kisses
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* PACCHETTO BENVENUTO */}
         {nBenv > 0 && (

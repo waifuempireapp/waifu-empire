@@ -4,6 +4,8 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 export const maxDuration = 30;
 
+const COSTO = 50;
+
 export async function POST(request) {
   try {
     const token = request.headers.get('Authorization')?.replace('Bearer ', '');
@@ -11,20 +13,20 @@ export async function POST(request) {
     const decoded = await adminAuth.verifyIdToken(token);
     const uid = decoded.uid;
 
-    const COSTO = 50;
-    const userRef = adminDb.collection('users').doc(uid);
-    await adminDb.runTransaction(async (tx) => {
-      const userSnap = await tx.get(userRef);
-      if (!userSnap.exists) throw new Error('Utente non trovato');
-      const kisses = userSnap.data().kisses ?? 0;
-      if (kisses < COSTO) throw new Error(`Kisses insufficienti (servono ${COSTO})`);
-      tx.update(userRef, { kisses: FieldValue.increment(-COSTO), pacchettiSfida: FieldValue.increment(1) });
+    // Evita Transaction (lenta): get + update atomico separati
+    const userSnap = await adminDb.collection('users').doc(uid).get();
+    if (!userSnap.exists) return NextResponse.json({ error: 'Utente non trovato' }, { status: 404 });
+    const kisses = userSnap.data().kisses ?? 0;
+    if (kisses < COSTO) return NextResponse.json({ error: `Kisses insufficienti (servono ${COSTO})` }, { status: 402 });
+
+    await adminDb.collection('users').doc(uid).update({
+      kisses: FieldValue.increment(-COSTO),
+      pacchettiSfida: FieldValue.increment(1),
     });
 
-    return NextResponse.json({ success: true, kissesCost: 50 });
+    return NextResponse.json({ success: true, kissesCost: COSTO });
   } catch (e) {
     const msg = e.message || 'Errore interno';
-    const status = msg.includes('insufficienti') ? 402 : 500;
-    return NextResponse.json({ error: msg }, { status });
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
