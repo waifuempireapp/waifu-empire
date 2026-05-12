@@ -1,8 +1,8 @@
 // scripts/migrate-friend-ids.js
 // Script one-time: aggiunge friendId e kisses a tutti gli utenti esistenti
 // Eseguire con: node --env-file=.env.local scripts/migrate-friend-ids.js
-import { initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 
 const FRIEND_ID_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -28,6 +28,7 @@ async function migrate() {
   const usersSnap = await db.collection('users').get();
   const batch = db.batch();
   const usedIds = new Set();
+  let count = 0;
 
   for (const userDoc of usersSnap.docs) {
     const data = userDoc.data();
@@ -43,11 +44,12 @@ async function migrate() {
     }
     if (Object.keys(updates).length > 0) {
       batch.update(userDoc.ref, updates);
+      count++;
     }
   }
 
   await batch.commit();
-  console.log(`Migrazione completata. Utenti aggiornati: ${usersSnap.size}`);
+  console.log(`Migrazione completata. Utenti aggiornati: ${count}/${usersSnap.size}`);
 }
 
 migrate().catch(console.error);

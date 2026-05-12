@@ -285,24 +285,23 @@ export async function getFriendByFriendId(friendId) {
 }
 
 export async function getFriendRequests(uid) {
-  const q = query(
-    collection(db, 'friendships'),
-    where('toUid', '==', uid),
-    where('status', '==', 'pending'),
-  );
+  // Query su singolo campo, filtro status in JS per evitare composite index
+  const q = query(collection(db, 'friendships'), where('toUid', '==', uid));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return snap.docs
+    .filter(d => d.data().status === 'pending')
+    .map(d => ({ id: d.id, ...d.data() }));
 }
 
 export async function getFriendsList(uid) {
-  const [q1, q2] = [
-    query(collection(db, 'friendships'), where('fromUid', '==', uid), where('status', '==', 'accepted')),
-    query(collection(db, 'friendships'), where('toUid', '==', uid), where('status', '==', 'accepted')),
-  ];
-  const [s1, s2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+  // Query su singolo campo, filtro status in JS per evitare composite index
+  const [s1, s2] = await Promise.all([
+    getDocs(query(collection(db, 'friendships'), where('fromUid', '==', uid))),
+    getDocs(query(collection(db, 'friendships'), where('toUid', '==', uid))),
+  ]);
   const friendUids = [
-    ...s1.docs.map(d => d.data().toUid),
-    ...s2.docs.map(d => d.data().fromUid),
+    ...s1.docs.filter(d => d.data().status === 'accepted').map(d => d.data().toUid),
+    ...s2.docs.filter(d => d.data().status === 'accepted').map(d => d.data().fromUid),
   ];
   if (friendUids.length === 0) return [];
   const profiles = await Promise.all(friendUids.map(fuid => getUserProfile(fuid)));

@@ -26,14 +26,13 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Carte ghost mancanti' }, { status: 400 });
     }
 
-    // Pre-check: pesca precedente (fuori transaction per semplicità)
+    // Pre-check: pesca precedente — query su singolo campo per evitare composite index
     if (!isGhost) {
       const prevSnap = await adminDb.collection('fishing_attempts')
         .where('fisherUid', '==', fisherUid)
-        .where('snapshotId', '==', snapshotId)
-        .limit(1)
         .get();
-      if (!prevSnap.empty) return NextResponse.json({ error: 'Hai già pescato da questo pack' }, { status: 409 });
+      const alreadyFished = prevSnap.docs.some(d => d.data().snapshotId === snapshotId);
+      if (alreadyFished) return NextResponse.json({ error: 'Hai già pescato da questo pack' }, { status: 409 });
     }
 
     const result = await adminDb.runTransaction(async (tx) => {

@@ -22,12 +22,18 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Non puoi aggiungere te stesso' }, { status: 400 });
     }
 
-    // Controlla se esiste già una friendship tra i due
-    const [dup1, dup2] = await Promise.all([
-      adminDb.collection('friendships').where('fromUid', '==', fromUid).where('toUid', '==', toUid).get(),
-      adminDb.collection('friendships').where('fromUid', '==', toUid).where('toUid', '==', fromUid).get(),
+    // Controlla friendship esistente: query su singolo campo per evitare composite index
+    const [q1, q2] = await Promise.all([
+      adminDb.collection('friendships').where('fromUid', '==', fromUid).get(),
+      adminDb.collection('friendships').where('toUid', '==', fromUid).get(),
     ]);
-    if (!dup1.empty || !dup2.empty) {
+    const existing = [...q1.docs, ...q2.docs];
+    const isDuplicate = existing.some(d => {
+      const data = d.data();
+      return (data.fromUid === fromUid && data.toUid === toUid) ||
+             (data.fromUid === toUid && data.toUid === fromUid);
+    });
+    if (isDuplicate) {
       return NextResponse.json({ error: 'Richiesta già inviata o amicizia già esistente' }, { status: 409 });
     }
 
