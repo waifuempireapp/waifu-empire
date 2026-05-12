@@ -18,6 +18,7 @@ import { CartaWaifu, CartaOutfit, CartaPosa } from '@/components/CartaWaifu';
 import KissesIcon from '@/components/KissesIcon';
 import PescaMisteriosaFeed from '@/components/PescaMisteriosaFeed';
 import NegozioOverlay from '@/components/NegozioOverlay';
+import KissesShortageModal from '@/components/KissesShortageModal';
 import FriendIdDisplay from '@/components/FriendIdDisplay';
 import AddFriendForm from '@/components/AddFriendForm';
 import FriendRequestsList from '@/components/FriendRequestsList';
@@ -1607,6 +1608,10 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
   // Popup di conferma apertura pacchetto
   const [popupApertura, setPopupApertura] = useState(null); // { tipoPacchetto }
 
+  // Acquisto pacchetto sfida con Kisses
+  const [sfidaConferma, setSfidaConferma] = useState(false);
+  const [sfidaShortage, setSfidaShortage] = useState(false);
+
   // Stato apertura multi-pack (x10)
   const [multiPackCarte, setMultiPackCarte] = useState([]); // array di array di carte (10 pacchetti)
   const [multiPackIndice, setMultiPackIndice] = useState(0); // quale pacchetto sto guardando ora
@@ -1946,6 +1951,20 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
   const nBenv = profilo.pacchettiBenvenuto ?? 0;
   const nOmag = profilo.pacchettiOmaggio ?? 0;
   const nSfid = profilo.pacchettiSfida ?? 0;
+  const SFIDA_COSTO_KISSES = 50;
+
+  const acquistaSfidaConKisses = async () => {
+    setSfidaConferma(false);
+    const token = await user.getIdToken();
+    const res = await fetch('/api/kisses/buy-pack', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+    if (!res.ok) { mostraNotif(data.error || 'Errore acquisto', '#ff3d3d'); return; }
+    const newKisses = data.newKisses;
+    const newSfid = (profilo.pacchettiSfida ?? 0) + 1;
+    setProfilo(p => ({ ...p, kisses: newKisses, pacchettiSfida: newSfid }));
+    // Apri subito la bustina sfida appena acquistata
+    setPopupApertura({ tipoPacchetto: 'sfida' });
+  };
 
   // Colori drop
   const dropColore = dropAttivo?.colore || '#9b59ff';
@@ -2049,6 +2068,32 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
         />
 
         {/* PACCHETTO SFIDA */}
+        {/* Modale conferma acquisto sfida con Kisses */}
+        {sfidaConferma && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(6,3,15,0.95)', backdropFilter: 'blur(16px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div style={{ background: 'rgba(12,6,28,0.98)', border: '1px solid rgba(255,45,120,0.3)', borderRadius: 16, padding: '24px 28px', maxWidth: 300, width: '100%', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#ff2d78', letterSpacing: 2, marginBottom: 10 }}>ACQUISTA BUSTINA</div>
+              <div style={{ fontFamily: 'Fredoka', fontSize: 13, color: '#eedcd4', marginBottom: 16 }}>Spendi {SFIDA_COSTO_KISSES} Kisses per un Pacchetto Sfida?</div>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                <button onClick={() => setSfidaConferma(false)} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', fontSize: 9, padding: '9px 16px', cursor: 'pointer' }}>ANNULLA</button>
+                <button onClick={acquistaSfidaConKisses} style={{ background: 'rgba(255,45,120,0.15)', border: '1px solid rgba(255,45,120,0.5)', borderRadius: 8, color: '#ff2d78', fontFamily: 'Orbitron', fontSize: 9, padding: '9px 16px', cursor: 'pointer' }}>CONFERMA</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {sfidaShortage && (
+          <KissesShortageModal
+            missingKisses={SFIDA_COSTO_KISSES - (profilo.kisses ?? 0)}
+            currentKisses={profilo.kisses ?? 0}
+            user={user}
+            onSuccess={(newKisses) => {
+              setProfilo(p => ({ ...p, kisses: newKisses }));
+              setSfidaShortage(false);
+              setSfidaConferma(true);
+            }}
+            onCancel={() => setSfidaShortage(false)}
+          />
+        )}
         <PackCard
           tipo="sfida"
           count={nSfid}
@@ -2060,9 +2105,20 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
           sub="Vinci in battaglia"
           esaurito={nSfid <= 0}
           ctaEsaurito={
-            <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', marginTop: 4, lineHeight: 1.3 }}>
-              Conquista<br/>territori!
-            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if ((profilo.kisses ?? 0) >= SFIDA_COSTO_KISSES) setSfidaConferma(true);
+                else setSfidaShortage(true);
+              }}
+              style={{
+                marginTop: 6, background: 'rgba(255,45,120,0.12)', border: '1px solid rgba(255,45,120,0.4)',
+                borderRadius: 7, color: '#ff2d78', fontFamily: 'Orbitron', fontSize: 8,
+                padding: '6px 10px', cursor: 'pointer', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              <KissesIcon size={10} /> {SFIDA_COSTO_KISSES} Kisses
+            </button>
           }
           dropColore={dropColore}
           onClick={() => !(nSfid <= 0) && setPopupApertura({ tipoPacchetto: 'sfida' })}

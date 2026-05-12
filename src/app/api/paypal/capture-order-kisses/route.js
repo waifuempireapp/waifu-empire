@@ -1,9 +1,17 @@
 import { NextResponse } from 'next/server';
 import { getPayPalAccessToken, PAYPAL_BASE_URL, CLIENT_ID, CLIENT_SECRET } from '@/lib/paypalClient';
-import { adminDb } from '@/lib/firebaseAdmin';
+import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 
 export const maxDuration = 30;
+
+// Hardcoded — stessa lista di create-order-kisses
+const TAGLI = {
+  xs: { kisses: 100 },
+  sm: { kisses: 300 },
+  md: { kisses: 600 },
+  lg: { kisses: 1400 },
+};
 
 export async function POST(request) {
   if (!CLIENT_ID || !CLIENT_SECRET) {
@@ -15,18 +23,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'orderID, uid e taglioId sono obbligatori' }, { status: 400 });
     }
 
-    // Verifica taglio (con fallback se Firestore è irraggiungibile)
-    let tagli = [];
-    try {
-      const configSnap = await adminDb.collection('config').doc('negozio_settings').get();
-      tagli = configSnap.exists ? (configSnap.data().tagli_kisses || []) : [];
-    } catch (_) { /* usa fallback */ }
-    const taglioFallback = [
-      { id: 'xs', kisses: 100 }, { id: 'sm', kisses: 300 },
-      { id: 'md', kisses: 600 }, { id: 'lg', kisses: 1400 },
-    ];
-    const lista = tagli.length > 0 ? tagli : taglioFallback;
-    const taglio = lista.find(t => t.id === taglioId);
+    const taglio = TAGLI[taglioId];
     if (!taglio) return NextResponse.json({ error: 'Taglio non valido' }, { status: 400 });
 
     // Cattura il pagamento PayPal

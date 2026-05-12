@@ -15,15 +15,14 @@ const BENI_ICONS  = { pack_sfida: '🎁', energia: '⚡', pass_hard: '🔞' };
 const BENI_COLORI = { pack_sfida: '#f5a623', energia: '#00e676', pass_hard: '#ec4899' };
 
 function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate }) {
-  const [busy, setBusy]       = useState(null);
-  const [notif, setNotif]     = useState(null);
+  const [busy, setBusy]         = useState(null);
+  const [notif, setNotif]       = useState(null);
   const [shortage, setShortage] = useState(null);
+  const [conferma, setConferma] = useState(null); // { beneId, costo, label }
 
   const mostra = (msg, ok = true) => { setNotif({ msg, ok }); setTimeout(() => setNotif(null), 2500); };
 
   const acquista = async (beneId) => {
-    const costo = beni[beneId]?.kisses ?? 0;
-    if ((kisses ?? 0) < costo) { setShortage({ beneId, missingKisses: costo - (kisses ?? 0) }); return; }
     const endpoint = BENE_ENDPOINT[beneId];
     if (!endpoint) { mostra('Errore: bene non riconosciuto', false); return; }
     setBusy(beneId);
@@ -47,6 +46,26 @@ function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate }) {
 
   return (
     <div>
+      {/* Popup conferma acquisto */}
+      {conferma && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 500,
+          background: 'rgba(6,3,15,0.92)', backdropFilter: 'blur(16px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+        }}>
+          <div style={{ background: 'rgba(12,6,28,0.98)', border: '1px solid rgba(255,77,158,0.3)', borderRadius: 16, padding: '24px 28px', maxWidth: 320, width: '100%', textAlign: 'center' }}>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 12, color: '#ff4d9e', letterSpacing: 2, marginBottom: 10 }}>CONFERMA ACQUISTO</div>
+            <div style={{ fontFamily: 'Fredoka', fontSize: 14, color: '#eedcd4', marginBottom: 6 }}>{conferma.label}</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, marginBottom: 18, fontSize: 13, color: '#ff4d9e', fontFamily: 'Orbitron', fontWeight: 700 }}>
+              <KissesIcon size={14} /> {conferma.costo} Kisses
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button onClick={() => setConferma(null)} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', fontSize: 9, padding: '9px 18px', cursor: 'pointer' }}>ANNULLA</button>
+              <button onClick={() => { const id = conferma.beneId; setConferma(null); acquista(id); }} style={{ background: 'rgba(255,77,158,0.15)', border: '1px solid rgba(255,77,158,0.5)', borderRadius: 8, color: '#ff4d9e', fontFamily: 'Orbitron', fontSize: 9, padding: '9px 18px', cursor: 'pointer' }}>CONFERMA</button>
+            </div>
+          </div>
+        </div>
+      )}
       {shortage && (
         <KissesShortageModal
           missingKisses={shortage.missingKisses}
@@ -84,7 +103,11 @@ function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                   <KissesIcon size={13} /><span style={{ fontFamily: 'Orbitron', fontSize: 12, color: '#ff4d9e', fontWeight: 700 }}>{bene.kisses}</span>
                 </div>
-                <button onClick={() => acquista(id)} disabled={busy === id} style={{
+                <button onClick={() => {
+                  if (busy === id) return;
+                  if ((kisses ?? 0) < bene.kisses) { setShortage({ beneId: id, missingKisses: bene.kisses - (kisses ?? 0) }); return; }
+                  setConferma({ beneId: id, costo: bene.kisses, label: bene.label });
+                }} disabled={busy === id} style={{
                   background: puoAcquistare ? `${colore}25` : 'rgba(255,255,255,0.04)',
                   border: `1px solid ${puoAcquistare ? colore + '60' : 'rgba(255,255,255,0.1)'}`,
                   borderRadius: 8, color: puoAcquistare ? colore : 'rgba(255,255,255,0.25)',
@@ -219,7 +242,7 @@ export default function NegozioOverlay({ user, profilo, onKissesUpdate, onClose 
         display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button onClick={onClose} style={{ background: 'none', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 7,
-            color: '#f5a623', fontFamily: 'Orbitron', fontSize: 9, padding: '6px 12px', cursor: 'pointer' }}>← GIOCO</button>
+            color: '#f5a623', fontFamily: 'Orbitron', fontSize: 9, padding: '6px 12px', cursor: 'pointer' }}>← INDIETRO</button>
           <div style={{ fontFamily: 'Orbitron', fontSize: 14, fontWeight: 900, color: '#f5a623', letterSpacing: 3 }}>🛒 NEGOZIO</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

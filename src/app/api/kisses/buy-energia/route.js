@@ -14,7 +14,7 @@ export async function POST(request) {
     const uid = decoded.uid;
 
     let configSnap = null; try { configSnap = await adminDb.collection('config').doc('negozio_settings').get(); } catch (_) {}
-    const costo = configSnap.exists ? (configSnap.data().beni?.energia?.kisses ?? 20) : 20;
+    const costo = configSnap?.exists ? (configSnap.data().beni?.energia?.kisses ?? 20) : 20;
 
     const userRef = adminDb.collection('users').doc(uid);
     await adminDb.runTransaction(async (tx) => {

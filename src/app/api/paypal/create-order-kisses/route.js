@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getPayPalAccessToken, PAYPAL_BASE_URL, CLIENT_ID, CLIENT_SECRET } from '@/lib/paypalClient';
-import { adminDb } from '@/lib/firebaseAdmin';
 
 export const maxDuration = 30;
+
+// Hardcoded — non legge Firestore per evitare quota issues
+const TAGLI = {
+  xs: { kisses: 100,  price_eur: '0.99', label: '100 Kisses' },
+  sm: { kisses: 300,  price_eur: '2.49', label: '300 Kisses' },
+  md: { kisses: 600,  price_eur: '3.99', label: '600 Kisses' },
+  lg: { kisses: 1400, price_eur: '7.99', label: '1400 Kisses' },
+};
 
 export async function POST(request) {
   if (!CLIENT_ID || !CLIENT_SECRET) {
@@ -12,20 +19,7 @@ export async function POST(request) {
     const { taglioId } = await request.json();
     if (!taglioId) return NextResponse.json({ error: 'taglioId mancante' }, { status: 400 });
 
-    // Leggi il prezzo dal server — mai dal client (con fallback se Firestore è irraggiungibile)
-    let tagli = [];
-    try {
-      const configSnap = await adminDb.collection('config').doc('negozio_settings').get();
-      tagli = configSnap.exists ? (configSnap.data().tagli_kisses || []) : [];
-    } catch (_) { /* usa fallback */ }
-    const taglioFallback = [
-      { id: 'xs', kisses: 100,  price_eur: '0.99', label: '100 Kisses' },
-      { id: 'sm', kisses: 300,  price_eur: '2.49', label: '300 Kisses' },
-      { id: 'md', kisses: 600,  price_eur: '3.99', label: '600 Kisses' },
-      { id: 'lg', kisses: 1400, price_eur: '7.99', label: '1400 Kisses' },
-    ];
-    const lista = tagli.length > 0 ? tagli : taglioFallback;
-    const taglio = lista.find(t => t.id === taglioId);
+    const taglio = TAGLI[taglioId];
     if (!taglio) return NextResponse.json({ error: 'Taglio non valido' }, { status: 400 });
 
     const accessToken = await getPayPalAccessToken();
@@ -38,10 +32,7 @@ export async function POST(request) {
       },
       body: JSON.stringify({
         intent: 'CAPTURE',
-        purchase_units: [{
-          description: `Impero Waifu — ${taglio.label}`,
-          amount: { currency_code: 'EUR', value: taglio.price_eur },
-        }],
+        purchase_units: [{ description: `Impero Waifu — ${taglio.label}`, amount: { currency_code: 'EUR', value: taglio.price_eur } }],
         application_context: { brand_name: 'Impero Waifu', locale: 'it-IT', user_action: 'PAY_NOW' },
       }),
     });
