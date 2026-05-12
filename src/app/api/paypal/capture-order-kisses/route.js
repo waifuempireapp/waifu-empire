@@ -15,9 +15,12 @@ export async function POST(request) {
       return NextResponse.json({ error: 'orderID, uid e taglioId sono obbligatori' }, { status: 400 });
     }
 
-    // Verifica taglio
-    const configSnap = await adminDb.collection('config').doc('negozio_settings').get();
-    const tagli = configSnap.exists ? (configSnap.data().tagli_kisses || []) : [];
+    // Verifica taglio (con fallback se Firestore è irraggiungibile)
+    let tagli = [];
+    try {
+      const configSnap = await adminDb.collection('config').doc('negozio_settings').get();
+      tagli = configSnap.exists ? (configSnap.data().tagli_kisses || []) : [];
+    } catch (_) { /* usa fallback */ }
     const taglioFallback = [
       { id: 'xs', kisses: 100 }, { id: 'sm', kisses: 300 },
       { id: 'md', kisses: 600 }, { id: 'lg', kisses: 1400 },

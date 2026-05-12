@@ -13,7 +13,7 @@ export async function POST(request) {
     const decoded = await adminAuth.verifyIdToken(token);
     const uid = decoded.uid;
 
-    const configSnap = await adminDb.collection('config').doc('negozio_settings').get();
+    let configSnap = null; try { configSnap = await adminDb.collection('config').doc('negozio_settings').get(); } catch (_) {}
     const costo = configSnap.exists ? (configSnap.data().beni?.energia?.kisses ?? 20) : 20;
 
     const userRef = adminDb.collection('users').doc(uid);

@@ -11,7 +11,7 @@ export async function POST(request) {
     const decoded = await adminAuth.verifyIdToken(token);
     const uid = decoded.uid;
 
-    const configSnap = await adminDb.collection('config').doc('negozio_settings').get();
+    let configSnap = null; try { configSnap = await adminDb.collection('config').doc('negozio_settings').get(); } catch (_) {}
     const costo = configSnap.exists ? (configSnap.data().beni?.pack_sfida?.kisses ?? 50) : 50;
 
     const userRef = adminDb.collection('users').doc(uid);

@@ -12,9 +12,12 @@ export async function POST(request) {
     const { taglioId } = await request.json();
     if (!taglioId) return NextResponse.json({ error: 'taglioId mancante' }, { status: 400 });
 
-    // Leggi il prezzo dal server — mai dal client
-    const configSnap = await adminDb.collection('config').doc('negozio_settings').get();
-    const tagli = configSnap.exists ? (configSnap.data().tagli_kisses || []) : [];
+    // Leggi il prezzo dal server — mai dal client (con fallback se Firestore è irraggiungibile)
+    let tagli = [];
+    try {
+      const configSnap = await adminDb.collection('config').doc('negozio_settings').get();
+      tagli = configSnap.exists ? (configSnap.data().tagli_kisses || []) : [];
+    } catch (_) { /* usa fallback */ }
     const taglioFallback = [
       { id: 'xs', kisses: 100,  price_eur: '0.99', label: '100 Kisses' },
       { id: 'sm', kisses: 300,  price_eur: '2.49', label: '300 Kisses' },

@@ -17,6 +17,7 @@ import BabyDoll from '@/components/BabyDoll';
 import { CartaWaifu, CartaOutfit, CartaPosa } from '@/components/CartaWaifu';
 import KissesIcon from '@/components/KissesIcon';
 import PescaMisteriosaFeed from '@/components/PescaMisteriosaFeed';
+import NegozioOverlay from '@/components/NegozioOverlay';
 import FriendIdDisplay from '@/components/FriendIdDisplay';
 import AddFriendForm from '@/components/AddFriendForm';
 import FriendRequestsList from '@/components/FriendRequestsList';
@@ -37,6 +38,7 @@ export default function GiocoPage() {
   const [outfitCat, setOutfitCat] = useState([]);
   const [poseCat, setPoseCat] = useState([]);
   const [tab, setTab] = useState('home');
+  const [negozioAperto, setNegozioAperto] = useState(false);
   const [colezSubTab, setColezSubTab] = useState('waifu'); // Fase 3: navigazione diretta ai sotto-tab collezione
   const [notif, setNotif] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -45,6 +47,11 @@ export default function GiocoPage() {
 
   useEffect(() => { if (!loading && !user) router.replace('/login'); }, [user, loading]);
   useEffect(() => { if (user) caricaTutto(); }, [user]);
+  useEffect(() => {
+    const handler = () => setNegozioAperto(true);
+    window.addEventListener('impero:apri-negozio', handler);
+    return () => window.removeEventListener('impero:apri-negozio', handler);
+  }, []);
 
   const caricaTutto = async () => {
     const [p, c, ws, os, ps] = await Promise.all([
@@ -101,6 +108,14 @@ export default function GiocoPage() {
 
   return (
     <>
+      {negozioAperto && (
+        <NegozioOverlay
+          user={user}
+          profilo={profilo}
+          onKissesUpdate={(newKisses) => setProfilo(p => ({ ...p, kisses: newKisses }))}
+          onClose={() => setNegozioAperto(false)}
+        />
+      )}
       {/* === CONTENUTO GIOCO (verticale su mobile, desktop normale) === */}
       <div className="game-container" style={{ minHeight: '100vh', paddingBottom: 80 }}>
         {notif && (
@@ -666,8 +681,12 @@ function HomeTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, poseCat
 
       {/* ── NEGOZIO ── */}
       <div style={{ marginTop: 16 }}>
-        <a href="/negozio" style={{ textDecoration: 'none' }}>
-          <button style={{
+        <button
+          onClick={() => {
+            const event = new CustomEvent('impero:apri-negozio');
+            window.dispatchEvent(event);
+          }}
+          style={{
             width: '100%',
             background: 'linear-gradient(135deg, rgba(245,166,35,0.13), rgba(245,166,35,0.06))',
             border: '1px solid rgba(245,166,35,0.35)',
@@ -676,19 +695,19 @@ function HomeTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, poseCat
             cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 12,
             transition: 'all 0.2s',
-          }}>
-            <span style={{ fontSize: 22 }}>🛒</span>
-            <div style={{ textAlign: 'left' }}>
-              <div style={{ fontFamily: 'Orbitron', fontSize: 12, fontWeight: 900, color: '#f5a623', letterSpacing: 2 }}>
-                NEGOZIO
-              </div>
-              <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.45)', fontFamily: 'Fredoka', marginTop: 2 }}>
-                Acquista pack sfida, energia e Kisses
-              </div>
+          }}
+        >
+          <span style={{ fontSize: 22 }}>🛒</span>
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 12, fontWeight: 900, color: '#f5a623', letterSpacing: 2 }}>
+              NEGOZIO
             </div>
-            <span style={{ marginLeft: 'auto', color: '#f5a623', opacity: 0.6, fontSize: 16 }}>›</span>
-          </button>
-        </a>
+            <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.45)', fontFamily: 'Fredoka', marginTop: 2 }}>
+              Acquista pack sfida, energia e Kisses
+            </div>
+          </div>
+          <span style={{ marginLeft: 'auto', color: '#f5a623', opacity: 0.6, fontSize: 16 }}>›</span>
+        </button>
       </div>
 
       {/* ── PESCA MISTERIOSA (lazy: carica solo al click) ── */}
