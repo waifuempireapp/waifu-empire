@@ -136,6 +136,6 @@ export async function GET(request) {
     return NextResponse.json({ packs });
   } catch (e) {
     console.error('/api/pesca/feed', e);
-    return NextResponse.json({ error: 'Errore interno' }, { status: 500 });
+    return NextResponse.json({ error: e?.message || 'Errore interno' }, { status: 500 });
   }
 }
