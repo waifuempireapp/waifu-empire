@@ -2046,8 +2046,41 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
         </div>
       )}
 
-      {/* 3 PACCHETTI AFFIANCATI — Stile Pokémon Pocket */}
-      <div className="pack-cards-container" style={{ display: 'flex', gap: 10, marginBottom: 14, justifyContent: 'center' }}>
+      {/* Modali sfida — fuori dal container card (sono fixed, la posizione nel DOM non conta) */}
+      {sfidaConferma && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(6,3,15,0.95)', backdropFilter: 'blur(16px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: 'rgba(12,6,28,0.98)', border: '1px solid rgba(255,45,120,0.3)', borderRadius: 16, padding: '24px 28px', maxWidth: 300, width: '100%', textAlign: 'center' }}>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#ff2d78', letterSpacing: 2, marginBottom: 10 }}>ACQUISTA BUSTINA</div>
+            <div style={{ fontFamily: 'Fredoka', fontSize: 13, color: '#eedcd4', marginBottom: 16 }}>Spendi {SFIDA_COSTO_KISSES} Kisses per un Pacchetto Sfida?</div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button onClick={() => setSfidaConferma(false)} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', fontSize: 9, padding: '9px 16px', cursor: 'pointer' }}>ANNULLA</button>
+              <button onClick={acquistaSfidaConKisses} style={{ background: 'rgba(255,45,120,0.15)', border: '1px solid rgba(255,45,120,0.5)', borderRadius: 8, color: '#ff2d78', fontFamily: 'Orbitron', fontSize: 9, padding: '9px 16px', cursor: 'pointer' }}>CONFERMA</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {sfidaShortage && (
+        <KissesShortageModal
+          missingKisses={SFIDA_COSTO_KISSES - (profilo.kisses ?? 0)}
+          currentKisses={profilo.kisses ?? 0}
+          user={user}
+          onSuccess={(newKisses) => {
+            setProfilo(p => ({ ...p, kisses: newKisses }));
+            setSfidaShortage(false);
+            setSfidaConferma(true);
+          }}
+          onCancel={() => setSfidaShortage(false)}
+        />
+      )}
+
+      {/* 3 PACCHETTI — CSS Grid con colonne fisse uguali, nessun wrapper per la sfida */}
+      <div className="pack-cards-container" style={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(${nBenv > 0 ? 3 : 2}, 120px)`,
+        gap: 10,
+        justifyContent: 'center',
+        marginBottom: nSfid <= 0 ? 6 : 14,
+      }}>
 
         {/* PACCHETTO OMAGGIO */}
         <PackCard
@@ -2067,69 +2100,22 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
           asset={dropAttivo?.asset_bustina}
         />
 
-        {/* PACCHETTO SFIDA */}
-        {/* Modale conferma acquisto sfida con Kisses */}
-        {sfidaConferma && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(6,3,15,0.95)', backdropFilter: 'blur(16px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-            <div style={{ background: 'rgba(12,6,28,0.98)', border: '1px solid rgba(255,45,120,0.3)', borderRadius: 16, padding: '24px 28px', maxWidth: 300, width: '100%', textAlign: 'center' }}>
-              <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#ff2d78', letterSpacing: 2, marginBottom: 10 }}>ACQUISTA BUSTINA</div>
-              <div style={{ fontFamily: 'Fredoka', fontSize: 13, color: '#eedcd4', marginBottom: 16 }}>Spendi {SFIDA_COSTO_KISSES} Kisses per un Pacchetto Sfida?</div>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-                <button onClick={() => setSfidaConferma(false)} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', fontSize: 9, padding: '9px 16px', cursor: 'pointer' }}>ANNULLA</button>
-                <button onClick={acquistaSfidaConKisses} style={{ background: 'rgba(255,45,120,0.15)', border: '1px solid rgba(255,45,120,0.5)', borderRadius: 8, color: '#ff2d78', fontFamily: 'Orbitron', fontSize: 9, padding: '9px 16px', cursor: 'pointer' }}>CONFERMA</button>
-              </div>
-            </div>
-          </div>
-        )}
-        {sfidaShortage && (
-          <KissesShortageModal
-            missingKisses={SFIDA_COSTO_KISSES - (profilo.kisses ?? 0)}
-            currentKisses={profilo.kisses ?? 0}
-            user={user}
-            onSuccess={(newKisses) => {
-              setProfilo(p => ({ ...p, kisses: newKisses }));
-              setSfidaShortage(false);
-              setSfidaConferma(true);
-            }}
-            onCancel={() => setSfidaShortage(false)}
-          />
-        )}
-        {/* Wrapper colonna: card sfida + bottone Kisses sotto — stesse dimensioni delle altre card */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flex: 1, minWidth: 95, maxWidth: 130 }}>
-          <PackCard
-            tipo="sfida"
-            count={nSfid}
-            max={null}
-            colore="#ff2d78"
-            colore2="#ff6b6b"
-            icona="⚔"
-            label="SFIDA"
-            sub="Vinci in battaglia"
-            esaurito={nSfid <= 0}
-            ctaEsaurito={null}
-            dropColore={dropColore}
-            onClick={() => !(nSfid <= 0) && setPopupApertura({ tipoPacchetto: 'sfida' })}
-            asset={dropAttivo?.asset_bustina}
-          />
-          {nSfid <= 0 && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if ((profilo.kisses ?? 0) >= SFIDA_COSTO_KISSES) setSfidaConferma(true);
-                else setSfidaShortage(true);
-              }}
-              style={{
-                width: '100%',
-                background: 'rgba(255,45,120,0.15)', border: '1px solid rgba(255,45,120,0.5)',
-                borderRadius: 8, color: '#ff2d78', fontFamily: 'Orbitron', fontSize: 8,
-                padding: '7px 0', cursor: 'pointer', letterSpacing: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                boxShadow: '0 0 10px rgba(255,45,120,0.2)',
-              }}
-            >
-              <KissesIcon size={10} /> {SFIDA_COSTO_KISSES} Kisses
-            </button>
-          )}
-        </div>
+        {/* PACCHETTO SFIDA — direttamente nel grid, stessa cella delle altre */}
+        <PackCard
+          tipo="sfida"
+          count={nSfid}
+          max={null}
+          colore="#ff2d78"
+          colore2="#ff6b6b"
+          icona="⚔"
+          label="SFIDA"
+          sub="Vinci in battaglia"
+          esaurito={nSfid <= 0}
+          ctaEsaurito={null}
+          dropColore={dropColore}
+          onClick={() => !(nSfid <= 0) && setPopupApertura({ tipoPacchetto: 'sfida' })}
+          asset={dropAttivo?.asset_bustina}
+        />
 
         {/* PACCHETTO BENVENUTO */}
         {nBenv > 0 && (
@@ -2149,6 +2135,27 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
           />
         )}
       </div>
+
+      {/* Bottone acquisto Sfida con Kisses — FUORI dal grid, non impatta le dimensioni delle card */}
+      {nSfid <= 0 && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+          <button
+            onClick={() => {
+              if ((profilo.kisses ?? 0) >= SFIDA_COSTO_KISSES) setSfidaConferma(true);
+              else setSfidaShortage(true);
+            }}
+            style={{
+              background: 'rgba(255,45,120,0.15)', border: '1px solid rgba(255,45,120,0.5)',
+              borderRadius: 8, color: '#ff2d78', fontFamily: 'Orbitron', fontSize: 8,
+              padding: '7px 16px', cursor: 'pointer', letterSpacing: 1,
+              display: 'flex', alignItems: 'center', gap: 5,
+              boxShadow: '0 0 10px rgba(255,45,120,0.2)',
+            }}
+          >
+            <KissesIcon size={10} /> ACQUISTA SFIDA • {SFIDA_COSTO_KISSES} Kisses
+          </button>
+        </div>
+      )}
 
       {/* BANNER MANGA — CTA completamento drop */}
       {dropAttivo?.asset_manga && (() => {
