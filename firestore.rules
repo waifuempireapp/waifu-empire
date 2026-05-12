@@ -80,6 +80,39 @@ service cloud.firestore {
                     && (resource.data.creatore == request.auth.uid || isAdmin());
     }
 
+    // === Amicizie ===
+    match /friendships/{docId} {
+      // Solo i due diretti interessati possono leggere
+      allow read: if isSignedIn()
+                  && (resource.data.fromUid == request.auth.uid
+                      || resource.data.toUid == request.auth.uid);
+      // Creazione: solo il mittente può creare (fromUid = proprio uid)
+      allow create: if isSignedIn()
+                    && request.resource.data.fromUid == request.auth.uid;
+      // Aggiornamento: solo il destinatario può accettare
+      allow update: if isSignedIn()
+                    && resource.data.toUid == request.auth.uid;
+      // Eliminazione: uno dei due può rimuovere l'amicizia
+      allow delete: if isSignedIn()
+                    && (resource.data.fromUid == request.auth.uid
+                        || resource.data.toUid == request.auth.uid);
+    }
+
+    // === Pack Snapshots (read-only lato client) ===
+    match /pack_snapshots/{snapshotId} {
+      // Lettura: qualsiasi utente autenticato (il filtraggio per amicizia avviene lato server)
+      allow read: if isSignedIn();
+      // Scrittura: solo tramite API server-side (Admin SDK bypassa le regole)
+      allow write: if false;
+    }
+
+    // === Fishing Attempts (read-only lato client) ===
+    match /fishing_attempts/{attemptId} {
+      allow read: if isSignedIn()
+                  && resource.data.fisherUid == request.auth.uid;
+      allow write: if false;
+    }
+
     // Default: nega tutto
     match /{document=**} {
       allow read, write: if false;

@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, listDropsAttivi, getDropAttivo, getClassifica, premioPerPosizione, deleteTeamFromCollezione, isDropCompleto, progressioneDrop } from '@/lib/firestoreService';
+import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, listDropsAttivi, getDropAttivo, getClassifica, premioPerPosizione, deleteTeamFromCollezione, isDropCompleto, progressioneDrop, createPackSnapshot } from '@/lib/firestoreService';
 import { calcolaRicaricaPacchetti, calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, INCREMENTI_LEVELUP, clampStat, clampWaifuStats, GOD_PACK_PROB_DEFAULT } from '@/lib/gameLogic';
 import { TIMER, RARITA, COLORI_CAPELLI, CATEGORIE_TETTE, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, OUTFIT_CONFIG_DEFAULT, ABILITA_TIPI } from '@/lib/constants';
 import { db } from '@/lib/firebase';
@@ -15,6 +15,8 @@ import PaperDoll from '@/components/PaperDoll';
 // CODICE LINK CARTA -> BABY DOLL: importo BabyDoll separata dalla CartaWaifu
 import BabyDoll from '@/components/BabyDoll';
 import { CartaWaifu, CartaOutfit, CartaPosa } from '@/components/CartaWaifu';
+import KissesIcon from '@/components/KissesIcon';
+import PescaMisteriosaFeed from '@/components/PescaMisteriosaFeed';
 import MappaMondoArt from '@/components/MappaMondoArt';
 import MappaMultiplayer from '@/components/MappaMultiplayer';
 import {
@@ -245,6 +247,9 @@ function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
                   <BtnDecorato variant="secondary" size="sm" style={{ width: '100%' }}>⚙ ADMIN</BtnDecorato>
                 </a>
               )}
+              <a href="/amici" style={{ textDecoration: 'none' }}>
+                <BtnDecorato variant="secondary" size="sm" style={{ width: '100%' }}>♥ AMICI</BtnDecorato>
+              </a>
               <BtnDecorato variant="danger" size="sm" onClick={() => { setPopupImpero(false); onLogout(); }}>
                 ESCI
               </BtnDecorato>
@@ -344,10 +349,14 @@ function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
         {/* Blocco PACK — cliccabile → va a Sbusto (gestito nel parent via onGoSbusta) */}
         <PackBlock profilo={profilo} />
 
+        {/* Blocco KISSES */}
+        <KissesBlock profilo={profilo} />
+
         {/* Separatore visivo */}
         <div style={{ width: 1, height: 28, background: 'rgba(245,166,35,0.15)', flexShrink: 0 }} />
 
         {isAdmin && <a href="/admin" style={{ textDecoration: 'none' }} className="header-desktop-only"><BtnDecorato variant="secondary" size="sm">⚙ ADMIN</BtnDecorato></a>}
+        <a href="/amici" style={{ textDecoration: 'none' }} className="header-desktop-only"><BtnDecorato variant="secondary" size="sm">♥ AMICI</BtnDecorato></a>
         <BtnDecorato variant="danger" size="sm" onClick={onLogout} className="header-desktop-only">ESCI</BtnDecorato>
       </div>
     </div>
@@ -391,6 +400,37 @@ function PackBlock({ profilo }) {
       </div>
       <div style={{ fontSize: 7, opacity: 0.5, letterSpacing: 2, fontFamily: 'Orbitron', color: '#ff2d78' }}>PACK</div>
     </div>
+  );
+}
+
+function KissesBlock({ profilo }) {
+  return (
+    <a href="/amici" style={{ textDecoration: 'none' }}>
+      <div style={{
+        cursor: 'pointer',
+        padding: '6px 12px',
+        background: 'rgba(255,77,158,0.06)',
+        border: '1px solid rgba(255,77,158,0.25)',
+        borderRadius: 10,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+        transition: 'all 0.2s',
+      }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,77,158,0.13)'; e.currentTarget.style.borderColor = 'rgba(255,77,158,0.5)'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,77,158,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,77,158,0.25)'; }}
+      >
+        <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+          <KissesIcon size={14} />
+          <span style={{
+            fontFamily: 'Orbitron', fontSize: 13, fontWeight: 800,
+            color: '#ff4d9e', letterSpacing: 1,
+            textShadow: '0 0 8px rgba(255,77,158,0.7)',
+          }}>
+            {profilo.kisses ?? 0}
+          </span>
+        </div>
+        <div style={{ fontSize: 7, opacity: 0.5, letterSpacing: 2, fontFamily: 'Orbitron', color: '#ff4d9e' }}>KISSES</div>
+      </div>
+    </a>
   );
 }
 
@@ -630,6 +670,17 @@ function HomeTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, poseCat
         totalPack={totalPack}
         setTab={setTab}
       />
+
+      {/* ── PESCA MISTERIOSA ── */}
+      {process.env.NEXT_PUBLIC_PESCA_ENABLED !== 'false' && (
+        <div style={{ marginTop: 28 }}>
+          <PescaMisteriosaFeed
+            user={user}
+            profilo={profilo}
+            onKissesSpent={(amount) => setProfilo(p => ({ ...p, kisses: Math.max(0, (p.kisses ?? 0) - amount) }))}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -1537,6 +1588,8 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     if (tipoPacchetto === 'benvenuto') { const n = (profilo.pacchettiBenvenuto ?? 0) - 1; setProfilo(p => ({ ...p, pacchettiBenvenuto: n })); await updateUserProfile(user.uid, { pacchettiBenvenuto: n }); }
     else if (tipoPacchetto === 'omaggio') { const n = (profilo.pacchettiOmaggio ?? 0) - 1; setProfilo(p => ({ ...p, pacchettiOmaggio: n })); await updateUserProfile(user.uid, { pacchettiOmaggio: n }); }
     else { const n = (profilo.pacchettiSfida ?? 0) - 1; setProfilo(p => ({ ...p, pacchettiSfida: n })); await updateUserProfile(user.uid, { pacchettiSfida: n }); }
+    // Snapshot asincrona: non blocca l'apertura se fallisce
+    createPackSnapshot(user.uid, carte).catch(() => {});
     carte.forEach((_, i) => { setTimeout(() => setIndiceRivelato(i), 500 + i * 700); });
   };
 

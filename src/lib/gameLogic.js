@@ -211,6 +211,26 @@ export function calcolaRicaricaPacchettiOmaggio(ultimaRicarica, attualiPacchetti
 }
 
 // ============================================================
+// FRIEND ID
+// ============================================================
+const FRIEND_ID_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I, O, 0, 1 per leggibilità
+
+export function generateFriendId() {
+  let id = '';
+  for (let i = 0; i < 8; i++) {
+    id += FRIEND_ID_CHARS[Math.floor(Math.random() * FRIEND_ID_CHARS.length)];
+  }
+  return id;
+}
+
+// ============================================================
+// GHOST PACK (per Pesca Misteriosa fallback)
+// ============================================================
+export function generateGhostPack({ waifuPool, outfitPool, posePool, godPackProb = 0 }) {
+  return generaPacchetto({ waifuPool, outfitPool, posePool, godPackProb });
+}
+
+// ============================================================
 // LOGICA OUTFIT — LIVELLO E ARCHETIPI COMPATIBILI
 // ============================================================
 import { OUTFIT_CONFIG_DEFAULT, ABILITA_TIPI, ABILITA_VALORI } from './constants.js';

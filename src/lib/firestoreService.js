@@ -5,7 +5,7 @@ import {
   doc, getDoc, setDoc, updateDoc, deleteDoc,
   collection, query, where, getDocs, addDoc,
   serverTimestamp, Timestamp, orderBy, limit,
-  deleteField,
+  deleteField, runTransaction,
 } from 'firebase/firestore';
 
 // =================== UTENTI ===================
@@ -16,9 +16,13 @@ export async function getUserProfile(uid) {
 }
 
 export async function createUserProfile(uid, data) {
+  const { generateFriendId } = await import('./gameLogic');
+  const friendId = generateFriendId();
   const ref = doc(db, 'users', uid);
   await setDoc(ref, {
     ...data,
+    friendId,
+    kisses: 0,
     creato: serverTimestamp(),
     ultimaRicaricaPacchetti: serverTimestamp(),
     ultimaRicaricaEnergia: serverTimestamp(),
@@ -215,4 +219,101 @@ export function premioPerPosizione(pos) {
 export async function deleteTeamFromCollezione(uid, teamId) {
   const ref = doc(db, 'users', uid, 'collezione', 'main');
   await updateDoc(ref, { [`teams.${teamId}`]: deleteField() });
+}
+
+// =================== PESCA CONFIG ===================
+const PESCA_CONFIG_DEFAULTS = {
+  kisses_pesca_cost: 10,
+  pack_snapshot_ttl_hours: 24,
+  pesca_min_feed_size: 5,
+};
+
+export async function getPescaConfig() {
+  try {
+    const snap = await getDoc(doc(db, 'config', 'pesca_settings'));
+    if (snap.exists()) return { ...PESCA_CONFIG_DEFAULTS, ...snap.data() };
+  } catch (_) { /* fall through */ }
+  return PESCA_CONFIG_DEFAULTS;
+}
+
+// =================== KISSES ===================
+export async function awardKisses(uid, amount) {
+  const ref = doc(db, 'users', uid);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const current = snap.exists() ? (snap.data().kisses ?? 0) : 0;
+    tx.update(ref, { kisses: current + amount });
+  });
+}
+
+export async function spendKisses(uid, amount) {
+  const ref = doc(db, 'users', uid);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const current = snap.exists() ? (snap.data().kisses ?? 0) : 0;
+    if (current < amount) throw new Error('Kisses insufficienti');
+    tx.update(ref, { kisses: current - amount });
+  });
+}
+
+// =================== PACK SNAPSHOTS ===================
+export async function createPackSnapshot(ownerUid, cards) {
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  await addDoc(collection(db, 'pack_snapshots'), {
+    ownerUid,
+    cards: cards.map(c => ({
+      tipo: c.tipo,
+      id: c.data?.id,
+      rarita: c.data?.rarita,
+      nome: c.data?.nome,
+      immagine: c.data?.immagine || c.data?.immagineFull || null,
+    })),
+    isGhost: false,
+    visibleToFriends: true,
+    createdAt: serverTimestamp(),
+    expiresAt: Timestamp.fromDate(expiresAt),
+  });
+}
+
+// =================== AMICIZIE ===================
+export async function getFriendByFriendId(friendId) {
+  const q = query(collection(db, 'users'), where('friendId', '==', friendId), limit(1));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return { uid: snap.docs[0].id, ...snap.docs[0].data() };
+}
+
+export async function getFriendRequests(uid) {
+  const q = query(
+    collection(db, 'friendships'),
+    where('toUid', '==', uid),
+    where('status', '==', 'pending'),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function getFriendsList(uid) {
+  const [q1, q2] = [
+    query(collection(db, 'friendships'), where('fromUid', '==', uid), where('status', '==', 'accepted')),
+    query(collection(db, 'friendships'), where('toUid', '==', uid), where('status', '==', 'accepted')),
+  ];
+  const [s1, s2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+  const friendUids = [
+    ...s1.docs.map(d => d.data().toUid),
+    ...s2.docs.map(d => d.data().fromUid),
+  ];
+  if (friendUids.length === 0) return [];
+  const profiles = await Promise.all(friendUids.map(fuid => getUserProfile(fuid)));
+  return profiles.filter(Boolean);
+}
+
+export async function getFriendshipDoc(uid1, uid2) {
+  const q1 = query(collection(db, 'friendships'), where('fromUid', '==', uid1), where('toUid', '==', uid2));
+  const q2 = query(collection(db, 'friendships'), where('fromUid', '==', uid2), where('toUid', '==', uid1));
+  const [s1, s2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+  if (!s1.empty) return { id: s1.docs[0].id, ...s1.docs[0].data() };
+  if (!s2.empty) return { id: s2.docs[0].id, ...s2.docs[0].data() };
+  return null;
 }
