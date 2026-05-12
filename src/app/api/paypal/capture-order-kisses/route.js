@@ -38,13 +38,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Pagamento non completato', details: capture }, { status: 402 });
     }
 
-    // Assegna Kisses atomicamente
+    // Assegna Kisses atomicamente — non rileggere il saldo per evitare RESOURCE_EXHAUSTED
     const userRef = adminDb.collection('users').doc(uid);
     await userRef.update({ kisses: FieldValue.increment(taglio.kisses) });
-    const updated = await userRef.get();
-    const newBalance = updated.data()?.kisses ?? 0;
 
-    return NextResponse.json({ success: true, kissesAdded: taglio.kisses, newBalance });
+    return NextResponse.json({ success: true, kissesAdded: taglio.kisses });
   } catch (e) {
     console.error('[PayPal capture-order-kisses]', e);
     return NextResponse.json({ error: e.message || 'Errore cattura ordine' }, { status: 500 });

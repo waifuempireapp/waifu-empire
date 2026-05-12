@@ -2104,7 +2104,14 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
           label="SFIDA"
           sub="Vinci in battaglia"
           esaurito={nSfid <= 0}
-          ctaEsaurito={
+          ctaEsaurito={null}
+          dropColore={dropColore}
+          onClick={() => !(nSfid <= 0) && setPopupApertura({ tipoPacchetto: 'sfida' })}
+          asset={dropAttivo?.asset_bustina}
+        />
+        {/* Bottone acquisto Kisses FUORI dalla card (non soggetto all'opacity) */}
+        {nSfid <= 0 && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 6 }}>
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -2112,18 +2119,16 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
                 else setSfidaShortage(true);
               }}
               style={{
-                marginTop: 6, background: 'rgba(255,45,120,0.12)', border: '1px solid rgba(255,45,120,0.4)',
-                borderRadius: 7, color: '#ff2d78', fontFamily: 'Orbitron', fontSize: 8,
-                padding: '6px 10px', cursor: 'pointer', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 4,
+                background: 'rgba(255,45,120,0.15)', border: '1px solid rgba(255,45,120,0.5)',
+                borderRadius: 8, color: '#ff2d78', fontFamily: 'Orbitron', fontSize: 8,
+                padding: '7px 12px', cursor: 'pointer', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 4,
+                boxShadow: '0 0 10px rgba(255,45,120,0.2)',
               }}
             >
               <KissesIcon size={10} /> {SFIDA_COSTO_KISSES} Kisses
             </button>
-          }
-          dropColore={dropColore}
-          onClick={() => !(nSfid <= 0) && setPopupApertura({ tipoPacchetto: 'sfida' })}
-          asset={dropAttivo?.asset_bustina}
-        />
+          </div>
+        )}
 
         {/* PACCHETTO BENVENUTO */}
         {nBenv > 0 && (

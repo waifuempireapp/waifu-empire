@@ -51,7 +51,8 @@ export default function KissesShortageModal({ missingKisses = 0, currentKisses =
           const result = await res.json();
           if (!res.ok) throw new Error(result.error || 'Errore cattura pagamento');
           setStato('success');
-          onSuccess?.(result.newBalance);
+          const added = result.kissesAdded ?? taglioScelto?.kisses ?? 0;
+          onSuccess?.((currentKisses ?? 0) + added);
         } catch (e) { setErrMsg(e.message); setStato('error'); }
       },
       onError: (err) => { console.error('[PayPal modal]', err); setErrMsg('Errore PayPal. Riprova.'); setStato('error'); },

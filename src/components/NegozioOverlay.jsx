@@ -14,7 +14,7 @@ const BENE_ENDPOINT = {
 const BENI_ICONS  = { pack_sfida: '🎁', energia: '⚡', pass_hard: '🔞' };
 const BENI_COLORI = { pack_sfida: '#f5a623', energia: '#00e676', pass_hard: '#ec4899' };
 
-function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate }) {
+function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate, hardPass = false, onPassHard }) {
   const [busy, setBusy]         = useState(null);
   const [notif, setNotif]       = useState(null);
   const [shortage, setShortage] = useState(null);
@@ -31,7 +31,9 @@ function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate }) {
       const res = await fetch(endpoint, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Errore acquisto');
-      onKissesUpdate(data.newKisses);
+      const spent = data.kissesCost ?? beni[beneId]?.kisses ?? 0;
+      onKissesUpdate(Math.max(0, (kisses ?? 0) - spent));
+      if (beneId === 'pass_hard') onPassHard?.();
       mostra(`✓ ${beni[beneId]?.label} acquistato!`);
     } catch (e) { mostra(e.message, false); }
     finally { setBusy(null); }
@@ -105,16 +107,17 @@ function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate }) {
                 </div>
                 <button onClick={() => {
                   if (busy === id) return;
+                  if (id === 'pass_hard' && hardPass) return;
                   if ((kisses ?? 0) < bene.kisses) { setShortage({ beneId: id, missingKisses: bene.kisses - (kisses ?? 0) }); return; }
                   setConferma({ beneId: id, costo: bene.kisses, label: bene.label });
-                }} disabled={busy === id} style={{
+                }} disabled={busy === id || (id === 'pass_hard' && hardPass)} style={{
                   background: puoAcquistare ? `${colore}25` : 'rgba(255,255,255,0.04)',
                   border: `1px solid ${puoAcquistare ? colore + '60' : 'rgba(255,255,255,0.1)'}`,
                   borderRadius: 8, color: puoAcquistare ? colore : 'rgba(255,255,255,0.25)',
                   fontFamily: 'Orbitron', fontSize: 9, padding: '7px 14px',
                   cursor: busy === id ? 'wait' : 'pointer', letterSpacing: 1, transition: 'all 0.2s',
                 }}>
-                  {busy === id ? '…' : puoAcquistare ? 'ACQUISTA' : `MANCANO ${bene.kisses - (kisses ?? 0)}`}
+                  {busy === id ? '…' : (id === 'pass_hard' && hardPass) ? '✓ ACQUISTATO' : puoAcquistare ? 'ACQUISTA' : `MANCANO ${bene.kisses - (kisses ?? 0)}`}
                 </button>
               </div>
             </div>
@@ -160,7 +163,8 @@ function SezioneRicaricaKisses({ tagli, user, kisses, onKissesUpdate }) {
           const result = await res.json();
           if (!res.ok) throw new Error(result.error || 'Errore cattura');
           setStato('success');
-          onKissesUpdate(result.newBalance);
+          // newBalance calcolato localmente per evitare lettura Firestore aggiuntiva
+          onKissesUpdate((kisses ?? 0) + (result.kissesAdded ?? taglioScelto?.kisses ?? 0));
         } catch (e) { setErrMsg(e.message); setStato('error'); }
       },
       onError: (err) => { console.error('[PayPal negozio]', err); setErrMsg('Errore PayPal. Riprova.'); setStato('error'); },
@@ -222,13 +226,15 @@ function SezioneRicaricaKisses({ tagli, user, kisses, onKissesUpdate }) {
   );
 }
 
-export default function NegozioOverlay({ user, profilo, onKissesUpdate, onClose }) {
+export default function NegozioOverlay({ user, profilo: profiloInit, onKissesUpdate, onClose }) {
   const [config, setConfig] = useState(null);
-  const [kisses, setKisses] = useState(profilo?.kisses ?? 0);
+  const [kisses, setKisses] = useState(profiloInit?.kisses ?? 0);
+  const [hardPass, setHardPass] = useState(profiloInit?.hardPass ?? false);
 
   useEffect(() => { getNegozioConfig().then(setConfig); }, []);
 
   const handleKisses = (newKisses) => { setKisses(newKisses); onKissesUpdate(newKisses); };
+  const handlePassHard = () => { setHardPass(true); };
 
   return (
     <div style={{
@@ -258,7 +264,7 @@ export default function NegozioOverlay({ user, profilo, onKissesUpdate, onClose 
           <>
             <div>
               <div style={{ fontFamily: 'Orbitron', fontSize: 10, letterSpacing: 3, color: 'rgba(238,232,220,0.4)', marginBottom: 12 }}>ACQUISTA CON KISSES</div>
-              <SezioneAcquistaBeni beni={config.beni} kisses={kisses} user={user} onKissesUpdate={handleKisses} />
+              <SezioneAcquistaBeni beni={config.beni} kisses={kisses} user={user} onKissesUpdate={handleKisses} hardPass={hardPass} onPassHard={handlePassHard} />
             </div>
             <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,77,158,0.3), transparent)' }} />
             <div>
