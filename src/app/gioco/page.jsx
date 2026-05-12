@@ -45,6 +45,8 @@ export default function GiocoPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [statConfig, setStatConfig] = useState({ ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT });
   const [godPackProb, setGodPackProb] = useState(GOD_PACK_PROB_DEFAULT);
+  // Singleton catalogo in sessione: evita ricaricamenti a ogni mount/tab-switch
+  const catalogRef = useRef(null);
 
   useEffect(() => { if (!loading && !user) router.replace('/login'); }, [user, loading]);
   useEffect(() => { if (user) caricaTutto(); }, [user]);
@@ -55,9 +57,16 @@ export default function GiocoPage() {
   }, []);
 
   const caricaTutto = async () => {
-    const [p, c, ws, os, ps] = await Promise.all([
+    // Carica catalogo una sola volta per sessione (seconda linea di difesa dopo localStorage)
+    const catalogPromise = catalogRef.current
+      ? Promise.resolve(catalogRef.current)
+      : Promise.all([listWaifu(), listOutfit(), listPose()]).then(([ws, os, ps]) => {
+          catalogRef.current = { ws, os, ps };
+          return catalogRef.current;
+        });
+    const [p, c, { ws, os, ps }] = await Promise.all([
       getUserProfile(user.uid), getCollezione(user.uid),
-      listWaifu(), listOutfit(), listPose(),
+      catalogPromise,
     ]);
     if (!p) { router.replace('/onboarding'); return; }
     const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase());

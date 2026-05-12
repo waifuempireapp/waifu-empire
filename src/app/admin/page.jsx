@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import {
   listWaifu, listOutfit, listPose, listDrops,
   upsertWaifu, upsertOutfit, upsertPosa, upsertDrop,
-  deleteCatalogo,
+  deleteCatalogo, clearCatalogCache,
 } from '@/lib/firestoreService';
 import { uploadAsset, pathWaifu, pathOutfit, pathPosa, uploadLargeAsset } from '@/lib/storageService';
 import {
@@ -98,7 +98,17 @@ export default function AdminPage() {
           <div style={{ fontFamily: 'Cinzel, serif', color: '#f59e0b', letterSpacing: 4, fontSize: 16 }}>⚙ AREA ADMIN</div>
           <div style={{ fontSize: 10, opacity: 0.6, letterSpacing: 1 }}>Impero delle Waifu</div>
         </div>
-        <a href="/gioco" style={{ ...btnPiccolo, textDecoration: 'none' }}>← AL GIOCO</a>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            onClick={() => {
+              clearCatalogCache();
+              mostraNotif('Cache catalogo svuotata — gli utenti vedranno i dati aggiornati al prossimo caricamento.', '#00e676');
+            }}
+            style={{ ...btnPiccolo, background: 'rgba(0,230,118,0.08)', borderColor: 'rgba(0,230,118,0.4)', color: '#00e676' }}
+            title="Invalida la cache localStorage del catalogo su questo browser"
+          >🗑 Svuota cache</button>
+          <a href="/gioco" style={{ ...btnPiccolo, textDecoration: 'none' }}>← AL GIOCO</a>
+        </div>
       </div>
 
       {/* Tabs */}

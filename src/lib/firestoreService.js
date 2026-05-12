@@ -63,23 +63,61 @@ export async function setMappaUtente(uid, dati) {
   await setDoc(ref, dati, { merge: true });
 }
 
+// =================== CACHE LOCALSTORAGE (cataloghi admin) ===================
+const _CATALOG_TTL = () =>
+  Number(process.env.NEXT_PUBLIC_CATALOG_TTL_SECONDS ?? 3600) * 1000;
+
+function _cacheGet(key, ttlMs) {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw);
+    if (Date.now() - ts > ttlMs) { localStorage.removeItem(key); return null; }
+    return data;
+  } catch (_) { return null; }
+}
+
+function _cacheSet(key, data) {
+  if (typeof window === 'undefined') return;
+  try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch (_) {}
+}
+
+export function clearCatalogCache() {
+  if (typeof window === 'undefined') return;
+  ['iw_catalog_waifu', 'iw_catalog_outfit', 'iw_catalog_pose', 'iw_catalog_drops']
+    .forEach(k => localStorage.removeItem(k));
+}
+
 // =================== CATALOGHI (admin gestiti) ===================
 export async function listWaifu() {
+  const cached = _cacheGet('iw_catalog_waifu', _CATALOG_TTL());
+  if (cached) return cached;
   const q = query(collection(db, 'catalogo_waifu'), orderBy('nome'));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  _cacheSet('iw_catalog_waifu', data);
+  return data;
 }
 
 export async function listOutfit() {
+  const cached = _cacheGet('iw_catalog_outfit', _CATALOG_TTL());
+  if (cached) return cached;
   const q = query(collection(db, 'catalogo_outfit'), orderBy('nome'));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  _cacheSet('iw_catalog_outfit', data);
+  return data;
 }
 
 export async function listPose() {
+  const cached = _cacheGet('iw_catalog_pose', _CATALOG_TTL());
+  if (cached) return cached;
   const q = query(collection(db, 'catalogo_pose'), orderBy('nome'));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  _cacheSet('iw_catalog_pose', data);
+  return data;
 }
 
 export async function listDrops() {
@@ -113,21 +151,21 @@ export function progressioneDrop(drop, collezione) {
 }
 
 export async function listDropsAttivi() {
-  const q = query(collection(db, 'drops'), where('attivo', '==', true));
+  const DROPS_TTL = 5 * 60 * 1000; // 5 minuti — i drops cambiano più spesso del catalogo
+  const cached = _cacheGet('iw_catalog_drops', DROPS_TTL);
+  if (cached) return cached;
+  const q = query(collection(db, 'drops'), where('attivo', '==', true), limit(10));
   const snap = await getDocs(q);
   const now = new Date();
-  return snap.docs
+  const data = snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
     .filter(d => {
-      // Data inizio: deve essere nel passato (o oggi)
       if (d.inizio) {
         const inizio = new Date(d.inizio);
         if (inizio > now) return false;
       }
-      // Data fine: se impostata, deve essere nel futuro (o oggi)
       if (d.fine) {
         const fine = new Date(d.fine);
-        // fine è una stringa "YYYY-MM-DD": la trattiamo come fine giornata
         fine.setHours(23, 59, 59, 999);
         if (fine < now) return false;
       }
@@ -138,6 +176,8 @@ export async function listDropsAttivi() {
       const tb = b.creato?.seconds ?? 0;
       return tb - ta;
     });
+  _cacheSet('iw_catalog_drops', data);
+  return data;
 }
 
 export async function getDropAttivo() {

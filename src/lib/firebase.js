@@ -2,8 +2,7 @@
 // Configurazione Firebase lato client
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-// Firebase Storage rimosso: le immagini ora vengono gestite da Cloudinary
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -16,7 +15,14 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
+// Abilita la cache IndexedDB persistente: i documenti già letti vengono serviti
+// dalla cache locale nelle sessioni successive, riducendo le letture Firestore fatturate.
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(), // supporta più tab simultanei
+  }),
+});
+
 export const auth = getAuth(app);
-export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 export default app;
