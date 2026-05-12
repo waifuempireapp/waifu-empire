@@ -98,12 +98,13 @@ service cloud.firestore {
                         || resource.data.toUid == request.auth.uid);
     }
 
-    // === Pack Snapshots (read-only lato client) ===
+    // === Pack Snapshots ===
     match /pack_snapshots/{snapshotId} {
-      // Lettura: qualsiasi utente autenticato (il filtraggio per amicizia avviene lato server)
       allow read: if isSignedIn();
-      // Scrittura: solo tramite API server-side (Admin SDK bypassa le regole)
-      allow write: if false;
+      // Il client può creare la propria snapshot (ownerUid deve corrispondere al proprio uid)
+      allow create: if isSignedIn()
+                    && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if false;
     }
 
     // === Fishing Attempts (read-only lato client) ===

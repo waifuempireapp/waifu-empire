@@ -1609,6 +1609,8 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     if (tuttiIPacchetti.length === 0) return;
     // Salva collezione e scala pacchetti tutti insieme
     setColl(nuova); await saveCollezione(user.uid, nuova);
+    // Snapshot asincrona per ogni pack aperto
+    tuttiIPacchetti.forEach(carte => createPackSnapshot(user.uid, carte).catch(() => {}));
     if (tipoPacchetto === 'benvenuto') { const n = (profilo.pacchettiBenvenuto ?? 0) - tuttiIPacchetti.length; setProfilo(p => ({ ...p, pacchettiBenvenuto: n })); await updateUserProfile(user.uid, { pacchettiBenvenuto: n }); }
     else if (tipoPacchetto === 'omaggio') { const n = (profilo.pacchettiOmaggio ?? 0) - tuttiIPacchetti.length; setProfilo(p => ({ ...p, pacchettiOmaggio: n })); await updateUserProfile(user.uid, { pacchettiOmaggio: n }); }
     else { const n = (profilo.pacchettiSfida ?? 0) - tuttiIPacchetti.length; setProfilo(p => ({ ...p, pacchettiSfida: n })); await updateUserProfile(user.uid, { pacchettiSfida: n }); }

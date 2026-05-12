@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
-import { generateGhostPack } from '@/lib/gameLogic';
 
 const MIN_FEED_SIZE = 5;
 
 async function getFriendUids(uid) {
-  // Query su singolo campo, filtro status in JS per evitare composite index
   const [s1, s2] = await Promise.all([
     adminDb.collection('friendships').where('fromUid', '==', uid).get(),
     adminDb.collection('friendships').where('toUid', '==', uid).get(),
@@ -21,17 +19,88 @@ async function getUserName(uid) {
   return snap.exists ? (snap.data().nomeImpero || 'Sconosciuto') : 'Sconosciuto';
 }
 
-async function fetchCatalogAdmin() {
+function randPick(arr) {
+  if (!arr || arr.length === 0) return null;
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+async function buildGhostPack() {
+  // Carica catalogo
   const [waifuSnap, outfitSnap, poseSnap] = await Promise.all([
     adminDb.collection('catalogo_waifu').get(),
     adminDb.collection('catalogo_outfit').get(),
     adminDb.collection('catalogo_pose').get(),
   ]);
-  return {
-    waifuPool: waifuSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-    outfitPool: outfitSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-    posePool: poseSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-  };
+  const allWaifu = waifuSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const allOutfit = outfitSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const allPose = poseSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  if (allWaifu.length === 0) return null;
+
+  // Filtra per drop attivo (se presente)
+  let waifuPool = allWaifu;
+  let outfitPool = allOutfit;
+  let posePool = allPose;
+
+  try {
+    const now = new Date();
+    const dropSnap = await adminDb.collection('drops').where('attivo', '==', true).get();
+    const activeDrops = dropSnap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(d => {
+        if (d.inizio && new Date(d.inizio) > now) return false;
+        if (d.fine) {
+          const fine = new Date(d.fine);
+          fine.setHours(23, 59, 59, 999);
+          if (fine < now) return false;
+        }
+        return true;
+      });
+
+    if (activeDrops.length > 0) {
+      const drop = activeDrops[0];
+      if (drop.waifuIds?.length > 0) waifuPool = allWaifu.filter(w => drop.waifuIds.includes(w.id));
+      if (drop.outfitIds?.length > 0) outfitPool = allOutfit.filter(o => drop.outfitIds.includes(o.id));
+      if (drop.poseIds?.length > 0) posePool = allPose.filter(p => drop.poseIds.includes(p.id));
+    }
+  } catch (_) { /* usa pool completo se drop non disponibile */ }
+
+  // Fallback: se il pool filtrato è vuoto, usa tutto il catalogo
+  if (waifuPool.length === 0) waifuPool = allWaifu;
+  if (outfitPool.length === 0) outfitPool = allOutfit;
+  if (posePool.length === 0) posePool = allPose;
+
+  const toCard = (c, tipo) => ({
+    tipo,
+    id: c.id,
+    rarita: c.rarita || 'comune',
+    nome: c.nome || '',
+    immagine: c.immagine || c.immagineFull || null,
+  });
+
+  // Componi il pack: 2 waifu + 2 outfit + 1 posa, poi mescola
+  const cards = [];
+  for (let i = 0; i < 2; i++) {
+    const w = randPick(waifuPool);
+    if (w) cards.push(toCard(w, 'waifu'));
+  }
+  for (let i = 0; i < 2; i++) {
+    const o = randPick(outfitPool);
+    if (o) cards.push(toCard(o, 'outfit'));
+  }
+  const p = randPick(posePool);
+  if (p) cards.push(toCard(p, 'posa'));
+
+  return shuffle(cards);
 }
 
 export async function GET(request) {
@@ -49,14 +118,11 @@ export async function GET(request) {
     let packs = [];
 
     if (friendUids.length > 0) {
-      // Query su singolo campo per evitare composite index
-      // Firestore limita `in` a 30 elementi max
       const batchUids = friendUids.slice(0, 10);
       const snap = await adminDb.collection('pack_snapshots')
         .where('ownerUid', 'in', batchUids)
         .get();
 
-      // Filtra in JavaScript: non-ghost, non scaduti, ordina per createdAt desc
       const validDocs = snap.docs
         .filter(d => {
           const data = d.data();
@@ -71,19 +137,13 @@ export async function GET(request) {
         })
         .slice(0, 20);
 
-      // Verifica che l'utente non abbia già pescato da questi pack
+      // Verifica pesca già effettuata (query su singolo campo)
       const alreadyFished = new Set();
       if (validDocs.length > 0) {
-        const snapshotIds = validDocs.map(d => d.id);
-        // Firestore `in` supporta max 30 elementi
-        for (let i = 0; i < snapshotIds.length; i += 30) {
-          const batch = snapshotIds.slice(i, i + 30);
-          const fishSnap = await adminDb.collection('fishing_attempts')
-            .where('fisherUid', '==', uid)
-            .where('snapshotId', 'in', batch)
-            .get();
-          fishSnap.docs.forEach(d => alreadyFished.add(d.data().snapshotId));
-        }
+        const fishSnap = await adminDb.collection('fishing_attempts')
+          .where('fisherUid', '==', uid)
+          .get();
+        fishSnap.docs.forEach(d => alreadyFished.add(d.data().snapshotId));
       }
 
       const ownerNames = {};
@@ -104,32 +164,23 @@ export async function GET(request) {
         }));
     }
 
-    // Fallback ghost pack
+    // Fallback ghost pack fino a raggiungere MIN_FEED_SIZE
     if (packs.length < MIN_FEED_SIZE) {
-      try {
-        const { waifuPool, outfitPool, posePool } = await fetchCatalogAdmin();
-        if (waifuPool.length > 0) {
-          const needed = MIN_FEED_SIZE - packs.length;
-          for (let i = 0; i < needed; i++) {
-            const carte = generateGhostPack({ waifuPool, outfitPool, posePool });
+      const needed = MIN_FEED_SIZE - packs.length;
+      for (let i = 0; i < needed; i++) {
+        try {
+          const cards = await buildGhostPack();
+          if (cards && cards.length > 0) {
             packs.push({
               id: `ghost-${Date.now()}-${i}`,
               ownerName: 'Pescatrice Misteriosa',
-              cards: carte.map(c => ({
-                tipo: c.tipo,
-                id: c.data?.id,
-                rarita: c.data?.rarita,
-                nome: c.data?.nome,
-                immagine: c.data?.immagine || c.data?.immagineFull || null,
-              })),
+              cards,
               isGhost: true,
               expiresAt: null,
               createdAt: null,
             });
           }
-        }
-      } catch (ghostErr) {
-        console.error('Ghost pack generation failed:', ghostErr);
+        } catch (_) { /* skip if ghost pack generation fails */ }
       }
     }
 
