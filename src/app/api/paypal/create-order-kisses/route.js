@@ -11,14 +11,43 @@ const TAGLI = {
   lg: { kisses: 1400, price_eur: '7.99', label: '1400 Kisses' },
 };
 
+// Pass venduti con PayPal (nessuna lettura Firestore)
+const PASS_ITEMS = {
+  pass_hard:    { price_eur: '1.99', label: 'Pass Hard — Video immersivi illimitati' },
+  pass_scambi:  { price_eur: '1.99', label: 'Trade Pass — Scambi illimitati' },
+};
+
 export async function POST(request) {
   if (!CLIENT_ID || !CLIENT_SECRET) {
     return NextResponse.json({ error: 'Credenziali PayPal mancanti sul server' }, { status: 500 });
   }
   try {
-    const { taglioId } = await request.json();
-    if (!taglioId) return NextResponse.json({ error: 'taglioId mancante' }, { status: 400 });
+    const { taglioId, tipo } = await request.json();
 
+    // Ordine per un Pass (pass_hard, pass_scambi)
+    if (tipo && PASS_ITEMS[tipo]) {
+      const passItem = PASS_ITEMS[tipo];
+      const accessToken = await getPayPalAccessToken();
+      const res = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'PayPal-Request-Id': `impero-${tipo}-${Date.now()}`,
+        },
+        body: JSON.stringify({
+          intent: 'CAPTURE',
+          purchase_units: [{ description: `Impero Waifu — ${passItem.label}`, amount: { currency_code: 'EUR', value: passItem.price_eur } }],
+          application_context: { brand_name: 'Impero Waifu', locale: 'it-IT', user_action: 'PAY_NOW' },
+        }),
+      });
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(`Creazione ordine fallita: ${JSON.stringify(err)}`); }
+      const order = await res.json();
+      return NextResponse.json({ orderID: order.id, tipo });
+    }
+
+    // Ordine per Kisses
+    if (!taglioId) return NextResponse.json({ error: 'taglioId o tipo mancante' }, { status: 400 });
     const taglio = TAGLI[taglioId];
     if (!taglio) return NextResponse.json({ error: 'Taglio non valido' }, { status: 400 });
 

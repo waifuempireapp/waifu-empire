@@ -60,7 +60,7 @@
 
 ## 10. Verifica e Pulizia
 
-- [ ] 10.1 Eseguire lo script di migrazione `scripts/migrate-friend-ids.js` sull'ambiente di sviluppo e verificare che tutti i profili abbiano `friendId` e `kisses`
-- [ ] 10.2 Testare manualmente il flusso completo: registrazione → Friend ID → invio/accettazione richiesta → apertura bustina → feed Pesca Misteriosa → pesca → animazione → carta in collezione
-- [ ] 10.3 Verificare le Firestore security rules per tutte le nuove collections
+- [x] 10.1 Eseguire lo script di migrazione `scripts/migrate-friend-ids.js` sull'ambiente di sviluppo e verificare che tutti i profili abbiano `friendId` e `kisses`
+- [x] 10.2 Testare manualmente il flusso completo: registrazione → Friend ID → invio/accettazione richiesta → apertura bustina → feed Pesca Misteriosa → pesca → animazione → carta in collezione
+- [x] 10.3 Verificare le Firestore security rules per tutte le nuove collections
 - [x] 10.4 Aggiungere la feature flag `NEXT_PUBLIC_PESCA_ENABLED=true` in `.env.local` e condizionare il rendering della sezione Pesca Misteriosa e della pagina amici

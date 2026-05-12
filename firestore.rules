@@ -115,6 +115,16 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // === Trade Requests ===
+    match /trade_requests/{tradeId} {
+      // Solo i due diretti interessati possono leggere
+      allow read: if isSignedIn()
+                  && (resource.data.fromUid == request.auth.uid
+                      || resource.data.toUid == request.auth.uid);
+      // Scrittura solo da server (Admin SDK bypassa le rules)
+      allow write: if false;
+    }
+
     // Default: nega tutto
     match /{document=**} {
       allow read, write: if false;

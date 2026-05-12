@@ -18,13 +18,13 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Credenziali PayPal mancanti sul server' }, { status: 500 });
   }
   try {
-    const { orderID, uid, taglioId } = await request.json();
-    if (!orderID || !uid || !taglioId) {
-      return NextResponse.json({ error: 'orderID, uid e taglioId sono obbligatori' }, { status: 400 });
+    const { orderID, uid, taglioId, tipo } = await request.json();
+    if (!orderID || !uid) {
+      return NextResponse.json({ error: 'orderID e uid sono obbligatori' }, { status: 400 });
     }
-
-    const taglio = TAGLI[taglioId];
-    if (!taglio) return NextResponse.json({ error: 'Taglio non valido' }, { status: 400 });
+    if (!taglioId && !tipo) {
+      return NextResponse.json({ error: 'taglioId o tipo obbligatorio' }, { status: 400 });
+    }
 
     // Cattura il pagamento PayPal
     const accessToken = await getPayPalAccessToken();
@@ -38,8 +38,22 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Pagamento non completato', details: capture }, { status: 402 });
     }
 
-    // Assegna Kisses atomicamente — non rileggere il saldo per evitare RESOURCE_EXHAUSTED
     const userRef = adminDb.collection('users').doc(uid);
+
+    // Gestione Pass (nessuna lettura post-update)
+    if (tipo === 'pass_scambi') {
+      await userRef.update({ tradePass: true });
+      return NextResponse.json({ success: true, tipo: 'pass_scambi' });
+    }
+    if (tipo === 'pass_hard') {
+      await userRef.update({ hardPass: true });
+      return NextResponse.json({ success: true, tipo: 'pass_hard' });
+    }
+
+    const taglio = TAGLI[taglioId];
+    if (!taglio) return NextResponse.json({ error: 'Taglio non valido' }, { status: 400 });
+
+    // Assegna Kisses atomicamente — non rileggere il saldo per evitare RESOURCE_EXHAUSTED
     await userRef.update({ kisses: FieldValue.increment(taglio.kisses) });
 
     return NextResponse.json({ success: true, kissesAdded: taglio.kisses });

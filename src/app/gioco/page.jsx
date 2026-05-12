@@ -23,6 +23,11 @@ import FriendIdDisplay from '@/components/FriendIdDisplay';
 import AddFriendForm from '@/components/AddFriendForm';
 import FriendRequestsList from '@/components/FriendRequestsList';
 import FriendsList from '@/components/FriendsList';
+import TradeRequestModal from '@/components/TradeRequestModal';
+import TradeIncomingModal from '@/components/TradeIncomingModal';
+import TradePendingConfirmModal from '@/components/TradePendingConfirmModal';
+import TradeReceiveAnimation from '@/components/TradeReceiveAnimation';
+import ScambiList from '@/components/ScambiList';
 import MappaMondoArt from '@/components/MappaMondoArt';
 import MappaMultiplayer from '@/components/MappaMultiplayer';
 import {
@@ -150,7 +155,7 @@ export default function GiocoPage() {
           {tab === 'sbusta' && <SbustaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} user={user} mostraNotif={mostraNotif} godPackProb={godPackProb} />}
           {tab === 'collezione' && <CollezioneTab collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} profilo={profilo} setProfilo={setProfilo} user={user} mostraNotif={mostraNotif} initialSubTab={colezSubTab} statConfig={statConfig} />}
           {tab === 'mappa' && <MappaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} user={user} mostraNotif={mostraNotif} />}
-          {tab === 'amici' && <AmiciTab user={user} profilo={profilo} />}
+          {tab === 'amici' && <AmiciTab user={user} profilo={profilo} collezione={collezione} waifuCat={waifuCat} />}
           {tab === 'classifica' && <ClassificaTab user={user} />}
         </div>
 
@@ -1339,19 +1344,60 @@ function MadalePosa({ posa }) {
 // ============================================================
 // TAB: AMICI
 // ============================================================
-function AmiciTab({ user, profilo }) {
+function AmiciTab({ user, profilo, collezione, waifuCat }) {
+  const [subTab, setSubTab] = useState('amici'); // 'amici' | 'scambi'
   const [refreshKey, setRefreshKey] = useState(0);
+  const [scambiBadge, setScambiBadge] = useState(0);
   const onUpdate = () => setRefreshKey(k => k + 1);
+  const tradeEnabled = process.env.NEXT_PUBLIC_TRADE_ENABLED === 'true';
 
   return (
     <div className="fade-in" style={{ maxWidth: 500, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
       <div style={{ fontFamily: 'Orbitron', fontSize: 16, fontWeight: 900, color: '#ff2d78', letterSpacing: 3, marginBottom: 4 }}>
         ♥ AMICI
       </div>
-      <FriendIdDisplay friendId={profilo?.friendId} />
-      <AddFriendForm user={user} />
-      <FriendRequestsList key={`req-${refreshKey}`} user={user} onUpdate={onUpdate} />
-      <FriendsList key={`list-${refreshKey}`} user={user} />
+
+      {/* Sub-tab selector */}
+      {tradeEnabled && (
+        <div style={{ display: 'flex', gap: 6 }}>
+          {[{ k: 'amici', l: '👥 Amici' }, { k: 'scambi', l: '↔ Scambi' }].map(t => (
+            <button key={t.k} onClick={() => setSubTab(t.k)} style={{
+              padding: '7px 16px', borderRadius: 8, cursor: 'pointer', position: 'relative',
+              background: subTab === t.k ? 'rgba(255,45,120,0.15)' : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${subTab === t.k ? 'rgba(255,45,120,0.5)' : 'rgba(255,255,255,0.08)'}`,
+              color: subTab === t.k ? '#ff2d78' : 'rgba(238,232,220,0.5)',
+              fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 1, transition: 'all 0.2s',
+            }}>
+              {t.l}
+              {t.k === 'scambi' && scambiBadge > 0 && (
+                <span style={{
+                  position: 'absolute', top: -6, right: -6,
+                  background: '#ff4d4d', color: '#fff', borderRadius: '50%',
+                  width: 16, height: 16, fontSize: 9, fontFamily: 'Orbitron',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>{scambiBadge}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {subTab === 'amici' ? (
+        <>
+          <FriendIdDisplay friendId={profilo?.friendId} />
+          <AddFriendForm user={user} />
+          <FriendRequestsList key={`req-${refreshKey}`} user={user} onUpdate={onUpdate} />
+          <FriendsList key={`list-${refreshKey}`} user={user} />
+        </>
+      ) : (
+        <ScambiList
+          key={`scambi-${refreshKey}`}
+          user={user}
+          collezione={collezione}
+          waifuCat={waifuCat || []}
+          onBadgeChange={setScambiBadge}
+        />
+      )}
     </div>
   );
 }
@@ -3567,6 +3613,9 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
   const [statSel, setStatSel] = useState(null); // formato: { key: 'taglia_piedi', dir: 'plus' }
   const [modificheUsate, setModificheUsate] = useState(0);
   const [zoomCarta, setZoomCarta] = useState(false);
+  const [scambiaAperto, setScambiaAperto] = useState(false);
+  const [tradeAnimation, setTradeAnimation] = useState(null); // waifu ricevuta
+  const tradeEnabled = process.env.NEXT_PUBLIC_TRADE_ENABLED === 'true';
 
   useEffect(() => {
     document.body.classList.add('modal-open');
@@ -3606,6 +3655,23 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
 
   return (
     <>
+      {/* Trade modals */}
+      {scambiaAperto && (
+        <TradeRequestModal
+          waifu={w}
+          waifuId={waifuId}
+          user={user}
+          onSuccess={() => setScambiaAperto(false)}
+          onCancel={() => setScambiaAperto(false)}
+        />
+      )}
+      {tradeAnimation && (
+        <TradeReceiveAnimation
+          waifu={tradeAnimation}
+          onComplete={() => setTradeAnimation(null)}
+        />
+      )}
+
       {/* ZOOM carta a schermo intero */}
       {zoomCarta && (
         <ZoomCartaOverlay
@@ -3826,19 +3892,30 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
                   </PannelloOrnato>
                 )}
 
-                {/* 7. BOTTONE LEVEL UP / ANNULLA+CONFERMA */}
+                {/* 7. BOTTONI LEVEL UP + SCAMBIA / ANNULLA+CONFERMA */}
                 <div style={{ width: '100%', textAlign: 'center' }}>
                   {!mostraLU ? (
                     <>
-                      <BtnDecorato
-                        variant="primary"
-                        size="md"
-                        disabled={!canLevelUp}
-                        onClick={() => canLevelUp && (setMostraLU(true), setStatSel(null), setModificheUsate(0))}
-                        style={{ opacity: canLevelUp ? 1 : 0.45, cursor: canLevelUp ? 'pointer' : 'not-allowed' }}
-                      >
-                        LEVEL UP
-                      </BtnDecorato>
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <BtnDecorato
+                          variant="primary"
+                          size="md"
+                          disabled={!canLevelUp}
+                          onClick={() => canLevelUp && (setMostraLU(true), setStatSel(null), setModificheUsate(0))}
+                          style={{ opacity: canLevelUp ? 1 : 0.45, cursor: canLevelUp ? 'pointer' : 'not-allowed' }}
+                        >
+                          LEVEL UP
+                        </BtnDecorato>
+                        {tradeEnabled && (dati?.copie ?? 0) >= 1 && (
+                          <BtnDecorato
+                            variant="secondary"
+                            size="md"
+                            onClick={() => setScambiaAperto(true)}
+                          >
+                            ↔ SCAMBIA
+                          </BtnDecorato>
+                        )}
+                      </div>
                       {!canLevelUp && copieMancantiMsg && (
                         <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.4)', marginTop: 6, letterSpacing: 0.5 }}>
                           {copieMancantiMsg}

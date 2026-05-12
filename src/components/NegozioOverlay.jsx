@@ -128,6 +128,97 @@ function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate, hardPass = fa
   );
 }
 
+function SezionePass({ user, hardPass, tradePass, tradeEnabled, onPassHard, onTradePass }) {
+  const [loadingPass, setLoadingPass] = useState(null); // 'pass_hard' | 'pass_scambi'
+  const [errMsg, setErrMsg] = useState('');
+  const [passContainerRef] = useState(() => ({ current: null }));
+  const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
+
+  const renderPaypalForPass = useCallback((tipo, containerEl) => {
+    if (!containerEl || !window.paypal) return;
+    containerEl.innerHTML = '';
+    window.paypal.Buttons({
+      style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'pay', height: 36 },
+      createOrder: async () => {
+        const res = await fetch('/api/paypal/create-order-kisses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tipo }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Errore ordine');
+        return data.orderID;
+      },
+      onApprove: async (data) => {
+        setLoadingPass(tipo);
+        try {
+          const token = await user.getIdToken();
+          const res = await fetch('/api/paypal/capture-order-kisses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ orderID: data.orderID, uid: user.uid, tipo }),
+          });
+          const result = await res.json();
+          if (!res.ok) throw new Error(result.error || 'Errore cattura');
+          if (tipo === 'pass_hard') onPassHard?.();
+          if (tipo === 'pass_scambi') onTradePass?.();
+        } catch (e) { setErrMsg(e.message); }
+        finally { setLoadingPass(null); }
+      },
+      onError: (err) => { console.error('[SezionePass PayPal]', err); setErrMsg('Errore PayPal. Riprova.'); setLoadingPass(null); },
+    }).render(containerEl);
+  }, [user, onPassHard, onTradePass]);
+
+  const PASS_DEFS = [
+    { tipo: 'pass_hard',   label: '🔞 Pass Hard',    desc: 'Video immersivi illimitati', attivo: hardPass,   colore: '#ec4899' },
+    ...(tradeEnabled ? [{ tipo: 'pass_scambi', label: '🔓 Trade Pass',  desc: 'Scambi illimitati ogni giorno', attivo: tradePass,  colore: '#f5a623' }] : []),
+  ];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {errMsg && <div style={{ color: '#ff4d4d', fontFamily: 'Orbitron', fontSize: 9, textAlign: 'center' }}>{errMsg}</div>}
+      {PASS_DEFS.map(p => (
+        <div key={p.tipo} style={{
+          background: 'rgba(6,3,15,0.6)', border: `1px solid ${p.colore}30`,
+          borderRadius: 12, padding: '14px 16px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+        }}>
+          <div>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: p.colore, fontWeight: 700 }}>{p.label}</div>
+            <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.45)', fontFamily: 'Fredoka', marginTop: 2 }}>{p.desc}</div>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#f5a623', fontWeight: 700, marginTop: 4 }}>€1,99 una tantum</div>
+          </div>
+          {p.attivo ? (
+            <div style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.4)', borderRadius: 8, color: '#00e676', fontFamily: 'Orbitron', fontSize: 9, padding: '7px 14px', letterSpacing: 1 }}>
+              ✓ ATTIVO
+            </div>
+          ) : loadingPass === p.tipo ? (
+            <div style={{ color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', fontSize: 9 }}>…</div>
+          ) : (
+            <div
+              ref={el => {
+                if (el && !el.dataset.rendered) {
+                  el.dataset.rendered = '1';
+                  const load = () => renderPaypalForPass(p.tipo, el);
+                  if (window.paypal) { load(); return; }
+                  const existing = document.getElementById('paypal-sdk') || document.getElementById('paypal-sdk-negozio');
+                  if (existing) { const check = setInterval(() => { if (window.paypal) { clearInterval(check); load(); } }, 200); return; }
+                  const script = document.createElement('script');
+                  script.id = `paypal-sdk-pass-${p.tipo}`;
+                  script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=EUR&locale=it_IT&disable-funding=credit,card`;
+                  script.onload = load;
+                  document.head.appendChild(script);
+                }
+              }}
+              style={{ width: 130, minHeight: 40 }}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function SezioneRicaricaKisses({ tagli, user, kisses, onKissesUpdate }) {
   const [selectedTaglio, setSelectedTaglio] = useState(tagli?.[1]?.id || 'sm');
   const [stato, setStato] = useState('idle');
@@ -230,11 +321,17 @@ export default function NegozioOverlay({ user, profilo: profiloInit, onKissesUpd
   const [config, setConfig] = useState(null);
   const [kisses, setKisses] = useState(profiloInit?.kisses ?? 0);
   const [hardPass, setHardPass] = useState(profiloInit?.hardPass ?? false);
+  const [tradePass, setTradePass] = useState(profiloInit?.tradePass ?? false);
+  const [tradePassLoading, setTradePassLoading] = useState(false);
+  const [tradePassErr, setTradePassErr] = useState('');
+  const tradePassContainerRef = useState(null);
+  const tradeEnabled = process.env.NEXT_PUBLIC_TRADE_ENABLED === 'true';
 
   useEffect(() => { getNegozioConfig().then(setConfig); }, []);
 
   const handleKisses = (newKisses) => { setKisses(newKisses); onKissesUpdate(newKisses); };
   const handlePassHard = () => { setHardPass(true); };
+  const handleTradePass = () => { setTradePass(true); };
 
   return (
     <div style={{
@@ -266,6 +363,21 @@ export default function NegozioOverlay({ user, profilo: profiloInit, onKissesUpd
               <div style={{ fontFamily: 'Orbitron', fontSize: 10, letterSpacing: 3, color: 'rgba(238,232,220,0.4)', marginBottom: 12 }}>ACQUISTA CON KISSES</div>
               <SezioneAcquistaBeni beni={config.beni} kisses={kisses} user={user} onKissesUpdate={handleKisses} hardPass={hardPass} onPassHard={handlePassHard} />
             </div>
+
+            {/* PASS ABBONAMENTI */}
+            <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(245,166,35,0.25), transparent)' }} />
+            <div>
+              <div style={{ fontFamily: 'Orbitron', fontSize: 10, letterSpacing: 3, color: 'rgba(238,232,220,0.4)', marginBottom: 12 }}>PASS (UNA TANTUM)</div>
+              <SezionePass
+                user={user}
+                hardPass={hardPass}
+                tradePass={tradePass}
+                tradeEnabled={tradeEnabled}
+                onPassHard={handlePassHard}
+                onTradePass={handleTradePass}
+              />
+            </div>
+
             <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,77,158,0.3), transparent)' }} />
             <div>
               <div style={{ fontFamily: 'Orbitron', fontSize: 10, letterSpacing: 3, color: 'rgba(238,232,220,0.4)', marginBottom: 4 }}>RICARICA KISSES</div>
