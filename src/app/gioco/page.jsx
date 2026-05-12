@@ -2094,8 +2094,8 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
             onCancel={() => setSfidaShortage(false)}
           />
         )}
-        {/* Wrapper colonna: card sfida + bottone Kisses sotto */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+        {/* Wrapper colonna: card sfida + bottone Kisses sotto — stesse dimensioni delle altre card */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flex: 1, minWidth: 95, maxWidth: 130 }}>
           <PackCard
             tipo="sfida"
             count={nSfid}
@@ -2119,9 +2119,10 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
                 else setSfidaShortage(true);
               }}
               style={{
+                width: '100%',
                 background: 'rgba(255,45,120,0.15)', border: '1px solid rgba(255,45,120,0.5)',
                 borderRadius: 8, color: '#ff2d78', fontFamily: 'Orbitron', fontSize: 8,
-                padding: '7px 12px', cursor: 'pointer', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 4,
+                padding: '7px 0', cursor: 'pointer', letterSpacing: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
                 boxShadow: '0 0 10px rgba(255,45,120,0.2)',
               }}
             >
