@@ -2079,7 +2079,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
         gridTemplateColumns: `repeat(${nBenv > 0 ? 3 : 2}, 120px)`,
         gap: 10,
         justifyContent: 'center',
-        marginBottom: nSfid <= 0 ? 6 : 14,
+        marginBottom: 14,
       }}>
 
         {/* PACCHETTO OMAGGIO */}
@@ -2134,28 +2134,28 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
             asset={dropAttivo?.asset_bustina}
           />
         )}
-      </div>
 
-      {/* Bottone acquisto Sfida con Kisses — FUORI dal grid, non impatta le dimensioni delle card */}
-      {nSfid <= 0 && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+        {/* Bottone acquisto Sfida con Kisses — grid item in colonna 2, sotto alla card Sfida */}
+        {nSfid <= 0 && (
           <button
             onClick={() => {
               if ((profilo.kisses ?? 0) >= SFIDA_COSTO_KISSES) setSfidaConferma(true);
               else setSfidaShortage(true);
             }}
             style={{
+              gridColumn: 2,
               background: 'rgba(255,45,120,0.15)', border: '1px solid rgba(255,45,120,0.5)',
               borderRadius: 8, color: '#ff2d78', fontFamily: 'Orbitron', fontSize: 8,
-              padding: '7px 16px', cursor: 'pointer', letterSpacing: 1,
-              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '7px 0', cursor: 'pointer', letterSpacing: 1,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
               boxShadow: '0 0 10px rgba(255,45,120,0.2)',
+              width: '100%',
             }}
           >
-            <KissesIcon size={10} /> ACQUISTA SFIDA • {SFIDA_COSTO_KISSES} Kisses
+            <KissesIcon size={10} /> {SFIDA_COSTO_KISSES} KISSES
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* BANNER MANGA — CTA completamento drop */}
       {dropAttivo?.asset_manga && (() => {
