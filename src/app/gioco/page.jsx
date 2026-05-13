@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, listDropsAttivi, getDropAttivo, getClassifica, premioPerPosizione, deleteTeamFromCollezione, isDropCompleto, progressioneDrop, createPackSnapshot } from '@/lib/firestoreService';
+import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, listDropsAttivi, getDropAttivo, getClassifica, premioPerPosizione, deleteTeamFromCollezione, isDropCompleto, progressioneDrop, createPackSnapshot, getFriendsList, getFriendRequests } from '@/lib/firestoreService';
 import { calcolaRicaricaPacchetti, calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, INCREMENTI_LEVELUP, clampStat, clampWaifuStats, GOD_PACK_PROB_DEFAULT } from '@/lib/gameLogic';
 import { TIMER, RARITA, COLORI_CAPELLI, CATEGORIE_TETTE, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, OUTFIT_CONFIG_DEFAULT, ABILITA_TIPI } from '@/lib/constants';
 import { db } from '@/lib/firebase';
@@ -1360,10 +1360,23 @@ function MadalePosa({ posa }) {
 // ============================================================
 function AmiciTab({ user, profilo, collezione, waifuCat }) {
   const [subTab, setSubTab] = useState('amici'); // 'amici' | 'scambi'
-  const [refreshKey, setRefreshKey] = useState(0);
   const [scambiBadge, setScambiBadge] = useState(0);
-  const onUpdate = () => setRefreshKey(k => k + 1);
   const tradeEnabled = process.env.NEXT_PUBLIC_TRADE_ENABLED === 'true';
+
+  // Pre-fetch centralizzato: tutti i dati caricati una sola volta al mount
+  const [amici, setAmici] = useState(null); // null = loading, [] = vuoto
+  const [richieste, setRichieste] = useState(null);
+
+  const caricaAmici = useCallback(async () => {
+    const [friendList, reqList] = await Promise.all([
+      getFriendsList(user.uid).catch(() => []),
+      getFriendRequests(user.uid).catch(() => []),
+    ]);
+    setAmici(friendList);
+    setRichieste(reqList);
+  }, [user.uid]);
+
+  useEffect(() => { caricaAmici(); }, [caricaAmici]);
 
   return (
     <div className="fade-in" style={{ maxWidth: 500, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
@@ -1397,15 +1410,18 @@ function AmiciTab({ user, profilo, collezione, waifuCat }) {
       )}
 
       {subTab === 'amici' ? (
-        <>
-          <FriendIdDisplay friendId={profilo?.friendId} />
-          <AddFriendForm user={user} />
-          <FriendRequestsList key={`req-${refreshKey}`} user={user} onUpdate={onUpdate} />
-          <FriendsList key={`list-${refreshKey}`} user={user} />
-        </>
+        amici === null ? (
+          <div style={{ textAlign: 'center', padding: 24, color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 2 }}>CARICAMENTO…</div>
+        ) : (
+          <>
+            <FriendIdDisplay friendId={profilo?.friendId} />
+            <AddFriendForm user={user} />
+            <FriendRequestsList richieste={richieste || []} user={user} onUpdate={caricaAmici} />
+            <FriendsList amici={amici} user={user} onUpdate={caricaAmici} />
+          </>
+        )
       ) : (
         <ScambiList
-          key={`scambi-${refreshKey}`}
           user={user}
           collezione={collezione}
           waifuCat={waifuCat || []}

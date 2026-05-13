@@ -5,14 +5,14 @@ import KissesShortageModal from './KissesShortageModal';
 import { getNegozioConfig } from '@/lib/firestoreService';
 
 // Mapping esplicito beneId → endpoint (evita errori di auto-generazione)
+// pass_hard e pass_scambi sono gestiti nella SezionePass separata
 const BENE_ENDPOINT = {
   pack_sfida: '/api/kisses/buy-pack',
   energia:    '/api/kisses/buy-energia',
-  pass_hard:  '/api/kisses/buy-passhard',
 };
 
-const BENI_ICONS  = { pack_sfida: '🎁', energia: '⚡', pass_hard: '🔞' };
-const BENI_COLORI = { pack_sfida: '#f5a623', energia: '#00e676', pass_hard: '#ec4899' };
+const BENI_ICONS  = { pack_sfida: '🎁', energia: '⚡' };
+const BENI_COLORI = { pack_sfida: '#f5a623', energia: '#00e676' };
 
 function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate, hardPass = false, onPassHard, onProfileUpdate }) {
   const [busy, setBusy]         = useState(null);
@@ -130,92 +130,190 @@ function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate, hardPass = fa
   );
 }
 
-function SezionePass({ user, hardPass, tradePass, tradeEnabled, onPassHard, onTradePass }) {
-  const [loadingPass, setLoadingPass] = useState(null); // 'pass_hard' | 'pass_scambi'
+// Definizioni pass: prezzi, endpoint Kisses, tipo PayPal
+const PASS_CONFIG = {
+  pass_hard: {
+    label: '🔞 Pass Hard', desc: 'Video immersivi illimitati',
+    colore: '#ec4899', priceEur: '4,99', tipoPaypal: 'pass_hard',
+    kissesEndpoint: '/api/kisses/buy-passhard', kissesCosto: 500,
+  },
+  pass_scambi: {
+    label: '🔓 Trade Pass', desc: 'Scambi illimitati ogni giorno',
+    colore: '#f5a623', priceEur: '1,99', tipoPaypal: 'pass_scambi',
+    kissesEndpoint: '/api/kisses/buy-tradepass', kissesCosto: 100,
+  },
+};
+
+function PassCard({ tipo, attivo, kisses, user, onSuccess }) {
+  const cfg = PASS_CONFIG[tipo];
+  const [modo, setModo] = useState(null); // null | 'paypal' | 'kisses-confirm' | 'loading' | 'success' | 'error'
   const [errMsg, setErrMsg] = useState('');
-  const [passContainerRef] = useState(() => ({ current: null }));
+  const paypalRef = useRef(null);
+  const paypalRendered = useRef(false);
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
 
-  const renderPaypalForPass = useCallback((tipo, containerEl) => {
-    if (!containerEl || !window.paypal) return;
-    containerEl.innerHTML = '';
-    window.paypal.Buttons({
-      style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'pay', height: 36 },
-      createOrder: async () => {
-        const res = await fetch('/api/paypal/create-order-kisses', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tipo }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Errore ordine');
-        return data.orderID;
-      },
-      onApprove: async (data) => {
-        setLoadingPass(tipo);
-        try {
-          const token = await user.getIdToken();
-          const res = await fetch('/api/paypal/capture-order-kisses', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ orderID: data.orderID, uid: user.uid, tipo }),
-          });
-          const result = await res.json();
-          if (!res.ok) throw new Error(result.error || 'Errore cattura');
-          if (tipo === 'pass_hard') onPassHard?.();
-          if (tipo === 'pass_scambi') onTradePass?.();
-        } catch (e) { setErrMsg(e.message); }
-        finally { setLoadingPass(null); }
-      },
-      onError: (err) => { console.error('[SezionePass PayPal]', err); setErrMsg('Errore PayPal. Riprova.'); setLoadingPass(null); },
-    }).render(containerEl);
-  }, [user, onPassHard, onTradePass]);
+  const puoConKisses = (kisses ?? 0) >= cfg.kissesCosto;
 
+  const loadPaypal = useCallback((el) => {
+    if (!el || paypalRendered.current) return;
+    paypalRendered.current = true;
+    el.innerHTML = '';
+    const go = () => {
+      window.paypal.Buttons({
+        style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'pay', height: 38 },
+        createOrder: async () => {
+          const res = await fetch('/api/paypal/create-order-kisses', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tipo: cfg.tipoPaypal }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Errore ordine');
+          return data.orderID;
+        },
+        onApprove: async (data) => {
+          setModo('loading');
+          try {
+            const token = await user.getIdToken();
+            const res = await fetch('/api/paypal/capture-order-kisses', {
+              method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ orderID: data.orderID, uid: user.uid, tipo: cfg.tipoPaypal }),
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Errore cattura');
+            setModo('success');
+            onSuccess?.();
+          } catch (e) { setErrMsg(e.message); setModo('error'); }
+        },
+        onError: () => { setErrMsg('Errore PayPal. Riprova.'); setModo(null); paypalRendered.current = false; },
+        onCancel: () => { setModo(null); paypalRendered.current = false; },
+      }).render(el);
+    };
+    if (window.paypal) { go(); return; }
+    const existing = document.getElementById('paypal-sdk') || document.getElementById('paypal-sdk-negozio');
+    if (existing) { const t = setInterval(() => { if (window.paypal) { clearInterval(t); go(); } }, 200); return; }
+    const script = document.createElement('script');
+    script.id = `paypal-sdk-pass-${tipo}`;
+    script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=EUR&locale=it_IT&disable-funding=credit,card`;
+    script.onload = go;
+    document.head.appendChild(script);
+  }, [user, cfg, clientId]);
+
+  const acquistaConKisses = async () => {
+    setModo('loading');
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(cfg.kissesEndpoint, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Errore acquisto');
+      setModo('success');
+      onSuccess?.({ kissesSpent: cfg.kissesCosto });
+    } catch (e) { setErrMsg(e.message); setModo('error'); }
+  };
+
+  return (
+    <div style={{
+      background: 'rgba(6,3,15,0.6)', border: `1px solid ${cfg.colore}30`,
+      borderRadius: 12, padding: '14px 16px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: attivo ? 0 : 12 }}>
+        <div>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: cfg.colore, fontWeight: 700 }}>{cfg.label}</div>
+          <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.45)', fontFamily: 'Fredoka', marginTop: 2 }}>{cfg.desc}</div>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.35)', marginTop: 4, letterSpacing: 0.5 }}>una tantum</div>
+        </div>
+        {attivo && (
+          <div style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.4)', borderRadius: 8, color: '#00e676', fontFamily: 'Orbitron', fontSize: 9, padding: '7px 14px', letterSpacing: 1, whiteSpace: 'nowrap' }}>
+            ✓ ATTIVO
+          </div>
+        )}
+      </div>
+
+      {!attivo && modo === 'success' && (
+        <div style={{ textAlign: 'center', padding: '8px 0', color: '#00e676', fontFamily: 'Orbitron', fontSize: 10 }}>✓ ATTIVATO!</div>
+      )}
+
+      {!attivo && modo === 'loading' && (
+        <div style={{ textAlign: 'center', padding: '8px 0', color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', fontSize: 9 }}>Elaborazione…</div>
+      )}
+
+      {!attivo && modo === 'error' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ color: '#ff4d4d', fontFamily: 'Orbitron', fontSize: 9, textAlign: 'center' }}>{errMsg}</div>
+          <button onClick={() => { setModo(null); setErrMsg(''); paypalRendered.current = false; }} style={{ alignSelf: 'center', background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 7, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', fontSize: 8, padding: '5px 12px', cursor: 'pointer' }}>RIPROVA</button>
+        </div>
+      )}
+
+      {/* Bottoni di acquisto — visibili solo se pass non attivo e nessun modo attivo */}
+      {!attivo && !modo && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {/* Bottone Kisses */}
+          <button
+            onClick={() => setModo('kisses-confirm')}
+            disabled={!puoConKisses}
+            style={{
+              flex: '1 1 auto',
+              background: puoConKisses ? `${cfg.colore}18` : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${puoConKisses ? cfg.colore + '50' : 'rgba(255,255,255,0.1)'}`,
+              borderRadius: 8, color: puoConKisses ? cfg.colore : 'rgba(255,255,255,0.25)',
+              fontFamily: 'Orbitron', fontSize: 9, padding: '8px 10px',
+              cursor: puoConKisses ? 'pointer' : 'not-allowed', letterSpacing: 1,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+            }}
+          >
+            <KissesIcon size={11} /> {cfg.kissesCosto} Kisses
+          </button>
+          {/* Bottone PayPal */}
+          <button
+            onClick={() => { setModo('paypal'); setTimeout(() => loadPaypal(paypalRef.current), 50); }}
+            style={{
+              flex: '1 1 auto',
+              background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.4)',
+              borderRadius: 8, color: '#f5a623',
+              fontFamily: 'Orbitron', fontSize: 9, padding: '8px 10px',
+              cursor: 'pointer', letterSpacing: 1,
+            }}
+          >
+            💳 €{cfg.priceEur}
+          </button>
+        </div>
+      )}
+
+      {/* Conferma acquisto con Kisses */}
+      {!attivo && modo === 'kisses-confirm' && (
+        <div style={{ background: 'rgba(6,3,15,0.8)', border: `1px solid ${cfg.colore}30`, borderRadius: 8, padding: '12px 14px' }}>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: cfg.colore, letterSpacing: 1, marginBottom: 8 }}>CONFERMA ACQUISTO</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>
+            <KissesIcon size={12} />
+            <span style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#ff4d9e', fontWeight: 700 }}>{cfg.kissesCosto} Kisses</span>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setModo(null)} style={{ flex: 1, background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 7, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', fontSize: 8, padding: '7px', cursor: 'pointer' }}>ANNULLA</button>
+            <button onClick={acquistaConKisses} style={{ flex: 1, background: `${cfg.colore}20`, border: `1px solid ${cfg.colore}50`, borderRadius: 7, color: cfg.colore, fontFamily: 'Orbitron', fontSize: 8, padding: '7px', cursor: 'pointer' }}>CONFERMA</button>
+          </div>
+        </div>
+      )}
+
+      {/* Container PayPal */}
+      {!attivo && modo === 'paypal' && (
+        <div style={{ marginTop: 4 }}>
+          <div ref={el => { paypalRef.current = el; if (el && !paypalRendered.current) loadPaypal(el); }} style={{ minHeight: 45 }} />
+          <button onClick={() => { setModo(null); paypalRendered.current = false; }} style={{ marginTop: 6, background: 'none', border: 'none', color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', fontSize: 8, cursor: 'pointer', width: '100%' }}>← TORNA INDIETRO</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SezionePass({ user, kisses, hardPass, tradePass, tradeEnabled, onPassHard, onTradePass, onKissesUpdate }) {
   const PASS_DEFS = [
-    { tipo: 'pass_hard',   label: '🔞 Pass Hard',    desc: 'Video immersivi illimitati', attivo: hardPass,   colore: '#ec4899' },
-    ...(tradeEnabled ? [{ tipo: 'pass_scambi', label: '🔓 Trade Pass',  desc: 'Scambi illimitati ogni giorno', attivo: tradePass,  colore: '#f5a623' }] : []),
+    { tipo: 'pass_hard', attivo: hardPass, onSuccess: (r) => { onPassHard?.(); if (r?.kissesSpent) onKissesUpdate?.(Math.max(0, (kisses ?? 0) - r.kissesSpent)); } },
+    ...(tradeEnabled ? [{ tipo: 'pass_scambi', attivo: tradePass, onSuccess: (r) => { onTradePass?.(); if (r?.kissesSpent) onKissesUpdate?.(Math.max(0, (kisses ?? 0) - r.kissesSpent)); } }] : []),
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {errMsg && <div style={{ color: '#ff4d4d', fontFamily: 'Orbitron', fontSize: 9, textAlign: 'center' }}>{errMsg}</div>}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {PASS_DEFS.map(p => (
-        <div key={p.tipo} style={{
-          background: 'rgba(6,3,15,0.6)', border: `1px solid ${p.colore}30`,
-          borderRadius: 12, padding: '14px 16px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-        }}>
-          <div>
-            <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: p.colore, fontWeight: 700 }}>{p.label}</div>
-            <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.45)', fontFamily: 'Fredoka', marginTop: 2 }}>{p.desc}</div>
-            <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#f5a623', fontWeight: 700, marginTop: 4 }}>€1,99 una tantum</div>
-          </div>
-          {p.attivo ? (
-            <div style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.4)', borderRadius: 8, color: '#00e676', fontFamily: 'Orbitron', fontSize: 9, padding: '7px 14px', letterSpacing: 1 }}>
-              ✓ ATTIVO
-            </div>
-          ) : loadingPass === p.tipo ? (
-            <div style={{ color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', fontSize: 9 }}>…</div>
-          ) : (
-            <div
-              ref={el => {
-                if (el && !el.dataset.rendered) {
-                  el.dataset.rendered = '1';
-                  const load = () => renderPaypalForPass(p.tipo, el);
-                  if (window.paypal) { load(); return; }
-                  const existing = document.getElementById('paypal-sdk') || document.getElementById('paypal-sdk-negozio');
-                  if (existing) { const check = setInterval(() => { if (window.paypal) { clearInterval(check); load(); } }, 200); return; }
-                  const script = document.createElement('script');
-                  script.id = `paypal-sdk-pass-${p.tipo}`;
-                  script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=EUR&locale=it_IT&disable-funding=credit,card`;
-                  script.onload = load;
-                  document.head.appendChild(script);
-                }
-              }}
-              style={{ width: 130, minHeight: 40 }}
-            />
-          )}
-        </div>
+        <PassCard key={p.tipo} tipo={p.tipo} attivo={p.attivo} kisses={kisses} user={user} onSuccess={p.onSuccess} />
       ))}
     </div>
   );
@@ -372,11 +470,13 @@ export default function NegozioOverlay({ user, profilo: profiloInit, onKissesUpd
               <div style={{ fontFamily: 'Orbitron', fontSize: 10, letterSpacing: 3, color: 'rgba(238,232,220,0.4)', marginBottom: 12 }}>PASS (UNA TANTUM)</div>
               <SezionePass
                 user={user}
+                kisses={kisses}
                 hardPass={hardPass}
                 tradePass={tradePass}
                 tradeEnabled={tradeEnabled}
                 onPassHard={handlePassHard}
                 onTradePass={handleTradePass}
+                onKissesUpdate={handleKisses}
               />
             </div>
 

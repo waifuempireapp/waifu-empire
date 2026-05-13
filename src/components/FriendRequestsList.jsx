@@ -1,25 +1,20 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { getFriendRequests, getUserProfile } from '@/lib/firestoreService';
+import { getUserProfile } from '@/lib/firestoreService';
 
-export default function FriendRequestsList({ user, onUpdate }) {
-  const [richieste, setRichieste] = useState([]);
+// Accetta `richieste` come prop dal parent (AmiciTab) per evitare flash di caricamento
+export default function FriendRequestsList({ user, richieste = [], onUpdate }) {
   const [profiloMap, setProfiloMap] = useState({});
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
-    carica();
-  }, [user]);
-
-  const carica = async () => {
-    const list = await getFriendRequests(user.uid);
-    setRichieste(list);
-    const profiles = await Promise.all(list.map(r => getUserProfile(r.fromUid)));
-    const map = {};
-    list.forEach((r, i) => { map[r.fromUid] = profiles[i]; });
-    setProfiloMap(map);
-  };
+    if (richieste.length === 0) return;
+    Promise.all(richieste.map(r => getUserProfile(r.fromUid))).then(profiles => {
+      const map = {};
+      richieste.forEach((r, i) => { map[r.fromUid] = profiles[i]; });
+      setProfiloMap(map);
+    });
+  }, [richieste]);
 
   const rispondi = async (friendshipId, azione) => {
     setBusy(true);

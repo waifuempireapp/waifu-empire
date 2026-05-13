@@ -1,20 +1,8 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { getFriendsList, getFriendshipDoc } from '@/lib/firestoreService';
+import { getFriendshipDoc } from '@/lib/firestoreService';
 
-export default function FriendsList({ user }) {
-  const [amici, setAmici] = useState([]);
-
-  useEffect(() => {
-    if (!user) return;
-    carica();
-  }, [user]);
-
-  const carica = async () => {
-    const list = await getFriendsList(user.uid);
-    setAmici(list);
-  };
-
+// Accetta `amici` come prop dal parent (AmiciTab) per evitare flash di caricamento
+export default function FriendsList({ user, amici = [], onUpdate }) {
   const rimuovi = async (amicoUid) => {
     const friendship = await getFriendshipDoc(user.uid, amicoUid);
     if (!friendship) return;
@@ -24,7 +12,7 @@ export default function FriendsList({ user }) {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ friendshipId: friendship.id }),
     });
-    await carica();
+    onUpdate?.();
   };
 
   return (

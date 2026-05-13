@@ -13,7 +13,7 @@ const TAGLI = {
 
 // Pass venduti con PayPal (nessuna lettura Firestore)
 const PASS_ITEMS = {
-  pass_hard:    { price_eur: '1.99', label: 'Pass Hard — Video immersivi illimitati' },
+  pass_hard:    { price_eur: '4.99', label: 'Pass Hard — Video immersivi illimitati' },
   pass_scambi:  { price_eur: '1.99', label: 'Trade Pass — Scambi illimitati' },
 };
 

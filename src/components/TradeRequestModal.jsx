@@ -34,7 +34,7 @@ export default function TradeRequestModal({ waifu, waifuId, user, onSuccess, onC
       const res = await fetch('/api/trades/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ toUid: amicoSel.uid, fromWaifuId: waifuId }),
+        body: JSON.stringify({ toUid: amicoSel.id, fromWaifuId: waifuId }),
       });
       const data = await res.json();
       if (res.status === 402 && data.needTradePass) {
