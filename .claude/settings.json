@@ -3,7 +3,9 @@
     "allow": [
       "Bash(node -e ' *)",
       "Read(//c/Progetti/Impero delle waifu/imperio-waifu/src/components/**)",
-      "Bash(dir src\\\\components)"
+      "Bash(dir src\\\\components)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d['instruction'][:300]\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(a['id'], a['status']\\) for a in d['artifacts']]\")"
     ]
   }
 }

@@ -1,49 +1,11 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
-
-// ── Ghost pack persistence (localStorage) ──
-const GHOST_STORAGE_KEY = 'iw_ghost_fished_v1';
-
-function getGhostFishedToday() {
-  if (typeof window === 'undefined') return new Set();
-  try {
-    const raw = localStorage.getItem(GHOST_STORAGE_KEY);
-    if (!raw) return new Set();
-    const { date, ids } = JSON.parse(raw);
-    const today = new Date().toISOString().slice(0, 10);
-    if (date !== today) { localStorage.removeItem(GHOST_STORAGE_KEY); return new Set(); }
-    return new Set(ids);
-  } catch { return new Set(); }
-}
-
-function saveGhostFished(id) {
-  if (typeof window === 'undefined') return;
-  try {
-    const today = new Date().toISOString().slice(0, 10);
-    const current = getGhostFishedToday();
-    current.add(id);
-    localStorage.setItem(GHOST_STORAGE_KEY, JSON.stringify({ date: today, ids: [...current] }));
-  } catch {}
-}
-
-function filterFishedGhosts(packs) {
-  const fished = getGhostFishedToday();
-  return packs.filter(p => !p.isGhost || !fished.has(p.id));
-}
 import PescaPackCard from './PescaPackCard';
 import PescaRevealAnimation from './PescaRevealAnimation';
 import KissesIcon from './KissesIcon';
 import KissesShortageModal from './KissesShortageModal';
 
 const KISSES_COST = 10;
-
-const RARITA_COLORI = {
-  comune: '#9e9e9e',
-  raro: '#42a5f5',
-  epico: '#ab47bc',
-  leggendario: '#ffa726',
-  immersivo: '#ec4899',
-};
 
 function fisherYates(arr) {
   const a = [...arr];
@@ -66,54 +28,35 @@ function CardBack({ selected, onClick, size = 'md' }) {
         background: 'linear-gradient(145deg, #120825, #0d0618)',
         border: `2px solid ${selected ? '#ff4d9e' : 'rgba(245,166,35,0.35)'}`,
         cursor: onClick ? 'pointer' : 'default',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexDirection: 'column', gap: 4,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 4,
         boxShadow: selected
           ? '0 0 20px rgba(255,77,158,0.6), 0 0 8px rgba(255,77,158,0.3)'
           : '0 2px 12px rgba(0,0,0,0.5)',
         transform: selected ? 'scale(1.1) translateY(-6px)' : 'scale(1)',
         transition: 'all 0.2s cubic-bezier(.4,0,.2,1)',
-        position: 'relative', overflow: 'hidden',
-        userSelect: 'none',
+        position: 'relative', overflow: 'hidden', userSelect: 'none',
       }}
     >
-      <div style={{
-        position: 'absolute', inset: 4,
-        border: `1px solid ${selected ? 'rgba(255,77,158,0.4)' : 'rgba(245,166,35,0.15)'}`,
-        borderRadius: 5,
-        transition: 'border-color 0.2s',
-      }} />
-      <div style={{
-        position: 'absolute', inset: 0,
-        backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 6px, rgba(245,166,35,0.03) 6px, rgba(245,166,35,0.03) 7px)',
-      }} />
-      <span style={{
-        fontSize: size === 'md' ? 26 : 20,
-        color: selected ? '#ff4d9e' : 'rgba(245,166,35,0.55)',
-        filter: selected ? 'drop-shadow(0 0 10px rgba(255,77,158,0.9))' : 'none',
-        transition: 'all 0.2s', zIndex: 1,
-      }}>♛</span>
-      {selected && (
-        <div style={{ fontSize: 7, fontFamily: 'Orbitron', letterSpacing: 1, color: '#ff4d9e', zIndex: 1 }}>SCELTA</div>
-      )}
+      <div style={{ position: 'absolute', inset: 4, border: `1px solid ${selected ? 'rgba(255,77,158,0.4)' : 'rgba(245,166,35,0.15)'}`, borderRadius: 5, transition: 'border-color 0.2s' }} />
+      <div style={{ position: 'absolute', inset: 0, backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 6px, rgba(245,166,35,0.03) 6px, rgba(245,166,35,0.03) 7px)' }} />
+      <span style={{ fontSize: size === 'md' ? 26 : 20, color: selected ? '#ff4d9e' : 'rgba(245,166,35,0.55)', filter: selected ? 'drop-shadow(0 0 10px rgba(255,77,158,0.9))' : 'none', transition: 'all 0.2s', zIndex: 1 }}>♛</span>
+      {selected && <div style={{ fontSize: 7, fontFamily: 'Orbitron', letterSpacing: 1, color: '#ff4d9e', zIndex: 1 }}>SCELTA</div>}
     </div>
   );
 }
 
 export default function PescaMisteriosaFeed({ user, profilo, collezione, waifuCat, initialPacks, onKissesSpent, onCollectionRefresh }) {
-  // Filtra subito le ghost già pescate (localStorage) anche nell'initialPacks pre-fetchato
-  const [packs, setPacks] = useState(() => filterFishedGhosts(initialPacks || []));
-  const [loading, setLoading] = useState(initialPacks === null);
-  const lastFishedRef = useRef(null); // { id, isGhost } — pack appena pescato
-  const [error, setError] = useState(null);
+  const [packs, setPacks]               = useState(initialPacks || []);
+  const [loading, setLoading]           = useState(initialPacks === null);
+  const lastFishedRef                   = useRef(null);
+  const [error, setError]               = useState(null);
   const [selectedPack, setSelectedPack] = useState(null);
-  // shuffledOrder[uiIndex] = realIndex (indice nell'array originale del pack)
-  const [shuffledOrder, setShuffledOrder] = useState([]);
-  const [selectedCardIndex, setSelectedCardIndex] = useState(null); // indice UI
-  const [busy, setBusy] = useState(false);
-  const [risultato, setRisultato] = useState(null); // { allCards (shuffled), chosenIndex (UI) }
-  const [notif, setNotif] = useState(null);
-  const [kissesShortage, setKissesShortage] = useState(null);
+  const [shuffledOrder, setShuffledOrder]         = useState([]);
+  const [selectedCardIndex, setSelectedCardIndex] = useState(null);
+  const [busy, setBusy]                 = useState(false);
+  const [risultato, setRisultato]       = useState(null);
+  const [notif, setNotif]               = useState(null);
+  const [kissesShortage, setKissesShortage]       = useState(null);
 
   const caricaFeed = useCallback(async () => {
     if (!user) return;
@@ -123,13 +66,12 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, waifuCa
       const res = await fetch('/api/pesca/feed', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Errore caricamento feed');
-      // Filtra le ghost già pescate (deterministiche per uid+data)
-      setPacks(filterFishedGhosts(data.packs || []));
+      setPacks(data.packs || []);
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
   }, [user]);
 
-  // Carica il feed solo se non sono stati passati initialPacks già pronti
+  // Carica il feed solo se non sono stati passati initialPacks
   useEffect(() => { if (initialPacks === null) caricaFeed(); }, [caricaFeed]);
 
   const mostraNotif = (testo, colore = '#ff4d9e') => {
@@ -138,7 +80,6 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, waifuCa
   };
 
   const aprePack = (pack) => {
-    // Genera ordine shuffled all'apertura del modal
     const indices = Array.from({ length: (pack.cards || []).length }, (_, i) => i);
     setShuffledOrder(fisherYates(indices));
     setSelectedPack(pack);
@@ -149,11 +90,10 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, waifuCa
     if (selectedCardIndex === null || !selectedPack || busy) return;
     setBusy(true);
     try {
-      // Mappa indice UI → indice reale nell'array originale del pack
       const realIndex = shuffledOrder[selectedCardIndex];
       const token = await user.getIdToken();
+      // Ghost pack ora in Firestore: non serve più ghostCards nel body
       const body = { snapshotId: selectedPack.id, chosenCardIndex: realIndex };
-      if (selectedPack.isGhost) body.ghostCards = selectedPack.cards;
       const res = await fetch('/api/pesca/fish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -162,20 +102,17 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, waifuCa
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Errore pesca');
 
-      // Salva il pack pescato prima di azzerare lo stato
       lastFishedRef.current = { id: selectedPack.id, isGhost: selectedPack.isGhost };
-
       setSelectedPack(null);
       setSelectedCardIndex(null);
       setShuffledOrder([]);
 
-      // Passa all'animazione le carte nell'ordine shuffled e l'indice UI come chosenIndex
       const shuffledCards = shuffledOrder.map(i => selectedPack.cards[i]);
       const isNewArr = shuffledCards.map(c => {
         if (!collezione) return false;
-        if (c.tipo === 'waifu') return !collezione.waifu?.[c.id];
+        if (c.tipo === 'waifu')  return !collezione.waifu?.[c.id];
         if (c.tipo === 'outfit') return !collezione.outfit?.[c.id];
-        if (c.tipo === 'posa') return !collezione.pose?.[c.id];
+        if (c.tipo === 'posa')   return !collezione.pose?.[c.id];
         return false;
       });
       setRisultato({ allCards: shuffledCards, chosenIndex: selectedCardIndex, isNewArr });
@@ -187,23 +124,14 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, waifuCa
 
   const onRivelazioneFine = async () => {
     setRisultato(null);
-    // Aggiorna solo il pack pescato — gli altri restano invariati
     const fished = lastFishedRef.current;
     if (fished) {
-      if (fished.isGhost) {
-        // Persiste in localStorage: non riapparirà neanche dopo reload
-        saveGhostFished(fished.id);
-        setPacks(prev => prev.filter(p => p.id !== fished.id));
-        // Nessun fetch di sostituzione: gli ID ghost sono deterministici per uid+giorno,
-        // il prossimo ingresso nella sezione mostrerà solo le ghost non ancora pescate
-      } else {
-        // Marca il pack reale come già pescato (rimane visibile ma disabilitato)
-        setPacks(prev => prev.map(p => p.id === fished.id ? { ...p, alreadyFished: true } : p));
-      }
+      // Marca il pack come pescato in local state — il server lo ha già salvato in fishing_attempts
+      // Al prossimo fetch (rientro nella sezione) il server restituirà alreadyFished: true
+      setPacks(prev => prev.map(p => p.id === fished.id ? { ...p, alreadyFished: true } : p));
       lastFishedRef.current = null;
     }
     mostraNotif('Carta aggiunta alla collezione!', '#00e676');
-    // Invalida la collezione nel parent così il tab Collezione si aggiorna
     onCollectionRefresh?.();
   };
 
@@ -216,8 +144,7 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, waifuCa
           position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)',
           background: 'rgba(6,3,15,0.97)', backdropFilter: 'blur(12px)',
           border: `1px solid ${notif.colore}80`, color: notif.colore,
-          padding: '10px 24px', borderRadius: 10,
-          fontFamily: 'Orbitron', letterSpacing: 2, fontSize: 11, zIndex: 500,
+          padding: '10px 24px', borderRadius: 10, fontFamily: 'Orbitron', letterSpacing: 2, fontSize: 11, zIndex: 500,
         }}>{notif.testo}</div>
       )}
 
@@ -248,7 +175,7 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, waifuCa
         />
       )}
 
-      {/* Modale selezione alla cieca — full-viewport, nessuno scroll */}
+      {/* Modale selezione alla cieca — full-viewport, layout colonna 3+2 */}
       {selectedPack && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 400,
@@ -258,7 +185,7 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, waifuCa
           paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
           paddingInline: 16,
         }}>
-          {/* Header — altezza fissa */}
+          {/* Header */}
           <div style={{ textAlign: 'center', flexShrink: 0, paddingBottom: 12 }}>
             <div style={{ fontFamily: 'Orbitron', fontSize: 12, letterSpacing: 3, color: '#ff4d9e', marginBottom: 4 }}>
               PESCA ALLA CIECA
@@ -268,55 +195,62 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, waifuCa
             </div>
           </div>
 
-          {/* Carte — crescono per riempire lo spazio disponibile */}
+          {/* Carte in griglia 3+2 — uguale al feed */}
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', alignContent: 'center' }}>
-              {shuffledOrder.map((_, uiIdx) => (
-                <CardBack
-                  key={uiIdx}
-                  selected={selectedCardIndex === uiIdx}
-                  onClick={() => setSelectedCardIndex(selectedCardIndex === uiIdx ? null : uiIdx)}
-                  size="md"
-                />
-              ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+              {/* Riga 1: 3 carte (indici 0,1,2) */}
+              <div style={{ display: 'flex', gap: 10 }}>
+                {[0, 1, 2].map(uiIdx => (
+                  <CardBack
+                    key={uiIdx}
+                    selected={selectedCardIndex === uiIdx}
+                    onClick={() => setSelectedCardIndex(selectedCardIndex === uiIdx ? null : uiIdx)}
+                    size="md"
+                  />
+                ))}
+              </div>
+              {/* Riga 2: 2 carte (indici 3,4) */}
+              <div style={{ display: 'flex', gap: 10 }}>
+                {[3, 4].map(uiIdx => (
+                  <CardBack
+                    key={uiIdx}
+                    selected={selectedCardIndex === uiIdx}
+                    onClick={() => setSelectedCardIndex(selectedCardIndex === uiIdx ? null : uiIdx)}
+                    size="md"
+                  />
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Footer — altezza fissa, sempre visibile */}
+          {/* Footer fisso */}
           <div style={{ flexShrink: 0, paddingTop: 12 }}>
             {selectedCardIndex !== null && (
               <div style={{ fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 2, color: '#ff4d9e', opacity: 0.8, textAlign: 'center', marginBottom: 10 }}>
                 Carta {selectedCardIndex + 1} selezionata
               </div>
             )}
-
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-            <button
-              onClick={() => { setSelectedPack(null); setSelectedCardIndex(null); setShuffledOrder([]); }}
-              style={{
-                background: 'none', border: '1px solid rgba(255,255,255,0.15)',
-                borderRadius: 8, color: 'rgba(238,232,220,0.45)',
-                fontFamily: 'Orbitron', fontSize: 9, padding: '12px 18px', cursor: 'pointer',
-              }}
-            >ANNULLA</button>
-            <button
-              onClick={confermaScelta}
-              disabled={selectedCardIndex === null || busy}
-              style={{
-                background: selectedCardIndex !== null ? 'rgba(255,77,158,0.15)' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${selectedCardIndex !== null ? 'rgba(255,77,158,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                borderRadius: 24,
-                color: selectedCardIndex !== null ? '#ff4d9e' : 'rgba(255,255,255,0.2)',
-                fontFamily: 'Orbitron', fontSize: 11, letterSpacing: 1,
-                padding: '13px 22px', cursor: selectedCardIndex !== null && !busy ? 'pointer' : 'not-allowed',
-                display: 'flex', alignItems: 'center', gap: 6,
-                transition: 'all 0.2s',
-              }}
-            >
-              <KissesIcon size={14} />
-              {busy ? 'PESCA IN CORSO…' : `PESCA (${KISSES_COST} Kisses)`}
-            </button>
-          </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button
+                onClick={() => { setSelectedPack(null); setSelectedCardIndex(null); setShuffledOrder([]); }}
+                style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: 'rgba(238,232,220,0.45)', fontFamily: 'Orbitron', fontSize: 9, padding: '12px 18px', cursor: 'pointer' }}
+              >ANNULLA</button>
+              <button
+                onClick={confermaScelta}
+                disabled={selectedCardIndex === null || busy}
+                style={{
+                  background: selectedCardIndex !== null ? 'rgba(255,77,158,0.15)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${selectedCardIndex !== null ? 'rgba(255,77,158,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                  borderRadius: 24, color: selectedCardIndex !== null ? '#ff4d9e' : 'rgba(255,255,255,0.2)',
+                  fontFamily: 'Orbitron', fontSize: 11, letterSpacing: 1,
+                  padding: '13px 22px', cursor: selectedCardIndex !== null && !busy ? 'pointer' : 'not-allowed',
+                  display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.2s',
+                }}
+              >
+                <KissesIcon size={14} />
+                {busy ? 'PESCA IN CORSO…' : `PESCA (${KISSES_COST} Kisses)`}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -341,7 +275,7 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, waifuCa
             userKisses={kissesAttuali}
             collezione={collezione}
             onPesca={(p) => {
-              if (p.alreadyFished) return; // sicurezza extra lato client
+              if (p.alreadyFished) return;
               if (kissesAttuali < KISSES_COST) {
                 setKissesShortage({ pendingPack: p });
               } else {

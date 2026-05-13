@@ -30,8 +30,27 @@ export function BadgeNew({ style }) {
   );
 }
 
+// Badge HOT 🔥 — stesso stile di BadgeNew ma rosso-arancio
+export function BadgeHot({ style }) {
+  return (
+    <div style={{
+      position: 'absolute', top: 6, left: 6,
+      background: 'linear-gradient(135deg, #ff4500cc, #ff8c00cc)',
+      color: '#fff',
+      fontFamily: 'Orbitron, monospace',
+      fontSize: 7, fontWeight: 900, letterSpacing: 1,
+      padding: '2px 5px', borderRadius: 4,
+      border: '1px solid rgba(255,255,255,0.35)',
+      boxShadow: '0 0 8px rgba(255,69,0,0.6)',
+      pointerEvents: 'none', zIndex: 10,
+      textTransform: 'uppercase',
+      ...style,
+    }}>HOT 🔥</div>
+  );
+}
+
 // Carta con grafica identica alla collezione, dimensione configurabile
-export default function PescaCardMini({ carta, isNew, width = 65, height = 92, copia }) {
+export default function PescaCardMini({ carta, isNew, isHot, width = 65, height = 92, copia }) {
   const rb = RARITY_BORDER[carta?.rarita] || RARITY_BORDER.comune;
   const scale = width / 65;
 
@@ -89,8 +108,11 @@ export default function PescaCardMini({ carta, isNew, width = 65, height = 92, c
         </div>
       </div>
 
-      {/* Badge NEW! — stile identico a Sbusto */}
+      {/* Badge NEW! — stile identico a Sbusto (top right) */}
       {isNew && <BadgeNew />}
+
+      {/* Badge HOT 🔥 — top left; se c'è anche NEW sposta leggermente */}
+      {isHot && <BadgeHot style={isNew ? { top: 20 } : {}} />}
 
       {/* Contatore copie (opzionale) */}
       {copia !== undefined && (

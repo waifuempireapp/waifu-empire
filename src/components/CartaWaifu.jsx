@@ -127,7 +127,7 @@ function ArchetipoTag({ archetipoId, rarColor, scale = 1 }) {
 // ====================================================================
 // videoAttivo e videoRef sono ora gestiti esternamente (dalla CartaImmersiva nel modale).
 // CartaWaifu riceve videoAttivo (bool) e videoRef come prop opzionali per il solo rendering.
-export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onClick, evidenziato = false, tipo = 'auto', outfitCatalogo = [], poseCatalogo = [], equip, videoAttivo = false, videoRef = null, onVideoEnd }) {
+export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onClick, evidenziato = false, tipo = 'auto', outfitCatalogo = [], poseCatalogo = [], equip, videoAttivo = false, videoRef = null, onVideoEnd, isHot = false, censurata = false }) {
   const [videoFinito, setVideoFinito] = useState(false);
 
   if (!waifu) return null;
@@ -206,7 +206,20 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
         opacity: videoAttivo ? 0 : 1,
         transition: 'opacity 0.3s ease',
       }}>
-        {imgSrc ? (
+        {censurata ? (
+          /* Modalità censurata: immagine blurrata + overlay lucchetto (carta Hot senza Pass Hard) */
+          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+            {imgSrc && <img src={imgSrc} alt={waifu.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', filter: 'blur(14px) brightness(0.3)' }} />}
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <span style={{ fontSize: Math.round(32 * scale), filter: 'drop-shadow(0 0 8px rgba(255,69,0,0.8))' }}>🔒</span>
+              <div style={{ fontFamily: 'Orbitron', fontSize: Math.max(6, Math.round(7 * scale)), color: 'rgba(238,232,220,0.7)', letterSpacing: 1, textAlign: 'center', lineHeight: 1.4 }}>Pass Hard{'\n'}richiesto</div>
+              <button
+                onClick={e => { e.stopPropagation(); window.dispatchEvent(new Event('impero:apri-negozio')); }}
+                style={{ marginTop: 4, background: 'rgba(255,69,0,0.2)', border: '1px solid rgba(255,69,0,0.5)', borderRadius: 6, color: '#ff8c00', fontFamily: 'Orbitron', fontSize: Math.max(5, Math.round(6 * scale)), padding: '3px 8px', cursor: 'pointer' }}
+              >SBLOCCA</button>
+            </div>
+          </div>
+        ) : imgSrc ? (
           <img src={imgSrc} alt={waifu.nome}
             style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%' }}
           />
@@ -218,6 +231,19 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
           }}>
             <span style={{ fontSize: Math.round(80 * scale), opacity: 0.15, color: rb.inner, fontFamily: 'Cinzel, serif' }}>♛</span>
           </div>
+        )}
+
+        {/* Badge HOT 🔥 — solo se isHot e non censurata */}
+        {isHot && !censurata && (
+          <div style={{
+            position: 'absolute', top: Math.round(6 * scale), left: Math.round(6 * scale),
+            background: 'linear-gradient(135deg, #ff4500cc, #ff8c00cc)',
+            color: '#fff', fontFamily: 'Orbitron, monospace',
+            fontSize: Math.max(5, Math.round(7 * scale)), fontWeight: 900, letterSpacing: 0.5,
+            padding: `${Math.round(2 * scale)}px ${Math.round(5 * scale)}px`, borderRadius: 4,
+            border: '1px solid rgba(255,255,255,0.35)', boxShadow: '0 0 8px rgba(255,69,0,0.6)',
+            pointerEvents: 'none', zIndex: 12, textTransform: 'uppercase',
+          }}>HOT 🔥</div>
         )}
       </div>
 

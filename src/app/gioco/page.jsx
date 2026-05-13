@@ -1790,7 +1790,10 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
 
   const _generaEAggiorna = async (tipoPacchetto, nuovaCollezione) => {
     const drop = dropAttivo;
-    const wp = drop?.waifuIds ? waifuCat.filter(w => drop.waifuIds.includes(w.id)) : waifuCat;
+    const hasHardPass = profilo?.hardPass === true;
+    // Escludi waifu Hot se l'utente non ha il Pass Hard
+    const filteredWaifuCat = hasHardPass ? waifuCat : waifuCat.filter(w => !w.hot);
+    const wp = drop?.waifuIds ? filteredWaifuCat.filter(w => drop.waifuIds.includes(w.id)) : filteredWaifuCat;
     const op = drop?.outfitIds ? outfitCat.filter(o => drop.outfitIds.includes(o.id)) : outfitCat;
     const pp = drop?.poseIds ? poseCat.filter(p => drop.poseIds.includes(p.id)) : poseCat;
     if (wp.length === 0) { mostraNotif('Nessuna waifu nel drop attivo.', '#ff3d3d'); return null; }
@@ -1942,24 +1945,31 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
                     ) :
                     c.tipo === 'outfit' ? <CartaOutfit outfit={c.data} dimensione="piccola" /> :
                     <CartaPosa posa={c.data} dimensione="piccola" />}
-                  {/* 15: badge NEW! per carte nuove */}
+                  {/* badge NEW! per carte nuove */}
                   {rivelata && c.isNuova && (
                     <div style={{
                       position: 'absolute', top: 6, right: 6,
                       background: 'linear-gradient(135deg, #f5a623cc, #ff2d78cc)',
-                      color: '#fff',
-                      fontFamily: 'Orbitron, monospace',
-                      fontSize: 7,
-                      fontWeight: 900,
-                      letterSpacing: 1,
-                      padding: '2px 5px',
-                      borderRadius: 4,
+                      color: '#fff', fontFamily: 'Orbitron, monospace',
+                      fontSize: 7, fontWeight: 900, letterSpacing: 1,
+                      padding: '2px 5px', borderRadius: 4,
                       border: '1px solid rgba(255,255,255,0.35)',
                       boxShadow: '0 0 8px rgba(245,166,35,0.5)',
-                      pointerEvents: 'none',
-                      zIndex: 10,
-                      textTransform: 'uppercase',
+                      pointerEvents: 'none', zIndex: 10, textTransform: 'uppercase',
                     }}>NEW!</div>
+                  )}
+                  {/* badge HOT 🔥 per carte waifu Hot */}
+                  {rivelata && c.tipo === 'waifu' && c.data?.hot === true && (
+                    <div style={{
+                      position: 'absolute', top: c.isNuova ? 22 : 6, left: 6,
+                      background: 'linear-gradient(135deg, #ff4500cc, #ff8c00cc)',
+                      color: '#fff', fontFamily: 'Orbitron, monospace',
+                      fontSize: 7, fontWeight: 900, letterSpacing: 1,
+                      padding: '2px 5px', borderRadius: 4,
+                      border: '1px solid rgba(255,255,255,0.35)',
+                      boxShadow: '0 0 8px rgba(255,69,0,0.6)',
+                      pointerEvents: 'none', zIndex: 10, textTransform: 'uppercase',
+                    }}>HOT 🔥</div>
                   )}
                 </div>
                 {rivelata && isWaifu && (
@@ -2752,6 +2762,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
   const [filtroRarita, setFiltroRarita] = useState('tutte');
   const [filtroNome, setFiltroNome] = useState('');
   const [filtroScambiabile, setFiltroScambiabile] = useState(false);
+  const [filtroHot, setFiltroHot] = useState('tutti'); // 'tutti' | 'hot' | 'non-hot'
   const [sortKey, setSortKey] = useState('');   // 'rarita'|'livello'|'copie'|stat
   const [sortDir, setSortDir] = useState('desc'); // 'desc'|'asc'
   const onToggleSort = (key) => {
@@ -2914,6 +2925,8 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
         if (filtroRarita !== 'tutte') waifuEntries = waifuEntries.filter(({ w }) => w.rarita === filtroRarita);
         if (dropWaifuIds) waifuEntries = waifuEntries.filter(({ w }) => dropWaifuIds.has(w.id));
         if (filtroScambiabile) waifuEntries = waifuEntries.filter(({ dati }) => (dati.copie ?? 0) >= 2);
+        if (filtroHot === 'hot')     waifuEntries = waifuEntries.filter(({ w }) => w.hot === true);
+        if (filtroHot === 'non-hot') waifuEntries = waifuEntries.filter(({ w }) => !w.hot);
 
         // Conta scambiabili globali (senza altri filtri) per messaggio trades esaurite
         const totScambiabili = filtroScambiabile ? Object.values(collezione.waifu || {}).filter(d => (d.copie ?? 0) >= 2).length : 0;
@@ -2938,6 +2951,8 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
               filtroDropId={filtroDropId} setFiltroDropId={v => { setFiltroDropId(v); setVisibiliWaifu(12); }}
               drops={drops}
               filtroScambiabile={filtroScambiabile} setFiltroScambiabile={v => { setFiltroScambiabile(v); setVisibiliWaifu(12); }}
+              filtroHot={profilo?.hardPass ? filtroHot : null}
+              setFiltroHot={profilo?.hardPass ? v => { setFiltroHot(v); setVisibiliWaifu(12); } : null}
               sortKey={sortKey} sortDir={sortDir} onToggleSort={onToggleSort}
               count={waifuEntries.length}
             />
@@ -2954,7 +2969,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
             <div className="collection-card-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
               {visibili.map(({ id, dati, w }, idx) => (
                 <div key={id} className="card-fade-up card-clickable collection-card-item" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', animationDelay: `${idx * 45}ms` }}>
-                  <CartaWaifu waifu={w} datiCollezione={dati} dimensione="piccola" tipo="auto" onClick={() => setWaifuSel(id)} outfitCatalogo={outfitCat} poseCatalogo={poseCat} equip={collezione.equipaggiamento?.[id]} />
+                  <CartaWaifu waifu={w} datiCollezione={dati} dimensione="piccola" tipo="auto" onClick={() => setWaifuSel(id)} outfitCatalogo={outfitCat} poseCatalogo={poseCat} equip={collezione.equipaggiamento?.[id]} isHot={w.hot === true} />
                   <div style={{ textAlign: 'center', marginTop: 4 }}>
                     {dati.copie >= 3 ? (
                       <span style={{ ...stileLevelUp, fontSize: 9, color: '#00e676', display: 'block' }}>⚡ LEVEL UP!</span>
@@ -4274,7 +4289,7 @@ function SortChip({ label, skey, activeSkey, activeDir, onToggle }) {
   );
 }
 
-function BarraFiltriWaifu({ filtroNome, setFiltroNome, filtroRarita, setFiltroRarita, filtroDropId, setFiltroDropId, drops = [], filtroScambiabile, setFiltroScambiabile, sortKey, sortDir, onToggleSort, count }) {
+function BarraFiltriWaifu({ filtroNome, setFiltroNome, filtroRarita, setFiltroRarita, filtroDropId, setFiltroDropId, drops = [], filtroScambiabile, setFiltroScambiabile, filtroHot, setFiltroHot, sortKey, sortDir, onToggleSort, count }) {
   const STAT_SORT = [
     { k: 'tette', l: '✦ Tette' }, { k: 'taglia_piedi', l: '⚘ Piedi' },
     { k: 'eta', l: '⌛ Età' }, { k: 'colore_capelli', l: '✿ Cap.' }, { k: 'esperienza', l: '★ Esp.' },
@@ -4300,6 +4315,14 @@ function BarraFiltriWaifu({ filtroNome, setFiltroNome, filtroRarita, setFiltroRa
           border: `1px solid ${filtroScambiabile ? 'rgba(255,77,158,0.6)' : 'rgba(255,255,255,0.1)'}`,
           color: filtroScambiabile ? '#ff4d9e' : 'rgba(238,232,220,0.45)', fontFamily: 'Orbitron', fontSize: 8,
         }}>↔ Scambiabili</button>
+        {/* Filtro Hot — solo utenti con Pass Hard */}
+        {filtroHot !== null && setFiltroHot && (
+          <select value={filtroHot} onChange={e => setFiltroHot(e.target.value)} style={{ background: 'rgba(255,69,0,0.08)', border: '1px solid rgba(255,69,0,0.35)', color: filtroHot !== 'tutti' ? '#ff6030' : 'rgba(238,232,220,0.45)', borderRadius: 7, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 8, cursor: 'pointer' }}>
+            <option value="tutti">🔥 Tutte</option>
+            <option value="hot">🔥 Solo Hot</option>
+            <option value="non-hot">Non Hot</option>
+          </select>
+        )}
         {count !== undefined && <span style={{ fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron' }}>{count}</span>}
       </div>
       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -4328,6 +4351,7 @@ function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxS
   const [filtroRar, setFiltroRar] = useState('tutte');
   const [filtroDropId, setFiltroDropId] = useState('tutti');
   const [filtroScambiabile, setFiltroScambiabile] = useState(false);
+  const [filtroHot, setFiltroHot] = useState('tutti');
   const [sortKey, setSortKey] = useState('');
   const [sortDir, setSortDir] = useState('desc');
   const [visibili, setVisibili] = useState(TEAM_PAGE_SIZE);
@@ -4340,7 +4364,7 @@ function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxS
     setVisibili(TEAM_PAGE_SIZE);
   };
 
-  useEffect(() => { setVisibili(TEAM_PAGE_SIZE); }, [filtroNome, filtroRar, filtroDropId, filtroScambiabile, sortKey]);
+  useEffect(() => { setVisibili(TEAM_PAGE_SIZE); }, [filtroNome, filtroRar, filtroDropId, filtroScambiabile, filtroHot, sortKey]);
 
   const rarOrder = ['comune','raro','epico','leggendario','immersivo'];
   const STAT_KEYS = ['tette','taglia_piedi','eta','colore_capelli','esperienza'];
@@ -4352,6 +4376,8 @@ function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxS
     if (drop?.waifuIds) lista = lista.filter(w => drop.waifuIds.includes(w.id));
   }
   if (filtroScambiabile) lista = lista.filter(w => (w.copie ?? 0) >= 2);
+  if (filtroHot === 'hot')     lista = lista.filter(w => w.hot === true);
+  if (filtroHot === 'non-hot') lista = lista.filter(w => !w.hot);
 
   if (sortKey === 'rarita') lista.sort((a, b) => sortDir === 'desc' ? rarOrder.indexOf(b.rarita) - rarOrder.indexOf(a.rarita) : rarOrder.indexOf(a.rarita) - rarOrder.indexOf(b.rarita));
   else if (sortKey === 'livello') lista.sort((a, b) => sortDir === 'desc' ? (b.livello || 0) - (a.livello || 0) : (a.livello || 0) - (b.livello || 0));
@@ -4380,6 +4406,8 @@ function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxS
         filtroDropId={filtroDropId} setFiltroDropId={setFiltroDropId}
         drops={drops}
         filtroScambiabile={filtroScambiabile} setFiltroScambiabile={setFiltroScambiabile}
+        filtroHot={profilo?.hardPass ? filtroHot : null}
+        setFiltroHot={profilo?.hardPass ? setFiltroHot : null}
         sortKey={sortKey} sortDir={sortDir} onToggleSort={onToggleSort}
         count={lista.length}
       />

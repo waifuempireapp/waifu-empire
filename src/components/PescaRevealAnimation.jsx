@@ -122,10 +122,11 @@ export default function PescaRevealAnimation({ allCards, chosenIndex, isNewArr, 
           {/* Carta con grafica identica alla collezione */}
           {(() => {
             const fullWaifu = waifuCat?.find(w => w.id === chosenCard.id);
+            const isHot = fullWaifu?.hot === true || chosenCard?.hot === true;
             return fullWaifu ? (
-              <CartaWaifu waifu={fullWaifu} datiCollezione={null} dimensione="piccola" />
+              <CartaWaifu waifu={fullWaifu} datiCollezione={null} dimensione="piccola" isHot={isHot} />
             ) : (
-              <PescaCardMini carta={chosenCard} isNew={isNewArr?.[chosenIndex] ?? false} width={143} height={214} />
+              <PescaCardMini carta={chosenCard} isNew={isNewArr?.[chosenIndex] ?? false} isHot={isHot} width={143} height={214} />
             );
           })()}
 

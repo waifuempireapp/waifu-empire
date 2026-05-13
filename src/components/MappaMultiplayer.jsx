@@ -2306,7 +2306,8 @@ function BattagliaMultiplayer({
               ? ((['reveal', 'roundEnd', 'pvpAttesaProsegui', 'suddenDeathReveal'].includes(fase))
                   ? <div className="battle-carta-scelta"><CartaWaifu waifu={carteC} dimensione="piccola"
                       evidenziaStat={statScelta}
-                      perdente={fase === 'roundEnd' && vincitoreRound === 'player'} /></div>
+                      perdente={fase === 'roundEnd' && vincitoreRound === 'player'}
+                      censurata={carteC.hot === true && !profilo?.hardPass} /></div>
                   : <div style={{ width: 130, height: 195, background: `linear-gradient(160deg, rgba(${parseInt(coloreAvversario.slice(1,3),16)},${parseInt(coloreAvversario.slice(3,5),16)},${parseInt(coloreAvversario.slice(5,7),16)},0.05), #06030f)`, border: `1px solid ${coloreAvversario}40`, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: `${coloreAvversario}80` }}>?</div>
                 )
               : <div style={{ width: 130, height: 195, border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.2)', fontSize: 9, fontFamily: 'Orbitron' }}>ATTESA</div>
@@ -2935,9 +2936,9 @@ function SpettatoreView({ partita, giocatori, battaglia, waifuCat, onAspetta, on
           <div style={{ textAlign: 'center', flexShrink: 0 }}>
             <div style={{ fontSize: 8, letterSpacing: 1, marginBottom: 4, fontFamily: 'Orbitron', color: gDif.coloreImpero }}>{gDif.nomeImpero.toUpperCase()}</div>
             {cartaAltroAttuale && guardoUid === attUid
-              ? <CartaWaifu waifu={cartaAltroAttuale} dimensione="piccola" evidenziaStat={risultatoRound ? statKey : null} perdente={vincitoreRound === 'player'} />
+              ? <CartaWaifu waifu={cartaAltroAttuale} dimensione="piccola" evidenziaStat={risultatoRound ? statKey : null} perdente={vincitoreRound === 'player'} censurata={cartaAltroAttuale.hot === true && !profilo?.hardPass} />
               : cartaGuardoAttuale && guardoUid !== attUid
-              ? <CartaWaifu waifu={cartaGuardoAttuale} dimensione="piccola" evidenziaStat={risultatoRound ? statKey : null} perdente={vincitoreRound === 'cpu'} />
+              ? <CartaWaifu waifu={cartaGuardoAttuale} dimensione="piccola" evidenziaStat={risultatoRound ? statKey : null} perdente={vincitoreRound === 'cpu'} censurata={cartaGuardoAttuale.hot === true && !profilo?.hardPass} />
               : <div style={{ width: 130, height: 195, border: `1px dashed ${gDif.coloreImpero}40`, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: `${gDif.coloreImpero}60`, fontFamily: 'Orbitron', fontSize: 9 }}>
                   {sceltaAltro && guardoUid === attUid || sceltaGuardo && guardoUid !== attUid ? '✓' : '?'}
                 </div>

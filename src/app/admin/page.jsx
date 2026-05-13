@@ -676,6 +676,7 @@ function WaifuTab({ waifu, drops, ricarica, flash }) {
     asset_immersiva: '',
     asset_video: '', // ★ FASE 4: video per effetto Pokémon Pocket su carte immersive
     asset_video_hard: '', // ★ Video hard immersivo (visibile solo con pass acquistato)
+    hot: false,           // ★ Contenuto Hot — visibile solo con Pass Hard
   });
 
   const salva = async (w) => {
@@ -892,6 +893,19 @@ function WaifuEditor({ waifu, setWaifu, esistenti, onSalva, onAnnulla, flash }) 
       {tab === 'dati' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
           <Field label="Nome"><input value={waifu.nome} onChange={e => setWaifu({ ...waifu, nome: e.target.value })} style={inputStyle} /></Field>
+          <Field label="🔥 Contenuto Hot (solo con Pass Hard)">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={!!waifu.hot}
+                onChange={e => setWaifu({ ...waifu, hot: e.target.checked })}
+                style={{ width: 18, height: 18, accentColor: '#ff4500', cursor: 'pointer' }}
+              />
+              <span style={{ fontFamily: 'Orbitron', fontSize: 11, color: waifu.hot ? '#ff4500' : 'rgba(238,232,220,0.5)' }}>
+                {waifu.hot ? '🔥 HOT — visibile solo con Pass Hard' : 'Standard (visibile a tutti)'}
+              </span>
+            </label>
+          </Field>
           <Field label="Rarità">
             <select value={waifu.rarita} onChange={e => setWaifu({ ...waifu, rarita: e.target.value })} style={inputStyle}>
               {Object.entries(RARITA).map(([k, v]) => <option key={k} value={k}>{v.nome}</option>)}
@@ -1905,8 +1919,9 @@ Il JSON deve avere questi campi:
 - "tette": intero da 1 a 7 (1=piatte/petite, 3=medie, 5=grandi, 7=enormi fantasy)
 - "eta": intero tra 1 e 5000 (età apparente, la maggior parte 14-30; valori > 100 per creature antiche/non umane)
 - "colore_capelli": intero da 1 a 10 (1=castano, 2=nero, 3=biondo, 4=rosso, 5=argento, 6=blu, 7=viola, 8=rosa, 9=bicolore, 10=fantasy/arcobaleno)
+- "hot": boolean — true se l'immagine/contesto suggerisce contenuto erotico, seduttivo o adulto (posa provocante, abbigliamento molto succinto, contesto sessuale esplicito o implicito); false altrimenti
 
-Esempio di risposta: {"tette":4,"eta":22,"colore_capelli":3}`;
+Esempio di risposta: {"tette":4,"eta":22,"colore_capelli":3,"hot":false}`;
 
 function BulkUploadTab({ waifu, ricarica, flash }) {
   const [files, setFiles] = useState([]);          // File[] delle immagini selezionate
@@ -1999,6 +2014,8 @@ function BulkUploadTab({ waifu, ricarica, flash }) {
             eta: Math.max(1, Math.min(5000, parsed.eta || aggiornati[i].stats.eta)),
             colore_capelli: Math.max(1, Math.min(10, parsed.colore_capelli || aggiornati[i].stats.colore_capelli)),
           };
+          // Campo hot rilevato dall'AI
+          if (parsed.hot !== undefined) aggiornati[i].hot = !!parsed.hot;
           aggiornati[i].aiStats = parsed;
           aggiornati[i].status = 'ready';
           analizzati++;
@@ -2064,6 +2081,7 @@ function BulkUploadTab({ waifu, ricarica, flash }) {
           asset_paperdoll: '',
           asset_immersiva: p.rarita === 'leggendario' || p.rarita === 'immersivo' ? url : '',
           fillers: { outfit: '', fanservice: '', posa: '' },
+          hot: p.hot === true, // rilevato da AI o impostato manualmente
         };
 
         const newId = await upsertWaifu(null, waifuData);
