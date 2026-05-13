@@ -165,6 +165,20 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
     else if (trade.status === 'a_accettato' && trade.toUid === uid) {
       setTradeAperto({ trade, tipo: 'confirm_b' });
     }
+    // A clicca per vedere la sua nuova waifu (completato = B ha già visto la sua)
+    else if (trade.status === 'completato' && trade.fromUid === uid) {
+      const receivedWaifuId = trade.toWaifuId; // A riceve la waifu di B
+      const received = waifuCat.find(w => w.id === receivedWaifuId);
+      setViewedCompletedIds(prev => new Set([...prev, trade.id + '_a']));
+      if (received) setAnimazione({ waifu: received, isNew: !collezione?.waifu?.[receivedWaifuId], tradeId: trade.id, forUid: 'a' });
+    }
+    // B clicca per vedere la sua nuova waifu (b_accettato = trade eseguito, B deve ancora vedere)
+    else if (trade.status === 'b_accettato' && trade.toUid === uid) {
+      const receivedWaifuId = trade.fromWaifuId; // B riceve la waifu di A
+      const received = waifuCat.find(w => w.id === receivedWaifuId);
+      setViewedCompletedIds(prev => new Set([...prev, trade.id + '_b']));
+      if (received) setAnimazione({ waifu: received, isNew: !collezione?.waifu?.[receivedWaifuId], tradeId: trade.id, forUid: 'b' });
+    }
   };
 
   const onTradeDone = (esito) => {
