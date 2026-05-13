@@ -66,7 +66,18 @@ export default function TradePendingConfirmModal({ trade, waifuCat, collezione, 
   };
 
   if (stato === 'success' && receivedWaifu) {
-    return <TradeReceiveAnimation waifu={receivedWaifu} isNew={isNewWaifu} onComplete={() => onDone?.('completed')} />;
+    return <TradeReceiveAnimation waifu={receivedWaifu} isNew={isNewWaifu} onComplete={async () => {
+      // Marca lo scambio come visto da A (fromUid)
+      try {
+        const token = await user.getIdToken();
+        await fetch('/api/trades/seen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ tradeId: trade.id }),
+        });
+      } catch { /* non critico */ }
+      onDone?.('completed');
+    }} />;
   }
 
   if (stato === 'cancelled') return (

@@ -681,6 +681,7 @@ function WaifuTab({ waifu, drops, ricarica, flash }) {
 
   const salva = async (w) => {
     const id = await upsertWaifu(w.id || null, w);
+    clearCatalogCache(); // invalida la cache locale così tutti vedono subito il flag hot aggiornato
     flash('Waifu salvata');
     setEd(null);
     ricarica();
@@ -2800,11 +2801,15 @@ function PrezziTab({ flash, user }) {
         <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#f5a623', marginBottom: 12, fontWeight: 700 }}>Pacchetti Kisses (PayPal)</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {Object.entries(prezzi.tagli_kisses || {}).map(([id, t]) => (
-            <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <span style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#eedcd4', width: 20, textAlign: 'right' }}>{id.toUpperCase()}</span>
               <div>
                 <div style={labelStyle}>Kisses</div>
                 <input type="number" value={t.kisses} onChange={e => aggiorna(`tagli_kisses.${id}.kisses`, Number(e.target.value))} style={inputStyle} />
+              </div>
+              <div>
+                <div style={labelStyle}>Bonus Kisses</div>
+                <input type="number" value={t.bonus ?? 0} onChange={e => aggiorna(`tagli_kisses.${id}.bonus`, Number(e.target.value))} style={inputStyle} />
               </div>
               <div>
                 <div style={labelStyle}>€ EUR</div>
@@ -2844,8 +2849,9 @@ function PrezziTab({ flash, user }) {
       <div style={sectionStyle}>
         <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#f5a623', marginBottom: 12, fontWeight: 700 }}>Beni con Kisses</div>
         {[
-          { id: 'pack_sfida', label: '🎁 Pack Sfida' },
-          { id: 'energia', label: '⚡ Energia' },
+          { id: 'pack_sfida',    label: '🎁 Pack Sfida (1x)' },
+          { id: 'pack_sfida_10', label: '🎁🎁 Pack Sfida (10x)' },
+          { id: 'energia',       label: '⚡ Energia' },
         ].map(({ id, label }) => (
           <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
             <span style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#eedcd4', width: 110 }}>{label}</span>

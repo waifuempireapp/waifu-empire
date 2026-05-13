@@ -152,7 +152,7 @@ export default function GiocoPage() {
           profilo={profilo}
           onKissesUpdate={(newKisses) => setProfilo(p => ({ ...p, kisses: newKisses }))}
           onProfileUpdate={(patch) => setProfilo(p => {
-            if (patch.__incrementPacchetti) return { ...p, pacchettiSfida: (p.pacchettiSfida ?? 0) + 1 };
+            if (patch.__incrementPacchetti) return { ...p, pacchettiSfida: (p.pacchettiSfida ?? 0) + patch.__incrementPacchetti };
             return { ...p, ...patch };
           })}
           onClose={() => setNegozioAperto(false)}
@@ -176,7 +176,11 @@ export default function GiocoPage() {
         )}
 
         <Header profilo={profilo} isAdmin={isAdmin} onLogout={logout} setProfilo={setProfilo} user={user} />
-        <NavTabs tab={tab} setTab={setTab} />
+        <NavTabs tab={tab} setTab={(t) => {
+          // Torna sempre alla home pulita (senza negozio/pesca aperti)
+          if (t === 'home') { setNegozioAperto(false); chiudiPesca(); }
+          setTab(t);
+        }} />
 
         <div style={{ padding: '12px 16px', maxWidth: 1400, margin: '0 auto' }}>
           {tab === 'home' && !pescaAperta && <HomeTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} setTab={setTab} setColezSubTab={setColezSubTab} user={user} onApriPesca={() => setPescaAperta(true)} />}
@@ -218,7 +222,10 @@ export default function GiocoPage() {
           {tab === 'classifica' && <ClassificaTab user={user} />}
         </div>
 
-        <BottomNav tab={tab} setTab={setTab} isAdmin={isAdmin} />
+        <BottomNav tab={tab} setTab={(t) => {
+          if (t === 'home') { setNegozioAperto(false); chiudiPesca(); }
+          setTab(t);
+        }} isAdmin={isAdmin} />
       </div>
     </>
   );
@@ -1826,7 +1833,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     else if (tipoPacchetto === 'omaggio') { const n = (profilo.pacchettiOmaggio ?? 0) - 1; setProfilo(p => ({ ...p, pacchettiOmaggio: n })); await updateUserProfile(user.uid, { pacchettiOmaggio: n }); }
     else { const n = (profilo.pacchettiSfida ?? 0) - 1; setProfilo(p => ({ ...p, pacchettiSfida: n })); await updateUserProfile(user.uid, { pacchettiSfida: n }); }
     // Snapshot asincrona: non blocca l'apertura se fallisce
-    createPackSnapshot(user.uid, carte).catch(e => console.error('createPackSnapshot failed:', e));
+    createPackSnapshot(user.uid, carte, { dropId: dropAttivo?.id || null, dropName: dropAttivo?.nome || null }).catch(e => console.error('createPackSnapshot failed:', e));
     carte.forEach((_, i) => { setTimeout(() => setIndiceRivelato(i), 500 + i * 700); });
   };
 
@@ -2104,17 +2111,22 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
   const nSfid = profilo.pacchettiSfida ?? 0;
   const SFIDA_COSTO_KISSES = 50;
 
-  const acquistaSfidaConKisses = async () => {
+  const SFIDA_COSTO_10 = 450; // 10 bustine sfida in un colpo
+
+  const acquistaSfidaConKisses = async (qty = 1) => {
     setSfidaConferma(false);
+    const endpoint = qty === 10 ? '/api/kisses/buy-pack-10' : '/api/kisses/buy-pack';
     const token = await user.getIdToken();
-    const res = await fetch('/api/kisses/buy-pack', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(endpoint, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json();
     if (!res.ok) { mostraNotif(data.error || 'Errore acquisto', '#ff3d3d'); return; }
-    const newKisses = data.newKisses;
-    const newSfid = (profilo.pacchettiSfida ?? 0) + 1;
+    const spent = data.kissesCost ?? (qty === 10 ? SFIDA_COSTO_10 : SFIDA_COSTO_KISSES);
+    const newKisses = Math.max(0, (profilo.kisses ?? 0) - spent);
+    const pacchettiAgg = data.pacchettiAggiunti ?? qty;
+    const newSfid = (profilo.pacchettiSfida ?? 0) + pacchettiAgg;
     setProfilo(p => ({ ...p, kisses: newKisses, pacchettiSfida: newSfid }));
-    // Apri subito la bustina sfida appena acquistata
-    setPopupApertura({ tipoPacchetto: 'sfida' });
+    if (qty === 1) setPopupApertura({ tipoPacchetto: 'sfida' });
+    else mostraNotif(`+${pacchettiAgg} bustine sfida aggiunte!`, '#ff8c00');
   };
 
   // Colori drop
@@ -2202,17 +2214,22 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
         <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(6,3,15,0.95)', backdropFilter: 'blur(16px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div style={{ background: 'rgba(12,6,28,0.98)', border: '1px solid rgba(255,45,120,0.3)', borderRadius: 16, padding: '24px 28px', maxWidth: 300, width: '100%', textAlign: 'center' }}>
             <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#ff2d78', letterSpacing: 2, marginBottom: 10 }}>ACQUISTA BUSTINA</div>
-            <div style={{ fontFamily: 'Fredoka', fontSize: 13, color: '#eedcd4', marginBottom: 16 }}>Spendi {SFIDA_COSTO_KISSES} Kisses per un Pacchetto Sfida?</div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-              <button onClick={() => setSfidaConferma(false)} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', fontSize: 9, padding: '9px 16px', cursor: 'pointer' }}>ANNULLA</button>
-              <button onClick={acquistaSfidaConKisses} style={{ background: 'rgba(255,45,120,0.15)', border: '1px solid rgba(255,45,120,0.5)', borderRadius: 8, color: '#ff2d78', fontFamily: 'Orbitron', fontSize: 9, padding: '9px 16px', cursor: 'pointer' }}>CONFERMA</button>
+            <div style={{ fontFamily: 'Fredoka', fontSize: 13, color: '#eedcd4', marginBottom: 16 }}>Scegli quante bustine Sfida acquistare:</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+              <button onClick={() => acquistaSfidaConKisses(1)} style={{ background: 'rgba(255,45,120,0.15)', border: '1px solid rgba(255,45,120,0.5)', borderRadius: 8, color: '#ff2d78', fontFamily: 'Orbitron', fontSize: 9, padding: '10px 16px', cursor: 'pointer' }}>
+                🎁 1 bustina — {SFIDA_COSTO_KISSES} Kisses
+              </button>
+              <button onClick={() => { if ((profilo.kisses ?? 0) >= SFIDA_COSTO_10) { acquistaSfidaConKisses(10); } else { setSfidaConferma(false); setSfidaShortage(true); } }} style={{ background: 'rgba(255,140,0,0.15)', border: '1px solid rgba(255,140,0,0.5)', borderRadius: 8, color: '#ff8c00', fontFamily: 'Orbitron', fontSize: 9, padding: '10px 16px', cursor: 'pointer' }}>
+                🎁🎁 10 bustine — {SFIDA_COSTO_10} Kisses
+              </button>
             </div>
+            <button onClick={() => setSfidaConferma(false)} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', fontSize: 9, padding: '9px 16px', cursor: 'pointer', width: '100%' }}>ANNULLA</button>
           </div>
         </div>
       )}
       {sfidaShortage && (
         <KissesShortageModal
-          missingKisses={SFIDA_COSTO_KISSES - (profilo.kisses ?? 0)}
+          missingKisses={Math.max(SFIDA_COSTO_KISSES, SFIDA_COSTO_10) - (profilo.kisses ?? 0)}
           currentKisses={profilo.kisses ?? 0}
           user={user}
           onSuccess={(newKisses) => {
@@ -2500,7 +2517,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', maxHeight: 400, overflowY: 'auto', padding: 4 }}>
             {catalogoFiltrato.map((c, i) => (
-              c._tipo === 'waifu' ? <CartaWaifu key={c.id} waifu={c} dimensione="piccola" tipo="auto" /> :
+              c._tipo === 'waifu' ? <CartaWaifu key={c.id} waifu={c} dimensione="piccola" tipo="auto" isHot={c.hot === true} censurata={c.hot === true && !profilo?.hardPass} /> :
               c._tipo === 'outfit' ? <CartaOutfit key={c.id} outfit={c} dimensione="piccola" /> :
               <CartaPosa key={c.id} posa={c} dimensione="piccola" />
             ))}
@@ -2763,6 +2780,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
   const [filtroNome, setFiltroNome] = useState('');
   const [filtroScambiabile, setFiltroScambiabile] = useState(false);
   const [filtroHot, setFiltroHot] = useState('tutti'); // 'tutti' | 'hot' | 'non-hot'
+  const [filtroLevelUp, setFiltroLevelUp] = useState('tutti'); // 'tutti' | 'si' | 'no'
   const [sortKey, setSortKey] = useState('');   // 'rarita'|'livello'|'copie'|stat
   const [sortDir, setSortDir] = useState('desc'); // 'desc'|'asc'
   const onToggleSort = (key) => {
@@ -2925,8 +2943,10 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
         if (filtroRarita !== 'tutte') waifuEntries = waifuEntries.filter(({ w }) => w.rarita === filtroRarita);
         if (dropWaifuIds) waifuEntries = waifuEntries.filter(({ w }) => dropWaifuIds.has(w.id));
         if (filtroScambiabile) waifuEntries = waifuEntries.filter(({ dati }) => (dati.copie ?? 0) >= 2);
-        if (filtroHot === 'hot')     waifuEntries = waifuEntries.filter(({ w }) => w.hot === true);
-        if (filtroHot === 'non-hot') waifuEntries = waifuEntries.filter(({ w }) => !w.hot);
+        if (filtroHot === 'hot')       waifuEntries = waifuEntries.filter(({ w }) => w.hot === true);
+        if (filtroHot === 'non-hot')   waifuEntries = waifuEntries.filter(({ w }) => !w.hot);
+        if (filtroLevelUp === 'si')    waifuEntries = waifuEntries.filter(({ dati }) => (dati.copie ?? 0) >= 3);
+        if (filtroLevelUp === 'no')    waifuEntries = waifuEntries.filter(({ dati }) => (dati.copie ?? 0) < 3);
 
         // Conta scambiabili globali (senza altri filtri) per messaggio trades esaurite
         const totScambiabili = filtroScambiabile ? Object.values(collezione.waifu || {}).filter(d => (d.copie ?? 0) >= 2).length : 0;
@@ -2953,6 +2973,8 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
               filtroScambiabile={filtroScambiabile} setFiltroScambiabile={v => { setFiltroScambiabile(v); setVisibiliWaifu(12); }}
               filtroHot={profilo?.hardPass ? filtroHot : null}
               setFiltroHot={profilo?.hardPass ? v => { setFiltroHot(v); setVisibiliWaifu(12); } : null}
+              filtroLevelUp={filtroLevelUp}
+              setFiltroLevelUp={v => { setFiltroLevelUp(v); setVisibiliWaifu(12); }}
               sortKey={sortKey} sortDir={sortDir} onToggleSort={onToggleSort}
               count={waifuEntries.length}
             />
@@ -2969,7 +2991,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
             <div className="collection-card-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
               {visibili.map(({ id, dati, w }, idx) => (
                 <div key={id} className="card-fade-up card-clickable collection-card-item" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', animationDelay: `${idx * 45}ms` }}>
-                  <CartaWaifu waifu={w} datiCollezione={dati} dimensione="piccola" tipo="auto" onClick={() => setWaifuSel(id)} outfitCatalogo={outfitCat} poseCatalogo={poseCat} equip={collezione.equipaggiamento?.[id]} isHot={w.hot === true} />
+                  <CartaWaifu waifu={w} datiCollezione={dati} dimensione="piccola" tipo="auto" onClick={() => setWaifuSel(id)} outfitCatalogo={outfitCat} poseCatalogo={poseCat} equip={collezione.equipaggiamento?.[id]} isHot={w.hot === true} censurata={w.hot === true && !profilo?.hardPass} />
                   <div style={{ textAlign: 'center', marginTop: 4 }}>
                     {dati.copie >= 3 ? (
                       <span style={{ ...stileLevelUp, fontSize: 9, color: '#00e676', display: 'block' }}>⚡ LEVEL UP!</span>
@@ -4289,41 +4311,47 @@ function SortChip({ label, skey, activeSkey, activeDir, onToggle }) {
   );
 }
 
-function BarraFiltriWaifu({ filtroNome, setFiltroNome, filtroRarita, setFiltroRarita, filtroDropId, setFiltroDropId, drops = [], filtroScambiabile, setFiltroScambiabile, filtroHot, setFiltroHot, sortKey, sortDir, onToggleSort, count }) {
+function BarraFiltriWaifu({ filtroNome, setFiltroNome, filtroRarita, setFiltroRarita, filtroDropId, setFiltroDropId, drops = [], filtroScambiabile, setFiltroScambiabile, filtroHot, setFiltroHot, filtroLevelUp, setFiltroLevelUp, sortKey, sortDir, onToggleSort, count }) {
   const STAT_SORT = [
     { k: 'tette', l: '✦ Tette' }, { k: 'taglia_piedi', l: '⚘ Piedi' },
     { k: 'eta', l: '⌛ Età' }, { k: 'colore_capelli', l: '✿ Cap.' }, { k: 'esperienza', l: '★ Esp.' },
   ];
   return (
     <div style={{ marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-        <input value={filtroNome} onChange={e => setFiltroNome(e.target.value)} placeholder="🔍 Nome…"
-          style={{ flex: '1 1 100px', minWidth: 80, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', color: '#eedcd4', borderRadius: 8, padding: '5px 9px', fontFamily: 'Fredoka', fontSize: 12, outline: 'none' }} />
-        <select value={filtroRarita} onChange={e => setFiltroRarita(e.target.value)} style={{ background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.25)', color: '#f5a623', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
+      {/* Riga 1: ricerca nome */}
+      <input value={filtroNome} onChange={e => setFiltroNome(e.target.value)} placeholder="🔍 Cerca per nome…"
+        style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', color: '#eedcd4', borderRadius: 8, padding: '7px 11px', fontFamily: 'Fredoka', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+      {/* Riga 2: filtri rapidi */}
+      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+        <select value={filtroRarita} onChange={e => setFiltroRarita(e.target.value)} style={{ background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.25)', color: '#f5a623', borderRadius: 8, padding: '5px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer', flex: '1 1 auto' }}>
           <option value="tutte">Tutte rarità</option>
           {['comune','raro','epico','leggendario','immersivo'].map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase()+r.slice(1)}</option>)}
         </select>
         {drops.length > 0 && (
-          <select value={filtroDropId || 'tutti'} onChange={e => setFiltroDropId(e.target.value)} style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
+          <select value={filtroDropId || 'tutti'} onChange={e => setFiltroDropId(e.target.value)} style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676', borderRadius: 8, padding: '5px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer', flex: '1 1 auto' }}>
             <option value="tutti">Tutti drop</option>
             {drops.map(d => <option key={d.id} value={d.id}>{d.nome || d.id}</option>)}
           </select>
         )}
+        <select value={filtroLevelUp || 'tutti'} onChange={e => setFiltroLevelUp?.(e.target.value)} style={{ background: 'rgba(0,229,255,0.06)', border: '1px solid rgba(0,229,255,0.25)', color: '#00e5ff', borderRadius: 8, padding: '5px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer', flex: '1 1 auto' }}>
+          <option value="tutti">⚡ Tutte</option>
+          <option value="si">⚡ Level Up!</option>
+          <option value="no">Non level up</option>
+        </select>
         <button onClick={() => setFiltroScambiabile(!filtroScambiabile)} style={{
-          padding: '4px 10px', borderRadius: 7, cursor: 'pointer',
+          padding: '5px 10px', borderRadius: 7, cursor: 'pointer',
           background: filtroScambiabile ? 'rgba(255,77,158,0.18)' : 'rgba(255,255,255,0.03)',
           border: `1px solid ${filtroScambiabile ? 'rgba(255,77,158,0.6)' : 'rgba(255,255,255,0.1)'}`,
-          color: filtroScambiabile ? '#ff4d9e' : 'rgba(238,232,220,0.45)', fontFamily: 'Orbitron', fontSize: 8,
-        }}>↔ Scambiabili</button>
-        {/* Filtro Hot — solo utenti con Pass Hard */}
+          color: filtroScambiabile ? '#ff4d9e' : 'rgba(238,232,220,0.45)', fontFamily: 'Orbitron', fontSize: 8, flex: '0 0 auto',
+        }}>↔ Scamb.</button>
         {filtroHot !== null && setFiltroHot && (
-          <select value={filtroHot} onChange={e => setFiltroHot(e.target.value)} style={{ background: 'rgba(255,69,0,0.08)', border: '1px solid rgba(255,69,0,0.35)', color: filtroHot !== 'tutti' ? '#ff6030' : 'rgba(238,232,220,0.45)', borderRadius: 7, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 8, cursor: 'pointer' }}>
+          <select value={filtroHot} onChange={e => setFiltroHot(e.target.value)} style={{ background: 'rgba(255,69,0,0.08)', border: '1px solid rgba(255,69,0,0.35)', color: filtroHot !== 'tutti' ? '#ff6030' : 'rgba(238,232,220,0.45)', borderRadius: 7, padding: '5px 8px', fontFamily: 'Orbitron', fontSize: 8, cursor: 'pointer', flex: '0 0 auto' }}>
             <option value="tutti">🔥 Tutte</option>
             <option value="hot">🔥 Solo Hot</option>
             <option value="non-hot">Non Hot</option>
           </select>
         )}
-        {count !== undefined && <span style={{ fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron' }}>{count}</span>}
+        {count !== undefined && <span style={{ fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', flex: '0 0 auto' }}>{count}</span>}
       </div>
       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
         <span style={{ fontSize: 7, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', letterSpacing: 1, marginRight: 2 }}>ORDINA:</span>

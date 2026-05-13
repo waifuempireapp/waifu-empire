@@ -33,19 +33,29 @@ const RARITA_COLORI = {
   leggendario: '#ffa726', immersivo: '#ec4899',
 };
 
-const STATUS_LABEL = {
-  pending_response: { text: 'In attesa di risposta', color: '#f5a623' },
-  pending_confirm: { text: 'In attesa di conferma', color: '#42a5f5' },
-  completed: { text: 'Completato', color: '#00e676' },
-  cancelled: { text: 'Annullato', color: '#9e9e9e' },
-  expired: { text: 'Scaduto', color: '#ff4d4d' },
-};
+const TRADES_PER_PAGE = 10;
+
+function getStatusLabel(trade, uid) {
+  if (trade.status === 'pending_response') return { text: 'In attesa di risposta', color: '#f5a623' };
+  if (trade.status === 'pending_confirm')  return { text: 'In attesa di conferma', color: '#42a5f5' };
+  if (trade.status === 'cancelled')        return { text: 'Annullato', color: '#9e9e9e' };
+  if (trade.status === 'expired')          return { text: 'Scaduto', color: '#ff4d4d' };
+  if (trade.status === 'completed') {
+    const seenFrom = !!trade.seenByFromUid;
+    const seenTo   = !!trade.seenByToUid;
+    if (seenFrom && seenTo)  return { text: 'Completato 2/2 ✓', color: '#9e9e9e' };
+    if (seenFrom || seenTo)  return { text: 'Completato 1/2', color: '#00e676' };
+    return { text: 'Completato', color: '#00e676' };
+  }
+  return { text: trade.status, color: '#9e9e9e' };
+}
 
 const DAILY_LIMIT = 5;
 
 export default function ScambiList({ user, profilo, collezione, waifuCat, initialData, onBadgeChange, onRefresh, onCollectionRefresh }) {
   const [trades, setTrades] = useState(initialData?.trades || []);
   const [loading, setLoading] = useState(!initialData);
+  const [page, setPage] = useState(0); // paginazione client-side
   const [errore, setErrore] = useState(null);
   const [tradeAperto, setTradeAperto] = useState(null); // { trade, tipo: 'incoming' | 'confirm' }
   const [animazione, setAnimazione] = useState(null); // waifu ricevuta lato B
@@ -87,7 +97,7 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
         const receivedWaifuId = trade.fromWaifuId; // B riceve la waifu di A
         const received = waifuCat.find(w => w.id === receivedWaifuId);
         setViewedCompletedIds(prev => new Set([...prev, trade.id]));
-        if (received) setAnimazione({ waifu: received, isNew: !collezione?.waifu?.[receivedWaifuId] });
+        if (received) setAnimazione({ waifu: received, isNew: !collezione?.waifu?.[receivedWaifuId], tradeId: trade.id });
       }
     } catch (e) { setErrore(e.message); }
     finally { setLoading(false); }
@@ -115,10 +125,21 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
       <TradeReceiveAnimation
         waifu={animazione.waifu}
         isNew={animazione.isNew}
-        onComplete={() => {
+        onComplete={async () => {
+          // Marca lo scambio come visto da questo utente → stato 1/2 o 2/2
+          if (animazione.tradeId) {
+            try {
+              const token = await user.getIdToken();
+              await fetch('/api/trades/seen', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ tradeId: animazione.tradeId }),
+              });
+            } catch { /* non critico */ }
+          }
           setAnimazione(null);
-          onCollectionRefresh?.(); // aggiorna collezione nel parent
-          carica();               // aggiorna lista scambi
+          onCollectionRefresh?.();
+          carica();
         }}
       />
     );
@@ -180,11 +201,16 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
 
   const uid = user.uid;
   const pending = trades.filter(t => t.status === 'pending_response' || t.status === 'pending_confirm');
+  // "completato 2/2" (entrambi hanno visto) → solo storici senza azioni
   const terminati = trades.filter(t => !['pending_response', 'pending_confirm'].includes(t.status));
+
+  // Paginazione sui terminati (10 per pagina)
+  const totalPages = Math.ceil(terminati.length / TRADES_PER_PAGE);
+  const terminatiPagina = terminati.slice(page * TRADES_PER_PAGE, (page + 1) * TRADES_PER_PAGE);
 
   const TradeLine = ({ trade }) => {
     const colore = RARITA_COLORI[trade.rarita] || '#f5a623';
-    const statusInfo = STATUS_LABEL[trade.status] || { text: trade.status, color: '#9e9e9e' };
+    const statusInfo = getStatusLabel(trade, uid);
     const isMioTurno =
       (trade.status === 'pending_response' && trade.toUid === uid) ||
       (trade.status === 'pending_confirm' && trade.fromUid === uid);
@@ -302,8 +328,18 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
             STORICI ({terminati.length})
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {terminati.map(t => <TradeLine key={t.id} trade={t} />)}
+            {terminatiPagina.map(t => <TradeLine key={t.id} trade={t} />)}
           </div>
+          {/* Paginazione */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 12 }}>
+              <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, color: page === 0 ? 'rgba(255,255,255,0.2)' : '#eedcd4', fontFamily: 'Orbitron', fontSize: 9, padding: '5px 12px', cursor: page === 0 ? 'not-allowed' : 'pointer' }}>← Prec</button>
+              <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.5)' }}>{page + 1}/{totalPages}</span>
+              <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, color: page >= totalPages - 1 ? 'rgba(255,255,255,0.2)' : '#eedcd4', fontFamily: 'Orbitron', fontSize: 9, padding: '5px 12px', cursor: page >= totalPages - 1 ? 'not-allowed' : 'pointer' }}>Succ →</button>
+            </div>
+          )}
         </div>
       )}
     </div>

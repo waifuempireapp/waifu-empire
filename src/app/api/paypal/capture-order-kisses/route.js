@@ -47,10 +47,11 @@ export async function POST(request) {
     const taglio = prezzi.tagli_kisses[taglioId];
     if (!taglio) return NextResponse.json({ error: 'Taglio non valido' }, { status: 400 });
 
-    // Assegna Kisses atomicamente — non rileggere il saldo per evitare RESOURCE_EXHAUSTED
-    await userRef.update({ kisses: FieldValue.increment(taglio.kisses) });
+    // Assegna Kisses + bonus atomicamente
+    const totalKisses = taglio.kisses + (taglio.bonus || 0);
+    await userRef.update({ kisses: FieldValue.increment(totalKisses) });
 
-    return NextResponse.json({ success: true, kissesAdded: taglio.kisses });
+    return NextResponse.json({ success: true, kissesAdded: totalKisses, bonus: taglio.bonus || 0 });
   } catch (e) {
     console.error('[PayPal capture-order-kisses]', e);
     return NextResponse.json({ error: e.message || 'Errore cattura ordine' }, { status: 500 });

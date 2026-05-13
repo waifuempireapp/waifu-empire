@@ -7,12 +7,13 @@ import { getNegozioConfig, getPrezziConfig } from '@/lib/firestoreService';
 // Mapping esplicito beneId → endpoint (evita errori di auto-generazione)
 // pass_hard e pass_scambi sono gestiti nella SezionePass separata
 const BENE_ENDPOINT = {
-  pack_sfida: '/api/kisses/buy-pack',
-  energia:    '/api/kisses/buy-energia',
+  pack_sfida:    '/api/kisses/buy-pack',
+  pack_sfida_10: '/api/kisses/buy-pack-10',
+  energia:       '/api/kisses/buy-energia',
 };
 
-const BENI_ICONS  = { pack_sfida: '🎁', energia: '⚡' };
-const BENI_COLORI = { pack_sfida: '#f5a623', energia: '#00e676' };
+const BENI_ICONS  = { pack_sfida: '🎁', pack_sfida_10: '🎁🎁', energia: '⚡' };
+const BENI_COLORI = { pack_sfida: '#f5a623', pack_sfida_10: '#ff8c00', energia: '#00e676' };
 
 function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate, hardPass = false, onPassHard, onProfileUpdate }) {
   const [busy, setBusy]         = useState(null);
@@ -35,7 +36,8 @@ function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate, hardPass = fa
       onKissesUpdate(Math.max(0, (kisses ?? 0) - spent));
       if (beneId === 'pass_hard') { onPassHard?.(); onProfileUpdate?.({ hardPass: true }); }
       if (beneId === 'energia') onProfileUpdate?.({ energia: 10, ultimaRicaricaEnergia: new Date() });
-      if (beneId === 'pack_sfida') onProfileUpdate?.({ __incrementPacchetti: true });
+      if (beneId === 'pack_sfida')    onProfileUpdate?.({ __incrementPacchetti: 1 });
+      if (beneId === 'pack_sfida_10') onProfileUpdate?.({ __incrementPacchetti: 10 });
       mostra(`✓ ${beni[beneId]?.label} acquistato!`);
     } catch (e) { mostra(e.message, false); }
     finally { setBusy(null); }
@@ -151,9 +153,9 @@ const PASS_META = {
 };
 
 // PassCard accetta priceEur e kissesCosto come prop (dalla config DB)
-function PassCard({ tipo, attivo, kisses, priceEur, kissesCosto, user, onSuccess }) {
+function PassCard({ tipo, attivo, kisses, priceEur, kissesCosto, user, onSuccess, onKissesUpdate }) {
   const cfg = PASS_META[tipo];
-  const [modo, setModo] = useState(null); // null | 'paypal' | 'kisses-confirm' | 'loading' | 'success' | 'error'
+  const [modo, setModo] = useState(null); // null | 'paypal' | 'kisses-confirm' | 'loading' | 'success' | 'error' | 'shortage'
   const [errMsg, setErrMsg] = useState('');
   const paypalRef = useRef(null);
   const paypalRendered = useRef(false);
@@ -250,24 +252,37 @@ function PassCard({ tipo, attivo, kisses, priceEur, kissesCosto, user, onSuccess
         </div>
       )}
 
+      {/* Modale Kisses insufficienti per il pass */}
+      {modo === 'shortage' && (
+        <KissesShortageModal
+          missingKisses={kissesCosto - (kisses ?? 0)}
+          currentKisses={kisses ?? 0}
+          user={user}
+          onSuccess={(newKisses) => {
+            onKissesUpdate?.(newKisses);
+            setModo('kisses-confirm'); // riprende il flusso di acquisto
+          }}
+          onCancel={() => setModo(null)}
+        />
+      )}
+
       {/* Bottoni di acquisto — visibili solo se pass non attivo e nessun modo attivo */}
       {!attivo && !modo && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {/* Bottone Kisses */}
+          {/* Bottone Kisses — sempre cliccabile, Kisses rossi se insufficienti */}
           <button
-            onClick={() => setModo('kisses-confirm')}
-            disabled={!puoConKisses}
+            onClick={() => puoConKisses ? setModo('kisses-confirm') : setModo('shortage')}
             style={{
               flex: '1 1 auto',
-              background: puoConKisses ? `${cfg.colore}18` : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${puoConKisses ? cfg.colore + '50' : 'rgba(255,255,255,0.1)'}`,
-              borderRadius: 8, color: puoConKisses ? cfg.colore : 'rgba(255,255,255,0.25)',
-              fontFamily: 'Orbitron', fontSize: 9, padding: '8px 10px',
-              cursor: puoConKisses ? 'pointer' : 'not-allowed', letterSpacing: 1,
+              background: `${cfg.colore}18`,
+              border: `1px solid ${cfg.colore}50`,
+              borderRadius: 8, fontFamily: 'Orbitron', fontSize: 9, padding: '8px 10px',
+              cursor: 'pointer', letterSpacing: 1,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
             }}
           >
-            <KissesIcon size={11} /> {kissesCosto} Kisses
+            <KissesIcon size={11} />
+            <span style={{ fontWeight: 700, color: puoConKisses ? cfg.colore : '#ff4d4d' }}>{kissesCosto} Kisses</span>
           </button>
           {/* Bottone PayPal */}
           <button
@@ -331,7 +346,8 @@ function SezionePass({ user, kisses, hardPass, tradePass, tradeEnabled, prezziPa
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {PASS_DEFS.map(p => (
         <PassCard key={p.tipo} tipo={p.tipo} attivo={p.attivo} kisses={kisses} user={user}
-          priceEur={p.priceEur} kissesCosto={p.kissesCosto} onSuccess={p.onSuccess} />
+          priceEur={p.priceEur} kissesCosto={p.kissesCosto} onSuccess={p.onSuccess}
+          onKissesUpdate={onKissesUpdate} />
       ))}
     </div>
   );
@@ -423,7 +439,7 @@ function SezioneRicaricaKisses({ tagli, user, kisses, onKissesUpdate }) {
                 <KissesIcon size={13} /><span style={{ fontFamily: 'Orbitron', fontSize: 13, color: sel ? '#ff4d9e' : '#eedcd4', fontWeight: 900 }}>{t.kisses}</span>
               </div>
               <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#f5a623', fontWeight: 700 }}>€{t.price_eur}</div>
-              {t.bonus && <div style={{ fontSize: 9, color: '#00e676', marginTop: 2, fontFamily: 'Fredoka' }}>{t.bonus}</div>}
+              {(t.bonus > 0) && <div style={{ fontSize: 9, color: '#00e676', marginTop: 2, fontFamily: 'Fredoka' }}>+{t.bonus} bonus</div>}
             </div>
           );
         })}
@@ -510,7 +526,11 @@ export default function NegozioOverlay({ user, profilo: profiloInit, onKissesUpd
             <div>
               <div style={{ fontFamily: 'Orbitron', fontSize: 10, letterSpacing: 3, color: 'rgba(238,232,220,0.4)', marginBottom: 4 }}>RICARICA KISSES</div>
               <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: 'rgba(238,232,220,0.35)', marginBottom: 14 }}>Acquista Kisses con PayPal e usali per beni di gioco e Pesca Misteriosa</div>
-              <SezioneRicaricaKisses tagli={config.tagli_kisses} user={user} kisses={kisses} onKissesUpdate={handleKisses} />
+              {/* Usa prezziCfg per i tagli con bonus numerico dal DB; fallback a config.tagli_kisses */}
+              <SezioneRicaricaKisses
+                tagli={prezziCfg ? Object.entries(prezziCfg.tagli_kisses).map(([id, t]) => ({ id, ...t })) : (config.tagli_kisses || [])}
+                user={user} kisses={kisses} onKissesUpdate={handleKisses}
+              />
             </div>
           </>
         )}

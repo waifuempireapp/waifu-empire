@@ -3,10 +3,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import KissesIcon from './KissesIcon';
 
 const TAGLI_DEFAULT = [
-  { id: 'xs', kisses: 100,  price_eur: '0.99', label: '100 Kisses',  bonus: '' },
-  { id: 'sm', kisses: 300,  price_eur: '2.49', label: '300 Kisses',  bonus: '+30 bonus' },
-  { id: 'md', kisses: 600,  price_eur: '3.99', label: '600 Kisses',  bonus: '+80 bonus' },
-  { id: 'lg', kisses: 1400, price_eur: '7.99', label: '1400 Kisses', bonus: '+200 bonus' },
+  { id: 'xs', kisses: 100,  bonus: 0,   price_eur: '0.99', label: '100 Kisses' },
+  { id: 'sm', kisses: 300,  bonus: 30,  price_eur: '2.49', label: '300 Kisses' },
+  { id: 'md', kisses: 600,  bonus: 80,  price_eur: '3.99', label: '600 Kisses' },
+  { id: 'lg', kisses: 1400, bonus: 200, price_eur: '7.99', label: '1400 Kisses' },
 ];
 
 export default function KissesShortageModal({ missingKisses = 0, currentKisses = 0, onSuccess, onCancel, tagli, user }) {
@@ -128,7 +128,7 @@ export default function KissesShortageModal({ missingKisses = 0, currentKisses =
                     </span>
                   </div>
                   <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#f5a623', fontWeight: 700 }}>€{t.price_eur}</div>
-                  {t.bonus && <div style={{ fontSize: 8, color: '#00e676', marginTop: 2, fontFamily: 'Fredoka' }}>{t.bonus}</div>}
+                  {(t.bonus > 0) && <div style={{ fontSize: 8, color: '#00e676', marginTop: 2, fontFamily: 'Fredoka' }}>+{t.bonus} bonus</div>}
                 </div>
               );
             })}

@@ -5,16 +5,17 @@ const cache = new ModuleCache(5 * 60 * 1000); // 5 min — le modifiche admin pr
 
 export const DEFAULT_PREZZI = {
   tagli_kisses: {
-    xs: { kisses: 100,  price_eur: '0.99', label: '100 Kisses' },
-    sm: { kisses: 300,  price_eur: '2.49', label: '300 Kisses' },
-    md: { kisses: 600,  price_eur: '3.99', label: '600 Kisses' },
-    lg: { kisses: 1400, price_eur: '7.99', label: '1400 Kisses' },
+    xs: { kisses: 100,  bonus: 0,   price_eur: '0.99', label: '100 Kisses' },
+    sm: { kisses: 300,  bonus: 30,  price_eur: '2.49', label: '300 Kisses' },
+    md: { kisses: 600,  bonus: 80,  price_eur: '3.99', label: '600 Kisses' },
+    lg: { kisses: 1400, bonus: 200, price_eur: '7.99', label: '1400 Kisses' },
   },
   pass_hard:   { kisses: 500, price_eur: '4.99' },
   pass_scambi: { kisses: 100, price_eur: '1.99' },
   beni: {
-    pack_sfida: { kisses: 50 },
-    energia:    { kisses: 20 },
+    pack_sfida:    { kisses: 50 },
+    pack_sfida_10: { kisses: 450 }, // 10 bustine sfida in un colpo
+    energia:       { kisses: 20 },
   },
 };
 

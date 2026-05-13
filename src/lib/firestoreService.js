@@ -320,7 +320,7 @@ export async function spendKisses(uid, amount) {
 }
 
 // =================== PACK SNAPSHOTS ===================
-export async function createPackSnapshot(ownerUid, cards) {
+export async function createPackSnapshot(ownerUid, cards, { dropId = null, dropName = null, hot = false } = {}) {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   await addDoc(collection(db, 'pack_snapshots'), {
@@ -331,10 +331,12 @@ export async function createPackSnapshot(ownerUid, cards) {
       if (c.tipo === 'waifu') immagine = d.asset_statica || d.asset_immersiva || d.immagine || null;
       else if (c.tipo === 'outfit') immagine = d.asset || d.immagine || null;
       else immagine = d.immagine || null;
-      return { tipo: c.tipo, id: d.id, rarita: d.rarita, nome: d.nome, immagine };
+      return { tipo: c.tipo, id: d.id, rarita: d.rarita, nome: d.nome, immagine, hot: d.hot === true };
     }),
     isGhost: false,
     visibleToFriends: true,
+    dropId,
+    dropName,
     createdAt: serverTimestamp(),
     expiresAt: Timestamp.fromDate(expiresAt),
   });
@@ -384,16 +386,17 @@ export async function getFriendshipDoc(uid1, uid2) {
 // =================== PREZZI CONFIG ===================
 const PREZZI_DEFAULT = {
   tagli_kisses: {
-    xs: { kisses: 100,  price_eur: '0.99', label: '100 Kisses', bonus: '' },
-    sm: { kisses: 300,  price_eur: '2.49', label: '300 Kisses', bonus: '+30 bonus' },
-    md: { kisses: 600,  price_eur: '3.99', label: '600 Kisses', bonus: '+80 bonus' },
-    lg: { kisses: 1400, price_eur: '7.99', label: '1400 Kisses', bonus: '+200 bonus' },
+    xs: { kisses: 100,  bonus: 0,   price_eur: '0.99', label: '100 Kisses' },
+    sm: { kisses: 300,  bonus: 30,  price_eur: '2.49', label: '300 Kisses' },
+    md: { kisses: 600,  bonus: 80,  price_eur: '3.99', label: '600 Kisses' },
+    lg: { kisses: 1400, bonus: 200, price_eur: '7.99', label: '1400 Kisses' },
   },
   pass_hard:   { kisses: 500, price_eur: '4.99' },
   pass_scambi: { kisses: 100, price_eur: '1.99' },
   beni: {
-    pack_sfida: { kisses: 50 },
-    energia:    { kisses: 20 },
+    pack_sfida:    { kisses: 50 },
+    pack_sfida_10: { kisses: 450 },
+    energia:       { kisses: 20 },
   },
 };
 
