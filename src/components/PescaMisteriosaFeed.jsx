@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import PescaPackCard from './PescaPackCard';
 import PescaRevealAnimation from './PescaRevealAnimation';
 import KissesIcon from './KissesIcon';
@@ -73,6 +73,7 @@ function CardBack({ selected, onClick, size = 'md' }) {
 export default function PescaMisteriosaFeed({ user, profilo, collezione, initialPacks, onKissesSpent, onCollectionRefresh }) {
   const [packs, setPacks] = useState(initialPacks || []);
   const [loading, setLoading] = useState(initialPacks === null);
+  const lastFishedRef = useRef(null); // { id, isGhost } — pack appena pescato
   const [error, setError] = useState(null);
   const [selectedPack, setSelectedPack] = useState(null);
   // shuffledOrder[uiIndex] = realIndex (indice nell'array originale del pack)
@@ -129,13 +130,23 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, initial
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Errore pesca');
 
+      // Salva il pack pescato prima di azzerare lo stato
+      lastFishedRef.current = { id: selectedPack.id, isGhost: selectedPack.isGhost };
+
       setSelectedPack(null);
       setSelectedCardIndex(null);
       setShuffledOrder([]);
 
       // Passa all'animazione le carte nell'ordine shuffled e l'indice UI come chosenIndex
       const shuffledCards = shuffledOrder.map(i => selectedPack.cards[i]);
-      setRisultato({ allCards: shuffledCards, chosenIndex: selectedCardIndex });
+      const isNewArr = shuffledCards.map(c => {
+        if (!collezione) return false;
+        if (c.tipo === 'waifu') return !collezione.waifu?.[c.id];
+        if (c.tipo === 'outfit') return !collezione.outfit?.[c.id];
+        if (c.tipo === 'posa') return !collezione.pose?.[c.id];
+        return false;
+      });
+      setRisultato({ allCards: shuffledCards, chosenIndex: selectedCardIndex, isNewArr });
       onKissesSpent?.(KISSES_COST);
     } catch (e) {
       mostraNotif(e.message, '#ff4d4d');
@@ -144,7 +155,18 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, initial
 
   const onRivelazioneFine = async () => {
     setRisultato(null);
-    caricaFeed();
+    // Aggiorna solo il pack pescato — gli altri restano invariati
+    const fished = lastFishedRef.current;
+    if (fished) {
+      if (fished.isGhost) {
+        // Rimuovi il ghost pack dalla lista (era one-shot)
+        setPacks(prev => prev.filter(p => p.id !== fished.id));
+      } else {
+        // Marca il pack reale come già pescato (rimane visibile ma disabilitato)
+        setPacks(prev => prev.map(p => p.id === fished.id ? { ...p, alreadyFished: true } : p));
+      }
+      lastFishedRef.current = null;
+    }
     mostraNotif('Carta aggiunta alla collezione!', '#00e676');
     // Invalida la collezione nel parent così il tab Collezione si aggiorna
     onCollectionRefresh?.();
@@ -185,6 +207,7 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, initial
         <PescaRevealAnimation
           allCards={risultato.allCards}
           chosenIndex={risultato.chosenIndex}
+          isNewArr={risultato.isNewArr}
           onComplete={onRivelazioneFine}
         />
       )}

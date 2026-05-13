@@ -17,12 +17,15 @@ export default function TradeIncomingModal({ trade, collezione, waifuCat, user, 
   const fromWaifuImmagine = trade?.fromWaifuImmagine || null;
   const coloreRarita = RARITA_COLORI[raritaRichiesta] || '#f5a623';
 
-  // Waifu di B con stessa rarità e copie ≥ 1, esclusa quella offerta da A (che B non possiede di solito)
+  // Waifu di B con stessa rarità e copie ≥ 1 — rarità presa dal catalogo (non dalla collezione)
   const mieWaifuCompatibili = Object.entries(collezione?.waifu || {})
-    .filter(([id, d]) => d.rarita === raritaRichiesta && (d.copie ?? 0) >= 1)
+    .filter(([id, d]) => {
+      const catalog = waifuCat.find(w => w.id === id);
+      return catalog?.rarita === raritaRichiesta && (d.copie ?? 0) >= 1;
+    })
     .map(([id, d]) => {
       const catalog = waifuCat.find(w => w.id === id);
-      return { id, ...d, nome: catalog?.nome || d.nome || id, immagine: catalog?.asset_statica || catalog?.asset_immersiva || catalog?.immagine || d.immagine || null };
+      return { id, ...d, rarita: catalog?.rarita, nome: catalog?.nome || id, immagine: catalog?.asset_statica || catalog?.asset_immersiva || catalog?.immagine || null };
     });
 
   const rispondi = async () => {

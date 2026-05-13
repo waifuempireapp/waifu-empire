@@ -1377,8 +1377,9 @@ function AmiciTab({ user, profilo, collezione, waifuCat }) {
   const tradeEnabled = process.env.NEXT_PUBLIC_TRADE_ENABLED === 'true';
 
   // Pre-fetch centralizzato: tutti i dati caricati una sola volta al mount
-  const [amici, setAmici] = useState(null); // null = loading, [] = vuoto
+  const [amici, setAmici] = useState(null); // null = loading
   const [richieste, setRichieste] = useState(null);
+  const [tradesInitialData, setTradesInitialData] = useState(null); // { trades, pendingCount }
 
   const caricaAmici = useCallback(async () => {
     const [friendList, reqList] = await Promise.all([
@@ -1389,7 +1390,22 @@ function AmiciTab({ user, profilo, collezione, waifuCat }) {
     setRichieste(reqList);
   }, [user.uid]);
 
-  useEffect(() => { caricaAmici(); }, [caricaAmici]);
+  const caricaScambi = useCallback(async () => {
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/trades/list', { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        setTradesInitialData({ trades: data.trades || [], pendingCount: data.pendingCount || 0 });
+        setScambiBadge(data.pendingCount || 0);
+      }
+    } catch { /* ignora */ }
+  }, [user]);
+
+  useEffect(() => {
+    caricaAmici();
+    if (tradeEnabled) caricaScambi();
+  }, [caricaAmici, caricaScambi, tradeEnabled]);
 
   return (
     <div className="fade-in" style={{ maxWidth: 500, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
@@ -1438,7 +1454,9 @@ function AmiciTab({ user, profilo, collezione, waifuCat }) {
           user={user}
           collezione={collezione}
           waifuCat={waifuCat || []}
-          onBadgeChange={setScambiBadge}
+          initialData={tradesInitialData}
+          onBadgeChange={(n) => { setScambiBadge(n); }}
+          onRefresh={caricaScambi}
         />
       )}
     </div>

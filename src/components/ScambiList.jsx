@@ -17,12 +17,20 @@ const STATUS_LABEL = {
   expired: { text: 'Scaduto', color: '#ff4d4d' },
 };
 
-export default function ScambiList({ user, collezione, waifuCat, onBadgeChange }) {
-  const [trades, setTrades] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function ScambiList({ user, collezione, waifuCat, initialData, onBadgeChange, onRefresh }) {
+  const [trades, setTrades] = useState(initialData?.trades || []);
+  const [loading, setLoading] = useState(!initialData);
   const [errore, setErrore] = useState(null);
   const [tradeAperto, setTradeAperto] = useState(null); // { trade, tipo: 'incoming' | 'confirm' }
   const [animazione, setAnimazione] = useState(null); // waifu ricevuta lato B (badge "nuovo")
+
+  // Aggiorna badge se initialData già disponibile
+  useEffect(() => {
+    if (initialData) {
+      onBadgeChange?.(initialData.pendingCount || 0);
+      setLoading(false);
+    }
+  }, []);
 
   const carica = async () => {
     setLoading(true);
@@ -38,7 +46,8 @@ export default function ScambiList({ user, collezione, waifuCat, onBadgeChange }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { carica(); }, []);
+  // Carica solo se non c'è initialData già disponibile
+  useEffect(() => { if (!initialData) carica(); }, []);
 
   const apriTrade = (trade) => {
     const uid = user.uid;

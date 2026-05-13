@@ -10,7 +10,7 @@ const RARITA_COLORI = {
 };
 
 // Singola carta con flip 3D: mostra il retro, poi si gira per rivelare il fronte
-function FlipCard({ carta, revealed, isChosen, delay = 0 }) {
+function FlipCard({ carta, revealed, isChosen, isNew, delay = 0 }) {
   const [flipped, setFlipped] = useState(false);
   const colore = RARITA_COLORI[carta?.rarita] || '#9e9e9e';
   const w = 72, h = 100;
@@ -66,13 +66,21 @@ function FlipCard({ carta, revealed, isChosen, delay = 0 }) {
               padding: '2px 4px', letterSpacing: 1,
             }}>TUA</div>
           )}
+          {isNew && (
+            <div style={{
+              position: 'absolute', top: 4, left: 4,
+              background: '#00e676', borderRadius: 3,
+              fontFamily: 'Orbitron', fontSize: 5, color: '#000',
+              padding: '2px 4px', fontWeight: 900,
+            }}>NEW</div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-export default function PescaRevealAnimation({ allCards, chosenIndex, onComplete }) {
+export default function PescaRevealAnimation({ allCards, chosenIndex, isNewArr, onComplete }) {
   // Ordine: prima le 4 non scelte (in ordine di posizione), poi la scelta
   const revealOrder = [
     ...allCards.map((_, i) => i).filter(i => i !== chosenIndex),
@@ -120,6 +128,7 @@ export default function PescaRevealAnimation({ allCards, chosenIndex, onComplete
             carta={carta}
             revealed={revealedSet.has(i)}
             isChosen={i === chosenIndex}
+            isNew={isNewArr?.[i] ?? false}
             delay={0}
           />
         ))}

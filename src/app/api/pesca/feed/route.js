@@ -187,14 +187,21 @@ export async function GET(request) {
     // si genera il numero di pack necessari senza rileggere Firestore.
     if (packs.length < MIN_FEED_SIZE) {
       const needed = MIN_FEED_SIZE - packs.length;
+      const GHOST_NAMES = [
+        'Serafina', 'Lunara', 'Isolde', 'Morgana', 'Arianna',
+        'Eleonora', 'Fiamma', 'Celeste', 'Aurora', 'Tempesta',
+        'Cristalla', 'Marisol', 'Selene', 'Irys', 'Vespera',
+        'Ondina', 'Solara', 'Mirella', 'Azzurra', 'Nimue',
+      ];
       try {
         const { waifuPool, outfitPool, posePool } = await buildCatalogPools();
         for (let i = 0; i < needed; i++) {
           const cards = buildPackFromPools(waifuPool, outfitPool, posePool);
           if (cards && cards.length > 0) {
+            const nameIdx = (packs.length + i) % GHOST_NAMES.length;
             packs.push({
               id: `ghost-${Date.now()}-${i}`,
-              ownerName: 'Pescatrice Misteriosa',
+              ownerName: GHOST_NAMES[nameIdx],
               cards,
               isGhost: true,
               expiresAt: null,
