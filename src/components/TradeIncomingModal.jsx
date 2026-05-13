@@ -6,7 +6,9 @@ const RARITA_COLORI = {
   leggendario: '#ffa726', immersivo: '#ec4899',
 };
 
-export default function TradeIncomingModal({ trade, collezione, waifuCat, user, onDone, onCancel }) {
+const DAILY_LIMIT = 5;
+
+export default function TradeIncomingModal({ trade, collezione, waifuCat, profilo, user, onDone, onCancel }) {
   const [waifuSelId, setWaifuSelId] = useState(null);
   const [stato, setStato] = useState('idle'); // idle | loading | success | error | cancelled
   const [errMsg, setErrMsg] = useState('');
@@ -17,11 +19,17 @@ export default function TradeIncomingModal({ trade, collezione, waifuCat, user, 
   const fromWaifuImmagine = trade?.fromWaifuImmagine || null;
   const coloreRarita = RARITA_COLORI[raritaRichiesta] || '#f5a623';
 
-  // Waifu di B con stessa rarità e copie ≥ 1 — rarità presa dal catalogo (non dalla collezione)
+  // Regole di B
+  const haTradePass = profilo?.tradePass === true;
+  const tradesToday = profilo?.tradesToday ?? 0;
+  const limitRaggiunto = !haTradePass && tradesToday >= DAILY_LIMIT;
+  const scambiRimasti = haTradePass ? null : Math.max(0, DAILY_LIMIT - tradesToday);
+
+  // Waifu di B con stessa rarità e copie ≥ 2 — rarità presa dal catalogo (non dalla collezione)
   const mieWaifuCompatibili = Object.entries(collezione?.waifu || {})
     .filter(([id, d]) => {
       const catalog = waifuCat.find(w => w.id === id);
-      return catalog?.rarita === raritaRichiesta && (d.copie ?? 0) >= 1;
+      return catalog?.rarita === raritaRichiesta && (d.copie ?? 0) >= 2; // min 2 copie
     })
     .map(([id, d]) => {
       const catalog = waifuCat.find(w => w.id === id);
@@ -108,19 +116,46 @@ export default function TradeIncomingModal({ trade, collezione, waifuCat, user, 
           </div>
         </div>
 
-        {/* Selezione waifu B */}
-        <div style={{ fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 2, color: 'rgba(238,232,220,0.4)', marginBottom: 10 }}>
-          SCEGLI LA TUA WAIFU DA OFFRIRE IN CAMBIO (stessa rarità: {raritaRichiesta})
+        {/* Banner limite giornaliero */}
+        <div style={{
+          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+          borderRadius: 10, padding: '8px 14px', marginBottom: 4,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.4)', letterSpacing: 1 }}>SCAMBI OGGI</div>
+          {haTradePass ? (
+            <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: '#00e676' }}>✓ ILLIMITATI</div>
+          ) : (
+            <div style={{ fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700 }}>
+              <span style={{ color: limitRaggiunto ? '#ff4d4d' : '#eedcd4' }}>{tradesToday}</span>
+              <span style={{ color: 'rgba(238,232,220,0.35)' }}>/{DAILY_LIMIT}</span>
+              {!limitRaggiunto && <span style={{ color: '#00e676', marginLeft: 6, fontSize: 8 }}>({scambiRimasti} rimasti)</span>}
+            </div>
+          )}
         </div>
 
-        {mieWaifuCompatibili.length === 0 ? (
+        {limitRaggiunto && (
+          <div style={{ background: 'rgba(255,77,77,0.08)', border: '1px solid rgba(255,77,77,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 4 }}>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: '#ff4d4d', fontWeight: 700 }}>LIMITE RAGGIUNTO</div>
+            <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: 'rgba(238,232,220,0.5)', marginTop: 2 }}>Hai esaurito i tuoi {DAILY_LIMIT} scambi giornalieri. Puoi solo rifiutare questo scambio.</div>
+          </div>
+        )}
+
+        {/* Selezione waifu B */}
+        {!limitRaggiunto && (
+        <div style={{ fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 2, color: 'rgba(238,232,220,0.4)', marginBottom: 10 }}>
+          SCEGLI LA TUA WAIFU DA OFFRIRE IN CAMBIO (stessa rarità: {raritaRichiesta} · min. 2 copie)
+        </div>
+        )}
+
+        {!limitRaggiunto && mieWaifuCompatibili.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 20, background: 'rgba(255,77,158,0.05)', border: '1px solid rgba(255,77,158,0.15)', borderRadius: 12 }}>
             <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: 'rgba(238,232,220,0.4)' }}>
-              Non hai waifu di rarità <strong style={{ color: coloreRarita }}>{raritaRichiesta}</strong> da offrire.
+              Non hai waifu di rarità <strong style={{ color: coloreRarita }}>{raritaRichiesta}</strong> con almeno 2 copie da offrire.
             </div>
             <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: 'rgba(238,232,220,0.3)', marginTop: 4 }}>Puoi rifiutare lo scambio.</div>
           </div>
-        ) : (
+        ) : !limitRaggiunto ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 8, maxHeight: 280, overflowY: 'auto' }}>
             {mieWaifuCompatibili.map(w => {
               const sel = waifuSelId === w.id;
@@ -148,7 +183,7 @@ export default function TradeIncomingModal({ trade, collezione, waifuCat, user, 
               );
             })}
           </div>
-        )}
+        ) : null}
 
         {errMsg && <div style={{ color: '#ff4d4d', fontFamily: 'Orbitron', fontSize: 9, textAlign: 'center', marginTop: 8 }}>{errMsg}</div>}
 
@@ -156,19 +191,21 @@ export default function TradeIncomingModal({ trade, collezione, waifuCat, user, 
           <button onClick={rifiuta} disabled={stato === 'loading'} style={{ background: 'rgba(255,77,77,0.08)', border: '1px solid rgba(255,77,77,0.3)', borderRadius: 8, color: '#ff4d4d', fontFamily: 'Orbitron', fontSize: 9, padding: '9px 18px', cursor: 'pointer' }}>
             {stato === 'loading' ? '…' : 'RIFIUTA'}
           </button>
-          <button
-            onClick={rispondi}
-            disabled={!waifuSelId || stato === 'loading'}
-            style={{
-              background: waifuSelId ? 'rgba(255,77,158,0.15)' : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${waifuSelId ? 'rgba(255,77,158,0.5)' : 'rgba(255,255,255,0.08)'}`,
-              borderRadius: 8, color: waifuSelId ? '#ff4d9e' : 'rgba(255,255,255,0.2)',
-              fontFamily: 'Orbitron', fontSize: 9, padding: '9px 22px',
-              cursor: waifuSelId ? 'pointer' : 'not-allowed', letterSpacing: 1,
-            }}
-          >
-            {stato === 'loading' ? '…' : 'PROPONI SCAMBIO'}
-          </button>
+          {!limitRaggiunto && (
+            <button
+              onClick={rispondi}
+              disabled={!waifuSelId || stato === 'loading'}
+              style={{
+                background: waifuSelId ? 'rgba(255,77,158,0.15)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${waifuSelId ? 'rgba(255,77,158,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                borderRadius: 8, color: waifuSelId ? '#ff4d9e' : 'rgba(255,255,255,0.2)',
+                fontFamily: 'Orbitron', fontSize: 9, padding: '9px 22px',
+                cursor: waifuSelId ? 'pointer' : 'not-allowed', letterSpacing: 1,
+              }}
+            >
+              {stato === 'loading' ? '…' : 'PROPONI SCAMBIO'}
+            </button>
+          )}
         </div>
       </div>
     </div>

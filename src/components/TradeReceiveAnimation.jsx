@@ -26,8 +26,8 @@ export default function TradeReceiveAnimation({ waifu, isNew, onComplete }) {
   useEffect(() => {
     const t1 = setTimeout(() => setFlipped(true), 800);
     const t2 = setTimeout(() => setDone(true), 2200);
-    const t3 = setTimeout(() => onComplete?.(), 4000);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    // Nessun auto-proceed — l'utente deve premere CONTINUA
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
   const w = 120, h = 168;
@@ -84,9 +84,9 @@ export default function TradeReceiveAnimation({ waifu, isNew, onComplete }) {
             onClick={onComplete}
             style={{
               marginTop: 18, background: `${colore}20`,
-              border: `1px solid ${colore}60`, borderRadius: 8,
-              color: colore, fontFamily: 'Orbitron', fontSize: 9,
-              padding: '8px 22px', cursor: 'pointer', letterSpacing: 1,
+              border: `1px solid ${colore}60`, borderRadius: 22,
+              color: colore, fontFamily: 'Orbitron', fontSize: 10,
+              padding: '11px 32px', cursor: 'pointer', letterSpacing: 2,
             }}
           >CONTINUA</button>
         </div>

@@ -221,16 +221,19 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, initial
         />
       )}
 
-      {/* Modale selezione alla cieca */}
+      {/* Modale selezione alla cieca — full-viewport, nessuno scroll */}
       {selectedPack && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 400,
           background: 'rgba(6,3,15,0.97)', backdropFilter: 'blur(20px)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          padding: 20, gap: 20,
+          display: 'flex', flexDirection: 'column',
+          paddingTop: 'max(16px, env(safe-area-inset-top))',
+          paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+          paddingInline: 16,
         }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontFamily: 'Orbitron', fontSize: 13, letterSpacing: 3, color: '#ff4d9e', marginBottom: 6 }}>
+          {/* Header — altezza fissa */}
+          <div style={{ textAlign: 'center', flexShrink: 0, paddingBottom: 12 }}>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 12, letterSpacing: 3, color: '#ff4d9e', marginBottom: 4 }}>
               PESCA ALLA CIECA
             </div>
             <div style={{ fontSize: 11, color: 'rgba(238,232,220,0.45)', fontFamily: 'Fredoka' }}>
@@ -238,31 +241,35 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, initial
             </div>
           </div>
 
-          {/* 5 carte face-down in ordine shuffled */}
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-            {shuffledOrder.map((_, uiIdx) => (
-              <CardBack
-                key={uiIdx}
-                selected={selectedCardIndex === uiIdx}
-                onClick={() => setSelectedCardIndex(selectedCardIndex === uiIdx ? null : uiIdx)}
-                size="md"
-              />
-            ))}
+          {/* Carte — crescono per riempire lo spazio disponibile */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', alignContent: 'center' }}>
+              {shuffledOrder.map((_, uiIdx) => (
+                <CardBack
+                  key={uiIdx}
+                  selected={selectedCardIndex === uiIdx}
+                  onClick={() => setSelectedCardIndex(selectedCardIndex === uiIdx ? null : uiIdx)}
+                  size="md"
+                />
+              ))}
+            </div>
           </div>
 
-          {selectedCardIndex !== null && (
-            <div style={{ fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 2, color: '#ff4d9e', opacity: 0.8 }}>
-              Carta {selectedCardIndex + 1} selezionata
-            </div>
-          )}
+          {/* Footer — altezza fissa, sempre visibile */}
+          <div style={{ flexShrink: 0, paddingTop: 12 }}>
+            {selectedCardIndex !== null && (
+              <div style={{ fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 2, color: '#ff4d9e', opacity: 0.8, textAlign: 'center', marginBottom: 10 }}>
+                Carta {selectedCardIndex + 1} selezionata
+              </div>
+            )}
 
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
             <button
               onClick={() => { setSelectedPack(null); setSelectedCardIndex(null); setShuffledOrder([]); }}
               style={{
                 background: 'none', border: '1px solid rgba(255,255,255,0.15)',
                 borderRadius: 8, color: 'rgba(238,232,220,0.45)',
-                fontFamily: 'Orbitron', fontSize: 9, padding: '10px 18px', cursor: 'pointer',
+                fontFamily: 'Orbitron', fontSize: 9, padding: '12px 18px', cursor: 'pointer',
               }}
             >ANNULLA</button>
             <button
@@ -271,17 +278,18 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, initial
               style={{
                 background: selectedCardIndex !== null ? 'rgba(255,77,158,0.15)' : 'rgba(255,255,255,0.03)',
                 border: `1px solid ${selectedCardIndex !== null ? 'rgba(255,77,158,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                borderRadius: 8,
+                borderRadius: 24,
                 color: selectedCardIndex !== null ? '#ff4d9e' : 'rgba(255,255,255,0.2)',
-                fontFamily: 'Orbitron', fontSize: 10, letterSpacing: 1,
-                padding: '10px 18px', cursor: selectedCardIndex !== null && !busy ? 'pointer' : 'not-allowed',
+                fontFamily: 'Orbitron', fontSize: 11, letterSpacing: 1,
+                padding: '13px 22px', cursor: selectedCardIndex !== null && !busy ? 'pointer' : 'not-allowed',
                 display: 'flex', alignItems: 'center', gap: 6,
                 transition: 'all 0.2s',
               }}
             >
-              <KissesIcon size={13} />
+              <KissesIcon size={14} />
               {busy ? 'PESCA IN CORSO…' : `PESCA (${KISSES_COST} Kisses)`}
             </button>
+          </div>
           </div>
         </div>
       )}

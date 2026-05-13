@@ -191,7 +191,7 @@ export default function GiocoPage() {
           {tab === 'sbusta' && <SbustaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} user={user} mostraNotif={mostraNotif} godPackProb={godPackProb} />}
           {tab === 'collezione' && <CollezioneTab collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} profilo={profilo} setProfilo={setProfilo} user={user} mostraNotif={mostraNotif} initialSubTab={colezSubTab} statConfig={statConfig} />}
           {tab === 'mappa' && <MappaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} user={user} mostraNotif={mostraNotif} />}
-          {tab === 'amici' && <AmiciTab user={user} profilo={profilo} collezione={collezione} waifuCat={waifuCat} />}
+          {tab === 'amici' && <AmiciTab user={user} profilo={profilo} collezione={collezione} waifuCat={waifuCat} onCollectionRefresh={async () => { const c = await getCollezione(user.uid); setColl(c); }} />}
           {tab === 'classifica' && <ClassificaTab user={user} />}
         </div>
 
@@ -1371,7 +1371,7 @@ function MadalePosa({ posa }) {
 // ============================================================
 // TAB: AMICI
 // ============================================================
-function AmiciTab({ user, profilo, collezione, waifuCat }) {
+function AmiciTab({ user, profilo, collezione, waifuCat, onCollectionRefresh }) {
   const [subTab, setSubTab] = useState('amici'); // 'amici' | 'scambi'
   const [scambiBadge, setScambiBadge] = useState(0);
   const tradeEnabled = process.env.NEXT_PUBLIC_TRADE_ENABLED === 'true';
@@ -1458,6 +1458,7 @@ function AmiciTab({ user, profilo, collezione, waifuCat }) {
           initialData={tradesInitialData}
           onBadgeChange={(n) => { setScambiBadge(n); }}
           onRefresh={caricaScambi}
+          onCollectionRefresh={onCollectionRefresh}
         />
       )}
     </div>

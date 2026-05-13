@@ -1,8 +1,32 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import TradeIncomingModal from './TradeIncomingModal';
 import TradePendingConfirmModal from './TradePendingConfirmModal';
 import TradeReceiveAnimation from './TradeReceiveAnimation';
+
+function TradeResetCountdown({ tradesResetAt }) {
+  const [remaining, setRemaining] = useState('');
+  useEffect(() => {
+    const calc = () => {
+      let target;
+      if (tradesResetAt?.toDate) target = tradesResetAt.toDate();
+      else if (tradesResetAt?.seconds) target = new Date(tradesResetAt.seconds * 1000);
+      else if (tradesResetAt) target = new Date(tradesResetAt);
+      else { setRemaining(''); return; }
+      const diff = target - Date.now();
+      if (diff <= 0) { setRemaining('in aggiornamento…'); return; }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setRemaining(`${h}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`);
+    };
+    calc();
+    const id = setInterval(calc, 1000);
+    return () => clearInterval(id);
+  }, [tradesResetAt]);
+  if (!remaining) return null;
+  return <span style={{ color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron', fontSize: 7 }}>⏱ reset {remaining}</span>;
+}
 
 const RARITA_COLORI = {
   comune: '#9e9e9e', raro: '#42a5f5', epico: '#ab47bc',
@@ -19,7 +43,7 @@ const STATUS_LABEL = {
 
 const DAILY_LIMIT = 5;
 
-export default function ScambiList({ user, profilo, collezione, waifuCat, initialData, onBadgeChange, onRefresh }) {
+export default function ScambiList({ user, profilo, collezione, waifuCat, initialData, onBadgeChange, onRefresh, onCollectionRefresh }) {
   const [trades, setTrades] = useState(initialData?.trades || []);
   const [loading, setLoading] = useState(!initialData);
   const [errore, setErrore] = useState(null);
@@ -82,6 +106,7 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
         trade={enrichedTrade}
         collezione={collezione}
         waifuCat={waifuCat}
+        profilo={profilo}
         user={user}
         onDone={onTradeDone}
         onCancel={() => setTradeAperto(null)}
@@ -99,7 +124,8 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
         onDone={(esito) => {
           setTradeAperto(null);
           if (esito === 'completed') {
-            // Mostra animazione per la waifu ricevuta
+            // Aggiorna la collezione nel parent (le vecchie scompaiono, le nuove appaiono)
+            onCollectionRefresh?.();
             const received = waifuCat.find(w => w.id === tradeAperto.trade.toWaifuId);
             if (received) setAnimazione(received);
             else carica();
@@ -203,25 +229,29 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
 
   const haTradePass = profilo?.tradePass === true;
   const tradesToday = profilo?.tradesToday ?? 0;
+  const tradesResetAt = profilo?.tradesResetAt;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Counter scambi giornalieri */}
+      {/* Counter scambi giornalieri + countdown reset */}
       <div style={{
         background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
         borderRadius: 10, padding: '8px 14px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
       }}>
         <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.4)', letterSpacing: 1 }}>SCAMBI OGGI</div>
         {haTradePass ? (
           <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: '#00e676' }}>✓ TRADE PASS — ILLIMITATI</div>
         ) : (
-          <div style={{ fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700 }}>
-            <span style={{ color: tradesToday >= DAILY_LIMIT ? '#ff4d4d' : '#eedcd4' }}>{tradesToday}</span>
-            <span style={{ color: 'rgba(238,232,220,0.35)' }}>/{DAILY_LIMIT}</span>
-            {tradesToday < DAILY_LIMIT && (
-              <span style={{ color: '#00e676', marginLeft: 6, fontSize: 8 }}>({DAILY_LIMIT - tradesToday} rimasti)</span>
-            )}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700 }}>
+              <span style={{ color: tradesToday >= DAILY_LIMIT ? '#ff4d4d' : '#eedcd4' }}>{tradesToday}</span>
+              <span style={{ color: 'rgba(238,232,220,0.35)' }}>/{DAILY_LIMIT}</span>
+              {tradesToday < DAILY_LIMIT && (
+                <span style={{ color: '#00e676', marginLeft: 6, fontSize: 8 }}>({DAILY_LIMIT - tradesToday} rimasti)</span>
+              )}
+            </div>
+            {tradesResetAt && <TradeResetCountdown tradesResetAt={tradesResetAt} />}
           </div>
         )}
       </div>

@@ -71,8 +71,8 @@ export default function PescaRevealAnimation({ allCards, chosenIndex, isNewArr, 
 
   useEffect(() => {
     if (revealStep >= revealOrder.length) {
-      // Tutte rivelate — aspetta un po' poi chiama onComplete
-      const t = setTimeout(() => { setDone(true); setTimeout(() => onComplete?.(), 1800); }, 600);
+      // Tutte rivelate — mostra la carta, poi aspetta che l'utente prema CONTINUA
+      const t = setTimeout(() => setDone(true), 600);
       return () => clearTimeout(t);
     }
     // Rivela la prossima carta con un delay
@@ -141,6 +141,17 @@ export default function PescaRevealAnimation({ allCards, chosenIndex, isNewArr, 
             <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', letterSpacing: 1 }}>
               Aggiunta alla tua collezione
             </div>
+            <button
+              onClick={onComplete}
+              style={{
+                marginTop: 20,
+                background: `${chosenColore}20`,
+                border: `1px solid ${chosenColore}60`,
+                borderRadius: 22, color: chosenColore,
+                fontFamily: 'Orbitron', fontSize: 10,
+                padding: '11px 32px', cursor: 'pointer', letterSpacing: 2,
+              }}
+            >CONTINUA</button>
           </div>
         </div>
       )}
