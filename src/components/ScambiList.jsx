@@ -17,7 +17,9 @@ const STATUS_LABEL = {
   expired: { text: 'Scaduto', color: '#ff4d4d' },
 };
 
-export default function ScambiList({ user, collezione, waifuCat, initialData, onBadgeChange, onRefresh }) {
+const DAILY_LIMIT = 5;
+
+export default function ScambiList({ user, profilo, collezione, waifuCat, initialData, onBadgeChange, onRefresh }) {
   const [trades, setTrades] = useState(initialData?.trades || []);
   const [loading, setLoading] = useState(!initialData);
   const [errore, setErrore] = useState(null);
@@ -92,6 +94,7 @@ export default function ScambiList({ user, collezione, waifuCat, initialData, on
       <TradePendingConfirmModal
         trade={tradeAperto.trade}
         waifuCat={waifuCat}
+        collezione={collezione}
         user={user}
         onDone={(esito) => {
           setTradeAperto(null);
@@ -198,8 +201,31 @@ export default function ScambiList({ user, collezione, waifuCat, initialData, on
     </div>
   );
 
+  const haTradePass = profilo?.tradePass === true;
+  const tradesToday = profilo?.tradesToday ?? 0;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Counter scambi giornalieri */}
+      <div style={{
+        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+        borderRadius: 10, padding: '8px 14px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.4)', letterSpacing: 1 }}>SCAMBI OGGI</div>
+        {haTradePass ? (
+          <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: '#00e676' }}>✓ TRADE PASS — ILLIMITATI</div>
+        ) : (
+          <div style={{ fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700 }}>
+            <span style={{ color: tradesToday >= DAILY_LIMIT ? '#ff4d4d' : '#eedcd4' }}>{tradesToday}</span>
+            <span style={{ color: 'rgba(238,232,220,0.35)' }}>/{DAILY_LIMIT}</span>
+            {tradesToday < DAILY_LIMIT && (
+              <span style={{ color: '#00e676', marginLeft: 6, fontSize: 8 }}>({DAILY_LIMIT - tradesToday} rimasti)</span>
+            )}
+          </div>
+        )}
+      </div>
+
       {pending.length > 0 && (
         <div>
           <div style={{ fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 2, color: 'rgba(238,232,220,0.4)', marginBottom: 8 }}>

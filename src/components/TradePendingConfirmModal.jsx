@@ -7,10 +7,11 @@ const RARITA_COLORI = {
   leggendario: '#ffa726', immersivo: '#ec4899',
 };
 
-export default function TradePendingConfirmModal({ trade, waifuCat, user, onDone, onCancel }) {
+export default function TradePendingConfirmModal({ trade, waifuCat, collezione, user, onDone, onCancel }) {
   const [stato, setStato] = useState('idle'); // idle | loading | success | cancelled | error
   const [errMsg, setErrMsg] = useState('');
   const [receivedWaifu, setReceivedWaifu] = useState(null);
+  const [isNewWaifu, setIsNewWaifu] = useState(false);
 
   const fromWaifuId = trade?.fromWaifuId;
   const toWaifuId = trade?.toWaifuId;
@@ -38,6 +39,10 @@ export default function TradePendingConfirmModal({ trade, waifuCat, user, onDone
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Errore conferma');
 
+      // Controlla se la waifu ricevuta è nuova (non è in collezione prima della transazione)
+      const isNew = !collezione?.waifu?.[toWaifuId];
+      setIsNewWaifu(isNew);
+
       // Mostra animazione con la waifu ricevuta da B
       const received = data.receivedWaifu || toCatalog || { id: toWaifuId, nome: toNome, rarita: trade.rarita, immagine: toImg };
       setReceivedWaifu(received);
@@ -60,7 +65,7 @@ export default function TradePendingConfirmModal({ trade, waifuCat, user, onDone
   };
 
   if (stato === 'success' && receivedWaifu) {
-    return <TradeReceiveAnimation waifu={receivedWaifu} onComplete={() => onDone?.('completed')} />;
+    return <TradeReceiveAnimation waifu={receivedWaifu} isNew={isNewWaifu} onComplete={() => onDone?.('completed')} />;
   }
 
   if (stato === 'cancelled') return (

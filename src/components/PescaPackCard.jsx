@@ -1,14 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import KissesIcon from './KissesIcon';
-
-const RARITA_COLORI = {
-  comune: '#9e9e9e',
-  raro: '#42a5f5',
-  epico: '#ab47bc',
-  leggendario: '#ffa726',
-  immersivo: '#ec4899',
-};
+import PescaCardMini from './PescaCardMini';
 
 function Timer({ expiresAt }) {
   const [remaining, setRemaining] = useState('');
@@ -28,51 +21,6 @@ function Timer({ expiresAt }) {
   return <span>{remaining}</span>;
 }
 
-function CardPreview({ carta, copie }) {
-  const colore = RARITA_COLORI[carta?.rarita] || '#9e9e9e';
-  const isNew = copie === 0;
-  return (
-    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <div style={{
-        width: 60, height: 84, borderRadius: 7,
-        border: `2px solid ${colore}70`,
-        background: `linear-gradient(160deg, ${colore}18, rgba(6,3,15,0.92))`,
-        overflow: 'hidden', position: 'relative',
-        boxShadow: `0 2px 10px ${colore}30`,
-      }}>
-        {carta?.immagine ? (
-          <img src={carta.immagine} alt={carta.nome || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: colore }}>
-            {carta?.tipo === 'waifu' ? '◈' : carta?.tipo === 'outfit' ? '✦' : '✿'}
-          </div>
-        )}
-        {/* Barra rarità */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: colore }} />
-        {/* Badge NEW */}
-        {isNew && (
-          <div style={{
-            position: 'absolute', top: 3, left: 3,
-            background: '#00e676', borderRadius: 3,
-            fontFamily: 'Orbitron', fontSize: 5, color: '#000',
-            padding: '2px 4px', fontWeight: 900, letterSpacing: 0.5,
-          }}>NEW</div>
-        )}
-      </div>
-      {/* Contatore copie */}
-      <div style={{
-        marginTop: 4, minWidth: 22, height: 22, borderRadius: 11,
-        background: copie > 0 ? 'rgba(255,255,255,0.12)' : 'rgba(0,230,118,0.2)',
-        border: `1px solid ${copie > 0 ? 'rgba(255,255,255,0.2)' : 'rgba(0,230,118,0.5)'}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: 'Orbitron', fontSize: 9, fontWeight: 700,
-        color: copie > 0 ? '#eedcd4' : '#00e676', paddingInline: 5,
-      }}>
-        {copie}
-      </div>
-    </div>
-  );
-}
 
 export default function PescaPackCard({ pack, kissesCost = 10, userKisses = 0, collezione, onPesca }) {
   const puoPescare = userKisses >= kissesCost;
@@ -156,16 +104,26 @@ export default function PescaPackCard({ pack, kissesCost = 10, userKisses = 0, c
       {/* Griglia carte */}
       <div style={{ padding: '12px 10px 6px', position: 'relative' }}>
         {/* Riga 1: 3 carte */}
-        <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 6 }}>
-          {row1.map((carta, i) => (
-            <CardPreview key={i} carta={carta} copie={getCopie(carta)} />
-          ))}
+        <div style={{ display: 'flex', gap: 5, justifyContent: 'center', marginBottom: 5 }}>
+          {row1.map((carta, i) => {
+            const isNew = collezione ? (
+              carta.tipo === 'waifu' ? !collezione.waifu?.[carta.id] :
+              carta.tipo === 'outfit' ? !collezione.outfit?.[carta.id] :
+              !collezione.pose?.[carta.id]
+            ) : false;
+            return <PescaCardMini key={i} carta={carta} isNew={isNew} copia={getCopie(carta)} width={62} height={90} />;
+          })}
         </div>
         {/* Riga 2: 2 carte centrate */}
-        <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-          {row2.map((carta, i) => (
-            <CardPreview key={i + 3} carta={carta} copie={getCopie(carta)} />
-          ))}
+        <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
+          {row2.map((carta, i) => {
+            const isNew = collezione ? (
+              carta.tipo === 'waifu' ? !collezione.waifu?.[carta.id] :
+              carta.tipo === 'outfit' ? !collezione.outfit?.[carta.id] :
+              !collezione.pose?.[carta.id]
+            ) : false;
+            return <PescaCardMini key={i + 3} carta={carta} isNew={isNew} copia={getCopie(carta)} width={62} height={90} />;
+          })}
         </div>
 
         {/* Overlay "GIÀ PESCATA" */}

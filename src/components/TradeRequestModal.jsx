@@ -8,7 +8,9 @@ const RARITA_COLORI = {
   leggendario: '#ffa726', immersivo: '#ec4899',
 };
 
-export default function TradeRequestModal({ waifu, waifuId, user, onSuccess, onCancel }) {
+const DAILY_LIMIT = 5;
+
+export default function TradeRequestModal({ waifu, waifuId, copie = 0, profilo, user, onSuccess, onCancel }) {
   const [amici, setAmici] = useState([]);
   const [loading, setLoading] = useState(true);
   const [amicoSel, setAmicoSel] = useState(null);
@@ -18,6 +20,13 @@ export default function TradeRequestModal({ waifu, waifuId, user, onSuccess, onC
 
   const colore = RARITA_COLORI[waifu?.rarita] || '#f5a623';
   const immagine = waifu?.asset_statica || waifu?.asset_immersiva || waifu?.immagine || null;
+
+  // Regole pre-invio
+  const haTradePass = profilo?.tradePass === true;
+  const tradesToday = profilo?.tradesToday ?? 0;
+  const scambiRimasti = haTradePass ? null : Math.max(0, DAILY_LIMIT - tradesToday);
+  const limitRaggiunto = !haTradePass && tradesToday >= DAILY_LIMIT;
+  const copieInsufficienti = copie < 2;
 
   useEffect(() => {
     getFriendsList(user.uid)
@@ -84,7 +93,7 @@ export default function TradeRequestModal({ waifu, waifuId, user, onSuccess, onC
             {/* Waifu proposta */}
             <div style={{
               background: `${colore}0a`, border: `1px solid ${colore}30`,
-              borderRadius: 12, padding: 14, display: 'flex', gap: 14, alignItems: 'center', marginBottom: 20,
+              borderRadius: 12, padding: 14, display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14,
             }}>
               {immagine && (
                 <img src={immagine} alt={waifu?.nome} style={{ width: 56, height: 78, objectFit: 'cover', borderRadius: 6, border: `1px solid ${colore}40` }} />
@@ -95,10 +104,49 @@ export default function TradeRequestModal({ waifu, waifuId, user, onSuccess, onC
                   Rarità: <span style={{ color: colore }}>{waifu?.rarita}</span>
                 </div>
                 <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron', marginTop: 4 }}>
-                  L'amico dovrà offrire una waifu della stessa rarità
+                  {copie} {copie === 1 ? 'copia' : 'copie'} in collezione
                 </div>
               </div>
             </div>
+
+            {/* Blocco copie insufficienti */}
+            {copieInsufficienti && (
+              <div style={{
+                background: 'rgba(255,77,77,0.08)', border: '1px solid rgba(255,77,77,0.3)',
+                borderRadius: 10, padding: '12px 14px', marginBottom: 14,
+                display: 'flex', alignItems: 'flex-start', gap: 10,
+              }}>
+                <span style={{ fontSize: 18 }}>⚠️</span>
+                <div>
+                  <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#ff4d4d', fontWeight: 700, marginBottom: 4 }}>
+                    COPIA UNICA
+                  </div>
+                  <div style={{ fontFamily: 'Fredoka', fontSize: 12, color: 'rgba(238,232,220,0.6)', lineHeight: 1.4 }}>
+                    Hai solo 1 copia di questa waifu. Per poterla scambiare devi averne almeno 2 — una verrà ceduta, una rimarrà nella tua collezione.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Contatore scambi giornalieri */}
+            {!copieInsufficienti && (
+              <div style={{
+                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+                borderRadius: 10, padding: '8px 14px', marginBottom: 14,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}>
+                <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.4)', letterSpacing: 1 }}>
+                  SCAMBI OGGI
+                </div>
+                {haTradePass ? (
+                  <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: '#00e676' }}>✓ ILLIMITATI</div>
+                ) : (
+                  <div style={{ fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700, color: limitRaggiunto ? '#ff4d4d' : scambiRimasti <= 1 ? '#f5a623' : '#eedcd4' }}>
+                    {tradesToday}/{DAILY_LIMIT} usati · <span style={{ color: limitRaggiunto ? '#ff4d4d' : '#00e676' }}>{scambiRimasti} rimanenti</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Selezione amico */}
             <div style={{ fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 2, color: 'rgba(238,232,220,0.4)', marginBottom: 10 }}>
@@ -107,11 +155,15 @@ export default function TradeRequestModal({ waifu, waifuId, user, onSuccess, onC
 
             {loading ? (
               <div style={{ textAlign: 'center', padding: 24, color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron', fontSize: 10 }}>Caricamento amici…</div>
-            ) : amici.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 24, background: 'rgba(255,77,158,0.05)', border: '1px solid rgba(255,77,158,0.15)', borderRadius: 12 }}>
-                <div style={{ fontSize: 28, marginBottom: 8 }}>👤</div>
-                <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: 'rgba(238,232,220,0.4)' }}>Non hai ancora amici con cui scambiare.</div>
-                <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: 'rgba(238,232,220,0.3)', marginTop: 4 }}>Vai nella tab Amici per aggiungerne!</div>
+            ) : copieInsufficienti ? null : amici.length === 0 ? (
+              <div style={{ padding: 20, background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: 12, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <span style={{ fontSize: 20 }}>👥</span>
+                <div>
+                  <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#f5a623', fontWeight: 700, marginBottom: 4 }}>NESSUN AMICO</div>
+                  <div style={{ fontFamily: 'Fredoka', fontSize: 12, color: 'rgba(238,232,220,0.55)', lineHeight: 1.4 }}>
+                    Per fare scambi devi prima aggiungere degli amici. Vai nella sezione Amici e condividi il tuo Friend ID!
+                  </div>
+                </div>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -147,19 +199,21 @@ export default function TradeRequestModal({ waifu, waifuId, user, onSuccess, onC
 
             <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'center' }}>
               <button onClick={onCancel} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', fontSize: 9, padding: '9px 18px', cursor: 'pointer' }}>ANNULLA</button>
-              <button
-                onClick={invia}
-                disabled={!amicoSel || stato === 'loading'}
-                style={{
-                  background: amicoSel ? 'rgba(255,77,158,0.15)' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${amicoSel ? 'rgba(255,77,158,0.5)' : 'rgba(255,255,255,0.08)'}`,
-                  borderRadius: 8, color: amicoSel ? '#ff4d9e' : 'rgba(255,255,255,0.2)',
-                  fontFamily: 'Orbitron', fontSize: 9, padding: '9px 22px',
-                  cursor: amicoSel ? 'pointer' : 'not-allowed', letterSpacing: 1, transition: 'all 0.2s',
-                }}
-              >
-                {stato === 'loading' ? '…' : 'INVIA PROPOSTA'}
-              </button>
+              {!copieInsufficienti && !limitRaggiunto && (
+                <button
+                  onClick={invia}
+                  disabled={!amicoSel || stato === 'loading' || amici.length === 0}
+                  style={{
+                    background: amicoSel ? 'rgba(255,77,158,0.15)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${amicoSel ? 'rgba(255,77,158,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                    borderRadius: 8, color: amicoSel ? '#ff4d9e' : 'rgba(255,255,255,0.2)',
+                    fontFamily: 'Orbitron', fontSize: 9, padding: '9px 22px',
+                    cursor: amicoSel ? 'pointer' : 'not-allowed', letterSpacing: 1, transition: 'all 0.2s',
+                  }}
+                >
+                  {stato === 'loading' ? '…' : 'INVIA PROPOSTA'}
+                </button>
+              )}
             </div>
           </div>
         </>

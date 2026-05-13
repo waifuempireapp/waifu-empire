@@ -1452,6 +1452,7 @@ function AmiciTab({ user, profilo, collezione, waifuCat }) {
       ) : (
         <ScambiList
           user={user}
+          profilo={profilo}
           collezione={collezione}
           waifuCat={waifuCat || []}
           initialData={tradesInitialData}
@@ -3721,6 +3722,8 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
         <TradeRequestModal
           waifu={w}
           waifuId={waifuId}
+          copie={dati?.copie ?? 0}
+          profilo={profilo}
           user={user}
           onSuccess={() => setScambiaAperto(false)}
           onCancel={() => setScambiaAperto(false)}

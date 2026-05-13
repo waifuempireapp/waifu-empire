@@ -61,7 +61,12 @@ export async function POST(request) {
     const collezioneData = fromWaifuSnap.exists ? fromWaifuSnap.data() : null;
     const waifuA = collezioneData?.waifu?.[fromWaifuId];
     if (!waifuA || (waifuA.copie ?? 0) < 1) {
-      return NextResponse.json({ error: 'Waifu non disponibile o copie insufficienti' }, { status: 400 });
+      return NextResponse.json({ error: 'Waifu non trovata nella tua collezione' }, { status: 400 });
+    }
+
+    // Servono almeno 2 copie per scambiare (1 viene ceduta, 1 rimane)
+    if ((waifuA.copie ?? 0) < 2) {
+      return NextResponse.json({ error: 'Devi avere almeno 2 copie per scambiare questa waifu', copieSufficienti: false }, { status: 400 });
     }
 
     // La collezione salva solo { copie, livello, stat_bonus } — rarità dal catalogo

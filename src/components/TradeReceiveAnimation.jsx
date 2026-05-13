@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import PescaCardMini from './PescaCardMini';
 
 const RARITA_COLORI = {
   comune: '#9e9e9e',
@@ -9,11 +10,18 @@ const RARITA_COLORI = {
   immersivo: '#ec4899',
 };
 
-export default function TradeReceiveAnimation({ waifu, onComplete }) {
+export default function TradeReceiveAnimation({ waifu, isNew, onComplete }) {
   const [flipped, setFlipped] = useState(false);
   const [done, setDone] = useState(false);
   const colore = RARITA_COLORI[waifu?.rarita] || '#ff4d9e';
-  const immagine = waifu?.asset_statica || waifu?.asset_immersiva || waifu?.immagine || null;
+  // Costruiamo un oggetto carta compatibile con PescaCardMini
+  const carta = waifu ? {
+    id: waifu.id,
+    tipo: 'waifu',
+    nome: waifu.nome,
+    rarita: waifu.rarita,
+    immagine: waifu.asset_statica || waifu.asset_immersiva || waifu.immagine || null,
+  } : null;
 
   useEffect(() => {
     const t1 = setTimeout(() => setFlipped(true), 800);
@@ -49,20 +57,9 @@ export default function TradeReceiveAnimation({ waifu, onComplete }) {
             <span style={{ fontSize: 36, color: 'rgba(245,166,35,0.5)', zIndex: 1 }}>♛</span>
           </div>
 
-          {/* FRONTE */}
-          <div className="card-face front" style={{
-            width: w, height: h,
-            background: `linear-gradient(135deg, ${colore}33, rgba(6,3,15,0.95))`,
-            border: `2px solid ${colore}`,
-            boxShadow: `0 0 32px ${colore}70, 0 0 12px ${colore}40`,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            overflow: 'hidden', position: 'relative',
-          }}>
-            {immagine ? (
-              <img src={immagine} alt={waifu?.nome || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <span style={{ fontSize: 40, color: colore }}>◈</span>
-            )}
+          {/* FRONTE — usa grafica reale della carta */}
+          <div className="card-face front" style={{ width: w, height: h, overflow: 'hidden' }}>
+            <PescaCardMini carta={carta} isNew={isNew} width={w} height={h} />
           </div>
         </div>
       </div>

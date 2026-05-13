@@ -1,18 +1,15 @@
 'use client';
 import { useState, useEffect } from 'react';
+import PescaCardMini from './PescaCardMini';
 
 const RARITA_COLORI = {
-  comune: '#9e9e9e',
-  raro: '#42a5f5',
-  epico: '#ab47bc',
-  leggendario: '#ffa726',
-  immersivo: '#ec4899',
+  comune: '#9e9e9e', raro: '#42a5f5', epico: '#ab47bc',
+  leggendario: '#ffa726', immersivo: '#ec4899',
 };
 
-// Singola carta con flip 3D: mostra il retro, poi si gira per rivelare il fronte
+// Singola carta con flip 3D: mostra il retro, poi si gira per rivelare il fronte (grafica reale)
 function FlipCard({ carta, revealed, isChosen, isNew, delay = 0 }) {
   const [flipped, setFlipped] = useState(false);
-  const colore = RARITA_COLORI[carta?.rarita] || '#9e9e9e';
   const w = 72, h = 100;
 
   useEffect(() => {
@@ -33,46 +30,28 @@ function FlipCard({ carta, revealed, isChosen, isNew, delay = 0 }) {
           border: '2px solid rgba(245,166,35,0.35)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <div style={{
-            position: 'absolute', inset: 4,
-            border: '1px solid rgba(245,166,35,0.15)', borderRadius: 5,
-          }} />
+          <div style={{ position: 'absolute', inset: 4, border: '1px solid rgba(245,166,35,0.15)', borderRadius: 5 }} />
           <span style={{ fontSize: 24, color: 'rgba(245,166,35,0.5)', zIndex: 1 }}>♛</span>
         </div>
 
-        {/* FRONTE (visibile dopo flip) */}
+        {/* FRONTE — usa la grafica reale della carta con PescaCardMini */}
         <div className="card-face front" style={{
-          width: w, height: h,
-          background: isChosen
-            ? `linear-gradient(135deg, ${colore}33, rgba(6,3,15,0.95))`
-            : `linear-gradient(135deg, ${colore}18, rgba(6,3,15,0.95))`,
-          border: `2px solid ${isChosen ? colore : colore + '80'}`,
-          boxShadow: isChosen ? `0 0 24px ${colore}70, 0 0 8px ${colore}40` : 'none',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          overflow: 'hidden', position: 'relative',
+          width: w, height: h, overflow: 'hidden', position: 'relative',
+          boxShadow: isChosen ? '0 0 28px rgba(255,214,102,0.7)' : 'none',
         }}>
-          {carta?.immagine ? (
-            <img src={carta.immagine} alt={carta.nome || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <span style={{ fontSize: 22, color: colore }}>
-              {carta?.tipo === 'waifu' ? '◈' : carta?.tipo === 'outfit' ? '✦' : '✿'}
-            </span>
-          )}
+          <PescaCardMini carta={carta} isNew={isNew} width={w} height={h} />
+          {/* Overlay "TUA" sulla carta scelta */}
           {isChosen && (
             <div style={{
-              position: 'absolute', top: 4, right: 4,
-              background: colore, borderRadius: 3,
-              fontFamily: 'Orbitron', fontSize: 6, color: '#fff',
-              padding: '2px 4px', letterSpacing: 1,
-            }}>TUA</div>
-          )}
-          {isNew && (
-            <div style={{
-              position: 'absolute', top: 4, left: 4,
-              background: '#00e676', borderRadius: 3,
-              fontFamily: 'Orbitron', fontSize: 5, color: '#000',
-              padding: '2px 4px', fontWeight: 900,
-            }}>NEW</div>
+              position: 'absolute', bottom: 28, left: 0, right: 0, zIndex: 10,
+              display: 'flex', justifyContent: 'center',
+            }}>
+              <div style={{
+                background: 'rgba(255,214,102,0.85)', borderRadius: 4,
+                fontFamily: 'Orbitron', fontSize: 6, color: '#000',
+                padding: '2px 6px', letterSpacing: 1, fontWeight: 900,
+              }}>TUA</div>
+            </div>
           )}
         </div>
       </div>
@@ -120,35 +99,48 @@ export default function PescaRevealAnimation({ allCards, chosenIndex, isNewArr, 
         {done ? '✦ CARTA OTTENUTA ✦' : 'RIVELAZIONE IN CORSO…'}
       </div>
 
-      {/* Le 5 carte */}
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-        {allCards.map((carta, i) => (
-          <FlipCard
-            key={i}
-            carta={carta}
-            revealed={revealedSet.has(i)}
-            isChosen={i === chosenIndex}
-            isNew={isNewArr?.[i] ?? false}
-            delay={0}
-          />
-        ))}
-      </div>
+      {/* Fase reveal: tutte le 5 carte in fila (nascosta quando done) */}
+      {!done && (
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {allCards.map((carta, i) => (
+            <FlipCard
+              key={i}
+              carta={carta}
+              revealed={revealedSet.has(i)}
+              isChosen={i === chosenIndex}
+              isNew={isNewArr?.[i] ?? false}
+              delay={0}
+            />
+          ))}
+        </div>
+      )}
 
-      {/* Info carta scelta (appare dopo la rivelazione finale) */}
+      {/* Fase finale: solo la carta ottenuta con grafica reale */}
       {done && chosenCard && (
-        <div className="fade-up" style={{ textAlign: 'center', maxWidth: 280 }}>
-          <div style={{
-            fontFamily: 'Orbitron', fontSize: 11, letterSpacing: 2,
-            color: chosenColore, marginBottom: 6,
-            textShadow: `0 0 12px ${chosenColore}80`,
-          }}>
-            {chosenCard.rarita?.toUpperCase()}
-          </div>
-          <div style={{ fontFamily: 'Fredoka', fontSize: 17, color: '#eedcd4', marginBottom: 4 }}>
-            {chosenCard.nome}
-          </div>
-          <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', letterSpacing: 1 }}>
-            Aggiunta alla tua collezione
+        <div className="fade-up" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+          {/* Carta con grafica identica alla collezione */}
+          <PescaCardMini
+            carta={chosenCard}
+            isNew={isNewArr?.[chosenIndex] ?? false}
+            width={143}
+            height={214}
+          />
+
+          {/* Info carta */}
+          <div style={{ textAlign: 'center', maxWidth: 280 }}>
+            <div style={{
+              fontFamily: 'Orbitron', fontSize: 11, letterSpacing: 2,
+              color: chosenColore, marginBottom: 6,
+              textShadow: `0 0 12px ${chosenColore}80`,
+            }}>
+              {chosenCard.rarita?.toUpperCase()}
+            </div>
+            <div style={{ fontFamily: 'Fredoka', fontSize: 19, color: '#eedcd4', marginBottom: 4 }}>
+              {chosenCard.nome}
+            </div>
+            <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', letterSpacing: 1 }}>
+              Aggiunta alla tua collezione
+            </div>
           </div>
         </div>
       )}

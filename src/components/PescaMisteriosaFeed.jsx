@@ -159,8 +159,17 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, initial
     const fished = lastFishedRef.current;
     if (fished) {
       if (fished.isGhost) {
-        // Rimuovi il ghost pack dalla lista (era one-shot)
+        // Rimuovi il ghost pack e sostituiscilo subito con uno nuovo
         setPacks(prev => prev.filter(p => p.id !== fished.id));
+        try {
+          const token = await user.getIdToken();
+          const res = await fetch('/api/pesca/feed', { headers: { Authorization: `Bearer ${token}` } });
+          if (res.ok) {
+            const data = await res.json();
+            const replacement = (data.packs || []).find(p => p.isGhost);
+            if (replacement) setPacks(prev => [...prev, replacement]);
+          }
+        } catch { /* ignora — il feed non si aggiorna, non critico */ }
       } else {
         // Marca il pack reale come già pescato (rimane visibile ma disabilitato)
         setPacks(prev => prev.map(p => p.id === fished.id ? { ...p, alreadyFished: true } : p));
