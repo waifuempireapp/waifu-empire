@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import TradeIncomingModal from './TradeIncomingModal';
 import TradePendingConfirmModal from './TradePendingConfirmModal';
+import TradeBConfirmModal from './TradeBConfirmModal';
 import TradeReceiveAnimation from './TradeReceiveAnimation';
 
 function TradeResetCountdown({ tradesResetAt }) {
@@ -36,18 +37,37 @@ const RARITA_COLORI = {
 const TRADES_PER_PAGE = 10;
 
 function getStatusLabel(trade, uid) {
-  if (trade.status === 'pending_response') return { text: 'In attesa di risposta', color: '#f5a623' };
-  if (trade.status === 'pending_confirm')  return { text: 'In attesa di conferma', color: '#42a5f5' };
-  if (trade.status === 'cancelled')        return { text: 'Annullato', color: '#9e9e9e' };
-  if (trade.status === 'expired')          return { text: 'Scaduto', color: '#ff4d4d' };
-  if (trade.status === 'completed') {
-    const seenFrom = !!trade.seenByFromUid;
-    const seenTo   = !!trade.seenByToUid;
-    if (seenFrom && seenTo)  return { text: 'Completato 2/2 ✓', color: '#9e9e9e' };
-    if (seenFrom || seenTo)  return { text: 'Completato 1/2', color: '#00e676' };
-    return { text: 'Completato', color: '#00e676' };
+  const isA = trade.fromUid === uid;
+  const isB = trade.toUid === uid;
+
+  switch (trade.status) {
+    // Nuovi stati
+    case 'waifu_a_scelta':
+      return isA ? { text: 'Waifu offerta · in attesa risposta', color: '#f5a623' }
+                 : { text: 'Proposta ricevuta · scegli la tua waifu', color: '#f5a623', action: true };
+    case 'waifu_b_scelta':
+      return isA ? { text: 'Risposta ricevuta · accetta o rifiuta', color: '#42a5f5', action: true }
+                 : { text: 'Proposta inviata · in attesa di A', color: '#9e9e9e' };
+    case 'a_accettato':
+      return isA ? { text: 'Accettato · in attesa che B confermi', color: '#9e9e9e' }
+                 : { text: 'A ha accettato · conferma per completare', color: '#00e676', action: true };
+    case 'b_accettato':
+      return isB ? { text: 'Scambio eseguito · guarda la tua nuova waifu!', color: '#00e676', action: true }
+                 : { text: 'B ha confermato · in elaborazione…', color: '#9e9e9e' };
+    case 'completato':
+      return isA ? { text: 'Quasi finito · guarda la tua nuova waifu!', color: '#00e676', action: true }
+                 : { text: 'Completato · in attesa di A', color: '#9e9e9e' };
+    case 'chiuso':
+      return { text: 'Completato ✓', color: '#9e9e9e' };
+    // Retrocompatibilità con vecchi stati
+    case 'pending_response': return { text: 'In attesa di risposta', color: '#f5a623' };
+    case 'pending_confirm':  return isA ? { text: 'Risposta ricevuta · accetta', color: '#42a5f5', action: true }
+                                        : { text: 'In attesa di conferma', color: '#9e9e9e' };
+    case 'completed':        return { text: 'Completato', color: '#00e676' };
+    case 'cancelled':        return { text: 'Annullato', color: '#9e9e9e' };
+    case 'expired':          return { text: 'Scaduto', color: '#ff4d4d' };
+    default:                 return { text: trade.status, color: '#9e9e9e' };
   }
-  return { text: trade.status, color: '#9e9e9e' };
 }
 
 const DAILY_LIMIT = 5;
@@ -80,24 +100,49 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
       const fetchedTrades = data.trades || [];
       setTrades(fetchedTrades);
 
-      // Cerca completati non visti dove questo utente è B (toUid) — deve vedere l'animazione
-      const newlyCompleted = fetchedTrades.filter(t =>
-        t.status === 'completed' &&
-        t.toUid === user.uid &&
-        !viewedCompletedIds.has(t.id)
+      const uid = user.uid;
+
+      // Animazione per B: scambio eseguito ma B non ha ancora visto la sua waifu
+      const needsAnimB = fetchedTrades.filter(t =>
+        t.status === 'b_accettato' && t.toUid === uid && !viewedCompletedIds.has(t.id + '_b')
+      );
+      // Animazione per A: B ha visto, ora è il turno di A
+      const needsAnimA = fetchedTrades.filter(t =>
+        t.status === 'completato' && t.fromUid === uid && !viewedCompletedIds.has(t.id + '_a')
       );
 
-      // Badge = pending + unseen completed per B
-      const badge = (data.pendingCount || 0) + newlyCompleted.length;
-      onBadgeChange?.(badge);
+      // Badge: trades che richiedono azione da parte dell'utente
+      const needsAction = fetchedTrades.filter(t => {
+        if (t.status === 'waifu_a_scelta' && t.toUid === uid) return true;    // B deve rispondere
+        if (t.status === 'waifu_b_scelta' && t.fromUid === uid) return true;   // A deve accettare
+        if (t.status === 'a_accettato' && t.toUid === uid) return true;        // B deve confermare
+        if (t.status === 'b_accettato' && t.toUid === uid) return true;        // B deve vedere animazione
+        if (t.status === 'completato' && t.fromUid === uid) return true;       // A deve vedere animazione
+        // Retrocompatibilità
+        if ((t.status === 'pending_response') && t.toUid === uid) return true;
+        if ((t.status === 'pending_confirm') && t.fromUid === uid) return true;
+        if ((t.status === 'completed') && !t.seenByFromUid && t.fromUid === uid) return true;
+        if ((t.status === 'completed') && !t.seenByToUid && t.toUid === uid) return true;
+        return false;
+      }).length;
+      onBadgeChange?.(needsAction);
 
-      // Se ci sono completati non visti, mostra animazione per il primo
-      if (newlyCompleted.length > 0 && !animazione && !tradeAperto) {
-        const trade = newlyCompleted[0];
+      // Mostra animazione per B (b_accettato)
+      if (needsAnimB.length > 0 && !animazione && !tradeAperto) {
+        const trade = needsAnimB[0];
         const receivedWaifuId = trade.fromWaifuId; // B riceve la waifu di A
         const received = waifuCat.find(w => w.id === receivedWaifuId);
-        setViewedCompletedIds(prev => new Set([...prev, trade.id]));
-        if (received) setAnimazione({ waifu: received, isNew: !collezione?.waifu?.[receivedWaifuId], tradeId: trade.id });
+        setViewedCompletedIds(prev => new Set([...prev, trade.id + '_b']));
+        if (received) setAnimazione({ waifu: received, isNew: !collezione?.waifu?.[receivedWaifuId], tradeId: trade.id, forUid: 'b' });
+        return;
+      }
+      // Mostra animazione per A (completato)
+      if (needsAnimA.length > 0 && !animazione && !tradeAperto) {
+        const trade = needsAnimA[0];
+        const receivedWaifuId = trade.toWaifuId; // A riceve la waifu di B
+        const received = waifuCat.find(w => w.id === receivedWaifuId);
+        setViewedCompletedIds(prev => new Set([...prev, trade.id + '_a']));
+        if (received) setAnimazione({ waifu: received, isNew: !collezione?.waifu?.[receivedWaifuId], tradeId: trade.id, forUid: 'a' });
       }
     } catch (e) { setErrore(e.message); }
     finally { setLoading(false); }
@@ -108,10 +153,17 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
 
   const apriTrade = (trade) => {
     const uid = user.uid;
-    if (trade.status === 'pending_response' && trade.toUid === uid) {
+    // B sceglie la sua waifu (risponde)
+    if ((trade.status === 'waifu_a_scelta' || trade.status === 'pending_response') && trade.toUid === uid) {
       setTradeAperto({ trade, tipo: 'incoming' });
-    } else if (trade.status === 'pending_confirm' && trade.fromUid === uid) {
-      setTradeAperto({ trade, tipo: 'confirm' });
+    }
+    // A accetta la proposta di B
+    else if ((trade.status === 'waifu_b_scelta' || trade.status === 'pending_confirm') && trade.fromUid === uid) {
+      setTradeAperto({ trade, tipo: 'accept' });
+    }
+    // B conferma e completa lo scambio
+    else if (trade.status === 'a_accettato' && trade.toUid === uid) {
+      setTradeAperto({ trade, tipo: 'confirm_b' });
     }
   };
 
@@ -166,18 +218,32 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
     );
   }
 
-  if (tradeAperto?.tipo === 'confirm') {
+  // A accetta la proposta di B (nessuna esecuzione, nessuna animazione)
+  if (tradeAperto?.tipo === 'accept' || tradeAperto?.tipo === 'confirm') {
     return (
       <TradePendingConfirmModal
+        trade={tradeAperto.trade}
+        waifuCat={waifuCat}
+        user={user}
+        onDone={() => { setTradeAperto(null); carica(); }}
+        onCancel={() => setTradeAperto(null)}
+      />
+    );
+  }
+
+  // B conferma e completa lo scambio → B vede subito la sua nuova waifu
+  if (tradeAperto?.tipo === 'confirm_b') {
+    return (
+      <TradeBConfirmModal
         trade={tradeAperto.trade}
         waifuCat={waifuCat}
         collezione={collezione}
         user={user}
         onDone={(esito) => {
           setTradeAperto(null);
-          if (esito === 'completed') {
-            // A ha già visto l'animazione in TradePendingConfirmModal — non mostrarne un'altra
-            // Aggiorna solo la collezione e la lista scambi
+          if (esito === 'b_completed') {
+            // B ha visto la sua animazione (dentro TradeBConfirmModal) e ha chiamato /seen
+            // → aggiorna collezione e lista
             onCollectionRefresh?.();
             carica();
           } else { carica(); }
@@ -201,8 +267,9 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
 
   const uid = user.uid;
   const pending = trades.filter(t => t.status === 'pending_response' || t.status === 'pending_confirm');
-  // "completato 2/2" (entrambi hanno visto) → solo storici senza azioni
-  const terminati = trades.filter(t => !['pending_response', 'pending_confirm'].includes(t.status));
+  // Attivi: qualsiasi stato in corso (escluso chiuso)
+  const attivi = trades.filter(t => !['chiuso', 'cancelled', 'expired'].includes(t.status));
+  const terminati = trades.filter(t => ['chiuso', 'cancelled', 'expired', 'completed'].includes(t.status));
 
   // Paginazione sui terminati (10 per pagina)
   const totalPages = Math.ceil(terminati.length / TRADES_PER_PAGE);
@@ -211,10 +278,7 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
   const TradeLine = ({ trade }) => {
     const colore = RARITA_COLORI[trade.rarita] || '#f5a623';
     const statusInfo = getStatusLabel(trade, uid);
-    const isMioTurno =
-      (trade.status === 'pending_response' && trade.toUid === uid) ||
-      (trade.status === 'pending_confirm' && trade.fromUid === uid);
-    const isAzione = isMioTurno;
+    const isAzione = !!statusInfo.action; // derivato dal statusInfo
 
     const fromCat = waifuCat.find(w => w.id === trade.fromWaifuId);
     const toCat = waifuCat.find(w => w.id === trade.toWaifuId);
@@ -312,19 +376,19 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
         )}
       </div>
 
-      {pending.length > 0 && (
+      {attivi.length > 0 && (
         <div>
           <div style={{ fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 2, color: 'rgba(238,232,220,0.4)', marginBottom: 8 }}>
-            SCAMBI ATTIVI ({pending.length})
+            SCAMBI IN CORSO ({attivi.length})
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {pending.map(t => <TradeLine key={t.id} trade={t} />)}
+            {attivi.map(t => <TradeLine key={t.id} trade={t} />)}
           </div>
         </div>
       )}
       {terminati.length > 0 && (
         <div>
-          <div style={{ fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 2, color: 'rgba(238,232,220,0.4)', marginBottom: 8, marginTop: pending.length > 0 ? 12 : 0 }}>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 2, color: 'rgba(238,232,220,0.4)', marginBottom: 8, marginTop: attivi.length > 0 ? 12 : 0 }}>
             STORICI ({terminati.length})
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

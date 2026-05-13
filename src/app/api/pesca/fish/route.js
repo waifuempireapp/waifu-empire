@@ -20,24 +20,24 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Parametri mancanti' }, { status: 400 });
     }
 
-    // ── PRE-CHECKS (fuori dalla transaction) ──
+    // ── PRE-CHECKS in parallelo — 3 letture simultanee invece di 3 sequenziali ──
+    // (stesso conteggio di read, ma latenza ~3x inferiore)
+    const [userSnap, snapDoc, prevFishSnap] = await Promise.all([
+      adminDb.collection('users').doc(fisherUid).get(),
+      adminDb.collection('pack_snapshots').doc(snapshotId).get(),
+      adminDb.collection('fishing_attempts').where('fisherUid', '==', fisherUid).get(),
+    ]);
 
-    // 1) Saldo Kisses
-    const userSnap = await adminDb.collection('users').doc(fisherUid).get();
     if (!userSnap.exists) return NextResponse.json({ error: 'Utente non trovato' }, { status: 404 });
     if ((userSnap.data().kisses ?? 0) < KISSES_COST) {
       return NextResponse.json({ error: 'Kisses insufficienti' }, { status: 402 });
     }
 
-    // 2) Pesca già effettuata (single-field query, poi check JS)
-    const prevFish = await adminDb.collection('fishing_attempts')
-      .where('fisherUid', '==', fisherUid).get();
-    if (prevFish.docs.some(d => d.data().snapshotId === snapshotId)) {
+    if (prevFishSnap.docs.some(d => d.data().snapshotId === snapshotId)) {
       return NextResponse.json({ error: 'Hai già pescato da questo pack' }, { status: 409 });
     }
 
-    // 3) Leggi snapshot (ghost o reale) dal DB — ghost pack sono ora sempre in Firestore
-    const snapDoc = await adminDb.collection('pack_snapshots').doc(snapshotId).get();
+    // Snapshot già letto in parallelo
     if (!snapDoc.exists) return NextResponse.json({ error: 'Pack non trovato' }, { status: 404 });
     const snapData = snapDoc.data();
     const expiresAt = snapData.expiresAt?.toDate?.()?.getTime() || 0;

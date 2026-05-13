@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getCachedWaifuRarita } from '@/lib/adminHelpers';
 
 export const maxDuration = 30;
 
@@ -37,7 +38,7 @@ export async function POST(request) {
     const trade = tradeSnap.data();
 
     if (trade.toUid !== toUid) return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 });
-    if (trade.status !== 'pending_response') {
+    if (trade.status !== 'waifu_a_scelta' && trade.status !== 'pending_response') {
       return NextResponse.json({ error: 'Lo scambio non è più in attesa di risposta' }, { status: 409 });
     }
     if (trade.expiresAt?.toDate?.() < new Date()) {
@@ -69,15 +70,14 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Limite giornaliero raggiunto', needTradePass: true }, { status: 402 });
     }
 
-    // Verifica parità rarità — la collezione non ha rarita, la prendiamo dal catalogo
-    const catalogSnapB = await adminDb.collection('catalogo_waifu').doc(toWaifuId).get();
-    const raritaB = catalogSnapB.exists ? catalogSnapB.data().rarita : null;
+    // Rarità dal catalogo — con cache 30 min (salva 1 lettura per risposta)
+    const raritaB = await getCachedWaifuRarita(toWaifuId);
     if (raritaB !== trade.rarita) {
       return NextResponse.json({ error: `Rarità non corrispondente. Richiesta: ${trade.rarita}` }, { status: 400 });
     }
 
     const batch = adminDb.batch();
-    batch.update(tradeRef, { toWaifuId, status: 'pending_confirm' });
+    batch.update(tradeRef, { toWaifuId, status: 'waifu_b_scelta' });
     batch.update(adminDb.collection('users').doc(toUid), { tradesToday: FieldValue.increment(1) });
     await batch.commit();
 

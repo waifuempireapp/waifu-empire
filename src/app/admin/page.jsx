@@ -101,13 +101,18 @@ export default function AdminPage() {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button
-            onClick={() => {
+            onClick={async () => {
               clearCatalogCache();
-              mostraNotif('Cache catalogo svuotata — gli utenti vedranno i dati aggiornati al prossimo caricamento.', '#00e676');
+              // Ricostruisce anche config/pack_pools per ridurre letture Firestore
+              const token = await user.getIdToken();
+              const res = await fetch('/api/admin/rebuild-pack-pools', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+              const data = await res.json();
+              if (res.ok) mostraNotif(`Cache svuotata + pool ricostruiti (${data.stats?.waifuPool} waifu, ${data.stats?.sizeKB} KB)`, '#00e676');
+              else mostraNotif('Cache svuotata ma rebuild pool fallito: ' + data.error, '#f5a623');
             }}
             style={{ ...btnPiccolo, background: 'rgba(0,230,118,0.08)', borderColor: 'rgba(0,230,118,0.4)', color: '#00e676' }}
-            title="Invalida la cache localStorage del catalogo su questo browser"
-          >🗑 Svuota cache</button>
+            title="Svuota cache + ricostruisce config/pack_pools per ridurre letture Firestore"
+          >🗑 Svuota cache + 🔄 Pool</button>
           <a href="/gioco" style={{ ...btnPiccolo, textDecoration: 'none' }}>← AL GIOCO</a>
         </div>
       </div>
@@ -679,12 +684,26 @@ function WaifuTab({ waifu, drops, ricarica, flash }) {
     hot: false,           // ★ Contenuto Hot — visibile solo con Pass Hard
   });
 
+  const rebuildPools = async (token) => {
+    try {
+      const res = await fetch('/api/admin/rebuild-pack-pools', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) console.log('[admin] pack_pools rebuilt:', data.stats);
+    } catch (e) { console.warn('[admin] rebuild-pack-pools failed:', e.message); }
+  };
+
   const salva = async (w) => {
     const id = await upsertWaifu(w.id || null, w);
     clearCatalogCache(); // invalida la cache locale così tutti vedono subito il flag hot aggiornato
     flash('Waifu salvata');
     setEd(null);
     ricarica();
+    // Ricostruisce il documento config/pack_pools in background
+    // così la pesca misteriosa non legge più 666 documenti
+    user.getIdToken().then(rebuildPools).catch(() => {});
   };
 
   const elimina = async (id) => {

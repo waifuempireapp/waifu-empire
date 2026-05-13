@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getCachedWaifuRarita } from '@/lib/adminHelpers';
 
 export const maxDuration = 30;
 
@@ -69,17 +70,13 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Devi avere almeno 2 copie per scambiare questa waifu', copieSufficienti: false }, { status: 400 });
     }
 
-    // La collezione salva solo { copie, livello, stat_bonus } — rarità dal catalogo
-    const catalogSnap = await adminDb.collection('catalogo_waifu').doc(fromWaifuId).get();
-    if (!catalogSnap.exists) return NextResponse.json({ error: 'Waifu non trovata nel catalogo' }, { status: 400 });
-    const raritaA = catalogSnap.data().rarita;
-    if (!raritaA) return NextResponse.json({ error: 'Rarità waifu non determinabile' }, { status: 400 });
-
-    // Verifica che toUid esista e sia amico
-    const friendshipSnap1 = await adminDb.collection('friendships')
-      .where('fromUid', '==', fromUid).where('toUid', '==', toUid).get();
-    const friendshipSnap2 = await adminDb.collection('friendships')
-      .where('fromUid', '==', toUid).where('toUid', '==', fromUid).get();
+    // Rarità + friendship in parallelo — salva latenza combinando due operazioni indipendenti
+    const [raritaA, friendshipSnap1, friendshipSnap2] = await Promise.all([
+      getCachedWaifuRarita(fromWaifuId),
+      adminDb.collection('friendships').where('fromUid', '==', fromUid).where('toUid', '==', toUid).get(),
+      adminDb.collection('friendships').where('fromUid', '==', toUid).where('toUid', '==', fromUid).get(),
+    ]);
+    if (!raritaA) return NextResponse.json({ error: 'Waifu non trovata nel catalogo o rarità non determinabile' }, { status: 400 });
     const isFriend = [
       ...friendshipSnap1.docs.filter(d => d.data().status === 'accepted'),
       ...friendshipSnap2.docs.filter(d => d.data().status === 'accepted'),
@@ -95,7 +92,7 @@ export async function POST(request) {
       toUid,
       fromWaifuId,
       rarita: raritaA,
-      status: 'pending_response',
+      status: 'waifu_a_scelta',
       createdAt: FieldValue.serverTimestamp(),
       expiresAt,
     });

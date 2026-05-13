@@ -64,8 +64,10 @@ export async function setMappaUtente(uid, dati) {
 }
 
 // =================== CACHE LOCALSTORAGE (cataloghi admin) ===================
+// TTL alzato a 24h (86400s) — il catalogo cambia raramente.
+// L'admin invalida manualmente con il bottone "Svuota cache + Pool".
 const _CATALOG_TTL = () =>
-  Number(process.env.NEXT_PUBLIC_CATALOG_TTL_SECONDS ?? 3600) * 1000;
+  Number(process.env.NEXT_PUBLIC_CATALOG_TTL_SECONDS ?? 86400) * 1000;
 
 function _cacheGet(key, ttlMs) {
   if (typeof window === 'undefined') return null;
@@ -350,17 +352,40 @@ export async function getFriendByFriendId(friendId) {
   return { uid: snap.docs[0].id, ...snap.docs[0].data() };
 }
 
+// Cache in-memory client-side per friendships (TTL 2 min)
+const _friendsCache = typeof window !== 'undefined' ? new Map() : null;
+const _FRIENDS_TTL  = 2 * 60 * 1000;
+
+function _friendsCacheGet(key) {
+  if (!_friendsCache) return null;
+  const e = _friendsCache.get(key);
+  if (!e) return null;
+  if (Date.now() - e.ts > _FRIENDS_TTL) { _friendsCache.delete(key); return null; }
+  return e.data;
+}
+function _friendsCacheSet(key, data) {
+  if (_friendsCache) _friendsCache.set(key, { data, ts: Date.now() });
+  return data;
+}
+export function clearFriendsCache(uid) {
+  if (_friendsCache) { if (uid) _friendsCache.delete(uid + '_req'); _friendsCache.delete(uid); }
+}
+
 export async function getFriendRequests(uid) {
-  // Query su singolo campo, filtro status in JS per evitare composite index
+  const cacheKey = uid + '_req';
+  const hit = _friendsCacheGet(cacheKey);
+  if (hit) return hit;
   const q = query(collection(db, 'friendships'), where('toUid', '==', uid));
   const snap = await getDocs(q);
-  return snap.docs
+  const result = snap.docs
     .filter(d => d.data().status === 'pending')
     .map(d => ({ id: d.id, ...d.data() }));
+  return _friendsCacheSet(cacheKey, result);
 }
 
 export async function getFriendsList(uid) {
-  // Query su singolo campo, filtro status in JS per evitare composite index
+  const hit = _friendsCacheGet(uid);
+  if (hit) return hit;
   const [s1, s2] = await Promise.all([
     getDocs(query(collection(db, 'friendships'), where('fromUid', '==', uid))),
     getDocs(query(collection(db, 'friendships'), where('toUid', '==', uid))),
@@ -369,9 +394,9 @@ export async function getFriendsList(uid) {
     ...s1.docs.filter(d => d.data().status === 'accepted').map(d => d.data().toUid),
     ...s2.docs.filter(d => d.data().status === 'accepted').map(d => d.data().fromUid),
   ];
-  if (friendUids.length === 0) return [];
+  if (friendUids.length === 0) return _friendsCacheSet(uid, []);
   const profiles = await Promise.all(friendUids.map(fuid => getUserProfile(fuid)));
-  return profiles.filter(Boolean);
+  return _friendsCacheSet(uid, profiles.filter(Boolean));
 }
 
 export async function getFriendshipDoc(uid1, uid2) {

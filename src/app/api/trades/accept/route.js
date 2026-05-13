@@ -1,3 +1,4 @@
+// A accetta la proposta di B — nessuna esecuzione, solo cambio stato
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 
@@ -7,7 +8,6 @@ export async function POST(request) {
   try {
     const token = request.headers.get('Authorization')?.replace('Bearer ', '');
     if (!token) return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
-
     const decoded = await adminAuth.verifyIdToken(token);
     const uid = decoded.uid;
 
@@ -19,18 +19,19 @@ export async function POST(request) {
     if (!tradeSnap.exists) return NextResponse.json({ error: 'Scambio non trovato' }, { status: 404 });
 
     const trade = tradeSnap.data();
-    if (trade.fromUid !== uid && trade.toUid !== uid) {
-      return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 });
+    if (trade.fromUid !== uid) return NextResponse.json({ error: 'Solo il proponente può accettare' }, { status: 403 });
+    if (trade.status !== 'waifu_b_scelta' && trade.status !== 'pending_confirm') {
+      return NextResponse.json({ error: 'Stato non valido per questa operazione' }, { status: 409 });
     }
-    const cancellable = ['pending_response', 'pending_confirm', 'waifu_a_scelta', 'waifu_b_scelta', 'a_accettato'];
-    if (!cancellable.includes(trade.status)) {
-      return NextResponse.json({ error: 'Scambio non annullabile in questo stato' }, { status: 409 });
+    if (trade.expiresAt?.toDate?.() < new Date()) {
+      await tradeRef.update({ status: 'expired' });
+      return NextResponse.json({ error: 'Scambio scaduto' }, { status: 410 });
     }
 
-    await tradeRef.update({ status: 'cancelled' });
+    await tradeRef.update({ status: 'a_accettato' });
     return NextResponse.json({ success: true });
   } catch (e) {
-    console.error('/api/trades/cancel', e);
+    console.error('/api/trades/accept', e);
     return NextResponse.json({ error: e?.message || 'Errore interno' }, { status: 500 });
   }
 }

@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { ModuleCache } from '@/lib/serverCache';
+import { getCachedUserName, getCachedFriendUids } from '@/lib/adminHelpers';
 
 const MIN_ACTIVE = 7;   // packs attivi (non pescati) minimi
 const MAX_ACTIVE = 10;  // packs attivi massimi
 const GHOST_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24h
 const GOD_PACK_CHANCE = 0.05; // 5% → tutte waifu
 
-const catalogCache = new ModuleCache(10 * 60 * 1000);
+// Cache per config/pack_pools: 1 documento invece di 666.
+// TTL 10 min — l'admin invalida esplicitamente dopo rebuild.
+export const catalogCache = new ModuleCache(10 * 60 * 1000);
 
 const GHOST_NAMES = [
   'Serafina', 'Lunara', 'Isolde', 'Morgana', 'Arianna',
@@ -16,21 +19,8 @@ const GHOST_NAMES = [
   'Ondina', 'Solara', 'Mirella', 'Azzurra', 'Nimue',
 ];
 
-async function getFriendUids(uid) {
-  const [s1, s2] = await Promise.all([
-    adminDb.collection('friendships').where('fromUid', '==', uid).get(),
-    adminDb.collection('friendships').where('toUid', '==', uid).get(),
-  ]);
-  return [
-    ...s1.docs.filter(d => d.data().status === 'accepted').map(d => d.data().toUid),
-    ...s2.docs.filter(d => d.data().status === 'accepted').map(d => d.data().fromUid),
-  ];
-}
-
-async function getUserName(uid) {
-  const snap = await adminDb.collection('users').doc(uid).get();
-  return snap.exists ? (snap.data().nomeImpero || 'Sconosciuta') : 'Sconosciuta';
-}
+// getFriendUids e getUserName ora usano cache condivisa da adminHelpers.js
+// → salva 2+N letture Firestore per request (N = numero amici)
 
 function randPick(arr) {
   if (!arr || arr.length === 0) return null;
@@ -52,9 +42,30 @@ function cardUrl(c, tipo) {
   return c.immagine || null;
 }
 
+/**
+ * Legge i pool dal documento pre-computato config/pack_pools (1 read vs 666+).
+ * Il documento viene aggiornato dall'admin via "🔄 Ricostruisci pool" o
+ * tramite lo script scripts/rebuild-pack-pools.js ogni volta che il catalogo cambia.
+ * Fallback: se il documento non esiste, legge i 3 cataloghi direttamente.
+ */
 async function buildCatalogPools() {
   const hit = catalogCache.get('pools');
   if (hit) return hit;
+
+  // 1 lettura invece di 666+
+  const poolDoc = await adminDb.collection('config').doc('pack_pools').get();
+  if (poolDoc.exists) {
+    const data = poolDoc.data();
+    return catalogCache.set('pools', {
+      waifuPool:  data.waifuPool  || [],
+      outfitPool: data.outfitPool || [],
+      posePool:   data.posePool   || [],
+      activeDrop: data.activeDrop || null,
+    });
+  }
+
+  // Fallback: lettura catalogo completa (comportamento legacy)
+  console.warn('[feed] config/pack_pools non trovato — esegui rebuild-pack-pools.js');
   const now = new Date();
   const [waifuSnap, outfitSnap, poseSnap, dropSnap] = await Promise.all([
     adminDb.collection('catalogo_waifu').get(),
@@ -65,26 +76,21 @@ async function buildCatalogPools() {
   const allWaifu  = waifuSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   const allOutfit = outfitSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   const allPose   = poseSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
   let waifuPool = allWaifu, outfitPool = allOutfit, posePool = allPose;
-
   const activeDrops = dropSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(d => {
     if (d.inizio && new Date(d.inizio) > now) return false;
     if (d.fine) { const fine = new Date(d.fine); fine.setHours(23, 59, 59, 999); if (fine < now) return false; }
     return true;
   });
-
   if (activeDrops.length > 0) {
     const drop = activeDrops[0];
     if (drop.waifuIds?.length  > 0) waifuPool  = allWaifu.filter(w  => drop.waifuIds.includes(w.id));
     if (drop.outfitIds?.length > 0) outfitPool = allOutfit.filter(o => drop.outfitIds.includes(o.id));
     if (drop.poseIds?.length   > 0) posePool   = allPose.filter(p   => drop.poseIds.includes(p.id));
   }
-
   if (waifuPool.length  === 0) waifuPool  = allWaifu;
   if (outfitPool.length === 0) outfitPool = allOutfit;
   if (posePool.length   === 0) posePool   = allPose;
-
   const activeDrop = activeDrops[0] || null;
   return catalogCache.set('pools', { waifuPool, outfitPool, posePool, activeDrop });
 }
@@ -135,7 +141,7 @@ export async function GET(request) {
     const hasHardPass = userSnap.exists ? (userSnap.data().hardPass === true) : false;
 
     // ── 2. Pack degli amici (1 attivo per amico, pescati → bottom) ──
-    const friendUids = await getFriendUids(uid);
+    const friendUids = await getCachedFriendUids(uid);
     let friendPacks = [];
 
     if (friendUids.length > 0) {
@@ -166,7 +172,7 @@ export async function GET(request) {
       // Nomi degli amici
       const ownerNames = {};
       for (const [ownerUid, d] of latestByOwner) {
-        if (!ownerNames[ownerUid]) ownerNames[ownerUid] = await getUserName(ownerUid);
+        if (!ownerNames[ownerUid]) ownerNames[ownerUid] = await getCachedUserName(ownerUid);
       }
 
       friendPacks = [...latestByOwner.values()]

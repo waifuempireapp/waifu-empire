@@ -149,9 +149,22 @@ export default function TradeRequestModal({ waifu, waifuId, copie = 0, profilo, 
             )}
 
             {/* Selezione amico */}
-            <div style={{ fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 2, color: 'rgba(238,232,220,0.4)', marginBottom: 10 }}>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 2, color: 'rgba(238,232,220,0.4)', marginBottom: waifu?.hot ? 6 : 10 }}>
               SCEGLI A CHI PROPORRE
             </div>
+            {/* Avviso waifu Hot: solo amici con Pass Hard possono riceverla */}
+            {waifu?.hot && (
+              <div style={{
+                background: 'rgba(255,69,0,0.08)', border: '1px solid rgba(255,69,0,0.3)',
+                borderRadius: 10, padding: '8px 12px', marginBottom: 10,
+                display: 'flex', alignItems: 'flex-start', gap: 8,
+              }}>
+                <span style={{ fontSize: 14 }}>🔞</span>
+                <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: 'rgba(238,232,220,0.65)', lineHeight: 1.4 }}>
+                  Questa waifu è <strong style={{ color: '#ff6030' }}>Hot</strong> — può essere scambiata solo con amici che hanno il <strong style={{ color: '#f5a623' }}>Pass Hard</strong>.
+                </div>
+              </div>
+            )}
 
             {loading ? (
               <div style={{ textAlign: 'center', padding: 24, color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron', fontSize: 10 }}>Caricamento amici…</div>
@@ -169,24 +182,42 @@ export default function TradeRequestModal({ waifu, waifuId, copie = 0, profilo, 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {amici.map(a => {
                   const sel = amicoSel?.id === a.id;
+                  // Se la waifu è Hot, l'amico deve avere il Pass Hard per poter ricevere lo scambio
+                  const isHotWaifu = waifu?.hot === true;
+                  const amicoHasHardPass = a.hardPass === true;
+                  const disabilitato = isHotWaifu && !amicoHasHardPass;
+
                   return (
                     <div
-                      key={a.uid}
-                      onClick={() => setAmicoSel(a)}
+                      key={a.id}
+                      onClick={() => !disabilitato && setAmicoSel(a)}
                       style={{
-                        padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
-                        background: sel ? 'rgba(255,77,158,0.12)' : 'rgba(6,3,15,0.6)',
-                        border: `1px solid ${sel ? '#ff4d9e' : 'rgba(255,255,255,0.08)'}`,
+                        padding: '12px 14px', borderRadius: 10,
+                        cursor: disabilitato ? 'not-allowed' : 'pointer',
+                        opacity: disabilitato ? 0.55 : 1,
+                        background: sel ? 'rgba(255,77,158,0.12)' : disabilitato ? 'rgba(6,3,15,0.4)' : 'rgba(6,3,15,0.6)',
+                        border: `1px solid ${sel ? '#ff4d9e' : disabilitato ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.08)'}`,
                         transition: 'all 0.15s',
                         display: 'flex', alignItems: 'center', gap: 12,
                       }}
                     >
-                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: sel ? 'rgba(255,77,158,0.2)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>♥</div>
-                      <div>
-                        <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: sel ? '#ff4d9e' : '#eedcd4', fontWeight: 700 }}>{a.nomeImpero || 'Giocatore'}</div>
-                        <div style={{ fontFamily: 'Fredoka', fontSize: 10, color: 'rgba(238,232,220,0.4)', marginTop: 1 }}>ID: {a.friendId}</div>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: sel ? 'rgba(255,77,158,0.2)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
+                        {disabilitato ? '🔒' : '♥'}
                       </div>
-                      {sel && <div style={{ marginLeft: 'auto', color: '#ff4d9e', fontSize: 16 }}>✓</div>}
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: sel ? '#ff4d9e' : disabilitato ? 'rgba(238,232,220,0.4)' : '#eedcd4', fontWeight: 700 }}>
+                          {a.nomeImpero || 'Giocatore'}
+                        </div>
+                        <div style={{ fontFamily: 'Fredoka', fontSize: 10, color: 'rgba(238,232,220,0.4)', marginTop: 1 }}>
+                          ID: {a.friendId}
+                        </div>
+                        {disabilitato && (
+                          <div style={{ fontFamily: 'Fredoka', fontSize: 10, color: 'rgba(255,140,0,0.7)', marginTop: 3 }}>
+                            🔞 Non ha il Pass Hard — non può ricevere waifu Hot
+                          </div>
+                        )}
+                      </div>
+                      {sel && !disabilitato && <div style={{ marginLeft: 'auto', color: '#ff4d9e', fontSize: 16 }}>✓</div>}
                     </div>
                   );
                 })}
