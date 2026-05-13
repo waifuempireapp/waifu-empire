@@ -31,7 +31,7 @@ import ScambiList from '@/components/ScambiList';
 import MappaMondoArt from '@/components/MappaMondoArt';
 import MappaMultiplayer from '@/components/MappaMultiplayer';
 import WaifuBattleArena from '@/components/WaifuBattleArena';
-import { initBattleWaifu, generateCPUTeam } from '@/lib/battleEngine';
+import { initBattleWaifu, generateCPUTeam, generateBattleStats } from '@/lib/battleEngine';
 import {
   PannelloOrnato, TitoloOrnato, BtnDecorato, Chip,
   BarraRisorsa, CardInfo, Divider, StelleRarita, FramePersonaggio,
@@ -3741,7 +3741,7 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
   const w = waifuCat.find(x => x.id === waifuId);
   const dati = collezione.waifu[waifuId];
   const equip = collezione.equipaggiamento[waifuId] || { faccia: null, petto: null, gambe: null, piedi: null, posa: null };
-  const [tabDettaglio, setTabDettaglio] = useState('carta'); // 'carta' | 'babydoll'
+  const [tabDettaglio, setTabDettaglio] = useState('carta'); // 'carta' | 'babydoll' | 'battaglia'
   const [tabSlot, setTabSlot] = useState('petto');
   const [mostraLU, setMostraLU] = useState(false);
   const [statSel, setStatSel] = useState(null); // formato: { key: 'taglia_piedi', dir: 'plus' }
@@ -3846,9 +3846,9 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
               <BtnDecorato variant="secondary" size="sm" onClick={onChiudi}>✕ CHIUDI</BtnDecorato>
             </div>
 
-            {/* Tab selector: Carta | Baby-doll */}
-            <div style={{ display: 'flex', gap: 6, marginBottom: 16, justifyContent: 'center' }}>
-              {[{ k: 'carta', l: '🃏 Carta', c: '#f5a623' }, { k: 'babydoll', l: '👗 Baby-doll', c: '#ff2d78' }].map(t => (
+            {/* Tab selector: Carta | Baby-doll | Battaglia */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+              {[{ k: 'carta', l: '🃏 Carta', c: '#f5a623' }, { k: 'babydoll', l: '👗 Baby-doll', c: '#ff2d78' }, { k: 'battaglia', l: '⚔ Battaglia', c: '#7F77DD' }].map(t => (
                 <button key={t.k} onClick={() => setTabDettaglio(t.k)} style={{
                   padding: '8px 20px', borderRadius: 10, cursor: 'pointer',
                   background: tabDettaglio === t.k ? `linear-gradient(135deg, ${t.c}, ${t.c}80)` : 'rgba(255,255,255,0.03)',
@@ -4212,6 +4212,107 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
           </PannelloOrnato>
         </div>
       </div>
+
+            {/* ── TAB BATTAGLIA ── */}
+            {tabDettaglio === 'battaglia' && (() => {
+              // Leggi battleStats dal catalogo o genera in-memory
+              const bs = (w.battleStats?.moves?.length)
+                ? w.battleStats
+                : generateBattleStats(w);
+              const raritaColors = { comune: '#9e9e9e', raro: '#42a5f5', epico: '#ab47bc', leggendario: '#ffa726', immersivo: '#ec4899' };
+              const typeColorMap = { Arcana: '#7F77DD', Natura: '#639922', Abisso: '#D4537E', Ferro: '#5F5E5A', Fuoco: '#D85A30' };
+              const typeBg      = { Arcana: '#EEEDFE', Natura: '#EAF3DE', Abisso: '#FBEAF0', Ferro: '#F1EFE8', Fuoco: '#FAECE7' };
+
+              if (!bs || !bs.moves?.length) {
+                return (
+                  <div style={{ textAlign: 'center', padding: '32px 16px' }}>
+                    <div style={{ fontSize: 28, marginBottom: 12 }}>⚔</div>
+                    <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#7F77DD', letterSpacing: 2, marginBottom: 8 }}>STATS BATTAGLIA</div>
+                    <div style={{ fontFamily: 'Fredoka', fontSize: 13, color: 'rgba(238,232,220,0.5)', lineHeight: 1.6 }}>
+                      Le stats di battaglia per questa waifu verranno generate automaticamente all'avvio del combattimento.
+                      <br /><span style={{ fontSize: 11, opacity: 0.6 }}>Esegui lo script seed per salvarle in modo permanente.</span>
+                    </div>
+                  </div>
+                );
+              }
+
+              const type  = bs.type ?? 'Arcana';
+              const tc    = typeColorMap[type] ?? '#7F77DD';
+              const tbg   = typeBg[type]       ?? '#EEEDFE';
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}>
+                  {/* Statistiche principali */}
+                  <PannelloOrnato glow="#7F77DD" style={{ padding: '14px 16px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+                      {/* Tipo */}
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.45)', fontFamily: 'Orbitron', letterSpacing: 1, marginBottom: 5 }}>TIPO</div>
+                        <span style={{ background: tbg, color: tc, border: `1px solid ${tc}50`, borderRadius: 6, padding: '3px 10px', fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700 }}>{type}</span>
+                      </div>
+                      {/* HP Max */}
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.45)', fontFamily: 'Orbitron', letterSpacing: 1, marginBottom: 5 }}>HP MAX</div>
+                        <div style={{ fontFamily: 'Orbitron', fontSize: 18, fontWeight: 900, color: '#00e676' }}>{bs.maxHp}</div>
+                      </div>
+                      {/* Speed */}
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.45)', fontFamily: 'Orbitron', letterSpacing: 1, marginBottom: 5 }}>VELOCITÀ</div>
+                        <div style={{ fontFamily: 'Orbitron', fontSize: 18, fontWeight: 900, color: '#D4537E' }}>{bs.speed}</div>
+                      </div>
+                    </div>
+                    {/* Barre */}
+                    {[
+                      { label: 'HP', val: bs.maxHp, max: 600, color: '#00e676' },
+                      { label: 'Vel', val: bs.speed, max: 100, color: '#D4537E' },
+                    ].map(({ label, val, max, color }) => (
+                      <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <span style={{ fontSize: 9, color: 'rgba(238,232,220,0.45)', fontFamily: 'Orbitron', width: 24 }}>{label}</span>
+                        <div style={{ flex: 1, height: 6, background: 'rgba(0,0,0,0.4)', borderRadius: 4, overflow: 'hidden' }}>
+                          <div style={{ width: `${Math.round((val/max)*100)}%`, height: '100%', background: color, borderRadius: 4, transition: 'width 0.5s ease' }} />
+                        </div>
+                        <span style={{ fontSize: 10, fontFamily: 'Orbitron', color, width: 30, textAlign: 'right', fontWeight: 700 }}>{val}</span>
+                      </div>
+                    ))}
+                  </PannelloOrnato>
+
+                  {/* Mosse */}
+                  <div>
+                    <div style={{ fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 2, color: 'rgba(238,232,220,0.4)', marginBottom: 10 }}>KIT MOSSE</div>
+                    <div style={{ display: 'grid', gap: 8 }}>
+                      {(bs.moves ?? []).map((move, mi) => {
+                        const mc = typeColorMap[move.type] ?? '#7F77DD';
+                        const mb = typeBg[move.type]       ?? '#EEEDFE';
+                        const rc = raritaColors[move.rarity] ?? '#9e9e9e';
+                        return (
+                          <PannelloOrnato key={mi} glow={mc} style={{ padding: '12px 14px', borderLeft: `3px solid ${rc}` }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                              <div style={{ fontFamily: 'Orbitron', fontSize: 12, fontWeight: 700, color: '#eedcd4' }}>{move.name}</div>
+                              <div style={{ display: 'flex', gap: 5 }}>
+                                <span style={{ background: mb, color: mc, border: `1px solid ${mc}40`, borderRadius: 5, padding: '1px 7px', fontFamily: 'Orbitron', fontSize: 8, fontWeight: 700 }}>{move.type}</span>
+                                <span style={{ color: rc, borderRadius: 5, padding: '1px 7px', fontFamily: 'Orbitron', fontSize: 8, border: `1px solid ${rc}40`, background: rc + '15' }}>{move.rarity}</span>
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 11, fontFamily: 'Fredoka', color: 'rgba(238,232,220,0.55)' }}>
+                              {move.power > 0 && <span>Potenza <strong style={{ color: '#f5a623' }}>{move.power}</strong></span>}
+                              {move.critPower > 0 && <span>Crit <strong style={{ color: '#ffd666' }}>{move.critPower}</strong></span>}
+                              {move.critPowerPerc > 0 && <span>Crit% <strong style={{ color: '#ff4d9e' }}>{move.critPowerPerc}%</strong></span>}
+                              <span>PP <strong style={{ color: '#00e676' }}>{move.maxPp}</strong></span>
+                            </div>
+                            {move.ability && (
+                              <div style={{ marginTop: 6, fontSize: 11, fontFamily: 'Fredoka', color: mc, fontStyle: 'italic', lineHeight: 1.4 }}>
+                                ✨ {move.ability}
+                              </div>
+                            )}
+                          </PannelloOrnato>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
     </>
   );
 }

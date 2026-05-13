@@ -102,6 +102,81 @@ export function applyDamage(waifuStat, damage) {
   return { ...waifuStat, hp: Math.max(0, (waifuStat.hp ?? waifuStat.maxHp) - damage) };
 }
 
+// ─── INLINE STAT & MOVE GENERATOR ─────────────────────────────────────────
+// Genera stats e mosse in-memory quando la waifu non ha battleStats in Firestore.
+// I dati generati sono usati solo per la sessione corrente (finché non si esegue il seeder).
+
+const _MOVE_NAMES = {
+  Arcana: ['Esplosione Arcana','Raggio Mistico','Vortice di Stelle','Fulmine Eterico','Barriera Arcana','Sigillo Antico','Onda di Mana','Runa Fulminante'],
+  Natura: ['Barriera Vegetale','Radici Aggrovigliate','Cura Silvana','Grande Spirito','Vento Profumato','Rigenerazione','Spore Curative','Crescita Selvaggia'],
+  Abisso: ["Lama d'Ombra",'Veleno Notturno','Eclissi Tagliente','Danza Mortale','Morso Oscuro','Tentacolo Umbra','Silenzio Eterno','Patto Oscuro'],
+  Ferro:  ["Pugno d'Acciaio",'Scudo Spezzato','Contraccolpo','Fortezza Assoluta','Riflesso Metallico','Armatura Temprata','Freccia di Ferro','Colpo di Titanio'],
+  Fuoco:  ['Fiamma Travolgente','Calore Torrido','Esplosione Infuocata','Danza delle Braci','Cenere Bruciante','Vulcano Miniatura','Serpente di Fuoco','Inferno Rosso'],
+};
+
+const _ABILITIES_POOL = [
+  'Riduce la velocità nemica del 15% per 2 turni.',
+  'Applica Veleno: 5% HP/turno per 3 turni.',
+  'Recupera 20% del maxHp. Non può essere usata consecutivamente.',
+  "Se l'avversaria ha meno del 30% HP, danno +40%.",
+  'Per 2 turni, subisce il 30% di danno in meno.',
+  "Se colpisce come critico, rallenta l'avversaria per 1 turno.",
+  'Applica Bruciatura: 6% HP/turno per 3 turni.',
+];
+
+const _RARITY_CFG = {
+  comune:      { hp:[200,320], spd:[20,55], power:[15,30],  crit:[25,45],  critP:[5,10],  pp:[7,8], ability:false },
+  raro:        { hp:[280,420], spd:[30,65], power:[28,50],  crit:[40,65],  critP:[8,15],  pp:[5,7], ability:false },
+  epico:       { hp:[340,500], spd:[40,75], power:[45,75],  crit:[60,90],  critP:[12,20], pp:[4,5], ability:0.3  },
+  leggendario: { hp:[420,580], spd:[50,88], power:[70,100], crit:[85,120], critP:[18,28], pp:[2,3], ability:true },
+  immersivo:   { hp:[480,600], spd:[60,100],power:[95,130], crit:[110,160],critP:[25,35], pp:[2,2], ability:true },
+};
+
+function _rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function _pick(arr)      { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function _generateMovesForRarity(rarita) {
+  const cfg  = _RARITY_CFG[rarita] ?? _RARITY_CFG.comune;
+  const rarities = rarita === 'comune'      ? ['comune','comune','raro','raro']
+                 : rarita === 'raro'        ? ['comune','raro','raro','epico']
+                 : rarita === 'epico'       ? ['comune','raro','epico','leggendario']
+                 : rarita === 'leggendario' ? ['raro','epico','leggendario','leggendario']
+                 :                           ['epico','leggendario','leggendario','immersivo'];
+
+  const usedNames = new Set();
+  return rarities.map(mr => {
+    const mc   = _RARITY_CFG[mr] ?? _RARITY_CFG.comune;
+    const type = _pick(TYPE_NAMES);
+    let name;
+    let tries = 0;
+    do { name = _pick(_MOVE_NAMES[type]); tries++; } while (usedNames.has(name) && tries < 15);
+    usedNames.add(name);
+    const maxPp    = _rnd(mc.pp[0], mc.pp[1]);
+    const hasAbil  = mc.ability === true || (typeof mc.ability === 'number' && Math.random() < mc.ability);
+    return {
+      name, type, rarity: mr,
+      power:         _rnd(mc.power[0], mc.power[1]),
+      critPower:     _rnd(mc.crit[0],  mc.crit[1]),
+      critPowerPerc: _rnd(mc.critP[0], mc.critP[1]),
+      pp: maxPp, maxPp,
+      ability: hasAbil ? _pick(_ABILITIES_POOL) : null,
+      effectiveness: 'Normal',
+    };
+  });
+}
+
+/** Genera battleStats completi per una waifu in-memory (usato come fallback). */
+export function generateBattleStats(waifuFirestore) {
+  const rarita = waifuFirestore.rarita ?? 'comune';
+  const cfg    = _RARITY_CFG[rarita] ?? _RARITY_CFG.comune;
+  return {
+    maxHp:  _rnd(cfg.hp[0],  cfg.hp[1]),
+    speed:  _rnd(cfg.spd[0], cfg.spd[1]),
+    type:   _pick(TYPE_NAMES),
+    moves:  _generateMovesForRarity(rarita),
+  };
+}
+
 // ─── DATA STRUCTURES ───────────────────────────────────────────────────────
 /**
  * Struttura dati di una waifu in battaglia.
@@ -130,27 +205,37 @@ export function applyDamage(waifuStat, damage) {
  * @property {string} [ability]
  */
 
-/** Converte una waifu Firestore in WaifuBattleStat, usando battleStats se presenti. */
+/** Converte una waifu Firestore in WaifuBattleStat.
+ *  Se battleStats manca o le mosse sono vuote, genera dati bilanciati in-memory.
+ */
 export function initBattleWaifu(waifuFirestore, collectionData = null) {
-  const bs = waifuFirestore.battleStats ?? {};
-  const level = collectionData?.livello ?? 1;
-  const maxHp = bs.maxHp ?? 300;
-  // HP scalano con il livello: 75% al Lv1, 100% al Lv10
-  const hpScale = 0.75 + (Math.min(level, 10) / 10) * 0.25;
+  // Usa battleStats dal DB se presenti e completi, altrimenti genera in-memory
+  let bs = waifuFirestore.battleStats ?? {};
+  if (!bs.maxHp || !bs.moves?.length) {
+    bs = { ...generateBattleStats(waifuFirestore), ...bs };
+    // Assicura che moves sia sempre popolato
+    if (!bs.moves?.length) bs.moves = _generateMovesForRarity(waifuFirestore.rarita ?? 'comune');
+  }
+
+  const level       = collectionData?.livello ?? 1;
+  const maxHp       = bs.maxHp ?? 300;
+  const hpScale     = 0.75 + (Math.min(level, 10) / 10) * 0.25;
   const scaledMaxHp = Math.round(maxHp * hpScale);
 
   return {
-    id:    waifuFirestore.id,
-    name:  waifuFirestore.nome ?? 'Waifu',
-    level: level,
-    hp:    scaledMaxHp,
-    maxHp: scaledMaxHp,
-    type:  bs.type ?? 'Arcana',
-    speed: bs.speed ?? 50,
-    image: waifuFirestore.asset_statica ?? waifuFirestore.asset_immersiva ?? null,
-    moves: (bs.moves ?? []).map(m => ({ ...m, pp: m.maxPp ?? m.pp ?? 5 })),
-    isKO:  false,
+    id:     waifuFirestore.id,
+    name:   waifuFirestore.nome ?? 'Waifu',
+    level,
+    hp:     scaledMaxHp,
+    maxHp:  scaledMaxHp,
+    type:   bs.type ?? _pick(TYPE_NAMES),
+    speed:  bs.speed ?? 50,
+    image:  waifuFirestore.asset_statica ?? waifuFirestore.asset_immersiva ?? null,
+    moves:  bs.moves.map(m => ({ ...m, pp: m.maxPp ?? m.pp ?? 5 })),
+    isKO:   false,
     rarita: waifuFirestore.rarita ?? 'comune',
+    // Conserva i battleStats generati per mostrarli nel dettaglio carta
+    _battleStats: bs,
   };
 }
 
