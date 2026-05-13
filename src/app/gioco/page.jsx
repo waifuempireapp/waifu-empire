@@ -30,6 +30,8 @@ import TradeReceiveAnimation from '@/components/TradeReceiveAnimation';
 import ScambiList from '@/components/ScambiList';
 import MappaMondoArt from '@/components/MappaMondoArt';
 import MappaMultiplayer from '@/components/MappaMultiplayer';
+import WaifuBattleArena from '@/components/WaifuBattleArena';
+import { initBattleWaifu, generateCPUTeam } from '@/lib/battleEngine';
 import {
   PannelloOrnato, TitoloOrnato, BtnDecorato, Chip,
   BarraRisorsa, CardInfo, Divider, StelleRarita, FramePersonaggio,
@@ -4519,6 +4521,11 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   const [teamSelezionato, setTeamSelezionato] = useState(null);
   const [waifuSelezionate, setWaifuSelezionate] = useState([]);
 
+  // ── NUOVO SISTEMA DI BATTAGLIA (WaifuBattleArena) ──────────
+  // Quando waifuBattleActive è true, mostra WaifuBattleArena al posto del vecchio sistema
+  const [waifuBattleActive, setWaifuBattleActive] = useState(false);
+  const [waifuBattlePlayerTeam, setWaifuBattlePlayerTeam] = useState([]);
+
   // ── STATO BATTAGLIA ────────────────────────────────────────
   // Fasi possibili:
   //   null                   → mappa
@@ -4882,8 +4889,33 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
     setModoBattaglia(true);
   };
 
-  // ── CONFERMA TEAM E AVVIA ──────────────────────────────────
+  // ── CONFERMA TEAM E AVVIA (NUOVO SISTEMA WaifuBattleArena) ──
   const confermaEAvvia = () => {
+    // Costruisce il team del giocatore per il nuovo sistema di battaglia
+    const buildWaifuBattleTeam = () => {
+      let ids;
+      if (teamSelezionato && teamSelezionato !== 'manuale' && teams[teamSelezionato]) {
+        ids = teams[teamSelezionato].waifu.slice(0, 4);
+      } else {
+        ids = waifuSelezionate.slice(0, 4);
+      }
+      return ids.map(id => {
+        const w = waifuCat.find(x => x.id === id);
+        const dati = collezione.waifu?.[id];
+        if (!w) return null;
+        return initBattleWaifu(w, dati);
+      }).filter(Boolean);
+    };
+
+    const playerTeam = buildWaifuBattleTeam();
+    if (playerTeam.length < 1) { mostraNotif('Team insufficiente!', '#ff3d3d'); return; }
+
+    setWaifuBattlePlayerTeam(playerTeam);
+    setModoBattaglia(false);
+    setWaifuBattleActive(true);
+    return; // Usa il nuovo sistema — il vecchio codice sotto è mantenuto per reference
+
+    // ── VECCHIO SISTEMA (mantenuto per rollback) ──
     // Helper: costruisce una waifu da battaglia applicando stat_bonus + abilità outfit
     const buildWaifuBattaglia = (id) => {
       const w = waifuDisponibili.find(x => x.id === id);
@@ -5395,6 +5427,23 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
           }}>CONTINUA</button>
         </div>
       </div>
+    );
+  }
+
+  // ================================================================
+  // NUOVO SISTEMA BATTAGLIA (WaifuBattleArena)
+  // ================================================================
+  if (waifuBattleActive) {
+    const playerIds = new Set(waifuBattlePlayerTeam.map(w => w.id));
+    return (
+      <WaifuBattleArena
+        playerTeam={waifuBattlePlayerTeam}
+        waifuCat={waifuCat}
+        onExit={() => {
+          setWaifuBattleActive(false);
+          setWaifuBattlePlayerTeam([]);
+        }}
+      />
     );
   }
 

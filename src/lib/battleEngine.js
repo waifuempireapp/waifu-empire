@@ -1,0 +1,210 @@
+/**
+ * battleEngine.js — Logica di combattimento waifu (isolata dalla UI)
+ * Formula danno: Damage = (Power × Effectiveness) × LevelMod × RandomMod
+ * Critico: sostituisce il danno base, non si somma.
+ */
+
+// ─── TYPE CHART ────────────────────────────────────────────────────────────
+// Ciclo pentagonale: Arcana→Natura→Abisso→Ferro→Fuoco→Arcana
+// typeChart[moveType][defenderType] → moltiplicatore base
+// STAB (moveType === attacker.type && moveType batte defender.type) → ×2.5 invece di ×2.0
+export const TYPE_NAMES = ['Arcana', 'Natura', 'Abisso', 'Ferro', 'Fuoco'];
+
+export const TYPE_COLORS = {
+  Arcana: { bg: '#EEEDFE', text: '#3C3489', border: '#7F77DD' },
+  Natura: { bg: '#EAF3DE', text: '#3B6D11', border: '#639922' },
+  Abisso: { bg: '#FBEAF0', text: '#72243E', border: '#D4537E' },
+  Ferro:  { bg: '#F1EFE8', text: '#2C2C2A', border: '#5F5E5A' },
+  Fuoco:  { bg: '#FAECE7', text: '#712B13', border: '#D85A30' },
+};
+
+// Ciclo: ogni tipo batte il successivo (indice +1 mod 5)
+// Arcana(0)→Natura(1)→Abisso(2)→Ferro(3)→Fuoco(4)→Arcana(0)
+export const typeChart = (() => {
+  const chart = {};
+  TYPE_NAMES.forEach((attacker, ai) => {
+    chart[attacker] = {};
+    TYPE_NAMES.forEach((defender, di) => {
+      const beats    = (ai + 1) % 5 === di; // attacker batte defender
+      const beaten   = (di + 1) % 5 === ai; // defender batte attacker
+      chart[attacker][defender] = beats ? 2.0 : beaten ? 0.5 : 1.0;
+    });
+  });
+  return chart;
+})();
+
+/** Restituisce il moltiplicatore di efficacia.
+ * STAB (stessa mossa del tipo dell'attaccante contro il tipo debole) → 2.5.
+ * @returns { multiplier: number, label: string }
+ */
+export function getEffectiveness(moveType, attackerType, defenderType) {
+  const base = typeChart[moveType]?.[defenderType] ?? 1.0;
+  const isStab = moveType === attackerType && base === 2.0;
+  const multiplier = isStab ? 2.5 : base;
+
+  let label = 'Normal';
+  if (multiplier >= 2.5)       label = 'Extremely effective';
+  else if (multiplier >= 2.0)  label = 'Super effective';
+  else if (multiplier === 0.5) label = 'Not very effective';
+  else if (multiplier === 0)   label = 'No effect';
+
+  return { multiplier, label };
+}
+
+// ─── DAMAGE CALCULATION ────────────────────────────────────────────────────
+/**
+ * Calcola il danno di una mossa.
+ * @param {WaifuBattleStat} attacker
+ * @param {MoveInstance}    move   — mossa usata (con pp aggiornati)
+ * @param {WaifuBattleStat} defender
+ * @returns {{ damage: number, isCrit: boolean, effectiveness: string, multiplier: number }}
+ */
+export function calculateDamage(attacker, move, defender) {
+  const { multiplier, label: effectiveness } = getEffectiveness(move.type, attacker.type, defender.type);
+
+  if (multiplier === 0) return { damage: 0, isCrit: false, effectiveness, multiplier };
+
+  // Moltiplicatore livello: scala da 0.85 (Lv1) a 1.15 (Lv10)
+  const levelMod   = 0.85 + (Math.min(attacker.level, 10) / 10) * 0.30;
+  // Jitter casuale ±8%
+  const randomMod  = 0.92 + Math.random() * 0.16;
+  // Critico: probabilità da critPowerPerc della mossa
+  const isCrit     = Math.random() * 100 < (move.critPowerPerc ?? 0);
+  const basePower  = isCrit ? (move.critPower ?? move.power) : move.power;
+
+  const damage = Math.max(1, Math.round(basePower * multiplier * levelMod * randomMod));
+  return { damage, isCrit, effectiveness, multiplier };
+}
+
+// ─── TURN ORDER ────────────────────────────────────────────────────────────
+/**
+ * Determina chi attacca per primo questo turno.
+ * Aggiunge jitter ±5 alla speed per evitare ordine deterministico.
+ * @returns {'player'|'enemy'}
+ */
+export function determineTurnOrder(playerWaifu, enemyWaifu) {
+  const pSpeed = (playerWaifu.speed ?? 50) + (Math.random() * 10 - 5);
+  const eSpeed = (enemyWaifu.speed  ?? 50) + (Math.random() * 10 - 5);
+  return pSpeed >= eSpeed ? 'player' : 'enemy';
+}
+
+// ─── BATTLE STATE HELPERS ──────────────────────────────────────────────────
+/**
+ * Verifica se una mossa è bloccata (Cooldown Implicito: mosse maxPp ≤ 3 non usabili 2 turni consecutivi).
+ */
+export function isMoveBlocked(lastMoveIndex, moveIndex, move) {
+  if ((move.maxPp ?? 8) <= 3 && lastMoveIndex === moveIndex) return true;
+  return false;
+}
+
+/** Applica danno ad una waifu nel team, non scende sotto 0. */
+export function applyDamage(waifuStat, damage) {
+  return { ...waifuStat, hp: Math.max(0, (waifuStat.hp ?? waifuStat.maxHp) - damage) };
+}
+
+// ─── DATA STRUCTURES ───────────────────────────────────────────────────────
+/**
+ * Struttura dati di una waifu in battaglia.
+ * @typedef {Object} WaifuBattleStat
+ * @property {string}   id
+ * @property {string}   name
+ * @property {number}   level       (1–10)
+ * @property {number}   hp          (HP correnti)
+ * @property {number}   maxHp       (200–600)
+ * @property {string}   type        (uno dei 5 tipi)
+ * @property {number}   speed       (20–100)
+ * @property {string}   image       (URL asset_statica o asset_immersiva)
+ * @property {Move[]}   moves       (4 mosse con PP aggiornati)
+ */
+
+/**
+ * @typedef {Object} Move
+ * @property {string} name
+ * @property {string} type
+ * @property {string} rarity        (comune|raro|epico|leggendario|immersivo)
+ * @property {number} power
+ * @property {number} critPower
+ * @property {number} critPowerPerc
+ * @property {number} pp            (PP correnti, inizialmente = maxPp)
+ * @property {number} maxPp
+ * @property {string} [ability]
+ */
+
+/** Converte una waifu Firestore in WaifuBattleStat, usando battleStats se presenti. */
+export function initBattleWaifu(waifuFirestore, collectionData = null) {
+  const bs = waifuFirestore.battleStats ?? {};
+  const level = collectionData?.livello ?? 1;
+  const maxHp = bs.maxHp ?? 300;
+  // HP scalano con il livello: 75% al Lv1, 100% al Lv10
+  const hpScale = 0.75 + (Math.min(level, 10) / 10) * 0.25;
+  const scaledMaxHp = Math.round(maxHp * hpScale);
+
+  return {
+    id:    waifuFirestore.id,
+    name:  waifuFirestore.nome ?? 'Waifu',
+    level: level,
+    hp:    scaledMaxHp,
+    maxHp: scaledMaxHp,
+    type:  bs.type ?? 'Arcana',
+    speed: bs.speed ?? 50,
+    image: waifuFirestore.asset_statica ?? waifuFirestore.asset_immersiva ?? null,
+    moves: (bs.moves ?? []).map(m => ({ ...m, pp: m.maxPp ?? m.pp ?? 5 })),
+    isKO:  false,
+    rarita: waifuFirestore.rarita ?? 'comune',
+  };
+}
+
+/** Converte un array di waifu Firestore + dati collezione in un team di WaifuBattleStat. */
+export function initBattleTeam(waifuList, collectionMap = {}) {
+  return waifuList
+    .filter(Boolean)
+    .slice(0, 4)
+    .map(w => initBattleWaifu(w, collectionMap[w.id]));
+}
+
+/** Genera un team CPU casuale con battleStats di fallback se non presenti. */
+export function generateCPUTeam(waifuCat, playerIds = new Set(), cpuLevel = 1) {
+  const pool = waifuCat.filter(w => !playerIds.has(w.id));
+  const source = pool.length >= 4 ? pool : waifuCat;
+  const shuffled = [...source].sort(() => Math.random() - 0.5).slice(0, 4);
+  return shuffled.map(w => {
+    const base = initBattleWaifu(w);
+    // Scala HP e speed per il livello CPU
+    const bonus = (cpuLevel - 1) * 0.1;
+    return {
+      ...base,
+      level: Math.min(10, cpuLevel),
+      maxHp: Math.round(base.maxHp * (1 + bonus)),
+      hp:    Math.round(base.maxHp * (1 + bonus)),
+      speed: Math.min(100, Math.round(base.speed * (1 + bonus * 0.5))),
+    };
+  });
+}
+
+// ─── CPU AI ────────────────────────────────────────────────────────────────
+/** La CPU sceglie la mossa più efficace disponibile (non KO, PP > 0, non in cooldown). */
+export function cpuChooseMove(cpuWaifu, playerWaifu, lastMoveIndex) {
+  const available = cpuWaifu.moves
+    .map((m, i) => ({ move: m, index: i }))
+    .filter(({ move, index }) =>
+      (move.pp ?? 0) > 0 && !isMoveBlocked(lastMoveIndex, index, move)
+    );
+
+  if (available.length === 0) {
+    // Tutte esaurite: sceglie la prima con PP > 0 ignorando cooldown
+    const fallback = cpuWaifu.moves.findIndex(m => (m.pp ?? 0) > 0);
+    return fallback >= 0 ? fallback : 0;
+  }
+
+  // Valuta efficacia di ogni mossa
+  const scored = available.map(({ move, index }) => {
+    const { multiplier } = getEffectiveness(move.type, cpuWaifu.type, playerWaifu.type);
+    return { index, score: (move.power ?? 0) * multiplier };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+
+  // Tra le top-2 a parità di score, scegli casualmente
+  const top = scored.filter(s => Math.abs(s.score - scored[0].score) < 5);
+  return top[Math.floor(Math.random() * top.length)].index;
+}

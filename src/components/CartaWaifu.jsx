@@ -376,6 +376,33 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
         </svg>
       ))}
 
+      {/* --- BATTLE STATS (maxHp + speed) — visibili se battleStats presenti --- */}
+      {waifu.battleStats?.maxHp && !videoAttivo && (
+        <div style={{
+          position: 'absolute', top: Math.round(48*scale), left: Math.round(4*scale),
+          display: 'flex', flexDirection: 'column', gap: Math.round(2*scale), zIndex: 6,
+        }}>
+          <div style={{
+            background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(0,230,118,0.4)',
+            borderRadius: Math.round(4*scale), padding: `${Math.round(1*scale)}px ${Math.round(5*scale)}px`,
+            fontSize: Math.round(7*scale), fontFamily: 'Orbitron, sans-serif',
+            color: '#00e676', display: 'flex', alignItems: 'center', gap: 3,
+          }}>
+            <span>❤</span><span>{waifu.battleStats.maxHp}</span>
+          </div>
+          {waifu.battleStats?.speed && (
+            <div style={{
+              background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(212,83,126,0.4)',
+              borderRadius: Math.round(4*scale), padding: `${Math.round(1*scale)}px ${Math.round(5*scale)}px`,
+              fontSize: Math.round(7*scale), fontFamily: 'Orbitron, sans-serif',
+              color: '#D4537E', display: 'flex', alignItems: 'center', gap: 3,
+            }}>
+              <span>⚡</span><span>{waifu.battleStats.speed}</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* --- COPIE BADGE --- */}
       {datiCollezione && datiCollezione.copie > 1 && !videoAttivo && (
         <div style={{
