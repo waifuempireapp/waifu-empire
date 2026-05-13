@@ -2,16 +2,9 @@ import { NextResponse } from 'next/server';
 import { getPayPalAccessToken, PAYPAL_BASE_URL, CLIENT_ID, CLIENT_SECRET } from '@/lib/paypalClient';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getPrezzi } from '@/lib/prezziServer';
 
 export const maxDuration = 30;
-
-// Hardcoded — stessa lista di create-order-kisses
-const TAGLI = {
-  xs: { kisses: 100 },
-  sm: { kisses: 300 },
-  md: { kisses: 600 },
-  lg: { kisses: 1400 },
-};
 
 export async function POST(request) {
   if (!CLIENT_ID || !CLIENT_SECRET) {
@@ -50,7 +43,8 @@ export async function POST(request) {
       return NextResponse.json({ success: true, tipo: 'pass_hard' });
     }
 
-    const taglio = TAGLI[taglioId];
+    const prezzi = await getPrezzi();
+    const taglio = prezzi.tagli_kisses[taglioId];
     if (!taglio) return NextResponse.json({ error: 'Taglio non valido' }, { status: 400 });
 
     // Assegna Kisses atomicamente — non rileggere il saldo per evitare RESOURCE_EXHAUSTED

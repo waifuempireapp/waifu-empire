@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getPrezzi } from '@/lib/prezziServer';
 
 export const maxDuration = 30;
 
-const COSTO = 20;
 const MAX_ENERGIA = 10;
 
 export async function POST(request) {
@@ -17,6 +17,8 @@ export async function POST(request) {
     const userSnap = await adminDb.collection('users').doc(uid).get();
     if (!userSnap.exists) return NextResponse.json({ error: 'Utente non trovato' }, { status: 404 });
     const kisses = userSnap.data().kisses ?? 0;
+    const prezzi = await getPrezzi();
+    const COSTO = prezzi.beni.energia.kisses;
     if (kisses < COSTO) return NextResponse.json({ error: `Kisses insufficienti (servono ${COSTO})` }, { status: 402 });
 
     await adminDb.collection('users').doc(uid).update({

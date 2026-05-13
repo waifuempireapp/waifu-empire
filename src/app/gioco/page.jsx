@@ -47,6 +47,7 @@ export default function GiocoPage() {
   const [tab, setTab] = useState('home');
   const [negozioAperto, setNegozioAperto] = useState(false);
   const [pescaAperta, setPescaAperta] = useState(false);
+  const [pescaPacksInitial, setPescaPacksInitial] = useState(null); // null = non ancora caricato
   const [colezSubTab, setColezSubTab] = useState('waifu'); // Fase 3: navigazione diretta ai sotto-tab collezione
   const [notif, setNotif] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -113,6 +114,16 @@ export default function GiocoPage() {
         setGodPackProb(Number(gDoc.data().god_pack_prob));
       }
     } catch (e) { /* usa defaults */ }
+
+    // Pre-fetch pesca feed in background — pronto quando l'utente apre l'overlay
+    if (process.env.NEXT_PUBLIC_PESCA_ENABLED !== 'false') {
+      user.getIdToken().then(token =>
+        fetch('/api/pesca/feed', { headers: { Authorization: `Bearer ${token}` } })
+          .then(r => r.json())
+          .then(data => setPescaPacksInitial(data.packs || []))
+          .catch(() => setPescaPacksInitial([]))
+      );
+    }
   };
 
   const mostraNotif = (testo, colore = '#00e676') => {
@@ -146,6 +157,8 @@ export default function GiocoPage() {
         <PescaMisteriosaOverlay
           user={user}
           profilo={profilo}
+          collezione={collezione}
+          initialPacks={pescaPacksInitial}
           onKissesSpent={(amount) => setProfilo(p => ({ ...p, kisses: Math.max(0, (p.kisses ?? 0) - amount) }))}
           onCollectionRefresh={async () => {
             const c = await getCollezione(user.uid);

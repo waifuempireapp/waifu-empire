@@ -70,9 +70,9 @@ function CardBack({ selected, onClick, size = 'md' }) {
   );
 }
 
-export default function PescaMisteriosaFeed({ user, profilo, onKissesSpent, onCollectionRefresh }) {
-  const [packs, setPacks] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function PescaMisteriosaFeed({ user, profilo, collezione, initialPacks, onKissesSpent, onCollectionRefresh }) {
+  const [packs, setPacks] = useState(initialPacks || []);
+  const [loading, setLoading] = useState(initialPacks === null);
   const [error, setError] = useState(null);
   const [selectedPack, setSelectedPack] = useState(null);
   // shuffledOrder[uiIndex] = realIndex (indice nell'array originale del pack)
@@ -96,7 +96,8 @@ export default function PescaMisteriosaFeed({ user, profilo, onKissesSpent, onCo
     finally { setLoading(false); }
   }, [user]);
 
-  useEffect(() => { caricaFeed(); }, [caricaFeed]);
+  // Carica il feed solo se non sono stati passati initialPacks già pronti
+  useEffect(() => { if (initialPacks === null) caricaFeed(); }, [caricaFeed]);
 
   const mostraNotif = (testo, colore = '#ff4d9e') => {
     setNotif({ testo, colore });
@@ -271,6 +272,7 @@ export default function PescaMisteriosaFeed({ user, profilo, onKissesSpent, onCo
             pack={pack}
             kissesCost={KISSES_COST}
             userKisses={kissesAttuali}
+            collezione={collezione}
             onPesca={(p) => {
               if (p.alreadyFished) return; // sicurezza extra lato client
               if (kissesAttuali < KISSES_COST) {

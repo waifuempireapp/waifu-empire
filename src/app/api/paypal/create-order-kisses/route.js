@@ -1,20 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getPayPalAccessToken, PAYPAL_BASE_URL, CLIENT_ID, CLIENT_SECRET } from '@/lib/paypalClient';
+import { getPrezzi } from '@/lib/prezziServer';
 
 export const maxDuration = 30;
 
-// Hardcoded — non legge Firestore per evitare quota issues
-const TAGLI = {
-  xs: { kisses: 100,  price_eur: '0.99', label: '100 Kisses' },
-  sm: { kisses: 300,  price_eur: '2.49', label: '300 Kisses' },
-  md: { kisses: 600,  price_eur: '3.99', label: '600 Kisses' },
-  lg: { kisses: 1400, price_eur: '7.99', label: '1400 Kisses' },
-};
-
-// Pass venduti con PayPal (nessuna lettura Firestore)
-const PASS_ITEMS = {
-  pass_hard:    { price_eur: '4.99', label: 'Pass Hard — Video immersivi illimitati' },
-  pass_scambi:  { price_eur: '1.99', label: 'Trade Pass — Scambi illimitati' },
+const PASS_LABELS = {
+  pass_hard:   'Pass Hard — Video immersivi illimitati',
+  pass_scambi: 'Trade Pass — Scambi illimitati',
 };
 
 export async function POST(request) {
@@ -23,10 +15,12 @@ export async function POST(request) {
   }
   try {
     const { taglioId, tipo } = await request.json();
+    const prezzi = await getPrezzi();
 
     // Ordine per un Pass (pass_hard, pass_scambi)
-    if (tipo && PASS_ITEMS[tipo]) {
-      const passItem = PASS_ITEMS[tipo];
+    if (tipo && prezzi[tipo === 'pass_hard' ? 'pass_hard' : 'pass_scambi']) {
+      const passItem = tipo === 'pass_hard' ? prezzi.pass_hard : prezzi.pass_scambi;
+      const label = PASS_LABELS[tipo] || tipo;
       const accessToken = await getPayPalAccessToken();
       const res = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders`, {
         method: 'POST',
@@ -37,7 +31,7 @@ export async function POST(request) {
         },
         body: JSON.stringify({
           intent: 'CAPTURE',
-          purchase_units: [{ description: `Impero Waifu — ${passItem.label}`, amount: { currency_code: 'EUR', value: passItem.price_eur } }],
+          purchase_units: [{ description: `Impero Waifu — ${label}`, amount: { currency_code: 'EUR', value: passItem.price_eur } }],
           application_context: { brand_name: 'Impero Waifu', locale: 'it-IT', user_action: 'PAY_NOW' },
         }),
       });
@@ -48,7 +42,7 @@ export async function POST(request) {
 
     // Ordine per Kisses
     if (!taglioId) return NextResponse.json({ error: 'taglioId o tipo mancante' }, { status: 400 });
-    const taglio = TAGLI[taglioId];
+    const taglio = prezzi.tagli_kisses[taglioId];
     if (!taglio) return NextResponse.json({ error: 'Taglio non valido' }, { status: 400 });
 
     const accessToken = await getPayPalAccessToken();

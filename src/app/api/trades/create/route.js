@@ -64,7 +64,10 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Waifu non disponibile o copie insufficienti' }, { status: 400 });
     }
 
-    const raritaA = waifuA.rarita;
+    // La collezione salva solo { copie, livello, stat_bonus } — rarità dal catalogo
+    const catalogSnap = await adminDb.collection('catalogo_waifu').doc(fromWaifuId).get();
+    if (!catalogSnap.exists) return NextResponse.json({ error: 'Waifu non trovata nel catalogo' }, { status: 400 });
+    const raritaA = catalogSnap.data().rarita;
     if (!raritaA) return NextResponse.json({ error: 'Rarità waifu non determinabile' }, { status: 400 });
 
     // Verifica che toUid esista e sia amico

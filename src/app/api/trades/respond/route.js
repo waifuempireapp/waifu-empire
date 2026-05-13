@@ -41,8 +41,10 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Waifu non disponibile o copie insufficienti' }, { status: 400 });
     }
 
-    // Verifica parità rarità
-    if (waifuB.rarita !== trade.rarita) {
+    // Verifica parità rarità — la collezione non ha rarita, la prendiamo dal catalogo
+    const catalogSnapB = await adminDb.collection('catalogo_waifu').doc(toWaifuId).get();
+    const raritaB = catalogSnapB.exists ? catalogSnapB.data().rarita : null;
+    if (raritaB !== trade.rarita) {
       return NextResponse.json({ error: `Rarità non corrispondente. Richiesta: ${trade.rarita}` }, { status: 400 });
     }
 

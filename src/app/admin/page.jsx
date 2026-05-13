@@ -7,6 +7,7 @@ import {
   listWaifu, listOutfit, listPose, listDrops,
   upsertWaifu, upsertOutfit, upsertPosa, upsertDrop,
   deleteCatalogo, clearCatalogCache,
+  getPrezziConfig, setPrezziConfig,
 } from '@/lib/firestoreService';
 import { uploadAsset, pathWaifu, pathOutfit, pathPosa, uploadLargeAsset } from '@/lib/storageService';
 import {
@@ -122,6 +123,7 @@ export default function AdminPage() {
           { k: 'distrib', l: '📊 Distribuzione' },
           { k: 'motori', l: '🤖 Motori AI' },
           { k: 'config', l: '⚙ Config' },
+          { k: 'prezzi', l: '💰 Prezzi' },
         ].map(t => (
           <button key={t.k} onClick={() => setTab(t.k)} style={{
             padding: '6px 16px',
@@ -142,6 +144,7 @@ export default function AdminPage() {
         {tab === 'distrib' && <DistribTab waifu={waifu} outfit={outfit} pose={pose} />}
         {tab === 'motori' && <MotoriTab />}
         {tab === 'config' && <ConfigTab waifu={waifu} ricarica={carica} flash={flash} />}
+        {tab === 'prezzi' && <PrezziTab flash={flash} user={user} />}
       </div>
     </div>
   );
@@ -2721,6 +2724,129 @@ function ConfigTab({ waifu, ricarica, flash }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================================
+// TAB: PREZZI — configurazione prezzi Negozio da DB
+// ============================================================
+function PrezziTab({ flash, user }) {
+  const [prezzi, setPrezzi] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { getPrezziConfig().then(setPrezzi); }, []);
+
+  const aggiorna = async (path, value) => {
+    const keys = path.split('.');
+    setPrezzi(p => {
+      const next = JSON.parse(JSON.stringify(p));
+      let cur = next;
+      for (let i = 0; i < keys.length - 1; i++) cur = cur[keys[i]];
+      cur[keys[keys.length - 1]] = value;
+      return next;
+    });
+  };
+
+  const salva = async () => {
+    setBusy(true);
+    try {
+      await setPrezziConfig(prezzi);
+      // Invalida la cache server-side tramite API (autenticato)
+      const token = await user.getIdToken();
+      await fetch('/api/admin/clear-prezzi-cache', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      flash('Prezzi salvati!');
+    } catch (e) { flash('Errore: ' + e.message, '#ff4d4d'); }
+    finally { setBusy(false); }
+  };
+
+  if (!prezzi) return <div style={{ padding: 20, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', fontSize: 10 }}>Caricamento prezzi…</div>;
+
+  const inputStyle = {
+    background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(245,158,11,0.3)',
+    borderRadius: 6, color: '#f5e6d3', fontFamily: 'Orbitron', fontSize: 11,
+    padding: '5px 8px', width: 90,
+  };
+  const labelStyle = { fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.5)', letterSpacing: 1, marginBottom: 3 };
+  const sectionStyle = {
+    background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.15)',
+    borderRadius: 12, padding: '16px 18px', marginBottom: 14,
+  };
+
+  return (
+    <div style={{ maxWidth: 600 }}>
+      <div style={{ fontFamily: 'Orbitron', fontSize: 14, color: '#f5a623', marginBottom: 16, fontWeight: 700 }}>💰 GESTIONE PREZZI</div>
+
+      {/* Tagli Kisses */}
+      <div style={sectionStyle}>
+        <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#f5a623', marginBottom: 12, fontWeight: 700 }}>Pacchetti Kisses (PayPal)</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {Object.entries(prezzi.tagli_kisses || {}).map(([id, t]) => (
+            <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#eedcd4', width: 20, textAlign: 'right' }}>{id.toUpperCase()}</span>
+              <div>
+                <div style={labelStyle}>Kisses</div>
+                <input type="number" value={t.kisses} onChange={e => aggiorna(`tagli_kisses.${id}.kisses`, Number(e.target.value))} style={inputStyle} />
+              </div>
+              <div>
+                <div style={labelStyle}>€ EUR</div>
+                <input type="text" value={t.price_eur} onChange={e => aggiorna(`tagli_kisses.${id}.price_eur`, e.target.value)} style={inputStyle} />
+              </div>
+              <div>
+                <div style={labelStyle}>Label</div>
+                <input type="text" value={t.label || ''} onChange={e => aggiorna(`tagli_kisses.${id}.label`, e.target.value)} style={{ ...inputStyle, width: 130 }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Pass */}
+      <div style={sectionStyle}>
+        <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#f5a623', marginBottom: 12, fontWeight: 700 }}>Pass (una tantum)</div>
+        {[
+          { id: 'pass_hard', label: '🔞 Hard Pass' },
+          { id: 'pass_scambi', label: '🔓 Trade Pass' },
+        ].map(({ id, label }) => (
+          <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+            <span style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#eedcd4', width: 110 }}>{label}</span>
+            <div>
+              <div style={labelStyle}>Kisses</div>
+              <input type="number" value={prezzi[id]?.kisses || 0} onChange={e => aggiorna(`${id}.kisses`, Number(e.target.value))} style={inputStyle} />
+            </div>
+            <div>
+              <div style={labelStyle}>€ EUR</div>
+              <input type="text" value={prezzi[id]?.price_eur || ''} onChange={e => aggiorna(`${id}.price_eur`, e.target.value)} style={inputStyle} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Beni Kisses */}
+      <div style={sectionStyle}>
+        <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#f5a623', marginBottom: 12, fontWeight: 700 }}>Beni con Kisses</div>
+        {[
+          { id: 'pack_sfida', label: '🎁 Pack Sfida' },
+          { id: 'energia', label: '⚡ Energia' },
+        ].map(({ id, label }) => (
+          <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+            <span style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#eedcd4', width: 110 }}>{label}</span>
+            <div>
+              <div style={labelStyle}>Kisses</div>
+              <input type="number" value={prezzi.beni?.[id]?.kisses || 0} onChange={e => aggiorna(`beni.${id}.kisses`, Number(e.target.value))} style={inputStyle} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button onClick={salva} disabled={busy} style={{
+        background: 'linear-gradient(135deg, #f59e0b, #ec4899)',
+        border: 'none', borderRadius: 10, color: '#000',
+        fontFamily: 'Orbitron', fontSize: 11, padding: '10px 28px',
+        cursor: busy ? 'wait' : 'pointer', fontWeight: 700,
+      }}>
+        {busy ? 'Salvataggio…' : '💾 SALVA PREZZI'}
+      </button>
     </div>
   );
 }

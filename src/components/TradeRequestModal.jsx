@@ -116,7 +116,7 @@ export default function TradeRequestModal({ waifu, waifuId, user, onSuccess, onC
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {amici.map(a => {
-                  const sel = amicoSel?.uid === a.uid;
+                  const sel = amicoSel?.id === a.id;
                   return (
                     <div
                       key={a.uid}

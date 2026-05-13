@@ -2,7 +2,7 @@
 import KissesIcon from './KissesIcon';
 import PescaMisteriosaFeed from './PescaMisteriosaFeed';
 
-export default function PescaMisteriosaOverlay({ user, profilo, onKissesSpent, onCollectionRefresh, onClose }) {
+export default function PescaMisteriosaOverlay({ user, profilo, collezione, initialPacks, onKissesSpent, onCollectionRefresh, onClose }) {
   const kissesAttuali = profilo?.kisses ?? 0;
 
   return (
@@ -41,6 +41,8 @@ export default function PescaMisteriosaOverlay({ user, profilo, onKissesSpent, o
         <PescaMisteriosaFeed
           user={user}
           profilo={profilo}
+          collezione={collezione}
+          initialPacks={initialPacks}
           onKissesSpent={onKissesSpent}
           onCollectionRefresh={onCollectionRefresh}
         />

@@ -380,3 +380,38 @@ export async function getFriendshipDoc(uid1, uid2) {
   if (!s2.empty) return { id: s2.docs[0].id, ...s2.docs[0].data() };
   return null;
 }
+
+// =================== PREZZI CONFIG ===================
+const PREZZI_DEFAULT = {
+  tagli_kisses: {
+    xs: { kisses: 100,  price_eur: '0.99', label: '100 Kisses', bonus: '' },
+    sm: { kisses: 300,  price_eur: '2.49', label: '300 Kisses', bonus: '+30 bonus' },
+    md: { kisses: 600,  price_eur: '3.99', label: '600 Kisses', bonus: '+80 bonus' },
+    lg: { kisses: 1400, price_eur: '7.99', label: '1400 Kisses', bonus: '+200 bonus' },
+  },
+  pass_hard:   { kisses: 500, price_eur: '4.99' },
+  pass_scambi: { kisses: 100, price_eur: '1.99' },
+  beni: {
+    pack_sfida: { kisses: 50 },
+    energia:    { kisses: 20 },
+  },
+};
+
+export async function getPrezziConfig() {
+  const ref = doc(db, 'config', 'prezzi');
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return PREZZI_DEFAULT;
+  const data = snap.data();
+  // merge shallow per garantire tutti i campi
+  return {
+    ...PREZZI_DEFAULT,
+    ...data,
+    tagli_kisses: { ...PREZZI_DEFAULT.tagli_kisses, ...(data.tagli_kisses || {}) },
+    beni: { ...PREZZI_DEFAULT.beni, ...(data.beni || {}) },
+  };
+}
+
+export async function setPrezziConfig(patch) {
+  const ref = doc(db, 'config', 'prezzi');
+  await setDoc(ref, patch, { merge: true });
+}

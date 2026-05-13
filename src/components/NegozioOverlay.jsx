@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import KissesIcon from './KissesIcon';
 import KissesShortageModal from './KissesShortageModal';
-import { getNegozioConfig } from '@/lib/firestoreService';
+import { getNegozioConfig, getPrezziConfig } from '@/lib/firestoreService';
 
 // Mapping esplicito beneId → endpoint (evita errori di auto-generazione)
 // pass_hard e pass_scambi sono gestiti nella SezionePass separata
@@ -88,7 +88,7 @@ function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate, hardPass = fa
         }}>{notif.msg}</div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {Object.entries(beni || {}).map(([id, bene]) => {
+        {Object.entries(beni || {}).filter(([id]) => id !== 'pass_hard' && id !== 'pass_scambi').map(([id, bene]) => {
           const colore = BENI_COLORI[id] || '#f5a623';
           const icon   = BENI_ICONS[id]  || '✦';
           const puoAcquistare = (kisses ?? 0) >= bene.kisses;
@@ -130,29 +130,30 @@ function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate, hardPass = fa
   );
 }
 
-// Definizioni pass: prezzi, endpoint Kisses, tipo PayPal
-const PASS_CONFIG = {
+// Metadati statici dei pass (label, colori, endpoint) — i prezzi vengono dalla config DB
+const PASS_META = {
   pass_hard: {
     label: '🔞 Pass Hard', desc: 'Video immersivi illimitati',
-    colore: '#ec4899', priceEur: '4,99', tipoPaypal: 'pass_hard',
-    kissesEndpoint: '/api/kisses/buy-passhard', kissesCosto: 500,
+    colore: '#ec4899', tipoPaypal: 'pass_hard',
+    kissesEndpoint: '/api/kisses/buy-passhard',
   },
   pass_scambi: {
     label: '🔓 Trade Pass', desc: 'Scambi illimitati ogni giorno',
-    colore: '#f5a623', priceEur: '1,99', tipoPaypal: 'pass_scambi',
-    kissesEndpoint: '/api/kisses/buy-tradepass', kissesCosto: 100,
+    colore: '#f5a623', tipoPaypal: 'pass_scambi',
+    kissesEndpoint: '/api/kisses/buy-tradepass',
   },
 };
 
-function PassCard({ tipo, attivo, kisses, user, onSuccess }) {
-  const cfg = PASS_CONFIG[tipo];
+// PassCard accetta priceEur e kissesCosto come prop (dalla config DB)
+function PassCard({ tipo, attivo, kisses, priceEur, kissesCosto, user, onSuccess }) {
+  const cfg = PASS_META[tipo];
   const [modo, setModo] = useState(null); // null | 'paypal' | 'kisses-confirm' | 'loading' | 'success' | 'error'
   const [errMsg, setErrMsg] = useState('');
   const paypalRef = useRef(null);
   const paypalRendered = useRef(false);
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
 
-  const puoConKisses = (kisses ?? 0) >= cfg.kissesCosto;
+  const puoConKisses = (kisses ?? 0) >= kissesCosto;
 
   const loadPaypal = useCallback((el) => {
     if (!el || paypalRendered.current) return;
@@ -206,7 +207,7 @@ function PassCard({ tipo, attivo, kisses, user, onSuccess }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Errore acquisto');
       setModo('success');
-      onSuccess?.({ kissesSpent: cfg.kissesCosto });
+      onSuccess?.({ kissesSpent: kissesCosto });
     } catch (e) { setErrMsg(e.message); setModo('error'); }
   };
 
@@ -260,7 +261,7 @@ function PassCard({ tipo, attivo, kisses, user, onSuccess }) {
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
             }}
           >
-            <KissesIcon size={11} /> {cfg.kissesCosto} Kisses
+            <KissesIcon size={11} /> {kissesCosto} Kisses
           </button>
           {/* Bottone PayPal */}
           <button
@@ -273,7 +274,7 @@ function PassCard({ tipo, attivo, kisses, user, onSuccess }) {
               cursor: 'pointer', letterSpacing: 1,
             }}
           >
-            💳 €{cfg.priceEur}
+            💳 €{priceEur}
           </button>
         </div>
       )}
@@ -284,7 +285,7 @@ function PassCard({ tipo, attivo, kisses, user, onSuccess }) {
           <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: cfg.colore, letterSpacing: 1, marginBottom: 8 }}>CONFERMA ACQUISTO</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>
             <KissesIcon size={12} />
-            <span style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#ff4d9e', fontWeight: 700 }}>{cfg.kissesCosto} Kisses</span>
+            <span style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#ff4d9e', fontWeight: 700 }}>{kissesCosto} Kisses</span>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => setModo(null)} style={{ flex: 1, background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 7, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', fontSize: 8, padding: '7px', cursor: 'pointer' }}>ANNULLA</button>
@@ -304,16 +305,27 @@ function PassCard({ tipo, attivo, kisses, user, onSuccess }) {
   );
 }
 
-function SezionePass({ user, kisses, hardPass, tradePass, tradeEnabled, onPassHard, onTradePass, onKissesUpdate }) {
+function SezionePass({ user, kisses, hardPass, tradePass, tradeEnabled, prezziPass, onPassHard, onTradePass, onKissesUpdate }) {
   const PASS_DEFS = [
-    { tipo: 'pass_hard', attivo: hardPass, onSuccess: (r) => { onPassHard?.(); if (r?.kissesSpent) onKissesUpdate?.(Math.max(0, (kisses ?? 0) - r.kissesSpent)); } },
-    ...(tradeEnabled ? [{ tipo: 'pass_scambi', attivo: tradePass, onSuccess: (r) => { onTradePass?.(); if (r?.kissesSpent) onKissesUpdate?.(Math.max(0, (kisses ?? 0) - r.kissesSpent)); } }] : []),
+    {
+      tipo: 'pass_hard', attivo: hardPass,
+      priceEur: prezziPass?.pass_hard?.price_eur?.replace('.', ',') || '4,99',
+      kissesCosto: prezziPass?.pass_hard?.kisses || 500,
+      onSuccess: (r) => { onPassHard?.(); if (r?.kissesSpent) onKissesUpdate?.(Math.max(0, (kisses ?? 0) - r.kissesSpent)); },
+    },
+    ...(tradeEnabled ? [{
+      tipo: 'pass_scambi', attivo: tradePass,
+      priceEur: prezziPass?.pass_scambi?.price_eur?.replace('.', ',') || '1,99',
+      kissesCosto: prezziPass?.pass_scambi?.kisses || 100,
+      onSuccess: (r) => { onTradePass?.(); if (r?.kissesSpent) onKissesUpdate?.(Math.max(0, (kisses ?? 0) - r.kissesSpent)); },
+    }] : []),
   ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {PASS_DEFS.map(p => (
-        <PassCard key={p.tipo} tipo={p.tipo} attivo={p.attivo} kisses={kisses} user={user} onSuccess={p.onSuccess} />
+        <PassCard key={p.tipo} tipo={p.tipo} attivo={p.attivo} kisses={kisses} user={user}
+          priceEur={p.priceEur} kissesCosto={p.kissesCosto} onSuccess={p.onSuccess} />
       ))}
     </div>
   );
@@ -419,15 +431,16 @@ function SezioneRicaricaKisses({ tagli, user, kisses, onKissesUpdate }) {
 
 export default function NegozioOverlay({ user, profilo: profiloInit, onKissesUpdate, onProfileUpdate, onClose }) {
   const [config, setConfig] = useState(null);
+  const [prezziCfg, setPrezziCfg] = useState(null);
   const [kisses, setKisses] = useState(profiloInit?.kisses ?? 0);
   const [hardPass, setHardPass] = useState(profiloInit?.hardPass ?? false);
   const [tradePass, setTradePass] = useState(profiloInit?.tradePass ?? false);
-  const [tradePassLoading, setTradePassLoading] = useState(false);
-  const [tradePassErr, setTradePassErr] = useState('');
-  const tradePassContainerRef = useState(null);
   const tradeEnabled = process.env.NEXT_PUBLIC_TRADE_ENABLED === 'true';
 
-  useEffect(() => { getNegozioConfig().then(setConfig); }, []);
+  useEffect(() => {
+    getNegozioConfig().then(setConfig);
+    getPrezziConfig().then(setPrezziCfg);
+  }, []);
 
   const handleKisses = (newKisses) => { setKisses(newKisses); onKissesUpdate(newKisses); };
   const handlePassHard = () => { setHardPass(true); };
@@ -474,6 +487,7 @@ export default function NegozioOverlay({ user, profilo: profiloInit, onKissesUpd
                 hardPass={hardPass}
                 tradePass={tradePass}
                 tradeEnabled={tradeEnabled}
+                prezziPass={prezziCfg}
                 onPassHard={handlePassHard}
                 onTradePass={handleTradePass}
                 onKissesUpdate={handleKisses}

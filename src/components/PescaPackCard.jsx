@@ -9,36 +9,42 @@ const RARITA_COLORI = {
   immersivo: '#ec4899',
 };
 
-function MiniCarta({ carta, selected, onClick, disabled }) {
+function MiniCarta({ carta, isNew }) {
   const colore = RARITA_COLORI[carta?.rarita] || '#9e9e9e';
   return (
-    <div
-      onClick={!disabled ? onClick : undefined}
-      style={{
-        width: 52, height: 72, borderRadius: 6,
-        border: `2px solid ${selected ? colore : 'rgba(255,255,255,0.15)'}`,
-        background: selected
-          ? `linear-gradient(135deg, ${colore}22, ${colore}11)`
-          : 'rgba(6,3,15,0.8)',
-        cursor: disabled ? 'default' : 'pointer',
-        overflow: 'hidden',
-        transition: 'all 0.2s',
-        transform: selected ? 'scale(1.08)' : 'scale(1)',
-        boxShadow: selected ? `0 0 12px ${colore}60` : 'none',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0,
-      }}
-    >
+    <div style={{
+      width: 52, height: 72, borderRadius: 6,
+      border: `2px solid ${colore}60`,
+      background: `linear-gradient(135deg, ${colore}15, rgba(6,3,15,0.9))`,
+      overflow: 'hidden', position: 'relative', flexShrink: 0,
+      boxShadow: `0 0 8px ${colore}30`,
+    }}>
       {carta?.immagine ? (
-        <img src={carta.immagine} alt={carta.nome || ''} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 4 }} />
+        <img src={carta.immagine} alt={carta.nome || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : (
-        <div style={{ fontSize: 18, color: colore }}>{carta?.tipo === 'waifu' ? '◈' : carta?.tipo === 'outfit' ? '✦' : '✿'}</div>
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: colore }}>
+          {carta?.tipo === 'waifu' ? '◈' : carta?.tipo === 'outfit' ? '✦' : '✿'}
+        </div>
+      )}
+      {/* Barra rarità in basso */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: 3,
+        background: colore, opacity: 0.85,
+      }} />
+      {/* Badge NEW */}
+      {isNew && (
+        <div style={{
+          position: 'absolute', top: 2, right: 2,
+          background: '#00e676', borderRadius: 3,
+          fontFamily: 'Orbitron', fontSize: 5, color: '#000',
+          padding: '1px 3px', fontWeight: 900, letterSpacing: 0.5, lineHeight: 1,
+        }}>NEW</div>
       )}
     </div>
   );
 }
 
-export default function PescaPackCard({ pack, kissesCost = 10, userKisses = 0, onPesca }) {
+export default function PescaPackCard({ pack, kissesCost = 10, userKisses = 0, collezione, onPesca }) {
   const puoPescare = userKisses >= kissesCost;
   const giaFiscata = pack.alreadyFished === true;
 
@@ -73,9 +79,17 @@ export default function PescaPackCard({ pack, kissesCost = 10, userKisses = 0, o
 
       {/* 5 carte */}
       <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 14, position: 'relative' }}>
-        {(pack.cards || []).map((carta, i) => (
-          <MiniCarta key={i} carta={carta} selected={false} disabled />
-        ))}
+        {(pack.cards || []).map((carta, i) => {
+          // Controlla se la carta è nuova (non nella collezione dell'utente)
+          const isNew = (() => {
+            if (!collezione) return false;
+            if (carta.tipo === 'waifu') return !collezione.waifu?.[carta.id];
+            if (carta.tipo === 'outfit') return !collezione.outfit?.[carta.id];
+            if (carta.tipo === 'posa') return !collezione.pose?.[carta.id];
+            return false;
+          })();
+          return <MiniCarta key={i} carta={carta} isNew={isNew} />;
+        })}
 
         {/* Overlay "GIÀ PESCATA" sopra le carte */}
         {giaFiscata && (
