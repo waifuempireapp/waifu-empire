@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { CartaWaifu } from './CartaWaifu';
 
 const RARITA_COLORI = {
   comune: '#9e9e9e', raro: '#42a5f5', epico: '#ab47bc',
@@ -156,28 +157,30 @@ export default function TradeIncomingModal({ trade, collezione, waifuCat, profil
             <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: 'rgba(238,232,220,0.3)', marginTop: 4 }}>Puoi rifiutare lo scambio.</div>
           </div>
         ) : !limitRaggiunto ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 8, maxHeight: 280, overflowY: 'auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(105px, 1fr))', gap: 10, maxHeight: 340, overflowY: 'auto' }}>
             {mieWaifuCompatibili.map(w => {
               const sel = waifuSelId === w.id;
+              const fullWaifu = waifuCat.find(c => c.id === w.id);
               return (
                 <div
                   key={w.id}
                   onClick={() => setWaifuSelId(w.id)}
                   style={{
-                    borderRadius: 8, cursor: 'pointer', overflow: 'hidden',
-                    border: `2px solid ${sel ? coloreRarita : 'rgba(255,255,255,0.08)'}`,
-                    boxShadow: sel ? `0 0 12px ${coloreRarita}50` : 'none',
-                    transition: 'all 0.15s', position: 'relative',
+                    cursor: 'pointer', position: 'relative',
+                    outline: sel ? `3px solid ${coloreRarita}` : 'none',
+                    borderRadius: 10,
+                    boxShadow: sel ? `0 0 16px ${coloreRarita}60` : 'none',
+                    transition: 'all 0.15s',
+                    transform: sel ? 'scale(1.04)' : 'scale(1)',
                   }}
                 >
-                  {w.immagine ? (
-                    <img src={w.immagine} alt={w.nome} style={{ width: '100%', aspectRatio: '2/3', objectFit: 'cover', display: 'block' }} />
+                  {fullWaifu ? (
+                    <CartaWaifu waifu={fullWaifu} datiCollezione={null} dimensione="piccola" />
                   ) : (
-                    <div style={{ width: '100%', aspectRatio: '2/3', background: 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: coloreRarita }}>◈</div>
+                    <div style={{ width: 105, height: 155, background: 'rgba(255,255,255,0.04)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: coloreRarita }}>◈</div>
                   )}
-                  <div style={{ padding: '4px 5px', background: 'rgba(6,3,15,0.85)', fontFamily: 'Fredoka', fontSize: 9, color: '#eedcd4', textAlign: 'center', lineHeight: 1.2 }}>{w.nome}</div>
                   {sel && (
-                    <div style={{ position: 'absolute', top: 4, right: 4, background: coloreRarita, borderRadius: '50%', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff' }}>✓</div>
+                    <div style={{ position: 'absolute', top: 6, right: 6, background: coloreRarita, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#fff', zIndex: 5 }}>✓</div>
                   )}
                 </div>
               );

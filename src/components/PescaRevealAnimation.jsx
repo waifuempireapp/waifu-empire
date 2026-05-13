@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import PescaCardMini from './PescaCardMini';
+import { CartaWaifu } from './CartaWaifu';
 
 const RARITA_COLORI = {
   comune: '#9e9e9e', raro: '#42a5f5', epico: '#ab47bc',
@@ -59,7 +60,7 @@ function FlipCard({ carta, revealed, isChosen, isNew, delay = 0 }) {
   );
 }
 
-export default function PescaRevealAnimation({ allCards, chosenIndex, isNewArr, onComplete }) {
+export default function PescaRevealAnimation({ allCards, chosenIndex, isNewArr, waifuCat, onComplete }) {
   // Ordine: prima le 4 non scelte (in ordine di posizione), poi la scelta
   const revealOrder = [
     ...allCards.map((_, i) => i).filter(i => i !== chosenIndex),
@@ -99,19 +100,19 @@ export default function PescaRevealAnimation({ allCards, chosenIndex, isNewArr, 
         {done ? '✦ CARTA OTTENUTA ✦' : 'RIVELAZIONE IN CORSO…'}
       </div>
 
-      {/* Fase reveal: tutte le 5 carte in fila (nascosta quando done) */}
+      {/* Fase reveal: griglia 3+2 (come nel feed) */}
       {!done && (
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-          {allCards.map((carta, i) => (
-            <FlipCard
-              key={i}
-              carta={carta}
-              revealed={revealedSet.has(i)}
-              isChosen={i === chosenIndex}
-              isNew={isNewArr?.[i] ?? false}
-              delay={0}
-            />
-          ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {allCards.slice(0, 3).map((carta, i) => (
+              <FlipCard key={i} carta={carta} revealed={revealedSet.has(i)} isChosen={i === chosenIndex} isNew={isNewArr?.[i] ?? false} delay={0} />
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {allCards.slice(3).map((carta, i) => (
+              <FlipCard key={i + 3} carta={carta} revealed={revealedSet.has(i + 3)} isChosen={i + 3 === chosenIndex} isNew={isNewArr?.[i + 3] ?? false} delay={0} />
+            ))}
+          </div>
         </div>
       )}
 
@@ -119,12 +120,14 @@ export default function PescaRevealAnimation({ allCards, chosenIndex, isNewArr, 
       {done && chosenCard && (
         <div className="fade-up" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
           {/* Carta con grafica identica alla collezione */}
-          <PescaCardMini
-            carta={chosenCard}
-            isNew={isNewArr?.[chosenIndex] ?? false}
-            width={143}
-            height={214}
-          />
+          {(() => {
+            const fullWaifu = waifuCat?.find(w => w.id === chosenCard.id);
+            return fullWaifu ? (
+              <CartaWaifu waifu={fullWaifu} datiCollezione={null} dimensione="piccola" />
+            ) : (
+              <PescaCardMini carta={chosenCard} isNew={isNewArr?.[chosenIndex] ?? false} width={143} height={214} />
+            );
+          })()}
 
           {/* Info carta */}
           <div style={{ textAlign: 'center', maxWidth: 280 }}>

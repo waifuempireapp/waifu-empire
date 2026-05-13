@@ -104,22 +104,28 @@ function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate, hardPass = fa
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <KissesIcon size={13} /><span style={{ fontFamily: 'Orbitron', fontSize: 12, color: '#ff4d9e', fontWeight: 700 }}>{bene.kisses}</span>
-                </div>
                 <button onClick={() => {
                   if (busy === id) return;
                   if (id === 'pass_hard' && hardPass) return;
                   if ((kisses ?? 0) < bene.kisses) { setShortage({ beneId: id, missingKisses: bene.kisses - (kisses ?? 0) }); return; }
                   setConferma({ beneId: id, costo: bene.kisses, label: bene.label });
                 }} disabled={busy === id || (id === 'pass_hard' && hardPass)} style={{
-                  background: puoAcquistare ? `${colore}25` : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${puoAcquistare ? colore + '60' : 'rgba(255,255,255,0.1)'}`,
-                  borderRadius: 8, color: puoAcquistare ? colore : 'rgba(255,255,255,0.25)',
-                  fontFamily: 'Orbitron', fontSize: 9, padding: '7px 14px',
+                  background: `${colore}20`,
+                  border: `1px solid ${colore}50`,
+                  borderRadius: 8, fontFamily: 'Orbitron', fontSize: 9, padding: '7px 14px',
                   cursor: busy === id ? 'wait' : 'pointer', letterSpacing: 1, transition: 'all 0.2s',
+                  display: 'flex', alignItems: 'center', gap: 5,
                 }}>
-                  {busy === id ? '…' : (id === 'pass_hard' && hardPass) ? '✓ ACQUISTATO' : puoAcquistare ? 'ACQUISTA' : `MANCANO ${bene.kisses - (kisses ?? 0)}`}
+                  {busy === id ? (
+                    <span style={{ color: colore }}>…</span>
+                  ) : (id === 'pass_hard' && hardPass) ? (
+                    <span style={{ color: '#00e676' }}>✓ ACQUISTATO</span>
+                  ) : (
+                    <>
+                      <KissesIcon size={11} />
+                      <span style={{ fontWeight: 700, color: puoAcquistare ? colore : '#ff4d4d' }}>{bene.kisses}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -443,8 +449,14 @@ export default function NegozioOverlay({ user, profilo: profiloInit, onKissesUpd
   }, []);
 
   const handleKisses = (newKisses) => { setKisses(newKisses); onKissesUpdate(newKisses); };
-  const handlePassHard = () => { setHardPass(true); };
-  const handleTradePass = () => { setTradePass(true); };
+  const handlePassHard = () => {
+    setHardPass(true);
+    onProfileUpdate?.({ hardPass: true }); // propaga subito a GiocoPage.profilo
+  };
+  const handleTradePass = () => {
+    setTradePass(true);
+    onProfileUpdate?.({ tradePass: true }); // propaga subito a GiocoPage.profilo
+  };
 
   return (
     <div style={{

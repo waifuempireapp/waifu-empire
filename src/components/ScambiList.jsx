@@ -48,7 +48,8 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
   const [loading, setLoading] = useState(!initialData);
   const [errore, setErrore] = useState(null);
   const [tradeAperto, setTradeAperto] = useState(null); // { trade, tipo: 'incoming' | 'confirm' }
-  const [animazione, setAnimazione] = useState(null); // waifu ricevuta lato B (badge "nuovo")
+  const [animazione, setAnimazione] = useState(null); // waifu ricevuta lato B
+  const [viewedCompletedIds, setViewedCompletedIds] = useState(new Set()); // trade completed già visti
 
   // Aggiorna badge se initialData già disponibile
   useEffect(() => {
@@ -58,7 +59,7 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
     }
   }, []);
 
-  const carica = async () => {
+  const carica = useCallback(async () => {
     setLoading(true);
     setErrore(null);
     try {
@@ -66,11 +67,31 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
       const res = await fetch('/api/trades/list', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Errore caricamento');
-      setTrades(data.trades || []);
-      onBadgeChange?.(data.pendingCount || 0);
+      const fetchedTrades = data.trades || [];
+      setTrades(fetchedTrades);
+
+      // Cerca completati non visti dove questo utente è B (toUid) — deve vedere l'animazione
+      const newlyCompleted = fetchedTrades.filter(t =>
+        t.status === 'completed' &&
+        t.toUid === user.uid &&
+        !viewedCompletedIds.has(t.id)
+      );
+
+      // Badge = pending + unseen completed per B
+      const badge = (data.pendingCount || 0) + newlyCompleted.length;
+      onBadgeChange?.(badge);
+
+      // Se ci sono completati non visti, mostra animazione per il primo
+      if (newlyCompleted.length > 0 && !animazione && !tradeAperto) {
+        const trade = newlyCompleted[0];
+        const receivedWaifuId = trade.fromWaifuId; // B riceve la waifu di A
+        const received = waifuCat.find(w => w.id === receivedWaifuId);
+        setViewedCompletedIds(prev => new Set([...prev, trade.id]));
+        if (received) setAnimazione({ waifu: received, isNew: !collezione?.waifu?.[receivedWaifuId] });
+      }
     } catch (e) { setErrore(e.message); }
     finally { setLoading(false); }
-  };
+  }, [user, waifuCat, collezione, viewedCompletedIds, animazione, tradeAperto]);
 
   // Carica solo se non c'è initialData già disponibile
   useEffect(() => { if (!initialData) carica(); }, []);
@@ -86,11 +107,21 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
 
   const onTradeDone = (esito) => {
     setTradeAperto(null);
-    carica();
+    carica(); // B ha risposto — aggiorna la lista
   };
 
   if (animazione) {
-    return <TradeReceiveAnimation waifu={animazione} onComplete={() => { setAnimazione(null); carica(); }} />;
+    return (
+      <TradeReceiveAnimation
+        waifu={animazione.waifu}
+        isNew={animazione.isNew}
+        onComplete={() => {
+          setAnimazione(null);
+          onCollectionRefresh?.(); // aggiorna collezione nel parent
+          carica();               // aggiorna lista scambi
+        }}
+      />
+    );
   }
 
   if (tradeAperto?.tipo === 'incoming') {
@@ -124,11 +155,10 @@ export default function ScambiList({ user, profilo, collezione, waifuCat, initia
         onDone={(esito) => {
           setTradeAperto(null);
           if (esito === 'completed') {
-            // Aggiorna la collezione nel parent (le vecchie scompaiono, le nuove appaiono)
+            // A ha già visto l'animazione in TradePendingConfirmModal — non mostrarne un'altra
+            // Aggiorna solo la collezione e la lista scambi
             onCollectionRefresh?.();
-            const received = waifuCat.find(w => w.id === tradeAperto.trade.toWaifuId);
-            if (received) setAnimazione(received);
-            else carica();
+            carica();
           } else { carica(); }
         }}
         onCancel={() => setTradeAperto(null)}

@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Read(//c/Progetti/Impero delle waifu/imperio-waifu/src/components/**)",
+      "Bash(dir src\\\\components)"
     ]
   }
 }

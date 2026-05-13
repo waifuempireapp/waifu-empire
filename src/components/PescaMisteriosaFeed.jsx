@@ -1,5 +1,35 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
+
+// ── Ghost pack persistence (localStorage) ──
+const GHOST_STORAGE_KEY = 'iw_ghost_fished_v1';
+
+function getGhostFishedToday() {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(GHOST_STORAGE_KEY);
+    if (!raw) return new Set();
+    const { date, ids } = JSON.parse(raw);
+    const today = new Date().toISOString().slice(0, 10);
+    if (date !== today) { localStorage.removeItem(GHOST_STORAGE_KEY); return new Set(); }
+    return new Set(ids);
+  } catch { return new Set(); }
+}
+
+function saveGhostFished(id) {
+  if (typeof window === 'undefined') return;
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const current = getGhostFishedToday();
+    current.add(id);
+    localStorage.setItem(GHOST_STORAGE_KEY, JSON.stringify({ date: today, ids: [...current] }));
+  } catch {}
+}
+
+function filterFishedGhosts(packs) {
+  const fished = getGhostFishedToday();
+  return packs.filter(p => !p.isGhost || !fished.has(p.id));
+}
 import PescaPackCard from './PescaPackCard';
 import PescaRevealAnimation from './PescaRevealAnimation';
 import KissesIcon from './KissesIcon';
@@ -70,8 +100,9 @@ function CardBack({ selected, onClick, size = 'md' }) {
   );
 }
 
-export default function PescaMisteriosaFeed({ user, profilo, collezione, initialPacks, onKissesSpent, onCollectionRefresh }) {
-  const [packs, setPacks] = useState(initialPacks || []);
+export default function PescaMisteriosaFeed({ user, profilo, collezione, waifuCat, initialPacks, onKissesSpent, onCollectionRefresh }) {
+  // Filtra subito le ghost già pescate (localStorage) anche nell'initialPacks pre-fetchato
+  const [packs, setPacks] = useState(() => filterFishedGhosts(initialPacks || []));
   const [loading, setLoading] = useState(initialPacks === null);
   const lastFishedRef = useRef(null); // { id, isGhost } — pack appena pescato
   const [error, setError] = useState(null);
@@ -92,7 +123,8 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, initial
       const res = await fetch('/api/pesca/feed', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Errore caricamento feed');
-      setPacks(data.packs || []);
+      // Filtra le ghost già pescate (deterministiche per uid+data)
+      setPacks(filterFishedGhosts(data.packs || []));
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
   }, [user]);
@@ -159,17 +191,11 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, initial
     const fished = lastFishedRef.current;
     if (fished) {
       if (fished.isGhost) {
-        // Rimuovi il ghost pack e sostituiscilo subito con uno nuovo
+        // Persiste in localStorage: non riapparirà neanche dopo reload
+        saveGhostFished(fished.id);
         setPacks(prev => prev.filter(p => p.id !== fished.id));
-        try {
-          const token = await user.getIdToken();
-          const res = await fetch('/api/pesca/feed', { headers: { Authorization: `Bearer ${token}` } });
-          if (res.ok) {
-            const data = await res.json();
-            const replacement = (data.packs || []).find(p => p.isGhost);
-            if (replacement) setPacks(prev => [...prev, replacement]);
-          }
-        } catch { /* ignora — il feed non si aggiorna, non critico */ }
+        // Nessun fetch di sostituzione: gli ID ghost sono deterministici per uid+giorno,
+        // il prossimo ingresso nella sezione mostrerà solo le ghost non ancora pescate
       } else {
         // Marca il pack reale come già pescato (rimane visibile ma disabilitato)
         setPacks(prev => prev.map(p => p.id === fished.id ? { ...p, alreadyFished: true } : p));
@@ -217,6 +243,7 @@ export default function PescaMisteriosaFeed({ user, profilo, collezione, initial
           allCards={risultato.allCards}
           chosenIndex={risultato.chosenIndex}
           isNewArr={risultato.isNewArr}
+          waifuCat={waifuCat}
           onComplete={onRivelazioneFine}
         />
       )}

@@ -195,12 +195,16 @@ export async function GET(request) {
       ];
       try {
         const { waifuPool, outfitPool, posePool } = await buildCatalogPools();
+        // Genera ghost con ID deterministico: stesso utente+giorno → stesso ID
+        // Così il client può tracciare le pesche ghost in localStorage anche dopo reload
+        const todayStr = now.toISOString().slice(0, 10).replace(/-/g, ''); // es. "20260513"
+        const uidSuffix = uid.slice(-8); // ultimi 8 char dell'uid
         for (let i = 0; i < needed; i++) {
           const cards = buildPackFromPools(waifuPool, outfitPool, posePool);
           if (cards && cards.length > 0) {
             const nameIdx = (packs.length + i) % GHOST_NAMES.length;
             packs.push({
-              id: `ghost-${Date.now()}-${i}`,
+              id: `ghost-${uidSuffix}-${todayStr}-${i}`,
               ownerName: GHOST_NAMES[nameIdx],
               cards,
               isGhost: true,

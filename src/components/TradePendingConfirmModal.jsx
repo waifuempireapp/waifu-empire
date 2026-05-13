@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import TradeReceiveAnimation from './TradeReceiveAnimation';
+import { CartaWaifu } from './CartaWaifu';
 
 const RARITA_COLORI = {
   comune: '#9e9e9e', raro: '#42a5f5', epico: '#ab47bc',
@@ -92,30 +93,28 @@ export default function TradePendingConfirmModal({ trade, waifuCat, collezione, 
           <strong style={{ color: '#ff4d9e' }}>{trade.toName}</strong> ha accettato e propone questo scambio:
         </div>
 
-        {/* Visualizzazione scambio: A cede → B cede */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 20 }}>
-          {/* Tu cedi */}
+        {/* Visualizzazione scambio con CartaWaifu completa */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 16, marginBottom: 20 }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,0.4)', marginBottom: 6, letterSpacing: 1 }}>TU CEDI</div>
-            {fromImg ? (
-              <img src={fromImg} alt={fromNome} style={{ width: 72, height: 100, objectFit: 'cover', borderRadius: 6, border: `1px solid ${colore}40` }} />
+            {fromCatalog ? (
+              <div style={{ transform: 'scale(0.65)', transformOrigin: 'top center', width: 143, height: 214 }}>
+                <CartaWaifu waifu={fromCatalog} datiCollezione={null} dimensione="piccola" />
+              </div>
             ) : (
-              <div style={{ width: 72, height: 100, background: 'rgba(255,255,255,0.04)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: colore }}>◈</div>
+              <div style={{ width: 93, height: 135, background: 'rgba(255,255,255,0.04)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: colore }}>◈</div>
             )}
-            <div style={{ fontFamily: 'Fredoka', fontSize: 9, color: '#eedcd4', marginTop: 4, maxWidth: 80 }}>{fromNome}</div>
           </div>
-
-          <div style={{ fontSize: 24, color: '#f5a623' }}>↔</div>
-
-          {/* L'amico cede */}
+          <div style={{ fontSize: 22, color: '#f5a623', alignSelf: 'center', marginTop: 20 }}>↔</div>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,0.4)', marginBottom: 6, letterSpacing: 1 }}>RICEVI</div>
-            {toImg ? (
-              <img src={toImg} alt={toNome} style={{ width: 72, height: 100, objectFit: 'cover', borderRadius: 6, border: `1px solid ${colore}40` }} />
+            {toCatalog ? (
+              <div style={{ transform: 'scale(0.65)', transformOrigin: 'top center', width: 143, height: 214 }}>
+                <CartaWaifu waifu={toCatalog} datiCollezione={null} dimensione="piccola" />
+              </div>
             ) : (
-              <div style={{ width: 72, height: 100, background: 'rgba(255,255,255,0.04)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: colore }}>◈</div>
+              <div style={{ width: 93, height: 135, background: 'rgba(255,255,255,0.04)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: colore }}>◈</div>
             )}
-            <div style={{ fontFamily: 'Fredoka', fontSize: 9, color: '#eedcd4', marginTop: 4, maxWidth: 80 }}>{toNome}</div>
           </div>
         </div>
 

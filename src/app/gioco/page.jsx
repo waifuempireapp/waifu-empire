@@ -17,7 +17,6 @@ import BabyDoll from '@/components/BabyDoll';
 import { CartaWaifu, CartaOutfit, CartaPosa } from '@/components/CartaWaifu';
 import KissesIcon from '@/components/KissesIcon';
 import PescaMisteriosaFeed from '@/components/PescaMisteriosaFeed';
-import PescaMisteriosaOverlay from '@/components/PescaMisteriosaOverlay';
 import NegozioOverlay from '@/components/NegozioOverlay';
 import KissesShortageModal from '@/components/KissesShortageModal';
 import FriendIdDisplay from '@/components/FriendIdDisplay';
@@ -48,6 +47,12 @@ export default function GiocoPage() {
   const [negozioAperto, setNegozioAperto] = useState(false);
   const [pescaAperta, setPescaAperta] = useState(false);
   const [pescaPacksInitial, setPescaPacksInitial] = useState(null); // null = non ancora caricato
+
+  // Chiude la pesca e resetta initialPacks → prossimo ingresso farà fetch fresco
+  const chiudiPesca = useCallback(() => {
+    setPescaAperta(false);
+    setPescaPacksInitial(null);
+  }, []);
   const [colezSubTab, setColezSubTab] = useState('waifu'); // Fase 3: navigazione diretta ai sotto-tab collezione
   const [notif, setNotif] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -153,20 +158,7 @@ export default function GiocoPage() {
           onClose={() => setNegozioAperto(false)}
         />
       )}
-      {pescaAperta && (
-        <PescaMisteriosaOverlay
-          user={user}
-          profilo={profilo}
-          collezione={collezione}
-          initialPacks={pescaPacksInitial}
-          onKissesSpent={(amount) => setProfilo(p => ({ ...p, kisses: Math.max(0, (p.kisses ?? 0) - amount) }))}
-          onCollectionRefresh={async () => {
-            const c = await getCollezione(user.uid);
-            setColl(c);
-          }}
-          onClose={() => setPescaAperta(false)}
-        />
-      )}
+      {/* PescaMisteriosaOverlay rimosso — ora inline nel tab */}
       {/* === CONTENUTO GIOCO (verticale su mobile, desktop normale) === */}
       <div className="game-container" style={{ minHeight: '100vh', paddingBottom: 80 }}>
         {notif && (
@@ -187,7 +179,38 @@ export default function GiocoPage() {
         <NavTabs tab={tab} setTab={setTab} />
 
         <div style={{ padding: '12px 16px', maxWidth: 1400, margin: '0 auto' }}>
-          {tab === 'home' && <HomeTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} setTab={setTab} setColezSubTab={setColezSubTab} user={user} onApriPesca={() => setPescaAperta(true)} />}
+          {tab === 'home' && !pescaAperta && <HomeTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} setTab={setTab} setColezSubTab={setColezSubTab} user={user} onApriPesca={() => setPescaAperta(true)} />}
+          {tab === 'home' && pescaAperta && (
+            <div className="fade-in" style={{ maxWidth: 480, margin: '0 auto', width: '100%' }}>
+              {/* Header sotto-sezione pesca */}
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                marginBottom: 16, paddingBottom: 12,
+                borderBottom: '1px solid rgba(255,77,158,0.15)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <button
+                    onClick={chiudiPesca}
+                    style={{ background: 'none', border: '1px solid rgba(255,77,158,0.35)', borderRadius: 7, color: '#ff4d9e', fontFamily: 'Orbitron', fontSize: 9, padding: '6px 12px', cursor: 'pointer' }}
+                  >← INDIETRO</button>
+                  <div style={{ fontFamily: 'Orbitron', fontSize: 13, fontWeight: 900, color: '#ff4d9e', letterSpacing: 2 }}>🎣 PESCA MISTERIOSA</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <KissesIcon size={15} />
+                  <span style={{ fontFamily: 'Orbitron', fontSize: 13, fontWeight: 800, color: '#ff4d9e' }}>{profilo?.kisses ?? 0}</span>
+                </div>
+              </div>
+              <PescaMisteriosaFeed
+                user={user}
+                profilo={profilo}
+                collezione={collezione}
+                waifuCat={waifuCat}
+                initialPacks={pescaPacksInitial}
+                onKissesSpent={(amount) => setProfilo(p => ({ ...p, kisses: Math.max(0, (p.kisses ?? 0) - amount) }))}
+                onCollectionRefresh={async () => { const c = await getCollezione(user.uid); setColl(c); }}
+              />
+            </div>
+          )}
           {tab === 'sbusta' && <SbustaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} user={user} mostraNotif={mostraNotif} godPackProb={godPackProb} />}
           {tab === 'collezione' && <CollezioneTab collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} profilo={profilo} setProfilo={setProfilo} user={user} mostraNotif={mostraNotif} initialSubTab={colezSubTab} statConfig={statConfig} />}
           {tab === 'mappa' && <MappaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} user={user} mostraNotif={mostraNotif} />}
@@ -2725,10 +2748,19 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
   const [tabSub, setTabSub] = useState(initialSubTab);
   const [waifuSel, setWaifuSel] = useState(null);
   const [teamInEdit, setTeamInEdit] = useState(null);
-  // Filtri e ordinamento waifu
+  // Filtri e ordinamento waifu (unificato con toggle direzione)
   const [filtroRarita, setFiltroRarita] = useState('tutte');
-  const [filtroStatKey, setFiltroStatKey] = useState('');
-  const [ordinamento, setOrdinamento] = useState('default');
+  const [filtroNome, setFiltroNome] = useState('');
+  const [filtroScambiabile, setFiltroScambiabile] = useState(false);
+  const [sortKey, setSortKey] = useState('');   // 'rarita'|'livello'|'copie'|stat
+  const [sortDir, setSortDir] = useState('desc'); // 'desc'|'asc'
+  const onToggleSort = (key) => {
+    setSortKey(prev => {
+      if (prev === key) { setSortDir(d => d === 'desc' ? 'asc' : 'desc'); return key; }
+      setSortDir('desc'); return key;
+    });
+    setVisibiliWaifu(12);
+  };
   // Filtri outfit
   const [filtroRaritaOutfit, setFiltroRaritaOutfit] = useState('tutte');
   // Filtri pose
@@ -2757,7 +2789,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
 
   const salvaTeam = async () => {
     if (!teamNome.trim()) { mostraNotif('Inserisci un nome', '#ff3d3d'); return; }
-    if (teamWaifu.length < 5) { mostraNotif('Seleziona almeno 5 waifu', '#ff3d3d'); return; }
+    if (teamWaifu.length !== 5) { mostraNotif('Seleziona esattamente 5 waifu per il team', '#ff3d3d'); return; }
     const nomiEsistenti = Object.entries(teams).filter(([id]) => id !== teamInEdit).map(([, t]) => t.nome.toLowerCase());
     if (nomiEsistenti.includes(teamNome.trim().toLowerCase())) { mostraNotif('Nome già esistente', '#ff3d3d'); return; }
     const nuova = JSON.parse(JSON.stringify(collezione));
@@ -2871,63 +2903,54 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
       <Divider colore="#f5a623" spazio={4} />
 
       {tabSub === 'waifu' && (() => {
-        // Filtri + ordinamento
+        // Filtri + ordinamento (toggle-direction)
         const rarOrder = ['comune','raro','epico','leggendario','immersivo'];
+        const STAT_KEYS = ['tette','taglia_piedi','eta','colore_capelli','esperienza'];
         let waifuEntries = Object.entries(collezione.waifu || {}).map(([id, dati]) => {
           const w = waifuCat.find(x => x.id === id);
           return w ? { id, dati, w } : null;
         }).filter(Boolean);
+        if (filtroNome) waifuEntries = waifuEntries.filter(({ w }) => (w.nome || '').toLowerCase().includes(filtroNome.toLowerCase()));
         if (filtroRarita !== 'tutte') waifuEntries = waifuEntries.filter(({ w }) => w.rarita === filtroRarita);
         if (dropWaifuIds) waifuEntries = waifuEntries.filter(({ w }) => dropWaifuIds.has(w.id));
-        if (ordinamento === 'rarita_desc') waifuEntries.sort((a, b) => rarOrder.indexOf(b.w.rarita) - rarOrder.indexOf(a.w.rarita));
-        else if (ordinamento === 'rarita_asc') waifuEntries.sort((a, b) => rarOrder.indexOf(a.w.rarita) - rarOrder.indexOf(b.w.rarita));
-        else if (ordinamento === 'livello') waifuEntries.sort((a, b) => b.dati.livello - a.dati.livello);
-        else if (ordinamento === 'copie') waifuEntries.sort((a, b) => b.dati.copie - a.dati.copie);
-        else if (filtroStatKey) waifuEntries.sort((a, b) => ((b.w[filtroStatKey] || 0) + (b.dati.stat_bonus?.[filtroStatKey] || 0)) - ((a.w[filtroStatKey] || 0) + (a.dati.stat_bonus?.[filtroStatKey] || 0)));
+        if (filtroScambiabile) waifuEntries = waifuEntries.filter(({ dati }) => (dati.copie ?? 0) >= 2);
+
+        // Conta scambiabili globali (senza altri filtri) per messaggio trades esaurite
+        const totScambiabili = filtroScambiabile ? Object.values(collezione.waifu || {}).filter(d => (d.copie ?? 0) >= 2).length : 0;
+
+        if (sortKey === 'rarita') waifuEntries.sort((a, b) => sortDir === 'desc' ? rarOrder.indexOf(b.w.rarita) - rarOrder.indexOf(a.w.rarita) : rarOrder.indexOf(a.w.rarita) - rarOrder.indexOf(b.w.rarita));
+        else if (sortKey === 'livello') waifuEntries.sort((a, b) => sortDir === 'desc' ? b.dati.livello - a.dati.livello : a.dati.livello - b.dati.livello);
+        else if (sortKey === 'copie') waifuEntries.sort((a, b) => sortDir === 'desc' ? b.dati.copie - a.dati.copie : a.dati.copie - b.dati.copie);
+        else if (STAT_KEYS.includes(sortKey)) {
+          waifuEntries.sort((a, b) => {
+            const va = (a.w[sortKey] || 0) + (a.dati.stat_bonus?.[sortKey] || 0);
+            const vb = (b.w[sortKey] || 0) + (b.dati.stat_bonus?.[sortKey] || 0);
+            return sortDir === 'desc' ? vb - va : va - vb;
+          });
+        }
         const visibili = waifuEntries.slice(0, visibiliWaifu);
         return (
           <div style={{ marginTop: 12 }}>
-            {/* Barra filtri */}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
-              <div className="iw-tooltip-wrap">
-                <select value={filtroRarita} onChange={e => { setFiltroRarita(e.target.value); setVisibiliWaifu(12); }} style={{ background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.25)', color: '#f5a623', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
-                  <option value="tutte">Tutte le rarità</option>
-                  {['comune','raro','epico','leggendario','immersivo'].map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
-                </select>
-                <span className="iw-tooltip">Filtra per rarità</span>
+            {/* Barra filtri avanzata */}
+            <BarraFiltriWaifu
+              filtroNome={filtroNome} setFiltroNome={v => { setFiltroNome(v); setVisibiliWaifu(12); }}
+              filtroRarita={filtroRarita} setFiltroRarita={v => { setFiltroRarita(v); setVisibiliWaifu(12); }}
+              filtroDropId={filtroDropId} setFiltroDropId={v => { setFiltroDropId(v); setVisibiliWaifu(12); }}
+              drops={drops}
+              filtroScambiabile={filtroScambiabile} setFiltroScambiabile={v => { setFiltroScambiabile(v); setVisibiliWaifu(12); }}
+              sortKey={sortKey} sortDir={sortDir} onToggleSort={onToggleSort}
+              count={waifuEntries.length}
+            />
+            {/* Messaggio trades esaurite + scambiabili disponibili */}
+            {filtroScambiabile && totScambiabili > 0 && waifuEntries.length === totScambiabili && !profilo?.tradePass && (profilo?.tradesToday ?? 0) >= 5 && (
+              <div style={{ background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 10, fontSize: 11, fontFamily: 'Fredoka', color: 'rgba(238,232,220,0.7)', lineHeight: 1.5 }}>
+                Avresti <strong style={{ color: '#f5a623' }}>{totScambiabili}</strong> waifu da poter scambiare ma hai esaurito gli scambi.
+                <TradeCountdownInline tradesResetAt={profilo?.tradesResetAt} />
+                <button onClick={() => window.dispatchEvent(new Event('impero:apri-negozio'))} style={{ marginTop: 8, background: 'rgba(245,166,35,0.15)', border: '1px solid rgba(245,166,35,0.4)', borderRadius: 8, color: '#f5a623', fontFamily: 'Orbitron', fontSize: 8, padding: '6px 12px', cursor: 'pointer', display: 'block', letterSpacing: 1 }}>
+                  🔓 ACQUISTA TRADE PASS
+                </button>
               </div>
-              <div className="iw-tooltip-wrap">
-                <select value={filtroStatKey} onChange={e => { setFiltroStatKey(e.target.value); setOrdinamento(''); setVisibiliWaifu(12); }} style={{ background: 'rgba(155,89,255,0.06)', border: '1px solid rgba(155,89,255,0.25)', color: '#9b59ff', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
-                  <option value="">Ordina per stat...</option>
-                  <option value="tette">✦ Tette</option>
-                  <option value="taglia_piedi">⚘ Piedi</option>
-                  <option value="eta">⌛ Età</option>
-                  <option value="colore_capelli">✿ Capelli</option>
-                  <option value="esperienza">★ Esperienza</option>
-                </select>
-                <span className="iw-tooltip">Ordina per statistica</span>
-              </div>
-              <div className="iw-tooltip-wrap">
-                <select value={ordinamento} onChange={e => { setOrdinamento(e.target.value); setFiltroStatKey(''); setVisibiliWaifu(12); }} style={{ background: 'rgba(0,229,255,0.06)', border: '1px solid rgba(0,229,255,0.25)', color: '#00e5ff', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
-                  <option value="default">Ordinamento default</option>
-                  <option value="rarita_desc">Rarità (alta→bassa)</option>
-                  <option value="rarita_asc">Rarità (bassa→alta)</option>
-                  <option value="livello">Livello (alto→basso)</option>
-                  <option value="copie">Copie (alto→basso)</option>
-                </select>
-                <span className="iw-tooltip">Cambia ordinamento</span>
-              </div>
-              {drops.length > 0 && (
-                <div className="iw-tooltip-wrap">
-                  <select value={filtroDropId} onChange={e => { setFiltroDropId(e.target.value); setVisibiliWaifu(12); }} style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
-                    <option value="tutti">Tutti i drop</option>
-                    {drops.map(d => <option key={d.id} value={d.id}>{d.nome || d.id}</option>)}
-                  </select>
-                  <span className="iw-tooltip">Filtra per drop</span>
-                </div>
-              )}
-              <span style={{ fontSize: 9, color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron', marginLeft: 4 }}>{waifuEntries.length} carte</span>
-            </div>
+            )}
             <div className="collection-card-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
               {visibili.map(({ id, dati, w }, idx) => (
                 <div key={id} className="card-fade-up card-clickable collection-card-item" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', animationDelay: `${idx * 45}ms` }}>
@@ -3086,16 +3109,25 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
               <input value={teamNome} onChange={e => setTeamNome(e.target.value)} placeholder="Nome team..." style={{ width: '100%', marginBottom: 12 }} />
               {/* Lista waifu con filtri e infinite scroll */}
               <SelezioneWaifuTeam
-                waifuDisponibili={Object.entries(collezione.waifu || {}).map(([id]) => { const w = waifuCat.find(x => x.id === id); return w || null; }).filter(Boolean)}
+                waifuDisponibili={Object.entries(collezione.waifu || {}).map(([id, dati]) => {
+                  const w = waifuCat.find(x => x.id === id);
+                  return w ? { ...w, copie: dati.copie, livello: dati.livello, stat_bonus: dati.stat_bonus } : null;
+                }).filter(Boolean)}
                 waifuSelezionate={teamWaifu}
-                onToggle={toggleWaifuTeam}
-                maxSel={Infinity}
+                onToggle={(id) => {
+                  if (teamWaifu.includes(id)) { setTeamWaifu(teamWaifu.filter(x => x !== id)); return; }
+                  if (teamWaifu.length >= 5) { mostraNotif('Puoi selezionare massimo 5 waifu per team', '#f5a623'); return; }
+                  setTeamWaifu([...teamWaifu, id]);
+                }}
+                maxSel={5}
                 accentColor="#00e676"
-                labelSel="SELEZIONA WAIFU"
+                labelSel="SELEZIONA WAIFU (max 5)"
+                drops={drops}
+                profilo={profilo}
                 onAnnulla={() => { setTeamInEdit(null); setTeamNome(''); setTeamWaifu([]); }}
                 onConferma={salvaTeam}
                 labelConferma={`SALVA (${teamWaifu.length}/5)`}
-                disabledConferma={teamWaifu.length < 5 || !teamNome.trim()}
+                disabledConferma={teamWaifu.length !== 5 || !teamNome.trim()}
               />
             </PannelloOrnato>
           ) : (
@@ -4206,91 +4238,175 @@ function RoundEndBar({ vincitoreRound, statScelta, direzione, carteP, carteC, ro
 
 
 // ============================================================
+// COMPONENTI FILTRI WAIFU CONDIVISI
+// ============================================================
+
+function TradeCountdownInline({ tradesResetAt }) {
+  const [rem, setRem] = useState('');
+  useEffect(() => {
+    const calc = () => {
+      let t;
+      if (tradesResetAt?.toDate) t = tradesResetAt.toDate();
+      else if (tradesResetAt?.seconds) t = new Date(tradesResetAt.seconds * 1000);
+      else if (tradesResetAt) t = new Date(tradesResetAt);
+      else { setRem(''); return; }
+      const d = t - Date.now();
+      if (d <= 0) { setRem(''); return; }
+      const h = Math.floor(d / 3600000), m = Math.floor((d % 3600000) / 60000), s = Math.floor((d % 60000) / 1000);
+      setRem(`${h}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`);
+    };
+    calc(); const id = setInterval(calc, 1000); return () => clearInterval(id);
+  }, [tradesResetAt]);
+  if (!rem) return <span> Oppure </span>;
+  return <span style={{ color: '#f5a623' }}> Aspetta {rem} oppure </span>;
+}
+
+function SortChip({ label, skey, activeSkey, activeDir, onToggle }) {
+  const isActive = activeSkey === skey;
+  return (
+    <button onClick={() => onToggle(skey)} style={{
+      padding: '4px 9px', borderRadius: 7, cursor: 'pointer',
+      background: isActive ? 'rgba(155,89,255,0.18)' : 'rgba(255,255,255,0.03)',
+      border: `1px solid ${isActive ? 'rgba(155,89,255,0.6)' : 'rgba(255,255,255,0.1)'}`,
+      color: isActive ? '#c084fc' : 'rgba(238,232,220,0.45)',
+      fontFamily: 'Orbitron', fontSize: 8, letterSpacing: 0.5, transition: 'all 0.15s', whiteSpace: 'nowrap',
+    }}>{label}{isActive ? (activeDir === 'desc' ? ' ↓' : ' ↑') : ''}</button>
+  );
+}
+
+function BarraFiltriWaifu({ filtroNome, setFiltroNome, filtroRarita, setFiltroRarita, filtroDropId, setFiltroDropId, drops = [], filtroScambiabile, setFiltroScambiabile, sortKey, sortDir, onToggleSort, count }) {
+  const STAT_SORT = [
+    { k: 'tette', l: '✦ Tette' }, { k: 'taglia_piedi', l: '⚘ Piedi' },
+    { k: 'eta', l: '⌛ Età' }, { k: 'colore_capelli', l: '✿ Cap.' }, { k: 'esperienza', l: '★ Esp.' },
+  ];
+  return (
+    <div style={{ marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        <input value={filtroNome} onChange={e => setFiltroNome(e.target.value)} placeholder="🔍 Nome…"
+          style={{ flex: '1 1 100px', minWidth: 80, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', color: '#eedcd4', borderRadius: 8, padding: '5px 9px', fontFamily: 'Fredoka', fontSize: 12, outline: 'none' }} />
+        <select value={filtroRarita} onChange={e => setFiltroRarita(e.target.value)} style={{ background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.25)', color: '#f5a623', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
+          <option value="tutte">Tutte rarità</option>
+          {['comune','raro','epico','leggendario','immersivo'].map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase()+r.slice(1)}</option>)}
+        </select>
+        {drops.length > 0 && (
+          <select value={filtroDropId || 'tutti'} onChange={e => setFiltroDropId(e.target.value)} style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
+            <option value="tutti">Tutti drop</option>
+            {drops.map(d => <option key={d.id} value={d.id}>{d.nome || d.id}</option>)}
+          </select>
+        )}
+        <button onClick={() => setFiltroScambiabile(!filtroScambiabile)} style={{
+          padding: '4px 10px', borderRadius: 7, cursor: 'pointer',
+          background: filtroScambiabile ? 'rgba(255,77,158,0.18)' : 'rgba(255,255,255,0.03)',
+          border: `1px solid ${filtroScambiabile ? 'rgba(255,77,158,0.6)' : 'rgba(255,255,255,0.1)'}`,
+          color: filtroScambiabile ? '#ff4d9e' : 'rgba(238,232,220,0.45)', fontFamily: 'Orbitron', fontSize: 8,
+        }}>↔ Scambiabili</button>
+        {count !== undefined && <span style={{ fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron' }}>{count}</span>}
+      </div>
+      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+        <span style={{ fontSize: 7, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', letterSpacing: 1, marginRight: 2 }}>ORDINA:</span>
+        {[{ k: 'rarita', l: 'Rarità' }, { k: 'livello', l: 'Livello' }, { k: 'copie', l: 'Copie' }].map(({ k, l }) => (
+          <SortChip key={k} label={l} skey={k} activeSkey={sortKey} activeDir={sortDir} onToggle={onToggleSort} />
+        ))}
+        <span style={{ color: 'rgba(255,255,255,0.15)', margin: '0 2px', fontSize: 10 }}>|</span>
+        {STAT_SORT.map(({ k, l }) => (
+          <SortChip key={k} label={l} skey={k} activeSkey={sortKey} activeDir={sortDir} onToggle={onToggleSort} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // COMPONENTE RIUTILIZZABILE: Selezione Waifu per Team
 // Usato in CollezionaTab (crea/modifica team) e MappaTab (selezione prima battaglia)
 // Include: filtri (rarità, stat, ordinamento), infinite scroll, bottoni sticky overlay
 // ============================================================
 const TEAM_PAGE_SIZE = 12;
 
-function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxSel = 5, accentColor = '#ffd666', labelSel = 'SCEGLI 5 WAIFU', onConferma, onAnnulla, labelConferma = 'CONFERMA', disabledConferma = false }) {
+function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxSel = 5, accentColor = '#ffd666', labelSel = 'SCEGLI 5 WAIFU', onConferma, onAnnulla, labelConferma = 'CONFERMA', disabledConferma = false, drops = [], profilo }) {
+  const [filtroNome, setFiltroNome] = useState('');
   const [filtroRar, setFiltroRar] = useState('tutte');
-  const [filtroStat, setFiltroStat] = useState('');
-  const [ordine, setOrdine] = useState('default');
+  const [filtroDropId, setFiltroDropId] = useState('tutti');
+  const [filtroScambiabile, setFiltroScambiabile] = useState(false);
+  const [sortKey, setSortKey] = useState('');
+  const [sortDir, setSortDir] = useState('desc');
   const [visibili, setVisibili] = useState(TEAM_PAGE_SIZE);
-  const loaderRef = useRef(null);
 
-  // Filtra e ordina
+  const onToggleSort = (key) => {
+    setSortKey(prev => {
+      if (prev === key) { setSortDir(d => d === 'desc' ? 'asc' : 'desc'); return key; }
+      setSortDir('desc'); return key;
+    });
+    setVisibili(TEAM_PAGE_SIZE);
+  };
+
+  useEffect(() => { setVisibili(TEAM_PAGE_SIZE); }, [filtroNome, filtroRar, filtroDropId, filtroScambiabile, sortKey]);
+
   const rarOrder = ['comune','raro','epico','leggendario','immersivo'];
+  const STAT_KEYS = ['tette','taglia_piedi','eta','colore_capelli','esperienza'];
   let lista = [...waifuDisponibili];
+  if (filtroNome) lista = lista.filter(w => (w.nome || '').toLowerCase().includes(filtroNome.toLowerCase()));
   if (filtroRar !== 'tutte') lista = lista.filter(w => w.rarita === filtroRar);
-  if (ordine === 'rarita_desc') lista.sort((a, b) => rarOrder.indexOf(b.rarita) - rarOrder.indexOf(a.rarita));
-  else if (ordine === 'rarita_asc') lista.sort((a, b) => rarOrder.indexOf(a.rarita) - rarOrder.indexOf(b.rarita));
-  else if (ordine === 'livello') lista.sort((a, b) => (b.livello || b.datiCollezione?.livello || 0) - (a.livello || a.datiCollezione?.livello || 0));
-  else if (ordine === 'copie') lista.sort((a, b) => (b.copie || b.datiCollezione?.copie || 0) - (a.copie || a.datiCollezione?.copie || 0));
-  else if (filtroStat) lista.sort((a, b) => ((b[filtroStat] || 0) + (b.stat_bonus?.[filtroStat] || 0)) - ((a[filtroStat] || 0) + (a.stat_bonus?.[filtroStat] || 0)));
+  if (filtroDropId !== 'tutti') {
+    const drop = drops.find(d => d.id === filtroDropId);
+    if (drop?.waifuIds) lista = lista.filter(w => drop.waifuIds.includes(w.id));
+  }
+  if (filtroScambiabile) lista = lista.filter(w => (w.copie ?? 0) >= 2);
+
+  if (sortKey === 'rarita') lista.sort((a, b) => sortDir === 'desc' ? rarOrder.indexOf(b.rarita) - rarOrder.indexOf(a.rarita) : rarOrder.indexOf(a.rarita) - rarOrder.indexOf(b.rarita));
+  else if (sortKey === 'livello') lista.sort((a, b) => sortDir === 'desc' ? (b.livello || 0) - (a.livello || 0) : (a.livello || 0) - (b.livello || 0));
+  else if (sortKey === 'copie') lista.sort((a, b) => sortDir === 'desc' ? (b.copie || 0) - (a.copie || 0) : (a.copie || 0) - (b.copie || 0));
+  else if (STAT_KEYS.includes(sortKey)) lista.sort((a, b) => {
+    const va = (a[sortKey] || 0) + (a.stat_bonus?.[sortKey] || 0);
+    const vb = (b[sortKey] || 0) + (b.stat_bonus?.[sortKey] || 0);
+    return sortDir === 'desc' ? vb - va : va - vb;
+  });
 
   const slice = lista.slice(0, visibili);
   const haAltri = visibili < lista.length;
-
-  // Infinite scroll con IntersectionObserver
-  useEffect(() => {
-    const el = loaderRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && haAltri) setVisibili(v => v + TEAM_PAGE_SIZE);
-    }, { threshold: 0.1 });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [haAltri]);
-
-  // Reset visibili quando cambiano i filtri
-  useEffect(() => { setVisibili(TEAM_PAGE_SIZE); }, [filtroRar, filtroStat, ordine]);
-
   const selCount = waifuSelezionate.length;
+  const totScambiabili = filtroScambiabile ? waifuDisponibili.filter(w => (w.copie ?? 0) >= 2).length : 0;
+  const tradesEsaurite = filtroScambiabile && totScambiabili > 0 && !profilo?.tradePass && (profilo?.tradesToday ?? 0) >= 5;
 
   return (
     <div style={{ position: 'relative' }}>
-      {/* Label */}
       <div style={{ fontSize: 10, color: accentColor, letterSpacing: 2, marginBottom: 8, textAlign: 'center', fontFamily: 'Orbitron' }}>
         {labelSel} ({selCount}/{maxSel})
       </div>
 
-      {/* Barra filtri */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center', justifyContent: 'center' }}>
-        <select value={filtroRar} onChange={e => setFiltroRar(e.target.value)} style={{ background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.25)', color: '#f5a623', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
-          <option value="tutte">Tutte le rarità</option>
-          {['comune','raro','epico','leggendario','immersivo'].map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
-        </select>
-        <select value={filtroStat} onChange={e => { setFiltroStat(e.target.value); setOrdine(''); }} style={{ background: 'rgba(155,89,255,0.06)', border: '1px solid rgba(155,89,255,0.25)', color: '#9b59ff', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
-          <option value="">Ordina per stat...</option>
-          <option value="tette">✦ Tette</option>
-          <option value="taglia_piedi">⚘ Piedi</option>
-          <option value="eta">⌛ Età</option>
-          <option value="colore_capelli">✿ Capelli</option>
-          <option value="esperienza">★ Esperienza</option>
-        </select>
-        <select value={ordine} onChange={e => { setOrdine(e.target.value); setFiltroStat(''); }} style={{ background: 'rgba(0,229,255,0.06)', border: '1px solid rgba(0,229,255,0.25)', color: '#00e5ff', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
-          <option value="default">Ordinamento default</option>
-          <option value="rarita_desc">Rarità (alta→bassa)</option>
-          <option value="rarita_asc">Rarità (bassa→alta)</option>
-          <option value="livello">Livello (alto→basso)</option>
-          <option value="copie">Copie (alto→basso)</option>
-        </select>
-        <span style={{ fontSize: 9, color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron' }}>{lista.length} waifu</span>
-      </div>
+      <BarraFiltriWaifu
+        filtroNome={filtroNome} setFiltroNome={setFiltroNome}
+        filtroRarita={filtroRar} setFiltroRarita={setFiltroRar}
+        filtroDropId={filtroDropId} setFiltroDropId={setFiltroDropId}
+        drops={drops}
+        filtroScambiabile={filtroScambiabile} setFiltroScambiabile={setFiltroScambiabile}
+        sortKey={sortKey} sortDir={sortDir} onToggleSort={onToggleSort}
+        count={lista.length}
+      />
 
-      {/* Griglia carte */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', paddingBottom: (onConferma || onAnnulla) ? 80 : 0 }}>
+      {/* Messaggio trades esaurite */}
+      {tradesEsaurite && (
+        <div style={{ background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 10, fontSize: 11, fontFamily: 'Fredoka', color: 'rgba(238,232,220,0.7)', lineHeight: 1.5 }}>
+          Avresti <strong style={{ color: '#f5a623' }}>{totScambiabili}</strong> waifu da poter scambiare ma hai esaurito gli scambi.
+          <TradeCountdownInline tradesResetAt={profilo?.tradesResetAt} />
+          acquista il pass per scambi illimitati.
+          <button onClick={() => window.dispatchEvent(new Event('impero:apri-negozio'))} style={{ marginTop: 6, background: 'rgba(245,166,35,0.15)', border: '1px solid rgba(245,166,35,0.4)', borderRadius: 8, color: '#f5a623', fontFamily: 'Orbitron', fontSize: 8, padding: '5px 10px', cursor: 'pointer', display: 'block' }}>
+            🔓 ACQUISTA TRADE PASS
+          </button>
+        </div>
+      )}
+
+      {/* Griglia carte + padding per bottoni fissi */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', paddingBottom: (onConferma || onAnnulla) ? 90 : 0 }}>
         {slice.map(w => {
           const sel = waifuSelezionate.includes(w.id);
-          const disabilitata = !sel && selCount >= maxSel;
           return (
             <div key={w.id}
-              onClick={() => !disabilitata && onToggle(w.id)}
-              style={{ cursor: disabilitata ? 'default' : 'pointer', opacity: disabilitata ? 0.25 : sel ? 1 : 0.5, transform: sel ? 'scale(1.03)' : 'scale(1)', transition: 'all 0.2s', position: 'relative' }}>
+              onClick={() => onToggle(w.id)}
+              style={{ cursor: 'pointer', opacity: (!sel && selCount >= maxSel) ? 0.3 : sel ? 1 : 0.55, transform: sel ? 'scale(1.03)' : 'scale(1)', transition: 'all 0.2s', position: 'relative' }}>
               <CartaWaifu waifu={w} dimensione="piccola" />
               {sel && (
-                <div style={{ position: 'absolute', top: -4, right: -4, background: accentColor, color: '#000', width: 18, height: 18, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, zIndex: 10 }}>✓</div>
+                <div style={{ position: 'absolute', top: -4, right: -4, background: accentColor, color: '#000', width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, zIndex: 10 }}>✓</div>
               )}
             </div>
           );
@@ -4300,29 +4416,23 @@ function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxS
             Nessuna waifu trovata con questi filtri
           </div>
         )}
-        {/* Sentinel per infinite scroll */}
-        <div ref={loaderRef} style={{ width: '100%', height: 1 }} />
-        {haAltri && (
-          <div style={{ width: '100%', textAlign: 'center', fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.3)', padding: '8px 0' }}>
-            Scorri per caricare altre…
-          </div>
-        )}
       </div>
-      {/* Sticky Conferma/Annulla overlay */}
+
+      {/* Bottone "Carica altre" manuale */}
+      {haAltri && (
+        <div style={{ textAlign: 'center', marginTop: 10 }}>
+          <BtnDecorato variant="secondary" size="sm" onClick={() => setVisibili(v => v + TEAM_PAGE_SIZE)}>
+            Carica altre ({lista.length - visibili} rimanenti)
+          </BtnDecorato>
+        </div>
+      )}
+
+      {/* Bottoni SALVA/ANNULLA fissi in basso (sopra BottomNav) */}
       {(onConferma || onAnnulla) && (
-        <div style={{
-          position: 'sticky', bottom: 16, zIndex: 50,
-          display: 'flex', gap: 8, justifyContent: 'center',
-          pointerEvents: 'none',
-          marginTop: 8,
-        }}>
-          <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto', background: 'rgba(10,12,18,0.92)', backdropFilter: 'blur(12px)', borderRadius: 14, padding: '10px 18px', border: `1px solid ${accentColor}4d`, boxShadow: '0 4px 24px rgba(0,0,0,0.6)' }}>
-            {onAnnulla && (
-              <BtnDecorato variant="secondary" onClick={onAnnulla}>ANNULLA</BtnDecorato>
-            )}
-            {onConferma && (
-              <BtnDecorato variant="primary" onClick={onConferma} disabled={disabledConferma}>{labelConferma}</BtnDecorato>
-            )}
+        <div style={{ position: 'fixed', bottom: 84, left: 0, right: 0, zIndex: 200, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+          <div style={{ display: 'flex', gap: 10, pointerEvents: 'auto', background: 'rgba(6,3,15,0.95)', backdropFilter: 'blur(14px)', borderRadius: 14, padding: '10px 20px', border: `1px solid ${accentColor}40`, boxShadow: '0 4px 28px rgba(0,0,0,0.7)' }}>
+            {onAnnulla && <BtnDecorato variant="secondary" onClick={onAnnulla}>ANNULLA</BtnDecorato>}
+            {onConferma && <BtnDecorato variant="primary" onClick={onConferma} disabled={disabledConferma}>{labelConferma}</BtnDecorato>}
           </div>
         </div>
       )}
