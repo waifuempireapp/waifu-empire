@@ -17,9 +17,9 @@ const db = getFirestore(app);
 async function setup() {
   await db.collection('config').doc('negozio_settings').set({
     beni: {
-      pack_sfida:  { kisses: 50,  label: 'Pacchetto Sfida',        descrizione: '+1 pacchetto sfida' },
-      energia:     { kisses: 20,  label: 'Ricarica Energia',       descrizione: 'Ricarica tutta la tua energia (+10)' },
-      pass_hard:   { kisses: 500, label: 'Hard Pass',              descrizione: 'Accesso illimitato ai video hard' },
+      pack_sfida:    { kisses: 50,  label: 'Pacchetto Sfida',        descrizione: '+1 pacchetto sfida' },
+      pack_sfida_10: { kisses: 450, label: '10 Pack Sfida',          descrizione: '10 bustine sfida in un unico acquisto' },
+      energia:       { kisses: 20,  label: 'Ricarica Energia',       descrizione: 'Ricarica tutta la tua energia (+10)' },
     },
     tagli_kisses: [
       { id: 'xs', kisses: 100,  price_eur: '0.99',  label: '100 Kisses',  bonus: '' },

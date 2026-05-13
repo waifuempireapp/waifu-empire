@@ -502,7 +502,21 @@ export default function NegozioOverlay({ user, profilo: profiloInit, onKissesUpd
           <>
             <div>
               <div style={{ fontFamily: 'Orbitron', fontSize: 10, letterSpacing: 3, color: 'rgba(238,232,220,0.4)', marginBottom: 12 }}>ACQUISTA CON KISSES</div>
-              <SezioneAcquistaBeni beni={config.beni} kisses={kisses} user={user} onKissesUpdate={handleKisses} hardPass={hardPass} onPassHard={handlePassHard} onProfileUpdate={onProfileUpdate} />
+              <SezioneAcquistaBeni
+                beni={{
+                  ...config.beni,
+                  // Inietta pack_sfida_10 se non già nel config negozio (prezzo da prezziCfg)
+                  ...(!config.beni?.pack_sfida_10 ? {
+                    pack_sfida_10: {
+                      kisses: prezziCfg?.beni?.pack_sfida_10?.kisses ?? 450,
+                      label: '10 Pack Sfida',
+                      descrizione: '10 bustine sfida in un unico acquisto',
+                    }
+                  } : {}),
+                }}
+                kisses={kisses} user={user} onKissesUpdate={handleKisses}
+                hardPass={hardPass} onPassHard={handlePassHard} onProfileUpdate={onProfileUpdate}
+              />
             </div>
 
             {/* PASS ABBONAMENTI */}
