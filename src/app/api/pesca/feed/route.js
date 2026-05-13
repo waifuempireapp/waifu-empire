@@ -114,13 +114,27 @@ export async function GET(request) {
         .where('ownerUid', 'in', batchUids)
         .get();
 
-      const validDocs = snap.docs
-        .filter(d => {
-          const data = d.data();
-          if (data.isGhost) return false;
-          const exp = data.expiresAt?.toDate?.()?.getTime() || 0;
-          return exp > nowTs;
-        })
+      // Filtra non-ghost e non-scaduti; raccoglie anche i scaduti già pescati per cleanup lazy
+      const toDelete = [];
+      const activeDocs = snap.docs.filter(d => {
+        const data = d.data();
+        if (data.isGhost) return false;
+        const exp = data.expiresAt?.toDate?.()?.getTime() || 0;
+        return exp > nowTs;
+      });
+
+      // Deduplicazione per ownerUid: mantiene solo il pack più recente per amico
+      const latestByOwner = new Map();
+      for (const d of activeDocs) {
+        const ownerUid = d.data().ownerUid;
+        const ts = d.data().createdAt?.toDate?.()?.getTime() || 0;
+        const existing = latestByOwner.get(ownerUid);
+        if (!existing || ts > (existing.data().createdAt?.toDate?.()?.getTime() || 0)) {
+          latestByOwner.set(ownerUid, d);
+        }
+      }
+
+      const dedupedDocs = [...latestByOwner.values()]
         .sort((a, b) => {
           const ta = a.data().createdAt?.toDate?.()?.getTime() || 0;
           const tb = b.data().createdAt?.toDate?.()?.getTime() || 0;
@@ -130,29 +144,42 @@ export async function GET(request) {
 
       // Verifica pesca già effettuata (query su singolo campo)
       const alreadyFished = new Set();
-      if (validDocs.length > 0) {
+      if (dedupedDocs.length > 0) {
         const fishSnap = await adminDb.collection('fishing_attempts')
           .where('fisherUid', '==', uid)
           .get();
         fishSnap.docs.forEach(d => alreadyFished.add(d.data().snapshotId));
       }
 
+      // Lazy cleanup: elimina pack scaduti già pescati
+      const expiredFishedDocs = snap.docs.filter(d => {
+        const data = d.data();
+        if (data.isGhost) return false;
+        const exp = data.expiresAt?.toDate?.()?.getTime() || 0;
+        return exp <= nowTs && alreadyFished.has(d.id);
+      });
+      if (expiredFishedDocs.length > 0) {
+        const cleanupBatch = adminDb.batch();
+        expiredFishedDocs.forEach(d => cleanupBatch.delete(d.ref));
+        cleanupBatch.commit().catch(e => console.error('Lazy cleanup error:', e));
+      }
+
       const ownerNames = {};
-      for (const d of validDocs) {
+      for (const d of dedupedDocs) {
         const ownerUid = d.data().ownerUid;
         if (!ownerNames[ownerUid]) ownerNames[ownerUid] = await getUserName(ownerUid);
       }
 
-      packs = validDocs
-        .filter(d => !alreadyFished.has(d.id))
-        .map(d => ({
-          id: d.id,
-          ownerName: ownerNames[d.data().ownerUid] || 'Amica',
-          cards: d.data().cards,
-          isGhost: false,
-          expiresAt: d.data().expiresAt?.toDate?.()?.toISOString() || null,
-          createdAt: d.data().createdAt?.toDate?.()?.toISOString() || null,
-        }));
+      // Pack già pescati rimangono nel feed con flag alreadyFished: true (oscurati ma visibili)
+      packs = dedupedDocs.map(d => ({
+        id: d.id,
+        ownerName: ownerNames[d.data().ownerUid] || 'Amica',
+        cards: d.data().cards,
+        isGhost: false,
+        alreadyFished: alreadyFished.has(d.id),
+        expiresAt: d.data().expiresAt?.toDate?.()?.toISOString() || null,
+        createdAt: d.data().createdAt?.toDate?.()?.toISOString() || null,
+      }));
     }
 
     // Fallback ghost pack fino a raggiungere MIN_FEED_SIZE

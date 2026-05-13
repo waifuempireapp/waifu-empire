@@ -17,6 +17,7 @@ import BabyDoll from '@/components/BabyDoll';
 import { CartaWaifu, CartaOutfit, CartaPosa } from '@/components/CartaWaifu';
 import KissesIcon from '@/components/KissesIcon';
 import PescaMisteriosaFeed from '@/components/PescaMisteriosaFeed';
+import PescaMisteriosaOverlay from '@/components/PescaMisteriosaOverlay';
 import NegozioOverlay from '@/components/NegozioOverlay';
 import KissesShortageModal from '@/components/KissesShortageModal';
 import FriendIdDisplay from '@/components/FriendIdDisplay';
@@ -45,6 +46,7 @@ export default function GiocoPage() {
   const [poseCat, setPoseCat] = useState([]);
   const [tab, setTab] = useState('home');
   const [negozioAperto, setNegozioAperto] = useState(false);
+  const [pescaAperta, setPescaAperta] = useState(false);
   const [colezSubTab, setColezSubTab] = useState('waifu'); // Fase 3: navigazione diretta ai sotto-tab collezione
   const [notif, setNotif] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -59,6 +61,11 @@ export default function GiocoPage() {
     const handler = () => setNegozioAperto(true);
     window.addEventListener('impero:apri-negozio', handler);
     return () => window.removeEventListener('impero:apri-negozio', handler);
+  }, []);
+  useEffect(() => {
+    const handler = () => setPescaAperta(true);
+    window.addEventListener('impero:apri-pesca', handler);
+    return () => window.removeEventListener('impero:apri-pesca', handler);
   }, []);
 
   const caricaTutto = async () => {
@@ -128,7 +135,23 @@ export default function GiocoPage() {
           user={user}
           profilo={profilo}
           onKissesUpdate={(newKisses) => setProfilo(p => ({ ...p, kisses: newKisses }))}
+          onProfileUpdate={(patch) => setProfilo(p => {
+            if (patch.__incrementPacchetti) return { ...p, pacchettiSfida: (p.pacchettiSfida ?? 0) + 1 };
+            return { ...p, ...patch };
+          })}
           onClose={() => setNegozioAperto(false)}
+        />
+      )}
+      {pescaAperta && (
+        <PescaMisteriosaOverlay
+          user={user}
+          profilo={profilo}
+          onKissesSpent={(amount) => setProfilo(p => ({ ...p, kisses: Math.max(0, (p.kisses ?? 0) - amount) }))}
+          onCollectionRefresh={async () => {
+            const c = await getCollezione(user.uid);
+            setColl(c);
+          }}
+          onClose={() => setPescaAperta(false)}
         />
       )}
       {/* === CONTENUTO GIOCO (verticale su mobile, desktop normale) === */}
@@ -151,7 +174,7 @@ export default function GiocoPage() {
         <NavTabs tab={tab} setTab={setTab} />
 
         <div style={{ padding: '12px 16px', maxWidth: 1400, margin: '0 auto' }}>
-          {tab === 'home' && <HomeTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} setTab={setTab} setColezSubTab={setColezSubTab} user={user} />}
+          {tab === 'home' && <HomeTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} setTab={setTab} setColezSubTab={setColezSubTab} user={user} onApriPesca={() => setPescaAperta(true)} />}
           {tab === 'sbusta' && <SbustaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} user={user} mostraNotif={mostraNotif} godPackProb={godPackProb} />}
           {tab === 'collezione' && <CollezioneTab collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} profilo={profilo} setProfilo={setProfilo} user={user} mostraNotif={mostraNotif} initialSubTab={colezSubTab} statConfig={statConfig} />}
           {tab === 'mappa' && <MappaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} user={user} mostraNotif={mostraNotif} />}
@@ -563,8 +586,7 @@ function BottomNav({ tab, setTab, isAdmin }) {
 // ============================================================
 // TAB: HOME — FASE 2
 // ============================================================
-function HomeTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, poseCat, setTab, setColezSubTab, user }) {
-  const [pescaAperta, setPescaAperta] = useState(false);
+function HomeTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, poseCat, setTab, setColezSubTab, user, onApriPesca }) {
   const numWaifu = Object.keys(collezione.waifu || {}).length;
   const numOutfit = Object.keys(collezione.outfit || {}).length;
   const numPose = Object.keys(collezione.pose || {}).length;
@@ -725,43 +747,35 @@ function HomeTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, poseCat
         </button>
       </div>
 
-      {/* ── PESCA MISTERIOSA (lazy: carica solo al click) ── */}
+      {/* ── PESCA MISTERIOSA ── */}
       {process.env.NEXT_PUBLIC_PESCA_ENABLED !== 'false' && (
         <div style={{ marginTop: 28 }}>
-          {!pescaAperta ? (
-            <button
-              onClick={() => setPescaAperta(true)}
-              style={{
-                width: '100%',
-                background: 'linear-gradient(135deg, rgba(255,77,158,0.13), rgba(255,77,158,0.06))',
-                border: '1px solid rgba(255,77,158,0.35)',
-                borderRadius: 14,
-                padding: '18px 24px',
-                cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,77,158,0.18)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255,77,158,0.13), rgba(255,77,158,0.06))'; }}
-            >
-              <span style={{ fontSize: 22 }}>🎣</span>
-              <div style={{ textAlign: 'left' }}>
-                <div style={{ fontFamily: 'Orbitron', fontSize: 12, fontWeight: 900, color: '#ff4d9e', letterSpacing: 2 }}>
-                  PESCA MISTERIOSA
-                </div>
-                <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.45)', fontFamily: 'Fredoka', marginTop: 2 }}>
-                  Pesca una carta dalle bustine dei tuoi amici
-                </div>
+          <button
+            onClick={onApriPesca}
+            style={{
+              width: '100%',
+              background: 'linear-gradient(135deg, rgba(255,77,158,0.13), rgba(255,77,158,0.06))',
+              border: '1px solid rgba(255,77,158,0.35)',
+              borderRadius: 14,
+              padding: '18px 24px',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,77,158,0.18)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255,77,158,0.13), rgba(255,77,158,0.06))'; }}
+          >
+            <span style={{ fontSize: 22 }}>🎣</span>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontFamily: 'Orbitron', fontSize: 12, fontWeight: 900, color: '#ff4d9e', letterSpacing: 2 }}>
+                PESCA MISTERIOSA
               </div>
-              <span style={{ marginLeft: 'auto', color: '#ff4d9e', opacity: 0.6, fontSize: 16 }}>›</span>
-            </button>
-          ) : (
-            <PescaMisteriosaFeed
-              user={user}
-              profilo={profilo}
-              onKissesSpent={(amount) => setProfilo(p => ({ ...p, kisses: Math.max(0, (p.kisses ?? 0) - amount) }))}
-            />
-          )}
+              <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.45)', fontFamily: 'Fredoka', marginTop: 2 }}>
+                Pesca una carta dalle bustine dei tuoi amici
+              </div>
+            </div>
+            <span style={{ marginLeft: 'auto', color: '#ff4d9e', opacity: 0.6, fontSize: 16 }}>›</span>
+          </button>
         </div>
       )}
     </div>

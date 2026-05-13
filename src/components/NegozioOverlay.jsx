@@ -14,7 +14,7 @@ const BENE_ENDPOINT = {
 const BENI_ICONS  = { pack_sfida: '🎁', energia: '⚡', pass_hard: '🔞' };
 const BENI_COLORI = { pack_sfida: '#f5a623', energia: '#00e676', pass_hard: '#ec4899' };
 
-function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate, hardPass = false, onPassHard }) {
+function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate, hardPass = false, onPassHard, onProfileUpdate }) {
   const [busy, setBusy]         = useState(null);
   const [notif, setNotif]       = useState(null);
   const [shortage, setShortage] = useState(null);
@@ -33,7 +33,9 @@ function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate, hardPass = fa
       if (!res.ok) throw new Error(data.error || 'Errore acquisto');
       const spent = data.kissesCost ?? beni[beneId]?.kisses ?? 0;
       onKissesUpdate(Math.max(0, (kisses ?? 0) - spent));
-      if (beneId === 'pass_hard') onPassHard?.();
+      if (beneId === 'pass_hard') { onPassHard?.(); onProfileUpdate?.({ hardPass: true }); }
+      if (beneId === 'energia') onProfileUpdate?.({ energia: 10, ultimaRicaricaEnergia: new Date() });
+      if (beneId === 'pack_sfida') onProfileUpdate?.({ __incrementPacchetti: true });
       mostra(`✓ ${beni[beneId]?.label} acquistato!`);
     } catch (e) { mostra(e.message, false); }
     finally { setBusy(null); }
@@ -317,7 +319,7 @@ function SezioneRicaricaKisses({ tagli, user, kisses, onKissesUpdate }) {
   );
 }
 
-export default function NegozioOverlay({ user, profilo: profiloInit, onKissesUpdate, onClose }) {
+export default function NegozioOverlay({ user, profilo: profiloInit, onKissesUpdate, onProfileUpdate, onClose }) {
   const [config, setConfig] = useState(null);
   const [kisses, setKisses] = useState(profiloInit?.kisses ?? 0);
   const [hardPass, setHardPass] = useState(profiloInit?.hardPass ?? false);
@@ -361,7 +363,7 @@ export default function NegozioOverlay({ user, profilo: profiloInit, onKissesUpd
           <>
             <div>
               <div style={{ fontFamily: 'Orbitron', fontSize: 10, letterSpacing: 3, color: 'rgba(238,232,220,0.4)', marginBottom: 12 }}>ACQUISTA CON KISSES</div>
-              <SezioneAcquistaBeni beni={config.beni} kisses={kisses} user={user} onKissesUpdate={handleKisses} hardPass={hardPass} onPassHard={handlePassHard} />
+              <SezioneAcquistaBeni beni={config.beni} kisses={kisses} user={user} onKissesUpdate={handleKisses} hardPass={hardPass} onPassHard={handlePassHard} onProfileUpdate={onProfileUpdate} />
             </div>
 
             {/* PASS ABBONAMENTI */}
