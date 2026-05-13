@@ -19,7 +19,7 @@ export async function POST(request) {
     const tradeRef = adminDb.collection('trade_requests').doc(tradeId);
     const [tradeSnap, waifuSnap] = await Promise.all([
       tradeRef.get(),
-      adminDb.collection('users').doc(toUid).collection('collezione').doc('data').get(),
+      adminDb.collection('users').doc(toUid).collection('collezione').doc('main').get(),
     ]);
 
     if (!tradeSnap.exists) return NextResponse.json({ error: 'Scambio non trovato' }, { status: 404 });

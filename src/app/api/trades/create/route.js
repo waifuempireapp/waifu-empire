@@ -33,7 +33,7 @@ export async function POST(request) {
     // Leggi utente A e la sua waifu
     const [userSnap, fromWaifuSnap] = await Promise.all([
       adminDb.collection('users').doc(fromUid).get(),
-      adminDb.collection('users').doc(fromUid).collection('collezione').doc('data').get(),
+      adminDb.collection('users').doc(fromUid).collection('collezione').doc('main').get(),
     ]);
 
     if (!userSnap.exists) return NextResponse.json({ error: 'Utente non trovato' }, { status: 404 });

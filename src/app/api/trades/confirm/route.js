@@ -16,7 +16,7 @@ export async function POST(request) {
     if (!tradeId) return NextResponse.json({ error: 'tradeId obbligatorio' }, { status: 400 });
 
     const tradeRef = adminDb.collection('trade_requests').doc(tradeId);
-    const collARef = adminDb.collection('users').doc(fromUid).collection('collezione').doc('data');
+    const collARef = adminDb.collection('users').doc(fromUid).collection('collezione').doc('main');
 
     // Lettura pre-transazione
     const tradeSnap = await tradeRef.get();
@@ -33,7 +33,7 @@ export async function POST(request) {
     }
 
     const { toUid, fromWaifuId, toWaifuId } = trade;
-    const collBRef = adminDb.collection('users').doc(toUid).collection('collezione').doc('data');
+    const collBRef = adminDb.collection('users').doc(toUid).collection('collezione').doc('main');
 
     // Esegui scambio atomico
     let receivedFromB, receivedFromA;
