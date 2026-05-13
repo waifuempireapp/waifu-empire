@@ -90,7 +90,10 @@ function SezioneAcquistaBeni({ beni, kisses, user, onKissesUpdate, hardPass = fa
         }}>{notif.msg}</div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {Object.entries(beni || {}).filter(([id]) => id !== 'pass_hard' && id !== 'pass_scambi').map(([id, bene]) => {
+        {Object.entries(beni || {})
+          .filter(([id]) => id !== 'pass_hard' && id !== 'pass_scambi')
+          .sort(([, a], [, b]) => (a.kisses ?? 0) - (b.kisses ?? 0))
+          .map(([id, bene]) => {
           const colore = BENI_COLORI[id] || '#f5a623';
           const icon   = BENI_ICONS[id]  || '✦';
           const puoAcquistare = (kisses ?? 0) >= bene.kisses;
