@@ -266,45 +266,73 @@ function BenchSlot({ waifu, selectable, onSelect, size=48 }) {
 }
 
 // ─── TERRITORY RESULT ─────────────────────────────────────────────────────────
-function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue }) {
-  const { terrSel, nomeImperoAvversario } = battleCtx ?? {};
+// [WAIFU CHAMPIONS REFACTOR] — extended result popup (combat-system-v2)
+function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, statsP, statsE, biggestHit, isDraw }) {
+  const { terrSel, nomeImperoAvversario, sonoAttaccante } = battleCtx ?? {};
+
+  // Outcome label: CONQUISTATO / DIFESO / PAREGGIO
+  const outcome     = isDraw ? 'PAREGGIO' : (sonoAttaccante && isVictory) ? 'CONQUISTATO' : (!sonoAttaccante && isVictory) ? 'DIFESO' : sonoAttaccante ? 'NON CONQUISTATO' : 'PERSO';
+  const outcomeCol  = isDraw ? '#f5a623' : isVictory ? '#00e676' : '#ff3d3d';
+
+  const StatRow = ({ label, value, col='#eedcd4' }) => (
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0',borderBottom:'1px solid rgba(255,255,255,.05)'}}>
+      <span style={{fontFamily:'Fredoka',fontSize:11,color:'rgba(238,232,220,.55)'}}>{label}</span>
+      <span style={{fontFamily:'Orbitron',fontSize:10,fontWeight:700,color:col}}>{value}</span>
+    </div>
+  );
+
+  const bhText = (biggestHit?.dmg ?? 0) > 0
+    ? `${biggestHit.dmg} (${biggestHit.waifuName} — ${biggestHit.moveName})`
+    : '—';
+
   return (
-    <div style={{position:'fixed',inset:0,zIndex:50,background:'rgba(0,0,0,.92)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+    <div style={{position:'fixed',inset:0,zIndex:50,background:'rgba(0,0,0,.92)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto'}}>
       <div className="wba-fm" style={{
         background:'rgba(12,6,24,.96)',
-        border:`1px solid ${isVictory?'#00e676':'#ff3d3d'}44`,
-        borderRadius:18,padding:28,maxWidth:380,width:'100%',textAlign:'center',
-        boxShadow:`0 0 60px ${isVictory?'rgba(0,230,118,.18)':'rgba(255,61,61,.18)'}`,
+        border:`1px solid ${outcomeCol}44`,
+        borderRadius:18,padding:24,maxWidth:380,width:'100%',textAlign:'center',
+        boxShadow:`0 0 60px ${outcomeCol}18`,
+        margin:'auto',
       }}>
-        <div style={{fontSize:52,marginBottom:10}}>{isVictory?'👑':'💔'}</div>
-        <div style={{fontFamily:'Orbitron',fontSize:22,fontWeight:700,color:isVictory?'#00e676':'#ff3d3d',letterSpacing:3,marginBottom:6}}>
-          {isVictory?'VITTORIA!':'SCONFITTA'}
+        <div style={{fontSize:48,marginBottom:8}}>{isDraw?'🤝':isVictory?'👑':'💔'}</div>
+        <div style={{fontFamily:'Orbitron',fontSize:20,fontWeight:700,color:isDraw?'#f5a623':isVictory?'#00e676':'#ff3d3d',letterSpacing:3,marginBottom:4}}>
+          {isDraw?'PAREGGIO':isVictory?'VITTORIA!':'SCONFITTA'}
         </div>
-        <div style={{display:'flex',gap:28,justifyContent:'center',marginBottom:16}}>
-          <div style={{textAlign:'center'}}>
-            <div style={{fontFamily:'Orbitron',fontSize:20,fontWeight:700,color:'#f5a623'}}>{turns}</div>
-            <div style={{fontFamily:'Fredoka',fontSize:11,color:'rgba(238,232,220,.4)'}}>TURNI</div>
-          </div>
-          <div style={{textAlign:'center'}}>
-            <div style={{fontFamily:'Orbitron',fontSize:20,fontWeight:700,color:'#ff4d9e'}}>{totalDmg}</div>
-            <div style={{fontFamily:'Fredoka',fontSize:11,color:'rgba(238,232,220,.4)'}}>DANNO</div>
-          </div>
-        </div>
-        {terrSel&&(
-          <div style={{padding:12,background:'rgba(255,255,255,.03)',borderRadius:10,marginBottom:18,border:'1px solid rgba(255,255,255,.06)'}}>
-            {isVictory?(
-              <div style={{fontSize:12,color:'rgba(238,232,220,.7)',lineHeight:1.9}}>
-                <strong style={{color:'#00e676',fontSize:14}}>{terrSel.nome}</strong> conquistato!
-                <br/><span style={{color:'#ffd666'}}>+1 pacchetto sfida</span>
-              </div>
-            ):(
-              <div style={{fontSize:12,color:'rgba(238,232,220,.7)',lineHeight:1.9}}>
-                Sconfitta contro <strong style={{color:'#ff3d3d'}}>{nomeImperoAvversario??'la CPU'}</strong>
-                <br/><span style={{color:'#ff6666'}}>-1 energia</span>
-              </div>
-            )}
+
+        {/* Outcome label */}
+        {terrSel && (
+          <div style={{marginBottom:14}}>
+            <div style={{fontFamily:'Orbitron',fontSize:9,color:'rgba(238,232,220,.4)',letterSpacing:2,marginBottom:3}}>{terrSel.nome}</div>
+            <div style={{fontFamily:'Orbitron',fontSize:12,fontWeight:700,color:outcomeCol,letterSpacing:2,
+              background:`rgba(${outcomeCol==='#00e676'?'0,230,118':outcomeCol==='#ff3d3d'?'255,61,61':'245,166,35'},.1)`,
+              border:`1px solid ${outcomeCol}44`,borderRadius:6,padding:'4px 12px',display:'inline-block'}}>
+              {outcome}
+            </div>
           </div>
         )}
+
+        {/* Stats table */}
+        <div style={{textAlign:'left',padding:'0 4px',marginBottom:14}}>
+          <StatRow label="Turni" value={turns} col='#f5a623'/>
+          <StatRow label="KO (Tu — Avv.)" value={`${statsP?.ko??0}  –  ${statsE?.ko??0}`} col='#ff4d9e'/>
+          <StatRow label="Danno totale (Tu)" value={statsP?.dmg??totalDmg} col='#00C8FF'/>
+          <StatRow label="Danno totale (Avv.)" value={statsE?.dmg??0} col='#FF3355'/>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'5px 0'}}>
+            <span style={{fontFamily:'Fredoka',fontSize:11,color:'rgba(238,232,220,.55)',flexShrink:0,marginRight:8}}>Colpo più forte</span>
+            <span style={{fontFamily:'Orbitron',fontSize:9,fontWeight:700,color:'#ffd666',textAlign:'right',wordBreak:'break-word'}}>{bhText}</span>
+          </div>
+        </div>
+
+        {/* Territory context */}
+        {terrSel&&!isDraw&&(
+          <div style={{padding:10,background:'rgba(255,255,255,.03)',borderRadius:10,marginBottom:14,border:'1px solid rgba(255,255,255,.06)',fontSize:11,color:'rgba(238,232,220,.6)',lineHeight:1.8}}>
+            {isVictory && sonoAttaccante && <><strong style={{color:'#00e676'}}>{terrSel.nome}</strong> conquistato! <span style={{color:'#ffd666'}}>+1 pacchetto sfida</span></>}
+            {isVictory && !sonoAttaccante && <>Difeso <strong style={{color:'#00e676'}}>{terrSel.nome}</strong> con successo!</>}
+            {!isVictory && sonoAttaccante && <>Non sei riuscito a conquistare <strong style={{color:'#ff3d3d'}}>{terrSel.nome}</strong>.</>}
+            {!isVictory && !sonoAttaccante && <><strong style={{color:'#ff3d3d'}}>{nomeImperoAvversario??'CPU'}</strong> ha conquistato <strong style={{color:'#ff3d3d'}}>{terrSel.nome}</strong>. <span style={{color:'#ff6666'}}>-1 energia</span></>}
+          </div>
+        )}
+
         <button onClick={onContinue} style={{
           padding:'13px 28px',width:'100%',
           background:'linear-gradient(135deg,#f5a623,#ff2d78)',border:'none',borderRadius:12,
@@ -371,6 +399,10 @@ export default function WaifuBattleArena({
 
   // ── UI-only state (new) ───────────────────────────────────────────────────
   const [dmgFloats, setDmgFloats] = useState([]);
+  // [WAIFU CHAMPIONS REFACTOR] — per-side battle stats for result popup
+  const [statsP, setStatsP] = useState({ ko: 0, dmg: 0 });
+  const [statsE, setStatsE] = useState({ ko: 0, dmg: 0 });
+  const [biggestHit, setBiggestHit] = useState({ dmg: 0, waifuName: '', moveName: '' });
   const [isMobile, setIsMobile] = useState(true);
   const prevPHpRef = useRef(null);
   const prevEHpRef = useRef(null);
@@ -562,6 +594,14 @@ export default function WaifuBattleArena({
       }
       dmgAcc+=damage;
 
+      // [WAIFU CHAMPIONS REFACTOR] — per-side stats tracking
+      if(side==='player'){
+        setStatsP(s=>({ ko: s.ko+(newDef.isKO?1:0), dmg: s.dmg+damage }));
+      } else {
+        setStatsE(s=>({ ko: s.ko+(newDef.isKO?1:0), dmg: s.dmg+damage }));
+      }
+      setBiggestHit(bh=>damage>bh.dmg ? { dmg:damage, waifuName:att.name, moveName:move.name } : bh);
+
       const msgs=[];
       if(isCrit) msgs.push('Colpo critico! 💥');
       if(effectiveness==='Extremely effective') msgs.push('Extremely effective! 🔥🔥');
@@ -653,7 +693,17 @@ export default function WaifuBattleArena({
   useEffect(()=>{ if(phase==='victory') isWon.current=true; if(phase==='defeat') isWon.current=false; },[phase]);
 
   if(phase==='result'){
-    return <TerritoryResult isVictory={isWon.current} turns={turn} totalDmg={totalDmg} battleCtx={battleCtx} onContinue={handleResultContinue}/>;
+    return <TerritoryResult
+      isVictory={isWon.current}
+      turns={turn}
+      totalDmg={totalDmg}
+      battleCtx={battleCtx}
+      onContinue={handleResultContinue}
+      statsP={statsP}
+      statsE={statsE}
+      biggestHit={biggestHit}
+      isDraw={!isWon.current && allKO(pTeam) && allKO(eTeam)}
+    />;
   }
 
   // ── Derived UI state ─────────────────────────────────────────────────────

@@ -165,6 +165,35 @@ function _generateMovesForRarity(rarita) {
   });
 }
 
+// ─── SPEED FORMULA ────────────────────────────────────────────────────────────
+/**
+ * Calcola la velocità di una waifu a runtime dai suoi stat fisici.
+ * Il campo `battleStats.speed` salvato in Firestore viene IGNORATO — questo
+ * valore calcolato ha sempre la precedenza (combat-system-v2).
+ *
+ * Formula (ogni componente normalizzata 0–1):
+ *   t  = (tette - 1) / 6          → invertita (più tette = più lenta)
+ *   e  = (eta - 18) / 4982        → invertita (più vecchia = più lenta)
+ *   es = esperienza / 5000        → diretta   (più exp = più veloce)
+ *   c  = (colore_capelli - 1) / 8 → invertita (colore più alto = più lenta)
+ *   p  = (taglia_piedi - 34) / 11 → invertita (piedi più grandi = più lenta)
+ *
+ *   speed = round((1-t)*0.20 + (1-e)*0.20 + es*0.25 + (1-c)*0.15 + (1-p)*0.20 × 999) + 1
+ *   Risultato: intero 1–1000.
+ *
+ * @param {Object} w — documento waifu Firestore (catalogo_waifu)
+ * @returns {number} intero 1–1000
+ */
+export function computeSpeed(w) {
+  const t  = ((w.tette          ?? 4)  - 1)  / 6;
+  const e  = ((w.eta            ?? 25) - 18) / 4982;
+  const es = (w.esperienza      ?? 0)        / 5000;
+  const c  = ((w.colore_capelli ?? 5)  - 1)  / 8;
+  const p  = ((w.taglia_piedi   ?? 39) - 34) / 11;
+  const raw = (1-t)*0.20 + (1-e)*0.20 + es*0.25 + (1-c)*0.15 + (1-p)*0.20;
+  return Math.round(Math.max(0, Math.min(1, raw)) * 999) + 1;
+}
+
 /** Genera battleStats completi per una waifu in-memory (usato come fallback). */
 export function generateBattleStats(waifuFirestore) {
   const rarita = waifuFirestore.rarita ?? 'comune';
@@ -187,7 +216,7 @@ export function generateBattleStats(waifuFirestore) {
  * @property {number}   hp          (HP correnti)
  * @property {number}   maxHp       (200–600)
  * @property {string}   type        (uno dei 5 tipi)
- * @property {number}   speed       (20–100)
+ * @property {number}   speed       (1–1000, calcolato da computeSpeed())
  * @property {string}   image       (URL asset_statica o asset_immersiva)
  * @property {Move[]}   moves       (4 mosse con PP aggiornati)
  */
@@ -229,7 +258,7 @@ export function initBattleWaifu(waifuFirestore, collectionData = null) {
     hp:     scaledMaxHp,
     maxHp:  scaledMaxHp,
     type:   bs.type ?? _pick(TYPE_NAMES),
-    speed:  bs.speed ?? 50,
+    speed:  computeSpeed(waifuFirestore),
     image:  waifuFirestore.asset_statica ?? waifuFirestore.asset_immersiva ?? null,
     moves:  bs.moves.map(m => ({ ...m, pp: m.maxPp ?? m.pp ?? 5 })),
     isKO:   false,
@@ -261,7 +290,7 @@ export function generateCPUTeam(waifuCat, playerIds = new Set(), cpuLevel = 1) {
       level: Math.min(10, cpuLevel),
       maxHp: Math.round(base.maxHp * (1 + bonus)),
       hp:    Math.round(base.maxHp * (1 + bonus)),
-      speed: Math.min(100, Math.round(base.speed * (1 + bonus * 0.5))),
+      speed: Math.min(1000, Math.round(base.speed * (1 + bonus * 0.5))),
     };
   });
 }

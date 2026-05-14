@@ -36,7 +36,7 @@ import {
   PannelloOrnato, TitoloOrnato, BtnDecorato, Chip,
   BarraRisorsa, CardInfo, Divider, StelleRarita, FramePersonaggio,
 } from '@/components/ui/UIKit';
-import { Header, NavTabs, BottomNav, HomeTab, AmiciTab, ClassificaTab, SbustaTab, CollezioneTab } from './_redesign';
+import { Header, NavTabs, BottomNav, HomeTab } from './_redesign';
 export default function GiocoPage() {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
@@ -456,7 +456,7 @@ function _Header_UNUSED({ profilo, isAdmin, onLogout, setProfilo, user }) {
 }
 
 // Blocco Pack separato per chiarezza — click porta a tab Sbusto
-) {
+function PackBlock({ profilo }) {
   // Usa un evento custom per navigare al tab sbusta dal Header
   // Il Header non ha accesso diretto a setTab, quindi usiamo un evento custom
   const goToSbusta = () => {
@@ -495,7 +495,7 @@ function _Header_UNUSED({ profilo, isAdmin, onLogout, setProfilo, user }) {
   );
 }
 
-) {
+function KissesBlock({ profilo }) {
   return (
     <div style={{
       padding: '6px 12px',
@@ -817,7 +817,7 @@ function _HomeTab_UNUSED({ profilo, setProfilo, collezione, waifuCat, outfitCat,
 }
 
 // ── Statistiche Combattimento (Fase 2) ──────────────────────
-) {
+function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneClassifica }) {
   const vittorie = profilo.vittorie ?? 0;
   const sconfitte = profilo.sconfitte ?? 0;
   const livelloMappa = profilo.livelloMappa ?? 1;
@@ -913,7 +913,7 @@ function _HomeTab_UNUSED({ profilo, setProfilo, collezione, waifuCat, outfitCat,
 }
 
 // ── Banner Ultime Carte (Fase 2 + Fase 3: modal click) ─────
-) {
+function BannerUltimeCarte({ tutteLeWaifu, tuttiGliOutfit, tutteLePose, outfitCat, poseCat, collezione, profilo, setProfilo, user, totalPack, setTab }) {
   const [cartaSel, setCartaSel] = useState(null); // Fase 3: carta selezionata per modal
 
   // Ultime 20 carte: mescola waifu+outfit+posa, ordinate per acquisito (più recente prima) e limita a 20
@@ -1008,7 +1008,7 @@ function _HomeTab_UNUSED({ profilo, setProfilo, collezione, waifuCat, outfitCat,
 }
 
 // ── Card Pacchetto con Overlay (Prima card del banner) ──────
-) {
+function CardPacchettoOverlay({ profilo, totalPack, setTab }) {
   const [countdown, setCountdown] = useState('');
   const hasPack = totalPack > 0;
 
@@ -1388,7 +1388,7 @@ function MadalePosa({ posa }) {
 // ============================================================
 // TAB: AMICI
 // ============================================================
-) {
+function AmiciTab({ user, profilo, collezione, waifuCat, onCollectionRefresh }) {
   const [subTab, setSubTab] = useState('amici'); // 'amici' | 'scambi'
   const [scambiBadge, setScambiBadge] = useState(0);
   const tradeEnabled = process.env.NEXT_PUBLIC_TRADE_ENABLED === 'true';
@@ -1485,7 +1485,7 @@ function MadalePosa({ posa }) {
 // ============================================================
 // TAB: CLASSIFICA — Fase 6 (implementazione completa)
 // ============================================================
-) {
+function ClassificaTab({ user }) {
   const [classifica, setClassifica] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errore, setErrore] = useState(null);
@@ -1724,7 +1724,7 @@ function MadalePosa({ posa }) {
     </div>
   );
 }
-) {
+function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitCat, poseCat, user, mostraNotif, godPackProb = GOD_PACK_PROB_DEFAULT, ModaleCarta }) {
   const [stato, setStato] = useState('idle');
   const [carteRivelate, setCarteRivelate] = useState([]);
   const [indiceRivelato, setIndiceRivelato] = useState(-1);
@@ -2631,7 +2631,7 @@ function MadalePosa({ posa }) {
 }
 
 // ── Pack Card — stile Pokémon Pocket ──────
-) {
+function PackCard({ tipo, count, max, colore, colore2, icona, label, sub, esaurito, ctaEsaurito, dropColore, onClick, asset }) {
   const [hover, setHover] = useState(false);
 
   return (
@@ -2738,7 +2738,7 @@ const stileLevelUp = {
   textShadow: '0 0 12px rgba(0,230,118,0.7), 0 0 4px rgba(0,230,118,0.4)',
 };
 
-) {
+function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, profilo, setProfilo, user, mostraNotif, initialSubTab = 'waifu', statConfig = { ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT }, ModaPersonalizzazione }) {
   const [tabSub, setTabSub] = useState(initialSubTab);
   const [waifuSel, setWaifuSel] = useState(null);
   const [teamInEdit, setTeamInEdit] = useState(null);
@@ -4285,7 +4285,7 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
 // ============================================================
 // COUNTDOWN PACCHETTI OMAGGIO
 // ============================================================
-) {
+function CountdownPacchettiOmaggio({ ultimaRicarica }) {
   const [tempoRimanente, setTempoRimanente] = useState('');
   useEffect(() => {
     const calcola = () => {
@@ -4346,7 +4346,7 @@ function RoundEndBar({ vincitoreRound, statScelta, direzione, carteP, carteC, ro
 // COMPONENTI FILTRI WAIFU CONDIVISI
 // ============================================================
 
-) {
+function TradeCountdownInline({ tradesResetAt }) {
   const [rem, setRem] = useState('');
   useEffect(() => {
     const calc = () => {
@@ -4379,7 +4379,7 @@ function SortChip({ label, skey, activeSkey, activeDir, onToggle }) {
   );
 }
 
-) {
+function BarraFiltriWaifu({ filtroNome, setFiltroNome, filtroRarita, setFiltroRarita, filtroDropId, setFiltroDropId, drops = [], filtroScambiabile, setFiltroScambiabile, filtroHot, setFiltroHot, filtroLevelUp, setFiltroLevelUp, sortKey, sortDir, onToggleSort, count }) {
   const STAT_SORT = [
     { k: 'tette', l: '✦ Tette' }, { k: 'taglia_piedi', l: '⚘ Piedi' },
     { k: 'eta', l: '⌛ Età' }, { k: 'colore_capelli', l: '✿ Cap.' }, { k: 'esperienza', l: '★ Esp.' },
@@ -4442,7 +4442,7 @@ function SortChip({ label, skey, activeSkey, activeDir, onToggle }) {
 // ============================================================
 const TEAM_PAGE_SIZE = 12;
 
-) {
+function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxSel = 5, accentColor = '#ffd666', labelSel = 'SCEGLI 5 WAIFU', onConferma, onAnnulla, labelConferma = 'CONFERMA', disabledConferma = false, drops = [], profilo }) {
   const [filtroNome, setFiltroNome] = useState('');
   const [filtroRar, setFiltroRar] = useState('tutte');
   const [filtroDropId, setFiltroDropId] = useState('tutti');
