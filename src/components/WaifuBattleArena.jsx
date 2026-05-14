@@ -182,7 +182,7 @@ function PlayerHud({ waifu }) {
 // ─── MOVE BUTTON ──────────────────────────────────────────────────────────────
 function MoveBtn({ move, idx, locked, outPp, cooldown, enemyType, playerType, onSelect }) {
   if (!move) return (
-    <div style={{minHeight:68,borderRadius:12,background:'rgba(10,5,20,.3)',border:'1px solid rgba(255,255,255,.04)'}}/>
+    <div style={{height:'100%',borderRadius:12,background:'rgba(10,5,20,.3)',border:'1px solid rgba(255,255,255,.04)'}}/>
   );
   const dis = locked||outPp||cooldown;
   const { label:eff } = getEffectiveness(move.type, playerType, enemyType);
@@ -197,7 +197,7 @@ function MoveBtn({ move, idx, locked, outPp, cooldown, enemyType, playerType, on
   const effInfo = effMap[eff];
   return (
     <button className="wba-move-btn" onClick={()=>!dis&&onSelect(idx)} disabled={dis} style={{
-      minHeight:68, padding:'9px 11px', borderRadius:12, width:'100%',
+      height:'100%', padding:'8px 11px', borderRadius:12, width:'100%',
       background: dis?'rgba(10,5,20,.4)':`rgba(${hexToRgb(bdr)},.09)`,
       border:`1.5px solid ${dis?'rgba(255,255,255,.06)':`${bdr}88`}`,
       boxShadow: dis?'none':`0 2px 12px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06)`,
@@ -474,24 +474,22 @@ export default function WaifuBattleArena({
   const handleVoluntarySwap = useCallback((newIdx)=>{
     if(phase!=='voluntarySwap') return;
     clearInterval(timerRef.current);
+    setIsAnim(true);
     setPActive(newIdx);
     setPAnim('wba-sL');
     setTimeout(()=>setPAnim(''),450);
     setShowBench(false);
+    // Il cambio conta come mossa del giocatore: nessun attacco da nessuna parte
     setPhase('resolving');
     setMsg(`${pTeam[newIdx]?.name} entra in campo!`);
-    setTimeout(async()=>{
-      setIsAnim(true);
-      const ew=eTeam[eActive];
-      const pw=pTeam[newIdx];
-      const eMi=cpuChooseMove(ew,pw,lastEMove);
-      await executeOneAttack('enemy',eMi,newIdx,[...pTeam],[...eTeam],pTeam,eTeam,setPTeam,setETeam);
-      setLastEMove(eMi);
+    setTimeout(()=>{
       setTurn(t=>t+1);
       setIsAnim(false);
-      setPhase('playerChoose'); setMsg('Scegli la tua mossa!'); setTimer(30);
-    },600);
-  },[phase,pTeam,eTeam,eActive,lastEMove]); // eslint-disable-line
+      setPhase('playerChoose');
+      setMsg('Scegli la tua mossa!');
+      setTimer(30);
+    },900);
+  },[phase,pTeam]); // eslint-disable-line
 
   // ── Player selects a move (UNCHANGED) ────────────────────────────────────
   const handleMove = useCallback((moveIdx)=>{
@@ -699,7 +697,7 @@ export default function WaifuBattleArena({
       position:'fixed', inset:0, zIndex:40, overflow:'hidden',
       background:'linear-gradient(180deg,#080318 0%,#120528 45%,#080318 100%)',
       display:'flex', flexDirection:'column',
-      paddingBottom:'env(safe-area-inset-bottom,0px)',
+      paddingBottom:'env(safe-area-inset-bottom,12px)',
     }}>
 
       {/* Screen flash */}
@@ -813,9 +811,11 @@ export default function WaifuBattleArena({
         </div>
       </div>
 
-      {/* ── ZONE 5+6: Action Panel ── */}
+      {/* ── ZONE 5+6: Action Panel — altezza basata su dvh per adattarsi a ogni schermo ── */}
       <div style={{
         flexShrink:0,
+        height:'clamp(188px, 37dvh, 252px)',
+        display:'flex', flexDirection:'column',
         background:'rgba(4,2,10,.92)',
         borderTop:'1px solid rgba(255,255,255,.07)',
       }}>
@@ -829,7 +829,7 @@ export default function WaifuBattleArena({
 
         {/* ── Swap phase: KO or voluntary ── */}
         {(isSwap||isVolSwap)&&(
-          <div style={{padding:'12px 14px'}}>
+          <div style={{flex:1,padding:'10px 14px',overflowY:'auto',display:'flex',flexDirection:'column',justifyContent:'center'}}>
             <div style={{
               fontFamily:'Orbitron', fontSize:9, letterSpacing:1.8, textAlign:'center', marginBottom:12,
               color: isSwap?'#ff4d4d':'#f5a623',
@@ -853,7 +853,7 @@ export default function WaifuBattleArena({
 
         {/* ── All PP out: forced swap ── */}
         {!isSwap&&!isVolSwap&&allPPOut&&isChoose&&(
-          <div style={{padding:'12px 14px'}}>
+          <div style={{flex:1,padding:'10px 14px',overflowY:'auto',display:'flex',flexDirection:'column',justifyContent:'center'}}>
             <div style={{fontFamily:'Orbitron',fontSize:9,color:'#ff4d4d',letterSpacing:1.8,textAlign:'center',marginBottom:12}}>
               ⚠ PP ESAURITI — SOSTITUISCI LA WAIFU
             </div>
@@ -874,8 +874,8 @@ export default function WaifuBattleArena({
         {/* ── Normal: bench row + move grid ── */}
         {!isSwap&&!isVolSwap&&!(allPPOut&&isChoose)&&(
           <>
-            {/* Bench row */}
-            <div style={{display:'flex',alignItems:'center',padding:'6px 12px 4px',gap:8}}>
+            {/* Bench row — altezza fissa, non si espande */}
+            <div style={{flexShrink:0,display:'flex',alignItems:'center',padding:'4px 12px 3px',gap:8}}>
               {/* Swap button */}
               <div style={{flexShrink:0,width:52}}>
                 {isChoose&&!isAnim&&!(isPvP&&pvpWaiting)?(
@@ -900,7 +900,7 @@ export default function WaifuBattleArena({
               {/* Player bench slots (display only) */}
               <div style={{display:'flex',gap:7,flex:1,justifyContent:'center'}}>
                 {pTeam.map((w,i)=> i!==pActive&&(
-                  <BenchSlot key={w.id} waifu={w} selectable={false} size={44}/>
+                  <BenchSlot key={w.id} waifu={w} selectable={false} size={40}/>
                 ))}
               </div>
 
@@ -920,12 +920,12 @@ export default function WaifuBattleArena({
               </div>
             </div>
 
-            {/* Move grid */}
-            <div style={{position:'relative',padding:'2px 10px 10px'}}>
+            {/* Move grid — flex:1 per riempire lo spazio rimasto nell'action panel */}
+            <div style={{flex:1,position:'relative',padding:'2px 10px 6px',display:'flex',flexDirection:'column',minHeight:0}}>
               {/* PvP waiting overlay (only covers move grid) */}
               {isPvP&&pvpWaiting&&(
                 <div style={{
-                  position:'absolute',inset:'2px 10px 10px',zIndex:5,
+                  position:'absolute',inset:'2px 10px 6px',zIndex:5,
                   background:'rgba(0,0,0,.58)',borderRadius:12,
                   backdropFilter:'blur(3px)',
                   display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:7,
@@ -939,7 +939,7 @@ export default function WaifuBattleArena({
                   </div>
                 </div>
               )}
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7}}>
+              <div style={{flex:1,display:'grid',gridTemplateColumns:'1fr 1fr',gridTemplateRows:'1fr 1fr',gap:6}}>
                 {(player?.moves??[null,null,null,null]).map((move,i)=>(
                   <MoveBtn key={i} move={move} idx={i}
                     locked={!isChoose||isAnim||(isPvP&&pvpWaiting)}
