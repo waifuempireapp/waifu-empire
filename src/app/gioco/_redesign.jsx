@@ -299,8 +299,6 @@ export function HomeTab({
   ModaleCarta,
 }) {
   const numWaifu  = Object.keys(collezione.waifu  || {}).length;
-  const numOutfit = Object.keys(collezione.outfit  || {}).length;
-  const numPose   = Object.keys(collezione.pose    || {}).length;
   const totalPack = (profilo.pacchettiOmaggio ?? 0) + (profilo.pacchettiBenvenuto ?? 0) + (profilo.pacchettiSfida ?? 0);
 
   const [posizioneClassifica, setPosizioneClassifica] = useState(null);
@@ -335,14 +333,6 @@ export function HomeTab({
     const w = waifuCat.find(x => x.id === id);
     return w ? { tipo: 'waifu', id, w, dati } : null;
   }).filter(Boolean);
-  const tuttiGliOutfit = Object.entries(collezione.outfit || {}).filter(([, d]) => (d.quantita || 0) > 0).map(([id, dati]) => {
-    const o = outfitCat.find(x => x.id === id);
-    return o ? { tipo: 'outfit', id, o, dati } : null;
-  }).filter(Boolean);
-  const tutteLePose = Object.entries(collezione.pose || {}).filter(([, d]) => (d.quantita || 0) > 0).map(([id, dati]) => {
-    const p = poseCat.find(x => x.id === id);
-    return p ? { tipo: 'posa', id, p, dati } : null;
-  }).filter(Boolean);
 
   const territoriConquistati = Object.values(profilo.territoriUtente || {}).filter(t => t?.conquistato).length;
 
@@ -357,7 +347,7 @@ export function HomeTab({
 
       {/* HERO */}
       <div className="ht-hero">
-        <div className="ht-hero__label">◆ Bentornata · Stagione 7</div>
+        <div className="ht-hero__label">◆ Bentornato · Stagione 7</div>
         <h1 className="shimmer-text ht-hero__title">{profilo.nomeImpero || 'Il Tuo Impero'}</h1>
         <div className="ht-hero__chips">
           <Chip colore={profilo.coloreImpero} icon="⚜" size="md">Impero Lv.{profilo.livelloMappa ?? 1}</Chip>
@@ -371,9 +361,9 @@ export function HomeTab({
       <div className="ht-quick-grid">
         <QuickTile icon="⚔" label="Mappa"   color="#6cf0e0" sub={`Lv.${profilo.livelloMappa ?? 1}`} onClick={() => setTab('mappa')} />
         <QuickTile icon="🎁" label="Sbusta"  color="#f5c560" sub={`×${totalPack}`} highlight={totalPack > 0} onClick={() => setTab('sbusta')} />
-        <QuickTile icon="🛒" label="Negozio" color="#a78bfa" sub="Hot" onClick={() => window.dispatchEvent(new CustomEvent('impero:apri-negozio'))} />
+        <QuickTile icon="🛒" label="Negozio" color="#a78bfa" sub="Novità" onClick={() => window.dispatchEvent(new CustomEvent('impero:apri-negozio'))} />
         {process.env.NEXT_PUBLIC_PESCA_ENABLED !== 'false'
-          ? <QuickTile icon="🎣" label="Pesca" color="#ff85b6" sub="" onClick={onApriPesca} />
+          ? <QuickTile icon="🎣" label="Waifu Drop" color="#ff85b6" sub="Prova" onClick={onApriPesca} />
           : <QuickTile icon="💎" label="Cards" color="#ff85b6" sub={numWaifu} onClick={() => setTab('collezione')} />
         }
       </div>
