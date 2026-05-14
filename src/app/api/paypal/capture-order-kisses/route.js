@@ -48,7 +48,10 @@ export async function POST(request) {
     if (!taglio) return NextResponse.json({ error: 'Taglio non valido' }, { status: 400 });
 
     // Assegna Kisses + bonus atomicamente
-    const totalKisses = taglio.kisses + (taglio.bonus || 0);
+    const totalKisses = Number(taglio.kisses || 0) + Number(taglio.bonus || 0);
+    if (!Number.isFinite(totalKisses) || totalKisses <= 0) {
+      return NextResponse.json({ error: 'Importo kisses non valido per il taglio ' + taglioId }, { status: 400 });
+    }
     await userRef.update({ kisses: FieldValue.increment(totalKisses) });
 
     return NextResponse.json({ success: true, kissesAdded: totalKisses, bonus: taglio.bonus || 0 });

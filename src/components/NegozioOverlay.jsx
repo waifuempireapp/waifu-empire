@@ -467,6 +467,11 @@ export default function NegozioOverlay({ user, profilo: profiloInit, onKissesUpd
     getPrezziConfig().then(setPrezziCfg);
   }, []);
 
+  useEffect(() => {
+    document.body.classList.add('modal-open');
+    return () => document.body.classList.remove('modal-open');
+  }, []);
+
   const handleKisses = (newKisses) => { setKisses(newKisses); onKissesUpdate(newKisses); };
   const handlePassHard = () => {
     setHardPass(true);

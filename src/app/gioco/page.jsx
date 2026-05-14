@@ -64,6 +64,11 @@ export default function GiocoPage() {
 
   useEffect(() => { if (!loading && !user) router.replace('/login'); }, [user, loading]);
   useEffect(() => { if (user) caricaTutto(); }, [user]);
+  // Scroll reset quando si cambia tab principale
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [tab]);
+
   useEffect(() => {
     const handler = () => setNegozioAperto(true);
     window.addEventListener('impero:apri-negozio', handler);
@@ -3720,6 +3725,11 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
   const [moveSaving,   setMoveSaving]   = useState(false);
   const [tradeAnimation, setTradeAnimation] = useState(null); // waifu ricevuta
   const tradeEnabled = process.env.NEXT_PUBLIC_TRADE_ENABLED === 'true';
+
+  useEffect(() => {
+    document.body.classList.add('modal-open');
+    return () => document.body.classList.remove('modal-open');
+  }, []);
 
   useEffect(() => {
     document.body.classList.add('modal-open');

@@ -564,7 +564,7 @@ function BannerUltimeCarte({
   return (
     <PannelloOrnato glow="#a78bfa" variant="purple" noCorners>
       <div className="ht-banner-header">
-        <TitoloOrnato livello={2} colore="#ffe9a8">ULTIME CARTE</TitoloOrnato>
+        <TitoloOrnato livello={2} colore="#ffe9a8" style={{ marginBottom: 0 }}>ULTIME CARTE</TitoloOrnato>
         <button className="ht-banner-total" onClick={onClickWaifu}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
           {numWaifu} waifu ♛ <span style={{ opacity: 0.5, fontSize: 9 }}>›</span>
@@ -751,6 +751,11 @@ const QUEST_GIORNALIERE_DEFS = [
 ];
 
 function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) {
+  useEffect(() => {
+    document.body.classList.add('modal-open');
+    return () => document.body.classList.remove('modal-open');
+  }, []);
+
   const [tabAttiva, setTabAttiva]   = useState('giornaliere');
   const [sezioni, setSezioni]       = useState([]);
   const [missioniMap, setMissioniMap] = useState({});   // sectionId -> missioni[]
