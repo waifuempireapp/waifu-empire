@@ -281,9 +281,15 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
     </div>
   );
 
-  const bhText = (biggestHit?.dmg ?? 0) > 0
-    ? `${biggestHit.dmg} (${biggestHit.waifuName} — ${biggestHit.moveName})`
-    : '—';
+  // [WAIFU CHAMPIONS REFACTOR — CRIT] bhText becomes JSX to show ★ CRITICAL badge
+  const bhContent = (biggestHit?.dmg ?? 0) > 0
+    ? <>
+        {biggestHit.dmg} ({biggestHit.waifuName} — {biggestHit.moveName})
+        {biggestHit.wasCrit && (
+          <span style={{color:'#f5a623',marginLeft:5,fontWeight:700}}>★ CRITICAL</span>
+        )}
+      </>
+    : <>—</>;
 
   return (
     <div style={{position:'fixed',inset:0,zIndex:50,background:'rgba(0,0,0,.92)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto'}}>
@@ -319,7 +325,7 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
           <StatRow label="Danno totale (Avv.)" value={statsE?.dmg??0} col='#FF3355'/>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'5px 0'}}>
             <span style={{fontFamily:'Fredoka',fontSize:11,color:'rgba(238,232,220,.55)',flexShrink:0,marginRight:8}}>Colpo più forte</span>
-            <span style={{fontFamily:'Orbitron',fontSize:9,fontWeight:700,color:'#ffd666',textAlign:'right',wordBreak:'break-word'}}>{bhText}</span>
+            <span style={{fontFamily:'Orbitron',fontSize:9,fontWeight:700,color:'#ffd666',textAlign:'right',wordBreak:'break-word'}}>{bhContent}</span>
           </div>
         </div>
 
@@ -402,11 +408,12 @@ export default function WaifuBattleArena({
   // [WAIFU CHAMPIONS REFACTOR] — per-side battle stats for result popup
   const [statsP, setStatsP] = useState({ ko: 0, dmg: 0 });
   const [statsE, setStatsE] = useState({ ko: 0, dmg: 0 });
-  const [biggestHit, setBiggestHit] = useState({ dmg: 0, waifuName: '', moveName: '' });
+  const [biggestHit, setBiggestHit] = useState({ dmg: 0, waifuName: '', moveName: '', wasCrit: false });
   const [isMobile, setIsMobile] = useState(true);
-  const prevPHpRef = useRef(null);
-  const prevEHpRef = useRef(null);
-  const dmgIdRef   = useRef(0);
+  const prevPHpRef  = useRef(null);
+  const prevEHpRef  = useRef(null);
+  const dmgIdRef    = useRef(0);
+  const lastCritRef = useRef(false); // [WAIFU CHAMPIONS REFACTOR — CRIT] set by execAttack, read by float useEffects
 
   useEffect(()=>{
     const check=()=>setIsMobile(window.innerWidth<768);
@@ -425,7 +432,8 @@ export default function WaifuBattleArena({
     if(prevPHpRef.current!==null&&curr<prevPHpRef.current&&prevPHpRef.current>0){
       const dmg=prevPHpRef.current-curr;
       const id=++dmgIdRef.current;
-      setDmgFloats(fs=>[...fs,{id,dmg,side:'player'}]);
+      const isCrit=lastCritRef.current; lastCritRef.current=false; // [WAIFU CHAMPIONS REFACTOR — CRIT]
+      setDmgFloats(fs=>[...fs,{id,dmg,side:'player',isCrit}]);
       setTimeout(()=>setDmgFloats(fs=>fs.filter(f=>f.id!==id)),1400);
     }
     prevPHpRef.current=curr??null;
@@ -437,7 +445,8 @@ export default function WaifuBattleArena({
     if(prevEHpRef.current!==null&&curr<prevEHpRef.current&&prevEHpRef.current>0){
       const dmg=prevEHpRef.current-curr;
       const id=++dmgIdRef.current;
-      setDmgFloats(fs=>[...fs,{id,dmg,side:'enemy'}]);
+      const isCrit=lastCritRef.current; lastCritRef.current=false; // [WAIFU CHAMPIONS REFACTOR — CRIT]
+      setDmgFloats(fs=>[...fs,{id,dmg,side:'enemy',isCrit}]);
       setTimeout(()=>setDmgFloats(fs=>fs.filter(f=>f.id!==id)),1400);
     }
     prevEHpRef.current=curr??null;
@@ -593,6 +602,7 @@ export default function WaifuBattleArena({
         setPTeam([...curP]); setETeam([...curE]);
       }
       dmgAcc+=damage;
+      lastCritRef.current = isCrit; // [WAIFU CHAMPIONS REFACTOR — CRIT] read by HP-delta useEffects for float coloring
 
       // [WAIFU CHAMPIONS REFACTOR] — per-side stats tracking
       if(side==='player'){
@@ -600,7 +610,7 @@ export default function WaifuBattleArena({
       } else {
         setStatsE(s=>({ ko: s.ko+(newDef.isKO?1:0), dmg: s.dmg+damage }));
       }
-      setBiggestHit(bh=>damage>bh.dmg ? { dmg:damage, waifuName:att.name, moveName:move.name } : bh);
+      setBiggestHit(bh=>damage>bh.dmg ? { dmg:damage, waifuName:att.name, moveName:move.name, wasCrit:isCrit } : bh);
 
       const msgs=[];
       if(isCrit) msgs.push('Colpo critico! 💥');
@@ -756,20 +766,33 @@ export default function WaifuBattleArena({
           animation:'flash .22s ease-out forwards',pointerEvents:'none'}}/>
       )}
 
-      {/* Floating damage numbers */}
+      {/* Floating damage numbers — [WAIFU CHAMPIONS REFACTOR — CRIT] gold + label on crits */}
       {dmgFloats.map(f=>(
         <div key={f.id} style={{
           position:'absolute',
           left: f.side==='enemy' ? '62%' : '22%',
           top:  f.side==='enemy' ? '22%' : '52%',
           zIndex:30, pointerEvents:'none',
-          fontFamily:'Orbitron', fontWeight:900,
-          fontSize: Math.min(34, Math.max(18, Math.round(f.dmg/9)+14)),
-          color:'#fff',
-          textShadow:'0 2px 12px rgba(0,0,0,.9),0 0 18px rgba(255,255,255,.25)',
+          display:'flex', flexDirection:'column', alignItems:'center',
           animation:'floatDmg 1.3s ease-out forwards',
-          letterSpacing:1, userSelect:'none',
-        }}>-{f.dmg}</div>
+          userSelect:'none',
+        }}>
+          <span style={{
+            fontFamily:'Orbitron', fontWeight:900,
+            fontSize: Math.min(34, Math.max(18, Math.round(f.dmg/9)+14)),
+            color: f.isCrit ? '#f5a623' : '#fff',
+            textShadow: f.isCrit
+              ? '0 2px 12px rgba(0,0,0,.9),0 0 22px rgba(245,166,35,.6)'
+              : '0 2px 12px rgba(0,0,0,.9),0 0 18px rgba(255,255,255,.25)',
+            letterSpacing:1,
+          }}>-{f.dmg}</span>
+          {f.isCrit && (
+            <span style={{
+              fontFamily:'Orbitron', fontWeight:700, fontSize:9,
+              color:'#f5a623', letterSpacing:1.5, marginTop:2,
+            }}>CRITICAL HIT!</span>
+          )}
+        </div>
       ))}
 
       {/* ── ZONE 1: Combat Header ── */}

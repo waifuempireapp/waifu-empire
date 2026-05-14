@@ -4,8 +4,7 @@
 // Supports CPU mode and PvP pass-the-device mode.
 // Secrecy is client-side only (acceptable for casual/social play).
 import { useState, useEffect } from 'react';
-import { TYPE_COLORS } from '@/lib/battleEngine';
-import { initBattleWaifu } from '@/lib/battleEngine';
+import { TYPE_COLORS, initBattleWaifu, computeSpeed, computeCritChance } from '@/lib/battleEngine';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 function TypeBadge({ type }) {
@@ -82,6 +81,12 @@ function WaifuPickCard({ waifu, slot, selectable, onTap }) {
           <div style={{ marginTop: 3 }}><TypeBadge type={bs.type ?? 'Arcana'} /></div>
           <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,.4)', marginTop: 3 }}>
             Lv {waifu.livello ?? 1} · HP {maxHp}
+          </div>
+          {/* [WAIFU CHAMPIONS REFACTOR — CRIT] Speed + Crit% computed at render time */}
+          <div style={{ fontFamily: 'Orbitron', fontSize: 7, color: 'rgba(238,232,220,.45)', marginTop: 2 }}>
+            <span style={{ color: '#00C8FF' }}>Spd {computeSpeed(waifu)}</span>
+            {'  '}
+            <span style={{ color: '#f5a623' }}>Crit {Math.round(computeCritChance(waifu) * 100)}%</span>
           </div>
           <MiniHpBar hp={maxHp} maxHp={maxHp} />
         </div>

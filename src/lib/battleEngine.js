@@ -65,12 +65,13 @@ export function calculateDamage(attacker, move, defender) {
   if (multiplier === 0) return { damage: 0, isCrit: false, effectiveness, multiplier };
 
   // Moltiplicatore livello: scala da 0.85 (Lv1) a 1.15 (Lv10)
-  const levelMod   = 0.85 + (Math.min(attacker.level, 10) / 10) * 0.30;
+  const levelMod  = 0.85 + (Math.min(attacker.level, 10) / 10) * 0.30;
   // Jitter casuale ±8%
-  const randomMod  = 0.92 + Math.random() * 0.16;
-  // Critico: probabilità da critPowerPerc della mossa
-  const isCrit     = Math.random() * 100 < (move.critPowerPerc ?? 0);
-  const basePower  = isCrit ? (move.critPower ?? move.power) : move.power;
+  const randomMod = 0.92 + Math.random() * 0.16;
+  // [WAIFU CHAMPIONS REFACTOR — CRIT] Critico: probabilità waifu-level, move.critPowerPerc ignorata
+  const isCrit    = Math.random() < (attacker.critChance ?? 0.05);
+  const critDmg   = move.damage_crit ?? move.critPower ?? Math.round((move.power ?? 0) * 1.5);
+  const basePower = isCrit ? critDmg : move.power;
 
   const damage = Math.max(1, Math.round(basePower * multiplier * levelMod * randomMod));
   return { damage, isCrit, effectiveness, multiplier };
@@ -153,11 +154,15 @@ function _generateMovesForRarity(rarita) {
     usedNames.add(name);
     const maxPp    = _rnd(mc.pp[0], mc.pp[1]);
     const hasAbil  = mc.ability === true || (typeof mc.ability === 'number' && Math.random() < mc.ability);
+    const power    = _rnd(mc.power[0], mc.power[1]);
+    // [WAIFU CHAMPIONS REFACTOR — CRIT] damage_crit replaces per-move critPowerPerc for crit resolution
+    const critPower = _rnd(mc.crit[0], mc.crit[1]);
     return {
       name, type, rarity: mr,
-      power:         _rnd(mc.power[0], mc.power[1]),
-      critPower:     _rnd(mc.crit[0],  mc.crit[1]),
-      critPowerPerc: _rnd(mc.critP[0], mc.critP[1]),
+      power,
+      damage_crit:   Math.max(critPower, Math.round(power * 1.5)), // waifu critChance determines if this fires
+      critPower,     // kept for Firestore backward compat; runtime uses damage_crit
+      critPowerPerc: _rnd(mc.critP[0], mc.critP[1]), // deprecated — ignored by calculateDamage
       pp: maxPp, maxPp,
       ability: hasAbil ? _pick(_ABILITIES_POOL) : null,
       effectiveness: 'Normal',
@@ -194,6 +199,36 @@ export function computeSpeed(w) {
   return Math.round(Math.max(0, Math.min(1, raw)) * 999) + 1;
 }
 
+// [WAIFU CHAMPIONS REFACTOR — CRIT]
+/**
+ * Calcola la probabilità di critico di una waifu a runtime.
+ * Usa gli stessi 5 stat fisici di computeSpeed ma con direzioni INVERTITE,
+ * creando un tradeoff strategico: ottimizzare per velocità riduce il critico
+ * e vice versa.
+ *
+ * Formula (componenti NON invertite rispetto a computeSpeed):
+ *   tette        → più alte = più crit   → usa t         (diretta)
+ *   eta          → più alta = più crit   → usa e         (diretta)
+ *   esperienza   → più alta = meno crit  → usa (1-es)    (invertita)
+ *   colore_cap.  → più alto = più crit   → usa c         (diretta)
+ *   taglia_piedi → più grandi = più crit → usa p         (diretta)
+ *
+ *   crit_raw = t*0.20 + e*0.20 + (1-es)*0.25 + c*0.15 + p*0.20
+ *   Risultato: float 0.05–0.60 (5% minimo garantito, 60% massimo).
+ *
+ * @param {Object} w — documento waifu Firestore (catalogo_waifu)
+ * @returns {number} float 0.05–0.60
+ */
+export function computeCritChance(w) {
+  const t  = ((w.tette          ?? 4)  - 1)  / 6;
+  const e  = ((w.eta            ?? 25) - 18) / 4982;
+  const es = (w.esperienza      ?? 0)        / 5000;
+  const c  = ((w.colore_capelli ?? 5)  - 1)  / 8;
+  const p  = ((w.taglia_piedi   ?? 39) - 34) / 11;
+  const raw = t*0.20 + e*0.20 + (1-es)*0.25 + c*0.15 + p*0.20;
+  return Math.min(0.60, Math.max(0.05, raw));
+}
+
 /** Genera battleStats completi per una waifu in-memory (usato come fallback). */
 export function generateBattleStats(waifuFirestore) {
   const rarita = waifuFirestore.rarita ?? 'comune';
@@ -217,6 +252,7 @@ export function generateBattleStats(waifuFirestore) {
  * @property {number}   maxHp       (200–600)
  * @property {string}   type        (uno dei 5 tipi)
  * @property {number}   speed       (1–1000, calcolato da computeSpeed())
+ * @property {number}   critChance  (0.05–0.60, calcolato da computeCritChance())
  * @property {string}   image       (URL asset_statica o asset_immersiva)
  * @property {Move[]}   moves       (4 mosse con PP aggiornati)
  */
@@ -257,8 +293,9 @@ export function initBattleWaifu(waifuFirestore, collectionData = null) {
     level,
     hp:     scaledMaxHp,
     maxHp:  scaledMaxHp,
-    type:   bs.type ?? _pick(TYPE_NAMES),
-    speed:  computeSpeed(waifuFirestore),
+    type:      bs.type ?? _pick(TYPE_NAMES),
+    speed:     computeSpeed(waifuFirestore),
+    critChance: computeCritChance(waifuFirestore), // [WAIFU CHAMPIONS REFACTOR — CRIT]
     image:  waifuFirestore.asset_statica ?? waifuFirestore.asset_immersiva ?? null,
     moves:  bs.moves.map(m => ({ ...m, pp: m.maxPp ?? m.pp ?? 5 })),
     isKO:   false,
