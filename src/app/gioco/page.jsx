@@ -9,11 +9,10 @@ import { getUserProfile, updateUserProfile, getCollezione, setCollezione as save
 import { calcolaRicaricaPacchetti, calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, INCREMENTI_LEVELUP, clampStat, clampWaifuStats, GOD_PACK_PROB_DEFAULT } from '@/lib/gameLogic';
 import { TIMER, RARITA, COLORI_CAPELLI, CATEGORIE_TETTE, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, OUTFIT_CONFIG_DEFAULT, ABILITA_TIPI } from '@/lib/constants';
 import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { calcolaLivelloOutfit, getArchetipiCompatibili, puoEquipaggiare, applicaAbilitaOutfit, applicaModificatoriOpp } from '@/lib/gameLogic';
 import PaperDoll from '@/components/PaperDoll';
-// CODICE LINK CARTA -> BABY DOLL: importo BabyDoll separata dalla CartaWaifu
-import BabyDoll from '@/components/BabyDoll';
+// BabyDoll import removed — Baby-doll tab removed in collection-detail-rework
 import { CartaWaifu, CartaOutfit, CartaPosa } from '@/components/CartaWaifu';
 import KissesIcon from '@/components/KissesIcon';
 import PescaMisteriosaFeed from '@/components/PescaMisteriosaFeed';
@@ -31,7 +30,7 @@ import ScambiList from '@/components/ScambiList';
 import MappaMondoArt from '@/components/MappaMondoArt';
 import MappaMultiplayer from '@/components/MappaMultiplayer';
 import WaifuBattleArena from '@/components/WaifuBattleArena';
-import { initBattleWaifu, generateCPUTeam, generateBattleStats } from '@/lib/battleEngine';
+import { initBattleWaifu, generateCPUTeam, generateBattleStats, computeSpeed, computeCritChance } from '@/lib/battleEngine';
 import {
   PannelloOrnato, TitoloOrnato, BtnDecorato, Chip,
   BarraRisorsa, CardInfo, Divider, StelleRarita, FramePersonaggio,
@@ -3706,13 +3705,18 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
   const w = waifuCat.find(x => x.id === waifuId);
   const dati = collezione.waifu[waifuId];
   const equip = collezione.equipaggiamento[waifuId] || { faccia: null, petto: null, gambe: null, piedi: null, posa: null };
-  const [tabDettaglio, setTabDettaglio] = useState('carta'); // 'carta' | 'babydoll' | 'battaglia'
-  const [tabSlot, setTabSlot] = useState('petto');
+  const [tabDettaglio, setTabDettaglio] = useState('carta'); // 'carta' | 'battaglia' — [WAIFU CHAMPIONS REFACTOR — COLLECTION]
   const [mostraLU, setMostraLU] = useState(false);
   const [statSel, setStatSel] = useState(null); // formato: { key: 'taglia_piedi', dir: 'plus' }
   const [modificheUsate, setModificheUsate] = useState(0);
   const [zoomCarta, setZoomCarta] = useState(false);
   const [scambiaAperto, setScambiaAperto] = useState(false);
+  // [WAIFU CHAMPIONS REFACTOR — COLLECTION] — move manager state
+  const [slotMoves,    setSlotMoves]    = useState([null, null, null, null]);
+  const [editSlot,     setEditSlot]     = useState(null);
+  const [editFormData, setEditFormData] = useState({ name: '', damage: '', damage_crit: '' });
+  const [moveErr,      setMoveErr]      = useState('');
+  const [moveSaving,   setMoveSaving]   = useState(false);
   const [tradeAnimation, setTradeAnimation] = useState(null); // waifu ricevuta
   const tradeEnabled = process.env.NEXT_PUBLIC_TRADE_ENABLED === 'true';
 
@@ -3720,6 +3724,27 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
     document.body.classList.add('modal-open');
     return () => document.body.classList.remove('modal-open');
   }, []);
+
+  // [WAIFU CHAMPIONS REFACTOR — COLLECTION] load moves from DB when Battaglia tab opens
+  useEffect(() => {
+    if (tabDettaglio !== 'battaglia') return;
+    const loadMoves = async () => {
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid, 'collezione', 'main'));
+        const d = snap.exists() ? snap.data() : {};
+        const storedMoves = d?.waifu?.[waifuId]?.moves ?? [];
+        const arr = [null, null, null, null];
+        storedMoves.forEach(m => {
+          const idx = (m.slot_index ?? 1) - 1;
+          if (idx >= 0 && idx < 4) arr[idx] = m;
+        });
+        setSlotMoves(arr);
+      } catch (e) {
+        // fallback: keep empty slots
+      }
+    };
+    loadMoves();
+  }, [tabDettaglio, waifuId]); // eslint-disable-line
 
   if (!w || !dati) return null;
   const rar = RARITA[w.rarita];
@@ -3813,7 +3838,8 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
 
             {/* Tab selector: Carta | Baby-doll | Battaglia */}
             <div style={{ display: 'flex', gap: 6, marginBottom: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-              {[{ k: 'carta', l: '🃏 Carta', c: '#f5a623' }, { k: 'babydoll', l: '👗 Baby-doll', c: '#ff2d78' }, { k: 'battaglia', l: '⚔ Battaglia', c: '#7F77DD' }].map(t => (
+              {/* [WAIFU CHAMPIONS REFACTOR — COLLECTION] Baby-doll tab removed */}
+              {[{ k: 'carta', l: '🃏 Carta', c: '#f5a623' }, { k: 'battaglia', l: '⚔ Battaglia', c: '#7F77DD' }].map(t => (
                 <button key={t.k} onClick={() => setTabDettaglio(t.k)} style={{
                   padding: '8px 20px', borderRadius: 10, cursor: 'pointer',
                   background: tabDettaglio === t.k ? `linear-gradient(135deg, ${t.c}, ${t.c}80)` : 'rgba(255,255,255,0.03)',
@@ -3952,14 +3978,7 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
                                 range {s.min}–{s.max} · step ±{step}
                               </div>
                             </div>
-                            <button onClick={() => setStatSel(selPlus ? null : { key: s.key, dir: 'plus' })} disabled={!puoSalire && !selPlus} style={{
-                              width: 34, height: 34, borderRadius: 8,
-                              background: selPlus ? rar.colore : puoSalire ? 'rgba(0,230,118,0.12)' : 'rgba(255,255,255,0.03)',
-                              border: `1px solid ${selPlus ? rar.colore : puoSalire ? 'rgba(0,230,118,0.4)' : 'rgba(255,255,255,0.06)'}`,
-                              color: selPlus ? '#000' : puoSalire ? '#00e676' : 'rgba(255,255,255,0.15)',
-                              fontSize: 16, fontWeight: 900, cursor: (puoSalire || selPlus) ? 'pointer' : 'not-allowed',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
-                            }}>+</button>
+                            {/* [WAIFU CHAMPIONS REFACTOR — COLLECTION] swapped to [-][+] order */}
                             <button onClick={() => setStatSel(selMinus ? null : { key: s.key, dir: 'minus' })} disabled={!puoScendere && !selMinus} style={{
                               width: 34, height: 34, borderRadius: 8,
                               background: selMinus ? '#ff6b6b' : puoScendere ? 'rgba(255,107,107,0.12)' : 'rgba(255,255,255,0.03)',
@@ -3968,6 +3987,14 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
                               fontSize: 16, fontWeight: 900, cursor: (puoScendere || selMinus) ? 'pointer' : 'not-allowed',
                               display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
                             }}>−</button>
+                            <button onClick={() => setStatSel(selPlus ? null : { key: s.key, dir: 'plus' })} disabled={!puoSalire && !selPlus} style={{
+                              width: 34, height: 34, borderRadius: 8,
+                              background: selPlus ? rar.colore : puoSalire ? 'rgba(0,230,118,0.12)' : 'rgba(255,255,255,0.03)',
+                              border: `1px solid ${selPlus ? rar.colore : puoSalire ? 'rgba(0,230,118,0.4)' : 'rgba(255,255,255,0.06)'}`,
+                              color: selPlus ? '#000' : puoSalire ? '#00e676' : 'rgba(255,255,255,0.15)',
+                              fontSize: 16, fontWeight: 900, cursor: (puoSalire || selPlus) ? 'pointer' : 'not-allowed',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
+                            }}>+</button>
                           </div>
                         );
                       })}
@@ -4024,6 +4051,54 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
                       )}
                     </>
                   ) : (
+                    <>
+                    {/* [WAIFU CHAMPIONS REFACTOR — COLLECTION] Speed/Crit preview before confirm */}
+                    {statSel && (() => {
+                      const sKey = statSel.key;
+                      const isDirPlus = statSel.dir === 'plus';
+                      const s = STATS_INFO.find(x => x.key === sKey);
+                      if (!s) return null;
+                      const step = statConfig.steps[sKey] ?? INCREMENTI_LEVELUP[sKey];
+                      // Build effective-stats objects (base + bonus) before and after change
+                      const wCurr = {
+                        tette:          (w.tette          ?? 4)  + (dati.stat_bonus?.tette          || 0),
+                        eta:            (w.eta            ?? 25) + (dati.stat_bonus?.eta            || 0),
+                        esperienza:     (w.esperienza     ?? 0)  + (dati.stat_bonus?.esperienza     || 0),
+                        colore_capelli: (w.colore_capelli ?? 5)  + (dati.stat_bonus?.colore_capelli || 0),
+                        taglia_piedi:   (w.taglia_piedi   ?? 39) + (dati.stat_bonus?.taglia_piedi   || 0),
+                      };
+                      const rawAfter = wCurr[sKey] + (isDirPlus ? step : -step);
+                      const clampedAfter = Math.min(s.max, Math.max(s.min, rawAfter));
+                      const wAfter = { ...wCurr, [sKey]: clampedAfter };
+                      const speedBefore = computeSpeed(wCurr);
+                      const speedAfter  = computeSpeed(wAfter);
+                      const critBefore  = Math.round(computeCritChance(wCurr) * 100);
+                      const critAfter   = Math.round(computeCritChance(wAfter) * 100);
+                      const dSpeed = speedAfter - speedBefore;
+                      const dCrit  = critAfter  - critBefore;
+                      const PreviewRow = ({ label, before, after, delta, unit = '' }) => {
+                        const col = delta > 0 ? '#00e676' : delta < 0 ? '#ff6b6b' : 'rgba(238,232,220,0.45)';
+                        const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '→';
+                        return (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
+                            <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.55)' }}>{label}</span>
+                            <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: col, fontWeight: 700 }}>
+                              {arrow}{' '}
+                              {delta === 0 ? 'no change' : `${delta > 0 ? '+' : ''}${delta}${unit}  (${before}${unit} → ${after}${unit})`}
+                            </span>
+                          </div>
+                        );
+                      };
+                      return (
+                        <div style={{ marginBottom: 10, padding: '10px 14px', background: 'rgba(155,89,255,0.06)', borderRadius: 10, border: '1px solid rgba(155,89,255,0.25)', width: '100%' }}>
+                          <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(155,89,255,0.7)', letterSpacing: 2, marginBottom: 8, textAlign: 'center' }}>
+                            IMPATTO SUL TUO PERSONAGGIO
+                          </div>
+                          <PreviewRow label="Velocità"      before={speedBefore} after={speedAfter} delta={dSpeed} />
+                          <PreviewRow label="Prob. Critico" before={`${critBefore}%`} after={`${critAfter}%`} delta={dCrit} unit="%" />
+                        </div>
+                      );
+                    })()}
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
                       <BtnDecorato variant="secondary" onClick={() => { setMostraLU(false); setStatSel(null); setModificheUsate(0); }}>ANNULLA</BtnDecorato>
                       <BtnDecorato variant="primary" disabled={!statSel} onClick={() => {
@@ -4038,6 +4113,7 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
                         }
                       }}>CONFERMA</BtnDecorato>
                     </div>
+                    </>
                   )}
                 </div>
 
@@ -4051,8 +4127,160 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
               </div>
             )}
 
-            {/* ── TAB BABY-DOLL ── */}
-            {tabDettaglio === 'babydoll' && (
+            {/* ── TAB BATTAGLIA (WAIFU CHAMPIONS REFACTOR — COLLECTION) ── */}
+            {tabDettaglio === 'battaglia' && (() => {
+              // Effective waifu stats (base + bonus) for Speed/Crit computation
+              const wEff = {
+                tette:          (w.tette          ?? 4)  + (dati.stat_bonus?.tette          || 0),
+                eta:            (w.eta            ?? 25) + (dati.stat_bonus?.eta            || 0),
+                esperienza:     (w.esperienza     ?? 0)  + (dati.stat_bonus?.esperienza     || 0),
+                colore_capelli: (w.colore_capelli ?? 5)  + (dati.stat_bonus?.colore_capelli || 0),
+                taglia_piedi:   (w.taglia_piedi   ?? 39) + (dati.stat_bonus?.taglia_piedi   || 0),
+              };
+              const speed    = computeSpeed(wEff);
+              const critPct  = Math.round(computeCritChance(wEff) * 100);
+
+              const saveMove = async (slotIdx, moveData) => {
+                setMoveSaving(true); setMoveErr('');
+                const newArr = slotMoves.map((m, i) =>
+                  i === slotIdx ? { ...moveData, slot_index: slotIdx + 1 } : m
+                );
+                const toStore = newArr.filter(Boolean);
+                try {
+                  await updateDoc(doc(db, 'users', user.uid, 'collezione', 'main'), {
+                    [`waifu.${waifuId}.moves`]: toStore,
+                  });
+                  setSlotMoves(newArr);
+                  setEditSlot(null);
+                } catch (e) {
+                  setMoveErr('Could not save. Please try again.');
+                } finally {
+                  setMoveSaving(false);
+                }
+              };
+
+              const deleteMove = async (slotIdx) => {
+                const moveName = slotMoves[slotIdx]?.name ?? '';
+                if (!window.confirm(`Remove "${moveName}" from ${w.nome}'s moveset? This cannot be undone.`)) return;
+                setMoveSaving(true); setMoveErr('');
+                const newArr = slotMoves.map((m, i) => i === slotIdx ? null : m);
+                const toStore = newArr.filter(Boolean);
+                try {
+                  await updateDoc(doc(db, 'users', user.uid, 'collezione', 'main'), {
+                    [`waifu.${waifuId}.moves`]: toStore,
+                  });
+                  setSlotMoves(newArr);
+                } catch (e) {
+                  setMoveErr('Could not save. Please try again.');
+                } finally {
+                  setMoveSaving(false);
+                }
+              };
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {/* Combat stats */}
+                  <PannelloOrnato glow="#7F77DD" style={{ padding: '14px 16px' }}>
+                    <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.4)', letterSpacing: 2, marginBottom: 10 }}>STATISTICHE COMBATTIMENTO</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div style={{ textAlign: 'center', padding: '10px 8px', background: 'rgba(0,200,255,0.06)', borderRadius: 8, border: '1px solid rgba(0,200,255,0.2)' }}>
+                        <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(0,200,255,0.6)', letterSpacing: 1, marginBottom: 4 }}>VELOCITÀ (CALCOLATA)</div>
+                        <div style={{ fontFamily: 'Orbitron', fontSize: 22, fontWeight: 900, color: '#00C8FF' }}>{speed}</div>
+                      </div>
+                      <div style={{ textAlign: 'center', padding: '10px 8px', background: 'rgba(245,166,35,0.06)', borderRadius: 8, border: '1px solid rgba(245,166,35,0.2)' }}>
+                        <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(245,166,35,0.6)', letterSpacing: 1, marginBottom: 4 }}>PROB. CRITICO</div>
+                        <div style={{ fontFamily: 'Orbitron', fontSize: 22, fontWeight: 900, color: '#f5a623' }}>{critPct}%</div>
+                      </div>
+                    </div>
+                  </PannelloOrnato>
+
+                  {/* Move slots */}
+                  <div>
+                    <div style={{ fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 2, color: 'rgba(238,232,220,0.4)', marginBottom: 10 }}>KIT MOSSE (4 SLOT)</div>
+                    {moveErr && <div style={{ fontFamily: 'Fredoka', fontSize: 12, color: '#ff6b6b', marginBottom: 8, textAlign: 'center' }}>{moveErr}</div>}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {slotMoves.map((move, i) => {
+                        if (editSlot === i) {
+                          // Add/Edit form — uses editFormData state (lifted to component level)
+                          const isNew   = move === null;
+                          const eName   = editFormData.name;
+                          const eDmg    = editFormData.damage;
+                          const eCrit   = editFormData.damage_crit;
+                          const dmgNum  = parseInt(eDmg,  10);
+                          const critNum = parseInt(eCrit, 10);
+                          const critErr = eCrit !== '' && eDmg !== '' && !isNaN(critNum) && !isNaN(dmgNum) && critNum <= dmgNum;
+                          const canSave = eName.trim() && !isNaN(dmgNum) && dmgNum >= 1 && !isNaN(critNum) && critNum > dmgNum && !moveSaving;
+                          return (
+                            <div key={i} style={{ background: 'rgba(155,89,255,0.06)', border: '1px solid rgba(155,89,255,0.3)', borderRadius: 10, padding: '12px 14px' }}>
+                              <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: '#9b59ff', letterSpacing: 1.5, marginBottom: 8 }}>
+                                {isNew ? `+ AGGIUNGI MOSSA — SLOT ${i+1}` : `✎ MODIFICA MOSSA — SLOT ${i+1}`}
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <div>
+                                  <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,0.5)', marginBottom: 4 }}>NOME (max 32)</div>
+                                  <input value={eName} onChange={e => setEditFormData(d => ({ ...d, name: e.target.value }))} maxLength={32} placeholder="Nome mossa..."
+                                    style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(155,89,255,0.3)', borderRadius: 6, color: '#eedcd4', fontFamily: 'Fredoka', fontSize: 13, padding: '7px 10px', outline: 'none', boxSizing: 'border-box' }} />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                  <div>
+                                    <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,0.5)', marginBottom: 4 }}>DANNO (min 1)</div>
+                                    <input type="number" min={1} value={eDmg} onChange={e => setEditFormData(d => ({ ...d, damage: e.target.value }))}
+                                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(155,89,255,0.3)', borderRadius: 6, color: '#eedcd4', fontFamily: 'Orbitron', fontSize: 13, padding: '7px 10px', outline: 'none', boxSizing: 'border-box' }} />
+                                  </div>
+                                  <div>
+                                    <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,0.5)', marginBottom: 4 }}>DANNO CRITICO</div>
+                                    <input type="number" min={2} value={eCrit} onChange={e => setEditFormData(d => ({ ...d, damage_crit: e.target.value }))}
+                                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: `1px solid ${critErr ? '#ff6b6b' : 'rgba(155,89,255,0.3)'}`, borderRadius: 6, color: '#eedcd4', fontFamily: 'Orbitron', fontSize: 13, padding: '7px 10px', outline: 'none', boxSizing: 'border-box' }} />
+                                  </div>
+                                </div>
+                                {critErr && <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: '#ff6b6b' }}>Crit damage must be greater than normal damage.</div>}
+                              </div>
+                              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                                <BtnDecorato variant="secondary" size="sm" onClick={() => { setEditSlot(null); setMoveErr(''); }}>ANNULLA</BtnDecorato>
+                                <BtnDecorato variant="primary" size="sm" disabled={!canSave}
+                                  onClick={() => canSave && saveMove(i, { name: eName.trim(), damage: dmgNum, damage_crit: critNum })}>
+                                  {moveSaving ? 'SALVO…' : 'SALVA'}
+                                </BtnDecorato>
+                              </div>
+                            </div>
+                          );
+                        }
+                        if (move === null) {
+                          return (
+                            <div key={i} style={{ border: '1px dashed rgba(155,89,255,0.25)', borderRadius: 10, padding: '12px 14px', textAlign: 'center' }}>
+                              <button onClick={() => { setEditSlot(i); setMoveErr(''); setEditFormData({ name: '', damage: '', damage_crit: '' }); }}
+                                style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#9b59ff', background: 'rgba(155,89,255,0.08)', border: '1px solid rgba(155,89,255,0.35)', borderRadius: 8, padding: '8px 20px', cursor: 'pointer', letterSpacing: 1 }}>
+                                + AGGIUNGI MOSSA (SLOT {i+1})
+                              </button>
+                            </div>
+                          );
+                        }
+                        return (
+                          <PannelloOrnato key={i} glow="#7F77DD" style={{ padding: '12px 14px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                              <div style={{ fontFamily: 'Orbitron', fontSize: 12, fontWeight: 700, color: '#eedcd4' }}>{move.name}</div>
+                              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                                <button onClick={() => { setEditSlot(i); setMoveErr(''); setEditFormData({ name: move.name ?? '', damage: String(move.damage ?? ''), damage_crit: String(move.damage_crit ?? '') }); }}
+                                  style={{ background: 'rgba(0,200,255,0.1)', border: '1px solid rgba(0,200,255,0.3)', color: '#00C8FF', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 12 }}>✎</button>
+                                <button onClick={() => deleteMove(i)}
+                                  style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)', color: '#ff6b6b', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 12 }}>🗑</button>
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontFamily: 'Fredoka', fontSize: 12, color: 'rgba(238,232,220,0.6)' }}>
+                              <span>Danno <strong style={{ color: '#f5a623' }}>{move.damage}</strong></span>
+                              <span>Danno Critico <strong style={{ color: '#ffd666' }}>{move.damage_crit}</strong></span>
+                            </div>
+                          </PannelloOrnato>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Placeholder to maintain structure — Baby-doll tab removed */}
+            {tabDettaglio === 'babydoll_REMOVED' && (
               <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) 1.3fr', gap: 16, alignItems: 'start' }}>
                 {/* Baby-doll visiva */}
                 <div>
@@ -4178,8 +4406,8 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
         </div>
       </div>
 
-            {/* ── TAB BATTAGLIA ── */}
-            {tabDettaglio === 'battaglia' && (() => {
+            {/* Old Battaglia IIFE removed — replaced above inside PannelloOrnato */}
+            {false && (() => {
               // Leggi battleStats dal catalogo o genera in-memory
               const bs = (w.battleStats?.moves?.length)
                 ? w.battleStats
