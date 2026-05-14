@@ -8,6 +8,8 @@ import {
   upsertWaifu, upsertOutfit, upsertPosa, upsertDrop,
   deleteCatalogo, clearCatalogCache,
   getPrezziConfig, setPrezziConfig,
+  getMissioniSezioni, upsertMissioneSezione, upsertMissione,
+  deleteMissione, deleteMissioneSezione,
 } from '@/lib/firestoreService';
 import { uploadAsset, pathWaifu, pathOutfit, pathPosa, uploadLargeAsset } from '@/lib/storageService';
 import {
@@ -129,6 +131,7 @@ export default function AdminPage() {
           { k: 'motori', l: '🤖 Motori AI' },
           { k: 'config', l: '⚙ Config' },
           { k: 'prezzi', l: '💰 Prezzi' },
+          { k: 'missioni', l: '🎯 Missioni' },
         ].map(t => (
           <button key={t.k} onClick={() => setTab(t.k)} style={{
             padding: '6px 16px',
@@ -149,7 +152,8 @@ export default function AdminPage() {
         {tab === 'distrib' && <DistribTab waifu={waifu} outfit={outfit} pose={pose} />}
         {tab === 'motori' && <MotoriTab />}
         {tab === 'config' && <ConfigTab waifu={waifu} ricarica={carica} flash={flash} />}
-        {tab === 'prezzi' && <PrezziTab flash={flash} user={user} />}
+        {tab === 'prezzi'    && <PrezziTab flash={flash} user={user} />}
+        {tab === 'missioni'  && <MissioniTab flash={flash} />}
       </div>
     </div>
   );
@@ -2890,6 +2894,265 @@ function PrezziTab({ flash, user }) {
       }}>
         {busy ? 'Salvataggio…' : '💾 SALVA PREZZI'}
       </button>
+    </div>
+  );
+}
+
+// ============================================================
+// TAB: MISSIONI
+// ============================================================
+const TIPI_EVENTO = [
+  { v: 'login',                l: '🏠 Accedi al gioco' },
+  { v: 'apri_bustina',         l: '🎁 Apri una bustina' },
+  { v: 'conquista_territorio', l: '🗺 Conquista un territorio' },
+  { v: 'vinci_battaglia',      l: '⚔ Vinci una battaglia' },
+  { v: 'pesca_carta',          l: '🎣 Pesca una carta' },
+  { v: 'aggiungi_amico',       l: '♥ Aggiungi un amico' },
+  { v: 'completa_drop',        l: '💎 Completa collezione drop' },
+  { v: 'manuale',              l: '✦ Manuale (utente segna)' },
+];
+
+const TIPI_REWARD = ['kisses', 'pack', 'pose'];
+
+const cssSec = {
+  background: 'rgba(245,158,11,0.06)',
+  border: '1px solid rgba(245,158,11,0.2)',
+  borderRadius: 12, padding: '14px 16px', marginBottom: 10,
+};
+const cssSecHeader = {
+  display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8,
+};
+const cssMiss = {
+  background: 'rgba(255,255,255,0.03)',
+  border: '1px solid rgba(174,156,255,0.15)',
+  borderRadius: 8, padding: '10px 12px', marginBottom: 6,
+};
+const cssInput = {
+  background: 'rgba(7,5,26,0.7)', border: '1px solid rgba(174,156,255,0.2)',
+  color: '#f1ebff', padding: '6px 10px', borderRadius: 8, fontFamily: 'inherit',
+  fontSize: 12, width: '100%',
+};
+const cssBtn = (col = '#f59e0b') => ({
+  background: `rgba(${col === '#f59e0b' ? '245,158,11' : col === '#ef4444' ? '239,68,68' : '167,139,250'},0.15)`,
+  border: `1px solid ${col}55`, color: col, borderRadius: 8,
+  padding: '5px 12px', cursor: 'pointer', fontSize: 11, fontFamily: 'Cinzel, serif',
+});
+
+const MISS_VUOTA = () => ({ titolo: '', descrizione: '', tipoEvento: 'apri_bustina', target: 1, reward: { tipo: 'kisses', qty: 50 }, ordine: 0, attivo: true });
+const SEC_VUOTA  = () => ({ nome: '', ordine: 0, attivo: true });
+
+function MissioniTab({ flash }) {
+  const [sezioni, setSezioni]       = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [sezioneEdit, setSezioneEdit] = useState(null); // { id?, ...fields }
+  const [missioneEdit, setMissioneEdit] = useState(null); // { secId, id?, ...fields }
+  const [busy, setBusy]             = useState(false);
+
+  const ricarica = async () => {
+    setLoading(true);
+    try { setSezioni(await getMissioniSezioni()); } catch (_) {}
+    setLoading(false);
+  };
+
+  useEffect(() => { ricarica(); }, []);
+
+  const salvaSez = async () => {
+    if (!sezioneEdit?.nome?.trim()) return;
+    setBusy(true);
+    try {
+      await upsertMissioneSezione(sezioneEdit.id || null, {
+        nome: sezioneEdit.nome, ordine: Number(sezioneEdit.ordine) || 0, attivo: sezioneEdit.attivo !== false,
+      });
+      flash('Sezione salvata');
+      setSezioneEdit(null);
+      await ricarica();
+    } catch (e) { flash('Errore: ' + e.message, '#ef4444'); }
+    setBusy(false);
+  };
+
+  const eliminaSez = async (id) => {
+    if (!confirm('Eliminare questa sezione e tutte le sue missioni?')) return;
+    setBusy(true);
+    try { await deleteMissioneSezione(id); flash('Sezione eliminata'); await ricarica(); }
+    catch (e) { flash('Errore: ' + e.message, '#ef4444'); }
+    setBusy(false);
+  };
+
+  const salvaMiss = async () => {
+    if (!missioneEdit?.titolo?.trim()) return;
+    setBusy(true);
+    try {
+      const { secId, id, ...data } = missioneEdit;
+      data.target  = Number(data.target) || 1;
+      data.ordine  = Number(data.ordine) || 0;
+      data.reward  = { tipo: data.reward?.tipo || 'kisses', qty: Number(data.reward?.qty) || 0 };
+      data.attivo  = data.attivo !== false;
+      await upsertMissione(secId, id || null, data);
+      flash('Missione salvata');
+      setMissioneEdit(null);
+      await ricarica();
+    } catch (e) { flash('Errore: ' + e.message, '#ef4444'); }
+    setBusy(false);
+  };
+
+  const eliminaMiss = async (secId, mId) => {
+    if (!confirm('Eliminare questa missione?')) return;
+    setBusy(true);
+    try { await deleteMissione(secId, mId); flash('Missione eliminata'); await ricarica(); }
+    catch (e) { flash('Errore: ' + e.message, '#ef4444'); }
+    setBusy(false);
+  };
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 40, opacity: 0.5 }}>Caricamento…</div>;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h2 style={{ fontFamily: 'Cinzel, serif', color: '#f59e0b', fontSize: 16 }}>🎯 Gestione Missioni</h2>
+        <button style={cssBtn()} onClick={() => setSezioneEdit(SEC_VUOTA())}>+ Nuova Sezione</button>
+      </div>
+
+      {/* Form nuova/edit sezione */}
+      {sezioneEdit && (
+        <div style={{ ...cssSec, borderColor: 'rgba(245,158,11,0.5)', marginBottom: 16 }}>
+          <div style={{ fontFamily: 'Cinzel, serif', color: '#f59e0b', fontSize: 12, marginBottom: 10 }}>
+            {sezioneEdit.id ? 'Modifica sezione' : 'Nuova sezione'}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'end' }}>
+            <div>
+              <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 3 }}>NOME SEZIONE</div>
+              <input style={cssInput} value={sezioneEdit.nome}
+                onChange={e => setSezioneEdit(s => ({ ...s, nome: e.target.value }))} />
+            </div>
+            <div>
+              <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 3 }}>ORDINE</div>
+              <input style={{ ...cssInput, width: 60 }} type="number" value={sezioneEdit.ordine}
+                onChange={e => setSezioneEdit(s => ({ ...s, ordine: e.target.value }))} />
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+              <input type="checkbox" checked={sezioneEdit.attivo !== false}
+                onChange={e => setSezioneEdit(s => ({ ...s, attivo: e.target.checked }))} />
+              Attiva
+            </label>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button style={cssBtn()} onClick={salvaSez} disabled={busy}>💾 Salva</button>
+            <button style={cssBtn('#a78bfa')} onClick={() => setSezioneEdit(null)}>Annulla</button>
+          </div>
+        </div>
+      )}
+
+      {sezioni.length === 0 && (
+        <div style={{ textAlign: 'center', padding: 40, opacity: 0.4, fontSize: 13 }}>
+          Nessuna sezione. Le Giornaliere sono hardcoded nell'app.
+        </div>
+      )}
+
+      {sezioni.map(sec => (
+        <div key={sec.id} style={cssSec}>
+          <div style={cssSecHeader}>
+            <div>
+              <span style={{ fontFamily: 'Cinzel, serif', color: '#f59e0b', fontSize: 13 }}>{sec.nome}</span>
+              {!sec.attivo && <span style={{ marginLeft: 8, fontSize: 10, opacity: 0.5 }}>(inattiva)</span>}
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button style={cssBtn()} onClick={() => setSezioneEdit({ ...sec })}>✏</button>
+              <button style={cssBtn('#ef4444')} onClick={() => eliminaSez(sec.id)}>🗑</button>
+            </div>
+          </div>
+
+          {/* Missioni della sezione */}
+          {(sec.missioni || []).map(m => (
+            <div key={m.id} style={cssMiss}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, color: '#f1ebff', fontWeight: 600 }}>{m.titolo}</div>
+                  {m.descrizione && <div style={{ fontSize: 11, opacity: 0.55, marginTop: 2 }}>{m.descrizione}</div>}
+                  <div style={{ fontSize: 10, opacity: 0.5, marginTop: 4 }}>
+                    {TIPI_EVENTO.find(t => t.v === m.tipoEvento)?.l || m.tipoEvento} · Target: {m.target} · {m.reward?.qty} {m.reward?.tipo}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                  <button style={cssBtn()} onClick={() => setMissioneEdit({ secId: sec.id, ...m })}>✏</button>
+                  <button style={cssBtn('#ef4444')} onClick={() => eliminaMiss(sec.id, m.id)}>🗑</button>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          <button style={{ ...cssBtn('#a78bfa'), marginTop: 6 }}
+            onClick={() => setMissioneEdit({ secId: sec.id, ...MISS_VUOTA() })}>
+            + Aggiungi missione
+          </button>
+        </div>
+      ))}
+
+      {/* Form nuova/edit missione */}
+      {missioneEdit && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 16,
+        }} onClick={e => { if (e.target === e.currentTarget) setMissioneEdit(null); }}>
+          <div style={{
+            background: '#0d0a26', border: '1px solid rgba(167,139,250,0.3)',
+            borderRadius: 16, padding: 20, maxWidth: 480, width: '100%',
+            maxHeight: '90vh', overflowY: 'auto',
+          }}>
+            <div style={{ fontFamily: 'Cinzel, serif', color: '#a78bfa', fontSize: 14, marginBottom: 14 }}>
+              {missioneEdit.id ? 'Modifica missione' : 'Nuova missione'}
+            </div>
+
+            {[
+              { label: 'TITOLO', key: 'titolo', type: 'text' },
+              { label: 'DESCRIZIONE', key: 'descrizione', type: 'text' },
+              { label: 'TARGET (numero)', key: 'target', type: 'number' },
+              { label: 'ORDINE', key: 'ordine', type: 'number' },
+            ].map(f => (
+              <div key={f.key} style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 3 }}>{f.label}</div>
+                <input style={cssInput} type={f.type}
+                  value={missioneEdit[f.key] ?? ''}
+                  onChange={e => setMissioneEdit(m => ({ ...m, [f.key]: e.target.value }))} />
+              </div>
+            ))}
+
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 3 }}>TIPO EVENTO</div>
+              <select style={cssInput} value={missioneEdit.tipoEvento}
+                onChange={e => setMissioneEdit(m => ({ ...m, tipoEvento: e.target.value }))}>
+                {TIPI_EVENTO.map(t => <option key={t.v} value={t.v}>{t.l}</option>)}
+              </select>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+              <div>
+                <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 3 }}>TIPO REWARD</div>
+                <select style={cssInput} value={missioneEdit.reward?.tipo || 'kisses'}
+                  onChange={e => setMissioneEdit(m => ({ ...m, reward: { ...(m.reward || {}), tipo: e.target.value } }))}>
+                  {TIPI_REWARD.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 3 }}>QUANTITÀ</div>
+                <input style={cssInput} type="number"
+                  value={missioneEdit.reward?.qty ?? 0}
+                  onChange={e => setMissioneEdit(m => ({ ...m, reward: { ...(m.reward || {}), qty: Number(e.target.value) } }))} />
+              </div>
+            </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginBottom: 14 }}>
+              <input type="checkbox" checked={missioneEdit.attivo !== false}
+                onChange={e => setMissioneEdit(m => ({ ...m, attivo: e.target.checked }))} />
+              Missione attiva
+            </label>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button style={cssBtn()} onClick={salvaMiss} disabled={busy}>💾 Salva</button>
+              <button style={cssBtn('#a78bfa')} onClick={() => setMissioneEdit(null)}>Annulla</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

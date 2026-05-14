@@ -35,7 +35,7 @@ import {
   PannelloOrnato, TitoloOrnato, BtnDecorato, Chip,
   BarraRisorsa, CardInfo, Divider, StelleRarita, FramePersonaggio,
 } from '@/components/ui/UIKit';
-import { Header, NavTabs, BottomNav, HomeTab } from './_redesign';
+import { Header, NavTabs, BottomNav, HomeTab, SakuraPetals } from './_redesign';
 export default function GiocoPage() {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
@@ -147,6 +147,7 @@ export default function GiocoPage() {
 
   return (
     <>
+      <SakuraPetals />
       {negozioAperto && (
         <NegozioOverlay
           user={user}

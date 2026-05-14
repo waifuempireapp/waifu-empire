@@ -1,13 +1,13 @@
 // src/app/gioco/_redesign.jsx
-// =====================================================================
-// IMPERO DELLE WAIFU — Lobby chrome ridisegnata
-// Esporta Header, NavTabs, BottomNav, HomeTab.
-// Zero inline styles — tutte le classi sono in globals.css.
-// =====================================================================
 'use client';
-import React, { useEffect, useRef, useState } from 'react';
-import { TIMER, RARITA } from '@/lib/constants';
-import { getClassifica, getDropStagionale, initQuestGiornaliere, claimQuestReward, getAttivitaAmici } from '@/lib/firestoreService';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { TIMER } from '@/lib/constants';
+import {
+  getClassifica, getDropStagionale,
+  initQuestGiornaliere, claimQuestReward,
+  getAttivitaAmici,
+  getMissioniSezioni, claimMissioneReward,
+} from '@/lib/firestoreService';
 import KissesIcon from '@/components/KissesIcon';
 import { CartaWaifu, CartaOutfit, CartaPosa } from '@/components/CartaWaifu';
 import {
@@ -16,34 +16,69 @@ import {
 } from '@/components/ui/UIKit';
 
 // =====================================================================
+// SAKURA PETALS
+// =====================================================================
+const PETAL_COUNT = 12;
+
+export function SakuraPetals() {
+  const petals = useMemo(() => Array.from({ length: PETAL_COUNT }, (_, i) => ({
+    id: i,
+    left: `${Math.random() * 100}%`,
+    delay: `${(Math.random() * 8).toFixed(1)}s`,
+    duration: `${(6 + Math.random() * 8).toFixed(1)}s`,
+    size: `${6 + Math.random() * 6}px`,
+    opacity: (0.3 + Math.random() * 0.5).toFixed(2),
+  })), []);
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+      {petals.map(p => (
+        <div
+          key={p.id}
+          className="sakura-petal"
+          style={{
+            left: p.left,
+            animationDelay: p.delay,
+            animationDuration: p.duration,
+            width: p.size,
+            height: p.size,
+            opacity: p.opacity,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// =====================================================================
 // HEADER
 // =====================================================================
 export function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
   const [popupEnergia, setPopupEnergia] = useState(false);
   const [popupImpero, setPopupImpero] = useState(false);
   const [tempoRefill, setTempoRefill] = useState('');
-  const energiaRef = useRef(null);
-  const popupRef = useRef(null);
-  const imperoRef = useRef(null);
+  const energiaRef    = useRef(null);
+  const popupRef      = useRef(null);
+  const imperoRef     = useRef(null);
   const popupImperoRef = useRef(null);
-  const energiaMax = TIMER.MAX_ENERGIA;
+  const energiaMax    = TIMER.MAX_ENERGIA;
   const energiaAttuale = profilo.energia ?? 0;
-  const energiaPiena = energiaAttuale >= energiaMax;
+  const energiaPiena  = energiaAttuale >= energiaMax;
+  const colore        = profilo.coloreImpero;
 
   const nomeImperoDisplay = profilo.nomeImpero && profilo.nomeImpero.length > 20
     ? profilo.nomeImpero.slice(0, 20) + '…'
-    : profilo.nomeImpero;
+    : (profilo.nomeImpero || '');
 
   useEffect(() => {
     if (!popupImpero) return;
-    const handler = (e) => {
+    const h = (e) => {
       if (popupImperoRef.current && !popupImperoRef.current.contains(e.target) &&
-          imperoRef.current && !imperoRef.current.contains(e.target)) {
+          imperoRef.current && !imperoRef.current.contains(e.target))
         setPopupImpero(false);
-      }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
   }, [popupImpero]);
 
   useEffect(() => {
@@ -52,13 +87,12 @@ export function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
       const lastTs = profilo.ultimaRicaricaEnergia?.toMillis
         ? profilo.ultimaRicaricaEnergia.toMillis()
         : Number(profilo.ultimaRicaricaEnergia) || 0;
-      const prossima = lastTs + TIMER.ENERGIA_HOURS * 60 * 60 * 1000;
-      const diff = prossima - Date.now();
+      const diff = lastTs + TIMER.ENERGIA_HOURS * 3600000 - Date.now();
       if (diff <= 0 || energiaPiena) { setTempoRefill(null); return; }
-      const ore = Math.floor(diff / (1000 * 60 * 60));
-      const min = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const sec = Math.floor((diff % (1000 * 60)) / 1000);
-      setTempoRefill(`${ore}h ${min}m ${sec}s`);
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTempoRefill(`${h}h ${m}m ${s}s`);
     };
     calcola();
     const iv = setInterval(calcola, 1000);
@@ -67,22 +101,21 @@ export function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
 
   useEffect(() => {
     if (!popupEnergia) return;
-    const handler = (e) => {
+    const h = (e) => {
       if (popupRef.current && !popupRef.current.contains(e.target) &&
-          energiaRef.current && !energiaRef.current.contains(e.target)) {
+          energiaRef.current && !energiaRef.current.contains(e.target))
         setPopupEnergia(false);
-      }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
   }, [popupEnergia]);
 
-  const totalPack = (profilo.pacchettiOmaggio ?? 0) + (profilo.pacchettiBenvenuto ?? 0) + (profilo.pacchettiSfida ?? 0);
-  const colore = profilo.coloreImpero;
+  // Nome giocatore da Firebase Auth
+  const displayName = user?.displayName || profilo.nomeImpero || 'Giocatore';
 
   return (
     <div className="game-header hdr-root">
-      {/* Sinistra */}
+      {/* Sinistra: avatar + displayName + livello/impero */}
       <div className="hdr-left">
         <FramePersonaggio colore={colore} dimensione={40}>
           <span style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 18, color: colore, fontWeight: 700,
@@ -90,14 +123,12 @@ export function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
         </FramePersonaggio>
 
         <div ref={imperoRef} className="hdr-empire-btn">
+          <div className="hdr-displayname">{displayName}</div>
           <div
             className="hdr-empire-name impero-nome"
             onClick={() => setPopupImpero(v => !v)}
-            style={{ textShadow: `0 0 14px ${colore}aa, 0 0 4px ${colore}60`, color: '#fff' }}
-          >{nomeImperoDisplay}</div>
-          <div className="hdr-empire-sub" style={{ color: colore }}>
-            Lv.{profilo.livelloMappa ?? 1} · Impero
-          </div>
+            style={{ textShadow: `0 0 10px ${colore}88`, color: colore }}
+          >Lv.{profilo.livelloMappa ?? 1} · {nomeImperoDisplay}</div>
 
           {popupImpero && (
             <div
@@ -119,16 +150,14 @@ export function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
         </div>
       </div>
 
-      {/* Destra */}
+      {/* Destra: energia + kisses */}
       <div className="hdr-right">
         {/* ENERGIA */}
         <div ref={energiaRef} style={{ position: 'relative' }}>
           <ResourcePill
-            color="#6cf0e0"
-            icon="⚡"
+            color="#6cf0e0" icon="⚡"
             value={`${energiaAttuale}/${energiaMax}`}
-            label="ENERGIA"
-            active={popupEnergia}
+            label="ENERGIA" active={popupEnergia}
             onClick={() => setPopupEnergia(v => !v)}
           />
           {popupEnergia && (
@@ -155,22 +184,9 @@ export function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
           )}
         </div>
 
-        {/* PACK */}
-        <ResourcePill
-          color="#f5c560"
-          icon="◈"
-          value={totalPack}
-          label="PACK"
-          onClick={() => window.dispatchEvent(new CustomEvent('impero:goto', { detail: 'sbusta' }))}
-        />
-
         {/* KISSES */}
-        <ResourcePill
-          color="#ff85b6"
-          icon={<KissesIcon size={14} />}
-          value={profilo.kisses ?? 0}
-          label="KISSES"
-        />
+        <ResourcePill color="#ff85b6" icon={<KissesIcon size={14} />}
+          value={profilo.kisses ?? 0} label="KISSES" />
 
         <div className="hdr-divider" />
 
@@ -185,18 +201,14 @@ export function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
   );
 }
 
-// ResourcePill — usa classi hdr-pill-*
 function ResourcePill({ color, icon, value, label, active, onClick }) {
-  const isClickable = !!onClick;
   return (
     <div
       onClick={onClick}
-      className={`hdr-pill${isClickable ? '' : ' hdr-pill--static'}`}
+      className={`hdr-pill${!onClick ? ' hdr-pill--static' : ''}`}
       style={{
-        cursor: isClickable ? 'pointer' : 'default',
-        background: active
-          ? `linear-gradient(180deg, ${color}25, ${color}10)`
-          : `linear-gradient(180deg, ${color}10, rgba(7,5,26,0.5))`,
+        cursor: onClick ? 'pointer' : 'default',
+        background: active ? `linear-gradient(180deg,${color}25,${color}10)` : `linear-gradient(180deg,${color}10,rgba(7,5,26,0.5))`,
         border: `1px solid ${color}${active ? '88' : '40'}`,
         boxShadow: active ? `0 0 14px ${color}40` : 'none',
       }}
@@ -226,9 +238,9 @@ const TAB_DEFS = [
 
 export function NavTabs({ tab, setTab }) {
   useEffect(() => {
-    const handler = (e) => setTab(e.detail);
-    window.addEventListener('impero:goto', handler);
-    return () => window.removeEventListener('impero:goto', handler);
+    const h = (e) => setTab(e.detail);
+    window.addEventListener('impero:goto', h);
+    return () => window.removeEventListener('impero:goto', h);
   }, [setTab]);
 
   return (
@@ -237,8 +249,7 @@ export function NavTabs({ tab, setTab }) {
         const active = tab === t.id;
         return (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`ntabs-btn${active ? ' ntabs-btn--active' : ''}`}
-          >
+            className={`ntabs-btn${active ? ' ntabs-btn--active' : ''}`}>
             {active && <span className="ntabs-btn__shine" />}
             <span className="ntabs-btn__icon">{t.icon}</span>
             <span className="ntabs-btn__label">{t.label}</span>
@@ -254,9 +265,9 @@ export function NavTabs({ tab, setTab }) {
 // =====================================================================
 export function BottomNav({ tab, setTab, isAdmin }) {
   useEffect(() => {
-    const handler = (e) => setTab(e.detail);
-    window.addEventListener('impero:goto', handler);
-    return () => window.removeEventListener('impero:goto', handler);
+    const h = (e) => setTab(e.detail);
+    window.addEventListener('impero:goto', h);
+    return () => window.removeEventListener('impero:goto', h);
   }, [setTab]);
 
   return (
@@ -266,8 +277,7 @@ export function BottomNav({ tab, setTab, isAdmin }) {
         return (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={active ? 'active-tab' : ''}
-            style={{ color: active ? '#ffe9a8' : 'rgba(241,235,255,0.4)' }}
-          >
+            style={{ color: active ? '#ffe9a8' : 'rgba(241,235,255,0.4)' }}>
             <div className={`bnav-icon-wrap${active ? ' bnav-icon-wrap--active' : ''}`}>
               <span className={`bnav-icon${active ? ' bnav-icon--active' : ''}`}>{t.icon}</span>
             </div>
@@ -291,34 +301,31 @@ export function HomeTab({
   const numWaifu  = Object.keys(collezione.waifu  || {}).length;
   const numOutfit = Object.keys(collezione.outfit  || {}).length;
   const numPose   = Object.keys(collezione.pose    || {}).length;
-  const totalCarte = numWaifu + numOutfit + numPose;
-  const totalPack  = (profilo.pacchettiOmaggio ?? 0) + (profilo.pacchettiBenvenuto ?? 0) + (profilo.pacchettiSfida ?? 0);
+  const totalPack = (profilo.pacchettiOmaggio ?? 0) + (profilo.pacchettiBenvenuto ?? 0) + (profilo.pacchettiSfida ?? 0);
 
   const [posizioneClassifica, setPosizioneClassifica] = useState(null);
-  const [dropStagionale, setDropStagionale] = useState(undefined); // undefined = loading
+  const [dropStagionale, setDropStagionale] = useState(undefined);
   const [quest, setQuest] = useState(null);
   const [attivitaAmici, setAttivitaAmici] = useState(null);
+  const [missioniAperte, setMissioniAperte] = useState(false);
 
   useEffect(() => {
     if (!user) return;
-    getClassifica(200).then(classifica => {
-      const idx = classifica.findIndex(u => u.id === user.uid);
+    getClassifica(200).then(c => {
+      const idx = c.findIndex(u => u.id === user.uid);
       setPosizioneClassifica(idx >= 0 ? idx + 1 : null);
     }).catch(() => {});
   }, [user]);
 
-  // 7.1 DROP STAGIONALE
   useEffect(() => {
     getDropStagionale().then(d => setDropStagionale(d ?? null)).catch(() => setDropStagionale(null));
   }, []);
 
-  // 8.1 QUEST GIORNALIERI
   useEffect(() => {
     if (!user) return;
     initQuestGiornaliere(user.uid).then(q => setQuest(q)).catch(() => {});
   }, [user]);
 
-  // 9.1 TRA AMICI
   useEffect(() => {
     if (!user || !profilo.amici) return;
     getAttivitaAmici(profilo.amici).then(r => setAttivitaAmici(r)).catch(() => setAttivitaAmici([]));
@@ -339,15 +346,16 @@ export function HomeTab({
 
   const territoriConquistati = Object.values(profilo.territoriUtente || {}).filter(t => t?.conquistato).length;
 
-  const goToCollez = (subTab) => {
-    setColezSubTab(subTab);
-    setTab('collezione');
-  };
+  // Badge missioni (giornaliere pronte)
+  const missioniBadge = quest ? quest.defs.filter(d => {
+    const s = quest.stato[d.tipo];
+    return s && s.progresso >= s.target && !s.claimed;
+  }).length : 0;
 
   return (
     <div className="fade-in">
 
-      {/* 1. HERO */}
+      {/* HERO */}
       <div className="ht-hero">
         <div className="ht-hero__label">◆ Bentornata · Stagione 7</div>
         <h1 className="shimmer-text ht-hero__title">{profilo.nomeImpero || 'Il Tuo Impero'}</h1>
@@ -356,12 +364,10 @@ export function HomeTab({
         </div>
       </div>
 
-      {/* 2. DROP STAGIONALE */}
-      {dropStagionale && (
-        <DropStagionale drop={dropStagionale} setTab={setTab} />
-      )}
+      {/* DROP STAGIONALE */}
+      {dropStagionale && <DropStagionale drop={dropStagionale} setTab={setTab} />}
 
-      {/* 3. QUICK TILES */}
+      {/* QUICK TILES */}
       <div className="ht-quick-grid">
         <QuickTile icon="⚔" label="Mappa"   color="#6cf0e0" sub={`Lv.${profilo.livelloMappa ?? 1}`} onClick={() => setTab('mappa')} />
         <QuickTile icon="🎁" label="Sbusta"  color="#f5c560" sub={`×${totalPack}`} highlight={totalPack > 0} onClick={() => setTab('sbusta')} />
@@ -372,7 +378,7 @@ export function HomeTab({
         }
       </div>
 
-      {/* 4. STATISTICHE COMBATTIMENTO */}
+      {/* STATISTICHE COMBATTIMENTO */}
       <StatCombattimento
         profilo={profilo}
         territoriConquistati={territoriConquistati}
@@ -380,54 +386,52 @@ export function HomeTab({
         posizioneClassifica={posizioneClassifica}
       />
 
-      {/* 5. LA TUA COLLEZIONE compatta */}
-      <div className="ht-collez">
-        <div className="ht-collez__header">
-          <span className="ht-collez__title">♛ La Tua Collezione</span>
-          <button className="ht-collez__see-all" onClick={() => setTab('collezione')}>Vedi Tutte ›</button>
-        </div>
-        <div className="ht-collez__info">
-          {totalCarte} carte
-          {numWaifu > 0 && <span className="ht-collez__new">+{numWaifu} waifu</span>}
-        </div>
-      </div>
-
-      {/* 6. BANNER ULTIME CARTE */}
+      {/* BANNER ULTIME CARTE (con totale waifu) */}
       <BannerUltimeCarte
         tutteLeWaifu={tutteLeWaifu}
         tuttiGliOutfit={tuttiGliOutfit}
         tutteLePose={tutteLePose}
-        outfitCat={outfitCat}
-        poseCat={poseCat}
+        outfitCat={outfitCat} poseCat={poseCat}
         collezione={collezione}
-        profilo={profilo}
-        setProfilo={setProfilo}
-        user={user}
-        totalPack={totalPack}
-        setTab={setTab}
+        profilo={profilo} setProfilo={setProfilo}
+        user={user} totalPack={totalPack}
+        setTab={setTab} numWaifu={numWaifu}
         ModaleCarta={ModaleCarta}
       />
 
-      {/* 7. QUEST GIORNALIERI */}
-      {quest && (
-        <QuestGiornalieri
+      {/* TRA AMICI */}
+      <TraAmici attivita={attivitaAmici} profilo={profilo} />
+
+      {/* FAB MISSIONI */}
+      <button
+        className="missioni-fab"
+        onClick={() => setMissioniAperte(true)}
+        title="Missioni"
+      >
+        🎯
+        {missioniBadge > 0 && (
+          <span className="missioni-fab__badge">{missioniBadge}</span>
+        )}
+      </button>
+
+      {/* MODAL MISSIONI */}
+      {missioniAperte && (
+        <MissioniModal
           quest={quest}
           setQuest={setQuest}
           user={user}
           profilo={profilo}
           setProfilo={setProfilo}
+          onClose={() => setMissioniAperte(false)}
         />
       )}
-
-      {/* 8. TRA AMICI */}
-      <TraAmici attivita={attivitaAmici} profilo={profilo} />
 
     </div>
   );
 }
 
 // =====================================================================
-// DROP STAGIONALE (7.2 – 7.5)
+// DROP STAGIONALE
 // =====================================================================
 function DropStagionale({ drop, setTab }) {
   const [countdown, setCountdown] = useState('');
@@ -436,14 +440,12 @@ function DropStagionale({ drop, setTab }) {
   useEffect(() => {
     const calcola = () => {
       if (!drop.fine) { setCountdown(''); return; }
-      // `fine` è una stringa "YYYY-MM-DD" — trattata come fine-giornata
-      const fineDate = new Date(drop.fine);
-      fineDate.setHours(23, 59, 59, 999);
-      const diff = fineDate.getTime() - Date.now();
+      const fine = new Date(drop.fine); fine.setHours(23, 59, 59, 999);
+      const diff = fine.getTime() - Date.now();
       if (diff <= 0) { setScaduto(true); setCountdown('Scaduto'); return; }
-      const giorni = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const ore    = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      setCountdown(`${giorni}d ${ore}h`);
+      const g = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      setCountdown(`${g}d ${h}h`);
     };
     calcola();
     const iv = setInterval(calcola, 60000);
@@ -454,9 +456,9 @@ function DropStagionale({ drop, setTab }) {
   const numOutfit = (drop.outfitIds || []).length;
   const numPose   = (drop.poseIds   || []).length;
   const desc = drop.descrizione || [
-    numWaifu  > 0 ? `${numWaifu} nuove waifu`  : null,
-    numOutfit > 0 ? `${numOutfit} outfit`       : null,
-    numPose   > 0 ? `${numPose} pose`           : null,
+    numWaifu  > 0 && `${numWaifu} nuove waifu`,
+    numOutfit > 0 && `${numOutfit} outfit`,
+    numPose   > 0 && `${numPose} pose`,
   ].filter(Boolean).join(' · ');
 
   return (
@@ -466,13 +468,7 @@ function DropStagionale({ drop, setTab }) {
       <div className="ht-drop__title">{drop.nome}</div>
       {desc && <div className="ht-drop__desc">{desc}</div>}
       <div className="ht-drop__footer">
-        <button
-          className="ht-drop__cta"
-          onClick={() => setTab('sbusta')}
-          disabled={scaduto}
-        >
-          APRI PACK
-        </button>
+        <button className="ht-drop__cta" onClick={() => setTab('sbusta')} disabled={scaduto}>APRI PACK</button>
         {scaduto
           ? <span className="ht-drop__cd-expired">Evento terminato</span>
           : countdown
@@ -489,19 +485,13 @@ function DropStagionale({ drop, setTab }) {
 // =====================================================================
 function QuickTile({ icon, label, color, sub, highlight, onClick }) {
   return (
-    <div
-      onClick={onClick}
-      className={`ht-quicktile${highlight ? ' ht-quicktile--highlight' : ''}`}
+    <div onClick={onClick} className={`ht-quicktile${highlight ? ' ht-quicktile--highlight' : ''}`}
       style={{
-        background: highlight
-          ? `linear-gradient(180deg, ${color}30, ${color}10)`
-          : `linear-gradient(180deg, ${color}12, rgba(7,5,26,0.6))`,
+        background: highlight ? `linear-gradient(180deg,${color}30,${color}10)` : `linear-gradient(180deg,${color}12,rgba(7,5,26,0.6))`,
         border: `1px solid ${color}${highlight ? '88' : '50'}`,
         boxShadow: highlight ? `0 0 18px ${color}40` : 'none',
-      }}
-    >
-      <div
-        className="ht-quicktile__icon"
+      }}>
+      <div className="ht-quicktile__icon"
         style={{ background: `${color}22`, color, border: `1px solid ${color}66`, boxShadow: `0 0 12px ${color}33` }}
       >{icon}</div>
       <span className="ht-quicktile__label">{label}</span>
@@ -514,36 +504,24 @@ function QuickTile({ icon, label, color, sub, highlight, onClick }) {
 // STAT COMBATTIMENTO
 // =====================================================================
 function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneClassifica }) {
-  const vittorie  = profilo.vittorie  ?? 0;
-  const sconfitte = profilo.sconfitte ?? 0;
-  const livelloMappa = profilo.livelloMappa ?? 1;
-
   const row1 = [
-    { icon: '🗺', val: `Lv.${livelloMappa}`, label: 'LIV. MAPPA', col: '#a78bfa' },
-    { icon: '🏴', val: territoriConquistati,  label: 'TERRITORI',  col: '#ffc861' },
+    { icon: '🗺', val: `Lv.${profilo.livelloMappa ?? 1}`, label: 'LIV. MAPPA', col: '#a78bfa' },
+    { icon: '🏴', val: territoriConquistati, label: 'TERRITORI', col: '#ffc861' },
   ];
   const row2 = [
-    { icon: '✓', val: vittorie,  label: 'VITTORIE',  col: '#58e0a3' },
-    { icon: '✗', val: sconfitte, label: 'SCONFITTE', col: '#ff5b6c' },
-    {
-      icon: '🏆',
-      val: posizioneClassifica != null ? `#${posizioneClassifica}` : '—',
-      label: 'CLASSIFICA', col: '#ff85b6',
-      onClick: () => setTab('classifica'), clickable: true,
-    },
+    { icon: '✓', val: profilo.vittorie  ?? 0, label: 'VITTORIE',  col: '#58e0a3' },
+    { icon: '✗', val: profilo.sconfitte ?? 0, label: 'SCONFITTE', col: '#ff5b6c' },
+    { icon: '🏆', val: posizioneClassifica != null ? `#${posizioneClassifica}` : '—',
+      label: 'CLASSIFICA', col: '#ff85b6', onClick: () => setTab('classifica'), clickable: true },
   ];
 
   const StatBox = ({ s }) => (
-    <div
-      onClick={s.clickable ? s.onClick : undefined}
+    <div onClick={s.clickable ? s.onClick : undefined}
       className={`ht-statbox${s.clickable ? ' ht-statbox--clickable' : ''}`}
       style={{
-        background: s.clickable
-          ? `linear-gradient(180deg, ${s.col}14, ${s.col}05)`
-          : `linear-gradient(180deg, ${s.col}10, rgba(7,5,26,0.4))`,
+        background: `linear-gradient(180deg,${s.col}${s.clickable ? '14' : '10'},${s.col}05)`,
         border: `1px solid ${s.col}${s.clickable ? '40' : '22'}`,
-      }}
-    >
+      }}>
       <div className="ht-statbox__icon">{s.icon}</div>
       <div className="ht-statbox__value" style={{ color: s.col, textShadow: `0 0 8px ${s.col}55` }}>{s.val}</div>
       <div className="ht-statbox__label" style={{ color: s.col }}>{s.label}</div>
@@ -558,56 +536,50 @@ function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneCla
         {[...row1, ...row2].map(s => <StatBox key={s.label} s={s} />)}
       </div>
       <div className="stat-combat-mobile">
-        <div className="ht-statcomb__row" style={{ marginBottom: 6 }}>
-          {row1.map(s => <StatBox key={s.label} s={s} />)}
-        </div>
-        <div className="ht-statcomb__row">
-          {row2.map(s => <StatBox key={s.label} s={s} />)}
-        </div>
+        <div className="ht-statcomb__row" style={{ marginBottom: 6 }}>{row1.map(s => <StatBox key={s.label} s={s} />)}</div>
+        <div className="ht-statcomb__row">{row2.map(s => <StatBox key={s.label} s={s} />)}</div>
       </div>
     </div>
   );
 }
 
 // =====================================================================
-// BANNER ULTIME CARTE
+// BANNER ULTIME CARTE — ultime 10, totale waifu in header
 // =====================================================================
 function BannerUltimeCarte({
   tutteLeWaifu, tuttiGliOutfit, tutteLePose,
   outfitCat, poseCat, collezione,
   profilo, setProfilo, user, totalPack, setTab,
-  ModaleCarta,
+  numWaifu, ModaleCarta,
 }) {
   const [cartaSel, setCartaSel] = useState(null);
 
-  const tutteOrdinatePerData = [
-    ...tutteLeWaifu.map(item  => ({ ...item, _ts: item.dati?.acquisito?.toMillis  ? item.dati.acquisito.toMillis()  : Number(item.dati?.acquisito)  || 0 })),
-    ...tuttiGliOutfit.map(item => ({ ...item, _ts: item.dati?.acquisito?.toMillis ? item.dati.acquisito.toMillis() : Number(item.dati?.acquisito) || 0 })),
-    ...tutteLePose.map(item   => ({ ...item, _ts: item.dati?.acquisito?.toMillis  ? item.dati.acquisito.toMillis()  : Number(item.dati?.acquisito)  || 0 })),
-  ].sort((a, b) => b._ts - a._ts).slice(0, 20);
-
-  const hasAnyCard = tutteOrdinatePerData.length > 0;
+  const ultime10 = [
+    ...tutteLeWaifu.map(i  => ({ ...i,  _ts: i.dati?.acquisito?.toMillis?.() ?? Number(i.dati?.acquisito) ?? 0 })),
+    ...tuttiGliOutfit.map(i => ({ ...i, _ts: i.dati?.acquisito?.toMillis?.() ?? Number(i.dati?.acquisito) ?? 0 })),
+    ...tutteLePose.map(i   => ({ ...i,  _ts: i.dati?.acquisito?.toMillis?.() ?? Number(i.dati?.acquisito) ?? 0 })),
+  ].sort((a, b) => b._ts - a._ts).slice(0, 10);
 
   return (
     <PannelloOrnato glow="#a78bfa" variant="purple">
-      <TitoloOrnato livello={2} colore="#ffe9a8">ULTIME CARTE</TitoloOrnato>
+      <div className="ht-banner-header">
+        <TitoloOrnato livello={2} colore="#ffe9a8">ULTIME CARTE</TitoloOrnato>
+        <span className="ht-banner-total">{numWaifu} waifu ♛</span>
+      </div>
       <div className="ht-banner-scroll">
         <div className="u-shrink0">
           <CardPacchettoOverlay profilo={profilo} totalPack={totalPack} setTab={setTab} />
         </div>
 
-        {tutteOrdinatePerData.map((item) => {
+        {ultime10.map((item) => {
           if (item.tipo === 'waifu') {
             const { id, w, dati } = item;
             return (
               <div key={`w-${id}`} className="u-shrink0">
-                <CartaWaifu
-                  waifu={w} datiCollezione={dati}
-                  dimensione="piccola" tipo="auto"
+                <CartaWaifu waifu={w} datiCollezione={dati} dimensione="piccola" tipo="auto"
                   outfitCatalogo={outfitCat} poseCatalogo={poseCat}
                   equip={collezione.equipaggiamento?.[id]}
-                  onClick={() => setCartaSel({ tipo: 'waifu', w, dati })}
-                />
+                  onClick={() => setCartaSel({ tipo: 'waifu', w, dati })} />
               </div>
             );
           }
@@ -632,26 +604,19 @@ function BannerUltimeCarte({
           return null;
         })}
 
-        {!hasAnyCard && (
+        {ultime10.length === 0 && (
           <div className="ht-banner-empty">
             <div className="ht-banner-empty__icon">🌸</div>
             <div className="ht-banner-empty__title">Collezione vuota</div>
-            <div className="ht-banner-empty__sub">
-              Apri il primo pacchetto<br />e inizia la tua collezione!
-            </div>
+            <div className="ht-banner-empty__sub">Apri il primo pacchetto<br />e inizia la tua collezione!</div>
           </div>
         )}
       </div>
 
       {cartaSel && ModaleCarta && (
-        <ModaleCarta
-          carta={cartaSel}
-          onClose={() => setCartaSel(null)}
+        <ModaleCarta carta={cartaSel} onClose={() => setCartaSel(null)}
           outfitCat={outfitCat} poseCat={poseCat}
-          collezione={collezione}
-          profilo={profilo} setProfilo={setProfilo}
-          user={user}
-        />
+          collezione={collezione} profilo={profilo} setProfilo={setProfilo} user={user} />
       )}
     </PannelloOrnato>
   );
@@ -673,13 +638,12 @@ function CardPacchettoOverlay({ profilo, totalPack, setTab }) {
         : profilo.ultimaRicaricaPacchetti?.seconds
           ? profilo.ultimaRicaricaPacchetti.seconds * 1000
           : Number(profilo.ultimaRicaricaPacchetti) || 0;
-      const prossima = lastTs + TIMER.PACCHETTO_HOURS * 60 * 60 * 1000;
-      const diff = prossima - Date.now();
+      const diff = lastTs + TIMER.PACCHETTO_HOURS * 3600000 - Date.now();
       if (diff <= 0) { setCountdown('Disponibile!'); return; }
-      const ore = Math.floor(diff / (1000 * 60 * 60));
-      const min = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const sec = Math.floor((diff % (1000 * 60)) / 1000);
-      setCountdown(`${ore}h ${min}m ${sec}s`);
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setCountdown(`${h}h ${m}m ${s}s`);
     };
     calcola();
     const iv = setInterval(calcola, 1000);
@@ -687,171 +651,296 @@ function CardPacchettoOverlay({ profilo, totalPack, setTab }) {
   }, [hasPack, profilo.ultimaRicaricaPacchetti]);
 
   return (
-    <div
-      onClick={() => setTab('sbusta')}
-      className="ht-pack-card"
+    <div onClick={() => setTab('sbusta')} className="ht-pack-card"
       style={{
-        background: `radial-gradient(120% 80% at 50% 20%, ${col}30, transparent 60%), linear-gradient(160deg, #1e0c40 0%, #07051a 100%)`,
+        background: `radial-gradient(120% 80% at 50% 20%,${col}30,transparent 60%),linear-gradient(160deg,#1e0c40,#07051a)`,
         border: `2px solid ${col}80`,
-        boxShadow: hasPack ? `0 0 30px ${col}55, inset 0 0 22px rgba(0,0,0,0.4)` : `0 0 16px ${col}25, inset 0 0 22px rgba(0,0,0,0.4)`,
-      }}
-    >
+        boxShadow: hasPack ? `0 0 30px ${col}55,inset 0 0 22px rgba(0,0,0,0.4)` : `0 0 16px ${col}25,inset 0 0 22px rgba(0,0,0,0.4)`,
+      }}>
       <div className="foil foil--soft" />
-
       <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0, opacity: 0.06 }}>
         <pattern id="hbp-pat" width="28" height="28" patternUnits="userSpaceOnUse">
           <path d="M14,0 L28,14 L14,28 L0,14 Z" fill="none" stroke={col} strokeWidth="0.5" />
         </pattern>
         <rect width="100%" height="100%" fill="url(#hbp-pat)" />
       </svg>
-
       <div className="ht-pack-card__center">
         <div className="ht-pack-card__symbol" style={{ color: col, textShadow: `0 0 22px ${col}aa` }}>♛</div>
         <div className="ht-pack-card__name" style={{ color: col }}>Pack scellato</div>
       </div>
-
-      <div
-        className="ht-pack-card__overlay"
+      <div className="ht-pack-card__overlay"
         style={{
           background: hasPack
-            ? `linear-gradient(0deg, ${col}d0 0%, ${col}88 60%, transparent 100%)`
-            : 'linear-gradient(0deg, rgba(7,5,26,0.94) 0%, rgba(7,5,26,0.7) 60%, transparent 100%)',
-        }}
-      >
-        {hasPack ? (
-          <>
-            <div className="ht-pack-card__cta">SBUSTA ORA</div>
-            <div className="ht-pack-card__count">×{totalPack}</div>
-          </>
-        ) : (
-          <>
-            <div className="ht-pack-card__cd-label">Prossimo tra</div>
-            <div className="ht-pack-card__cd-timer">{countdown || '—'}</div>
-          </>
-        )}
+            ? `linear-gradient(0deg,${col}d0,${col}88 60%,transparent)`
+            : 'linear-gradient(0deg,rgba(7,5,26,0.94),rgba(7,5,26,0.7) 60%,transparent)',
+        }}>
+        {hasPack
+          ? <><div className="ht-pack-card__cta">SBUSTA ORA</div><div className="ht-pack-card__count">×{totalPack}</div></>
+          : <><div className="ht-pack-card__cd-label">Prossimo tra</div><div className="ht-pack-card__cd-timer">{countdown || '—'}</div></>
+        }
       </div>
     </div>
   );
 }
 
 // =====================================================================
-// QUEST GIORNALIERI (8.2 – 8.5)
-// =====================================================================
-const QUEST_LABELS = {
-  bustine:     { nome: 'Apri una bustina',           reward: '+50 Kisses' },
-  territori:   { nome: 'Conquista 3 territori',      reward: '+1 Pack' },
-  leggendarie: { nome: 'Sblocca 1 carta leggendaria', reward: '+200 Kisses · ★ Pose' },
-};
-
-function QuestGiornalieri({ quest, setQuest, user, profilo, setProfilo }) {
-  const { defs, stato } = quest;
-  const [claiming, setClaiming] = useState(null);
-
-  const premiInAttesa = defs.filter(d => {
-    const s = stato[d.tipo];
-    return s && s.progresso >= s.target && !s.claimed;
-  }).length;
-
-  const handleClaim = async (tipo, reward) => {
-    if (claiming) return;
-    setClaiming(tipo);
-    try {
-      await claimQuestReward(user.uid, tipo, reward, profilo);
-      setQuest(prev => ({
-        ...prev,
-        stato: { ...prev.stato, [tipo]: { ...prev.stato[tipo], claimed: true } },
-      }));
-      if (reward.tipo === 'kisses' && setProfilo) {
-        setProfilo(p => ({ ...p, kisses: (p.kisses ?? 0) + (reward.qty ?? 0) }));
-      }
-      if (reward.tipo === 'pack' && setProfilo) {
-        setProfilo(p => ({ ...p, pacchettiOmaggio: (p.pacchettiOmaggio ?? 0) + (reward.qty ?? 0) }));
-      }
-    } catch (_) {}
-    setClaiming(null);
-  };
-
-  return (
-    <div className="ht-quest">
-      <div className="ht-quest__header">
-        <span className="ht-quest__title">✦ Quest Giornalieri</span>
-        {premiInAttesa > 0 && (
-          <span className="ht-quest__badge">Premi in attesa {premiInAttesa}/3</span>
-        )}
-      </div>
-
-      {defs.map(d => {
-        const s = stato[d.tipo] || { progresso: 0, target: d.target, claimed: false };
-        const done = s.progresso >= s.target;
-        const pct  = Math.min(100, Math.round((s.progresso / s.target) * 100));
-        const lbl  = QUEST_LABELS[d.tipo] || { nome: d.nome, reward: '' };
-
-        return (
-          <div key={d.tipo} className="ht-quest__item">
-            <div className={`ht-quest__check${done ? '' : ' ht-quest__check--pending'}`}>
-              {done ? '✓' : ''}
-            </div>
-            <div className="ht-quest__body">
-              <div className="ht-quest__name">{lbl.nome}</div>
-              <div className="ht-quest__progress-row">
-                <div className="ht-quest__progress-bar">
-                  <div className="ht-quest__progress-fill" style={{ width: `${pct}%` }} />
-                </div>
-                <span className="ht-quest__progress-text">{s.progresso} / {s.target}</span>
-              </div>
-              <div className="ht-quest__reward">{lbl.reward}</div>
-            </div>
-            {done && !s.claimed && (
-              <button
-                className="ht-quest__claim"
-                onClick={() => handleClaim(d.tipo, s.reward)}
-                disabled={claiming === d.tipo}
-              >
-                {claiming === d.tipo ? '...' : 'Riscuoti'}
-              </button>
-            )}
-            {s.claimed && <span className="ht-quest__claimed">✓ Riscosso</span>}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// =====================================================================
-// TRA AMICI (9.2 – 9.4)
+// TRA AMICI
 // =====================================================================
 const AVATAR_COLORS = ['#a78bfa', '#ff85b6', '#6cf0e0', '#f5c560', '#58e0a3'];
 
 function TraAmici({ attivita, profilo }) {
   if (!attivita) return null;
-
   return (
     <div className="ht-amici">
       <div className="ht-amici__header">
         <span className="ht-amici__title">♥ Tra Amici</span>
         <span className="ht-amici__sub">Attività recente</span>
       </div>
-
-      {attivita.length === 0 ? (
-        <div className="ht-amici__empty">Nessuna attività recente tra i tuoi amici</div>
-      ) : (
-        attivita.map((a, i) => {
-          const nomeFriend = profilo.amiciProfili?.[a.uid]?.nomeImpero ?? a.uid.slice(0, 4).toUpperCase();
-          const col = AVATAR_COLORS[i % AVATAR_COLORS.length];
+      {attivita.length === 0
+        ? <div className="ht-amici__empty">Nessuna attività recente tra i tuoi amici</div>
+        : attivita.map((a, i) => {
+          const nome = profilo.amiciProfili?.[a.uid]?.nomeImpero ?? a.uid.slice(0, 4).toUpperCase();
+          const col  = AVATAR_COLORS[i % AVATAR_COLORS.length];
           return (
             <div key={`${a.uid}-${i}`} className="ht-amici__item">
-              <div className="ht-amici__avatar" style={{ background: `${col}33`, border: `1px solid ${col}55`, color: col }}>
-                {nomeFriend.charAt(0).toUpperCase()}
+              <div className="ht-amici__avatar"
+                style={{ background: `${col}33`, border: `1px solid ${col}55`, color: col }}>
+                {nome.charAt(0).toUpperCase()}
               </div>
               <div className="ht-amici__text">
-                <div className="ht-amici__name">{nomeFriend}</div>
+                <div className="ht-amici__name">{nome}</div>
                 <div className="ht-amici__action">{a.dettaglio}</div>
               </div>
             </div>
           );
-        })
-      )}
+        })}
+    </div>
+  );
+}
+
+// =====================================================================
+// MISSIONI MODAL
+// =====================================================================
+const TIPO_EVENTO_ICON = {
+  login:                '🏠',
+  apri_bustina:         '🎁',
+  conquista_territorio: '🗺',
+  vinci_battaglia:      '⚔',
+  pesca_carta:          '🎣',
+  aggiungi_amico:       '♥',
+  completa_drop:        '💎',
+  manuale:              '✦',
+};
+
+const REWARD_LABEL = (r) => {
+  if (!r) return '';
+  if (r.tipo === 'kisses') return `+${r.qty} Kisses`;
+  if (r.tipo === 'pack')   return `+${r.qty} Pack`;
+  if (r.tipo === 'pose')   return `+${r.qty} Pose`;
+  return `+${r.qty}`;
+};
+
+const QUEST_GIORNALIERE_DEFS = [
+  { tipo: 'bustine',     nome: 'Apri una bustina',            tipoEvento: 'apri_bustina',         target: 1, reward: { tipo: 'kisses', qty: 50  } },
+  { tipo: 'territori',   nome: 'Conquista 3 territori',       tipoEvento: 'conquista_territorio',  target: 3, reward: { tipo: 'pack',   qty: 1   } },
+  { tipo: 'leggendarie', nome: 'Sblocca 1 carta leggendaria', tipoEvento: 'apri_bustina',          target: 1, reward: { tipo: 'kisses', qty: 200 } },
+];
+
+function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) {
+  const [tabAttiva, setTabAttiva]   = useState('giornaliere');
+  const [sezioni, setSezioni]       = useState([]);
+  const [missioniMap, setMissioniMap] = useState({});   // sectionId -> missioni[]
+  const [claiming, setClaiming]     = useState(null);
+  const [timerGiorn, setTimerGiorn] = useState('');
+
+  // Carica sezioni admin-defined
+  useEffect(() => {
+    getMissioniSezioni().then(s => {
+      setSezioni(s);
+      // preload missioni per ogni sezione
+      s.forEach(sec => {
+        if (sec.missioni) setMissioniMap(m => ({ ...m, [sec.id]: sec.missioni }));
+      });
+    }).catch(() => {});
+  }, []);
+
+  // Timer reset giornaliero
+  useEffect(() => {
+    const calcola = () => {
+      const ora   = new Date();
+      const domani = new Date(ora); domani.setDate(domani.getDate() + 1);
+      domani.setHours(0, 0, 0, 0);
+      const diff = domani - ora;
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      setTimerGiorn(`${h}h ${m.toString().padStart(2,'0')}m`);
+    };
+    calcola();
+    const iv = setInterval(calcola, 30000);
+    return () => clearInterval(iv);
+  }, []);
+
+  // Quest giornaliere completate
+  const giornCompletate = quest ? quest.defs.filter(d => {
+    const s = quest.stato[d.tipo]; return s && s.progresso >= s.target;
+  }).length : 0;
+
+  // Badge per tab admin
+  const badgeSezione = (sec) => {
+    const ms = missioniMap[sec.id] || [];
+    return ms.filter(m => {
+      const prog = (profilo.missioniProgresso || {})[`${sec.id}__${m.id}`];
+      return prog && prog.progresso >= m.target && !prog.claimed;
+    }).length;
+  };
+
+  const handleClaimGiornaliera = async (tipo, reward) => {
+    if (claiming) return;
+    setClaiming(tipo);
+    try {
+      await claimQuestReward(user.uid, tipo, reward, profilo);
+      setQuest(prev => ({
+        ...prev, stato: { ...prev.stato, [tipo]: { ...prev.stato[tipo], claimed: true } },
+      }));
+      if (reward.tipo === 'kisses') setProfilo(p => ({ ...p, kisses: (p.kisses ?? 0) + reward.qty }));
+      if (reward.tipo === 'pack')   setProfilo(p => ({ ...p, pacchettiOmaggio: (p.pacchettiOmaggio ?? 0) + reward.qty }));
+    } catch (_) {}
+    setClaiming(null);
+  };
+
+  const handleClaimAdmin = async (sec, missione, reward) => {
+    const key = `${sec.id}__${missione.id}`;
+    if (claiming) return;
+    setClaiming(key);
+    try {
+      await claimMissioneReward(user.uid, key, reward, profilo);
+      setProfilo(p => ({
+        ...p,
+        missioniProgresso: { ...(p.missioniProgresso || {}), [key]: { ...(p.missioniProgresso?.[key] || {}), claimed: true } },
+        ...(reward.tipo === 'kisses' ? { kisses: (p.kisses ?? 0) + reward.qty } : {}),
+        ...(reward.tipo === 'pack'   ? { pacchettiOmaggio: (p.pacchettiOmaggio ?? 0) + reward.qty } : {}),
+      }));
+    } catch (_) {}
+    setClaiming(null);
+  };
+
+  const pctGiorn = quest ? Math.round((giornCompletate / quest.defs.length) * 100) : 0;
+
+  return (
+    <div className="missioni-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="missioni-modal">
+        <div className="missioni-modal__handle" />
+
+        <div className="missioni-modal__header">
+          <div className="missioni-modal__title">Missioni</div>
+          <button className="missioni-modal__close" onClick={onClose}>✕</button>
+        </div>
+
+        {/* Progress giornaliero (solo su tab giornaliere) */}
+        {tabAttiva === 'giornaliere' && quest && (
+          <>
+            <div className="missioni-progress">
+              <div className="missioni-progress__bar">
+                <div className="missioni-progress__fill" style={{ width: `${pctGiorn}%` }} />
+              </div>
+              <span className="missioni-progress__label">Missioni concluse: </span>
+              <span className="missioni-progress__count">{giornCompletate}/{quest.defs.length}</span>
+            </div>
+            <div className="missioni-timer">
+              <span className="missioni-timer__icon">🕐</span>
+              <span className="missioni-timer__text">Reset tra {timerGiorn}</span>
+            </div>
+          </>
+        )}
+
+        {/* Tabs */}
+        <div className="missioni-tabs">
+          <button
+            className={`missioni-tab${tabAttiva === 'giornaliere' ? ' missioni-tab--active' : ''}`}
+            onClick={() => setTabAttiva('giornaliere')}
+          >
+            Giornaliere
+            {giornCompletate > 0 && !quest?.defs.every(d => quest.stato[d.tipo]?.claimed) && (
+              <span className="missioni-tab__badge">{giornCompletate}</span>
+            )}
+          </button>
+          {sezioni.map(sec => (
+            <button key={sec.id}
+              className={`missioni-tab${tabAttiva === sec.id ? ' missioni-tab--active' : ''}`}
+              onClick={() => setTabAttiva(sec.id)}
+            >
+              {sec.nome}
+              {badgeSezione(sec) > 0 && <span className="missioni-tab__badge">{badgeSezione(sec)}</span>}
+            </button>
+          ))}
+        </div>
+
+        {/* Lista missioni */}
+        <div className="missioni-list">
+          {tabAttiva === 'giornaliere' && quest && QUEST_GIORNALIERE_DEFS.map(def => {
+            const s = quest.stato[def.tipo] || { progresso: 0, target: def.target, claimed: false };
+            const done = s.progresso >= s.target;
+            const pct  = Math.min(100, Math.round((s.progresso / s.target) * 100));
+            return (
+              <div key={def.tipo} className={`missione-item${done ? ' missione-item--done' : ''}`}>
+                <div className="missione-item__icon">{TIPO_EVENTO_ICON[def.tipoEvento] ?? '✦'}</div>
+                <div className="missione-item__body">
+                  <div className="missione-item__title">{def.nome}</div>
+                  <div className="missione-item__prog-row">
+                    <div className="missione-item__prog-bar">
+                      <div className="missione-item__prog-fill" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="missione-item__prog-text">{s.progresso}/{s.target}</span>
+                  </div>
+                  <div className="missione-item__reward">{REWARD_LABEL(def.reward)}</div>
+                </div>
+                {done && !s.claimed && (
+                  <button className="missione-item__claim"
+                    disabled={claiming === def.tipo}
+                    onClick={() => handleClaimGiornaliera(def.tipo, def.reward)}>
+                    {claiming === def.tipo ? '…' : 'Riscuoti'}
+                  </button>
+                )}
+                {s.claimed && <span className="missione-item__claimed">✓</span>}
+              </div>
+            );
+          })}
+
+          {tabAttiva !== 'giornaliere' && sezioni.filter(s => s.id === tabAttiva).map(sec => {
+            const ms = missioniMap[sec.id] || [];
+            return ms.map(m => {
+              const key  = `${sec.id}__${m.id}`;
+              const prog = (profilo.missioniProgresso || {})[key] || { progresso: 0, claimed: false };
+              const done = prog.progresso >= m.target;
+              const pct  = Math.min(100, Math.round((prog.progresso / m.target) * 100));
+              return (
+                <div key={m.id} className={`missione-item${done ? ' missione-item--done' : ''}`}>
+                  <div className="missione-item__icon">{TIPO_EVENTO_ICON[m.tipoEvento] ?? '✦'}</div>
+                  <div className="missione-item__body">
+                    <div className="missione-item__title">{m.titolo}</div>
+                    {m.descrizione && <div className="missione-item__desc">{m.descrizione}</div>}
+                    <div className="missione-item__prog-row">
+                      <div className="missione-item__prog-bar">
+                        <div className="missione-item__prog-fill" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="missione-item__prog-text">{prog.progresso}/{m.target}</span>
+                    </div>
+                    <div className="missione-item__reward">{REWARD_LABEL(m.reward)}</div>
+                  </div>
+                  {done && !prog.claimed && (
+                    <button className="missione-item__claim"
+                      disabled={claiming === key}
+                      onClick={() => handleClaimAdmin(sec, m, m.reward)}>
+                      {claiming === key ? '…' : 'Riscuoti'}
+                    </button>
+                  )}
+                  {prog.claimed && <span className="missione-item__claimed">✓</span>}
+                </div>
+              );
+            });
+          })}
+        </div>
+      </div>
     </div>
   );
 }

@@ -502,6 +502,79 @@ export async function claimQuestReward(uid, tipo, reward, currentProfilo) {
   await updateDoc(ref, patch);
 }
 
+// =================== MISSIONI ADMIN-DEFINED ===================
+export async function getMissioniSezioni() {
+  const q = query(collection(db, 'missioni_sezioni'), where('attivo', '==', true), orderBy('ordine'));
+  const snap = await getDocs(q);
+  // Per ogni sezione carica le missioni nella sub-collection
+  const sezioni = await Promise.all(snap.docs.map(async d => {
+    const sec = { id: d.id, ...d.data() };
+    const mSnap = await getDocs(
+      query(collection(db, 'missioni_sezioni', d.id, 'missioni'), where('attivo', '==', true), orderBy('ordine'))
+    );
+    sec.missioni = mSnap.docs.map(m => ({ id: m.id, ...m.data() }));
+    return sec;
+  }));
+  return sezioni;
+}
+
+export async function upsertMissioneSezione(id, data) {
+  const ref = id ? doc(db, 'missioni_sezioni', id) : doc(collection(db, 'missioni_sezioni'));
+  await setDoc(ref, { ...data, aggiornato: serverTimestamp() }, { merge: true });
+  return ref.id;
+}
+
+export async function upsertMissione(sectionId, missionId, data) {
+  const ref = missionId
+    ? doc(db, 'missioni_sezioni', sectionId, 'missioni', missionId)
+    : doc(collection(db, 'missioni_sezioni', sectionId, 'missioni'));
+  await setDoc(ref, { ...data, aggiornato: serverTimestamp() }, { merge: true });
+  return ref.id;
+}
+
+export async function deleteMissione(sectionId, missionId) {
+  await deleteDoc(doc(db, 'missioni_sezioni', sectionId, 'missioni', missionId));
+}
+
+export async function deleteMissioneSezione(sectionId) {
+  // Elimina prima tutte le missioni della sezione
+  const mSnap = await getDocs(collection(db, 'missioni_sezioni', sectionId, 'missioni'));
+  await Promise.all(mSnap.docs.map(d => deleteDoc(d.ref)));
+  await deleteDoc(doc(db, 'missioni_sezioni', sectionId));
+}
+
+export async function claimMissioneReward(uid, key, reward, currentProfilo) {
+  const ref = doc(db, 'users', uid);
+  const patch = { [`missioniProgresso.${key}.claimed`]: true };
+  if (reward.tipo === 'kisses') patch['kisses'] = (currentProfilo?.kisses ?? 0) + (reward.qty ?? 0);
+  if (reward.tipo === 'pack')   patch['pacchettiOmaggio'] = (currentProfilo?.pacchettiOmaggio ?? 0) + (reward.qty ?? 0);
+  await updateDoc(ref, patch);
+}
+
+// Incrementa il progresso delle missioni che matchano un tipoEvento
+export async function incrementaMissioneProgresso(uid, tipoEvento, amount = 1) {
+  try {
+    const sezioni = await getMissioniSezioni();
+    const patch   = {};
+    sezioni.forEach(sec => {
+      (sec.missioni || []).forEach(m => {
+        if (m.tipoEvento !== tipoEvento) return;
+        patch[`missioniProgresso.${sec.id}__${m.id}.progresso`] = (amount); // usa increment in Firestore
+      });
+    });
+    if (Object.keys(patch).length === 0) return;
+    // Legge il profilo attuale per fare addizione manuale (non abbiamo FieldValue.increment importato)
+    const snap = await getDoc(doc(db, 'users', uid));
+    const profilo = snap.data() || {};
+    const realPatch = {};
+    Object.keys(patch).forEach(k => {
+      const current = k.split('.').reduce((o, p) => o?.[p], profilo) ?? 0;
+      realPatch[k] = current + amount;
+    });
+    await updateDoc(doc(db, 'users', uid), realPatch);
+  } catch (_) {}
+}
+
 // =================== ATTIVITA AMICI ===================
 export async function writeAttivita(uid, tipo, dettaglio) {
   const ref = collection(db, 'users', uid, 'attivita');

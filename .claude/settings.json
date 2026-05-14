@@ -25,7 +25,8 @@
       "PowerShell($f = Get-Content \"c:\\\\Progetti\\\\Impero delle waifu\\\\impero-waifu\\\\reference\\\\Home _ Lobby.html\" -Raw; $text = [System.Text.RegularExpressions.Regex]::Replace\\($f, '<[^>]+>', ' '\\); $clean = [System.Text.RegularExpressions.Regex]::Replace\\($text, '\\\\s+', ' '\\).Trim\\(\\); $clean.Substring\\(0, [Math]::Min\\(8000, $clean.Length\\)\\))",
       "Bash(dir openspec\\\\specs /b)",
       "Bash(powershell -Command \"\\(Get-Content 'src\\\\lib\\\\firestoreService.js' -Raw\\).Length\")",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(powershell -Command \"\\(Get-Content 'src\\\\app\\\\admin\\\\page.jsx'\\).Count\")"
     ]
   }
 }
