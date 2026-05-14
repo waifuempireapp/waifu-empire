@@ -1748,8 +1748,22 @@ function CartaCoperta() {
   );
 }
 
-// â”€â”€ Sbusta helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const REVEAL_ORDER = [4, 3, 2, 1, 0]; // carta[4] prima, carta[0] (hero) ultima
+// TEMP: sbusta components — UTF-8 correct, to be spliced into page.jsx
+
+// ── Sbusta helpers ───────────────────────────────────────────────────────
+const RARITY_RANK = { immersivo: 0, leggendario: 1, epico: 2, raro: 3, comune: 4 };
+
+function findHeroIndex(carte) {
+  let heroIdx = 0;
+  let bestRank = Infinity;
+  carte.forEach((c, i) => {
+    if (c.tipo === 'waifu') {
+      const rank = RARITY_RANK[c.data?.rarita] ?? 5;
+      if (rank < bestRank) { bestRank = rank; heroIdx = i; }
+    }
+  });
+  return heroIdx;
+}
 
 function isWaifuPackDrop(drop) {
   return drop && (drop.waifuIds?.length > 0) &&
@@ -1757,9 +1771,9 @@ function isWaifuPackDrop(drop) {
     (!drop.poseIds || drop.poseIds.length === 0);
 }
 
-// â”€â”€ PackOpeningScreen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── PackOpeningScreen ────────────────────────────────────────────────────
 function PackOpeningScreen({ isGodPack, onDone }) {
-  const [phase, setPhase] = useState('shake');
+  const [phase, setPhase] = useState('idle'); // 'idle' | 'shake' | 'burst' | 'done'
   const particles = useMemo(() =>
     Array.from({ length: 12 }, (_, i) => {
       const angle = (i / 12) * Math.PI * 2;
@@ -1770,19 +1784,33 @@ function PackOpeningScreen({ isGodPack, onDone }) {
       return { x: Math.round(Math.cos(angle) * dist), y: Math.round(Math.sin(angle) * dist), col };
     }), [isGodPack]);
 
-  useEffect(() => {
-    const t1 = setTimeout(() => setPhase('burst'), 420);
-    const t2 = setTimeout(() => { setPhase('done'); onDone(); }, 1250);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [onDone]);
+  const handleTap = () => {
+    if (phase !== 'idle') return;
+    setPhase('shake');
+    setTimeout(() => setPhase('burst'), 420);
+    setTimeout(() => { setPhase('done'); onDone(); }, 1250);
+  };
 
   const col = isGodPack ? '#f5c560' : '#a78bfa';
+  const isIdle = phase === 'idle';
+
   return (
-    <div className="sb-opening">
-      <div className={`sb-opening__pack${isGodPack ? ' sb-pack-card--holo' : ' sb-pack-card--standard'}${phase === 'shake' ? ' sb-pack--shaking' : ''}`}>
+    <div className="sb-opening" onClick={handleTap} style={{ cursor: isIdle ? 'pointer' : 'default' }}>
+      <div
+        className={[
+          'sb-opening__pack',
+          isGodPack ? 'sb-pack-card--holo' : 'sb-pack-card--standard',
+          phase === 'shake' ? 'sb-pack--shaking' : '',
+        ].filter(Boolean).join(' ')}
+        style={{
+          animation: isIdle
+            ? `sbPackFloat 2.8s ease-in-out infinite, ${isGodPack ? 'sbGoldGlow' : 'sbPackGlow'} 2.8s ease-in-out infinite`
+            : 'none',
+        }}
+      >
         {isGodPack && <div className="foil foil--strong" />}
         <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
-          <div style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 52, color: col, textShadow: `0 0 28px ${col}` }}>â™›</div>
+          <div style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 52, color: col, textShadow: `0 0 28px ${col}` }}>♛</div>
         </div>
         {phase === 'burst' && (
           <>
@@ -1797,12 +1825,20 @@ function PackOpeningScreen({ isGodPack, onDone }) {
           </>
         )}
       </div>
-      <div className="sb-opening__label">Apertura in corsoâ€¦</div>
+      {isIdle && (
+        <>
+          <div className="sb-opening__tap-label">TAP PER APRIRE</div>
+          <div className="sb-opening__hint">Tocca il pacchetto</div>
+        </>
+      )}
+      {!isIdle && phase !== 'done' && (
+        <div className="sb-opening__label">Apertura in corso…</div>
+      )}
     </div>
   );
 }
 
-// â”€â”€ CardSlot (singola carta nella rivelazione) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── CardSlot (singola carta nella rivelazione) ───────────────────────────
 function CardSlot({ c, revealed, isHero, profilo, collezione, avviaVideoSbusto, onClickWaifu }) {
   const isWaifu      = c.tipo === 'waifu';
   const copie        = isWaifu ? (collezione.waifu?.[c.data.id]?.copie ?? 0) : 0;
@@ -1813,10 +1849,8 @@ function CardSlot({ c, revealed, isHero, profilo, collezione, avviaVideoSbusto, 
   const hasPass      = !!(profilo?.hardPass);
   const isNew        = c.isNuova;
   const isHot        = isWaifu && c.data?.hot === true && hasPass;
-  const dim          = isHero ? 'normale' : 'piccola';
+  const dim          = isHero ? 'piccola' : 'piccola'; // hero uses CSS scale instead
 
-  // Avvia il video più appropriato. Per il hard video sovrascriamo asset_video nel clone
-  // così il meccanismo overlay sbusta (che legge waifu.asset_video) usa il video corretto.
   const handleVideoClick = (useHard) => {
     if (useHard && videoHardUrl && hasPass) {
       avviaVideoSbusto({ ...c.data, asset_video: videoHardUrl });
@@ -1849,16 +1883,15 @@ function CardSlot({ c, revealed, isHero, profilo, collezione, avviaVideoSbusto, 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
           {videoSoftUrl && (
             <button className="sb-btn-video sb-btn-video--active" onClick={() => handleVideoClick(false)}>
-              <span>▶</span> Carta Immersiva
+              ▶ Carta Immersiva
             </button>
           )}
           {videoHardUrl && (
             <button
               className={`sb-btn-video ${hasPass ? 'sb-btn-video--active' : 'sb-btn-video--inactive'}`}
               onClick={hasPass ? () => handleVideoClick(true) : undefined}
-              title={hasPass ? 'Video Hard' : 'Richiede Pass Hard'}
             >
-              <span>🔥</span>{hasPass ? 'Video Hard' : '🔒 Pass Hard richiesto'}
+              🔥{hasPass ? ' Video Hard' : ' Hard (Pass richiesto)'}
             </button>
           )}
           {!videoSoftUrl && !videoHardUrl && (
@@ -1869,6 +1902,8 @@ function CardSlot({ c, revealed, isHero, profilo, collezione, avviaVideoSbusto, 
     </div>
   );
 }
+
+// ── RevelationScreen ────────────────────────────────────────────────────
 function RevelationScreen({
   carte, isGodPackAperto, profilo, collezione,
   revealedCount,
@@ -1880,12 +1915,47 @@ function RevelationScreen({
   setSbusVideoFinito, chiudiVideoSbusto, rivediVideoSbusto,
   outfitCat, poseCat, ModaleCarta, setProfilo, user,
 }) {
+  const [flyOut, setFlyOut] = useState(false);
+  const [showActions, setShowActions] = useState(false);
+
+  const heroIdx = useMemo(() => findHeroIndex(carte), [carte]);
+  // Non-hero cards in order, hero last in reveal sequence
+  const nonHeroIndices = useMemo(
+    () => [0,1,2,3,4].filter(i => i !== heroIdx),
+    [heroIdx]
+  );
+  // revealedCount = 0..5; first 4 are non-hero, last is hero
   const allRevealed = revealedCount >= 5;
   const hasMorePacks = isMulti && multiPackIndice < totPacchetti - 1;
   const IMMC = '#ec4899';
 
+  // After all cards revealed: wait 1s → fly animation → show actions
+  useEffect(() => {
+    if (!allRevealed) return;
+    const t1 = setTimeout(() => setFlyOut(true), 1000);
+    const t2 = setTimeout(() => setShowActions(true), 1700);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [allRevealed]);
+
+  // Is a specific non-hero card revealed?
+  const isNonHeroRevealed = (arrayPos) => revealedCount > arrayPos; // arrayPos 0..3
+  // Hero is revealed when revealedCount >= 5
+  const isHeroRevealed = revealedCount >= 5;
+
+  const commonCardProps = { profilo, collezione, avviaVideoSbusto,
+    onClickWaifu: (w, dati) => setCartaDettaglioSbus({ tipo: 'waifu', w, dati }) };
+
+  // Rarity glow color for hero
+  const heroRarity = carte[heroIdx]?.data?.rarita;
+  const heroGlowColor = heroRarity === 'immersivo' ? '#ff85b6'
+    : heroRarity === 'leggendario' ? '#ffc861'
+    : heroRarity === 'epico' ? '#b573ff'
+    : heroRarity === 'raro' ? '#5aa9ff'
+    : null;
+
   return (
     <div className="sb-revelation fade-in">
+      {/* Header */}
       <div className="sb-revelation__header">
         <div style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 14, fontWeight: 800, color: '#fff' }}>Apertura Pack</div>
         {isMulti && <span className="sb-multi-counter">Pack {multiPackIndice + 1}/{totPacchetti}</span>}
@@ -1893,44 +1963,57 @@ function RevelationScreen({
 
       {isGodPackAperto && (
         <div className="sb-badge-godpack">
-          <div className="sb-badge-godpack__title">âœ¦ WAIFU PACK âœ¦</div>
+          <div className="sb-badge-godpack__title">✦ WAIFU PACK ✦</div>
           <div className="sb-badge-godpack__sub">5 WAIFU TROVATE!</div>
         </div>
       )}
 
-      {/* Fila superiore: carte[1..4] piccole */}
-      <div className="sb-cards-row">
-        {[1, 2, 3, 4].map(i => {
-          const c = carte[i];
-          if (!c) return null;
-          const revealed = REVEAL_ORDER.slice(0, revealedCount).includes(i);
-          return <CardSlot key={i} c={c} revealed={revealed} isHero={false}
-            profilo={profilo} collezione={collezione}
-            avviaVideoSbusto={avviaVideoSbusto}
-            onClickWaifu={(w, dati) => setCartaDettaglioSbus({ tipo: 'waifu', w, dati })} />;
-        })}
+      {/* Hero card — SOPRA le altre */}
+      <div className="sb-revelation__hero-wrap">
+        {heroGlowColor && isHeroRevealed && (
+          <div className="sb-hero-glow" style={{ background: `radial-gradient(ellipse, ${heroGlowColor}40, transparent 70%)` }} />
+        )}
+        <div
+          className={`sb-card-slot${flyOut ? ' sb-card-slot--flying sb-fly-delay-4' : ''}`}
+          style={{ transform: isHeroRevealed ? 'scale(1.12)' : 'scale(0.86)', transition: 'transform 0.5s', position: 'relative' }}
+        >
+          <CardSlot
+            c={carte[heroIdx]}
+            revealed={isHeroRevealed}
+            isHero
+            {...commonCardProps}
+          />
+        </div>
       </div>
 
-      {/* Hero card: carte[0] grande */}
-      {carte[0] && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
-          <CardSlot c={carte[0]} revealed={revealedCount >= 5} isHero
-            profilo={profilo} collezione={collezione}
-            avviaVideoSbusto={avviaVideoSbusto}
-            onClickWaifu={(w, dati) => setCartaDettaglioSbus({ tipo: 'waifu', w, dati })} />
-        </div>
-      )}
+      {/* 4 carte non-hero in riga mini (sotto) */}
+      <div className="sb-cards-mini-row">
+        {nonHeroIndices.map((cardIdx, pos) => (
+          <div
+            key={cardIdx}
+            className={`sb-card-mini-wrap${flyOut ? ` sb-card-mini-wrap--flying sb-fly-delay-${pos}` : ''}`}
+          >
+            <CardSlot
+              c={carte[cardIdx]}
+              revealed={isNonHeroRevealed(pos)}
+              isHero={false}
+              {...commonCardProps}
+            />
+          </div>
+        ))}
+      </div>
 
-      {allRevealed && (
+      {/* Azioni post-fly */}
+      {showActions && (
         <div className="sb-actions">
           {hasMorePacks ? (
             <button className="sb-btn-next-pack" onClick={onNextPack}>
-              PROSSIMO PACK ({multiPackIndice + 2}/{totPacchetti}) â†’
+              PROSSIMO PACK ({multiPackIndice + 2}/{totPacchetti}) →
             </button>
           ) : (
             <>
-              {onAncora && <button className="sb-btn-ancora" onClick={onAncora}>ðŸŽ ANCORA</button>}
-              <button className="sb-btn-collezione" onClick={onVediCollezione}>Vedi in Collezione â†’</button>
+              {onAncora && <button className="sb-btn-ancora" onClick={onAncora}>🎁 ANCORA</button>}
+              <button className="sb-btn-collezione" onClick={onVediCollezione}>Vedi in Collezione →</button>
             </>
           )}
         </div>
@@ -1951,11 +2034,11 @@ function RevelationScreen({
               videoAttivo={sbusVideoAttivo} videoRef={sbusVideoRef}
               onVideoEnd={() => setSbusVideoFinito(true)} />
           </div>
-          {!sbusVideoFinito && <div style={{ marginTop: 16, fontSize: 9, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', letterSpacing: 2 }}>In riproduzioneâ€¦</div>}
+          {!sbusVideoFinito && <div style={{ marginTop: 16, fontSize: 9, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', letterSpacing: 2 }}>In riproduzione…</div>}
           {sbusVideoFinito && (
             <div onClick={e => e.stopPropagation()} style={{ marginTop: 16, display: 'flex', gap: 10 }}>
-              <button onClick={rivediVideoSbusto} style={{ background: `linear-gradient(135deg,${IMMC}33,${IMMC}18)`, border: `1px solid ${IMMC}88`, borderRadius: 10, color: IMMC, fontFamily: 'Orbitron, monospace', fontSize: 10, fontWeight: 700, letterSpacing: 2, padding: '10px 22px', cursor: 'pointer' }}>â†º RIVEDI</button>
-              <button onClick={chiudiVideoSbusto} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: 'rgba(238,232,220,0.7)', fontFamily: 'Orbitron, monospace', fontSize: 10, fontWeight: 700, letterSpacing: 2, padding: '10px 22px', cursor: 'pointer' }}>âœ• CHIUDI</button>
+              <button onClick={rivediVideoSbusto} style={{ background: `linear-gradient(135deg,${IMMC}33,${IMMC}18)`, border: `1px solid ${IMMC}88`, borderRadius: 10, color: IMMC, fontFamily: 'Orbitron, monospace', fontSize: 10, fontWeight: 700, letterSpacing: 2, padding: '10px 22px', cursor: 'pointer' }}>↺ RIVEDI</button>
+              <button onClick={chiudiVideoSbusto} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: 'rgba(238,232,220,0.7)', fontFamily: 'Orbitron, monospace', fontSize: 10, fontWeight: 700, letterSpacing: 2, padding: '10px 22px', cursor: 'pointer' }}>✕ CHIUDI</button>
             </div>
           )}
         </div>
@@ -1964,16 +2047,25 @@ function RevelationScreen({
   );
 }
 
-// â”€â”€ SelectionScreen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── SelectionScreen ────────────────────────────────────────────────────
 function SelectionScreen({ drop, dropsAttivi, dropSelId, setDropSelId, profilo, onApri, onApriMulti, onCompraSfida }) {
   const [cdOmaggio, setCdOmaggio] = useState('');
+  const [selectedType, setSelectedType] = useState(null);
+
   const nOmag = profilo.pacchettiOmaggio ?? 0;
   const nSfid = profilo.pacchettiSfida ?? 0;
   const nBenv = profilo.pacchettiBenvenuto ?? 0;
-  const totalDisp = nOmag + nSfid + nBenv;
   const isHolo = drop && isWaifuPackDrop(drop);
   const col = drop?.colore || '#9b59ff';
   const col2 = drop?.colore2 || '#ff2d78';
+
+  // Auto-select best available pack type
+  useEffect(() => {
+    if (nBenv > 0) setSelectedType('benvenuto');
+    else if (nOmag > 0) setSelectedType('omaggio');
+    else if (nSfid > 0) setSelectedType('sfida');
+    else setSelectedType('omaggio'); // default for buy CTA
+  }, [nBenv, nOmag, nSfid]);
 
   useEffect(() => {
     if (nOmag > 0) return;
@@ -1993,7 +2085,17 @@ function SelectionScreen({ drop, dropsAttivi, dropSelId, setDropSelId, profilo, 
     return () => clearInterval(iv);
   }, [nOmag, profilo.ultimaRicaricaPacchetti]);
 
-  const tipoPrimario = nBenv > 0 ? 'benvenuto' : nOmag > 0 ? 'omaggio' : 'sfida';
+  const countForType = (t) => t === 'omaggio' ? nOmag : t === 'sfida' ? nSfid : nBenv;
+  const selCount = countForType(selectedType);
+  const canOpen1  = selCount >= 1;
+  const canOpen10 = selCount >= 1; // can open up to min(10, selCount)
+  const needBuy   = !canOpen1 && selectedType !== null;
+
+  const PACK_TYPES = [
+    { id: 'omaggio',   icon: '🎁', label: 'Omaggio',   cls: 'sb-pack-type-tile--omaggio',   col: '#f5c560', sub: 'Gratis ogni 12h' },
+    { id: 'sfida',     icon: '⚔',  label: 'Sfida',     cls: 'sb-pack-type-tile--sfida',     col: '#ff2d78', sub: 'Vinci in battaglia' },
+    { id: 'benvenuto', icon: '⭐',  label: 'Benvenuto', cls: 'sb-pack-type-tile--benvenuto', col: '#00e676', sub: 'No doppioni' },
+  ];
 
   const ODDS = [
     { label: 'COMUNE',   pct: '55%', col: '#b4bcc8' },
@@ -2005,35 +2107,44 @@ function SelectionScreen({ drop, dropsAttivi, dropSelId, setDropSelId, profilo, 
 
   return (
     <div className="sb-selection fade-in">
+      {/* Marquee */}
       <div className="sb-marquee">
         <div className="sb-marquee__inner">
           {Array.from({ length: 4 }, (_, i) => (
-            <span key={i}>â—† PACK SCELLATO â—† IMPERO DELLE WAIFU â—† {drop?.nome || 'SBUSTA'} &nbsp;&nbsp;&nbsp;</span>
+            <span key={i}>◆ PACK SCELLATO ◆ IMPERO DELLE WAIFU ◆ {drop?.nome || 'SBUSTA'} &nbsp;&nbsp;</span>
           ))}
         </div>
       </div>
 
+      {/* Step 1: Espansione (se multipli drop) */}
       {dropsAttivi.length > 1 && (
-        <div className="sb-drop-selector">
-          {dropsAttivi.map(d => (
-            <button key={d.id}
-              className={`sb-drop-tab${d.id === dropSelId ? ' sb-drop-tab--active' : ' sb-drop-tab--inactive'}`}
-              onClick={() => setDropSelId(d.id)}>{d.nome}</button>
-          ))}
-        </div>
+        <>
+          <div className="sb-step-label">◆ Scegli espansione</div>
+          <div className="sb-drop-selector">
+            {dropsAttivi.map(d => (
+              <button key={d.id}
+                className={`sb-drop-tab${d.id === dropSelId ? ' sb-drop-tab--active' : ' sb-drop-tab--inactive'}`}
+                onClick={() => setDropSelId(d.id)}>
+                {d.nome}
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
+      {/* Pack card */}
       <div className={`sb-pack-card${isHolo ? ' sb-pack-card--holo' : ' sb-pack-card--standard'}`}>
         {isHolo && <div className="foil foil--soft" />}
         <div className="sb-pack-card__art" style={{ background: `linear-gradient(135deg,${col}30,${col2}20)` }} />
-        {isHolo && <div className="sb-pack-card__waifu-only">âœ¦ WAIFU PACK</div>}
+        {isHolo && <div className="sb-pack-card__waifu-only">✦ WAIFU PACK</div>}
         <div className="sb-pack-card__center">
-          <div className="sb-pack-card__symbol" style={{ color: col }}>â™›</div>
+          <div className="sb-pack-card__symbol" style={{ color: col }}>♛</div>
           <div className="sb-pack-card__name">{drop?.nome || 'Pack Scellato'}</div>
-          <div className="sb-pack-card__desc">5 carte Â· 1 epico+ garantito</div>
+          <div className="sb-pack-card__desc">5 carte · 1 epico+ garantito</div>
         </div>
       </div>
 
+      {/* Probabilità */}
       <div className="sb-odds">
         {ODDS.map(o => (
           <div key={o.label} className="sb-odds__item">
@@ -2043,37 +2154,64 @@ function SelectionScreen({ drop, dropsAttivi, dropSelId, setDropSelId, profilo, 
         ))}
       </div>
 
-      <div className="sb-cta-row">
-        {nBenv > 0 && (
-          <button className="sb-btn-open sb-btn-open--primary" onClick={() => onApri('benvenuto')}>
-            â­ Ã—1 BENVENUTO (Gratis)
-          </button>
-        )}
-        {nOmag > 0 && (
-          <button className="sb-btn-open sb-btn-open--primary" onClick={() => onApri('omaggio')}>
-            ðŸŽ Ã—1 GRATIS
-          </button>
-        )}
-        {nOmag === 0 && nBenv === 0 && cdOmaggio && (
-          <div className="sb-countdown">â± Prossimo omaggio tra {cdOmaggio}</div>
-        )}
-        {nSfid > 0
-          ? <button className="sb-btn-open sb-btn-open--secondary" onClick={() => onApri('sfida')}>
-              âš” Ã—1 SFIDA ({nSfid})
-            </button>
-          : <button className="sb-btn-open sb-btn-open--secondary" onClick={onCompraSfida}>
-              âš” Compra Sfida con Kisses
-            </button>
-        }
-        {totalDisp >= 1 && (
-          <button className="sb-btn-open sb-btn-open--x10" onClick={() => onApriMulti(tipoPrimario)}>
-            Ã—{Math.min(10, totalDisp)} APRI TUTTO â†’
-          </button>
-        )}
+      {/* Step 2: Tipo pacchetto */}
+      <div className="sb-step-label">◆ Scegli tipo pacchetto</div>
+      <div className="sb-pack-type-grid">
+        {PACK_TYPES.map(pt => {
+          const cnt = countForType(pt.id);
+          const isActive = selectedType === pt.id;
+          const noMobile = pt.id === 'benvenuto' && nBenv === 0;
+          return (
+            <div key={pt.id}
+              className={[
+                'sb-pack-type-tile', pt.cls,
+                isActive ? 'sb-pack-type-tile--active' : '',
+                noMobile ? 'sb-pack-type-tile--disabled' : '',
+              ].filter(Boolean).join(' ')}
+              onClick={() => !noMobile && setSelectedType(pt.id)}
+            >
+              <span className="sb-pack-type-tile__icon">{pt.icon}</span>
+              <span className="sb-pack-type-tile__label" style={{ color: pt.col }}>{pt.label}</span>
+              <span className="sb-pack-type-tile__count" style={{ color: pt.col }}>
+                {cnt > 0 ? `×${cnt}` : (pt.id === 'omaggio' && cdOmaggio ? cdOmaggio : '—')}
+              </span>
+            </div>
+          );
+        })}
       </div>
+
+      {/* Step 3: Quantità */}
+      {!needBuy && selectedType && (
+        <>
+          <div className="sb-step-label">◆ Quanti aprire?</div>
+          <div className="sb-quantity-row">
+            <button className="sb-btn-qty sb-btn-qty--1" disabled={!canOpen1}
+              onClick={() => canOpen1 && onApri(selectedType)}>
+              × 1 &nbsp; APRI
+            </button>
+            <button className="sb-btn-qty sb-btn-qty--10" disabled={!canOpen10}
+              onClick={() => canOpen10 && onApriMulti(selectedType)}>
+              × {Math.min(10, selCount)} &nbsp; APRI
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Buy CTA se non hai pack del tipo selezionato */}
+      {needBuy && selectedType === 'sfida' && (
+        <div className="sb-buy-row">
+          <button className="sb-btn-buy" onClick={onCompraSfida}>
+            ⚔ Compra bustine Sfida con Kisses
+          </button>
+        </div>
+      )}
+      {needBuy && selectedType === 'omaggio' && cdOmaggio && (
+        <div className="sb-countdown" style={{ marginBottom: 12 }}>⏱ Prossimo omaggio tra {cdOmaggio}</div>
+      )}
     </div>
   );
 }
+
 
 function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitCat, poseCat, user, mostraNotif, godPackProb = GOD_PACK_PROB_DEFAULT, ModaleCarta }) {
   const [stato, setStato] = useState('selection');
@@ -2100,10 +2238,18 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
 
   // Nuovo: indiceRivelato = quante carte sono state rivelate (0..5); reveal order = [4,3,2,1,0]
   // handleOpeningDone avvia i timer di rivelazione dopo l'animazione di apertura
+  // Ref per accedere a carteRivelate dentro callback senza stale closure
+  const carteRivelateRef = useRef([]);
+
   const handleOpeningDone = useCallback(() => {
     setStato(prev => (prev === 'opening' ? 'revelation' : 'revelation_multi'));
-    REVEAL_ORDER.forEach((_, step) => {
-      const delay = 300 + step * 800 + (step === 4 ? 400 : 0);
+    const carte = carteRivelateRef.current;
+    const heroIdx = findHeroIndex(carte);
+    const nonHero = [0,1,2,3,4].filter(i => i !== heroIdx);
+    const order = [...nonHero, heroIdx]; // non-hero first, hero last
+    order.forEach((_, step) => {
+      const isLast = step === order.length - 1;
+      const delay = 300 + step * 700 + (isLast ? 500 : 0); // hero gets extra 500ms
       setTimeout(() => setIndiceRivelato(step + 1), delay);
     });
   }, []);
@@ -2115,6 +2261,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     const gp = carte.length === 5 && carte.every(c => c.tipo === 'waifu' && c.isGodPack);
     setIsGodPackAperto(gp);
     setCarteRivelate(carte);
+    carteRivelateRef.current = carte;
     setIndiceRivelato(0);
     setMultiPackIndice(prossimo);
     setStato('opening_multi');
@@ -2183,7 +2330,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     if (!carte) return;
     const godPack = carte.length === 5 && carte.every(c => c.tipo === 'waifu' && c.isGodPack);
     setIsGodPackAperto(godPack);
-    setCarteRivelate(carte); setIndiceRivelato(0);
+    setCarteRivelate(carte); carteRivelateRef.current = carte; setIndiceRivelato(0);
     setColl(nuova); await saveCollezione(user.uid, nuova);
     if (tipoPacchetto === 'benvenuto') { const n = (profilo.pacchettiBenvenuto ?? 0) - 1; setProfilo(p => ({ ...p, pacchettiBenvenuto: n })); await updateUserProfile(user.uid, { pacchettiBenvenuto: n }); }
     else if (tipoPacchetto === 'omaggio') { const n = (profilo.pacchettiOmaggio ?? 0) - 1; setProfilo(p => ({ ...p, pacchettiOmaggio: n })); await updateUserProfile(user.uid, { pacchettiOmaggio: n }); }
@@ -2220,6 +2367,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
     const gp = prime.length === 5 && prime.every(c => c.tipo === 'waifu' && c.isGodPack);
     setIsGodPackAperto(gp);
     setCarteRivelate(prime);
+    carteRivelateRef.current = prime;
     setIndiceRivelato(0);
     setStato('opening_multi'); // â†’ handleOpeningDone porta a 'revelation_multi'
   };

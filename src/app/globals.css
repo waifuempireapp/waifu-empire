@@ -1612,3 +1612,164 @@ input:focus, textarea:focus, select:focus {
   border: 1px solid rgba(236,72,153,0.2); color: rgba(236,72,153,0.4);
   cursor: not-allowed;
 }
+
+/* ===== SelectionScreen: step labels e pack-type tiles ===== */
+.sb-step-label {
+  font-family: 'Saira Condensed', sans-serif; font-size: 9px;
+  letter-spacing: 0.3em; text-transform: uppercase;
+  color: rgba(241,235,255,0.45); font-weight: 700;
+  margin-bottom: 10px; text-align: center;
+}
+.sb-pack-type-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  width: 100%; max-width: 340px; margin-bottom: 16px;
+}
+.sb-pack-type-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 12px 8px; border-radius: 14px; cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.18s; position: relative;
+}
+.sb-pack-type-tile--omaggio {
+  background: rgba(245,197,96,0.08);
+  border-color: rgba(245,197,96,0.25);
+}
+.sb-pack-type-tile--omaggio.sb-pack-type-tile--active,
+.sb-pack-type-tile--omaggio:hover {
+  background: rgba(245,197,96,0.18);
+  border-color: rgba(245,197,96,0.7);
+  box-shadow: 0 0 18px rgba(245,197,96,0.35);
+}
+.sb-pack-type-tile--sfida {
+  background: rgba(255,45,120,0.08);
+  border-color: rgba(255,45,120,0.25);
+}
+.sb-pack-type-tile--sfida.sb-pack-type-tile--active,
+.sb-pack-type-tile--sfida:hover {
+  background: rgba(255,45,120,0.18);
+  border-color: rgba(255,45,120,0.7);
+  box-shadow: 0 0 18px rgba(255,45,120,0.35);
+}
+.sb-pack-type-tile--benvenuto {
+  background: rgba(0,230,118,0.08);
+  border-color: rgba(0,230,118,0.25);
+}
+.sb-pack-type-tile--benvenuto.sb-pack-type-tile--active,
+.sb-pack-type-tile--benvenuto:hover {
+  background: rgba(0,230,118,0.18);
+  border-color: rgba(0,230,118,0.7);
+  box-shadow: 0 0 18px rgba(0,230,118,0.35);
+}
+.sb-pack-type-tile__icon { font-size: 22px; }
+.sb-pack-type-tile__label {
+  font-family: 'Saira Condensed', sans-serif; font-size: 10px;
+  font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+}
+.sb-pack-type-tile__count {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  font-weight: 700;
+}
+.sb-pack-type-tile--disabled {
+  opacity: 0.45; cursor: default; pointer-events: none;
+}
+.sb-quantity-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  width: 100%; max-width: 340px; margin-bottom: 12px;
+}
+.sb-btn-qty {
+  padding: 12px 0; border-radius: 12px; border: none; cursor: pointer;
+  font-family: 'Unbounded', sans-serif; font-size: 12px; font-weight: 800;
+  transition: all 0.15s; display: flex; align-items: center;
+  justify-content: center; gap: 6px;
+}
+.sb-btn-qty--1 {
+  background: linear-gradient(135deg, var(--c-gold), #ffa033);
+  color: #1a0d00;
+  box-shadow: 0 0 16px rgba(245,197,96,0.4);
+}
+.sb-btn-qty--1:hover { transform: translateY(-1px); box-shadow: 0 0 24px rgba(245,197,96,0.6); }
+.sb-btn-qty--10 {
+  background: linear-gradient(135deg, rgba(245,197,96,0.15), rgba(245,197,96,0.05));
+  border: 1px solid rgba(245,197,96,0.4); color: var(--c-gold-light);
+}
+.sb-btn-qty--10:hover { background: linear-gradient(135deg, rgba(245,197,96,0.25), rgba(245,197,96,0.1)); }
+.sb-btn-qty:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+.sb-buy-row {
+  width: 100%; max-width: 340px; margin-bottom: 8px;
+}
+.sb-btn-buy {
+  width: 100%; padding: 10px; border-radius: 12px; border: none; cursor: pointer;
+  font-family: 'Saira Condensed', sans-serif; font-size: 10px;
+  font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(174,156,255,0.2);
+  color: rgba(241,235,255,0.55); transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.sb-btn-buy:hover { background: rgba(255,255,255,0.08); color: rgba(241,235,255,0.85); }
+
+/* ===== PackOpeningScreen: idle float animation ===== */
+@keyframes sbPackFloat {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50%       { transform: translateY(-12px) rotate(1deg); }
+}
+@keyframes sbPackGlow {
+  0%, 100% { box-shadow: 0 0 30px rgba(167,139,250,0.3), 0 12px 40px rgba(0,0,0,0.5); }
+  50%       { box-shadow: 0 0 50px rgba(167,139,250,0.55), 0 16px 40px rgba(0,0,0,0.5); }
+}
+@keyframes sbGoldGlow {
+  0%, 100% { box-shadow: 0 0 40px rgba(245,197,96,0.5), 0 12px 40px rgba(0,0,0,0.5); }
+  50%       { box-shadow: 0 0 70px rgba(245,197,96,0.8), 0 16px 40px rgba(0,0,0,0.5); }
+}
+.sb-opening__tap-label {
+  margin-top: 20px; z-index: 2;
+  font-family: 'Unbounded', sans-serif; font-size: 12px; font-weight: 800;
+  color: #fff; letter-spacing: 0.04em;
+  animation: pulseSoft 1.4s ease-in-out infinite;
+  text-shadow: 0 0 14px rgba(245,197,96,0.5);
+}
+.sb-opening__hint {
+  margin-top: 6px; z-index: 2;
+  font-family: 'Saira Condensed', sans-serif; font-size: 9px;
+  letter-spacing: 0.24em; text-transform: uppercase;
+  color: rgba(241,235,255,0.35);
+}
+
+/* ===== RevelationScreen: nuovo layout ===== */
+.sb-revelation__hero-wrap {
+  display: flex; justify-content: center;
+  margin-bottom: 12px; position: relative;
+}
+.sb-hero-glow {
+  position: absolute; inset: -8px; border-radius: 18px; pointer-events: none;
+  animation: pulseStrong 1.4s ease-in-out infinite;
+}
+.sb-cards-mini-row {
+  display: flex; gap: 6px; justify-content: center;
+  margin-bottom: 8px;
+}
+.sb-card-mini-wrap {
+  transform: scale(0.68);
+  transform-origin: top center;
+  margin-bottom: -68px; /* (215 * 0.32) = remove extra layout space */
+  flex-shrink: 0;
+}
+
+/* ===== Fly-to-collection animation ===== */
+@keyframes sbFlyToNav {
+  0%   { opacity: 1; transform: scale(1) translate(0, 0); }
+  40%  { opacity: 0.9; transform: scale(0.5) translate(0, 40px); }
+  100% { opacity: 0; transform: scale(0) translate(0, 200px); }
+}
+.sb-card-slot--flying,
+.sb-card-mini-wrap--flying {
+  animation: sbFlyToNav 0.55s ease-in forwards;
+  pointer-events: none;
+}
+.sb-card-mini-wrap--flying { animation-duration: 0.5s; }
+/* Stagger: each card flies with a slight delay */
+.sb-fly-delay-0 { animation-delay: 0ms; }
+.sb-fly-delay-1 { animation-delay: 60ms; }
+.sb-fly-delay-2 { animation-delay: 120ms; }
+.sb-fly-delay-3 { animation-delay: 180ms; }
+.sb-fly-delay-4 { animation-delay: 240ms; }
