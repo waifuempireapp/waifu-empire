@@ -299,6 +299,8 @@ export function HomeTab({
   ModaleCarta,
 }) {
   const numWaifu  = Object.keys(collezione.waifu  || {}).length;
+  const numOutfit = Object.keys(collezione.outfit  || {}).length;
+  const numPose   = Object.keys(collezione.pose    || {}).length;
   const totalPack = (profilo.pacchettiOmaggio ?? 0) + (profilo.pacchettiBenvenuto ?? 0) + (profilo.pacchettiSfida ?? 0);
 
   const [posizioneClassifica, setPosizioneClassifica] = useState(null);
@@ -332,6 +334,14 @@ export function HomeTab({
   const tutteLeWaifu = Object.entries(collezione.waifu || {}).map(([id, dati]) => {
     const w = waifuCat.find(x => x.id === id);
     return w ? { tipo: 'waifu', id, w, dati } : null;
+  }).filter(Boolean);
+  const tuttiGliOutfit = Object.entries(collezione.outfit || {}).filter(([, d]) => (d.quantita || 0) > 0).map(([id, dati]) => {
+    const o = outfitCat.find(x => x.id === id);
+    return o ? { tipo: 'outfit', id, o, dati } : null;
+  }).filter(Boolean);
+  const tutteLePose = Object.entries(collezione.pose || {}).filter(([, d]) => (d.quantita || 0) > 0).map(([id, dati]) => {
+    const p = poseCat.find(x => x.id === id);
+    return p ? { tipo: 'posa', id, p, dati } : null;
   }).filter(Boolean);
 
   const territoriConquistati = Object.values(profilo.territoriUtente || {}).filter(t => t?.conquistato).length;
