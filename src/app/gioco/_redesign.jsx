@@ -2,18 +2,17 @@
 // =====================================================================
 // IMPERO DELLE WAIFU — Lobby chrome ridisegnata
 // Esporta Header, NavTabs, BottomNav, HomeTab.
-// Riceve ModaleCarta come prop (per evitare import circolari con page.jsx).
-// Logica/props/handler IDENTICI agli originali in gioco/page.jsx.
+// Zero inline styles — tutte le classi sono in globals.css.
 // =====================================================================
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
 import { TIMER, RARITA } from '@/lib/constants';
-import { getClassifica } from '@/lib/firestoreService';
+import { getClassifica, getDropStagionale, initQuestGiornaliere, claimQuestReward, getAttivitaAmici } from '@/lib/firestoreService';
 import KissesIcon from '@/components/KissesIcon';
 import { CartaWaifu, CartaOutfit, CartaPosa } from '@/components/CartaWaifu';
 import {
   PannelloOrnato, TitoloOrnato, BtnDecorato, Chip,
-  CardInfo, FramePersonaggio,
+  FramePersonaggio,
 } from '@/components/ui/UIKit';
 
 // =====================================================================
@@ -79,59 +78,36 @@ export function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
   }, [popupEnergia]);
 
   const totalPack = (profilo.pacchettiOmaggio ?? 0) + (profilo.pacchettiBenvenuto ?? 0) + (profilo.pacchettiSfida ?? 0);
+  const colore = profilo.coloreImpero;
 
   return (
-    <div className="game-header" style={{
-      position: 'sticky', top: 0, zIndex: 50,
-      background: 'linear-gradient(180deg, rgba(7,5,26,0.88) 0%, rgba(7,5,26,0.72) 100%)',
-      backdropFilter: 'blur(24px)',
-      WebkitBackdropFilter: 'blur(24px)',
-      borderBottom: '1px solid rgba(174,156,255,0.18)',
-      padding: '12px 18px',
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
-    }}>
+    <div className="game-header hdr-root">
       {/* Sinistra */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-        <FramePersonaggio colore={profilo.coloreImpero} dimensione={40}>
-          <span style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 18, color: profilo.coloreImpero, fontWeight: 700,
-            textShadow: `0 0 8px ${profilo.coloreImpero}` }}>♛</span>
+      <div className="hdr-left">
+        <FramePersonaggio colore={colore} dimensione={40}>
+          <span style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 18, color: colore, fontWeight: 700,
+            textShadow: `0 0 8px ${colore}` }}>♛</span>
         </FramePersonaggio>
-        <div ref={imperoRef} style={{ minWidth: 0, position: 'relative' }}>
-          <div className="impero-nome"
+
+        <div ref={imperoRef} className="hdr-empire-btn">
+          <div
+            className="hdr-empire-name impero-nome"
             onClick={() => setPopupImpero(v => !v)}
-            style={{
-              fontFamily: "'Unbounded', sans-serif",
-              fontSize: 15, fontWeight: 800,
-              color: '#fff',
-              letterSpacing: '-0.005em',
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              textShadow: `0 0 14px ${profilo.coloreImpero}aa, 0 0 4px ${profilo.coloreImpero}60`,
-              cursor: 'pointer', userSelect: 'none',
-            }}>{nomeImperoDisplay}</div>
-          <div style={{
-            fontSize: 8, opacity: 0.55,
-            letterSpacing: '0.22em', textTransform: 'uppercase',
-            fontFamily: "'Saira Condensed', sans-serif",
-            color: profilo.coloreImpero,
-            marginTop: 1,
-          }}>Lv.{profilo.livelloMappa ?? 1} · Impero</div>
+            style={{ textShadow: `0 0 14px ${colore}aa, 0 0 4px ${colore}60`, color: '#fff' }}
+          >{nomeImperoDisplay}</div>
+          <div className="hdr-empire-sub" style={{ color: colore }}>
+            Lv.{profilo.livelloMappa ?? 1} · Impero
+          </div>
 
           {popupImpero && (
-            <div ref={popupImperoRef} className="fade-up impero-nome-popup" style={{
-              position: 'absolute', top: 'calc(100% + 10px)', left: 0,
-              background: 'rgba(7,5,26,0.97)', backdropFilter: 'blur(20px)',
-              border: `1px solid ${profilo.coloreImpero}55`,
-              borderRadius: 14, padding: '12px 14px', minWidth: 180, zIndex: 200,
-              boxShadow: `0 10px 40px ${profilo.coloreImpero}30, 0 0 0 1px rgba(255,255,255,0.04) inset`,
-              display: 'flex', flexDirection: 'column', gap: 8,
-            }}>
-              <div style={{
-                fontFamily: "'Saira Condensed', sans-serif", fontSize: 9,
-                letterSpacing: '0.22em', textTransform: 'uppercase',
-                color: profilo.coloreImpero, opacity: 0.7, marginBottom: 2,
-              }}>⚜ {profilo.nomeImpero}</div>
+            <div
+              ref={popupImperoRef}
+              className="fade-up hdr-empire-popup impero-nome-popup"
+              style={{ border: `1px solid ${colore}55`, boxShadow: `0 10px 40px ${colore}30, 0 0 0 1px rgba(255,255,255,0.04) inset` }}
+            >
+              <div className="hdr-empire-popup-label" style={{ color: colore }}>⚜ {profilo.nomeImpero}</div>
               {isAdmin && (
-                <a href="/admin" style={{ textDecoration: 'none' }}>
+                <a href="/admin">
                   <BtnDecorato variant="secondary" size="sm" style={{ width: '100%' }}>⚙ ADMIN</BtnDecorato>
                 </a>
               )}
@@ -144,7 +120,7 @@ export function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
       </div>
 
       {/* Destra */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'nowrap' }}>
+      <div className="hdr-right">
         {/* ENERGIA */}
         <div ref={energiaRef} style={{ position: 'relative' }}>
           <ResourcePill
@@ -156,57 +132,23 @@ export function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
             onClick={() => setPopupEnergia(v => !v)}
           />
           {popupEnergia && (
-            <div ref={popupRef} className="fade-up" style={{
-              position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-              background: 'rgba(7,5,26,0.97)', backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(108,240,224,0.45)',
-              borderRadius: 14, padding: '14px 18px', minWidth: 230, zIndex: 200,
-              boxShadow: '0 12px 40px rgba(108,240,224,0.25), 0 0 0 1px rgba(255,255,255,0.04) inset',
-            }}>
-              <div style={{
-                fontFamily: "'Saira Condensed', sans-serif", fontSize: 10,
-                letterSpacing: '0.3em', color: '#6cf0e0',
-                marginBottom: 10, textAlign: 'center', textTransform: 'uppercase',
-              }}>⚡ Energia</div>
-              <div style={{ display: 'flex', gap: 4, justifyContent: 'center', marginBottom: 10 }}>
+            <div ref={popupRef} className="fade-up hdr-energy-popup">
+              <div className="hdr-energy-popup__title">⚡ Energia</div>
+              <div className="hdr-energy-squares">
                 {Array.from({ length: energiaMax }).map((_, i) => (
-                  <div key={i} style={{
-                    width: 14, height: 14, borderRadius: 4,
-                    background: i < energiaAttuale ? 'linear-gradient(135deg, #6cf0e0, #b8faf2)' : 'rgba(108,240,224,0.1)',
-                    border: `1px solid ${i < energiaAttuale ? '#6cf0e0' : 'rgba(108,240,224,0.2)'}`,
-                    boxShadow: i < energiaAttuale ? '0 0 8px rgba(108,240,224,0.6)' : 'none',
-                    transition: 'all 0.2s',
-                  }} />
+                  <div key={i} className={`hdr-energy-square${i < energiaAttuale ? ' hdr-energy-square--filled' : ''}`} />
                 ))}
               </div>
               {energiaPiena ? (
-                <div style={{
-                  textAlign: 'center', padding: '10px 12px',
-                  background: 'rgba(88,224,163,0.10)',
-                  border: '1px solid rgba(88,224,163,0.35)',
-                  borderRadius: 10,
-                }}>
-                  <div style={{ fontSize: 18, marginBottom: 4 }}>⚡</div>
-                  <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 10,
-                    color: '#58e0a3', letterSpacing: '0.18em', textTransform: 'uppercase' }}>
-                    Energia al massimo
-                  </div>
-                  <div style={{ fontSize: 11, color: 'rgba(241,235,255,0.6)', marginTop: 6, lineHeight: 1.5 }}>
-                    Conquista nuovi territori!
-                  </div>
+                <div className="hdr-energy-full">
+                  <div className="hdr-energy-full__icon">⚡</div>
+                  <div className="hdr-energy-full__text">Energia al massimo</div>
+                  <div className="hdr-energy-full__sub">Conquista nuovi territori!</div>
                 </div>
               ) : (
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{
-                    fontSize: 9, color: 'rgba(241,235,255,0.55)',
-                    fontFamily: "'Saira Condensed', sans-serif",
-                    letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 4,
-                  }}>Refill completo tra</div>
-                  <div style={{
-                    fontFamily: "'JetBrains Mono', monospace", fontSize: 18,
-                    color: '#ffe9a8', fontWeight: 700,
-                    textShadow: '0 0 12px rgba(255,233,168,0.5)',
-                  }}>{tempoRefill || '—'}</div>
+                <div className="hdr-energy-refill">
+                  <div className="hdr-energy-refill__label">Refill completo tra</div>
+                  <div className="hdr-energy-refill__timer">{tempoRefill || '—'}</div>
                 </div>
               )}
             </div>
@@ -230,10 +172,10 @@ export function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
           label="KISSES"
         />
 
-        <div style={{ width: 1, height: 30, background: 'rgba(174,156,255,0.18)', flexShrink: 0 }} />
+        <div className="hdr-divider" />
 
         {isAdmin && (
-          <a href="/admin" style={{ textDecoration: 'none' }} className="header-desktop-only">
+          <a href="/admin" className="header-desktop-only">
             <BtnDecorato variant="secondary" size="sm">⚙ ADMIN</BtnDecorato>
           </a>
         )}
@@ -243,43 +185,29 @@ export function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
   );
 }
 
-// Pill di risorsa nell'header
+// ResourcePill — usa classi hdr-pill-*
 function ResourcePill({ color, icon, value, label, active, onClick }) {
   const isClickable = !!onClick;
   return (
     <div
       onClick={onClick}
+      className={`hdr-pill${isClickable ? '' : ' hdr-pill--static'}`}
       style={{
         cursor: isClickable ? 'pointer' : 'default',
-        padding: '7px 12px',
         background: active
           ? `linear-gradient(180deg, ${color}25, ${color}10)`
           : `linear-gradient(180deg, ${color}10, rgba(7,5,26,0.5))`,
         border: `1px solid ${color}${active ? '88' : '40'}`,
-        borderRadius: 12,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-        transition: 'all 0.2s',
-        userSelect: 'none',
         boxShadow: active ? `0 0 14px ${color}40` : 'none',
-        backdropFilter: 'blur(8px)',
       }}
     >
-      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+      <div className="hdr-pill__row">
         {typeof icon === 'string'
-          ? <span style={{ fontSize: 13, color, filter: `drop-shadow(0 0 5px ${color})` }}>{icon}</span>
+          ? <span className="hdr-pill__icon" style={{ color, filter: `drop-shadow(0 0 5px ${color})` }}>{icon}</span>
           : icon}
-        <span style={{
-          fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700,
-          color: '#fff', letterSpacing: '-0.02em',
-          textShadow: `0 0 8px ${color}80`,
-        }}>{value}</span>
+        <span className="hdr-pill__value" style={{ textShadow: `0 0 8px ${color}80` }}>{value}</span>
       </div>
-      <div style={{
-        fontSize: 7.5, opacity: 0.65,
-        letterSpacing: '0.22em',
-        fontFamily: "'Saira Condensed', sans-serif",
-        color, textTransform: 'uppercase', fontWeight: 700,
-      }}>{label}</div>
+      <div className="hdr-pill__label" style={{ color }}>{label}</div>
     </div>
   );
 }
@@ -304,40 +232,16 @@ export function NavTabs({ tab, setTab }) {
   }, [setTab]);
 
   return (
-    <div className="nav-tabs-desktop" style={{
-      display: 'none', gap: 6, justifyContent: 'center', padding: '12px 16px',
-    }}>
+    <div className="nav-tabs-desktop ntabs-root">
       {TAB_DEFS.map(t => {
         const active = tab === t.id;
         return (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{
-            position: 'relative',
-            padding: '10px 22px',
-            background: active
-              ? 'linear-gradient(180deg, rgba(245,197,96,0.32), rgba(245,197,96,0.10))'
-              : 'rgba(255,255,255,0.03)',
-            color: active ? '#2a1f00' : 'rgba(241,235,255,0.6)',
-            border: `1px solid ${active ? 'rgba(255,233,168,0.6)' : 'rgba(174,156,255,0.12)'}`,
-            borderRadius: 11, cursor: 'pointer',
-            fontFamily: "'Saira Condensed', sans-serif",
-            fontSize: 11, letterSpacing: '0.18em', fontWeight: 700,
-            textTransform: 'uppercase',
-            boxShadow: active
-              ? '0 1px 0 rgba(255,255,255,0.55) inset, 0 -10px 20px rgba(192,138,31,0.45) inset, 0 8px 24px rgba(245,197,96,0.35)'
-              : 'none',
-            transition: 'all 0.2s',
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            overflow: 'hidden',
-          }}>
-            {active && (
-              <span style={{
-                position: 'absolute', inset: 0, borderRadius: 'inherit',
-                background: 'linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.22) 50%, transparent 65%)',
-                opacity: 0.55, mixBlendMode: 'overlay', pointerEvents: 'none',
-              }}/>
-            )}
-            <span style={{ position: 'relative', fontSize: 14 }}>{t.icon}</span>
-            <span style={{ position: 'relative' }}>{t.label}</span>
+          <button key={t.id} onClick={() => setTab(t.id)}
+            className={`ntabs-btn${active ? ' ntabs-btn--active' : ''}`}
+          >
+            {active && <span className="ntabs-btn__shine" />}
+            <span className="ntabs-btn__icon">{t.icon}</span>
+            <span className="ntabs-btn__label">{t.label}</span>
           </button>
         );
       })}
@@ -362,35 +266,12 @@ export function BottomNav({ tab, setTab, isAdmin }) {
         return (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={active ? 'active-tab' : ''}
-            style={{
-              flex: 1, background: 'none', border: 'none',
-              color: active ? '#ffe9a8' : 'rgba(241,235,255,0.4)',
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              gap: 3, padding: '8px 4px 12px',
-              cursor: 'pointer', transition: 'all 0.18s', position: 'relative',
-            }}>
-            <div style={{
-              width: 42, height: 42, borderRadius: 13,
-              background: active
-                ? 'linear-gradient(180deg, rgba(245,197,96,0.20), rgba(255,126,182,0.10))'
-                : 'transparent',
-              border: active ? '1px solid rgba(245,197,96,0.45)' : '1px solid transparent',
-              display: 'grid', placeItems: 'center',
-              transition: 'all 0.18s',
-              boxShadow: active ? '0 0 14px rgba(245,197,96,0.3)' : 'none',
-            }}>
-              <span style={{
-                fontSize: 22,
-                filter: active ? 'drop-shadow(0 0 6px #ffe9a8)' : 'none',
-              }}>{t.icon}</span>
+            style={{ color: active ? '#ffe9a8' : 'rgba(241,235,255,0.4)' }}
+          >
+            <div className={`bnav-icon-wrap${active ? ' bnav-icon-wrap--active' : ''}`}>
+              <span className={`bnav-icon${active ? ' bnav-icon--active' : ''}`}>{t.icon}</span>
             </div>
-            <span style={{
-              fontSize: 8,
-              fontFamily: "'Saira Condensed', sans-serif",
-              letterSpacing: '0.18em', textTransform: 'uppercase',
-              fontWeight: active ? 700 : 500,
-            }}>{t.label}</span>
+            <span className="bnav-label" style={{ fontWeight: active ? 700 : 500 }}>{t.label}</span>
           </button>
         );
       })}
@@ -405,14 +286,18 @@ export function HomeTab({
   profilo, setProfilo, collezione,
   waifuCat, outfitCat, poseCat,
   setTab, setColezSubTab, user, onApriPesca,
-  ModaleCarta,                 // passato come prop da gioco/page.jsx
+  ModaleCarta,
 }) {
-  const numWaifu = Object.keys(collezione.waifu || {}).length;
-  const numOutfit = Object.keys(collezione.outfit || {}).length;
-  const numPose = Object.keys(collezione.pose || {}).length;
-  const totalPack = (profilo.pacchettiOmaggio ?? 0) + (profilo.pacchettiBenvenuto ?? 0) + (profilo.pacchettiSfida ?? 0);
+  const numWaifu  = Object.keys(collezione.waifu  || {}).length;
+  const numOutfit = Object.keys(collezione.outfit  || {}).length;
+  const numPose   = Object.keys(collezione.pose    || {}).length;
+  const totalCarte = numWaifu + numOutfit + numPose;
+  const totalPack  = (profilo.pacchettiOmaggio ?? 0) + (profilo.pacchettiBenvenuto ?? 0) + (profilo.pacchettiSfida ?? 0);
 
   const [posizioneClassifica, setPosizioneClassifica] = useState(null);
+  const [dropStagionale, setDropStagionale] = useState(undefined); // undefined = loading
+  const [quest, setQuest] = useState(null);
+  const [attivitaAmici, setAttivitaAmici] = useState(null);
 
   useEffect(() => {
     if (!user) return;
@@ -421,6 +306,23 @@ export function HomeTab({
       setPosizioneClassifica(idx >= 0 ? idx + 1 : null);
     }).catch(() => {});
   }, [user]);
+
+  // 7.1 DROP STAGIONALE
+  useEffect(() => {
+    getDropStagionale().then(d => setDropStagionale(d ?? null)).catch(() => setDropStagionale(null));
+  }, []);
+
+  // 8.1 QUEST GIORNALIERI
+  useEffect(() => {
+    if (!user) return;
+    initQuestGiornaliere(user.uid).then(q => setQuest(q)).catch(() => {});
+  }, [user]);
+
+  // 9.1 TRA AMICI
+  useEffect(() => {
+    if (!user || !profilo.amici) return;
+    getAttivitaAmici(profilo.amici).then(r => setAttivitaAmici(r)).catch(() => setAttivitaAmici([]));
+  }, [user, profilo.amici]);
 
   const tutteLeWaifu = Object.entries(collezione.waifu || {}).map(([id, dati]) => {
     const w = waifuCat.find(x => x.id === id);
@@ -444,39 +346,33 @@ export function HomeTab({
 
   return (
     <div className="fade-in">
-      {/* HERO — saluto + nome impero */}
-      <div style={{ textAlign: 'center', marginBottom: 24, paddingTop: 14 }}>
-        <div style={{
-          fontFamily: "'Saira Condensed', sans-serif", fontSize: 10,
-          letterSpacing: '0.42em', color: '#ffc861',
-          textTransform: 'uppercase', marginBottom: 6,
-        }}>◆ Bentornata · Stagione 7</div>
-        <h1 className="shimmer-text" style={{
-          fontFamily: "'Unbounded', sans-serif",
-          fontSize: 'clamp(28px, 6vw, 44px)',
-          fontWeight: 800,
-          margin: 0, letterSpacing: '-0.01em',
-          lineHeight: 0.95,
-        }}>{profilo.nomeImpero || 'Il Tuo Impero'}</h1>
-        <div style={{ marginTop: 10, display: 'inline-flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+
+      {/* 1. HERO */}
+      <div className="ht-hero">
+        <div className="ht-hero__label">◆ Bentornata · Stagione 7</div>
+        <h1 className="shimmer-text ht-hero__title">{profilo.nomeImpero || 'Il Tuo Impero'}</h1>
+        <div className="ht-hero__chips">
           <Chip colore={profilo.coloreImpero} icon="⚜" size="md">Impero Lv.{profilo.livelloMappa ?? 1}</Chip>
         </div>
       </div>
 
-      {/* QUICK ACTIONS */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-          <QuickTile icon="⚔" label="Mappa" color="#6cf0e0" sub={`Lv.${profilo.livelloMappa ?? 1}`} onClick={() => setTab('mappa')} />
-          <QuickTile icon="🎁" label="Sbusta" color="#f5c560" sub={`×${totalPack}`} highlight={totalPack > 0} onClick={() => setTab('sbusta')} />
-          <QuickTile icon="🛒" label="Negozio" color="#a78bfa" sub="Hot" onClick={() => window.dispatchEvent(new CustomEvent('impero:apri-negozio'))} />
-          {process.env.NEXT_PUBLIC_PESCA_ENABLED !== 'false'
-            ? <QuickTile icon="🎣" label="Pesca" color="#ff85b6" sub="" onClick={onApriPesca} />
-            : <QuickTile icon="💎" label="Cards" color="#ff85b6" sub={numWaifu} onClick={() => setTab('collezione')} />
-          }
-        </div>
+      {/* 2. DROP STAGIONALE */}
+      {dropStagionale && (
+        <DropStagionale drop={dropStagionale} setTab={setTab} />
+      )}
+
+      {/* 3. QUICK TILES */}
+      <div className="ht-quick-grid">
+        <QuickTile icon="⚔" label="Mappa"   color="#6cf0e0" sub={`Lv.${profilo.livelloMappa ?? 1}`} onClick={() => setTab('mappa')} />
+        <QuickTile icon="🎁" label="Sbusta"  color="#f5c560" sub={`×${totalPack}`} highlight={totalPack > 0} onClick={() => setTab('sbusta')} />
+        <QuickTile icon="🛒" label="Negozio" color="#a78bfa" sub="Hot" onClick={() => window.dispatchEvent(new CustomEvent('impero:apri-negozio'))} />
+        {process.env.NEXT_PUBLIC_PESCA_ENABLED !== 'false'
+          ? <QuickTile icon="🎣" label="Pesca" color="#ff85b6" sub="" onClick={onApriPesca} />
+          : <QuickTile icon="💎" label="Cards" color="#ff85b6" sub={numWaifu} onClick={() => setTab('collezione')} />
+        }
       </div>
 
-      {/* STATISTICHE COMBATTIMENTO */}
+      {/* 4. STATISTICHE COMBATTIMENTO */}
       <StatCombattimento
         profilo={profilo}
         territoriConquistati={territoriConquistati}
@@ -484,51 +380,19 @@ export function HomeTab({
         posizioneClassifica={posizioneClassifica}
       />
 
-      {/* STATISTICHE COLLEZIONE (mini card cliccabili) */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))',
-        gap: 10, marginBottom: 24,
-      }}>
-        {[
-          { icon: '♛', val: numWaifu,  label: 'WAIFU',   col: '#ffc861', subTab: 'waifu'  },
-          { icon: '✦', val: numOutfit, label: 'OUTFIT',  col: '#a78bfa', subTab: 'outfit' },
-          { icon: '⚜', val: numPose,   label: 'POSE',    col: '#ff85b6', subTab: 'pose'   },
-          { icon: '⚡', val: `${profilo.energia ?? 0}/${TIMER.MAX_ENERGIA}`, label: 'ENERGIA', col: '#6cf0e0', subTab: null },
-        ].map(s => (
-          <CardInfo key={s.label} colore={s.col}
-            onClick={s.subTab ? () => goToCollez(s.subTab) : undefined}
-          >
-            <div style={{ textAlign: 'center' }}>
-              <div style={{
-                fontSize: 26, color: s.col, marginBottom: 4,
-                filter: `drop-shadow(0 0 8px ${s.col})`,
-                fontFamily: "'Unbounded', sans-serif",
-              }}>{s.icon}</div>
-              <div style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 22, color: '#fff', fontWeight: 700,
-                letterSpacing: '-0.02em',
-                textShadow: `0 0 10px ${s.col}55`,
-              }}>{s.val}</div>
-              <div style={{
-                fontSize: 8.5, color: s.col, opacity: 0.85,
-                fontFamily: "'Saira Condensed', sans-serif",
-                letterSpacing: '0.24em', marginTop: 4, textTransform: 'uppercase', fontWeight: 700,
-              }}>{s.label}</div>
-              {s.subTab && (
-                <div style={{
-                  fontSize: 8, color: s.col, opacity: 0.55, marginTop: 4,
-                  fontFamily: "'Saira Condensed', sans-serif",
-                  letterSpacing: '0.18em', textTransform: 'uppercase',
-                }}>Vedi ›</div>
-              )}
-            </div>
-          </CardInfo>
-        ))}
+      {/* 5. LA TUA COLLEZIONE compatta */}
+      <div className="ht-collez">
+        <div className="ht-collez__header">
+          <span className="ht-collez__title">♛ La Tua Collezione</span>
+          <button className="ht-collez__see-all" onClick={() => setTab('collezione')}>Vedi Tutte ›</button>
+        </div>
+        <div className="ht-collez__info">
+          {totalCarte} carte
+          {numWaifu > 0 && <span className="ht-collez__new">+{numWaifu} waifu</span>}
+        </div>
       </div>
 
-      {/* BANNER ULTIME CARTE */}
+      {/* 6. BANNER ULTIME CARTE */}
       <BannerUltimeCarte
         tutteLeWaifu={tutteLeWaifu}
         tuttiGliOutfit={tuttiGliOutfit}
@@ -544,111 +408,105 @@ export function HomeTab({
         ModaleCarta={ModaleCarta}
       />
 
-      {/* NEGOZIO */}
-      <div style={{ marginTop: 18 }}>
-        <BigActionButton
-          icon="🛒"
-          color="#f5c560"
-          title="NEGOZIO"
-          desc="Acquista pack sfida, energia e Kisses"
-          onClick={() => window.dispatchEvent(new CustomEvent('impero:apri-negozio'))}
+      {/* 7. QUEST GIORNALIERI */}
+      {quest && (
+        <QuestGiornalieri
+          quest={quest}
+          setQuest={setQuest}
+          user={user}
+          profilo={profilo}
+          setProfilo={setProfilo}
         />
-      </div>
-
-      {/* PESCA */}
-      {process.env.NEXT_PUBLIC_PESCA_ENABLED !== 'false' && (
-        <div style={{ marginTop: 14 }}>
-          <BigActionButton
-            icon="🎣"
-            color="#ff85b6"
-            title="PESCA MISTERIOSA"
-            desc="Pesca una carta dalle bustine dei tuoi amici"
-            onClick={onApriPesca}
-          />
-        </div>
       )}
+
+      {/* 8. TRA AMICI */}
+      <TraAmici attivita={attivitaAmici} profilo={profilo} />
+
     </div>
   );
 }
 
-// ── QuickTile ────────────────────────────────────────────────
+// =====================================================================
+// DROP STAGIONALE (7.2 – 7.5)
+// =====================================================================
+function DropStagionale({ drop, setTab }) {
+  const [countdown, setCountdown] = useState('');
+  const [scaduto, setScaduto] = useState(false);
+
+  useEffect(() => {
+    const calcola = () => {
+      if (!drop.fine) { setCountdown(''); return; }
+      // `fine` è una stringa "YYYY-MM-DD" — trattata come fine-giornata
+      const fineDate = new Date(drop.fine);
+      fineDate.setHours(23, 59, 59, 999);
+      const diff = fineDate.getTime() - Date.now();
+      if (diff <= 0) { setScaduto(true); setCountdown('Scaduto'); return; }
+      const giorni = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const ore    = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      setCountdown(`${giorni}d ${ore}h`);
+    };
+    calcola();
+    const iv = setInterval(calcola, 60000);
+    return () => clearInterval(iv);
+  }, [drop.fine]);
+
+  const numWaifu  = (drop.waifuIds  || []).length;
+  const numOutfit = (drop.outfitIds || []).length;
+  const numPose   = (drop.poseIds   || []).length;
+  const desc = drop.descrizione || [
+    numWaifu  > 0 ? `${numWaifu} nuove waifu`  : null,
+    numOutfit > 0 ? `${numOutfit} outfit`       : null,
+    numPose   > 0 ? `${numPose} pose`           : null,
+  ].filter(Boolean).join(' · ');
+
+  return (
+    <div className="ht-drop">
+      <div className="ht-drop__bg" />
+      <div className="ht-drop__badge">◆ Drop Stagionale</div>
+      <div className="ht-drop__title">{drop.nome}</div>
+      {desc && <div className="ht-drop__desc">{desc}</div>}
+      <div className="ht-drop__footer">
+        <button
+          className="ht-drop__cta"
+          onClick={() => setTab('sbusta')}
+          disabled={scaduto}
+        >
+          APRI PACK
+        </button>
+        {scaduto
+          ? <span className="ht-drop__cd-expired">Evento terminato</span>
+          : countdown
+            ? <span className="ht-drop__countdown">{countdown}</span>
+            : <span className="ht-drop__cd-expired">Permanente</span>
+        }
+      </div>
+    </div>
+  );
+}
+
+// =====================================================================
+// QUICK TILE
+// =====================================================================
 function QuickTile({ icon, label, color, sub, highlight, onClick }) {
   return (
-    <div onClick={onClick} style={{
-      position: 'relative', padding: '14px 8px', borderRadius: 14,
-      background: highlight
-        ? `linear-gradient(180deg, ${color}30, ${color}10)`
-        : `linear-gradient(180deg, ${color}12, rgba(7,5,26,0.6))`,
-      border: `1px solid ${color}${highlight ? '88' : '50'}`,
-      textAlign: 'center', cursor: 'pointer',
-      transition: 'all 0.2s',
-      boxShadow: highlight ? `0 0 18px ${color}40` : 'none',
-      overflow: 'hidden',
-    }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 0 22px ${color}55`; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = highlight ? `0 0 18px ${color}40` : 'none'; }}
+    <div
+      onClick={onClick}
+      className={`ht-quicktile${highlight ? ' ht-quicktile--highlight' : ''}`}
+      style={{
+        background: highlight
+          ? `linear-gradient(180deg, ${color}30, ${color}10)`
+          : `linear-gradient(180deg, ${color}12, rgba(7,5,26,0.6))`,
+        border: `1px solid ${color}${highlight ? '88' : '50'}`,
+        boxShadow: highlight ? `0 0 18px ${color}40` : 'none',
+      }}
     >
-      <div style={{
-        display: 'inline-grid', placeItems: 'center',
-        width: 36, height: 36, borderRadius: 11,
-        background: `${color}22`, color, marginBottom: 5,
-        boxShadow: `0 0 12px ${color}33`,
-        border: `1px solid ${color}66`,
-        fontSize: 18,
-      }}>{icon}</div>
-      <div style={{
-        fontFamily: "'Saira Condensed', sans-serif", fontSize: 10,
-        color: '#fff', letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 700,
-      }}>{label}</div>
-      {sub !== '' && (
-        <div style={{
-          fontFamily: "'JetBrains Mono', monospace", fontSize: 10,
-          color, marginTop: 3, fontWeight: 700,
-        }}>{sub}</div>
-      )}
+      <div
+        className="ht-quicktile__icon"
+        style={{ background: `${color}22`, color, border: `1px solid ${color}66`, boxShadow: `0 0 12px ${color}33` }}
+      >{icon}</div>
+      <span className="ht-quicktile__label">{label}</span>
+      {sub !== '' && <span className="ht-quicktile__sub" style={{ color }}>{sub}</span>}
     </div>
-  );
-}
-
-// ── Big Action Button (Negozio / Pesca) ──────────────────────
-function BigActionButton({ icon, color, title, desc, onClick }) {
-  return (
-    <button onClick={onClick} style={{
-      width: '100%',
-      background: `linear-gradient(135deg, ${color}1a, ${color}06)`,
-      border: `1px solid ${color}55`,
-      borderRadius: 16,
-      padding: '16px 20px',
-      cursor: 'pointer',
-      display: 'flex', alignItems: 'center', gap: 14,
-      transition: 'all 0.2s',
-      boxShadow: `0 0 22px ${color}1a, 0 8px 24px rgba(3,2,12,0.4)`,
-      backdropFilter: 'blur(8px)',
-    }}
-      onMouseEnter={e => { e.currentTarget.style.background = `linear-gradient(135deg, ${color}2a, ${color}10)`; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-      onMouseLeave={e => { e.currentTarget.style.background = `linear-gradient(135deg, ${color}1a, ${color}06)`; e.currentTarget.style.transform = 'translateY(0)'; }}
-    >
-      <div style={{
-        width: 46, height: 46, borderRadius: 13,
-        background: `${color}22`,
-        border: `1px solid ${color}55`,
-        display: 'grid', placeItems: 'center',
-        color, fontSize: 22, flexShrink: 0,
-        boxShadow: `0 0 14px ${color}33`,
-      }}>{icon}</div>
-      <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontFamily: "'Unbounded', sans-serif", fontSize: 13, fontWeight: 700,
-          color: '#fff', letterSpacing: '-0.005em',
-          textShadow: `0 0 12px ${color}66`,
-        }}>{title}</div>
-        <div style={{
-          fontSize: 11, color: 'rgba(241,235,255,0.55)',
-          fontFamily: "'DM Sans', sans-serif", marginTop: 3,
-        }}>{desc}</div>
-      </div>
-      <span style={{ color, opacity: 0.7, fontSize: 18 }}>›</span>
-    </button>
   );
 }
 
@@ -656,17 +514,17 @@ function BigActionButton({ icon, color, title, desc, onClick }) {
 // STAT COMBATTIMENTO
 // =====================================================================
 function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneClassifica }) {
-  const vittorie = profilo.vittorie ?? 0;
+  const vittorie  = profilo.vittorie  ?? 0;
   const sconfitte = profilo.sconfitte ?? 0;
   const livelloMappa = profilo.livelloMappa ?? 1;
 
   const row1 = [
-    { icon: '🗺', val: `Lv.${livelloMappa}`, label: 'LIV. MAPPA',  col: '#a78bfa' },
-    { icon: '🏴', val: territoriConquistati, label: 'TERRITORI',   col: '#ffc861' },
+    { icon: '🗺', val: `Lv.${livelloMappa}`, label: 'LIV. MAPPA', col: '#a78bfa' },
+    { icon: '🏴', val: territoriConquistati,  label: 'TERRITORI',  col: '#ffc861' },
   ];
   const row2 = [
-    { icon: '✓', val: vittorie,             label: 'VITTORIE',    col: '#58e0a3' },
-    { icon: '✗', val: sconfitte,            label: 'SCONFITTE',   col: '#ff5b6c' },
+    { icon: '✓', val: vittorie,  label: 'VITTORIE',  col: '#58e0a3' },
+    { icon: '✗', val: sconfitte, label: 'SCONFITTE', col: '#ff5b6c' },
     {
       icon: '🏆',
       val: posizioneClassifica != null ? `#${posizioneClassifica}` : '—',
@@ -676,63 +534,34 @@ function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneCla
   ];
 
   const StatBox = ({ s }) => (
-    <div onClick={s.clickable ? s.onClick : undefined} style={{
-      flex: 1, textAlign: 'center', padding: '10px 4px', borderRadius: 11,
-      background: s.clickable
-        ? `linear-gradient(180deg, ${s.col}14, ${s.col}05)`
-        : `linear-gradient(180deg, ${s.col}10, rgba(7,5,26,0.4))`,
-      border: `1px solid ${s.col}${s.clickable ? '40' : '22'}`,
-      cursor: s.clickable ? 'pointer' : 'default',
-      transition: 'all 0.18s',
-    }}
-      onMouseEnter={s.clickable ? e => {
-        e.currentTarget.style.background = `linear-gradient(180deg, ${s.col}2a, ${s.col}0a)`;
-        e.currentTarget.style.borderColor = `${s.col}77`;
-      } : undefined}
-      onMouseLeave={s.clickable ? e => {
-        e.currentTarget.style.background = `linear-gradient(180deg, ${s.col}14, ${s.col}05)`;
-        e.currentTarget.style.borderColor = `${s.col}40`;
-      } : undefined}
+    <div
+      onClick={s.clickable ? s.onClick : undefined}
+      className={`ht-statbox${s.clickable ? ' ht-statbox--clickable' : ''}`}
+      style={{
+        background: s.clickable
+          ? `linear-gradient(180deg, ${s.col}14, ${s.col}05)`
+          : `linear-gradient(180deg, ${s.col}10, rgba(7,5,26,0.4))`,
+        border: `1px solid ${s.col}${s.clickable ? '40' : '22'}`,
+      }}
     >
-      <div style={{ fontSize: 14, marginBottom: 2 }}>{s.icon}</div>
-      <div style={{
-        fontFamily: "'JetBrains Mono', monospace", fontSize: 15, fontWeight: 700,
-        color: s.col, lineHeight: 1, letterSpacing: '-0.02em',
-        textShadow: `0 0 8px ${s.col}55`,
-      }}>{s.val}</div>
-      <div style={{
-        fontSize: 7, opacity: 0.8, letterSpacing: '0.22em',
-        marginTop: 4, fontFamily: "'Saira Condensed', sans-serif",
-        color: s.col, fontWeight: 700, textTransform: 'uppercase',
-      }}>{s.label}</div>
-      {s.clickable && <div style={{ fontSize: 8, color: s.col, opacity: 0.6, marginTop: 2 }}>›</div>}
+      <div className="ht-statbox__icon">{s.icon}</div>
+      <div className="ht-statbox__value" style={{ color: s.col, textShadow: `0 0 8px ${s.col}55` }}>{s.val}</div>
+      <div className="ht-statbox__label" style={{ color: s.col }}>{s.label}</div>
+      {s.clickable && <div className="ht-statbox__arrow" style={{ color: s.col }}>›</div>}
     </div>
   );
 
   return (
-    <div style={{
-      background: 'linear-gradient(180deg, rgba(27,22,56,0.55), rgba(13,10,38,0.7))',
-      border: '1px solid rgba(174,156,255,0.16)',
-      borderRadius: 16, padding: '14px 16px',
-      marginBottom: 20,
-      boxShadow: '0 8px 28px rgba(3,2,12,0.4)',
-      backdropFilter: 'blur(8px)',
-    }}>
-      <div style={{
-        fontSize: 9, color: '#ffc861', opacity: 0.85,
-        fontFamily: "'Saira Condensed', sans-serif",
-        letterSpacing: '0.3em', textAlign: 'center',
-        marginBottom: 12, textTransform: 'uppercase', fontWeight: 700,
-      }}>⚔ Statistiche Combattimento</div>
-
-      <div className="stat-combat-desktop" style={{ display: 'flex', gap: 6, justifyContent: 'space-between' }}>
+    <div className="ht-statcomb">
+      <div className="ht-statcomb__title">⚔ Statistiche Combattimento</div>
+      <div className="stat-combat-desktop ht-statcomb__row">
         {[...row1, ...row2].map(s => <StatBox key={s.label} s={s} />)}
       </div>
       <div className="stat-combat-mobile">
-        <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+        <div className="ht-statcomb__row" style={{ marginBottom: 6 }}>
           {row1.map(s => <StatBox key={s.label} s={s} />)}
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div className="ht-statcomb__row">
           {row2.map(s => <StatBox key={s.label} s={s} />)}
         </div>
       </div>
@@ -752,9 +581,9 @@ function BannerUltimeCarte({
   const [cartaSel, setCartaSel] = useState(null);
 
   const tutteOrdinatePerData = [
-    ...tutteLeWaifu.map(item => ({ ...item, _ts: item.dati?.acquisito?.toMillis ? item.dati.acquisito.toMillis() : Number(item.dati?.acquisito) || 0 })),
+    ...tutteLeWaifu.map(item  => ({ ...item, _ts: item.dati?.acquisito?.toMillis  ? item.dati.acquisito.toMillis()  : Number(item.dati?.acquisito)  || 0 })),
     ...tuttiGliOutfit.map(item => ({ ...item, _ts: item.dati?.acquisito?.toMillis ? item.dati.acquisito.toMillis() : Number(item.dati?.acquisito) || 0 })),
-    ...tutteLePose.map(item => ({ ...item, _ts: item.dati?.acquisito?.toMillis ? item.dati.acquisito.toMillis() : Number(item.dati?.acquisito) || 0 })),
+    ...tutteLePose.map(item   => ({ ...item, _ts: item.dati?.acquisito?.toMillis  ? item.dati.acquisito.toMillis()  : Number(item.dati?.acquisito)  || 0 })),
   ].sort((a, b) => b._ts - a._ts).slice(0, 20);
 
   const hasAnyCard = tutteOrdinatePerData.length > 0;
@@ -762,13 +591,8 @@ function BannerUltimeCarte({
   return (
     <PannelloOrnato glow="#a78bfa" variant="purple">
       <TitoloOrnato livello={2} colore="#ffe9a8">ULTIME CARTE</TitoloOrnato>
-      <div style={{
-        display: 'flex', gap: 10,
-        overflowX: 'auto', padding: '10px 4px 8px',
-        scrollbarWidth: 'thin',
-        scrollbarColor: 'rgba(167,139,250,0.4) transparent',
-      }}>
-        <div style={{ flexShrink: 0 }}>
+      <div className="ht-banner-scroll">
+        <div className="u-shrink0">
           <CardPacchettoOverlay profilo={profilo} totalPack={totalPack} setTab={setTab} />
         </div>
 
@@ -776,7 +600,7 @@ function BannerUltimeCarte({
           if (item.tipo === 'waifu') {
             const { id, w, dati } = item;
             return (
-              <div key={`w-${id}`} style={{ flexShrink: 0 }}>
+              <div key={`w-${id}`} className="u-shrink0">
                 <CartaWaifu
                   waifu={w} datiCollezione={dati}
                   dimensione="piccola" tipo="auto"
@@ -790,7 +614,7 @@ function BannerUltimeCarte({
           if (item.tipo === 'outfit') {
             const { id, o } = item;
             return (
-              <div key={`o-${id}`} style={{ flexShrink: 0 }}>
+              <div key={`o-${id}`} className="u-shrink0">
                 <CartaOutfit outfit={o} dimensione="piccola"
                   onClick={() => setCartaSel({ tipo: 'outfit', o })} />
               </div>
@@ -799,7 +623,7 @@ function BannerUltimeCarte({
           if (item.tipo === 'posa') {
             const { id, p } = item;
             return (
-              <div key={`p-${id}`} style={{ flexShrink: 0 }}>
+              <div key={`p-${id}`} className="u-shrink0">
                 <CartaPosa posa={p} dimensione="piccola"
                   onClick={() => setCartaSel({ tipo: 'posa', p })} />
               </div>
@@ -809,18 +633,12 @@ function BannerUltimeCarte({
         })}
 
         {!hasAnyCard && (
-          <div style={{ padding: '40px 20px', textAlign: 'center', minWidth: 240 }}>
-            <div style={{ fontSize: 38, marginBottom: 8,
-              filter: 'drop-shadow(0 0 12px rgba(255,126,182,0.5))' }}>🌸</div>
-            <div style={{
-              fontFamily: "'Saira Condensed', sans-serif", fontSize: 10,
-              color: '#ffc861', letterSpacing: '0.28em',
-              marginBottom: 6, textTransform: 'uppercase', fontWeight: 700,
-            }}>Collezione vuota</div>
-            <div style={{
-              opacity: 0.55, fontSize: 11, lineHeight: 1.6,
-              fontFamily: "'DM Sans', sans-serif",
-            }}>Apri il primo pacchetto<br />e inizia la tua collezione!</div>
+          <div className="ht-banner-empty">
+            <div className="ht-banner-empty__icon">🌸</div>
+            <div className="ht-banner-empty__title">Collezione vuota</div>
+            <div className="ht-banner-empty__sub">
+              Apri il primo pacchetto<br />e inizia la tua collezione!
+            </div>
           </div>
         )}
       </div>
@@ -845,6 +663,7 @@ function BannerUltimeCarte({
 function CardPacchettoOverlay({ profilo, totalPack, setTab }) {
   const [countdown, setCountdown] = useState('');
   const hasPack = totalPack > 0;
+  const col = hasPack ? '#ff85b6' : '#f5c560';
 
   useEffect(() => {
     if (hasPack) return;
@@ -867,33 +686,18 @@ function CardPacchettoOverlay({ profilo, totalPack, setTab }) {
     return () => clearInterval(iv);
   }, [hasPack, profilo.ultimaRicaricaPacchetti]);
 
-  const col = hasPack ? '#ff85b6' : '#f5c560';
-
   return (
     <div
       onClick={() => setTab('sbusta')}
+      className="ht-pack-card"
       style={{
-        width: 143, height: 215,
-        borderRadius: 14,
-        background:
-          `radial-gradient(120% 80% at 50% 20%, ${col}30, transparent 60%),
-           linear-gradient(160deg, #1e0c40 0%, #07051a 100%)`,
+        background: `radial-gradient(120% 80% at 50% 20%, ${col}30, transparent 60%), linear-gradient(160deg, #1e0c40 0%, #07051a 100%)`,
         border: `2px solid ${col}80`,
-        cursor: 'pointer', position: 'relative', overflow: 'hidden',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        boxShadow: hasPack
-          ? `0 0 30px ${col}55, inset 0 0 22px rgba(0,0,0,0.4)`
-          : `0 0 16px ${col}25, inset 0 0 22px rgba(0,0,0,0.4)`,
-        transition: 'all 0.2s',
-        flexShrink: 0,
+        boxShadow: hasPack ? `0 0 30px ${col}55, inset 0 0 22px rgba(0,0,0,0.4)` : `0 0 16px ${col}25, inset 0 0 22px rgba(0,0,0,0.4)`,
       }}
-      onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 0 40px ${col}80, inset 0 0 22px rgba(0,0,0,0.4)`; }}
-      onMouseLeave={e => { e.currentTarget.style.boxShadow = hasPack ? `0 0 30px ${col}55, inset 0 0 22px rgba(0,0,0,0.4)` : `0 0 16px ${col}25, inset 0 0 22px rgba(0,0,0,0.4)`; }}
     >
       <div className="foil foil--soft" />
 
-      {/* Pattern */}
       <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0, opacity: 0.06 }}>
         <pattern id="hbp-pat" width="28" height="28" patternUnits="userSpaceOnUse">
           <path d="M14,0 L28,14 L14,28 L0,14 Z" fill="none" stroke={col} strokeWidth="0.5" />
@@ -901,62 +705,153 @@ function CardPacchettoOverlay({ profilo, totalPack, setTab }) {
         <rect width="100%" height="100%" fill="url(#hbp-pat)" />
       </svg>
 
-      {/* Centro */}
-      <div style={{ textAlign: 'center', zIndex: 1 }}>
-        <div style={{
-          fontFamily: "'Unbounded', sans-serif",
-          fontSize: 46, color: col,
-          textShadow: `0 0 22px ${col}aa`, marginBottom: 4,
-        }}>♛</div>
-        <div style={{
-          fontFamily: "'Saira Condensed', sans-serif",
-          fontSize: 9, letterSpacing: '0.32em',
-          color: col, fontWeight: 700, opacity: 0.85,
-          textTransform: 'uppercase',
-        }}>Pack scellato</div>
+      <div className="ht-pack-card__center">
+        <div className="ht-pack-card__symbol" style={{ color: col, textShadow: `0 0 22px ${col}aa` }}>♛</div>
+        <div className="ht-pack-card__name" style={{ color: col }}>Pack scellato</div>
       </div>
 
-      {/* Overlay basso */}
-      <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        background: hasPack
-          ? `linear-gradient(0deg, ${col}d0 0%, ${col}88 60%, transparent 100%)`
-          : 'linear-gradient(0deg, rgba(7,5,26,0.94) 0%, rgba(7,5,26,0.7) 60%, transparent 100%)',
-        padding: '20px 10px 11px', textAlign: 'center', zIndex: 2,
-      }}>
+      <div
+        className="ht-pack-card__overlay"
+        style={{
+          background: hasPack
+            ? `linear-gradient(0deg, ${col}d0 0%, ${col}88 60%, transparent 100%)`
+            : 'linear-gradient(0deg, rgba(7,5,26,0.94) 0%, rgba(7,5,26,0.7) 60%, transparent 100%)',
+        }}
+      >
         {hasPack ? (
           <>
-            <div style={{
-              fontFamily: "'Unbounded', sans-serif", fontSize: 12,
-              fontWeight: 800, color: '#fff', letterSpacing: '-0.005em',
-              textShadow: '0 1px 4px rgba(0,0,0,0.6)',
-            }}>SBUSTA ORA</div>
-            <div style={{
-              marginTop: 4,
-              background: 'rgba(0,0,0,0.45)',
-              borderRadius: 999,
-              padding: '3px 12px',
-              display: 'inline-block',
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: 13, fontWeight: 800, color: '#fff',
-              border: '1px solid rgba(255,255,255,0.2)',
-            }}>×{totalPack}</div>
+            <div className="ht-pack-card__cta">SBUSTA ORA</div>
+            <div className="ht-pack-card__count">×{totalPack}</div>
           </>
         ) : (
           <>
-            <div style={{
-              fontSize: 8, color: 'rgba(241,235,255,0.55)',
-              fontFamily: "'Saira Condensed', sans-serif",
-              letterSpacing: '0.24em', marginBottom: 3, textTransform: 'uppercase',
-            }}>Prossimo tra</div>
-            <div style={{
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 12,
-              fontWeight: 700, color: '#ffe9a8',
-              textShadow: '0 0 10px rgba(255,233,168,0.6)',
-            }}>{countdown || '—'}</div>
+            <div className="ht-pack-card__cd-label">Prossimo tra</div>
+            <div className="ht-pack-card__cd-timer">{countdown || '—'}</div>
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+// =====================================================================
+// QUEST GIORNALIERI (8.2 – 8.5)
+// =====================================================================
+const QUEST_LABELS = {
+  bustine:     { nome: 'Apri una bustina',           reward: '+50 Kisses' },
+  territori:   { nome: 'Conquista 3 territori',      reward: '+1 Pack' },
+  leggendarie: { nome: 'Sblocca 1 carta leggendaria', reward: '+200 Kisses · ★ Pose' },
+};
+
+function QuestGiornalieri({ quest, setQuest, user, profilo, setProfilo }) {
+  const { defs, stato } = quest;
+  const [claiming, setClaiming] = useState(null);
+
+  const premiInAttesa = defs.filter(d => {
+    const s = stato[d.tipo];
+    return s && s.progresso >= s.target && !s.claimed;
+  }).length;
+
+  const handleClaim = async (tipo, reward) => {
+    if (claiming) return;
+    setClaiming(tipo);
+    try {
+      await claimQuestReward(user.uid, tipo, reward, profilo);
+      setQuest(prev => ({
+        ...prev,
+        stato: { ...prev.stato, [tipo]: { ...prev.stato[tipo], claimed: true } },
+      }));
+      if (reward.tipo === 'kisses' && setProfilo) {
+        setProfilo(p => ({ ...p, kisses: (p.kisses ?? 0) + (reward.qty ?? 0) }));
+      }
+      if (reward.tipo === 'pack' && setProfilo) {
+        setProfilo(p => ({ ...p, pacchettiOmaggio: (p.pacchettiOmaggio ?? 0) + (reward.qty ?? 0) }));
+      }
+    } catch (_) {}
+    setClaiming(null);
+  };
+
+  return (
+    <div className="ht-quest">
+      <div className="ht-quest__header">
+        <span className="ht-quest__title">✦ Quest Giornalieri</span>
+        {premiInAttesa > 0 && (
+          <span className="ht-quest__badge">Premi in attesa {premiInAttesa}/3</span>
+        )}
+      </div>
+
+      {defs.map(d => {
+        const s = stato[d.tipo] || { progresso: 0, target: d.target, claimed: false };
+        const done = s.progresso >= s.target;
+        const pct  = Math.min(100, Math.round((s.progresso / s.target) * 100));
+        const lbl  = QUEST_LABELS[d.tipo] || { nome: d.nome, reward: '' };
+
+        return (
+          <div key={d.tipo} className="ht-quest__item">
+            <div className={`ht-quest__check${done ? '' : ' ht-quest__check--pending'}`}>
+              {done ? '✓' : ''}
+            </div>
+            <div className="ht-quest__body">
+              <div className="ht-quest__name">{lbl.nome}</div>
+              <div className="ht-quest__progress-row">
+                <div className="ht-quest__progress-bar">
+                  <div className="ht-quest__progress-fill" style={{ width: `${pct}%` }} />
+                </div>
+                <span className="ht-quest__progress-text">{s.progresso} / {s.target}</span>
+              </div>
+              <div className="ht-quest__reward">{lbl.reward}</div>
+            </div>
+            {done && !s.claimed && (
+              <button
+                className="ht-quest__claim"
+                onClick={() => handleClaim(d.tipo, s.reward)}
+                disabled={claiming === d.tipo}
+              >
+                {claiming === d.tipo ? '...' : 'Riscuoti'}
+              </button>
+            )}
+            {s.claimed && <span className="ht-quest__claimed">✓ Riscosso</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// =====================================================================
+// TRA AMICI (9.2 – 9.4)
+// =====================================================================
+const AVATAR_COLORS = ['#a78bfa', '#ff85b6', '#6cf0e0', '#f5c560', '#58e0a3'];
+
+function TraAmici({ attivita, profilo }) {
+  if (!attivita) return null;
+
+  return (
+    <div className="ht-amici">
+      <div className="ht-amici__header">
+        <span className="ht-amici__title">♥ Tra Amici</span>
+        <span className="ht-amici__sub">Attività recente</span>
+      </div>
+
+      {attivita.length === 0 ? (
+        <div className="ht-amici__empty">Nessuna attività recente tra i tuoi amici</div>
+      ) : (
+        attivita.map((a, i) => {
+          const nomeFriend = profilo.amiciProfili?.[a.uid]?.nomeImpero ?? a.uid.slice(0, 4).toUpperCase();
+          const col = AVATAR_COLORS[i % AVATAR_COLORS.length];
+          return (
+            <div key={`${a.uid}-${i}`} className="ht-amici__item">
+              <div className="ht-amici__avatar" style={{ background: `${col}33`, border: `1px solid ${col}55`, color: col }}>
+                {nomeFriend.charAt(0).toUpperCase()}
+              </div>
+              <div className="ht-amici__text">
+                <div className="ht-amici__name">{nomeFriend}</div>
+                <div className="ht-amici__action">{a.dettaglio}</div>
+              </div>
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }

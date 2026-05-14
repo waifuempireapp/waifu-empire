@@ -8,7 +8,24 @@
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(a['id'], a['status']\\) for a in d['artifacts']]\")",
       "Bash(npx next *)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d['template']\\)\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>console.log\\(JSON.parse\\(d\\).template\\)\\)\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const s=JSON.parse\\(d\\);s.artifacts.forEach\\(a=>console.log\\(a.id,a.status\\)\\)}\\)\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const r=JSON.parse\\(d\\);console.log\\('State:',r.state\\);console.log\\('Progress:',r.progress.complete+'/'+r.progress.total\\);r.tasks.slice\\(0,5\\).forEach\\(t=>console.log\\(t.done?'[x]':'[ ]',t.description.slice\\(0,70\\)\\)\\)}\\)\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const r=JSON.parse\\(d\\);r.artifacts.forEach\\(a=>console.log\\(a.id,a.status\\)\\)}\\)\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);const t=fs.readFileSync\\('openspec/changes/crit-hit-system/tasks.md','utf8'\\);const done=\\(t.match\\(/^- \\\\[x\\\\]/gm\\)||[]\\).length;const todo=\\(t.match\\(/^- \\\\[ \\\\]/gm\\)||[]\\).length;console.log\\('Complete:',done,'Incomplete:',todo\\)\")",
+      "Bash(cd \"c:\\\\Progetti\\\\Impero delle waifu\\\\imperio-waifu\" && head -150 src/components/BabyDoll.jsx)",
+      "Read(//c/Progetti/Impero delle waifu/**)",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const r=JSON.parse\\(d\\);console.log\\('State:',r.state,'Progress:',r.progress.complete+'/'+r.progress.total\\)}\\)\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);const t=fs.readFileSync\\('openspec/changes/collection-detail-rework/tasks.md','utf8'\\);const done=\\(t.match\\(/^- \\\\[x\\\\]/gm\\)||[]\\).length;const todo=\\(t.match\\(/^- \\\\[ \\\\]/gm\\)||[]\\).length;console.log\\('Complete:',done,'Incomplete:',todo\\)\")",
+      "PowerShell($f = Get-Content \"c:\\\\Progetti\\\\Impero delle waifu\\\\impero-waifu\\\\reference\\\\Home _ Lobby.html\" -Raw; $f.Substring\\(0, [Math]::Min\\(8000, $f.Length\\)\\))",
+      "PowerShell($f = Get-Content \"c:\\\\Progetti\\\\Impero delle waifu\\\\impero-waifu\\\\reference\\\\Home _ Lobby.html\" -Raw; $f.Substring\\(8000, [Math]::Min\\(8000, $f.Length - 8000\\)\\))",
+      "PowerShell($f = Get-Content \"c:\\\\Progetti\\\\Impero delle waifu\\\\impero-waifu\\\\reference\\\\Home _ Lobby.html\" -Raw; $text = [System.Text.RegularExpressions.Regex]::Replace\\($f, '<[^>]+>', ''\\); $clean = [System.Text.RegularExpressions.Regex]::Replace\\($text, '\\\\s+', ' '\\).Trim\\(\\); $clean.Substring\\(0, [Math]::Min\\(4000, $clean.Length\\)\\))",
+      "PowerShell($f = Get-Content \"c:\\\\Progetti\\\\Impero delle waifu\\\\impero-waifu\\\\reference\\\\Home _ Lobby.html\" -Raw; $text = [System.Text.RegularExpressions.Regex]::Replace\\($f, '<[^>]+>', ' '\\); $clean = [System.Text.RegularExpressions.Regex]::Replace\\($text, '\\\\s+', ' '\\).Trim\\(\\); $clean.Substring\\(0, [Math]::Min\\(8000, $clean.Length\\)\\))",
+      "Bash(dir openspec\\\\specs /b)",
+      "Bash(powershell -Command \"\\(Get-Content 'src\\\\lib\\\\firestoreService.js' -Raw\\).Length\")",
+      "Bash(npm run *)"
     ]
   }
 }

@@ -443,3 +443,83 @@ export async function setPrezziConfig(patch) {
   const ref = doc(db, 'config', 'prezzi');
   await setDoc(ref, patch, { merge: true });
 }
+
+// =================== DROP STAGIONALE ===================
+// Legge il drop attivo con inizio più recente dalla collection 'drops'
+export async function getDropStagionale() {
+  try {
+    const attivi = await listDropsAttivi();
+    if (!attivi.length) return null;
+    // listDropsAttivi ordina per creato desc; prendiamo il più recente per inizio
+    const sorted = [...attivi].sort((a, b) => {
+      const ta = a.inizio ? new Date(a.inizio).getTime() : 0;
+      const tb = b.inizio ? new Date(b.inizio).getTime() : 0;
+      return tb - ta;
+    });
+    return sorted[0];
+  } catch (_) { return null; }
+}
+
+// =================== QUEST GIORNALIERE ===================
+const QUEST_DEFS = [
+  { tipo: 'bustine',    nome: 'Apri una bustina',          target: 1, reward: { tipo: 'kisses',  qty: 50  } },
+  { tipo: 'territori',  nome: 'Conquista 3 territori',     target: 3, reward: { tipo: 'pack',    qty: 1   } },
+  { tipo: 'leggendarie',nome: 'Sblocca 1 carta leggendaria', target: 1, reward: { tipo: 'kisses', qty: 200, bonus: 'pose' } },
+];
+
+function _todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export async function initQuestGiornaliere(uid) {
+  const ref = doc(db, 'users', uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  const profilo = snap.data();
+  const oggi = _todayStr();
+  const saved = profilo.questGiornaliere;
+
+  if (saved && saved.data === oggi) {
+    return { defs: QUEST_DEFS, stato: saved };
+  }
+
+  // Reset giornaliero
+  const statoFresh = {
+    data: oggi,
+    bustine:     { progresso: 0, target: 1, reward: { tipo: 'kisses', qty: 50 }, claimed: false },
+    territori:   { progresso: 0, target: 3, reward: { tipo: 'pack',   qty: 1  }, claimed: false },
+    leggendarie: { progresso: 0, target: 1, reward: { tipo: 'kisses', qty: 200, bonus: 'pose' }, claimed: false },
+  };
+  await updateDoc(ref, { questGiornaliere: statoFresh });
+  return { defs: QUEST_DEFS, stato: statoFresh };
+}
+
+export async function claimQuestReward(uid, tipo, reward, currentProfilo) {
+  const ref = doc(db, 'users', uid);
+  const patch = { [`questGiornaliere.${tipo}.claimed`]: true };
+  if (reward.tipo === 'kisses') patch['kisses'] = (currentProfilo?.kisses ?? 0) + (reward.qty ?? 0);
+  if (reward.tipo === 'pack')   patch['pacchettiOmaggio'] = (currentProfilo?.pacchettiOmaggio ?? 0) + (reward.qty ?? 0);
+  await updateDoc(ref, patch);
+}
+
+// =================== ATTIVITA AMICI ===================
+export async function writeAttivita(uid, tipo, dettaglio) {
+  const ref = collection(db, 'users', uid, 'attivita');
+  await addDoc(ref, { tipo, dettaglio, ts: serverTimestamp(), uid });
+}
+
+export async function getAttivitaAmici(amiciUids) {
+  if (!amiciUids || amiciUids.length === 0) return [];
+  const cap = amiciUids.slice(0, 5);
+  const results = await Promise.all(cap.map(async (fuid) => {
+    try {
+      const q = query(collection(db, 'users', fuid, 'attivita'), orderBy('ts', 'desc'), limit(1));
+      const snap = await getDocs(q);
+      if (snap.empty) return null;
+      return { uid: fuid, ...snap.docs[0].data() };
+    } catch (_) { return null; }
+  }));
+  return results
+    .filter(Boolean)
+    .sort((a, b) => (b.ts?.toMillis?.() ?? 0) - (a.ts?.toMillis?.() ?? 0));
+}
