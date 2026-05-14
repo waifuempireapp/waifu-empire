@@ -40,7 +40,7 @@ if (!fs.existsSync(bak)) {
 }
 
 // ── 2. Aggiungi/aggiorna import ──────────────────────────────
-const IMPORT_LINE = `import { Header, NavTabs, BottomNav, HomeTab, AmiciTab, ClassificaTab } from './_redesign';`;
+const IMPORT_LINE = `import { Header, NavTabs, BottomNav, HomeTab, AmiciTab, ClassificaTab, SbustaTab, CollezioneTab } from './_redesign';`;
 const OLD_IMPORT_RE = /import\s*\{[^}]*\}\s*from\s*['"]\.\/_redesign['"];\s*\n?/g;
 
 if (OLD_IMPORT_RE.test(src)) {
@@ -62,6 +62,8 @@ const FUNCTIONS_TO_REMOVE = [
   'Header', 'PackBlock', 'KissesBlock', 'NavTabs', 'BottomNav',
   'HomeTab', 'StatCombattimento', 'BannerUltimeCarte', 'CardPacchettoOverlay',
   'AmiciTab', 'ClassificaTab',
+  'SbustaTab', 'PackCard', 'CartaCoperta', 'CountdownPacchettiOmaggio',
+  'CollezioneTab', 'BarraFiltriWaifu', 'TradeCountdownInline', 'SelezioneWaifuTeam',
 ];
 
 let removed = 0;
@@ -131,16 +133,23 @@ for (const fname of FUNCTIONS_TO_REMOVE) {
 // ── 4. Pulisci eventuali commenti di sezione orfani ───────────
 src = src.replace(/\n\s*\/\/ ={5,}\s*\n\s*\/\/ (?:HEADER|NAV TABS|BOTTOM NAV|HOMETAB|TAB:?[^\n]*|FASE \d+|STAT.*|CARD PACCH.*|BANNER.*|CLASSIFICA[^\n]*|AMICI[^\n]*)[^\n]*\n\s*\/\/ ={5,}\s*\n(?=\s*(?:\/\/|\n|function|export))/gi, '\n');
 
-// ── 5. Aggiungi prop ModaleCarta a <HomeTab .../> ─────────────
-const homeTabRe = /<HomeTab\b([^>]*?)\/>/m;
-const ht = homeTabRe.exec(src);
-if (ht && !/ModaleCarta\s*=/.test(ht[0])) {
-  src = src.replace(homeTabRe, (full, attrs) => `<HomeTab${attrs} ModaleCarta={ModaleCarta} />`);
-  console.log('✓ Prop ModaleCarta aggiunta a <HomeTab/>');
-} else if (ht) {
-  console.log('ℹ Prop ModaleCarta già presente');
-} else {
-  console.warn('⚠ <HomeTab/> non trovato — passa la prop a mano');
+// ── 5. Aggiungi prop ModaleCarta / ModaPersonalizzazione ai render ─
+const PROP_INJECTIONS = [
+  { tag: 'HomeTab',       prop: 'ModaleCarta', value: 'ModaleCarta' },
+  { tag: 'SbustaTab',     prop: 'ModaleCarta', value: 'ModaleCarta' },
+  { tag: 'CollezioneTab', prop: 'ModaPersonalizzazione', value: 'ModaPersonalizzazione' },
+];
+for (const { tag, prop, value } of PROP_INJECTIONS) {
+  const re = new RegExp(`<${tag}\\b([^>]*?)\\/>`, 'm');
+  const m = re.exec(src);
+  if (m && !new RegExp(`\\b${prop}\\s*=`).test(m[0])) {
+    src = src.replace(re, (full, attrs) => `<${tag}${attrs} ${prop}={${value}} />`);
+    console.log(`✓ Prop ${prop} aggiunta a <${tag}/>`);
+  } else if (m) {
+    console.log(`ℹ Prop ${prop} già presente su <${tag}/>`);
+  } else {
+    console.warn(`⚠ <${tag}/> non trovato — passa la prop a mano`);
+  }
 }
 
 // ── 6. Scrivi ────────────────────────────────────────────────

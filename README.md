@@ -70,7 +70,7 @@ Tutte le feature funzionali esistenti sono mantenute:
 - Contatore copie quando `datiCollezione.copie > 1`
 - `evidenziato` per slot/team selezionato
 
-## 🎮 Patch Lobby + Amici + Classifica
+## 🎮 Patch Lobby + Amici + Classifica + Sbusta + Collezione
 
 Le schermate hanno molti **inline styles** dentro `gioco/page.jsx`, quindi richiedono modifiche al JSX, non solo al CSS. Ecco la patch dedicata:
 
@@ -94,9 +94,9 @@ node apply/patch-page.js
 ```
 
 Lo script:
-- Aggiunge l'import `{ Header, NavTabs, BottomNav, HomeTab, AmiciTab, ClassificaTab } from './_redesign'`
-- Rimuove le 11 funzioni inline (`Header`, `PackBlock`, `KissesBlock`, `NavTabs`, `BottomNav`, `HomeTab`, `StatCombattimento`, `BannerUltimeCarte`, `CardPacchettoOverlay`, `AmiciTab`, `ClassificaTab`)
-- Aggiunge `ModaleCarta={ModaleCarta}` al render di `<HomeTab .../>`
+- Aggiunge l'import `{ Header, NavTabs, BottomNav, HomeTab, AmiciTab, ClassificaTab, SbustaTab, CollezioneTab } from './_redesign'`
+- Rimuove le 18 funzioni inline corrispondenti (incluse `PackCard`, `CartaCoperta`, `CountdownPacchettiOmaggio`, `BarraFiltriWaifu`, `TradeCountdownInline`, `SelezioneWaifuTeam`)
+- Aggiunge le props `ModaleCarta={ModaleCarta}` a `<HomeTab/>` e `<SbustaTab/>`, e `ModaPersonalizzazione={ModaPersonalizzazione}` a `<CollezioneTab/>`
 - Crea backup `page.jsx.bak`
 
 ### Modo manuale
@@ -107,20 +107,21 @@ Vedi `PATCH-LOBBY.md` per le istruzioni dettagliate passo per passo.
 
 ```
 src/app/gioco/_redesign/
-├── index.jsx       ← re-export di tutto
-├── _shared.jsx     ← token visivi (colori, font, sakura petals, sub-tab)
-├── Lobby.jsx       ← Header · NavTabs · BottomNav · HomeTab
-├── Amici.jsx       ← AmiciTab (con sub-tab Amici/Scambi)
-└── Classifica.jsx  ← ClassificaTab (con podio top 3)
+├── index.jsx         ← re-export di tutto
+├── _shared.jsx       ← token visivi (colori, font, sakura petals, sub-tab)
+├── Lobby.jsx         ← Header · NavTabs · BottomNav · HomeTab
+├── Amici.jsx         ← AmiciTab (sub-tab Amici/Scambi)
+├── Classifica.jsx    ← ClassificaTab (podio top 3 + lista)
+├── Sbusta.jsx        ← SbustaTab (reveal, drop selector, pack cards, catalogo)
+└── Collezione.jsx    ← CollezioneTab (4 sub-tab + filtri waifu + team editor)
 ```
 
 ## 🔄 Prossimi step
 
-Dopo aver verificato che Lobby + Amici + Classifica appaiano correttamente, posso ridisegnare allo stesso modo:
-- `SbustaTab` — animazione apertura pack
+Dopo aver verificato Sbusta + Collezione, posso ridisegnare ancora:
 - `MappaTab` — mappa di conquista
-- `CollezioneTab` — griglia + filtri
 - `NegozioOverlay` — popup negozio
 - `PescaMisteriosaFeed` — bustine amici
+- `ModaleCarta` / `ModaPersonalizzazione` — modali dettaglio
 
 Dimmi su quali vuoi che lavori dopo. Sono tutti cambiamenti **solo JSX/CSS** — la logica resta invariata.
