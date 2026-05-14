@@ -396,6 +396,7 @@ export function HomeTab({
         profilo={profilo} setProfilo={setProfilo}
         user={user} totalPack={totalPack}
         setTab={setTab} numWaifu={numWaifu}
+        onClickWaifu={() => { setColezSubTab('waifu'); setTab('collezione'); }}
         ModaleCarta={ModaleCarta}
       />
 
@@ -472,7 +473,7 @@ function DropStagionale({ drop, setTab }) {
         {scaduto
           ? <span className="ht-drop__cd-expired">Evento terminato</span>
           : countdown
-            ? <span className="ht-drop__countdown">{countdown}</span>
+            ? <><span className="ht-drop__cd-expired" style={{ opacity: 0.55, marginRight: 4 }}>disponibile per:</span><span className="ht-drop__countdown">{countdown}</span></>
             : <span className="ht-drop__cd-expired">Permanente</span>
         }
       </div>
@@ -550,7 +551,7 @@ function BannerUltimeCarte({
   tutteLeWaifu, tuttiGliOutfit, tutteLePose,
   outfitCat, poseCat, collezione,
   profilo, setProfilo, user, totalPack, setTab,
-  numWaifu, ModaleCarta,
+  numWaifu, onClickWaifu, ModaleCarta,
 }) {
   const [cartaSel, setCartaSel] = useState(null);
 
@@ -561,10 +562,13 @@ function BannerUltimeCarte({
   ].sort((a, b) => b._ts - a._ts).slice(0, 10);
 
   return (
-    <PannelloOrnato glow="#a78bfa" variant="purple">
+    <PannelloOrnato glow="#a78bfa" variant="purple" noCorners>
       <div className="ht-banner-header">
         <TitoloOrnato livello={2} colore="#ffe9a8">ULTIME CARTE</TitoloOrnato>
-        <span className="ht-banner-total">{numWaifu} waifu ♛</span>
+        <button className="ht-banner-total" onClick={onClickWaifu}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+          {numWaifu} waifu ♛ <span style={{ opacity: 0.5, fontSize: 9 }}>›</span>
+        </button>
       </div>
       <div className="ht-banner-scroll">
         <div className="u-shrink0">

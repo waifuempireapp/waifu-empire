@@ -10,7 +10,7 @@ import React from 'react';
 // ============================================================
 // PANNELLO — Glassmorphism notturno con bordi neon
 // ============================================================
-export function PannelloOrnato({ children, variant = 'default', glow = '#f5c560', style = {}, ...rest }) {
+export function PannelloOrnato({ children, variant = 'default', glow = '#f5c560', noCorners = false, style = {}, ...rest }) {
   const variants = {
     default: { bg: 'linear-gradient(180deg, rgba(27,22,56,0.72), rgba(13,10,38,0.85))', border: 'rgba(174,156,255,0.18)' },
     dark:    { bg: 'linear-gradient(180deg, rgba(7,5,26,0.92), rgba(3,2,12,0.96))',     border: 'rgba(174,156,255,0.10)' },
@@ -30,7 +30,7 @@ export function PannelloOrnato({ children, variant = 'default', glow = '#f5c560'
       boxShadow: `0 0 28px ${glow}1a, 0 10px 36px rgba(3,2,12,0.55), 0 1px 0 rgba(255,255,255,0.04) inset`,
       ...style,
     }} {...rest}>
-      <CornerBrackets colore={glow} />
+      {!noCorners && <CornerBrackets colore={glow} />}
       {children}
     </div>
   );

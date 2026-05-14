@@ -335,7 +335,9 @@ input:focus, textarea:focus, select:focus {
   .game-container > div:last-child { padding-bottom: 80px; }
 
   .game-header { padding: 10px 14px !important; }
-  .game-header .impero-nome { font-size: 12px !important; }
+  .game-header .impero-nome { font-size: 11px !important; }
+  .hdr-root { padding-right: 14px !important; }
+  .hdr-right { gap: 5px !important; }
 
   .header-desktop-only { display: none !important; }
   .impero-nome-popup { display: flex !important; }
@@ -1034,7 +1036,7 @@ input:focus, textarea:focus, select:focus {
 
 /* ===== MISSIONI FAB ===== */
 .missioni-fab {
-  position: fixed; bottom: 82px; right: 16px; z-index: 90;
+  position: fixed; bottom: 96px; right: 16px; z-index: 90;
   width: 52px; height: 52px; border-radius: 50%;
   background: linear-gradient(135deg, #a78bfa, #ff85b6);
   border: none; cursor: pointer;
