@@ -70,11 +70,37 @@ Tutte le feature funzionali esistenti sono mantenute:
 - Contatore copie quando `datiCollezione.copie > 1`
 - `evidenziato` per slot/team selezionato
 
-## 🔄 Prossimi step (opzionali)
+## 🎮 Patch Lobby (Header + Home + Navigazione)
 
-Se vuoi spingere oltre, dopo aver applicato la patch base si può:
-1. Refinare i layout inline di `gioco/page.jsx` (es. header, banner home, sezione Sbusta) usando le nuove utility class
-2. Sostituire l'apertura pack con un'animazione 3D (rays + flip 3D)
-3. Aggiungere sakura petals/particles come overlay decorativo opzionale
+Le schermate hanno molti **inline styles** dentro `gioco/page.jsx`, quindi richiedono modifiche al JSX, non solo al CSS. Ecco la patch dedicata:
 
-Tutti questi sono cambiamenti **solo JSX/CSS** — la logica resta invariata.
+### Modo veloce (script automatico)
+
+```bash
+# Copia il modulo _redesign
+cp -R apply/src/* ./src/
+
+# Esegui lo script di patch (crea page.jsx.bak e applica le modifiche)
+node apply/patch-page.js
+```
+
+Lo script:
+- Aggiunge l'import `{ Header, NavTabs, BottomNav, HomeTab } from './_redesign'`
+- Rimuove le 9 funzioni inline (`Header`, `PackBlock`, `KissesBlock`, `NavTabs`, `BottomNav`, `HomeTab`, `StatCombattimento`, `BannerUltimeCarte`, `CardPacchettoOverlay`)
+- Aggiunge `ModaleCarta={ModaleCarta}` al render di `<HomeTab .../>`
+- Crea backup `page.jsx.bak`
+
+### Modo manuale
+
+Vedi `PATCH-LOBBY.md` per le istruzioni dettagliate passo per passo.
+
+## 🔄 Prossimi step
+
+Dopo aver verificato che la Lobby appaia correttamente, posso ridisegnare allo stesso modo:
+- `SbustaTab` — animazione apertura pack
+- `MappaTab` — mappa di conquista
+- `CollezioneTab` — griglia + filtri
+- `AmiciTab` / `ClassificaTab` — amici, scambi, classifica
+- `NegozioOverlay` — popup negozio
+
+Dimmi su quali vuoi che lavori dopo. Sono tutti cambiamenti **solo JSX/CSS** — la logica resta invariata.
