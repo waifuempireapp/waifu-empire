@@ -1729,6 +1729,25 @@ function ClassificaTab({ user }) {
     </div>
   );
 }
+function CartaCoperta() {
+  return (
+    <div style={{
+      width: 143, height: 215, borderRadius: 14,
+      background: 'radial-gradient(120% 80% at 50% 20%, rgba(245,197,96,0.18), transparent 60%), linear-gradient(160deg, #1e0c40 0%, #07051a 100%)',
+      border: '2px solid rgba(245,197,96,0.35)',
+      position: 'relative', overflow: 'hidden',
+      display: 'grid', placeItems: 'center',
+      boxShadow: '0 0 20px rgba(245,197,96,0.2), inset 0 0 22px rgba(0,0,0,0.4)',
+    }}>
+      <div className="foil foil--soft" />
+      <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
+        <div style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 40, color: '#f5c560', textShadow: '0 0 18px rgba(245,197,96,0.7)' }}>♛</div>
+        <div style={{ fontFamily: 'Saira Condensed, sans-serif', fontSize: 8, color: '#f5c560', letterSpacing: '0.28em', marginTop: 6, opacity: 0.85, textTransform: 'uppercase', fontWeight: 700 }}>Sigillato</div>
+      </div>
+    </div>
+  );
+}
+
 function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitCat, poseCat, user, mostraNotif, godPackProb = GOD_PACK_PROB_DEFAULT, ModaleCarta }) {
   const [stato, setStato] = useState('idle');
   const [carteRivelate, setCarteRivelate] = useState([]);
