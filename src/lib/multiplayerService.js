@@ -443,3 +443,22 @@ export async function salvaRisultatoPvpRound(codice, roundKey, risultato) {
     aggiornato: serverTimestamp(),
   });
 }
+
+// ── PvP Arena: salva mossa waifu-battle per il turno corrente ────────────
+// battagliaCorrente.arenaMosse.{turno}.{uid} = moveIndex | 'swap_{newIdx}'
+export async function salvaArenaMove(codice, uid, turno, moveData) {
+  const ref = doc(db, 'partite_multi', codice);
+  await updateDoc(ref, {
+    [`battagliaCorrente.arenaMosse.t${turno}.${uid}`]: moveData,
+    aggiornato: serverTimestamp(),
+  });
+}
+
+// ── PvP Arena: inizializza i team nell'arena ─────────────────────────────
+export async function inizializzaArena(codice, uid, teamIds) {
+  const ref = doc(db, 'partite_multi', codice);
+  await updateDoc(ref, {
+    [`battagliaCorrente.arenaTeam.${uid}`]: teamIds,
+    aggiornato: serverTimestamp(),
+  });
+}

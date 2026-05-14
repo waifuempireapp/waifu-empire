@@ -5535,14 +5535,19 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   // NUOVO SISTEMA BATTAGLIA (WaifuBattleArena)
   // ================================================================
   if (waifuBattleActive) {
-    const playerIds = new Set(waifuBattlePlayerTeam.map(w => w.id));
     return (
       <WaifuBattleArena
         playerTeam={waifuBattlePlayerTeam}
         waifuCat={waifuCat}
+        battleCtx={{ terrSel, nomeImperoAvversario }}
+        onBattleResult={async (isVictory) => {
+          // Stessa logica di fineBattaglia del vecchio sistema
+          await fineBattaglia(isVictory);
+        }}
         onExit={() => {
           setWaifuBattleActive(false);
           setWaifuBattlePlayerTeam([]);
+          resetBattaglia();
         }}
       />
     );

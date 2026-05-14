@@ -11,7 +11,10 @@ import {
   salvaSceltaPvpRound, salvaPrimoTurnoPvp,
   salvaProseguiTurnoRound, registraRisultatoBattagliaPvp,
   salvaRisultatoPvpRound, getPartiteSalvateUtente,
+  salvaArenaMove, inizializzaArena,
 } from '@/lib/multiplayerService';
+import WaifuBattleArena from '@/components/WaifuBattleArena';
+import { initBattleWaifu, generateCPUTeam } from '@/lib/battleEngine';
 import { TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT } from '@/lib/constants';
 import { applicaAbilitaOutfit, applicaModificatoriOpp } from '@/lib/gameLogic';
 import { updateUserProfile } from '@/lib/firestoreService';
@@ -1173,6 +1176,15 @@ function BattagliaMultiplayer({
   // Risultato finale per il popup "Fine partita"
   const [risultatoFinale, setRisultatoFinale] = useState(null);
 
+  // ── NUOVO SISTEMA ARENA WaifuBattle ─────────────────────────────────
+  const [arenaAttiva, setArenaAttiva]         = useState(false);
+  const [arenaPlayerTeam, setArenaPlayerTeam] = useState([]);
+  const [arenaEnemyTeam, setArenaEnemyTeam]   = useState([]);
+  const [pvpOpponentMove, setPvpOpponentMove] = useState(null);
+  const [pvpWaiting, setPvpWaiting]           = useState(false);
+  const arenaTurnoRef    = useRef(0);   // turno corrente arena (PvP move sync)
+  const arenaVincitoreRef = useRef(null); // vincitore UID arena, settato da onBattleResult
+
   // ── Helpers mazzo (definiti prima degli useEffect che li usano) ───
   const waifuDisponibili = Object.entries(collezione?.waifu || {}).map(([id, dati]) => {
     const w = waifuCat.find(x => x.id === id);
@@ -1460,6 +1472,32 @@ function BattagliaMultiplayer({
       }
     }
   }, [partita?.battagliaCorrente, fase, iniziata]);
+
+  // ── Arena PvP: sincronizza mosse avversario da Firestore ─────────────
+  useEffect(() => {
+    if (!arenaAttiva || isCpu) return;
+    const arenaMosse = partita?.battagliaCorrente?.arenaMosse;
+    if (!arenaMosse) return;
+    const t = arenaTurnoRef.current;
+    const oppData = arenaMosse?.[`t${t}`]?.[avversarioUid];
+    const myData  = arenaMosse?.[`t${t}`]?.[myUid];
+    if (oppData?.moveIndex !== undefined && myData?.moveIndex !== undefined) {
+      setPvpOpponentMove(oppData.moveIndex);
+      setPvpWaiting(false);
+      arenaTurnoRef.current = t + 1;
+    }
+  }, [partita?.battagliaCorrente?.arenaMosse, arenaAttiva]); // eslint-disable-line
+
+  const handlePvPMoveSubmit = async (moveIdx) => {
+    const t = arenaTurnoRef.current;
+    setPvpOpponentMove(null); // reset prima che arrivi la mossa avversaria
+    setPvpWaiting(true);
+    try {
+      await salvaArenaMove(codice, myUid, t, { moveIndex: moveIdx });
+    } catch (e) {
+      mostraNotif('Errore sincronizzazione mossa', '#ff3d3d');
+    }
+  };
 
   // Risolve il round (solo l'attaccante) e scrive il risultato su Firestore
   const _risolviERiscrivi = async (scelteRound, roundKey) => {
@@ -1889,38 +1927,51 @@ function BattagliaMultiplayer({
     }
   };
 
+  // Costruisce un team arena (4 waifu) da IDs usando il catalog raw + battleStats
+  const buildArenaTeam = (waifuIds, useCollData = false) =>
+    waifuIds.slice(0, 4).map(id => {
+      const rawW = waifuCat.find(x => x.id === id);
+      if (!rawW) return null;
+      const collData = useCollData ? (collezione?.waifu?.[id] ?? null) : null;
+      return initBattleWaifu(rawW, collData);
+    }).filter(Boolean);
+
+  // Quando arriva il mazzo avversario (PvP in attesa), avvia l'arena
   useEffect(() => {
     if (!attesaMazzoAvv || isCpu) return;
     const mazziPartita = partita?.battagliaCorrente?.mazzi || {};
-    const mazzoAvv = mazziPartita[avversarioUid];
-    if (!mazzoAvv || mazzoAvv.length === 0) return;
+    const mazzoAvvIds = mazziPartita[avversarioUid];
+    const mioMazzoIds = mazziPartita[myUid];
+    if (!mazzoAvvIds || mazzoAvvIds.length < 4) return;
+    if (!mioMazzoIds || mioMazzoIds.length < 4) return;
 
-    const mazzoAvversario = mazzoAvv.map(id => {
-      const w = waifuCat.find(x => x.id === id);
-      return w ? { ...w, id: `opp_${w.id}`, _outfitEquipIds: [] } : null;
-    }).filter(Boolean);
-    if (mazzoAvversario.length < 5) return;
+    const eTeam = buildArenaTeam(mazzoAvvIds, false);
+    const pTeam = buildArenaTeam(mioMazzoIds, true);
+    if (eTeam.length < 4 || pTeam.length < 4) return;
 
-    _avviaBattaglia(mazzoAvversario, sonoAttaccante);
-  }, [partita?.battagliaCorrente?.mazzi, attesaMazzoAvv]);
+    arenaTurnoRef.current = 0;
+    arenaVincitoreRef.current = null;
+    setArenaPlayerTeam(pTeam);
+    setArenaEnemyTeam(eTeam);
+    setArenaAttiva(true);
+    setAttesaMazzoAvv(false);
+    setModoBattaglia(false);
+  }, [partita?.battagliaCorrente?.mazzi, attesaMazzoAvv]); // eslint-disable-line
 
   const confermaEAvvia = async () => {
-    let mazzoUtente;
+    let waifuIds;
     if (teamSel && teamSel !== 'manuale') {
       const team = teams[teamSel];
-      mazzoUtente = team.waifu.map(buildWaifuBattaglia).filter(Boolean);
+      waifuIds = (team?.waifu ?? []);
     } else {
-      if (waifuSel.length !== 5) { mostraNotif('Seleziona 5 waifu!', '#ff3d3d'); return; }
-      mazzoUtente = waifuSel.map(buildWaifuBattaglia).filter(Boolean);
+      if (waifuSel.length < 4) { mostraNotif('Seleziona almeno 4 waifu!', '#ff3d3d'); return; }
+      waifuIds = waifuSel;
     }
-    if (mazzoUtente.length < 5) { mostraNotif('Team insufficiente!', '#ff3d3d'); return; }
-
-    setMazzoP(mazzoUtente);
-    mazzoPRef.current = mazzoUtente;
+    if (waifuIds.length < 4) { mostraNotif('Team insufficiente!', '#ff3d3d'); return; }
 
     if (!isCpu) {
-      // ── Battaglia PvP ──
-      const mazzoIds = mazzoUtente.map(w => w.id);
+      // ── Battaglia PvP (WaifuBattleArena) ──
+      const mazzoIds = waifuIds.slice(0, 4);
       try {
         await salvaMazzoBattaglia(codice, myUid, mazzoIds);
         setMazzoSalvato(true);
@@ -1930,51 +1981,63 @@ function BattagliaMultiplayer({
       }
 
       const mazziPartita = partita?.battagliaCorrente?.mazzi || {};
-      const mazzoAvv = mazziPartita[avversarioUid];
+      const mazzoAvvIds = mazziPartita[avversarioUid];
 
-      if (mazzoAvv && mazzoAvv.length >= 5) {
-        const mazzoAvversario = mazzoAvv.map(id => {
-          const w = waifuCat.find(x => x.id === id);
-          return w ? { ...w, id: `opp_${w.id}`, _outfitEquipIds: [] } : null;
-        }).filter(Boolean);
-        mazzoCRef.current = mazzoAvversario;
-        _avviaBattaglia(mazzoAvversario, sonoAttaccante);
+      if (mazzoAvvIds && mazzoAvvIds.length >= 4) {
+        const eTeam = buildArenaTeam(mazzoAvvIds, false);
+        const pTeam = buildArenaTeam(mazzoIds, true);
+        arenaTurnoRef.current = 0;
+        arenaVincitoreRef.current = null;
+        setArenaPlayerTeam(pTeam);
+        setArenaEnemyTeam(eTeam);
+        setArenaAttiva(true);
+        setModoBattaglia(false);
       } else {
         setAttesaMazzoAvv(true);
       }
       return;
     }
 
-    // ── Battaglia vs CPU ──
-    const playerIds = new Set(mazzoUtente.map(w => w.id));
-    const cpuPool = waifuCat.filter(w => !playerIds.has(w.id));
-    const cpuShuffled = [...cpuPool].sort(() => Math.random() - 0.5).slice(0, 5);
-    const mazzoCPU = cpuShuffled.map(w => ({ ...w, _outfitEquipIds: [] }));
-    setMazzoC(mazzoCPU);
-    mazzoCRef.current = mazzoCPU;
-    setModoBattaglia(false); setIniziata(true);
-    setPunteggio({ player: 0, cpu: 0 }); punteggioRef.current = { player: 0, cpu: 0 };
-    setRound(1); roundRef.current = 1;
-    setRisultatiWaifu({}); setStatsUsatePartita([]); statsUsateRef.current = [];
-    setCarteP(null); setCarteC(null); setStatScelta(null);
-    setDirezione(null); setVincitoreRound(null);
-    setCpuWaifuPending(null); setCpuStatPending(null); setCpuDirPending(null);
-    setCoinResult(null); setInSuddenDeath(false); inSuddenDeathRef.current = false;
-    setFase('coin');
-    setTimeout(() => {
-      const result = Math.random() < 0.5 ? 'player' : 'cpu';
-      setCoinResult(result);
-      setPrimoTurno(result); primoTurnoRef.current = result;
-      setTimeout(() => {
-        setTurno(result); turnoRef.current = result;
-        setTimeLeft(30);
-        setFase(result === 'player' ? 'playerScegliWaifu' : 'cpuSceglieTutto');
-      }, 1800);
-    }, 200);
+    // ── Battaglia vs CPU (WaifuBattleArena) ──
+    const playerIds = new Set(waifuIds);
+    const pTeam = buildArenaTeam(waifuIds, true);
+    const cpuTeam = generateCPUTeam(waifuCat, playerIds);
+    arenaVincitoreRef.current = null;
+    setArenaPlayerTeam(pTeam);
+    setArenaEnemyTeam(cpuTeam);
+    setArenaAttiva(true);
+    setModoBattaglia(false);
   };
 
   const nomeAvversario = isCpu ? 'CPU' : (avversario?.nomeImpero || 'Avversario');
   const coloreAvversario = isCpu ? '#666' : (avversario?.coloreImpero || '#ff3d3d');
+
+  // ── Arena WaifuBattleArena attiva ─────────────────────────────────
+  if (arenaAttiva) {
+    const battleCtx = {
+      terrSel: terrData,
+      nomeImperoAvversario: nomeAvversario,
+    };
+    return (
+      <WaifuBattleArena
+        playerTeam={arenaPlayerTeam}
+        enemyTeam={arenaEnemyTeam}
+        battleCtx={battleCtx}
+        onBattleResult={(isVictory) => {
+          arenaVincitoreRef.current = isVictory ? myUid : avversarioUid;
+        }}
+        onExit={() => {
+          setArenaAttiva(false);
+          const vincUid = arenaVincitoreRef.current ?? avversarioUid;
+          onBattagliaFinita(vincUid);
+        }}
+        isPvP={!isCpu}
+        pvpOpponentMove={pvpOpponentMove}
+        pvpWaiting={pvpWaiting}
+        onPvPMoveSubmit={!isCpu ? handlePvPMoveSubmit : undefined}
+      />
+    );
+  }
 
   // ── Selezione team ────────────────────────────────────────────────
   if (modoBattaglia) {
@@ -2009,7 +2072,7 @@ function BattagliaMultiplayer({
       );
     }
 
-    const canConfirm = teamSel && teamSel !== 'manuale' ? !!teams[teamSel] : waifuSel.length === 5;
+    const canConfirm = teamSel && teamSel !== 'manuale' ? !!teams[teamSel] : waifuSel.length >= 4;
     return (
       <div className="fade-in">
         <PannelloOrnato glow="#ff2d78" style={{ padding: 20 }}>
@@ -2045,14 +2108,14 @@ function BattagliaMultiplayer({
           )}
           {(teamSel === 'manuale' || Object.keys(teams).length === 0) && (
             <div>
-              <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', textAlign: 'center', marginBottom: 8 }}>SCEGLI 5 WAIFU</div>
+              <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', textAlign: 'center', marginBottom: 8 }}>SCEGLI 4 WAIFU</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: 12 }}>
                 {waifuDisponibili.map(w => {
                   const sel = waifuSel.includes(w.id);
                   return (
                     <div key={w.id} onClick={() => {
                       if (sel) setWaifuSel(waifuSel.filter(x => x !== w.id));
-                      else if (waifuSel.length < 5) setWaifuSel([...waifuSel, w.id]);
+                      else if (waifuSel.length < 4) setWaifuSel([...waifuSel, w.id]);
                     }} style={{ cursor: 'pointer', opacity: sel ? 1 : 0.5, border: sel ? '2px solid #00e676' : '2px solid transparent', borderRadius: 8 }}>
                       <CartaWaifu waifu={w} dimensione="mini" />
                     </div>

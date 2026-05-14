@@ -2,615 +2,954 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   TYPE_COLORS, TYPE_NAMES,
-  calculateDamage, getEffectiveness, determineTurnOrder,
+  calculateDamage, getEffectiveness,
   isMoveBlocked, applyDamage, cpuChooseMove, initBattleTeam, generateCPUTeam,
 } from '@/lib/battleEngine';
 
-// ─── CSS ANIMATIONS ─────────────────────────────────────────────────────────
+// ─── CSS ─────────────────────────────────────────────────────────────────────
 const BATTLE_CSS = `
-  @keyframes slideInLeft   { from{transform:translateX(-120%);opacity:0} to{transform:translateX(0);opacity:1} }
-  @keyframes slideInRight  { from{transform:translateX(120%);opacity:0}  to{transform:translateX(0);opacity:1} }
-  @keyframes attackRight   { 0%{transform:translate(0,0) scale(1)} 45%{transform:translate(52px,-8px) scale(1.08)} 80%{transform:translate(60px,-10px) scale(1.1)} 100%{transform:translate(0,0) scale(1)} }
-  @keyframes attackLeft    { 0%{transform:translate(0,0) scale(1)} 45%{transform:translate(-52px,-8px) scale(1.08)} 80%{transform:translate(-60px,-10px) scale(1.1)} 100%{transform:translate(0,0) scale(1)} }
-  @keyframes shake         { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-10px)} 40%{transform:translateX(10px)} 60%{transform:translateX(-8px)} 80%{transform:translateX(8px)} }
-  @keyframes flash         { 0%{opacity:0} 30%{opacity:.85} 100%{opacity:0} }
-  @keyframes ko            { 0%{transform:scale(1);opacity:1} 60%{transform:scale(.85) translateY(8px);opacity:.5} 100%{transform:scale(.5) translateY(28px);opacity:0} }
-  @keyframes fadeMsg       { from{opacity:0;transform:translateY(3px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes victoryPop    { 0%{transform:scale(.5);opacity:0} 70%{transform:scale(1.05)} 100%{transform:scale(1);opacity:1} }
-  @keyframes timer         { from{width:100%} to{width:0%} }
-  .wba-slide-left  { animation: slideInLeft  .4s ease-out }
-  .wba-slide-right { animation: slideInRight .4s ease-out }
-  .wba-atk-right   { animation: attackRight  .45s ease-in-out }
-  .wba-atk-left    { animation: attackLeft   .45s ease-in-out }
-  .wba-shake       { animation: shake .35s ease-in-out }
-  .wba-ko          { animation: ko .55s ease-in forwards }
-  .wba-msg         { animation: fadeMsg .25s ease-out }
+  @keyframes slideInLeft  {from{transform:translateX(-115%) scaleX(.92);opacity:0}to{transform:translateX(0) scaleX(1);opacity:1}}
+  @keyframes slideInRight {from{transform:translateX(115%) scaleX(.92);opacity:0}to{transform:translateX(0) scaleX(1);opacity:1}}
+  @keyframes atkRight {0%{transform:translateX(0) scale(1)}40%{transform:translateX(54px) scale(1.07)}80%{transform:translateX(62px) scale(1.09)}100%{transform:translateX(0) scale(1)}}
+  @keyframes atkLeft  {0%{transform:translateX(0) scale(1)}40%{transform:translateX(-54px) scale(1.07)}80%{transform:translateX(-62px) scale(1.09)}100%{transform:translateX(0) scale(1)}}
+  @keyframes shake {0%,100%{transform:translateX(0)}18%{transform:translateX(-11px)}36%{transform:translateX(11px)}54%{transform:translateX(-8px)}72%{transform:translateX(8px)}88%{transform:translateX(-4px)}}
+  @keyframes flash {0%{opacity:0}25%{opacity:.82}100%{opacity:0}}
+  @keyframes koFx  {0%{transform:scale(1);opacity:1}60%{transform:scale(.82) translateY(10px);opacity:.4}100%{transform:scale(.38) translateY(32px);opacity:0}}
+  @keyframes fadeMsg  {from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes floatDmg {0%{opacity:1;transform:translateY(0) scale(.82)}20%{transform:translateY(-24px) scale(1.18)}65%{opacity:1;transform:translateY(-55px) scale(1)}100%{opacity:0;transform:translateY(-82px) scale(.85)}}
+  @keyframes hpCrit   {0%,100%{filter:brightness(1)}50%{filter:brightness(1.7)}}
+  @keyframes timerUrg {0%,100%{transform:scale(1)}50%{transform:scale(1.16)}}
+  @keyframes benchPop {from{transform:scale(.88);opacity:.65}to{transform:scale(1);opacity:1}}
+  @keyframes victPop  {0%{transform:scale(.5);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+  @keyframes dotPulse {0%,100%{transform:scale(1);opacity:.3}50%{transform:scale(1.35);opacity:1}}
+  @keyframes stripIn  {from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+
+  .wba-sL{animation:slideInLeft  .38s ease-out}
+  .wba-sR{animation:slideInRight .38s ease-out}
+  .wba-aR{animation:atkRight .44s ease-in-out}
+  .wba-aL{animation:atkLeft  .44s ease-in-out}
+  .wba-sh{animation:shake .36s ease-in-out}
+  .wba-ko{animation:koFx .55s ease-in forwards}
+  .wba-fm{animation:fadeMsg .2s ease-out}
+
+  .wba-move-btn{transition:transform .08s ease,filter .08s ease,opacity .18s ease;-webkit-tap-highlight-color:transparent;cursor:pointer}
+  .wba-move-btn:active:not(:disabled){transform:scale(.94);filter:brightness(1.28)}
+  .wba-move-btn:disabled{cursor:not-allowed}
+  .wba-bench-slot{transition:transform .1s ease;-webkit-tap-highlight-color:transparent}
+  .wba-bench-slot:active:not(:disabled){transform:scale(.9)}
 `;
 
-// ─── STATE MACHINE ───────────────────────────────────────────────────────────
-// Fasi del turno:
-// 'entering'      → animazione entrata iniziale
-// 'playerChoose'  → giocatore sceglie la mossa (timer 30s)
-// 'resolving'     → esecuzione mosse in ordine di velocità
-// 'playerSwap'    → waifu giocatore KO → deve scegliere sostituta
-// 'cpuSwap'       → waifu CPU KO → CPU sceglie automaticamente
-// 'victory' | 'defeat'
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
-// ─── SUB-COMPONENTS ──────────────────────────────────────────────────────────
-function TypeBadge({ type, small }) {
-  const c = TYPE_COLORS[type] ?? { bg:'#222', text:'#eee', border:'#555' };
+function hexToRgb(hex = '#555') {
+  const h = (hex || '#555').replace('#', '');
+  if (h.length < 6) return '85,85,85';
+  return `${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)}`;
+}
+
+// ─── TYPE BADGE ───────────────────────────────────────────────────────────────
+function TypeBadge({ type, sm }) {
+  const c = TYPE_COLORS[type] ?? { bg:'#1a1a1a', text:'#999', border:'#555' };
+  const bdr = c.border;
   return (
     <span style={{
-      background:c.bg, color:c.text, border:`1px solid ${c.border}`,
-      borderRadius:5, padding: small ? '1px 6px':'2px 9px',
-      fontSize: small ? 9:11, fontWeight:700, fontFamily:'Orbitron,monospace',
-      letterSpacing:.5, display:'inline-block',
+      background:`rgba(${hexToRgb(bdr)},.15)`, color:bdr,
+      border:`1px solid ${bdr}99`,
+      borderRadius:4, padding:sm?'1px 5px':'2px 8px',
+      fontSize:sm?8:10, fontWeight:700,
+      fontFamily:'Orbitron,monospace', letterSpacing:.5,
+      display:'inline-block', whiteSpace:'nowrap',
     }}>{type}</span>
   );
 }
 
-function HpBar({ hp, maxHp, showNums, height=8 }) {
-  const pct = maxHp > 0 ? Math.max(0, Math.min(100, (hp/maxHp)*100)) : 0;
-  const col = pct>50 ? '#00e676' : pct>25 ? '#ffd666' : '#ff4d4d';
+// ─── PP DOTS ─────────────────────────────────────────────────────────────────
+function PpDots({ pp, maxPp }) {
+  const count = Math.min(maxPp ?? 8, 8);
+  const filled = Math.max(0, Math.min(count, pp ?? 0));
   return (
-    <div>
-      <div style={{ height, background:'rgba(0,0,0,.4)', borderRadius:height, overflow:'hidden' }}>
-        <div style={{ width:`${pct}%`, height:'100%', background:col, borderRadius:height, transition:'width .5s ease,background .5s' }} />
-      </div>
-      {showNums && <div style={{ fontSize:11, color:'#eedcd4', marginTop:2, fontFamily:'Orbitron', fontWeight:700 }}>
-        {Math.max(0,hp)} <span style={{opacity:.45}}>/ {maxHp}</span>
-      </div>}
+    <div style={{ display:'flex', gap:2.5, alignItems:'center' }}>
+      {Array.from({ length: count }).map((_,i) => (
+        <div key={i} style={{
+          width:5, height:5, borderRadius:'50%', flexShrink:0,
+          background: i < filled ? 'rgba(238,220,212,.78)' : 'rgba(238,220,212,.14)',
+        }}/>
+      ))}
+      {(maxPp ?? 0) > 8 && (
+        <span style={{ fontFamily:'Orbitron', fontSize:7, color:'rgba(238,220,212,.4)', marginLeft:2 }}>
+          {filled}/{maxPp}
+        </span>
+      )}
     </div>
   );
 }
 
-function WaifuCard({ waifu, size=180, animClass='', style={} }) {
+// ─── HP BAR ───────────────────────────────────────────────────────────────────
+function HpBar({ hp, maxHp, showNums, h=8 }) {
+  const pct = maxHp>0 ? Math.max(0,Math.min(100,(hp/maxHp)*100)) : 0;
+  const col = pct>50?'#00e676':pct>25?'#ffd666':'#ff4d4d';
+  const isCrit = pct<=25 && hp>0;
+  return (
+    <div>
+      <div style={{height:h,background:'rgba(0,0,0,.5)',borderRadius:h,overflow:'hidden'}}>
+        <div style={{
+          width:`${pct}%`,height:'100%',background:col,borderRadius:h,
+          transition:'width .6s cubic-bezier(.25,.8,.25,1),background .5s ease',
+          animation:isCrit?'hpCrit 1s ease-in-out infinite':'none',
+        }}/>
+      </div>
+      {showNums&&(
+        <div style={{display:'flex',justifyContent:'flex-end',marginTop:2,gap:2}}>
+          <span style={{fontFamily:'Orbitron',fontSize:11,fontWeight:700,color:col}}>{Math.max(0,hp)}</span>
+          <span style={{fontFamily:'Orbitron',fontSize:9,color:'rgba(238,220,212,.28)',alignSelf:'flex-end',marginBottom:1}}>/{maxHp}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── WAIFU SPRITE ─────────────────────────────────────────────────────────────
+function WaifuSprite({ waifu, size=120, anim='', style={}, isPlayer=false }) {
   if (!waifu) return null;
   const tc = TYPE_COLORS[waifu.type]?.border ?? '#444';
   return (
-    <div className={animClass} style={{
+    <div className={anim} style={{
       width:size, aspectRatio:'2/3', borderRadius:12, overflow:'hidden',
-      boxShadow:`0 8px 32px rgba(0,0,0,.6)`, background:'linear-gradient(160deg,#1a0a30,#0d0618)',
-      border:`2px solid ${tc}55`, position:'relative', ...style,
+      background:'linear-gradient(160deg,#1c0b34,#0d0618)',
+      border:`2px solid ${tc}66`,
+      boxShadow: isPlayer
+        ? `0 12px 40px rgba(0,0,0,.75)`
+        : `0 8px 28px rgba(0,0,0,.65)`,
+      position:'relative', flexShrink:0,
+      transform: isPlayer ? 'perspective(320px) rotateY(4deg)' : 'perspective(320px) rotateY(-4deg)',
+      ...style,
     }}>
       {waifu.image
-        ? <img src={waifu.image} alt={waifu.name} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top'}} />
-        : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100%',gap:8}}>
-            <div style={{fontSize:40,opacity:.3}}>◈</div>
-            <div style={{fontFamily:'Orbitron',fontSize:9,color:'rgba(238,232,220,.4)',textAlign:'center',padding:'0 8px'}}>{waifu.name}</div>
+        ? <img src={waifu.image} alt={waifu.name} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top'}}/>
+        : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100%',gap:6}}>
+            <div style={{fontSize:28,opacity:.2}}>◈</div>
+            <div style={{fontFamily:'Orbitron',fontSize:7,color:'rgba(238,232,220,.28)',textAlign:'center',padding:'0 6px',lineHeight:1.3}}>{waifu.name}</div>
           </div>
       }
-      {waifu.isKO && <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-        <span style={{fontFamily:'Orbitron',fontSize:20,color:'#ff4d4d',fontWeight:900}}>KO</span>
-      </div>}
+      {waifu.isKO&&(
+        <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,.72)',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(2px)'}}>
+          <span style={{fontFamily:'Orbitron',fontSize:20,color:'#ff4d4d',fontWeight:900,letterSpacing:2,textShadow:'0 0 16px #ff4d4d88'}}>KO</span>
+        </div>
+      )}
     </div>
   );
 }
 
+// ─── ENEMY HUD ────────────────────────────────────────────────────────────────
 function EnemyHud({ waifu }) {
   if (!waifu) return null;
   return (
-    <div style={{background:'rgba(6,3,15,.85)',borderRadius:10,padding:'8px 12px',minWidth:170,maxWidth:230,backdropFilter:'blur(8px)',border:'1px solid rgba(255,255,255,.08)'}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:3}}>
-        <span style={{fontFamily:'Orbitron',fontSize:11,fontWeight:700,color:'#eedcd4'}}>{waifu.name}</span>
-        <span style={{fontFamily:'Orbitron',fontSize:9,color:'rgba(238,232,220,.4)'}}>Lv{waifu.level}</span>
+    <div style={{
+      background:'rgba(200,20,45,.09)', backdropFilter:'blur(12px)',
+      border:'1px solid rgba(255,50,80,.26)', borderRadius:10,
+      padding:'8px 11px', maxWidth:'56%', minWidth:140,
+    }}>
+      <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
+        <span style={{fontFamily:'Orbitron',fontSize:11,fontWeight:700,color:'#eedcd4',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{waifu.name}</span>
+        <span style={{fontFamily:'Orbitron',fontSize:8,color:'rgba(255,90,110,.5)',flexShrink:0}}>Lv{waifu.level}</span>
       </div>
-      <div style={{marginBottom:5}}><TypeBadge type={waifu.type} small /></div>
-      <HpBar hp={waifu.hp} maxHp={waifu.maxHp} height={6} />
+      <div style={{marginBottom:5}}><TypeBadge type={waifu.type} sm/></div>
+      <HpBar hp={waifu.hp} maxHp={waifu.maxHp} h={5}/>
     </div>
   );
 }
 
+// ─── PLAYER HUD ───────────────────────────────────────────────────────────────
 function PlayerHud({ waifu }) {
   if (!waifu) return null;
   return (
-    <div style={{background:'rgba(6,3,15,.88)',borderRadius:10,padding:'10px 14px',minWidth:190,maxWidth:250,backdropFilter:'blur(8px)',border:'1px solid rgba(255,255,255,.1)'}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:3}}>
-        <span style={{fontFamily:'Orbitron',fontSize:12,fontWeight:700,color:'#eedcd4'}}>{waifu.name}</span>
-        <span style={{fontFamily:'Orbitron',fontSize:9,color:'rgba(238,232,220,.4)'}}>Lv{waifu.level}</span>
+    <div style={{
+      background:'rgba(0,120,200,.09)', backdropFilter:'blur(12px)',
+      border:'1px solid rgba(0,180,255,.24)', borderRadius:10,
+      padding:'9px 12px', maxWidth:'56%', minWidth:155,
+    }}>
+      <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
+        <span style={{fontFamily:'Orbitron',fontSize:12,fontWeight:700,color:'#eedcd4',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{waifu.name}</span>
+        <span style={{fontFamily:'Orbitron',fontSize:8,color:'rgba(0,200,255,.5)',flexShrink:0}}>Lv{waifu.level}</span>
       </div>
-      <div style={{marginBottom:6}}><TypeBadge type={waifu.type} small /></div>
-      <HpBar hp={waifu.hp} maxHp={waifu.maxHp} height={9} showNums />
+      <div style={{marginBottom:5}}><TypeBadge type={waifu.type} sm/></div>
+      <HpBar hp={waifu.hp} maxHp={waifu.maxHp} h={8} showNums/>
     </div>
   );
 }
 
-function MoveBtn({ move, idx, blocked, outOfPp, cooldown, enemyType, playerType, onSelect }) {
-  if (!move) return <div style={{height:58}} />;
-  const disabled = blocked || outOfPp || cooldown;
+// ─── MOVE BUTTON ──────────────────────────────────────────────────────────────
+function MoveBtn({ move, idx, locked, outPp, cooldown, enemyType, playerType, onSelect }) {
+  if (!move) return (
+    <div style={{minHeight:68,borderRadius:12,background:'rgba(10,5,20,.3)',border:'1px solid rgba(255,255,255,.04)'}}/>
+  );
+  const dis = locked||outPp||cooldown;
   const { label:eff } = getEffectiveness(move.type, playerType, enemyType);
-  const c = TYPE_COLORS[move.type] ?? { bg:'#111', text:'#eee', border:'#555' };
-  const effColor = {'Extremely effective':'#ff8c00','Super effective':'#00e676','Normal':'transparent','Not very effective':'#9e9e9e','No effect':'#ff4d4d'}[eff]??'transparent';
+  const c = TYPE_COLORS[move.type] ?? {bg:'#111',text:'#eee',border:'#555'};
+  const bdr = c.border;
+  const effMap = {
+    'Extremely effective': {col:'#ff8c00',icon:'🔥',lbl:'×2.5'},
+    'Super effective':     {col:'#00e676',icon:'⚡',lbl:'×2'},
+    'Not very effective':  {col:'#888',   icon:'↓', lbl:'×0.5'},
+    'No effect':           {col:'#ff4d4d',icon:'✕', lbl:'×0'},
+  };
+  const effInfo = effMap[eff];
   return (
-    <button onClick={()=>!disabled&&onSelect(idx)} disabled={disabled} style={{
-      minHeight:58, padding:'8px 10px', borderRadius:10,
-      cursor:disabled?'not-allowed':'pointer',
-      background:disabled?'rgba(10,5,20,.5)':`${c.bg}cc`,
-      border:`1.5px solid ${disabled?'rgba(255,255,255,.05)':c.border}`,
-      opacity:disabled?.5:1, display:'flex', flexDirection:'column', gap:3,
-      alignItems:'flex-start', transition:'all .15s', width:'100%',
+    <button className="wba-move-btn" onClick={()=>!dis&&onSelect(idx)} disabled={dis} style={{
+      minHeight:68, padding:'9px 11px', borderRadius:12, width:'100%',
+      background: dis?'rgba(10,5,20,.4)':`rgba(${hexToRgb(bdr)},.09)`,
+      border:`1.5px solid ${dis?'rgba(255,255,255,.06)':`${bdr}88`}`,
+      boxShadow: dis?'none':`0 2px 12px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06)`,
+      opacity:dis?.4:1,
+      display:'flex',flexDirection:'column',gap:5,alignItems:'flex-start',
+      position:'relative',overflow:'hidden',
     }}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%'}}>
-        <span style={{fontFamily:'Orbitron',fontSize:10,fontWeight:700,color:disabled?'rgba(238,232,220,.3)':c.text}}>{move.name}</span>
-        <TypeBadge type={move.type} small />
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',width:'100%',gap:4}}>
+        <span style={{
+          fontFamily:'Orbitron',fontSize:10,fontWeight:700,lineHeight:1.3,
+          color:dis?'rgba(238,232,220,.22)':bdr,
+          flex:1,wordBreak:'break-word',
+          textDecoration:outPp?'line-through':'none',
+        }}>{move.name}</span>
+        <TypeBadge type={move.type} sm/>
       </div>
-      <div style={{display:'flex',alignItems:'center',gap:8,width:'100%',justifyContent:'space-between'}}>
-        <span style={{fontFamily:'Orbitron',fontSize:8,color:'rgba(238,232,220,.45)'}}>
-          PP <strong style={{color:outOfPp?'#ff4d4d':'#eedcd4'}}>{move.pp??0}</strong>/{move.maxPp}
-        </span>
-        <span style={{fontSize:8,fontFamily:'Fredoka',color:outOfPp?'#ff4d4d':cooldown?'#f5a623':effColor!=='transparent'?effColor:'rgba(238,232,220,.3)'}}>
-          {outOfPp?'✗ PP esauriti':cooldown?'⏳ Recupero…':eff==='Normal'?'':eff}
-        </span>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%'}}>
+        <PpDots pp={move.pp??0} maxPp={move.maxPp}/>
+        <div style={{display:'flex',alignItems:'center',gap:4}}>
+          {cooldown&&<span style={{fontSize:10}}>🔒</span>}
+          {outPp&&<span style={{fontFamily:'Orbitron',fontSize:7,color:'#ff4d4d'}}>PP 0</span>}
+          {!dis&&effInfo&&(
+            <span style={{fontFamily:'Fredoka',fontSize:8,color:effInfo.col,letterSpacing:.3,whiteSpace:'nowrap'}}>
+              {effInfo.icon} {effInfo.lbl}
+            </span>
+          )}
+        </div>
       </div>
     </button>
   );
 }
 
-function BenchPanel({ team, activeIdx, onSwap, selectable }) {
-  const bench = team.map((w,i)=>({w,i})).filter(({w,i})=>i!==activeIdx&&!w.isKO);
-  if (!bench.length) return <div style={{fontFamily:'Orbitron',fontSize:10,color:'#ff4d4d',textAlign:'center',padding:8}}>Nessuna waifu disponibile!</div>;
+// ─── BENCH SLOT ───────────────────────────────────────────────────────────────
+function BenchSlot({ waifu, selectable, onSelect, size=48 }) {
+  if (!waifu) return null;
+  const isKO = waifu.isKO;
+  const tc = TYPE_COLORS[waifu.type]?.border ?? '#444';
+  const pct = waifu.maxHp>0?Math.max(0,Math.min(100,(waifu.hp/waifu.maxHp)*100)):0;
+  const hpCol = pct>50?'#00e676':pct>25?'#ffd666':'#ff4d4d';
   return (
-    <div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'center'}}>
-      {bench.map(({w,i})=>(
-        <button key={w.id} onClick={()=>selectable&&onSwap(i)} style={{
-          background:selectable?'rgba(0,230,118,.1)':'rgba(6,3,15,.5)',
-          border:`1.5px solid ${selectable?'rgba(0,230,118,.5)':'rgba(255,255,255,.07)'}`,
-          borderRadius:10, padding:'6px 10px', cursor:selectable?'pointer':'default',
-          display:'flex', flexDirection:'column', alignItems:'center', gap:4, minWidth:76,
-        }}>
-          {w.image
-            ? <img src={w.image} alt={w.name} style={{width:42,height:63,objectFit:'cover',borderRadius:5}} />
-            : <div style={{width:42,height:63,background:'rgba(255,255,255,.04)',borderRadius:5,display:'flex',alignItems:'center',justifyContent:'center'}}><span style={{fontSize:16,opacity:.3}}>◈</span></div>
-          }
-          <span style={{fontFamily:'Orbitron',fontSize:8,color:selectable?'#00e676':'rgba(238,232,220,.5)',textAlign:'center',lineHeight:1.2,maxWidth:68}}>{w.name}</span>
-          <div style={{width:'100%'}}><HpBar hp={w.hp} maxHp={w.maxHp} height={3} /></div>
-        </button>
-      ))}
-    </div>
+    <button className="wba-bench-slot" onClick={selectable&&!isKO?onSelect:undefined} disabled={!selectable||isKO} style={{
+      width:size,height:size,borderRadius:'50%',overflow:'hidden',flexShrink:0,
+      border:`2.5px solid ${isKO?'rgba(255,255,255,.1)':selectable?'#00e676':tc}`,
+      boxShadow: selectable&&!isKO?'0 0 14px rgba(0,230,118,.38),0 0 0 1px rgba(0,230,118,.18)':'0 2px 8px rgba(0,0,0,.5)',
+      background:'rgba(6,3,15,.7)',
+      position:'relative', cursor:selectable&&!isKO?'pointer':'default', padding:0,
+      filter:isKO?'grayscale(1) brightness(.36)':'none',
+      animation:selectable&&!isKO?'benchPop .22s ease-out':'none',
+    }}>
+      {waifu.image
+        ? <img src={waifu.image} alt={waifu.name} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top'}}/>
+        : <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:13,opacity:.22}}>◈</div>
+      }
+      {!isKO&&(
+        <div style={{position:'absolute',bottom:0,left:0,right:0,height:3,background:'rgba(0,0,0,.55)'}}>
+          <div style={{width:`${pct}%`,height:'100%',background:hpCol}}/>
+        </div>
+      )}
+      {isKO&&(
+        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <span style={{fontFamily:'Orbitron',fontSize:9,color:'#ff4d4d',fontWeight:900}}>KO</span>
+        </div>
+      )}
+    </button>
   );
 }
 
-function ResultScreen({ isVictory, turns, totalDamage, onExit }) {
+// ─── TERRITORY RESULT ─────────────────────────────────────────────────────────
+function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue }) {
+  const { terrSel, nomeImperoAvversario } = battleCtx ?? {};
   return (
-    <div style={{position:'fixed',inset:0,zIndex:50,background:isVictory?'rgba(0,10,5,.96)':'rgba(15,0,0,.96)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:20}}>
-      <div style={{animation:'victoryPop .6s ease-out',textAlign:'center'}}>
-        <div style={{fontSize:60,marginBottom:8}}>{isVictory?'🏆':'💔'}</div>
-        <h2 style={{fontFamily:'Orbitron',fontSize:26,fontWeight:900,color:isVictory?'#00e676':'#ff4d4d',margin:0,letterSpacing:3}}>
+    <div style={{position:'fixed',inset:0,zIndex:50,background:'rgba(0,0,0,.92)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+      <div className="wba-fm" style={{
+        background:'rgba(12,6,24,.96)',
+        border:`1px solid ${isVictory?'#00e676':'#ff3d3d'}44`,
+        borderRadius:18,padding:28,maxWidth:380,width:'100%',textAlign:'center',
+        boxShadow:`0 0 60px ${isVictory?'rgba(0,230,118,.18)':'rgba(255,61,61,.18)'}`,
+      }}>
+        <div style={{fontSize:52,marginBottom:10}}>{isVictory?'👑':'💔'}</div>
+        <div style={{fontFamily:'Orbitron',fontSize:22,fontWeight:700,color:isVictory?'#00e676':'#ff3d3d',letterSpacing:3,marginBottom:6}}>
           {isVictory?'VITTORIA!':'SCONFITTA'}
-        </h2>
-        <p style={{fontFamily:'Fredoka',fontSize:13,color:'rgba(238,232,220,.55)',marginTop:8}}>
-          {isVictory?'Hai sconfitto tutte le waifu avversarie!':'Le tue waifu sono tutte fuori combattimento.'}
-        </p>
-      </div>
-      <div style={{display:'flex',gap:24,background:'rgba(255,255,255,.04)',borderRadius:12,padding:'12px 24px'}}>
-        <div style={{textAlign:'center'}}>
-          <div style={{fontFamily:'Orbitron',fontSize:22,fontWeight:700,color:'#f5a623'}}>{turns}</div>
-          <div style={{fontFamily:'Fredoka',fontSize:11,color:'rgba(238,232,220,.45)'}}>TURNI</div>
         </div>
-        <div style={{textAlign:'center'}}>
-          <div style={{fontFamily:'Orbitron',fontSize:22,fontWeight:700,color:'#ff4d9e'}}>{totalDamage}</div>
-          <div style={{fontFamily:'Fredoka',fontSize:11,color:'rgba(238,232,220,.45)'}}>DANNO</div>
+        <div style={{display:'flex',gap:28,justifyContent:'center',marginBottom:16}}>
+          <div style={{textAlign:'center'}}>
+            <div style={{fontFamily:'Orbitron',fontSize:20,fontWeight:700,color:'#f5a623'}}>{turns}</div>
+            <div style={{fontFamily:'Fredoka',fontSize:11,color:'rgba(238,232,220,.4)'}}>TURNI</div>
+          </div>
+          <div style={{textAlign:'center'}}>
+            <div style={{fontFamily:'Orbitron',fontSize:20,fontWeight:700,color:'#ff4d9e'}}>{totalDmg}</div>
+            <div style={{fontFamily:'Fredoka',fontSize:11,color:'rgba(238,232,220,.4)'}}>DANNO</div>
+          </div>
         </div>
+        {terrSel&&(
+          <div style={{padding:12,background:'rgba(255,255,255,.03)',borderRadius:10,marginBottom:18,border:'1px solid rgba(255,255,255,.06)'}}>
+            {isVictory?(
+              <div style={{fontSize:12,color:'rgba(238,232,220,.7)',lineHeight:1.9}}>
+                <strong style={{color:'#00e676',fontSize:14}}>{terrSel.nome}</strong> conquistato!
+                <br/><span style={{color:'#ffd666'}}>+1 pacchetto sfida</span>
+              </div>
+            ):(
+              <div style={{fontSize:12,color:'rgba(238,232,220,.7)',lineHeight:1.9}}>
+                Sconfitta contro <strong style={{color:'#ff3d3d'}}>{nomeImperoAvversario??'la CPU'}</strong>
+                <br/><span style={{color:'#ff6666'}}>-1 energia</span>
+              </div>
+            )}
+          </div>
+        )}
+        <button onClick={onContinue} style={{
+          padding:'13px 28px',width:'100%',
+          background:'linear-gradient(135deg,#f5a623,#ff2d78)',border:'none',borderRadius:12,
+          cursor:'pointer',color:'#000',fontFamily:'Orbitron',fontSize:13,fontWeight:700,letterSpacing:2,
+        }}>CONTINUA →</button>
       </div>
-      <button onClick={onExit} style={{
-        fontFamily:'Orbitron',fontSize:12,fontWeight:900,letterSpacing:2,
-        background:isVictory?'linear-gradient(135deg,#00e676,#00e67680)':'rgba(255,77,77,.2)',
-        border:`1.5px solid ${isVictory?'#00e676':'#ff4d4d'}`,
-        color:isVictory?'#000':'#ff4d4d',padding:'12px 32px',borderRadius:10,cursor:'pointer',
-      }}>TORNA ALLA MAPPA</button>
     </div>
   );
 }
 
-// ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
-export default function WaifuBattleArena({ playerTeam, enemyTeam, onExit, waifuCat=[] }) {
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+/**
+ * WaifuBattleArena
+ * @param {WaifuBattleStat[]} playerTeam
+ * @param {WaifuBattleStat[]} enemyTeam — se omesso, genera CPU team
+ * @param {function} onExit — quando escono dalla schermata risultati
+ * @param {function} onBattleResult(isVictory) — callback con esito (per aggiornare mappa)
+ * @param {object}   battleCtx — { terrSel, nomeImperoAvversario } per mostrare risultato territorio
+ * @param {object[]} waifuCat
+ * @param {boolean}  isPvP — modalità PvP (mosse sincronizzate esternamente)
+ * @param {number|null} pvpOpponentMove — mossa avversario ricevuta da Firebase (PvP)
+ * @param {function} onPvPMoveSubmit(moveIdx) — invia mossa a Firebase (PvP)
+ * @param {boolean}  pvpWaiting — true se si aspetta la mossa avversario (PvP)
+ */
+export default function WaifuBattleArena({
+  playerTeam, enemyTeam, onExit, onBattleResult,
+  battleCtx, waifuCat=[],
+  isPvP=false, pvpOpponentMove=null, onPvPMoveSubmit, pvpWaiting=false,
+}) {
 
-  // Inject CSS once
   useEffect(()=>{
     if (document.getElementById('wba-css')) return;
-    const s = document.createElement('style');
-    s.id = 'wba-css'; s.textContent = BATTLE_CSS;
+    const s=document.createElement('style'); s.id='wba-css'; s.textContent=BATTLE_CSS;
     document.head.appendChild(s);
-  }, []);
+  },[]);
 
-  // ── INIT ────────────────────────────────────────────────────────────────────
   const buildPlayer = useCallback(()=>
     playerTeam?.length ? playerTeam.map(w=>({...w})) : initBattleTeam(waifuCat.slice(0,4))
-  , [playerTeam, waifuCat]);
+  ,[playerTeam,waifuCat]);
 
   const buildEnemy = useCallback(()=>{
     if (enemyTeam?.length) return enemyTeam.map(w=>({...w}));
-    const pids = new Set((playerTeam??[]).map(w=>w.id));
-    return generateCPUTeam(waifuCat, pids, 3);
-  }, [enemyTeam, playerTeam, waifuCat]);
+    const pids=new Set((playerTeam??[]).map(w=>w.id));
+    return generateCPUTeam(waifuCat,pids,3);
+  },[enemyTeam,playerTeam,waifuCat]);
 
-  // ── CORE STATE ──────────────────────────────────────────────────────────────
-  const [pTeam, setPTeam] = useState(()=>buildPlayer());
-  const [eTeam, setETeam] = useState(()=>buildEnemy());
-  const [pActive, setPActive] = useState(0);
-  const [eActive, setEActive] = useState(0);
-  const [phase, setPhase] = useState('entering');   // state machine phase
-  const [message, setMessage] = useState('Che la battaglia abbia inizio!');
-  const [turn, setTurn] = useState(1);
-  const [totalDmg, setTotalDmg] = useState(0);
-  const [isAnim, setIsAnim] = useState(false);       // global anim lock
-  const [timer, setTimer] = useState(30);            // countdown per playerChoose
-  const [lastPlayerMove, setLastPlayerMove] = useState(null);
-  const [lastEnemyMove, setLastEnemyMove]  = useState(null);
+  // ── Combat state (UNCHANGED) ─────────────────────────────────────────────
+  const [pTeam,setPTeam]   = useState(()=>buildPlayer());
+  const [eTeam,setETeam]   = useState(()=>buildEnemy());
+  const [pActive,setPActive] = useState(0);
+  const [eActive,setEActive] = useState(0);
+  const [phase,setPhase]   = useState('entering');
+  const [message,setMsg]   = useState('Che la battaglia abbia inizio!');
+  const [turn,setTurn]     = useState(1);
+  const [totalDmg,setTotalDmg] = useState(0);
+  const [isAnim,setIsAnim] = useState(false);
+  const [timer,setTimer]   = useState(30);
+  const [lastPMove,setLastPMove] = useState(null);
+  const [lastEMove,setLastEMove] = useState(null);
+  const [pAnim,setPAnim] = useState('wba-sL');
+  const [eAnim,setEAnim] = useState('wba-sR');
+  const [flash,setFlash] = useState(false);
+  const [showBench,setShowBench] = useState(false);
 
-  // Animation class states
-  const [pAnim, setPAnim] = useState('wba-slide-left');
-  const [eAnim, setEAnim] = useState('wba-slide-right');
-  const [flash, setFlash] = useState(false);
+  // ── UI-only state (new) ───────────────────────────────────────────────────
+  const [dmgFloats, setDmgFloats] = useState([]);
+  const [isMobile, setIsMobile] = useState(true);
+  const prevPHpRef = useRef(null);
+  const prevEHpRef = useRef(null);
+  const dmgIdRef   = useRef(0);
 
-  const timerRef = useRef(null);
+  useEffect(()=>{
+    const check=()=>setIsMobile(window.innerWidth<768);
+    check();
+    window.addEventListener('resize',check);
+    return()=>window.removeEventListener('resize',check);
+  },[]);
 
+  // ── Floating damage numbers: tracks HP deltas (pure UI) ──────────────────
   const player = pTeam[pActive];
   const enemy  = eTeam[eActive];
 
-  // ── HELPERS ─────────────────────────────────────────────────────────────────
-  const msg = useCallback((txt) => setMessage(txt), []);
-
-  const triggerFlash = useCallback(()=>{
-    setFlash(true);
-    setTimeout(()=>setFlash(false), 180);
-  }, []);
-
-  const allKO = (team) => team.every(w=>w.isKO);
-
-  const nextActive = (team, cur) => {
-    for (let i=1; i<team.length; i++) {
-      const idx = (cur+i) % team.length;
-      if (!team[idx].isKO) return idx;
+  useEffect(()=>{
+    const curr=player?.hp;
+    if(curr===undefined)return;
+    if(prevPHpRef.current!==null&&curr<prevPHpRef.current&&prevPHpRef.current>0){
+      const dmg=prevPHpRef.current-curr;
+      const id=++dmgIdRef.current;
+      setDmgFloats(fs=>[...fs,{id,dmg,side:'player'}]);
+      setTimeout(()=>setDmgFloats(fs=>fs.filter(f=>f.id!==id)),1400);
     }
+    prevPHpRef.current=curr??null;
+  },[player?.hp]); // eslint-disable-line
+
+  useEffect(()=>{
+    const curr=enemy?.hp;
+    if(curr===undefined)return;
+    if(prevEHpRef.current!==null&&curr<prevEHpRef.current&&prevEHpRef.current>0){
+      const dmg=prevEHpRef.current-curr;
+      const id=++dmgIdRef.current;
+      setDmgFloats(fs=>[...fs,{id,dmg,side:'enemy'}]);
+      setTimeout(()=>setDmgFloats(fs=>fs.filter(f=>f.id!==id)),1400);
+    }
+    prevEHpRef.current=curr??null;
+  },[enemy?.hp]); // eslint-disable-line
+
+  // ── Combat logic refs ────────────────────────────────────────────────────
+  const timerRef   = useRef(null);
+  const resolveRef = useRef(false);
+
+  const allKO = t=>t.every(w=>w.isKO);
+  const nextAlive = (team,cur)=>{
+    for(let i=1;i<team.length;i++){const idx=(cur+i)%team.length;if(!team[idx].isKO)return idx;}
     return -1;
   };
+  const triggerFlash = ()=>{setFlash(true);setTimeout(()=>setFlash(false),180);};
 
-  // Update HP + KO flag for one waifu in a team
-  const dmgWaifu = (team, idx, dmg) => team.map((w,i)=>{
-    if (i!==idx) return w;
-    const hp = Math.max(0, w.hp - dmg);
-    return {...w, hp, isKO: hp<=0};
-  });
-
-  // Decrement PP of one move for one waifu in a team
-  const spendPP = (team, waifuIdx, moveIdx) => team.map((w,i)=>{
-    if (i!==waifuIdx) return w;
-    const moves = w.moves.map((m,mi)=>mi===moveIdx?{...m, pp:Math.max(0,(m.pp??0)-1)}:m);
-    return {...w, moves};
-  });
-
-  // ── ENTRY ANIMATION → player choose ─────────────────────────────────────────
+  // ── Entry animation (UNCHANGED) ──────────────────────────────────────────
   useEffect(()=>{
-    if (phase!=='entering') return;
-    const t = setTimeout(()=>{
+    if(phase!=='entering')return;
+    const t=setTimeout(()=>{
       setPAnim(''); setEAnim('');
-      setPhase('playerChoose');
-      msg('Scegli la tua mossa!');
-      setTimer(30);
-    }, 800);
-    return ()=>clearTimeout(t);
-  }, [phase]); // eslint-disable-line
+      setPhase('playerChoose'); setMsg('Scegli la tua mossa!'); setTimer(30);
+    },800);
+    return()=>clearTimeout(t);
+  },[phase]); // eslint-disable-line
 
-  // ── COUNTDOWN TIMER ──────────────────────────────────────────────────────────
+  // ── Timer countdown (UNCHANGED) ─────────────────────────────────────────
   useEffect(()=>{
-    if (phase!=='playerChoose') { clearInterval(timerRef.current); return; }
-    timerRef.current = setInterval(()=>{
+    if(phase!=='playerChoose'){clearInterval(timerRef.current);return;}
+    timerRef.current=setInterval(()=>{
       setTimer(t=>{
-        if (t<=1) {
+        if(t<=1){
           clearInterval(timerRef.current);
-          // Auto-scegli mossa casuale se il timer scade
-          const available = (player?.moves??[]).map((_,i)=>i).filter(i=>{
-            const m = player.moves[i];
-            return (m.pp??0)>0 && !isMoveBlocked(lastPlayerMove,i,m);
+          const avail=(player?.moves??[]).map((_,i)=>i).filter(i=>{
+            const m=player.moves[i];
+            return(m.pp??0)>0&&!isMoveBlocked(lastPMove,i,m);
           });
-          const idx = available.length ? available[Math.floor(Math.random()*available.length)] : 0;
-          handlePlayerMove(idx);
+          if(avail.length) handleMove(avail[Math.floor(Math.random()*avail.length)]);
+          else startVoluntarySwap();
           return 0;
         }
         return t-1;
       });
-    }, 1000);
-    return ()=>clearInterval(timerRef.current);
-  }, [phase, pActive]); // eslint-disable-line
+    },1000);
+    return()=>clearInterval(timerRef.current);
+  },[phase,pActive]); // eslint-disable-line
 
-  // ── PLAYER CHOOSES MOVE ───────────────────────────────────────────────────────
-  const handlePlayerMove = useCallback((moveIdx) => {
-    if (isAnim || phase!=='playerChoose') return;
-    if (!player || !enemy) return;
-    const move = player.moves[moveIdx];
-    if (!move || (move.pp??0)<=0) return;
-    if (isMoveBlocked(lastPlayerMove, moveIdx, move)) return;
+  // ── PvP move sync (UNCHANGED) ────────────────────────────────────────────
+  const pendingPMoveRef = useRef(null);
+  const pvpOpMoveRef    = useRef(null);
+  useEffect(()=>{ pvpOpMoveRef.current=pvpOpponentMove; },[pvpOpponentMove]);
+  useEffect(()=>{
+    if(!isPvP||pvpOpponentMove==null||pendingPMoveRef.current==null) return;
+    if(resolveRef.current) return;
+    resolveTurn(pendingPMoveRef.current, pvpOpponentMove);
+    pendingPMoveRef.current=null;
+  },[pvpOpponentMove]); // eslint-disable-line
+
+  // ── Voluntary swap (UNCHANGED) ───────────────────────────────────────────
+  const startVoluntarySwap = ()=>{
+    setShowBench(true); setPhase('voluntarySwap');
+    setMsg('Scegli la waifu da mandare in campo!');
+    clearInterval(timerRef.current);
+  };
+
+  const handleVoluntarySwap = useCallback((newIdx)=>{
+    if(phase!=='voluntarySwap') return;
+    clearInterval(timerRef.current);
+    setPActive(newIdx);
+    setPAnim('wba-sL');
+    setTimeout(()=>setPAnim(''),450);
+    setShowBench(false);
+    setPhase('resolving');
+    setMsg(`${pTeam[newIdx]?.name} entra in campo!`);
+    setTimeout(async()=>{
+      setIsAnim(true);
+      const ew=eTeam[eActive];
+      const pw=pTeam[newIdx];
+      const eMi=cpuChooseMove(ew,pw,lastEMove);
+      await executeOneAttack('enemy',eMi,newIdx,[...pTeam],[...eTeam],pTeam,eTeam,setPTeam,setETeam);
+      setLastEMove(eMi);
+      setTurn(t=>t+1);
+      setIsAnim(false);
+      setPhase('playerChoose'); setMsg('Scegli la tua mossa!'); setTimer(30);
+    },600);
+  },[phase,pTeam,eTeam,eActive,lastEMove]); // eslint-disable-line
+
+  // ── Player selects a move (UNCHANGED) ────────────────────────────────────
+  const handleMove = useCallback((moveIdx)=>{
+    if(isAnim||phase!=='playerChoose') return;
+    if(!player||!enemy) return;
+    const move=player.moves[moveIdx];
+    if(!move||(move.pp??0)<=0) return;
+    if(isMoveBlocked(lastPMove,moveIdx,move)) return;
 
     clearInterval(timerRef.current);
     setIsAnim(true);
 
-    // CPU sceglie la sua mossa subito
-    const cpuMoveIdx = cpuChooseMove(enemy, player, lastEnemyMove);
-
-    // Salva le mosse scelte per questo turno e avvia la risoluzione
-    resolveTurn(moveIdx, cpuMoveIdx);
-  }, [isAnim, phase, player, enemy, lastPlayerMove, lastEnemyMove, pTeam, eTeam, pActive, eActive]); // eslint-disable-line
-
-  // ── RESOLVE TURN (entrambi hanno scelto) ──────────────────────────────────────
-  const resolveTurn = useCallback(async (pMoveIdx, eMoveIdx) => {
-    setPhase('resolving');
-    setIsAnim(true);
-
-    // Snapshot corrente per evitare closure stale
-    let curPTeam = [...pTeam.map(w=>({...w, moves:[...w.moves]}))];
-    let curETeam = [...eTeam.map(w=>({...w, moves:[...w.moves]}))];
-    let curPAct  = pActive;
-    let curEAct  = eActive;
-    let dmgAccum = 0;
-
-    const pw = curPTeam[curPAct];
-    const ew = curETeam[curEAct];
-    const pMove = pw.moves[pMoveIdx];
-    const eMove = ew.moves[eMoveIdx];
-
-    // Determina ordine per velocità (jitter ±5)
-    const pSpd = (pw.speed??50) + (Math.random()*10-5);
-    const eSpd = (ew.speed??50) + (Math.random()*10-5);
-    const first  = pSpd >= eSpd ? 'player' : 'enemy';
-    const second = first==='player' ? 'enemy' : 'player';
-
-    const wait = (ms) => new Promise(r=>setTimeout(r,ms));
-
-    // ── Funzione di attacco per un lato ──
-    const executeAttack = async (side) => {
-      const attTeam  = side==='player' ? curPTeam : curETeam;
-      const defTeam  = side==='player' ? curETeam : curPTeam;
-      const attIdx   = side==='player' ? curPAct  : curEAct;
-      const defIdx   = side==='player' ? curEAct  : curPAct;
-      const moveIdx  = side==='player' ? pMoveIdx : eMoveIdx;
-      const att = attTeam[attIdx];
-      const def = defTeam[defIdx];
-      const move = att.moves[moveIdx];
-
-      if (!att || !def || !move || att.isKO) return { newDef: def, defTeam, defIdx };
-
-      const { damage, isCrit, effectiveness } = calculateDamage(att, move, def);
-
-      // Animazione attacco
-      if (side==='player') { setPAnim('wba-atk-right'); } else { setEAnim('wba-atk-left'); }
-      msg(`${att.name} usa ${move.name}!`);
-      await wait(320);
-
-      if (side==='player') { setPAnim(''); } else { setEAnim(''); }
-      triggerFlash();
-      if (side==='player') { setEAnim('wba-shake'); } else { setPAnim('wba-shake'); }
-      await wait(120);
-      if (side==='player') { setEAnim(''); } else { setPAnim(''); }
-
-      // Applica danno e scala PP
-      const newDef  = {...def, hp:Math.max(0,def.hp-damage), isKO:(def.hp-damage)<=0};
-      const newAtt  = {...att, moves:att.moves.map((m,i)=>i===moveIdx?{...m,pp:Math.max(0,(m.pp??0)-1)}:m)};
-      const newDefTeam = defTeam.map((w,i)=>i===defIdx?newDef:w);
-      const newAttTeam = attTeam.map((w,i)=>i===attIdx?newAtt:w);
-
-      if (side==='player') {
-        curPTeam = newAttTeam; curETeam = newDefTeam;
-        setPTeam(newAttTeam); setETeam(newDefTeam);
-      } else {
-        curETeam = newAttTeam; curPTeam = newDefTeam;
-        setETeam(newAttTeam); setPTeam(newDefTeam);
+    if(isPvP){
+      pendingPMoveRef.current=moveIdx;
+      onPvPMoveSubmit?.(moveIdx);
+      setMsg('Mossa inviata! Attendo la mossa avversaria…');
+      if(pvpOpMoveRef.current!=null&&!resolveRef.current){
+        resolveTurn(moveIdx, pvpOpMoveRef.current);
+        pendingPMoveRef.current=null;
       }
+    } else {
+      const eMi=cpuChooseMove(enemy,player,lastEMove);
+      resolveTurn(moveIdx,eMi);
+    }
+  },[isAnim,phase,player,enemy,lastPMove,lastEMove,isPvP,onPvPMoveSubmit,eTeam,pTeam,eActive,pActive]); // eslint-disable-line
 
-      dmgAccum += damage;
+  // ── Core turn resolution (UNCHANGED) ─────────────────────────────────────
+  const resolveTurn = useCallback(async(pMi,eMi)=>{
+    if(resolveRef.current) return;
+    resolveRef.current=true;
+    setPhase('resolving'); setIsAnim(true); setShowBench(false);
 
-      // Messaggio efficacia
-      const msgs = [];
-      if (isCrit) msgs.push('Colpo critico! 💥');
-      if (effectiveness==='Extremely effective') msgs.push('Extremely effective! 🔥🔥');
-      else if (effectiveness==='Super effective') msgs.push('Super efficace!');
-      else if (effectiveness==='Not very effective') msgs.push('Poco efficace…');
-      else if (effectiveness==='No effect') msgs.push('Non ha effetto!');
-      for (const m of msgs) { await wait(250); msg(m); }
+    let curP=[...pTeam.map(w=>({...w,moves:[...w.moves]}))];
+    let curE=[...eTeam.map(w=>({...w,moves:[...w.moves]}))];
+    let cPA=pActive; let cEA=eActive;
+    let dmgAcc=0;
 
-      return { newDef, defTeam: newDefTeam, defIdx };
+    const pSpd=(curP[cPA].speed??50)+(Math.random()*10-5);
+    const eSpd=(curE[cEA].speed??50)+(Math.random()*10-5);
+    const first=pSpd>=eSpd?'player':'enemy';
+
+    const execAttack=async(side, mi)=>{
+      const att=side==='player'?curP[cPA]:curE[cEA];
+      const def=side==='player'?curE[cEA]:curP[cPA];
+      if(!att||!def||att.isKO) return false;
+      const move=att.moves[mi];
+      if(!move) return false;
+
+      const {damage,isCrit,effectiveness}=calculateDamage(att,move,def);
+
+      if(side==='player'){setPAnim('wba-aR');}else{setEAnim('wba-aL');}
+      setMsg(`${att.name} usa ${move.name}!`);
+      await wait(320);
+      if(side==='player'){setPAnim('');}else{setEAnim('');}
+      triggerFlash();
+      if(side==='player'){setEAnim('wba-sh');}else{setPAnim('wba-sh');}
+      await wait(120);
+      if(side==='player'){setEAnim('');}else{setPAnim('');}
+
+      const newDef={...def,hp:Math.max(0,def.hp-damage),isKO:(def.hp-damage)<=0};
+      const newAtt={...att,moves:att.moves.map((m,i)=>i===mi?{...m,pp:Math.max(0,(m.pp??0)-1)}:m)};
+      if(side==='player'){
+        curE=curE.map((w,i)=>i===cEA?newDef:w);
+        curP=curP.map((w,i)=>i===cPA?newAtt:w);
+        setPTeam([...curP]); setETeam([...curE]);
+      }else{
+        curP=curP.map((w,i)=>i===cPA?newDef:w);
+        curE=curE.map((w,i)=>i===cEA?newAtt:w);
+        setPTeam([...curP]); setETeam([...curE]);
+      }
+      dmgAcc+=damage;
+
+      const msgs=[];
+      if(isCrit) msgs.push('Colpo critico! 💥');
+      if(effectiveness==='Extremely effective') msgs.push('Extremely effective! 🔥🔥');
+      else if(effectiveness==='Super effective') msgs.push('Super efficace!');
+      else if(effectiveness==='Not very effective') msgs.push('Poco efficace…');
+      else if(effectiveness==='No effect') msgs.push('Non ha effetto!');
+      for(const m of msgs){await wait(250);setMsg(m);}
+
+      return newDef.isKO;
     };
 
-    // ── Primo attaccante ──
-    const { newDef: firstDefResult } = await executeAttack(first);
-    await wait(350);
+    const firstMi=first==='player'?pMi:eMi;
+    const firstKO=await execAttack(first,firstMi);
+    await wait(300);
 
-    // Controlla KO del difensore dopo il primo attacco
-    const firstDefKO = first==='player'
-      ? curETeam[curEAct]?.isKO
-      : curPTeam[curPAct]?.isKO;
-
-    if (firstDefKO) {
-      const name = first==='player' ? curETeam[curEAct]?.name : curPTeam[curPAct]?.name;
-      msg(`${name} è fuori combattimento!`);
-      if (first==='player') setEAnim('wba-ko'); else setPAnim('wba-ko');
+    if(firstKO){
+      const koName=first==='player'?curE[cEA]?.name:curP[cPA]?.name;
+      setMsg(`${koName} è fuori combattimento!`);
+      if(first==='player'){setEAnim('wba-ko');}else{setPAnim('wba-ko');}
       await wait(600);
-      if (first==='player') setEAnim(''); else setPAnim('');
+      if(first==='player'){setEAnim('');}else{setPAnim('');}
     } else {
-      // ── Secondo attaccante (solo se il difensore è ancora in vita) ──
-      await executeAttack(second);
-      await wait(350);
-
-      // Controlla KO dopo il secondo attacco
-      const secondDefKO = second==='player'
-        ? curETeam[curEAct]?.isKO
-        : curPTeam[curPAct]?.isKO;
-
-      if (secondDefKO) {
-        const name2 = second==='player' ? curETeam[curEAct]?.name : curPTeam[curPAct]?.name;
-        msg(`${name2} è fuori combattimento!`);
-        if (second==='player') setEAnim('wba-ko'); else setPAnim('wba-ko');
+      const second=first==='player'?'enemy':'player';
+      const secondMi=second==='player'?pMi:eMi;
+      const secondKO=await execAttack(second,secondMi);
+      await wait(300);
+      if(secondKO){
+        const koName2=second==='player'?curE[cEA]?.name:curP[cPA]?.name;
+        setMsg(`${koName2} è fuori combattimento!`);
+        if(second==='player'){setEAnim('wba-ko');}else{setPAnim('wba-ko');}
         await wait(600);
-        if (second==='player') setEAnim(''); else setPAnim('');
+        if(second==='player'){setEAnim('');}else{setPAnim('');}
       }
     }
 
-    // Salva lastMoves per il cooldown implicito
-    setLastPlayerMove(pMoveIdx);
-    setLastEnemyMove(eMoveIdx);
-    setTotalDmg(d => d + dmgAccum);
-    setTurn(t => t+1);
+    setLastPMove(pMi); setLastEMove(eMi);
+    setTotalDmg(d=>d+dmgAcc); setTurn(t=>t+1);
 
-    // ── Fine turno: gestisci KO e prosegui ───────────────────────────────────
-    // Leggi lo stato attuale dei team dopo gli aggiornamenti
-    const finalPTeam = curPTeam;
-    const finalETeam = curETeam;
+    const pKO=curP[cPA]?.isKO;
+    const eKO=curE[cEA]?.isKO;
 
-    const playerKO = finalPTeam[curPAct]?.isKO;
-    const enemyKO  = finalETeam[curEAct]?.isKO;
+    if(allKO(curE)){setPhase('victory');setIsAnim(false);resolveRef.current=false;return;}
+    if(allKO(curP)){setPhase('defeat'); setIsAnim(false);resolveRef.current=false;return;}
 
-    // Controllo fine partita
-    if (allKO(finalETeam)) { setPhase('victory'); setIsAnim(false); return; }
-    if (allKO(finalPTeam)) { setPhase('defeat');  setIsAnim(false); return; }
-
-    // Gestisci KO e sostituzione
-    if (enemyKO) {
-      const nextE = nextActive(finalETeam, curEAct);
-      if (nextE < 0) { setPhase('victory'); setIsAnim(false); return; }
-      setEActive(nextE);
-      setEAnim('wba-slide-right');
-      msg(`${finalETeam[nextE].name} entra in campo!`);
-      setTimeout(()=>setEAnim(''), 450);
+    if(eKO){
+      const nextE=nextAlive(curE,cEA);
+      if(nextE<0){setPhase('victory');setIsAnim(false);resolveRef.current=false;return;}
+      setEActive(nextE); cEA=nextE;
+      setEAnim('wba-sR');
+      setMsg(`${curE[nextE]?.name} entra in campo!`);
+      setTimeout(()=>setEAnim(''),450);
+      await wait(500);
     }
 
-    if (playerKO) {
-      // Il giocatore deve scegliere la sostituta
-      setIsAnim(false);
+    if(pKO){
+      const nextP=nextAlive(curP,cPA);
+      if(nextP<0){setPhase('defeat');setIsAnim(false);resolveRef.current=false;return;}
+      setIsAnim(false); resolveRef.current=false;
       setPhase('playerSwap');
-      msg('La tua waifu è KO! Scegli la sostituta.');
+      setMsg('La tua waifu è KO! Scegli la sostituta.');
       return;
     }
 
-    // Tutto ok: prossimo turno
-    setIsAnim(false);
-    setPhase('playerChoose');
-    msg('Scegli la tua mossa!');
-    setTimer(30);
+    setIsAnim(false); resolveRef.current=false;
+    setPhase('playerChoose'); setMsg('Scegli la tua mossa!'); setTimer(30);
+  },[pTeam,eTeam,pActive,eActive,triggerFlash]); // eslint-disable-line
 
-  }, [pTeam, eTeam, pActive, eActive, triggerFlash]); // eslint-disable-line
-
-  // ── PLAYER SWAPS KO WAIFU ────────────────────────────────────────────────────
-  const handlePlayerSwap = useCallback((newIdx) => {
+  // ── Player KO swap (UNCHANGED) ───────────────────────────────────────────
+  const handlePlayerSwap=useCallback((newIdx)=>{
     setPActive(newIdx);
-    setPAnim('wba-slide-left');
-    setTimeout(()=>setPAnim(''), 450);
-    setPhase('playerChoose');
-    msg(`${pTeam[newIdx]?.name} entra in campo! Scegli la tua mossa!`);
-    setTimer(30);
-    setIsAnim(false);
-  }, [pTeam]);
+    setPAnim('wba-sL');
+    setTimeout(()=>setPAnim(''),450);
+    resolveRef.current=false;
+    setPhase('playerChoose'); setMsg(`${pTeam[newIdx]?.name} entra in campo! Scegli la mossa!`); setTimer(30);
+  },[pTeam]);
 
-  // ── RESULT ────────────────────────────────────────────────────────────────────
-  if (phase==='victory'||phase==='defeat') {
-    return <ResultScreen isVictory={phase==='victory'} turns={turn} totalDamage={totalDmg} onExit={onExit} />;
+  // ── Result handling (UNCHANGED) ──────────────────────────────────────────
+  const handleResultContinue=useCallback(()=>{ onExit?.(); },[onExit]);
+
+  useEffect(()=>{
+    if(phase==='victory'||phase==='defeat'){
+      const won=phase==='victory';
+      onBattleResult?.(won);
+      setTimeout(()=>setPhase('result'),400);
+    }
+  },[phase]); // eslint-disable-line
+
+  const isWon = useRef(false);
+  useEffect(()=>{ if(phase==='victory') isWon.current=true; if(phase==='defeat') isWon.current=false; },[phase]);
+
+  if(phase==='result'){
+    return <TerritoryResult isVictory={isWon.current} turns={turn} totalDmg={totalDmg} battleCtx={battleCtx} onContinue={handleResultContinue}/>;
   }
 
-  const isMobile = typeof window!=='undefined' && window.innerWidth<768;
-  const isChoosing  = phase==='playerChoose';
-  const isSwapping  = phase==='playerSwap';
-  const isResolving = phase==='resolving';
+  // ── Derived UI state ─────────────────────────────────────────────────────
+  const isChoose  = phase==='playerChoose';
+  const isSwap    = phase==='playerSwap';
+  const isVolSwap = phase==='voluntarySwap';
+  const allPPOut  = (player?.moves??[]).every(m=>(m.pp??0)<=0);
 
+  // Sprite sizes
+  const sEnemy  = isMobile ? 102 : 138;
+  const sPlayer = isMobile ? 118 : 158;
+
+  // Player sprite glow based on whose turn it is
+  const playerGlow = isChoose && !isAnim
+    ? `0 12px 40px rgba(0,0,0,.75), 0 0 0 2px #00C8FF, 0 0 22px rgba(0,200,255,.38)`
+    : `0 12px 40px rgba(0,0,0,.75)`;
+
+  // Enemy sprite dim when not resolving (it's your turn → enemy is "passive")
+  const enemyStyle = {};
+
+  // Timer color/urgency
+  const timerCol  = timer<=5?'#ff2d2d':timer<=10?'#ff8800':'#ffd666';
+  const timerSize = timer<=5?20:timer<=10?16:13;
+  const timerAnim = timer<=5?'timerUrg .5s ease-in-out infinite':'none';
+
+  // Turn indicator label
+  const turnLabel = isChoose
+    ? `⚔ TURNO ${turn}`
+    : isSwap||isVolSwap
+      ? '⚡ SCEGLI WAIFU'
+      : isPvP&&pvpWaiting
+        ? '⏳ ATTESA…'
+        : phase==='entering'
+          ? '◈ INIZIO'
+          : '⚡ RISOLUZIONE';
+  const turnCol = isChoose?'#00e676':isSwap||isVolSwap?'#f5a623':'rgba(238,232,220,.38)';
+
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div style={{
-      width:'100%', height:'100dvh', minHeight:'100vh',
-      background:'linear-gradient(160deg,#0a0220 0%,#06030f 50%,#150828 100%)',
+      position:'fixed', inset:0, zIndex:40, overflow:'hidden',
+      background:'linear-gradient(180deg,#080318 0%,#120528 45%,#080318 100%)',
       display:'flex', flexDirection:'column',
-      paddingBottom:'env(safe-area-inset-bottom,0px)', overflow:'hidden', position:'relative',
+      paddingBottom:'env(safe-area-inset-bottom,0px)',
     }}>
-      {/* Flash */}
-      {flash && <div style={{position:'absolute',inset:0,zIndex:99,background:'rgba(255,255,255,.75)',animation:'flash .2s ease-out forwards',pointerEvents:'none'}} />}
 
-      {/* ── ARENA ── */}
+      {/* Screen flash */}
+      {flash&&(
+        <div style={{position:'absolute',inset:0,zIndex:99,background:'rgba(255,255,255,.78)',
+          animation:'flash .22s ease-out forwards',pointerEvents:'none'}}/>
+      )}
+
+      {/* Floating damage numbers */}
+      {dmgFloats.map(f=>(
+        <div key={f.id} style={{
+          position:'absolute',
+          left: f.side==='enemy' ? '62%' : '22%',
+          top:  f.side==='enemy' ? '22%' : '52%',
+          zIndex:30, pointerEvents:'none',
+          fontFamily:'Orbitron', fontWeight:900,
+          fontSize: Math.min(34, Math.max(18, Math.round(f.dmg/9)+14)),
+          color:'#fff',
+          textShadow:'0 2px 12px rgba(0,0,0,.9),0 0 18px rgba(255,255,255,.25)',
+          animation:'floatDmg 1.3s ease-out forwards',
+          letterSpacing:1, userSelect:'none',
+        }}>-{f.dmg}</div>
+      ))}
+
+      {/* ── ZONE 1: Combat Header ── */}
       <div style={{
-        flex:1, display:'flex', flexDirection:isMobile?'column':'row',
-        padding:isMobile?'12px 12px 8px':'16px 24px 12px',
-        gap:isMobile?8:16, minHeight:0, overflow:'hidden', alignItems:'stretch',
+        height:44, flexShrink:0,
+        display:'flex', alignItems:'center', justifyContent:'space-between',
+        padding:'0 14px',
+        background:'rgba(6,3,15,.55)',
+        borderBottom:'1px solid rgba(255,255,255,.05)',
       }}>
-        {/* Enemy side */}
-        <div style={{flex:isMobile?'0 0 auto':1,display:'flex',flexDirection:isMobile?'row':'column',alignItems:isMobile?'flex-start':'flex-start',gap:isMobile?10:12,justifyContent:isMobile?'space-between':'flex-start'}}>
-          <EnemyHud waifu={enemy} />
-          {!isMobile && <div style={{flex:1,display:'flex',alignItems:'flex-end',justifyContent:'flex-end',paddingBottom:20}}>
-            <WaifuCard waifu={enemy} size={140} animClass={eAnim} />
-          </div>}
-          {isMobile && <WaifuCard waifu={enemy} size={100} animClass={eAnim} />}
+        <span style={{fontFamily:'Orbitron',fontSize:9,letterSpacing:1.5,color:turnCol}}>
+          {turnLabel}
+        </span>
+        {isPvP&&(
+          <span style={{fontFamily:'Orbitron',fontSize:7,color:'rgba(155,89,255,.55)',letterSpacing:1,border:'1px solid rgba(155,89,255,.25)',borderRadius:4,padding:'2px 6px'}}>
+            PVP
+          </span>
+        )}
+        {isChoose&&(
+          <div style={{
+            fontFamily:'Orbitron', fontWeight:700,
+            fontSize:timerSize, color:timerCol,
+            animation:timerAnim,
+            transformOrigin:'center',
+          }}>
+            ⏱ {timer}s
+          </div>
+        )}
+      </div>
+
+      {/* ── ZONE 2+3+4: Battle Arena ── */}
+      <div style={{flex:1, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative', minHeight:0}}>
+
+        {/* Enemy Zone (top ~46%) */}
+        <div style={{flex:'0 0 46%', position:'relative', overflow:'hidden'}}>
+          {/* Enemy HUD: top-left */}
+          <div style={{position:'absolute', top:10, left:12, zIndex:3}}>
+            <EnemyHud waifu={enemy}/>
+          </div>
+          {/* Enemy bench dots: top-right */}
+          <div style={{position:'absolute', top:14, right:14, display:'flex', gap:5, zIndex:3, alignItems:'center'}}>
+            {eTeam.map((w,i)=> i!==eActive && (
+              <div key={i} style={{
+                width:9, height:9, borderRadius:'50%',
+                background: w.isKO?'rgba(255,255,255,.12)':(TYPE_COLORS[w.type]?.border??'#444'),
+                border:'1px solid rgba(255,255,255,.12)',
+                filter:w.isKO?'grayscale(1)':'none',
+                boxShadow:w.isKO?'none':`0 0 5px ${TYPE_COLORS[w.type]?.border??'#444'}66`,
+              }}/>
+            ))}
+          </div>
+          {/* Enemy sprite: bottom-right */}
+          <div style={{position:'absolute', right:14, bottom:0, zIndex:2}}>
+            <WaifuSprite waifu={enemy} size={sEnemy} anim={eAnim} isPlayer={false}/>
+          </div>
+          {/* Red vignette tint on enemy side */}
+          <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 75% 30%, rgba(200,20,40,.07) 0%, transparent 70%)',pointerEvents:'none',zIndex:1}}/>
         </div>
 
-        {/* Center: turn indicator + phase */}
-        {!isMobile && (
-          <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,zIndex:5,flexShrink:0}}>
+        {/* Message Bar */}
+        <div style={{
+          flexShrink:0, height:40,
+          display:'flex', alignItems:'center', padding:'0 14px',
+          background:'rgba(4,2,12,.78)',
+          borderTop:'1px solid rgba(255,255,255,.05)',
+          borderBottom:'1px solid rgba(255,255,255,.05)',
+        }}>
+          <p className="wba-fm" key={message} style={{
+            fontFamily:'Fredoka', fontSize:13, color:'#eedcd4',
+            margin:0, lineHeight:1.4,
+            overflow:'hidden',
+            display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical',
+          }}>{message}</p>
+        </div>
+
+        {/* Player Zone (bottom 54%) */}
+        <div style={{flex:1, position:'relative', overflow:'hidden', minHeight:0}}>
+          {/* Blue vignette tint on player side */}
+          <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 25% 70%, rgba(0,120,200,.07) 0%, transparent 70%)',pointerEvents:'none',zIndex:1}}/>
+          {/* Player sprite: bottom-left, with turn glow */}
+          <div style={{position:'absolute', left:14, bottom:0, zIndex:2}}>
+            <WaifuSprite waifu={player} size={sPlayer} anim={pAnim} isPlayer={true}
+              style={{boxShadow:playerGlow}}/>
+          </div>
+          {/* Player HUD: bottom-right */}
+          <div style={{position:'absolute', right:12, bottom:10, zIndex:3}}>
+            <PlayerHud waifu={player}/>
+          </div>
+        </div>
+      </div>
+
+      {/* ── ZONE 5+6: Action Panel ── */}
+      <div style={{
+        flexShrink:0,
+        background:'rgba(4,2,10,.92)',
+        borderTop:'1px solid rgba(255,255,255,.07)',
+      }}>
+
+        {/* Timer progress bar */}
+        {isChoose&&(
+          <div style={{height:3,background:'rgba(255,255,255,.07)'}}>
+            <div style={{height:'100%',background:timerCol,width:`${(timer/30)*100}%`,transition:'width 1s linear,background .5s'}}/>
+          </div>
+        )}
+
+        {/* ── Swap phase: KO or voluntary ── */}
+        {(isSwap||isVolSwap)&&(
+          <div style={{padding:'12px 14px'}}>
             <div style={{
-              fontFamily:'Orbitron',fontSize:9,letterSpacing:2,
-              color:isChoosing?'#00e676':isResolving?'#ffd666':'#ff4d9e',
-              background:'rgba(6,3,15,.8)',borderRadius:20,padding:'4px 12px',
-              border:`1px solid ${isChoosing?'rgba(0,230,118,.4)':isResolving?'rgba(255,214,102,.4)':'rgba(255,77,158,.4)'}`,
+              fontFamily:'Orbitron', fontSize:9, letterSpacing:1.8, textAlign:'center', marginBottom:12,
+              color: isSwap?'#ff4d4d':'#f5a623',
             }}>
-              {isChoosing?`▼ TURNO ${turn}`:isSwapping?'⚡ SCEGLI SOSTITUTA':isResolving?'⚡ RISOLUZIONE…':'▲'}
+              {isSwap?'⚠ SCEGLI LA PROSSIMA WAIFU':'↻ SCEGLI LA WAIFU DA MANDARE IN CAMPO'}
+            </div>
+            <div style={{display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap'}}>
+              {pTeam.map((w,i)=> i!==pActive&&!w.isKO&&(
+                <div key={w.id} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:5}}>
+                  <BenchSlot waifu={w} selectable size={64}
+                    onSelect={()=>isSwap?handlePlayerSwap(i):handleVoluntarySwap(i)}/>
+                  <span style={{fontFamily:'Orbitron',fontSize:7,color:'rgba(238,232,220,.4)',textAlign:'center',maxWidth:64,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    {w.name}
+                  </span>
+                  <div style={{width:64}}><HpBar hp={w.hp} maxHp={w.maxHp} h={3}/></div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* Player side */}
-        <div style={{flex:isMobile?'0 0 auto':1,display:'flex',flexDirection:isMobile?'row-reverse':'column',alignItems:isMobile?'flex-end':'flex-end',gap:isMobile?10:12,justifyContent:isMobile?'space-between':'flex-end'}}>
-          {isMobile && <WaifuCard waifu={player} size={120} animClass={pAnim}
-            style={{boxShadow:`0 0 30px ${TYPE_COLORS[player?.type]?.border??'#444'}44`}} />}
-          {!isMobile && <div style={{flex:1,display:'flex',alignItems:'flex-end',justifyContent:'flex-start',paddingBottom:10}}>
-            <WaifuCard waifu={player} size={168} animClass={pAnim}
-              style={{boxShadow:`0 0 40px ${TYPE_COLORS[player?.type]?.border??'#444'}66`}} />
-          </div>}
-          <PlayerHud waifu={player} />
-        </div>
-      </div>
-
-      {/* Mobile phase indicator */}
-      {isMobile && <div style={{textAlign:'center',paddingBottom:3}}>
-        <span style={{fontFamily:'Orbitron',fontSize:8,letterSpacing:2,color:isChoosing?'#00e676':isResolving?'#ffd666':'#ff4d9e'}}>
-          {isChoosing?`▼ TURNO ${turn}`:isSwapping?'⚡ SCEGLI SOSTITUTA':'⚡ RISOLUZIONE…'}
-        </span>
-      </div>}
-
-      {/* ── BOTTOM UI ── */}
-      <div style={{flexShrink:0,padding:isMobile?'0 10px 10px':'0 20px 16px',display:'flex',flexDirection:'column',gap:8}}>
-
-        {/* TIMER BAR (solo in playerChoose) */}
-        {isChoosing && <div style={{height:3,background:'rgba(255,255,255,.1)',borderRadius:3,overflow:'hidden',marginBottom:2}}>
-          <div style={{height:'100%',background:timer>15?'#00e676':timer>8?'#ffd666':'#ff4d4d',borderRadius:3,
-            width:`${(timer/30)*100}%`,transition:'width 1s linear, background .5s'}} />
-        </div>}
-
-        {/* MESSAGE BOX */}
-        <div style={{background:'rgba(6,3,15,.88)',backdropFilter:'blur(12px)',border:'1px solid rgba(255,255,255,.08)',borderRadius:10,padding:'10px 14px',minHeight:44,display:'flex',alignItems:'center'}}>
-          <p className="wba-msg" key={message} style={{fontFamily:'Fredoka',fontSize:14,color:'#eedcd4',margin:0,lineHeight:1.5}}>
-            {message}
-          </p>
-        </div>
-
-        {/* SWAP PANEL */}
-        {isSwapping ? (
-          <div style={{background:'rgba(6,3,15,.9)',borderRadius:10,padding:12}}>
-            <div style={{fontFamily:'Orbitron',fontSize:9,color:'#f5a623',letterSpacing:2,marginBottom:8,textAlign:'center'}}>SCEGLI LA TUA PROSSIMA WAIFU</div>
-            <BenchPanel team={pTeam} activeIdx={pActive} onSwap={handlePlayerSwap} selectable />
-          </div>
-        ) : (
-          <>
-            {/* MOVES GRID 2×2 */}
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
-              {(player?.moves??[null,null,null,null]).map((move,i)=>(
-                <MoveBtn
-                  key={i} move={move} idx={i}
-                  blocked={!isChoosing || isAnim}
-                  outOfPp={(move?.pp??0)<=0}
-                  cooldown={isMoveBlocked(lastPlayerMove,i,move??{})}
-                  enemyType={enemy?.type??'Arcana'}
-                  playerType={player?.type??'Arcana'}
-                  onSelect={handlePlayerMove}
-                />
+        {/* ── All PP out: forced swap ── */}
+        {!isSwap&&!isVolSwap&&allPPOut&&isChoose&&(
+          <div style={{padding:'12px 14px'}}>
+            <div style={{fontFamily:'Orbitron',fontSize:9,color:'#ff4d4d',letterSpacing:1.8,textAlign:'center',marginBottom:12}}>
+              ⚠ PP ESAURITI — SOSTITUISCI LA WAIFU
+            </div>
+            <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
+              {pTeam.map((w,i)=> i!==pActive&&!w.isKO&&(
+                <div key={w.id} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:5}}>
+                  <BenchSlot waifu={w} selectable size={64} onSelect={()=>handleVoluntarySwap(i)}/>
+                  <span style={{fontFamily:'Orbitron',fontSize:7,color:'rgba(238,232,220,.4)',textAlign:'center',maxWidth:64,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    {w.name}
+                  </span>
+                  <div style={{width:64}}><HpBar hp={w.hp} maxHp={w.maxHp} h={3}/></div>
+                </div>
               ))}
             </div>
+          </div>
+        )}
 
-            {/* BENCH (sempre visibile, non selezionabile fuori da swap) */}
-            <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <span style={{fontFamily:'Orbitron',fontSize:8,color:'rgba(238,232,220,.3)',letterSpacing:1,whiteSpace:'nowrap'}}>PANCHINA</span>
-              <div style={{flex:1}}><BenchPanel team={pTeam} activeIdx={pActive} onSwap={()=>{}} selectable={false} /></div>
+        {/* ── Normal: bench row + move grid ── */}
+        {!isSwap&&!isVolSwap&&!(allPPOut&&isChoose)&&(
+          <>
+            {/* Bench row */}
+            <div style={{display:'flex',alignItems:'center',padding:'6px 12px 4px',gap:8}}>
+              {/* Swap button */}
+              <div style={{flexShrink:0,width:52}}>
+                {isChoose&&!isAnim&&!(isPvP&&pvpWaiting)?(
+                  <button onClick={startVoluntarySwap} style={{
+                    fontFamily:'Orbitron',fontSize:7,letterSpacing:.6,
+                    background:'rgba(155,89,255,.12)',border:'1px solid rgba(155,89,255,.4)',
+                    borderRadius:8,color:'#9b59ff',padding:'5px 4px',cursor:'pointer',
+                    display:'flex',flexDirection:'column',alignItems:'center',gap:1,width:'100%',
+                    transition:'background .15s',
+                  }}>
+                    <span style={{fontSize:13}}>↻</span>
+                    <span>CAMBIA</span>
+                  </button>
+                ):(
+                  <div style={{width:'100%',display:'flex',flexDirection:'column',alignItems:'center',gap:1,opacity:.25}}>
+                    <span style={{fontSize:13,color:'#555'}}>↻</span>
+                    <span style={{fontFamily:'Orbitron',fontSize:7,color:'#555'}}>CAMBIA</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Player bench slots (display only) */}
+              <div style={{display:'flex',gap:7,flex:1,justifyContent:'center'}}>
+                {pTeam.map((w,i)=> i!==pActive&&(
+                  <BenchSlot key={w.id} waifu={w} selectable={false} size={44}/>
+                ))}
+              </div>
+
+              {/* PvP waiting indicator / spacer */}
+              <div style={{flexShrink:0,width:52,textAlign:'center'}}>
+                {isPvP&&pvpWaiting?(
+                  <>
+                    <div style={{fontFamily:'Orbitron',fontSize:6,color:'rgba(0,200,255,.4)',letterSpacing:.5}}>ATTESA</div>
+                    <div style={{display:'flex',gap:3,justifyContent:'center',marginTop:3}}>
+                      {[0,1,2].map(k=>(
+                        <div key={k} style={{width:4,height:4,borderRadius:'50%',background:'rgba(0,200,255,.4)',
+                          animation:`dotPulse 1.1s ease-in-out ${k*.36}s infinite`}}/>
+                      ))}
+                    </div>
+                  </>
+                ):null}
+              </div>
+            </div>
+
+            {/* Move grid */}
+            <div style={{position:'relative',padding:'2px 10px 10px'}}>
+              {/* PvP waiting overlay (only covers move grid) */}
+              {isPvP&&pvpWaiting&&(
+                <div style={{
+                  position:'absolute',inset:'2px 10px 10px',zIndex:5,
+                  background:'rgba(0,0,0,.58)',borderRadius:12,
+                  backdropFilter:'blur(3px)',
+                  display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:7,
+                  pointerEvents:'none',
+                }}>
+                  <div style={{fontFamily:'Orbitron',fontSize:10,color:'rgba(0,200,255,.75)',letterSpacing:1.5}}>
+                    MOSSA INVIATA ✓
+                  </div>
+                  <div style={{fontFamily:'Fredoka',fontSize:11,color:'rgba(238,232,220,.38)'}}>
+                    Attendo la mossa avversaria…
+                  </div>
+                </div>
+              )}
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7}}>
+                {(player?.moves??[null,null,null,null]).map((move,i)=>(
+                  <MoveBtn key={i} move={move} idx={i}
+                    locked={!isChoose||isAnim||(isPvP&&pvpWaiting)}
+                    outPp={(move?.pp??0)<=0}
+                    cooldown={isMoveBlocked(lastPMove,i,move??{})}
+                    enemyType={enemy?.type??'Arcana'}
+                    playerType={player?.type??'Arcana'}
+                    onSelect={handleMove}/>
+                ))}
+              </div>
             </div>
           </>
         )}
