@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Patch grafica · Preview Live</title>
+<link rel="stylesheet" href="../src/app/globals.css"/>
+<style>
+  body {
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(167,139,250,0.18), transparent 60%),
+      radial-gradient(900px 500px at 100% 110%, rgba(255,126,182,0.12), transparent 55%),
+      linear-gradient(180deg, #0a0726 0%, #050314 60%, #02010a 100%);
+    color: #f1ebff;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    min-height: 100vh;
+    margin: 0;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 32px 28px 80px; position: relative; z-index: 2; }
+  .hero {
+    margin: 12px 0 36px;
+  }
+  .kicker {
+    font-family: 'Saira Condensed', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.4em;
+    color: #ffc861;
+    text-transform: uppercase;
+  }
+  h1 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 56px;
+    font-weight: 800;
+    margin: 8px 0 6px;
+    line-height: 0.95;
+  }
+  .sub {
+    color: #b6aed6;
+    font-size: 15px;
+    max-width: 700px;
+    line-height: 1.55;
+  }
+  .lab {
+    font-family: 'Saira Condensed', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: #b6aed6;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .grid-cards {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-bottom: 40px;
+    justify-content: center;
+  }
+  .card-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .card-label {
+    font-family: 'Saira Condensed', sans-serif;
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-bottom: 28px; }
+  .section { margin-bottom: 56px; }
+  .info-banner {
+    padding: 14px 20px;
+    background: linear-gradient(180deg, rgba(245,197,96,0.10), rgba(245,197,96,0.04));
+    border: 1px solid rgba(245,197,96,0.45);
+    border-radius: 14px;
+    margin: 14px 0 36px;
+    color: #ffe9a8;
+    font-size: 13px;
+  }
+  .info-banner code {
+    background: rgba(0,0,0,0.35);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: #ffc861;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="kicker">◆ Patch grafica · preview live</div>
+    <h1><span class="shimmer-text">Impero delle Waifu</span></h1>
+    <div class="sub">Questa pagina monta <strong>i veri componenti riscritti</strong> (CartaWaifu, CartaOutfit, CartaPosa, BtnDecorato, PannelloOrnato, Chip, BarraRisorsa, CardInfo, ecc.) con dati mock. Se quello che vedi qui ti convince, sostituisci i 3 file in <code>/src</code> e tutta l'app erediterà il nuovo look automaticamente.</div>
+  </div>
+
+  <div class="info-banner">
+    📁 I file da sostituire sono in <code>apply/src/</code>: <code>app/globals.css</code> · <code>components/ui/UIKit.jsx</code> · <code>components/CartaWaifu.jsx</code>. Tutte le props sono identiche all'originale.
+  </div>
+
+  <div id="root"></div>
+</div>
+
+<!-- shim per @/lib/* — risolve gli import dei moduli del progetto via mock dei costanti -->
+<script>
+  // Mock RARITA + ARCHETIPI (estratto da src/lib/constants.js + lib/promptGenerator)
+  window.__MOCK_LIB__ = {
+    RARITA: {
+      comune:      { nome: 'Comune',      colore: '#9ca3af', glow: 'rgba(156,163,175,0.4)', stelle: 1, prob: 0.55 },
+      raro:        { nome: 'Raro',        colore: '#3b82f6', glow: 'rgba(59,130,246,0.5)',  stelle: 2, prob: 0.27 },
+      epico:       { nome: 'Epico',       colore: '#a855f7', glow: 'rgba(168,85,247,0.6)',  stelle: 3, prob: 0.12 },
+      leggendario: { nome: 'Leggendario', colore: '#f59e0b', glow: 'rgba(245,158,11,0.7)',  stelle: 4, prob: 0.05 },
+      immersivo:   { nome: 'Immersivo',   colore: '#ec4899', glow: 'rgba(236,72,153,0.8)',  stelle: 5, prob: 0.01 },
+    },
+    ARCHETIPI: [
+      { id: 'guerriera_stoica',    nome: 'Guerriera Stoica' },
+      { id: 'maga_timida',         nome: 'Maga Timida' },
+      { id: 'regina_imperiosa',    nome: 'Regina Imperiosa' },
+      { id: 'idol_radiante',       nome: 'Idol Radiante' },
+      { id: 'sacerdotessa_etera',  nome: 'Sacerdotessa Eterea' },
+      { id: 'principessa_drago',   nome: 'Principessa del Drago' },
+      { id: 'oracolo_mistico',     nome: 'Oracolo Mistico' },
+      { id: 'cyber_hacker',        nome: 'Cyber Hacker' },
+      { id: 'ninja_letale',        nome: 'Ninja Letale' },
+      { id: 'dea_celestiale',      nome: 'Dea Celestiale' },
+    ],
+  };
+</script>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" data-presets="env,react">
+// Inline-load i file riscritti convertendo gli import.
+// (preview è autonoma: ricrea le 3 funzioni RARITA/ARCHETIPI dal mock)
+const RARITA = window.__MOCK_LIB__.RARITA;
+const ARCHETIPI = window.__MOCK_LIB__.ARCHETIPI;
+window.RARITA = RARITA;
+window.ARCHETIPI = ARCHETIPI;
+</script>
+
+<script type="text/babel" data-presets="env,react">
+// ---- INLINE: UIKit (versione riscritta) ----
+const { useState, useRef, useEffect } = React;
+
+// PANNELLO
+function PannelloOrnato({ children, variant = 'default', glow = '#f5c560', style = {}, ...rest }) {
+  const variants = {
+    default: { bg: 'linear-gradient(180deg, rgba(27,22,56,0.72), rgba(13,10,38,0.85))', border: 'rgba(174,156,255,0.18)' },
+    dark:    { bg: 'linear-gradient(180deg, rgba(7,5,26,0.92), rgba(3,2,12,0.96))',     border: 'rgba(174,156,255,0.10)' },
+    accent:  { bg: 'linear-gradient(180deg, rgba(245,197,96,0.10), rgba(245,197,96,0.04))', border: 'rgba(245,197,96,0.45)' },
+    purple:  { bg: 'linear-gradient(180deg, rgba(167,139,250,0.12), rgba(13,10,38,0.85))', border: 'rgba(167,139,250,0.35)' },
+  };
+  const v = variants[variant] || variants.default;
+  const sz = 14;
+  const positions = [
+    { top: -1, left: -1, r: 0 }, { top: -1, right: -1, r: 90 },
+    { bottom: -1, right: -1, r: 180 }, { bottom: -1, left: -1, r: 270 },
+  ];
+  return (
+    <div style={{
+      position: 'relative', background: v.bg,
+      border: `1px solid ${v.border}`, borderRadius: 16, padding: 18,
+      backdropFilter: 'blur(14px)',
+      boxShadow: `0 0 28px ${glow}1a, 0 10px 36px rgba(3,2,12,0.55), 0 1px 0 rgba(255,255,255,0.04) inset`,
+      ...style,
+    }} {...rest}>
+      {positions.map((pos, i) => (
+        <svg key={i} viewBox="0 0 16 16" width={sz} height={sz}
+          style={{ position: 'absolute', transform: `rotate(${pos.r}deg)`, pointerEvents: 'none', ...pos }}>
+          <path d="M0,0 L16,0 L16,2 L2,2 L2,16 L0,16 Z" fill={glow} opacity="0.55" />
+        </svg>
+      ))}
+      {children}
+    </div>
+  );
+}
+
+function TitoloOrnato({ children, livello = 1, colore = '#f5c560', glow = true, allineamento = 'center', style = {} }) {
+  const sizes = {
+    1: { fs: 'clamp(20px, 3.8vw, 30px)', ls: 0, mb: 12, fw: 800 },
+    2: { fs: 'clamp(15px, 2.6vw, 20px)', ls: 0.5, mb: 9, fw: 700 },
+    3: { fs: 'clamp(12px, 2vw, 15px)', ls: 1.5, mb: 7, fw: 700 },
+  };
+  const s = sizes[livello] || sizes[1];
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center',
+      justifyContent: allineamento === 'center' ? 'center' : 'flex-start',
+      gap: 14, marginBottom: s.mb, ...style,
+    }}>
+      {allineamento === 'center' && (
+        <div style={{ flex: 1, height: 1, maxWidth: 110,
+          background: `linear-gradient(90deg, transparent, ${colore}66)` }}/>
+      )}
+      <div style={{
+        fontFamily: 'Unbounded, sans-serif', fontSize: s.fs, fontWeight: s.fw, letterSpacing: s.ls,
+        color: colore,
+        textShadow: glow ? `0 0 18px ${colore}55, 0 0 32px ${colore}22` : 'none',
+        whiteSpace: 'nowrap',
+      }}>{children}</div>
+      {allineamento === 'center' && (
+        <div style={{ flex: 1, height: 1, maxWidth: 110,
+          background: `linear-gradient(270deg, transparent, ${colore}66)` }}/>
+      )}
+    </div>
+  );
+}
+
+function BtnDecorato({ children, variant = 'primary', size = 'md', onClick, disabled, icon, style = {}, ...rest }) {
+  const sizes = {
+    sm: { px: 14, py: 7,  fs: 10, ls: 1.5, br: 9  },
+    md: { px: 20, py: 11, fs: 12, ls: 2,   br: 11 },
+    lg: { px: 28, py: 15, fs: 14, ls: 2.5, br: 13 },
+  };
+  const variants = {
+    primary:   { bg: 'linear-gradient(180deg, rgba(245,197,96,0.32), rgba(245,197,96,0.10))', bgHover: 'linear-gradient(180deg, rgba(255,233,168,0.45), rgba(245,197,96,0.18))', color: '#2a1f00', border: 'rgba(255,233,168,0.6)', shadow: '0 1px 0 rgba(255,255,255,0.55) inset, 0 -10px 20px rgba(192,138,31,0.45) inset, 0 8px 24px rgba(245,197,96,0.35)' },
+    secondary: { bg: 'linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02))', bgHover: 'linear-gradient(180deg, rgba(245,197,96,0.18), rgba(245,197,96,0.04))', color: '#f1ebff', border: 'rgba(255,255,255,0.16)', shadow: '0 1px 0 rgba(255,255,255,0.12) inset, 0 -8px 16px rgba(0,0,0,0.4) inset, 0 6px 20px rgba(0,0,0,0.45)' },
+    danger:    { bg: 'linear-gradient(180deg, rgba(255,91,108,0.20), rgba(255,91,108,0.06))', bgHover: 'linear-gradient(180deg, rgba(255,91,108,0.38), rgba(255,91,108,0.10))', color: '#ffa8b0', border: 'rgba(255,91,108,0.45)', shadow: '0 1px 0 rgba(255,255,255,0.10) inset, 0 -8px 18px rgba(120,20,40,0.5) inset, 0 6px 18px rgba(255,91,108,0.25)' },
+    success:   { bg: 'linear-gradient(180deg, rgba(88,224,163,0.22), rgba(88,224,163,0.06))', bgHover: 'linear-gradient(180deg, rgba(88,224,163,0.40), rgba(88,224,163,0.10))', color: '#a8f5cf', border: 'rgba(88,224,163,0.50)', shadow: '0 1px 0 rgba(255,255,255,0.10) inset, 0 -8px 18px rgba(20,90,60,0.5) inset, 0 6px 18px rgba(88,224,163,0.22)' },
+  };
+  const s = sizes[size]; const v = variants[variant];
+  return (
+    <button
+      onClick={onClick} disabled={disabled}
+      onMouseEnter={e => { if (!disabled) { e.currentTarget.style.background = v.bgHover; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
+      onMouseLeave={e => { if (!disabled) { e.currentTarget.style.background = v.bg; e.currentTarget.style.transform = 'translateY(0)'; } }}
+      style={{
+        position: 'relative', padding: `${s.py}px ${s.px}px`,
+        background: v.bg, color: v.color, border: `1px solid ${v.border}`,
+        borderRadius: s.br,
+        fontFamily: "'Saira Condensed', sans-serif", fontSize: s.fs, fontWeight: 700,
+        letterSpacing: `${s.ls}px`, cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.35 : 1, boxShadow: v.shadow,
+        backdropFilter: 'blur(8px)',
+        transition: 'background 0.2s ease, transform 0.15s ease', textTransform: 'uppercase',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+        overflow: 'hidden', ...style,
+      }} {...rest}
+    >
+      <span style={{
+        position: 'absolute', inset: 0, borderRadius: 'inherit',
+        background: 'linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.22) 50%, transparent 65%)',
+        opacity: 0.55, mixBlendMode: 'overlay', pointerEvents: 'none',
+      }}/>
+      {icon && <span style={{ position: 'relative', fontSize: s.fs*1.2, lineHeight: 1 }}>{icon}</span>}
+      <span style={{ position: 'relative' }}>{children}</span>
+    </button>
+  );
+}
+
+function Chip({ children, colore = '#f5c560', icon, size = 'sm' }) {
+  const sizes = { xs: { px: 7, py: 2, fs: 9 }, sm: { px: 10, py: 3, fs: 10 }, md: { px: 14, py: 5, fs: 12 } };
+  const s = sizes[size];
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: `${s.py}px ${s.px}px`, background: `${colore}13`,
+      border: `1px solid ${colore}55`, borderRadius: 999, fontSize: s.fs, color: colore,
+      letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700,
+      fontFamily: "'Saira Condensed', sans-serif", backdropFilter: 'blur(6px)',
+    }}>
+      {icon && <span>{icon}</span>}{children}
+    </span>
+  );
+}
+
+function BarraRisorsa({ valore, max, colore = '#f5c560', icon, label, mostraNumero = true }) {
+  const pct = Math.max(0, Math.min(100, (valore / max) * 100));
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 110 }}>
+      <div style={{ width: 28, height: 28, borderRadius: 10, background: `${colore}1a`,
+        border: `1.5px solid ${colore}88`, display: 'grid', placeItems: 'center',
+        fontSize: 13, color: colore, boxShadow: `0 0 10px ${colore}44, 0 0 0 1px rgba(255,255,255,0.04) inset`, flexShrink: 0,
+      }}>{icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {label && <div style={{ fontSize: 8, opacity: 0.55, letterSpacing: '0.22em', fontFamily: "'Saira Condensed', sans-serif", textTransform: 'uppercase' }}>{label}</div>}
+        <div style={{ height: 6, background: 'rgba(7,5,26,0.6)', borderRadius: 999, position: 'relative', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ width: `${pct}%`, height: '100%', background: `linear-gradient(90deg, ${colore}bb, ${colore})`, boxShadow: `0 0 8px ${colore}`, transition: 'width 0.4s ease', borderRadius: 999 }}/>
+        </div>
+        {mostraNumero && <div style={{ fontSize: 10, color: colore, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, textAlign: 'right', marginTop: 2 }}>{valore}/{max}</div>}
+      </div>
+    </div>
+  );
+}
+
+function CardInfo({ children, colore = '#f5c560', glow = true, style = {}, onClick }) {
+  return (
+    <div onClick={onClick} style={{
+      position: 'relative', padding: 14,
+      background: `linear-gradient(180deg, ${colore}10, ${colore}04)`,
+      border: `1px solid ${colore}30`, borderRadius: 14,
+      boxShadow: glow ? `0 0 14px ${colore}1f, 0 4px 14px rgba(3,2,12,0.4)` : 'none',
+      cursor: onClick ? 'pointer' : 'default',
+      transition: 'transform 0.2s, box-shadow 0.2s, border-color 0.2s',
+      backdropFilter: 'blur(6px)', ...style,
+    }}>{children}</div>
+  );
+}
+
+function Divider({ colore = '#f5c560', spazio = 14 }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: `${spazio}px 0`, gap: 10 }}>
+      <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${colore}50)` }}/>
+      <svg viewBox="0 0 8 8" width="7" height="7"><path d="M4,0 L8,4 L4,8 L0,4 Z" fill={colore} opacity="0.55"/></svg>
+      <div style={{ flex: 1, height: 1, background: `linear-gradient(270deg, transparent, ${colore}50)` }}/>
+    </div>
+  );
+}
+
+function StelleRarita({ stelle, colore = '#f5c560', dimensione = 12 }) {
+  return (
+    <div style={{ display: 'inline-flex', gap: 1 }}>
+      {[...Array(stelle)].map((_, i) => <span key={i} style={{ color: colore, fontSize: dimensione, filter: `drop-shadow(0 0 4px ${colore})` }}>★</span>)}
+    </div>
+  );
+}
+
+function FramePersonaggio({ children, colore = '#f5c560', dimensione = 80 }) {
+  return (
+    <div style={{
+      position: 'relative', width: dimensione, height: dimensione, borderRadius: '50%',
+      background: `radial-gradient(circle at 30% 25%, ${colore}25, rgba(7,5,26,0.85))`,
+      border: `2px solid ${colore}aa`,
+      boxShadow: `0 0 16px ${colore}55, inset 0 0 12px rgba(0,0,0,0.3)`,
+      display: 'grid', placeItems: 'center', overflow: 'hidden',
+    }}>
+      <div style={{ position: 'absolute', inset: 3, borderRadius: '50%', border: `1px solid ${colore}33`, pointerEvents: 'none' }}/>
+      {children}
+    </div>
+  );
+}
+
+Object.assign(window, { PannelloOrnato, TitoloOrnato, BtnDecorato, Chip, BarraRisorsa, CardInfo, Divider, StelleRarita, FramePersonaggio });
+</script>
+
+<script type="text/babel" data-presets="env,react">
+// ---- INLINE: CartaWaifu/Outfit/Posa (versione riscritta, mock-friendly) ----
+const RARITY_BORDER = {
+  comune:      { outer: '#b4bcc8', inner: '#dfe5ef', glow: 'rgba(180,188,200,0.45)', bg: 'linear-gradient(160deg, #293142 0%, #0c0e1a 100%)' },
+  raro:        { outer: '#5aa9ff', inner: '#9fcaff', glow: 'rgba(90,169,255,0.55)',  bg: 'linear-gradient(160deg, #142a55 0%, #06112c 100%)' },
+  epico:       { outer: '#b573ff', inner: '#dabaff', glow: 'rgba(181,115,255,0.55)', bg: 'linear-gradient(160deg, #2a1255 0%, #10052a 100%)' },
+  leggendario: { outer: '#ffc861', inner: '#ffe9a8', glow: 'rgba(255,200,97,0.65)',  bg: 'linear-gradient(160deg, #4a3105 0%, #1d1102 100%)' },
+  immersivo:   { outer: '#ff7eb6', inner: '#ffc3da', glow: 'rgba(255,126,182,0.7)',  bg: 'linear-gradient(160deg, #4f1245 0%, #1e0420 100%)' },
+};
+const ARCHETIPO_SIMBOLI = {
+  guerriera_stoica: { sym: '⚔', color: '#ff8b6f' }, maga_timida: { sym: '✦', color: '#c5a4ff' },
+  regina_imperiosa: { sym: '♛', color: '#ffd680' }, idol_radiante: { sym: '★', color: '#ff9ec6' },
+  sacerdotessa_etera: { sym: '⛩', color: '#94f0e3' }, principessa_drago: { sym: '◈', color: '#ff7a7a' },
+  oracolo_mistico: { sym: '◉', color: '#b89dff' }, cyber_hacker: { sym: '⌘', color: '#7af0ff' },
+  ninja_letale: { sym: '◆', color: '#8da4c0' }, dea_celestiale: { sym: '☽', color: '#ffe7a8' },
+};
+const ARCHETIPI_MAP = {};
+window.ARCHETIPI.forEach(a => { ARCHETIPI_MAP[a.id] = a; });
+
+function StatCircle({ value, statKey, icon, color, size = 30 }) {
+  const r = (size - 4) / 2; const circ = 2 * Math.PI * r;
+  const maxVal = statKey === 'piedi' ? 45 : statKey === 'eta' ? 5000 : statKey === 'exp' ? 5000 : statKey === 'capelli' ? 10 : 7;
+  const pct = Math.min(1, value / maxVal);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+      <div style={{ position: 'relative', width: size, height: size }}>
+        <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+          <circle cx={size/2} cy={size/2} r={r} fill="rgba(7,5,26,0.7)" stroke="rgba(255,255,255,0.08)" strokeWidth="2"/>
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth="2.6"
+            strokeDasharray={circ} strokeDashoffset={circ*(1-pct)} strokeLinecap="round"
+            style={{ filter: `drop-shadow(0 0 4px ${color})` }}/>
+        </svg>
+        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center',
+          fontSize: size*0.32, fontWeight: 700, color: '#fff',
+          fontFamily: "'JetBrains Mono', monospace", textShadow: `0 0 6px ${color}` }}>{value}</div>
+      </div>
+      <div style={{ fontSize: Math.max(8, size*0.30), lineHeight: 1, color, filter: `drop-shadow(0 0 3px ${color})` }}>{icon}</div>
+    </div>
+  );
+}
+
+function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onClick, evidenziato, isHot, censurata, tipo = 'auto' }) {
+  if (!waifu) return null;
+  const rar = window.RARITA[waifu.rarita] || window.RARITA.comune;
+  const rb = RARITY_BORDER[waifu.rarita] || RARITY_BORDER.comune;
+  const scale = dimensione === 'piccola' ? 0.65 : dimensione === 'grande' ? 1.15 : 1;
+  const W = Math.round(220*scale); const H = Math.round(330*scale); const borderW = dimensione === 'piccola' ? 2 : 3;
+  const sym = ARCHETIPO_SIMBOLI[waifu.archetipo] || { sym: '◈', color: rb.inner };
+  const showFoil = ['epico','leggendario','immersivo'].includes(waifu.rarita);
+  const statSize = Math.round(30*scale);
+  const tetteEff = waifu.tette ?? 3, piediEff = waifu.taglia_piedi ?? 38;
+  const etaEff = waifu.eta ?? 18, capelliEff = waifu.colore_capelli ?? 1;
+  const expEff = waifu.esperienza ?? 0;
+
+  return (
+    <div className="carta-waifu-root card-clickable" onClick={onClick} style={{
+      width: W, height: H, position: 'relative',
+      borderRadius: Math.round(14*scale),
+      border: `${borderW}px solid ${evidenziato ? '#ffe9a8' : rb.outer}`,
+      boxShadow: evidenziato
+        ? '0 0 30px rgba(255,233,168,0.6), inset 0 0 20px rgba(255,233,168,0.1)'
+        : `0 0 22px ${rb.glow}, inset 0 0 18px rgba(0,0,0,0.35)`,
+      background: rb.bg, overflow: 'hidden', flexShrink: 0,
+      transition: 'all 0.3s ease',
+    }}>
+      <div style={{ position: 'absolute', inset: Math.round(3*scale), borderRadius: Math.round(11*scale),
+        border: `1px solid ${rb.inner}3a`, pointerEvents: 'none', zIndex: 3 }}/>
+
+      {/* Placeholder waifu silhouette */}
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden',
+        background:
+          `radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.06), transparent 55%),
+           repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 6px, transparent 6px 14px),
+           ${rb.bg}`,
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      }}>
+        <div style={{
+          width: '75%', height: '88%',
+          background:
+            `radial-gradient(40% 18% at 50% 22%, rgba(0,0,0,0.55) 0%, transparent 70%),
+             radial-gradient(60% 50% at 50% 75%, rgba(0,0,0,0.45) 0%, transparent 65%)`,
+          filter: 'blur(0.5px)',
+        }}/>
+        {showFoil && <div className="foil"/>}
+      </div>
+
+      {/* OVERLAY TOP */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0,
+        padding: `${Math.round(9*scale)}px ${Math.round(10*scale)}px`,
+        background: 'linear-gradient(180deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.25) 60%, transparent 100%)',
+        zIndex: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+      }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontFamily: 'Unbounded, sans-serif', fontSize: Math.round(14*scale),
+            fontWeight: 700, color: '#fff',
+            textShadow: `0 0 12px ${rb.glow}, 0 2px 4px rgba(0,0,0,0.85)`, lineHeight: 1.1,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{waifu.nome}</div>
+          {datiCollezione && (
+            <div style={{ fontSize: Math.round(8.5*scale), color: rb.inner, letterSpacing: '0.22em',
+              fontFamily: "'Saira Condensed', sans-serif", marginTop: 3,
+              textTransform: 'uppercase' }}>Lv.{datiCollezione.livello}</div>
+          )}
+          {waifu.archetipo && (
+            <div style={{ marginTop: Math.round(5*scale),
+              width: Math.round(26*scale), height: Math.round(26*scale), borderRadius: '50%',
+              background: `radial-gradient(circle at 35% 30%, ${sym.color}55, rgba(7,5,26,0.85))`,
+              border: `1.5px solid ${sym.color}aa`,
+              display: 'grid', placeItems: 'center',
+              fontSize: Math.round(26*scale*0.46), color: sym.color,
+              boxShadow: `0 0 8px ${sym.color}66, inset 0 0 6px rgba(0,0,0,0.3)`,
+            }}>{sym.sym}</div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 1.5, flexShrink: 0 }}>
+          {[...Array(rar.stelle)].map((_,i)=>(
+            <span key={i} style={{ color: rb.inner, fontSize: Math.round(11*scale),
+              textShadow: `0 0 6px ${rb.glow}`, filter: `drop-shadow(0 0 3px ${rb.inner})` }}>★</span>
+          ))}
+        </div>
+      </div>
+
+      {/* RARITY tag */}
+      <div style={{ position: 'absolute', top: Math.round(46*scale), right: 0,
+        background: `linear-gradient(135deg, ${rb.outer}, ${rb.inner})`, color: '#000',
+        padding: `${Math.round(2.5*scale)}px ${Math.round(9*scale)}px`,
+        fontSize: Math.round(7.5*scale), fontWeight: 800, letterSpacing: '0.2em',
+        fontFamily: "'Saira Condensed', sans-serif",
+        borderRadius: `${Math.round(5*scale)}px 0 0 ${Math.round(5*scale)}px`,
+        textTransform: 'uppercase',
+        boxShadow: `0 2px 12px ${rb.glow}, 0 0 0 1px rgba(255,255,255,0.18) inset`,
+        zIndex: 5,
+      }}>{rar.nome}</div>
+
+      {/* STATS BOTTOM */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        padding: `${Math.round(22*scale)}px ${Math.round(8*scale)}px ${Math.round(9*scale)}px`,
+        background: 'linear-gradient(0deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 45%, transparent 100%)',
+        zIndex: 4,
+      }}>
+        <div style={{ width: '70%', height: 1, margin: `0 auto ${Math.round(7*scale)}px`,
+          background: `linear-gradient(90deg, transparent, ${rb.inner}cc, transparent)`,
+          boxShadow: `0 0 6px ${rb.glow}` }}/>
+        <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
+          <StatCircle value={tetteEff}   statKey="tette"   icon="✦" color="#ff9ec6" size={statSize}/>
+          <StatCircle value={piediEff}   statKey="piedi"   icon="⚘" color="#b573ff" size={statSize}/>
+          <StatCircle value={etaEff}     statKey="eta"     icon="⌛" color="#6cf0e0" size={statSize}/>
+          <StatCircle value={capelliEff} statKey="capelli" icon="✿" color="#ffc861" size={statSize}/>
+          <StatCircle value={expEff}     statKey="exp"     icon="★" color="#a78bfa" size={statSize}/>
+        </div>
+      </div>
+
+      {/* CORNERS */}
+      {[
+        { top: Math.round(5*scale), left: Math.round(5*scale), b: { borderTop: `1.5px solid ${rb.inner}`, borderLeft: `1.5px solid ${rb.inner}` } },
+        { top: Math.round(5*scale), right: Math.round(5*scale), b: { borderTop: `1.5px solid ${rb.inner}`, borderRight: `1.5px solid ${rb.inner}` } },
+        { bottom: Math.round(5*scale), right: Math.round(5*scale), b: { borderBottom: `1.5px solid ${rb.inner}`, borderRight: `1.5px solid ${rb.inner}` } },
+        { bottom: Math.round(5*scale), left: Math.round(5*scale), b: { borderBottom: `1.5px solid ${rb.inner}`, borderLeft: `1.5px solid ${rb.inner}` } },
+      ].map((c,i)=>(
+        <div key={i} style={{ position: 'absolute', width: Math.round(14*scale), height: Math.round(14*scale),
+          opacity: 0.65, zIndex: 5, pointerEvents: 'none', ...c.b,
+          top: c.top, bottom: c.bottom, left: c.left, right: c.right }}/>
+      ))}
+
+      {/* HOT BADGE */}
+      {isHot && (
+        <div style={{ position: 'absolute', top: Math.round(6*scale), left: Math.round(6*scale),
+          background: 'linear-gradient(135deg, rgba(255,69,0,0.92), rgba(255,140,0,0.92))',
+          color: '#fff', fontFamily: "'Saira Condensed', sans-serif",
+          fontSize: Math.round(8*scale), fontWeight: 800, letterSpacing: '0.12em',
+          padding: `${Math.round(2*scale)}px ${Math.round(7*scale)}px`, borderRadius: 999,
+          border: '1px solid rgba(255,255,255,0.4)', boxShadow: '0 0 10px rgba(255,69,0,0.65)',
+          zIndex: 12, textTransform: 'uppercase', pointerEvents: 'none',
+        }}>🔥 HOT</div>
+      )}
+
+      {/* COPIE */}
+      {datiCollezione && datiCollezione.copie > 1 && (
+        <div style={{ position: 'absolute', bottom: Math.round(8*scale), right: Math.round(8*scale),
+          background: 'rgba(7,5,26,0.88)', border: `1px solid ${rb.inner}88`,
+          color: rb.inner, fontSize: Math.round(10*scale), fontWeight: 700,
+          padding: `${Math.round(2*scale)}px ${Math.round(7*scale)}px`,
+          borderRadius: Math.round(7*scale), fontFamily: "'JetBrains Mono', monospace",
+          backdropFilter: 'blur(4px)', boxShadow: `0 0 8px ${rb.glow}`, zIndex: 6,
+        }}>×{datiCollezione.copie}</div>
+      )}
+    </div>
+  );
+}
+
+window.CartaWaifu = CartaWaifu;
+</script>
+
+<script type="text/babel" data-presets="env,react">
+// ---- PREVIEW APP ----
+const { PannelloOrnato, TitoloOrnato, BtnDecorato, Chip, BarraRisorsa, CardInfo, Divider, StelleRarita, FramePersonaggio, CartaWaifu, RARITA } = window;
+
+const sampleWaifus = [
+  { rarita: 'comune',      nome: 'Mio',     archetipo: 'cyber_hacker',         tette: 3, taglia_piedi: 36, eta: 19, colore_capelli: 4, esperienza: 120  },
+  { rarita: 'raro',        nome: 'Yuki',    archetipo: 'ninja_letale',         tette: 4, taglia_piedi: 37, eta: 21, colore_capelli: 6, esperienza: 540  },
+  { rarita: 'epico',       nome: 'Reverie', archetipo: 'maga_timida',          tette: 5, taglia_piedi: 38, eta: 23, colore_capelli: 7, esperienza: 1287 },
+  { rarita: 'leggendario', nome: 'Hoshikō', archetipo: 'dea_celestiale',       tette: 6, taglia_piedi: 39, eta: 28, colore_capelli: 9, esperienza: 3420 },
+  { rarita: 'immersivo',   nome: 'Aurelia', archetipo: 'principessa_drago',    tette: 7, taglia_piedi: 40, eta: 35, colore_capelli: 10, esperienza: 4820 },
+];
+
+function App() {
+  return (
+    <>
+      {/* Carte */}
+      <div className="section">
+        <div className="lab">◆ 01 · Sistema carte · 5 rarità (CartaWaifu)</div>
+        <div className="grid-cards">
+          {sampleWaifus.map(w => (
+            <div key={w.rarita} className="card-wrap">
+              <CartaWaifu waifu={w} datiCollezione={{ livello: ['comune','raro','epico','leggendario','immersivo'].indexOf(w.rarita)+1 }} onClick={()=>{}}/>
+              <div className="card-label" style={{ color: { comune:'#b4bcc8', raro:'#5aa9ff', epico:'#b573ff', leggendario:'#ffc861', immersivo:'#ff7eb6' }[w.rarita] }}>
+                {RARITA[w.rarita].nome.toUpperCase()}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Stati carta */}
+      <div className="section">
+        <div className="lab">◆ 02 · Stati carta · HOT · copie · evidenziato · censurata</div>
+        <div className="grid-cards">
+          <div className="card-wrap">
+            <CartaWaifu waifu={sampleWaifus[2]} datiCollezione={{ livello: 5, copie: 7 }}/>
+            <div className="card-label" style={{ color: '#b573ff' }}>× COPIE</div>
+          </div>
+          <div className="card-wrap">
+            <CartaWaifu waifu={sampleWaifus[3]} datiCollezione={{ livello: 9 }} isHot/>
+            <div className="card-label" style={{ color: '#ff8c00' }}>🔥 HOT</div>
+          </div>
+          <div className="card-wrap">
+            <CartaWaifu waifu={sampleWaifus[1]} datiCollezione={{ livello: 3 }} evidenziato/>
+            <div className="card-label" style={{ color: '#ffe9a8' }}>EVIDENZIATO</div>
+          </div>
+          <div className="card-wrap">
+            <CartaWaifu waifu={sampleWaifus[0]} dimensione="piccola" datiCollezione={{ livello: 1 }}/>
+            <div className="card-label" style={{ color: '#b4bcc8' }}>PICCOLA</div>
+          </div>
+        </div>
+      </div>
+
+      {/* UI Kit */}
+      <div className="section">
+        <div className="lab">◆ 03 · UI Kit · BtnDecorato / Chip / BarraRisorsa</div>
+        <PannelloOrnato style={{ marginBottom: 18 }}>
+          <TitoloOrnato livello={2}>BOTTONI · 4 VARIANTI · 3 SIZE</TitoloOrnato>
+          <div className="row">
+            <BtnDecorato variant="primary"   size="sm">Primary SM</BtnDecorato>
+            <BtnDecorato variant="primary"   size="md" icon="✦">Primary MD</BtnDecorato>
+            <BtnDecorato variant="primary"   size="lg">Primary LG</BtnDecorato>
+            <BtnDecorato variant="secondary" icon="◈">Secondary</BtnDecorato>
+            <BtnDecorato variant="success"   icon="✓">Conferma</BtnDecorato>
+            <BtnDecorato variant="danger"    icon="×">Rifiuta</BtnDecorato>
+            <BtnDecorato disabled>Disabled</BtnDecorato>
+          </div>
+          <Divider/>
+          <TitoloOrnato livello={3} allineamento="left">CHIPS</TitoloOrnato>
+          <div className="row">
+            <Chip colore="#b4bcc8" icon="◈">Comune</Chip>
+            <Chip colore="#5aa9ff" icon="◇">Raro</Chip>
+            <Chip colore="#b573ff" icon="✦">Epico</Chip>
+            <Chip colore="#ffc861" icon="♛">Leggendario</Chip>
+            <Chip colore="#ff7eb6" icon="❀">Immersivo</Chip>
+            <Chip colore="#6cf0e0" size="md" icon="⚡">7 / 10 energia</Chip>
+          </div>
+          <Divider/>
+          <TitoloOrnato livello={3} allineamento="left">BARRE RISORSA</TitoloOrnato>
+          <div className="row">
+            <BarraRisorsa valore={7}   max={10}  colore="#6cf0e0" icon="⚡" label="Energia"/>
+            <BarraRisorsa valore={248} max={500} colore="#ff7eb6" icon="❤" label="Kisses"/>
+            <BarraRisorsa valore={2}   max={2}   colore="#f5c560" icon="◈" label="Pack"/>
+            <BarraRisorsa valore={1287} max={5000} colore="#a78bfa" icon="★" label="Exp"/>
+          </div>
+        </PannelloOrnato>
+
+        {/* Pannelli */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          <PannelloOrnato variant="default" glow="#f5c560">
+            <TitoloOrnato livello={3} allineamento="left">VARIANT · DEFAULT</TitoloOrnato>
+            <div style={{ color: '#b6aed6', fontSize: 13, lineHeight: 1.5 }}>Glassmorphism notturno con bordi viola. Default per i pannelli generici.</div>
+          </PannelloOrnato>
+          <PannelloOrnato variant="dark" glow="#a78bfa">
+            <TitoloOrnato livello={3} allineamento="left" colore="#a78bfa">VARIANT · DARK</TitoloOrnato>
+            <div style={{ color: '#b6aed6', fontSize: 13, lineHeight: 1.5 }}>Fondale più denso per overlay e modali.</div>
+          </PannelloOrnato>
+          <PannelloOrnato variant="accent" glow="#f5c560">
+            <TitoloOrnato livello={3} allineamento="left" colore="#ffe9a8">VARIANT · ACCENT</TitoloOrnato>
+            <div style={{ color: '#ffe9a8', fontSize: 13, lineHeight: 1.5 }}>Toni dorati per CTA premium e bundle.</div>
+          </PannelloOrnato>
+          <PannelloOrnato variant="purple" glow="#a78bfa">
+            <TitoloOrnato livello={3} allineamento="left" colore="#c5b3ff">VARIANT · PURPLE</TitoloOrnato>
+            <div style={{ color: '#c5b3ff', fontSize: 13, lineHeight: 1.5 }}>Toni viola per drop stagionali e leggendari.</div>
+          </PannelloOrnato>
+        </div>
+
+        <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+          <CardInfo colore="#ffc861" onClick={()=>{}}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 28, marginBottom: 4 }}>♛</div>
+              <div style={{ fontFamily: 'JetBrains Mono', fontSize: 22, color: '#ffc861', fontWeight: 700 }}>247</div>
+              <div style={{ fontFamily: 'Saira Condensed', fontSize: 9, color: '#ffc861', letterSpacing: '0.22em', textTransform: 'uppercase', marginTop: 4 }}>Waifu</div>
+            </div>
+          </CardInfo>
+          <CardInfo colore="#a78bfa">
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 28, marginBottom: 4 }}>✦</div>
+              <div style={{ fontFamily: 'JetBrains Mono', fontSize: 22, color: '#a78bfa', fontWeight: 700 }}>48</div>
+              <div style={{ fontFamily: 'Saira Condensed', fontSize: 9, color: '#a78bfa', letterSpacing: '0.22em', textTransform: 'uppercase', marginTop: 4 }}>Outfit</div>
+            </div>
+          </CardInfo>
+          <CardInfo colore="#ff7eb6">
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 28, marginBottom: 4 }}>⚜</div>
+              <div style={{ fontFamily: 'JetBrains Mono', fontSize: 22, color: '#ff7eb6', fontWeight: 700 }}>12</div>
+              <div style={{ fontFamily: 'Saira Condensed', fontSize: 9, color: '#ff7eb6', letterSpacing: '0.22em', textTransform: 'uppercase', marginTop: 4 }}>Pose</div>
+            </div>
+          </CardInfo>
+          <CardInfo colore="#6cf0e0">
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 28, marginBottom: 4 }}>⚡</div>
+              <div style={{ fontFamily: 'JetBrains Mono', fontSize: 22, color: '#6cf0e0', fontWeight: 700 }}>7/10</div>
+              <div style={{ fontFamily: 'Saira Condensed', fontSize: 9, color: '#6cf0e0', letterSpacing: '0.22em', textTransform: 'uppercase', marginTop: 4 }}>Energia</div>
+            </div>
+          </CardInfo>
+        </div>
+      </div>
+
+      {/* Personaggi + stelle */}
+      <div className="section">
+        <div className="lab">◆ 04 · FramePersonaggio + StelleRarità</div>
+        <div className="row">
+          <FramePersonaggio colore="#f5c560" dimensione={68}>
+            <span style={{ fontFamily: 'Unbounded', fontSize: 26, color: '#ffe9a8' }}>♛</span>
+          </FramePersonaggio>
+          <FramePersonaggio colore="#ff7eb6" dimensione={68}>
+            <span style={{ fontFamily: 'Unbounded', fontSize: 24, color: '#fff' }}>A</span>
+          </FramePersonaggio>
+          <FramePersonaggio colore="#6cf0e0" dimensione={68}>
+            <span style={{ fontFamily: 'Unbounded', fontSize: 24, color: '#fff' }}>K</span>
+          </FramePersonaggio>
+          <FramePersonaggio colore="#a78bfa" dimensione={68}>
+            <span style={{ fontFamily: 'Unbounded', fontSize: 24, color: '#fff' }}>R</span>
+          </FramePersonaggio>
+        </div>
+        <div className="row" style={{ marginTop: 18 }}>
+          <StelleRarita stelle={1} colore="#b4bcc8"     dimensione={20}/>
+          <StelleRarita stelle={2} colore="#5aa9ff"     dimensione={20}/>
+          <StelleRarita stelle={3} colore="#b573ff"     dimensione={20}/>
+          <StelleRarita stelle={4} colore="#ffc861"     dimensione={20}/>
+          <StelleRarita stelle={5} colore="#ff7eb6"     dimensione={20}/>
+        </div>
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

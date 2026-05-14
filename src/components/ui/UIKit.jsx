@@ -1,18 +1,21 @@
 // src/components/ui/UIKit.jsx
-// UI Kit reworkato — stile ispirato ai modal overlay scelta statistiche/direzione battaglia
-// Design: glassmorphism + bordi angolari neon + tipografia Orbitron
+// IMPERO DELLE WAIFU — Redesign · UI Kit
+// Tutti gli export e le props sono identici alla versione precedente:
+//   PannelloOrnato, TitoloOrnato, BtnDecorato, Chip,
+//   BarraRisorsa, CardInfo, Divider, StelleRarita, FramePersonaggio
+// Solo il linguaggio visivo è stato rinnovato (premium gacha night).
 'use client';
 import React from 'react';
 
 // ============================================================
-// PANNELLO — Glassmorphism con bordi angolari
+// PANNELLO — Glassmorphism notturno con bordi neon
 // ============================================================
-export function PannelloOrnato({ children, variant = 'default', glow = '#f5a623', style = {}, ...rest }) {
+export function PannelloOrnato({ children, variant = 'default', glow = '#f5c560', style = {}, ...rest }) {
   const variants = {
-    default: { bg: 'rgba(12,6,24,0.85)', border: 'rgba(245,166,35,0.25)' },
-    dark:    { bg: 'rgba(6,3,15,0.92)', border: 'rgba(245,166,35,0.15)' },
-    accent:  { bg: 'rgba(245,166,35,0.06)', border: 'rgba(245,166,35,0.45)' },
-    purple:  { bg: 'rgba(155,89,255,0.08)', border: 'rgba(155,89,255,0.35)' },
+    default: { bg: 'linear-gradient(180deg, rgba(27,22,56,0.72), rgba(13,10,38,0.85))', border: 'rgba(174,156,255,0.18)' },
+    dark:    { bg: 'linear-gradient(180deg, rgba(7,5,26,0.92), rgba(3,2,12,0.96))',     border: 'rgba(174,156,255,0.10)' },
+    accent:  { bg: 'linear-gradient(180deg, rgba(245,197,96,0.10), rgba(245,197,96,0.04))', border: 'rgba(245,197,96,0.45)' },
+    purple:  { bg: 'linear-gradient(180deg, rgba(167,139,250,0.12), rgba(13,10,38,0.85))', border: 'rgba(167,139,250,0.35)' },
   };
   const v = variants[variant] || variants.default;
   return (
@@ -20,10 +23,11 @@ export function PannelloOrnato({ children, variant = 'default', glow = '#f5a623'
       position: 'relative',
       background: v.bg,
       border: `1px solid ${v.border}`,
-      borderRadius: 12,
+      borderRadius: 16,
       padding: 18,
-      backdropFilter: 'blur(16px)',
-      boxShadow: `0 0 24px ${glow}15, 0 8px 32px rgba(0,0,0,0.3)`,
+      backdropFilter: 'blur(14px)',
+      WebkitBackdropFilter: 'blur(14px)',
+      boxShadow: `0 0 28px ${glow}1a, 0 10px 36px rgba(3,2,12,0.55), 0 1px 0 rgba(255,255,255,0.04) inset`,
       ...style,
     }} {...rest}>
       <CornerBrackets colore={glow} />
@@ -43,78 +47,97 @@ function CornerBrackets({ colore }) {
   return positions.map((pos, i) => (
     <svg key={i} viewBox="0 0 16 16" width={sz} height={sz}
       style={{ position: 'absolute', transform: `rotate(${pos.r}deg)`, pointerEvents: 'none', ...pos }}>
-      <path d="M0,0 L16,0 L16,2 L2,2 L2,16 L0,16 Z" fill={colore} opacity="0.6" />
+      <path d="M0,0 L16,0 L16,2 L2,2 L2,16 L0,16 Z" fill={colore} opacity="0.55" />
     </svg>
   ));
 }
 
 // ============================================================
-// TITOLO — Con linee laterali e diamanti
+// TITOLO — Display font + linee laterali sottili
 // ============================================================
-export function TitoloOrnato({ children, livello = 1, colore = '#f5a623', glow = true, allineamento = 'center', style = {} }) {
+export function TitoloOrnato({ children, livello = 1, colore = '#f5c560', glow = true, allineamento = 'center', style = {} }) {
   const sizes = {
-    1: { fs: 'clamp(18px, 3.5vw, 26px)', ls: 4, mb: 10, ff: 'Orbitron, sans-serif', fw: 700 },
-    2: { fs: 'clamp(14px, 2.5vw, 18px)', ls: 3, mb: 8, ff: 'Orbitron, sans-serif', fw: 600 },
-    3: { fs: 'clamp(11px, 2vw, 14px)', ls: 2, mb: 6, ff: 'Orbitron, sans-serif', fw: 600 },
+    1: { fs: 'clamp(20px, 3.8vw, 30px)', ls: 0,    mb: 12, fw: 800 },
+    2: { fs: 'clamp(15px, 2.6vw, 20px)', ls: 0.5,  mb: 9,  fw: 700 },
+    3: { fs: 'clamp(12px, 2vw, 15px)',   ls: 1.5,  mb: 7,  fw: 700 },
   };
   const s = sizes[livello] || sizes[1];
   return (
     <div style={{
       display: 'flex', alignItems: 'center',
       justifyContent: allineamento === 'center' ? 'center' : 'flex-start',
-      gap: 12, marginBottom: s.mb, ...style,
+      gap: 14, marginBottom: s.mb, ...style,
     }}>
       {allineamento === 'center' && (
-        <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${colore}60)`, maxWidth: 100 }} />
+        <div style={{ flex: 1, height: 1, maxWidth: 110,
+          background: `linear-gradient(90deg, transparent, ${colore}66)` }} />
       )}
       <div style={{
-        fontFamily: s.ff, fontSize: s.fs, fontWeight: s.fw, letterSpacing: s.ls,
+        fontFamily: "var(--ff-display, 'Unbounded', sans-serif)",
+        fontSize: s.fs, fontWeight: s.fw, letterSpacing: s.ls,
         color: colore,
-        textShadow: glow ? `0 0 14px ${colore}60, 0 0 28px ${colore}25` : 'none',
+        textShadow: glow ? `0 0 18px ${colore}55, 0 0 32px ${colore}22` : 'none',
         whiteSpace: 'nowrap',
       }}>
         {children}
       </div>
       {allineamento === 'center' && (
-        <div style={{ flex: 1, height: 1, background: `linear-gradient(270deg, transparent, ${colore}60)`, maxWidth: 100 }} />
+        <div style={{ flex: 1, height: 1, maxWidth: 110,
+          background: `linear-gradient(270deg, transparent, ${colore}66)` }} />
       )}
     </div>
   );
 }
 
 // ============================================================
-// BOTTONE — Stile overlay modale battaglia
+// BOTTONE — Crystal style
 // ============================================================
 export function BtnDecorato({ children, variant = 'primary', size = 'md', onClick, disabled = false, icon, style = {}, ...rest }) {
   const sizes = {
-    sm: { px: 14, py: 7, fs: 10, ls: 1.5, br: 8 },
-    md: { px: 20, py: 10, fs: 12, ls: 2, br: 10 },
-    lg: { px: 28, py: 14, fs: 14, ls: 3, br: 12 },
+    sm: { px: 14, py: 7,  fs: 10, ls: 1.5, br: 9  },
+    md: { px: 20, py: 11, fs: 12, ls: 2,   br: 11 },
+    lg: { px: 28, py: 15, fs: 14, ls: 2.5, br: 13 },
   };
   const variants = {
     primary: {
-      bg: 'linear-gradient(135deg, #f5a623 0%, #ff2d78 60%, #9b59ff 100%)',
-      bgHover: 'linear-gradient(135deg, #ffd666 0%, #ff5a9e 60%, #b07aff 100%)',
-      color: '#000', border: 'transparent',
-      shadow: '0 4px 16px rgba(245,166,35,0.4)',
+      bg:      'linear-gradient(180deg, rgba(245,197,96,0.32), rgba(245,197,96,0.10))',
+      bgHover: 'linear-gradient(180deg, rgba(255,233,168,0.45), rgba(245,197,96,0.18))',
+      color: '#2a1f00',
+      border: 'rgba(255,233,168,0.6)',
+      shadow:
+        '0 1px 0 rgba(255,255,255,0.55) inset, ' +
+        '0 -10px 20px rgba(192,138,31,0.45) inset, ' +
+        '0 8px 24px rgba(245,197,96,0.35)',
     },
     secondary: {
-      bg: 'rgba(255,255,255,0.04)',
-      bgHover: 'rgba(245,166,35,0.12)',
-      color: '#eee8dc', border: 'rgba(245,166,35,0.3)',
-      shadow: 'none',
+      bg:      'linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02))',
+      bgHover: 'linear-gradient(180deg, rgba(245,197,96,0.18), rgba(245,197,96,0.04))',
+      color: '#f1ebff',
+      border: 'rgba(255,255,255,0.16)',
+      shadow:
+        '0 1px 0 rgba(255,255,255,0.12) inset, ' +
+        '0 -8px 16px rgba(0,0,0,0.4) inset, ' +
+        '0 6px 20px rgba(0,0,0,0.45)',
     },
     danger: {
-      bg: 'rgba(255,61,61,0.1)',
-      bgHover: 'rgba(255,61,61,0.25)',
-      color: '#ff8a8a', border: 'rgba(255,61,61,0.35)',
-      shadow: 'none',
+      bg:      'linear-gradient(180deg, rgba(255,91,108,0.20), rgba(255,91,108,0.06))',
+      bgHover: 'linear-gradient(180deg, rgba(255,91,108,0.38), rgba(255,91,108,0.10))',
+      color: '#ffa8b0',
+      border: 'rgba(255,91,108,0.45)',
+      shadow:
+        '0 1px 0 rgba(255,255,255,0.10) inset, ' +
+        '0 -8px 18px rgba(120,20,40,0.5) inset, ' +
+        '0 6px 18px rgba(255,91,108,0.25)',
     },
     success: {
-      bg: 'rgba(0,230,118,0.1)',
-      bgHover: 'rgba(0,230,118,0.25)',
-      color: '#69f0ae', border: 'rgba(0,230,118,0.35)',
-      shadow: 'none',
+      bg:      'linear-gradient(180deg, rgba(88,224,163,0.22), rgba(88,224,163,0.06))',
+      bgHover: 'linear-gradient(180deg, rgba(88,224,163,0.40), rgba(88,224,163,0.10))',
+      color: '#a8f5cf',
+      border: 'rgba(88,224,163,0.50)',
+      shadow:
+        '0 1px 0 rgba(255,255,255,0.10) inset, ' +
+        '0 -8px 18px rgba(20,90,60,0.5) inset, ' +
+        '0 6px 18px rgba(88,224,163,0.22)',
     },
   };
   const s = sizes[size] || sizes.md;
@@ -125,24 +148,42 @@ export function BtnDecorato({ children, variant = 'primary', size = 'md', onClic
       onClick={onClick} disabled={disabled}
       onMouseEnter={e => { if (!disabled) { e.currentTarget.style.background = v.bgHover; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
       onMouseLeave={e => { if (!disabled) { e.currentTarget.style.background = v.bg; e.currentTarget.style.transform = 'translateY(0)'; } }}
+      onMouseDown={e => { if (!disabled) e.currentTarget.style.transform = 'scale(0.97)'; }}
+      onMouseUp={e => { if (!disabled) e.currentTarget.style.transform = 'translateY(-1px)'; }}
       style={{
+        position: 'relative',
         padding: `${s.py}px ${s.px}px`,
-        background: v.bg, color: v.color,
+        background: v.bg,
+        color: v.color,
         border: `1px solid ${v.border}`,
         borderRadius: s.br,
-        fontFamily: 'Orbitron, sans-serif', fontSize: s.fs, fontWeight: 700, letterSpacing: s.ls,
+        fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+        fontSize: s.fs,
+        fontWeight: 700,
+        letterSpacing: `${s.ls}px`,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.35 : 1,
         boxShadow: v.shadow,
-        transition: 'all 0.2s ease',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        transition: 'background 0.2s ease, transform 0.15s ease',
         textTransform: 'uppercase',
-        display: 'inline-flex', alignItems: 'center', gap: 6,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+        overflow: 'hidden',
         ...style,
       }}
       {...rest}
     >
-      {icon && <span style={{ fontSize: s.fs * 1.2 }}>{icon}</span>}
-      {children}
+      {/* Riflesso obliquo */}
+      <span style={{
+        position: 'absolute', inset: 0, borderRadius: 'inherit',
+        background: 'linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.22) 50%, transparent 65%)',
+        opacity: 0.55,
+        mixBlendMode: 'overlay',
+        pointerEvents: 'none',
+      }} />
+      {icon && <span style={{ position: 'relative', fontSize: s.fs * 1.2, lineHeight: 1 }}>{icon}</span>}
+      <span style={{ position: 'relative' }}>{children}</span>
     </button>
   );
 }
@@ -150,55 +191,76 @@ export function BtnDecorato({ children, variant = 'primary', size = 'md', onClic
 // ============================================================
 // CHIP / TAG
 // ============================================================
-export function Chip({ children, colore = '#f5a623', icon, size = 'sm' }) {
-  const sizes = { xs: { px: 6, py: 2, fs: 8 }, sm: { px: 10, py: 3, fs: 10 }, md: { px: 14, py: 5, fs: 12 } };
+export function Chip({ children, colore = '#f5c560', icon, size = 'sm' }) {
+  const sizes = {
+    xs: { px: 7, py: 2, fs: 9 },
+    sm: { px: 10, py: 3, fs: 10 },
+    md: { px: 14, py: 5, fs: 12 },
+  };
   const s = sizes[size];
   return (
     <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
+      display: 'inline-flex', alignItems: 'center', gap: 5,
       padding: `${s.py}px ${s.px}px`,
-      background: `${colore}12`,
-      border: `1px solid ${colore}50`,
-      borderRadius: 20,
-      fontSize: s.fs, color: colore, letterSpacing: 1,
-      fontWeight: 600, fontFamily: 'Orbitron, sans-serif',
+      background: `${colore}13`,
+      border: `1px solid ${colore}55`,
+      borderRadius: 999,
+      fontSize: s.fs, color: colore,
+      letterSpacing: '0.14em', textTransform: 'uppercase',
+      fontWeight: 700,
+      fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+      backdropFilter: 'blur(6px)',
+      WebkitBackdropFilter: 'blur(6px)',
     }}>
-      {icon && <span>{icon}</span>}
+      {icon && <span style={{ display: 'inline-flex', alignItems: 'center' }}>{icon}</span>}
       {children}
     </span>
   );
 }
 
 // ============================================================
-// BARRA RISORSA — Clean style
+// BARRA RISORSA — Pill clean con glow proporzionale
 // ============================================================
-export function BarraRisorsa({ valore, max, colore = '#f5a623', icon, label, mostraNumero = true }) {
+export function BarraRisorsa({ valore, max, colore = '#f5c560', icon, label, mostraNumero = true }) {
   const pct = Math.max(0, Math.min(100, (valore / max) * 100));
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 110 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 110 }}>
       <div style={{
-        width: 26, height: 26, borderRadius: '50%',
-        background: `${colore}15`,
-        border: `1.5px solid ${colore}80`,
+        width: 28, height: 28, borderRadius: 10,
+        background: `${colore}1a`,
+        border: `1.5px solid ${colore}88`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 12, color: colore,
-        boxShadow: `0 0 8px ${colore}40`, flexShrink: 0,
+        fontSize: 13, color: colore,
+        boxShadow: `0 0 10px ${colore}44, 0 0 0 1px rgba(255,255,255,0.04) inset`,
+        flexShrink: 0,
       }}>{icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        {label && <div style={{ fontSize: 7, opacity: 0.5, letterSpacing: 2, fontFamily: 'Orbitron, sans-serif', textTransform: 'uppercase' }}>{label}</div>}
+        {label && (
+          <div style={{
+            fontSize: 8, opacity: 0.55, letterSpacing: '0.22em',
+            fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+            textTransform: 'uppercase',
+          }}>{label}</div>
+        )}
         <div style={{
-          height: 5, background: 'rgba(0,0,0,0.5)',
-          borderRadius: 3, position: 'relative', overflow: 'hidden',
+          height: 6, background: 'rgba(7,5,26,0.6)',
+          borderRadius: 999, position: 'relative', overflow: 'hidden',
+          border: '1px solid rgba(255,255,255,0.05)',
         }}>
           <div style={{
             width: `${pct}%`, height: '100%',
-            background: `linear-gradient(90deg, ${colore}aa, ${colore})`,
-            boxShadow: `0 0 6px ${colore}`,
-            transition: 'width 0.4s ease', borderRadius: 3,
+            background: `linear-gradient(90deg, ${colore}bb, ${colore})`,
+            boxShadow: `0 0 8px ${colore}`,
+            transition: 'width 0.4s ease', borderRadius: 999,
           }} />
         </div>
         {mostraNumero && (
-          <div style={{ fontSize: 9, color: colore, fontFamily: 'Orbitron, sans-serif', textAlign: 'right', marginTop: 1 }}>
+          <div style={{
+            fontSize: 10, color: colore,
+            fontFamily: "var(--ff-mono, 'JetBrains Mono', monospace)",
+            fontWeight: 700,
+            textAlign: 'right', marginTop: 2, letterSpacing: '-0.01em',
+          }}>
             {valore}/{max}
           </div>
         )}
@@ -208,23 +270,33 @@ export function BarraRisorsa({ valore, max, colore = '#f5a623', icon, label, mos
 }
 
 // ============================================================
-// CARD INFO — Per griglie statistiche
+// CARD INFO — Statistiche, sintesi
 // ============================================================
-export function CardInfo({ children, colore = '#f5a623', glow = true, style = {}, onClick }) {
+export function CardInfo({ children, colore = '#f5c560', glow = true, style = {}, onClick }) {
   return (
     <div onClick={onClick} style={{
       position: 'relative',
       padding: 14,
-      background: `${colore}08`,
-      border: `1px solid ${colore}25`,
-      borderRadius: 12,
-      boxShadow: glow ? `0 0 12px ${colore}15` : 'none',
+      background: `linear-gradient(180deg, ${colore}10, ${colore}04)`,
+      border: `1px solid ${colore}30`,
+      borderRadius: 14,
+      boxShadow: glow ? `0 0 14px ${colore}1f, 0 4px 14px rgba(3,2,12,0.4)` : 'none',
       cursor: onClick ? 'pointer' : 'default',
-      transition: 'all 0.3s',
+      transition: 'transform 0.2s, box-shadow 0.2s, border-color 0.2s',
+      backdropFilter: 'blur(6px)',
+      WebkitBackdropFilter: 'blur(6px)',
       ...style,
     }}
-      onMouseEnter={onClick ? (e) => e.currentTarget.style.transform = 'translateY(-2px)' : undefined}
-      onMouseLeave={onClick ? (e) => e.currentTarget.style.transform = 'translateY(0)' : undefined}
+      onMouseEnter={onClick ? (e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.borderColor = `${colore}66`;
+        e.currentTarget.style.boxShadow = `0 0 22px ${colore}33, 0 8px 24px rgba(3,2,12,0.5)`;
+      } : undefined}
+      onMouseLeave={onClick ? (e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.borderColor = `${colore}30`;
+        e.currentTarget.style.boxShadow = glow ? `0 0 14px ${colore}1f, 0 4px 14px rgba(3,2,12,0.4)` : 'none';
+      } : undefined}
     >
       {children}
     </div>
@@ -232,14 +304,19 @@ export function CardInfo({ children, colore = '#f5a623', glow = true, style = {}
 }
 
 // ============================================================
-// DIVIDER
+// DIVIDER — Linea + diamante
 // ============================================================
-export function Divider({ colore = '#f5a623', spazio = 14 }) {
+export function Divider({ colore = '#f5c560', spazio = 14 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: `${spazio}px 0`, gap: 8 }}>
-      <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${colore}40)` }} />
-      <svg viewBox="0 0 8 8" width="6" height="6"><path d="M4,0 L8,4 L4,8 L0,4 Z" fill={colore} opacity="0.5" /></svg>
-      <div style={{ flex: 1, height: 1, background: `linear-gradient(270deg, transparent, ${colore}40)` }} />
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      margin: `${spazio}px 0`, gap: 10,
+    }}>
+      <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${colore}50)` }} />
+      <svg viewBox="0 0 8 8" width="7" height="7">
+        <path d="M4,0 L8,4 L4,8 L0,4 Z" fill={colore} opacity="0.55" />
+      </svg>
+      <div style={{ flex: 1, height: 1, background: `linear-gradient(270deg, transparent, ${colore}50)` }} />
     </div>
   );
 }
@@ -247,31 +324,40 @@ export function Divider({ colore = '#f5a623', spazio = 14 }) {
 // ============================================================
 // STELLE RARITÀ
 // ============================================================
-export function StelleRarita({ stelle, colore = '#f5a623', dimensione = 12 }) {
+export function StelleRarita({ stelle, colore = '#f5c560', dimensione = 12 }) {
   return (
     <div style={{ display: 'inline-flex', gap: 1 }}>
       {[...Array(stelle)].map((_, i) => (
-        <span key={i} style={{ color: colore, fontSize: dimensione, filter: `drop-shadow(0 0 3px ${colore})` }}>★</span>
+        <span key={i} style={{
+          color: colore, fontSize: dimensione,
+          filter: `drop-shadow(0 0 4px ${colore})`,
+        }}>★</span>
       ))}
     </div>
   );
 }
 
 // ============================================================
-// FRAME PERSONAGGIO
+// FRAME PERSONAGGIO — Cerchio con glow per avatar
 // ============================================================
-export function FramePersonaggio({ children, colore = '#f5a623', dimensione = 80 }) {
+export function FramePersonaggio({ children, colore = '#f5c560', dimensione = 80 }) {
   return (
     <div style={{
       position: 'relative',
       width: dimensione, height: dimensione,
       borderRadius: '50%',
-      background: `${colore}12`,
-      border: `2px solid ${colore}80`,
-      boxShadow: `0 0 12px ${colore}50`,
+      background: `radial-gradient(circle at 30% 25%, ${colore}25, rgba(7,5,26,0.85))`,
+      border: `2px solid ${colore}aa`,
+      boxShadow: `0 0 16px ${colore}55, inset 0 0 12px rgba(0,0,0,0.3)`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       overflow: 'hidden',
     }}>
+      {/* Inner ring */}
+      <div style={{
+        position: 'absolute', inset: 3, borderRadius: '50%',
+        border: `1px solid ${colore}33`,
+        pointerEvents: 'none',
+      }} />
       {children}
     </div>
   );

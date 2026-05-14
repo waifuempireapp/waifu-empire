@@ -1,110 +1,80 @@
-# 👑 Impero delle Waifu
+# 🎨 Impero delle Waifu — Patch grafica
 
-Web app gacha + Risiko in stile Genshin Impact / Pokémon Pocket.
+Pacchetto che applica il nuovo design system **mantenendo invariata tutta la logica di gioco**.
 
-## ⚡ Quick Start
+## ✅ Cosa contiene
+
+Solo 3 file riscritti (più questo README):
+
+| File | Cosa cambia | Compatibilità |
+|------|-------------|----------------|
+| `src/app/globals.css` | Palette · tipografia · animazioni · effetto foil olografico · crystal buttons · responsive | Tutte le variabili CSS legacy (`--gold`, `--magenta`, `--purple`, ecc.) sono **mantenute come alias** verso la nuova palette → le inline styles esistenti continuano a funzionare |
+| `src/components/ui/UIKit.jsx` | Look premium per `PannelloOrnato`, `BtnDecorato`, `Chip`, `BarraRisorsa`, `CardInfo`, `Divider`, `StelleRarita`, `FramePersonaggio`, `TitoloOrnato` | **Export e props IDENTICI** — nessun import da aggiornare nelle schermate |
+| `src/components/CartaWaifu.jsx` | Nuovo bordo + glow + foil per le carte di tutte e 5 le rarità · stat circles rinnovati · simboli archetipo · video immersivo · censura · HOT badge · battle stats · contatore copie | **Export e props IDENTICI**: `CartaWaifu`, `CartaOutfit`, `CartaPosa` |
+
+## 🚀 Come applicare
 
 ```bash
-# 1. Installa dipendenze
-npm install
-
-# 2. Crea .env.local con i tuoi valori Firebase (vedi .env.example)
-cp .env.example .env.local
-# poi modifica .env.local con le tue credenziali
-
-# 3. Avvia in locale
-npm run dev
-
-# 4. Apri http://localhost:3000
+# Dalla root del progetto impero-waifu:
+cp -R apply/src/* ./src/
 ```
 
-## 📁 Struttura del progetto
+Oppure manualmente: sostituisci i 3 file ai loro percorsi corrispondenti.
 
-```
-impero-waifu/
-├── src/
-│   ├── app/                    # Next.js App Router
-│   │   ├── layout.jsx          # Layout root con AuthProvider
-│   │   ├── page.jsx            # Redirect home → login/gioco
-│   │   ├── login/              # Login (Google + email)
-│   │   ├── onboarding/         # Setup nuovo utente + 5 pacchetti benvenuto
-│   │   ├── gioco/              # Hub principale (home, sbusta, collezione, mappa)
-│   │   └── admin/              # Area admin completa
-│   │       └── page.jsx        # Gestione drop, waifu, outfit, pose
-│   ├── components/
-│   │   ├── PaperDoll.jsx       # Paper-doll SVG layered (con asset support)
-│   │   └── CartaWaifu.jsx      # Carte: statica + immersiva + outfit + posa
-│   ├── lib/
-│   │   ├── firebase.js         # Client config Firebase
-│   │   ├── firebaseAdmin.js    # Admin SDK (server-side)
-│   │   ├── AuthContext.jsx     # React Context per auth
-│   │   ├── constants.js        # RARITA, COLORI, TERRITORI, etc.
-│   │   ├── gameLogic.js        # Sbustamento, ricariche, level up
-│   │   ├── promptGenerator.js  # ⭐ Generatore prompt AI strutturati
-│   │   ├── firestoreService.js # CRUD Firestore
-│   │   └── storageService.js   # Upload Firebase Storage
-│   └── data/                   # Dati seed (opzionale)
-├── public/
-├── firestore.rules             # Regole sicurezza Firestore
-├── storage.rules               # Regole sicurezza Storage
-├── firebase.json               # Config Firebase CLI
-├── DEPLOY.md                   # 🚀 Guida deploy passo-passo
-├── BRIEF_GRAFICO.md            # 🎨 Brief per illustratore (template)
-└── package.json
-```
+**Nessuna modifica a**:
+- `package.json` (nessuna nuova dipendenza)
+- `lib/*` (logica di gioco, gameLogic, battleEngine, firestoreService, ecc.)
+- Le pagine in `src/app/*` (gioco, login, admin, ecc.)
+- Tutti gli altri componenti
 
-## 🎯 Funzionalità
+Il nuovo CSS introduce i font Google **Unbounded**, **Saira Condensed**, **DM Sans**, **JetBrains Mono** via `@import`. Cinzel/Fredoka/Orbitron restano caricati per i font fallback delle scritte legacy.
 
-### Per il giocatore
-- ✅ Login Google + email/password
-- ✅ Onboarding con scelta nome impero e bandiera
-- ✅ 5 pacchetti di benvenuto (senza doppioni di waifu)
-- ✅ Apertura pacchetti (2 waifu + 2 outfit + 1 posa)
-- ✅ Sistema rarità a 5 livelli (comune → immersivo)
-- ✅ Collezione persistente con paper-doll modificabile
-- ✅ Equipaggiamento outfit (4 slot) + pose specifiche
-- ✅ Level up a 3 copie (+1 stat a scelta)
-- ✅ Scarto outfit/pose per energia
-- ✅ Energia 10/giorno, 2 pacchetti max, ricarica 12h
-- ✅ Mappa mondo con 28 territori e 6 continenti
-- ✅ Battaglie 1v1 a carte (5 stat)
-- ✅ Carte statiche + carte immersive (Pokémon Pocket style)
-- ✅ Mobile + desktop responsive
+## 🎨 Linguaggio visivo
 
-### Per l'admin (te)
-- ✅ **Drop stagionali**: crea/modifica/attiva drop tematici
-- ✅ **Generazione prompt AI** strutturati per ogni waifu (3 varianti)
-- ✅ **Generazione prompt** per outfit e pose
-- ✅ **Upload diretto** asset generati su Firebase Storage
-- ✅ **Download** asset originali per passarli al grafico
-- ✅ **Anti-ripetizione**: monitor archetipi/palette per drop
-- ✅ **20 archetipi** + **10 palette** predefinite per diversificazione
-- ✅ Link diretti ai motori AI consigliati (ComfyUI, A1111, NovelAI, Tensor.art)
+- **Fondali**: night sky scuro (#03020c → #0d0a26) con radial gradients viola/sakura
+- **Accenti olografici**: oro `#f5c560`, sakura `#ff85b6`, turchese `#6cf0e0`, violet `#a78bfa`
+- **Rarità** (canon mantenuto): comune `#b4bcc8` → raro `#5aa9ff` → epico `#b573ff` → leggendario `#ffc861` → immersivo `#ff7eb6`
+- **Tipografia**:
+  - Display: **Unbounded** (titoli, nomi waifu)
+  - Label: **Saira Condensed** (UI uppercase, tag, etichette)
+  - Body: **DM Sans** (lettura)
+  - Mono: **JetBrains Mono** (numeri, stat)
+- **Effetti speciali**:
+  - `.foil` — sweep olografico animato (auto-applicato a carte epico/leggendario/immersivo)
+  - `.shimmer-text` — testo con shimmer animato (titoli hero)
+  - `.gradient-text` — gradient tricolore oro→sakura→viola
+  - `.crystal-btn` — buttons con stile crystal traslucido (i `BtnDecorato` lo usano internamente)
 
-## 🚀 Deploy in produzione
+## 🔍 Verifica prima dell'apply
 
-Vedi **DEPLOY.md** per la guida passo-passo (Firebase + Vercel + GitHub).
+Apri il file `preview/preview.html` in questo pacchetto per vedere i nuovi componenti in azione con dati mock — utile per confrontare prima di sostituire i file nel progetto.
 
-## 🎨 Asset grafici
+## 📋 Note tecniche
 
-Il sistema funziona con placeholder SVG senza asset, ma dà il massimo con immagini AI.
+### Tutte le classi globali usate nel codice sono preservate
 
-Vedi **BRIEF_GRAFICO.md** per:
-- Specifiche tecniche di ogni asset (dimensioni, formato, sfondo)
-- Workflow consigliato (ComfyUI + Animagine XL 4.0)
-- Template per brief al grafico
+`.fade-in`, `.fade-up`, `.pulse`, `.glow-pulse`, `.shimmer-text`, `.gradient-text`, `.card-flip-container`, `.card-inner`, `.card-face`, `.card-fade-up`, `.card-clickable`, `.iw-tooltip-wrap`, `.iw-tooltip`, `.bottom-nav-mobile`, `.nav-tabs-desktop`, `.game-container`, `.game-header`, `.impero-nome`, `.impero-nome-popup`, `.header-desktop-only`, `.stat-combat-desktop`, `.stat-combat-mobile`, `.collection-card-grid`, `.collection-card-item`, `.carta-waifu-root`, `.battle-field-row`, `.battle-campo-wrapper`, `.battle-carta-scelta`, `.battle-vs-center`, `.modal-dettaglio-waifu`, `.pack-cards-container`, `.pack-card-item`, `.territorio-pulse`, `.rotate-overlay`, `.mappa-scroll-container`.
 
-## 🔧 Stack tecnico
+### Tutte le CSS variables legacy sono preservate
 
-- **Framework**: Next.js 14 (App Router)
-- **Backend**: Firebase (Auth + Firestore + Storage)
-- **Hosting**: Vercel
-- **Lingua**: Italiano
-- **Styling**: CSS-in-JS inline (zero dipendenze CSS extra)
-- **Font**: Cinzel + Inter (Google Fonts)
+`--bg-deep`, `--bg-mid`, `--bg-elevated`, `--bg-card`, `--gold`, `--gold-light`, `--gold-dark`, `--magenta`, `--magenta-dim`, `--purple`, `--purple-dim`, `--cyan`, `--green`, `--red`, `--text`, `--text-dim`, `--text-muted`, `--border-subtle`, `--border-active`, `--glow-gold`, `--glow-magenta`, `--glow-purple`.
 
-## 📝 Note
+### Comportamento carte invariato
 
-- Tutti i contenuti sensibili (descrizioni outfit, livello fanservice) sono compilati dall'admin tramite "filler" — il sistema fornisce solo le parti tecniche neutre dei prompt.
-- Età minima delle waifu: 18 anni (vincolato a livello di prompt e validazione).
-- Le carte immersive si attivano automaticamente per waifu di rarità leggendaria/immersiva con asset dedicato.
+Tutte le feature funzionali esistenti sono mantenute:
+- Modalità `tipo="immersiva"` per leggendari/immersivi con `asset_immersiva`
+- Playback video `videoAttivo`/`videoRef`/`onVideoEnd`
+- Overlay censura (`censurata`) con CTA "Sblocca" che apre il negozio
+- Badge `isHot 🔥`
+- Battle stats (HP + Speed) se `waifu.battleStats.maxHp` presente
+- Contatore copie quando `datiCollezione.copie > 1`
+- `evidenziato` per slot/team selezionato
+
+## 🔄 Prossimi step (opzionali)
+
+Se vuoi spingere oltre, dopo aver applicato la patch base si può:
+1. Refinare i layout inline di `gioco/page.jsx` (es. header, banner home, sezione Sbusta) usando le nuove utility class
+2. Sostituire l'apertura pack con un'animazione 3D (rays + flip 3D)
+3. Aggiungere sakura petals/particles come overlay decorativo opzionale
+
+Tutti questi sono cambiamenti **solo JSX/CSS** — la logica resta invariata.

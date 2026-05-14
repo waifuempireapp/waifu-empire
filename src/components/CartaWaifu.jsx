@@ -1,133 +1,134 @@
 // src/components/CartaWaifu.jsx
-// FASE 4 — Grafica Carte
-//   • Waifu: simbolo archetipo sotto nome/livello
-//   • Immersive: Pokémon Pocket — statica → click → video dentro carta → fine/click → torna statica
-//   • Outfit: stile waifu full-art, immagine dal nome, archetipo compatibile, abilità
-//   • Posa: placeholder silhouette grigio per slot posa, preview waifu associata
+// IMPERO DELLE WAIFU — Redesign · Sistema Carte
+// Export e props IDENTICI alla versione precedente:
+//   CartaWaifu(waifu, datiCollezione, dimensione, onClick, evidenziato, tipo,
+//              outfitCatalogo, poseCatalogo, equip, videoAttivo, videoRef,
+//              onVideoEnd, isHot, censurata)
+//   CartaOutfit(outfit, quantita, onClick, evidenziato, dimensione)
+//   CartaPosa(posa, quantita, onClick, evidenziato, waifuPreview, dimensione)
 'use client';
 import React, { useState } from 'react';
 import { RARITA } from '@/lib/constants';
 import { ARCHETIPI } from '@/lib/promptGenerator';
 
-// Mappa id→archetipo per lookup rapido
+// Lookup id → archetipo
 const ARCHETIPI_MAP = {};
 if (ARCHETIPI) ARCHETIPI.forEach(a => { ARCHETIPI_MAP[a.id] = a; });
 
 // ====================================================================
-// COLORI BORDO PER RARITÀ (stile Digimon TCG)
+// PALETTE RARITÀ — Premium night
 // ====================================================================
 const RARITY_BORDER = {
-  comune:      { outer: '#7a8694', inner: '#9ca3af', glow: 'rgba(156,163,175,0.35)', bg: 'linear-gradient(160deg, #1a1e24 0%, #0d1015 100%)' },
-  raro:        { outer: '#2563eb', inner: '#60a5fa', glow: 'rgba(37,99,235,0.5)',     bg: 'linear-gradient(160deg, #0a1628 0%, #081020 100%)' },
-  epico:       { outer: '#9333ea', inner: '#c084fc', glow: 'rgba(147,51,234,0.55)',   bg: 'linear-gradient(160deg, #1a0a30 0%, #100820 100%)' },
-  leggendario: { outer: '#f59e0b', inner: '#fbbf24', glow: 'rgba(245,158,11,0.6)',    bg: 'linear-gradient(160deg, #2a1a05 0%, #1a1005 100%)' },
-  immersivo:   { outer: '#ec4899', inner: '#f472b6', glow: 'rgba(236,72,153,0.65)',   bg: 'linear-gradient(160deg, #2a0520 0%, #1a0515 100%)' },
+  comune:      { outer: '#b4bcc8', inner: '#dfe5ef', glow: 'rgba(180,188,200,0.45)', bg: 'linear-gradient(160deg, #293142 0%, #0c0e1a 100%)' },
+  raro:        { outer: '#5aa9ff', inner: '#9fcaff', glow: 'rgba(90,169,255,0.55)',  bg: 'linear-gradient(160deg, #142a55 0%, #06112c 100%)' },
+  epico:       { outer: '#b573ff', inner: '#dabaff', glow: 'rgba(181,115,255,0.55)', bg: 'linear-gradient(160deg, #2a1255 0%, #10052a 100%)' },
+  leggendario: { outer: '#ffc861', inner: '#ffe9a8', glow: 'rgba(255,200,97,0.65)',  bg: 'linear-gradient(160deg, #4a3105 0%, #1d1102 100%)' },
+  immersivo:   { outer: '#ff7eb6', inner: '#ffc3da', glow: 'rgba(255,126,182,0.7)',  bg: 'linear-gradient(160deg, #4f1245 0%, #1e0420 100%)' },
 };
 
-// ====================================================================
-// SIMBOLI ARCHETIPO — ogni archetipo ha un simbolo SVG/testo unico
-// ====================================================================
+// Simboli archetipo
 const ARCHETIPO_SIMBOLI = {
-  guerriera_stoica:    { sym: '⚔',  color: '#e74c3c' },
-  maga_timida:         { sym: '✦',  color: '#a855f7' },
-  regina_imperiosa:    { sym: '♛',  color: '#f59e0b' },
-  studiosa_pensosa:    { sym: '🔭', color: '#3b82f6' },
-  viaggiatrice_solare: { sym: '☀',  color: '#f97316' },
-  idol_radiante:       { sym: '★',  color: '#ec4899' },
-  sacerdotessa_etera:  { sym: '⛩',  color: '#06b6d4' },
-  spadaccina_audace:   { sym: '⚡',  color: '#eab308' },
-  principessa_drago:   { sym: '🐉', color: '#dc2626' },
-  ladra_furtiva:       { sym: '◈',  color: '#14b8a6' },
-  oracolo_mistico:     { sym: '◉',  color: '#8b5cf6' },
-  pirata_temeraria:    { sym: '☠',  color: '#64748b' },
-  fata_giocosa:        { sym: '✿',  color: '#84cc16' },
-  ninja_letale:        { sym: '◆',  color: '#1e293b' },
-  dea_celestiale:      { sym: '☽',  color: '#fde68a' },
-  cyber_hacker:        { sym: '⌘',  color: '#22d3ee' },
-  tsundere_classica:   { sym: '❤',  color: '#f43f5e' },
-  demone_seducente:    { sym: '♦',  color: '#9f1239' },
-  sciamana_natura:     { sym: '🌿', color: '#22c55e' },
-  samurai_onorata:     { sym: '⛧',  color: '#78716c' },
+  guerriera_stoica:    { sym: '⚔',  color: '#ff8b6f' },
+  maga_timida:         { sym: '✦',  color: '#c5a4ff' },
+  regina_imperiosa:    { sym: '♛',  color: '#ffd680' },
+  studiosa_pensosa:    { sym: '✎',  color: '#9fcaff' },
+  viaggiatrice_solare: { sym: '☀',  color: '#ffb86b' },
+  idol_radiante:       { sym: '★',  color: '#ff9ec6' },
+  sacerdotessa_etera:  { sym: '⛩',  color: '#94f0e3' },
+  spadaccina_audace:   { sym: '⚡',  color: '#ffe07a' },
+  principessa_drago:   { sym: '◈',  color: '#ff7a7a' },
+  ladra_furtiva:       { sym: '◇',  color: '#8af0d8' },
+  oracolo_mistico:     { sym: '◉',  color: '#b89dff' },
+  pirata_temeraria:    { sym: '☠',  color: '#9cb0c7' },
+  fata_giocosa:        { sym: '✿',  color: '#b9ed7a' },
+  ninja_letale:        { sym: '◆',  color: '#8da4c0' },
+  dea_celestiale:      { sym: '☽',  color: '#ffe7a8' },
+  cyber_hacker:        { sym: '⌘',  color: '#7af0ff' },
+  tsundere_classica:   { sym: '❤',  color: '#ff85a8' },
+  demone_seducente:    { sym: '♦',  color: '#ff6a8e' },
+  sciamana_natura:     { sym: '✼',  color: '#7be09b' },
+  samurai_onorata:     { sym: '⛧',  color: '#c8c0b0' },
 };
-
 function getArchetipoSym(archetipoId, rarColor) {
   return ARCHETIPO_SIMBOLI[archetipoId] || { sym: '◈', color: rarColor };
 }
 
 // ====================================================================
-// CERCHI STAT (stile Digimon/gacha card)
+// STAT CIRCLE — Cerchio progress con valore al centro
 // ====================================================================
 function StatCircle({ value, statKey, icon, color, size = 34 }) {
   const r = (size - 4) / 2;
   const circ = 2 * Math.PI * r;
-  const maxVal = statKey === 'piedi' ? 45 : statKey === 'eta' ? 5000 : statKey === 'exp' ? 5000 : statKey === 'capelli' ? 10 : 7;
+  const maxVal = statKey === 'piedi' ? 45
+    : statKey === 'eta' ? 5000
+    : statKey === 'exp' ? 5000
+    : statKey === 'capelli' ? 10
+    : 7;
   const pct = Math.min(1, value / maxVal);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
       <div style={{ position: 'relative', width: size, height: size }}>
         <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-          <circle cx={size/2} cy={size/2} r={r} fill="rgba(0,0,0,0.6)" stroke="rgba(255,255,255,0.08)" strokeWidth="2" />
-          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth="2.5"
-            strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)}
-            strokeLinecap="round" style={{ filter: `drop-shadow(0 0 4px ${color})` }} />
+          <circle cx={size/2} cy={size/2} r={r} fill="rgba(7,5,26,0.7)" stroke="rgba(255,255,255,0.08)" strokeWidth="2" />
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth="2.6"
+            strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)} strokeLinecap="round"
+            style={{ filter: `drop-shadow(0 0 4px ${color})` }} />
         </svg>
         <div style={{
           position: 'absolute', inset: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: size * 0.32, fontWeight: 700, color: '#fff',
-          fontFamily: 'Orbitron, monospace',
+          fontFamily: "var(--ff-mono, 'JetBrains Mono', monospace)",
           textShadow: `0 0 6px ${color}`,
+          letterSpacing: '-0.02em',
         }}>{value}</div>
       </div>
       <div style={{
-        fontSize: size * 0.32,
+        fontSize: Math.max(8, size * 0.30),
         lineHeight: 1,
+        color,
         filter: `drop-shadow(0 0 3px ${color})`,
-        transform: statKey === 'tette' ? 'rotate(180deg)' : 'none',
       }}>{icon}</div>
     </div>
   );
 }
 
 // ====================================================================
-// SIMBOLO ARCHETIPO — cerchio decorativo sotto nome/livello
+// TAG ARCHETIPO — Cerchio decorativo
 // ====================================================================
 function ArchetipoTag({ archetipoId, rarColor, scale = 1 }) {
-  const sym = getArchetipoSym(archetipoId, rarColor);
-  const sz = Math.round(28 * scale);
-
   if (!archetipoId) return null;
+  const sym = getArchetipoSym(archetipoId, rarColor);
+  const sz = Math.round(26 * scale);
 
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center',
-      marginTop: Math.round(4 * scale),
-    }}>
-      {/* Solo cerchio simbolo — nessun nome */}
+    <div style={{ display: 'flex', alignItems: 'center', marginTop: Math.round(4 * scale) }}>
       <div style={{
         width: sz, height: sz,
         borderRadius: '50%',
-        background: `radial-gradient(circle at 40% 40%, ${sym.color}33, rgba(0,0,0,0.7))`,
-        border: `1.5px solid ${sym.color}88`,
+        background: `radial-gradient(circle at 35% 30%, ${sym.color}55, rgba(7,5,26,0.85))`,
+        border: `1.5px solid ${sym.color}aa`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: Math.round(sz * 0.42),
-        boxShadow: `0 0 6px ${sym.color}55`,
+        fontSize: Math.round(sz * 0.46),
+        color: sym.color,
+        boxShadow: `0 0 8px ${sym.color}66, inset 0 0 6px rgba(0,0,0,0.3)`,
         flexShrink: 0,
-      }}>
-        {sym.sym}
-      </div>
+      }}>{sym.sym}</div>
     </div>
   );
 }
 
 // ====================================================================
-// CARTA WAIFU PRINCIPALE — Full-art Digimon/Pokémon Pocket style
-// Fase 4: simbolo archetipo + modalità immersiva con video
+// CARTA WAIFU — Full-art Premium
 // ====================================================================
-// videoAttivo e videoRef sono ora gestiti esternamente (dalla CartaImmersiva nel modale).
-// CartaWaifu riceve videoAttivo (bool) e videoRef come prop opzionali per il solo rendering.
-export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onClick, evidenziato = false, tipo = 'auto', outfitCatalogo = [], poseCatalogo = [], equip, videoAttivo = false, videoRef = null, onVideoEnd, isHot = false, censurata = false }) {
+export function CartaWaifu({
+  waifu, datiCollezione, dimensione = 'normale',
+  onClick, evidenziato = false, tipo = 'auto',
+  outfitCatalogo = [], poseCatalogo = [], equip,
+  videoAttivo = false, videoRef = null, onVideoEnd,
+  isHot = false, censurata = false,
+}) {
   const [videoFinito, setVideoFinito] = useState(false);
 
   if (!waifu) return null;
@@ -154,33 +155,26 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
   const expEff = (waifu.esperienza ?? 0) + (statBonus.esperienza || 0);
 
   const imgSrc = usaImmersiva ? waifu.asset_immersiva : (waifu.asset_statica || null);
-  const statSize = Math.round(34 * scale);
+  const statSize = Math.round(30 * scale);
 
-  // Click sulla carta: va sempre all'onClick esterno (il video non parte dal click sulla carta)
-  const handleClick = () => {
-    onClick?.();
-  };
-
-  const handleVideoEnd = () => {
-    setVideoFinito(true);
-    onVideoEnd?.();
-  };
-
-
+  const handleClick = () => { onClick?.(); };
+  const handleVideoEnd = () => { setVideoFinito(true); onVideoEnd?.(); };
+  const showFoil = waifu.rarita === 'epico' || waifu.rarita === 'leggendario' || waifu.rarita === 'immersivo';
 
   return (
     <div
+      className="carta-waifu-root"
       onClick={handleClick}
       style={{
         width: W, height: H,
         position: 'relative',
-        borderRadius: Math.round(12 * scale),
-        border: `${borderW}px solid ${evidenziato ? '#ffd666' : videoAttivo ? '#ec4899' : rb.outer}`,
+        borderRadius: Math.round(14 * scale),
+        border: `${borderW}px solid ${evidenziato ? '#ffe9a8' : videoAttivo ? '#ff7eb6' : rb.outer}`,
         boxShadow: evidenziato
-          ? `0 0 30px rgba(255,214,102,0.6), inset 0 0 20px rgba(255,214,102,0.1)`
+          ? `0 0 30px rgba(255,233,168,0.6), inset 0 0 20px rgba(255,233,168,0.1)`
           : videoAttivo
-            ? `0 0 35px rgba(236,72,153,0.8), inset 0 0 20px rgba(236,72,153,0.15)`
-            : `0 0 20px ${rb.glow}, inset 0 0 15px rgba(0,0,0,0.4)`,
+            ? `0 0 36px rgba(255,126,182,0.8), inset 0 0 22px rgba(255,126,182,0.15)`
+            : `0 0 22px ${rb.glow}, inset 0 0 18px rgba(0,0,0,0.35)`,
         cursor: (onClick || hasVideo) ? 'pointer' : 'default',
         overflow: 'hidden',
         background: rb.bg,
@@ -190,69 +184,115 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
       onMouseEnter={(e) => (onClick || hasVideo) && (e.currentTarget.style.transform = 'translateY(-6px) scale(1.02)')}
       onMouseLeave={(e) => (onClick || hasVideo) && (e.currentTarget.style.transform = 'translateY(0) scale(1)')}
     >
-      {/* --- BORDO INTERNO LUMINOSO --- */}
+      {/* Bordo interno */}
       <div style={{
         position: 'absolute', inset: Math.round(3 * scale),
-        borderRadius: Math.round(9 * scale),
-        border: `1px solid ${rb.inner}30`,
+        borderRadius: Math.round(11 * scale),
+        border: `1px solid ${rb.inner}3a`,
         pointerEvents: 'none', zIndex: 3,
       }} />
 
-      {/* --- IMMAGINE STATICA --- */}
+      {/* IMMAGINE / FALLBACK */}
       <div style={{
         position: 'absolute', inset: 0,
-        borderRadius: Math.round(10 * scale),
+        borderRadius: Math.round(12 * scale),
         overflow: 'hidden',
         opacity: videoAttivo ? 0 : 1,
         transition: 'opacity 0.3s ease',
       }}>
         {censurata ? (
-          /* Modalità censurata: immagine blurrata + overlay lucchetto (carta Hot senza Pass Hard) */
           <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-            {imgSrc && <img src={imgSrc} alt={waifu.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', filter: 'blur(14px) brightness(0.3)' }} />}
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              <span style={{ fontSize: Math.round(32 * scale), filter: 'drop-shadow(0 0 8px rgba(255,69,0,0.8))' }}>🔒</span>
-              <div style={{ fontFamily: 'Orbitron', fontSize: Math.max(6, Math.round(7 * scale)), color: 'rgba(238,232,220,0.7)', letterSpacing: 1, textAlign: 'center', lineHeight: 1.4 }}>Pass Hard{'\n'}richiesto</div>
+            {imgSrc && (
+              <img src={imgSrc} alt={waifu.nome}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', filter: 'blur(14px) brightness(0.3)' }} />
+            )}
+            <div style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}>
+              <span style={{ fontSize: Math.round(32 * scale), filter: 'drop-shadow(0 0 8px rgba(255,140,0,0.8))' }}>🔒</span>
+              <div style={{
+                fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+                fontSize: Math.max(7, Math.round(8 * scale)),
+                color: 'rgba(241,235,255,0.7)',
+                letterSpacing: '0.18em', textAlign: 'center', lineHeight: 1.4,
+                textTransform: 'uppercase',
+              }}>Pass Hard<br/>richiesto</div>
               <button
                 onClick={e => { e.stopPropagation(); window.dispatchEvent(new Event('impero:apri-negozio')); }}
-                style={{ marginTop: 4, background: 'rgba(255,69,0,0.2)', border: '1px solid rgba(255,69,0,0.5)', borderRadius: 6, color: '#ff8c00', fontFamily: 'Orbitron', fontSize: Math.max(5, Math.round(6 * scale)), padding: '3px 8px', cursor: 'pointer' }}
-              >SBLOCCA</button>
+                style={{
+                  marginTop: 4,
+                  background: 'rgba(255,140,0,0.18)',
+                  border: '1px solid rgba(255,140,0,0.5)',
+                  borderRadius: 7,
+                  color: '#ffb86b',
+                  fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+                  fontSize: Math.max(6, Math.round(8 * scale)),
+                  padding: '4px 10px', cursor: 'pointer',
+                  letterSpacing: '0.18em', textTransform: 'uppercase',
+                }}
+              >Sblocca</button>
             </div>
           </div>
         ) : imgSrc ? (
           <img src={imgSrc} alt={waifu.nome}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%' }}
-          />
+            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%' }} />
         ) : (
+          // Placeholder full-card senza asset
           <div style={{
             width: '100%', height: '100%',
-            background: `radial-gradient(ellipse at 50% 30%, ${rb.inner}30, transparent 70%), ${rb.bg}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background:
+              `radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.06), transparent 55%),
+               repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 6px, transparent 6px 14px),
+               ${rb.bg}`,
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            position: 'relative',
           }}>
-            <span style={{ fontSize: Math.round(80 * scale), opacity: 0.15, color: rb.inner, fontFamily: 'Cinzel, serif' }}>♛</span>
+            {/* silhouette */}
+            <div style={{
+              width: '75%', height: '88%',
+              background:
+                `radial-gradient(40% 18% at 50% 22%, rgba(0,0,0,0.55) 0%, transparent 70%),
+                 radial-gradient(60% 50% at 50% 75%, rgba(0,0,0,0.45) 0%, transparent 65%)`,
+              filter: 'blur(0.5px)',
+            }} />
+            <div style={{
+              position: 'absolute', bottom: 6, left: 0, right: 0, textAlign: 'center',
+              fontFamily: "var(--ff-mono, 'JetBrains Mono', monospace)",
+              fontSize: Math.round(8 * scale), letterSpacing: '0.18em',
+              color: 'rgba(241,235,255,0.4)', textTransform: 'uppercase',
+            }}>{(waifu.nome || 'WAIFU').toUpperCase()} · ART</div>
           </div>
         )}
 
-        {/* Badge HOT 🔥 — solo se isHot e non censurata */}
+        {/* HOLO FOIL — solo per epico+ e quando non censurata */}
+        {showFoil && !censurata && (
+          <div className={`foil ${waifu.rarita === 'immersivo' ? 'foil--strong' : ''}`} />
+        )}
+
+        {/* BADGE HOT */}
         {isHot && !censurata && (
           <div style={{
             position: 'absolute', top: Math.round(6 * scale), left: Math.round(6 * scale),
-            background: 'linear-gradient(135deg, #ff4500cc, #ff8c00cc)',
-            color: '#fff', fontFamily: 'Orbitron, monospace',
-            fontSize: Math.max(5, Math.round(7 * scale)), fontWeight: 900, letterSpacing: 0.5,
-            padding: `${Math.round(2 * scale)}px ${Math.round(5 * scale)}px`, borderRadius: 4,
-            border: '1px solid rgba(255,255,255,0.35)', boxShadow: '0 0 8px rgba(255,69,0,0.6)',
+            background: 'linear-gradient(135deg, rgba(255,69,0,0.92), rgba(255,140,0,0.92))',
+            color: '#fff',
+            fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+            fontSize: Math.max(7, Math.round(8 * scale)),
+            fontWeight: 800, letterSpacing: '0.12em',
+            padding: `${Math.round(2 * scale)}px ${Math.round(7 * scale)}px`,
+            borderRadius: 999,
+            border: '1px solid rgba(255,255,255,0.4)',
+            boxShadow: '0 0 10px rgba(255,69,0,0.65)',
             pointerEvents: 'none', zIndex: 12, textTransform: 'uppercase',
-          }}>HOT 🔥</div>
+          }}>🔥 HOT</div>
         )}
       </div>
 
-      {/* --- VIDEO IMMERSIVO (Pokémon Pocket style) --- */}
+      {/* VIDEO IMMERSIVO */}
       {hasVideo && (
         <div style={{
           position: 'absolute', inset: 0,
-          borderRadius: Math.round(10 * scale),
-          overflow: 'hidden',
+          borderRadius: Math.round(11 * scale), overflow: 'hidden',
           opacity: videoAttivo ? 1 : 0,
           transition: 'opacity 0.35s ease',
           zIndex: videoAttivo ? 10 : 0,
@@ -266,7 +306,6 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
             muted
             playsInline
           />
-          {/* Overlay fine video */}
           {videoFinito && (
             <div style={{
               position: 'absolute', inset: 0,
@@ -275,127 +314,156 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
               animation: 'fadeIn 0.3s ease',
             }}>
               <div style={{
-                color: '#fff', fontFamily: 'Orbitron, monospace',
-                fontSize: Math.round(10 * scale), opacity: 0.8, letterSpacing: 2,
-              }}>◀ RIVEDI</div>
+                color: '#fff',
+                fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+                fontSize: Math.round(11 * scale), opacity: 0.85,
+                letterSpacing: '0.22em', textTransform: 'uppercase',
+              }}>◀ Rivedi</div>
             </div>
           )}
         </div>
       )}
 
-      {/* --- OVERLAY TOP (nome + livello + archetipo) — nascosto durante video --- */}
+      {/* OVERLAY TOP — nome + livello + archetipo + stelle */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0,
-        padding: `${Math.round(8 * scale)}px ${Math.round(10 * scale)}px`,
-        background: 'linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.25) 50%, transparent 100%)',
+        padding: `${Math.round(9 * scale)}px ${Math.round(10 * scale)}px`,
+        background: 'linear-gradient(180deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.25) 60%, transparent 100%)',
         zIndex: videoAttivo ? 0 : 4,
         opacity: videoAttivo ? 0 : 1,
         transition: 'opacity 0.3s ease',
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+        gap: 6,
       }}>
-        <div>
+        <div style={{ minWidth: 0 }}>
           <div style={{
-            fontFamily: 'Orbitron, sans-serif',
-            fontSize: Math.round(13 * scale), fontWeight: 700,
-            color: '#fff', letterSpacing: 1,
-            textShadow: `0 0 10px ${rb.glow}, 0 2px 4px rgba(0,0,0,0.8)`,
-            lineHeight: 1.2,
+            fontFamily: "var(--ff-display, 'Unbounded', sans-serif)",
+            fontSize: Math.round(14 * scale), fontWeight: 700,
+            color: '#fff', letterSpacing: '-0.005em',
+            textShadow: `0 0 12px ${rb.glow}, 0 2px 4px rgba(0,0,0,0.85)`,
+            lineHeight: 1.1,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>{waifu.nome}</div>
           {datiCollezione && (
             <div style={{
-              fontSize: Math.round(8 * scale), color: rb.inner, letterSpacing: 2,
-              fontFamily: 'Orbitron, sans-serif', marginTop: 2,
+              fontSize: Math.round(8.5 * scale),
+              color: rb.inner,
+              letterSpacing: '0.22em',
+              fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+              marginTop: 3,
               textShadow: '0 1px 3px rgba(0,0,0,0.8)',
-            }}>LV.{datiCollezione.livello || 1}</div>
+              textTransform: 'uppercase',
+            }}>Lv.{datiCollezione.livello || 1}</div>
           )}
-          {/* ★ FASE 4: Simbolo archetipo sotto nome/livello — visibile sempre */}
           {waifu.archetipo && (
             <ArchetipoTag archetipoId={waifu.archetipo} rarColor={rb.inner} scale={scale} />
           )}
         </div>
-        {/* Stelle rarità */}
-        <div style={{ display: 'flex', gap: 1, marginTop: 2 }}>
+        <div style={{ display: 'flex', gap: 1.5, marginTop: 1, flexShrink: 0 }}>
           {[...Array(rar.stelle)].map((_, i) => (
             <span key={i} style={{
-              color: rb.inner, fontSize: Math.round(11 * scale),
+              color: rb.inner,
+              fontSize: Math.round(11 * scale),
               textShadow: `0 0 6px ${rb.glow}`,
+              filter: `drop-shadow(0 0 3px ${rb.inner})`,
             }}>★</span>
           ))}
         </div>
       </div>
 
-      {/* --- TAG RARITÀ (angolo) — nascosto durante video --- */}
+      {/* TAG RARITÀ (pill laterale) */}
       <div style={{
-        position: 'absolute', top: Math.round(40 * scale), right: 0,
+        position: 'absolute', top: Math.round(46 * scale), right: 0,
         background: `linear-gradient(135deg, ${rb.outer}, ${rb.inner})`,
-        color: '#000', padding: `${Math.round(2 * scale)}px ${Math.round(8 * scale)}px`,
-        fontSize: Math.round(7 * scale), fontWeight: 800, letterSpacing: 2,
-        fontFamily: 'Orbitron, sans-serif',
-        borderRadius: `${Math.round(4 * scale)}px 0 0 ${Math.round(4 * scale)}px`,
+        color: '#000',
+        padding: `${Math.round(2.5 * scale)}px ${Math.round(9 * scale)}px`,
+        fontSize: Math.round(7.5 * scale),
+        fontWeight: 800, letterSpacing: '0.2em',
+        fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+        borderRadius: `${Math.round(5 * scale)}px 0 0 ${Math.round(5 * scale)}px`,
         textTransform: 'uppercase',
-        boxShadow: `0 2px 8px ${rb.glow}`,
+        boxShadow: `0 2px 12px ${rb.glow}, 0 0 0 1px rgba(255,255,255,0.18) inset`,
         zIndex: videoAttivo ? 0 : 5,
         opacity: videoAttivo ? 0 : 1,
         transition: 'opacity 0.3s ease',
-      }}>
-        {rar.nome}
-      </div>
+      }}>{rar.nome}</div>
 
-      {/* --- OVERLAY BOTTOM (stats) — nascosto durante video --- */}
+      {/* OVERLAY BOTTOM — stats */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
-        padding: `${Math.round(20 * scale)}px ${Math.round(8 * scale)}px ${Math.round(8 * scale)}px`,
-        background: 'linear-gradient(0deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.55) 40%, transparent 100%)',
+        padding: `${Math.round(22 * scale)}px ${Math.round(8 * scale)}px ${Math.round(9 * scale)}px`,
+        background: 'linear-gradient(0deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 45%, transparent 100%)',
         zIndex: videoAttivo ? 0 : 4,
         opacity: videoAttivo ? 0 : 1,
         transition: 'opacity 0.3s ease',
       }}>
+        {/* Linea ornamento */}
         <div style={{
-          width: '60%', height: 1, margin: `0 auto ${Math.round(6 * scale)}px`,
-          background: `linear-gradient(90deg, transparent, ${rb.inner}, transparent)`,
+          width: '70%', height: 1, margin: `0 auto ${Math.round(7 * scale)}px`,
+          background: `linear-gradient(90deg, transparent, ${rb.inner}cc, transparent)`,
+          boxShadow: `0 0 6px ${rb.glow}`,
         }} />
         <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
-          <StatCircle value={tetteEff} statKey="tette" icon="💗" color="#ff6b9d" size={statSize} />
-          <StatCircle value={piediEff} statKey="piedi" icon="🦶" color="#64b5f6" size={statSize} />
-          <StatCircle value={etaEff} statKey="eta" icon="⏳" color="#ffd54f" size={statSize} />
-          <StatCircle value={capelliEff} statKey="capelli" icon="💇" color="#81c784" size={statSize} />
-          <StatCircle value={expEff} statKey="exp" icon="⭐" color="#ce93d8" size={statSize} />
+          <StatCircle value={tetteEff}    statKey="tette"   icon="✦" color="#ff9ec6" size={statSize} />
+          <StatCircle value={piediEff}    statKey="piedi"   icon="⚘" color="#b573ff" size={statSize} />
+          <StatCircle value={etaEff}      statKey="eta"     icon="⌛" color="#6cf0e0" size={statSize} />
+          <StatCircle value={capelliEff}  statKey="capelli" icon="✿" color="#ffc861" size={statSize} />
+          <StatCircle value={expEff}      statKey="exp"     icon="★" color="#a78bfa" size={statSize} />
         </div>
       </div>
 
-      {/* --- EFFETTO ANGOLI DIGIMON --- */}
+      {/* CORNER BRACKETS */}
       {[
-        { top: Math.round(4*scale), left: Math.round(4*scale), r: 0 },
-        { top: Math.round(4*scale), right: Math.round(4*scale), r: 90 },
-        { bottom: Math.round(4*scale), right: Math.round(4*scale), r: 180 },
-        { bottom: Math.round(4*scale), left: Math.round(4*scale), r: 270 },
+        { top: Math.round(5*scale), left: Math.round(5*scale), borderTopLeftRadius: Math.round(10*scale), borders: { borderTop: `1.5px solid ${rb.inner}`, borderLeft: `1.5px solid ${rb.inner}` } },
+        { top: Math.round(5*scale), right: Math.round(5*scale), borderTopRightRadius: Math.round(10*scale), borders: { borderTop: `1.5px solid ${rb.inner}`, borderRight: `1.5px solid ${rb.inner}` } },
+        { bottom: Math.round(5*scale), right: Math.round(5*scale), borderBottomRightRadius: Math.round(10*scale), borders: { borderBottom: `1.5px solid ${rb.inner}`, borderRight: `1.5px solid ${rb.inner}` } },
+        { bottom: Math.round(5*scale), left: Math.round(5*scale), borderBottomLeftRadius: Math.round(10*scale), borders: { borderBottom: `1.5px solid ${rb.inner}`, borderLeft: `1.5px solid ${rb.inner}` } },
       ].map((c, i) => (
-        <svg key={i} viewBox="0 0 16 16" width={Math.round(12*scale)} height={Math.round(12*scale)}
-          style={{ position: 'absolute', transform: `rotate(${c.r}deg)`, zIndex: 5, ...c }}>
-          <path d="M0,0 L16,0 L16,2 L2,2 L2,16 L0,16 Z" fill={rb.inner} opacity="0.7" />
-        </svg>
+        <div key={i} style={{
+          position: 'absolute',
+          width: Math.round(14 * scale), height: Math.round(14 * scale),
+          opacity: 0.65,
+          zIndex: 5,
+          pointerEvents: 'none',
+          ...c.borders,
+          top: c.top, bottom: c.bottom, left: c.left, right: c.right,
+          borderTopLeftRadius: c.borderTopLeftRadius,
+          borderTopRightRadius: c.borderTopRightRadius,
+          borderBottomRightRadius: c.borderBottomRightRadius,
+          borderBottomLeftRadius: c.borderBottomLeftRadius,
+        }} />
       ))}
 
-      {/* --- BATTLE STATS (maxHp + speed) — visibili se battleStats presenti --- */}
+      {/* BATTLE STATS */}
       {waifu.battleStats?.maxHp && !videoAttivo && (
         <div style={{
-          position: 'absolute', top: Math.round(48*scale), left: Math.round(4*scale),
-          display: 'flex', flexDirection: 'column', gap: Math.round(2*scale), zIndex: 6,
+          position: 'absolute', top: Math.round(56 * scale), left: Math.round(5 * scale),
+          display: 'flex', flexDirection: 'column', gap: Math.round(3 * scale), zIndex: 6,
         }}>
           <div style={{
-            background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(0,230,118,0.4)',
-            borderRadius: Math.round(4*scale), padding: `${Math.round(1*scale)}px ${Math.round(5*scale)}px`,
-            fontSize: Math.round(7*scale), fontFamily: 'Orbitron, sans-serif',
-            color: '#00e676', display: 'flex', alignItems: 'center', gap: 3,
+            background: 'rgba(7,5,26,0.85)',
+            border: '1px solid rgba(88,224,163,0.5)',
+            borderRadius: Math.round(5 * scale),
+            padding: `${Math.round(1.5*scale)}px ${Math.round(6*scale)}px`,
+            fontSize: Math.round(7.5 * scale),
+            fontFamily: "var(--ff-mono, 'JetBrains Mono', monospace)",
+            fontWeight: 700,
+            color: '#58e0a3', display: 'flex', alignItems: 'center', gap: 4,
+            backdropFilter: 'blur(4px)',
           }}>
             <span>❤</span><span>{waifu.battleStats.maxHp}</span>
           </div>
           {waifu.battleStats?.speed && (
             <div style={{
-              background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(212,83,126,0.4)',
-              borderRadius: Math.round(4*scale), padding: `${Math.round(1*scale)}px ${Math.round(5*scale)}px`,
-              fontSize: Math.round(7*scale), fontFamily: 'Orbitron, sans-serif',
-              color: '#D4537E', display: 'flex', alignItems: 'center', gap: 3,
+              background: 'rgba(7,5,26,0.85)',
+              border: '1px solid rgba(255,133,182,0.5)',
+              borderRadius: Math.round(5 * scale),
+              padding: `${Math.round(1.5*scale)}px ${Math.round(6*scale)}px`,
+              fontSize: Math.round(7.5 * scale),
+              fontFamily: "var(--ff-mono, 'JetBrains Mono', monospace)",
+              fontWeight: 700,
+              color: '#ff85b6', display: 'flex', alignItems: 'center', gap: 4,
+              backdropFilter: 'blur(4px)',
             }}>
               <span>⚡</span><span>{waifu.battleStats.speed}</span>
             </div>
@@ -403,15 +471,20 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
         </div>
       )}
 
-      {/* --- COPIE BADGE --- */}
+      {/* COPIE BADGE */}
       {datiCollezione && datiCollezione.copie > 1 && !videoAttivo && (
         <div style={{
           position: 'absolute', bottom: Math.round(8*scale), right: Math.round(8*scale),
-          background: 'rgba(0,0,0,0.8)', border: `1px solid ${rb.inner}`,
-          color: rb.inner, fontSize: Math.round(9*scale), fontWeight: 700,
-          padding: `${Math.round(2*scale)}px ${Math.round(6*scale)}px`,
-          borderRadius: Math.round(6*scale),
-          fontFamily: 'Orbitron, sans-serif', letterSpacing: 1,
+          background: 'rgba(7,5,26,0.88)',
+          border: `1px solid ${rb.inner}88`,
+          color: rb.inner,
+          fontSize: Math.round(10 * scale), fontWeight: 700,
+          padding: `${Math.round(2*scale)}px ${Math.round(7*scale)}px`,
+          borderRadius: Math.round(7 * scale),
+          fontFamily: "var(--ff-mono, 'JetBrains Mono', monospace)",
+          letterSpacing: '-0.02em',
+          backdropFilter: 'blur(4px)',
+          boxShadow: `0 0 8px ${rb.glow}`,
           zIndex: 6,
         }}>×{datiCollezione.copie}</div>
       )}
@@ -421,32 +494,24 @@ export function CartaWaifu({ waifu, datiCollezione, dimensione = 'normale', onCl
 
 // ====================================================================
 // CARTA OUTFIT — Stile waifu full-art
-// Fase 4: immagine generata, archetipo compatibile, abilità
 // ====================================================================
-
-// Genera colore di sfondo per l'outfit basato sul slot
 const SLOT_BG = {
-  faccia: 'linear-gradient(160deg, #0a1828 0%, #060f1a 100%)',
-  petto:  'linear-gradient(160deg, #1a0a20 0%, #100516 100%)',
-  gambe:  'linear-gradient(160deg, #0a1a10 0%, #060e08 100%)',
-  piedi:  'linear-gradient(160deg, #1a1505 0%, #0f0e03 100%)',
+  faccia: 'linear-gradient(160deg, #142a55 0%, #06112c 100%)',
+  petto:  'linear-gradient(160deg, #2a1255 0%, #10052a 100%)',
+  gambe:  'linear-gradient(160deg, #0a3a2a 0%, #04140d 100%)',
+  piedi:  'linear-gradient(160deg, #4a3105 0%, #1d1102 100%)',
 };
 const SLOT_COLORS = {
-  faccia: { primary: '#60a5fa', glow: 'rgba(96,165,250,0.5)' },
-  petto:  { primary: '#c084fc', glow: 'rgba(192,132,252,0.5)' },
-  gambe:  { primary: '#4ade80', glow: 'rgba(74,222,128,0.5)' },
-  piedi:  { primary: '#fb923c', glow: 'rgba(251,146,60,0.5)' },
+  faccia: { primary: '#5aa9ff', glow: 'rgba(90,169,255,0.5)' },
+  petto:  { primary: '#b573ff', glow: 'rgba(181,115,255,0.5)' },
+  gambe:  { primary: '#58e0a3', glow: 'rgba(88,224,163,0.5)' },
+  piedi:  { primary: '#ffc861', glow: 'rgba(255,200,97,0.5)' },
 };
 const SLOT_ICONS = { faccia: '👁', petto: '✦', gambe: '⚘', piedi: '◈' };
-
-// Icone abilità outfit
 const ABILITA_ICONS = {
-  stat_up:    '↑',
-  stat_down:  '↓',
-  opp_up:     '⬆',
-  opp_down:   '⬇',
-  reuse_stat: '↺',
-  reuse_waifu:'♻',
+  stat_up:    '↑', stat_down:  '↓',
+  opp_up:     '⬆', opp_down:   '⬇',
+  reuse_stat: '↺', reuse_waifu:'♻',
 };
 
 function AbilitaTag({ abilita, color, scale = 1 }) {
@@ -454,59 +519,68 @@ function AbilitaTag({ abilita, color, scale = 1 }) {
   const icon = ABILITA_ICONS[abilita.tipo] || '◈';
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: Math.round(3 * scale),
-      background: `rgba(0,0,0,0.7)`,
-      border: `1px solid ${color}55`,
-      borderRadius: Math.round(4 * scale),
-      padding: `${Math.round(2 * scale)}px ${Math.round(5 * scale)}px`,
+      display: 'flex', alignItems: 'center', gap: Math.round(4 * scale),
+      background: 'rgba(7,5,26,0.75)',
+      border: `1px solid ${color}66`,
+      borderRadius: Math.round(6 * scale),
+      padding: `${Math.round(2.5 * scale)}px ${Math.round(6 * scale)}px`,
       marginTop: Math.round(3 * scale),
+      backdropFilter: 'blur(4px)',
     }}>
-      <span style={{ color: color, fontSize: Math.round(9 * scale), fontWeight: 700 }}>{icon}</span>
+      <span style={{ color, fontSize: Math.round(10 * scale), fontWeight: 700,
+        textShadow: `0 0 4px ${color}` }}>{icon}</span>
       <span style={{
-        color: '#ddd', fontSize: Math.round(7.5 * scale),
-        fontFamily: 'Orbitron, monospace', letterSpacing: 0.5,
-        maxWidth: Math.round(90 * scale), overflow: 'hidden',
-        textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        color: '#e8e0ff', fontSize: Math.round(7.5 * scale),
+        fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+        letterSpacing: '0.08em',
+        maxWidth: Math.round(95 * scale),
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        textTransform: 'uppercase',
       }}>{abilita.descrizione || abilita.tipo}</span>
     </div>
   );
 }
 
-// Placeholder immagine outfit: SVG generato dal nome (primo carattere + colore slot)
-function OutfitImagePlaceholder({ nome, slot, colore, scale = 1, asset }) {
+function OutfitImagePlaceholder({ nome, slot, scale = 1, asset }) {
   const sc = SLOT_COLORS[slot] || SLOT_COLORS.petto;
   const bg = SLOT_BG[slot] || SLOT_BG.petto;
   const icon = SLOT_ICONS[slot] || '✦';
-  const W = Math.round(220 * scale);
-  const H = Math.round(200 * scale); // area immagine ~60% della carta
 
   if (asset) {
     return (
       <img src={asset} alt={nome}
-        style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center' }}
-      />
+        style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center' }} />
     );
   }
 
-  // Generative placeholder: grande icona slot + iniziale nome
   const iniziale = (nome || '?')[0].toUpperCase();
   return (
     <div style={{
       width: '100%', height: '100%',
-      background: bg,
+      background: `${bg}`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       flexDirection: 'column', gap: 4,
+      position: 'relative',
     }}>
+      {/* Pattern texture */}
       <div style={{
-        fontSize: Math.round(52 * scale), opacity: 0.25,
-        filter: `drop-shadow(0 0 12px ${sc.primary})`,
+        position: 'absolute', inset: 0,
+        background: 'repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 4px, transparent 4px 10px)',
+        opacity: 0.6,
+      }}/>
+      <div style={{
+        fontSize: Math.round(54 * scale),
+        opacity: 0.22,
+        filter: `drop-shadow(0 0 14px ${sc.primary})`,
         color: sc.primary,
-        fontFamily: 'Cinzel, serif',
+        position: 'relative',
       }}>{icon}</div>
       <div style={{
-        fontSize: Math.round(22 * scale), fontWeight: 900, color: sc.primary,
-        opacity: 0.5, fontFamily: 'Orbitron, monospace',
+        fontSize: Math.round(22 * scale), fontWeight: 800, color: sc.primary,
+        opacity: 0.5,
+        fontFamily: "var(--ff-display, 'Unbounded', sans-serif)",
         textShadow: `0 0 10px ${sc.primary}`,
+        position: 'relative',
       }}>{iniziale}</div>
     </div>
   );
@@ -524,23 +598,23 @@ export function CartaOutfit({ outfit, quantita = 1, onClick, evidenziato = false
   const borderW = dimensione === 'piccola' ? 2 : 3;
 
   const archetipoSym = outfit.archetipo_compatibile
-    ? getArchetipoSym(outfit.archetipo_compatibile, sc.primary)
-    : null;
+    ? getArchetipoSym(outfit.archetipo_compatibile, sc.primary) : null;
   const archetipoNome = outfit.archetipo_compatibile
     ? (ARCHETIPI_MAP[outfit.archetipo_compatibile]?.nome || outfit.archetipo_compatibile.replace(/_/g, ' '))
     : null;
+
+  const showFoil = outfit.rarita === 'epico' || outfit.rarita === 'leggendario' || outfit.rarita === 'immersivo';
 
   return (
     <div
       onClick={onClick}
       style={{
-        width: W, height: H,
-        position: 'relative',
-        borderRadius: Math.round(12 * scale),
-        border: `${borderW}px solid ${evidenziato ? '#ffd666' : rb.outer}`,
+        width: W, height: H, position: 'relative',
+        borderRadius: Math.round(14 * scale),
+        border: `${borderW}px solid ${evidenziato ? '#ffe9a8' : rb.outer}`,
         boxShadow: evidenziato
-          ? `0 0 30px rgba(255,214,102,0.6), inset 0 0 20px rgba(255,214,102,0.1)`
-          : `0 0 20px ${rb.glow}, inset 0 0 15px rgba(0,0,0,0.4)`,
+          ? `0 0 30px rgba(255,233,168,0.6), inset 0 0 20px rgba(255,233,168,0.1)`
+          : `0 0 22px ${rb.glow}, inset 0 0 18px rgba(0,0,0,0.35)`,
         cursor: onClick ? 'pointer' : 'default',
         overflow: 'hidden',
         background: rb.bg,
@@ -553,182 +627,182 @@ export function CartaOutfit({ outfit, quantita = 1, onClick, evidenziato = false
       {/* Bordo interno */}
       <div style={{
         position: 'absolute', inset: Math.round(3 * scale),
-        borderRadius: Math.round(9 * scale),
-        border: `1px solid ${rb.inner}30`,
+        borderRadius: Math.round(11 * scale),
+        border: `1px solid ${rb.inner}3a`,
         pointerEvents: 'none', zIndex: 3,
       }} />
 
-      {/* --- AREA IMMAGINE FULL-ART (60% alto) --- */}
+      {/* AREA IMMAGINE */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0,
         height: '63%',
         overflow: 'hidden',
-        borderRadius: `${Math.round(10 * scale)}px ${Math.round(10 * scale)}px 0 0`,
+        borderRadius: `${Math.round(12 * scale)}px ${Math.round(12 * scale)}px 0 0`,
       }}>
-        <OutfitImagePlaceholder nome={outfit.nome} slot={outfit.slot} colore={outfit.colore} scale={scale} asset={outfit.asset} />
-        {/* Overlay gradiente basso per fade */}
+        <OutfitImagePlaceholder nome={outfit.nome} slot={outfit.slot} scale={scale} asset={outfit.asset} />
+        {showFoil && <div className="foil foil--soft" />}
         <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0,
-          height: '40%',
-          background: `linear-gradient(0deg, ${rb.bg.includes('#2a0520') ? '#2a0520' : '#0d1015'} 0%, transparent 100%)`,
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: '42%',
+          background: `linear-gradient(0deg, rgba(0,0,0,0.92) 0%, transparent 100%)`,
         }} />
       </div>
 
-      {/* --- TAG SLOT (angolo in alto a sinistra) --- */}
+      {/* TAG SLOT */}
       <div style={{
-        position: 'absolute', top: Math.round(8 * scale), left: Math.round(8 * scale),
-        background: `rgba(0,0,0,0.75)`,
-        border: `1px solid ${sc.primary}66`,
-        borderRadius: Math.round(6 * scale),
-        padding: `${Math.round(2 * scale)}px ${Math.round(7 * scale)}px`,
-        display: 'flex', alignItems: 'center', gap: Math.round(3 * scale),
+        position: 'absolute', top: Math.round(9 * scale), left: Math.round(9 * scale),
+        background: 'rgba(7,5,26,0.82)',
+        border: `1px solid ${sc.primary}88`,
+        borderRadius: 999,
+        padding: `${Math.round(2.5 * scale)}px ${Math.round(8 * scale)}px`,
+        display: 'flex', alignItems: 'center', gap: Math.round(4 * scale),
         zIndex: 5,
+        backdropFilter: 'blur(6px)',
       }}>
-        <span style={{ fontSize: Math.round(10 * scale) }}>{SLOT_ICONS[outfit.slot] || '?'}</span>
+        <span style={{ fontSize: Math.round(11 * scale), color: sc.primary,
+          filter: `drop-shadow(0 0 3px ${sc.primary})` }}>{SLOT_ICONS[outfit.slot] || '?'}</span>
         <span style={{
-          fontSize: Math.round(7 * scale), color: sc.primary,
-          fontFamily: 'Orbitron, monospace', letterSpacing: 1, textTransform: 'uppercase',
+          fontSize: Math.round(7.5 * scale), color: sc.primary,
+          fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+          letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 700,
         }}>{outfit.slot || 'slot'}</span>
       </div>
 
-      {/* --- TAG RARITÀ (angolo in alto a destra) --- */}
+      {/* TAG RARITÀ */}
       <div style={{
-        position: 'absolute', top: Math.round(40 * scale), right: 0,
+        position: 'absolute', top: Math.round(46 * scale), right: 0,
         background: `linear-gradient(135deg, ${rb.outer}, ${rb.inner})`,
-        color: '#000', padding: `${Math.round(2 * scale)}px ${Math.round(8 * scale)}px`,
-        fontSize: Math.round(7 * scale), fontWeight: 800, letterSpacing: 2,
-        fontFamily: 'Orbitron, sans-serif',
-        borderRadius: `${Math.round(4 * scale)}px 0 0 ${Math.round(4 * scale)}px`,
+        color: '#000',
+        padding: `${Math.round(2.5 * scale)}px ${Math.round(9 * scale)}px`,
+        fontSize: Math.round(7.5 * scale),
+        fontWeight: 800, letterSpacing: '0.2em',
+        fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+        borderRadius: `${Math.round(5 * scale)}px 0 0 ${Math.round(5 * scale)}px`,
         textTransform: 'uppercase',
-        boxShadow: `0 2px 8px ${rb.glow}`,
+        boxShadow: `0 2px 12px ${rb.glow}, 0 0 0 1px rgba(255,255,255,0.18) inset`,
         zIndex: 5,
       }}>{rar.nome}</div>
 
-      {/* --- STELLE RARITÀ (angolo superiore destro) --- */}
+      {/* STELLE */}
       <div style={{
-        position: 'absolute', top: Math.round(8 * scale), right: Math.round(8 * scale),
-        display: 'flex', gap: 1, zIndex: 5,
+        position: 'absolute', top: Math.round(9 * scale), right: Math.round(9 * scale),
+        display: 'flex', gap: 1.5, zIndex: 5,
       }}>
         {[...Array(rar.stelle)].map((_, i) => (
-          <span key={i} style={{ color: rb.inner, fontSize: Math.round(10 * scale), textShadow: `0 0 6px ${rb.glow}` }}>★</span>
+          <span key={i} style={{ color: rb.inner, fontSize: Math.round(10 * scale),
+            textShadow: `0 0 6px ${rb.glow}`, filter: `drop-shadow(0 0 3px ${rb.inner})` }}>★</span>
         ))}
       </div>
 
-      {/* --- AREA INFO INFERIORE (37% basso) --- */}
+      {/* INFO INFERIORE */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
         height: '37%',
-        padding: `${Math.round(8 * scale)}px ${Math.round(10 * scale)}px`,
-        background: 'linear-gradient(0deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 100%)',
+        padding: `${Math.round(8 * scale)}px ${Math.round(11 * scale)}px`,
+        background: 'linear-gradient(0deg, rgba(0,0,0,0.96) 0%, rgba(0,0,0,0.72) 100%)',
         display: 'flex', flexDirection: 'column', justifyContent: 'flex-start',
         zIndex: 4,
       }}>
-        {/* Linea decorativa */}
         <div style={{
           width: '80%', height: 1, marginBottom: Math.round(6 * scale),
-          background: `linear-gradient(90deg, transparent, ${sc.primary}88, transparent)`,
+          background: `linear-gradient(90deg, transparent, ${sc.primary}aa, transparent)`,
         }} />
 
-        {/* Nome outfit */}
         <div style={{
-          fontFamily: 'Orbitron, sans-serif',
-          fontSize: Math.round(11 * scale), fontWeight: 700,
-          color: '#fff', letterSpacing: 0.5, lineHeight: 1.2,
+          fontFamily: "var(--ff-display, 'Unbounded', sans-serif)",
+          fontSize: Math.round(12 * scale), fontWeight: 700,
+          color: '#fff', letterSpacing: '-0.005em', lineHeight: 1.15,
           marginBottom: Math.round(4 * scale),
-          textShadow: `0 0 8px ${sc.glow}, 0 2px 4px rgba(0,0,0,0.8)`,
+          textShadow: `0 0 10px ${sc.glow}, 0 2px 4px rgba(0,0,0,0.85)`,
         }}>{outfit.nome}</div>
 
-        {/* ★ FASE 4: Archetipo compatibile — senza usare parola "archetipo" */}
         {archetipoSym && archetipoNome && (
           <div style={{
-            display: 'flex', alignItems: 'center', gap: Math.round(4 * scale),
+            display: 'flex', alignItems: 'center', gap: Math.round(5 * scale),
             marginBottom: Math.round(4 * scale),
           }}>
             <div style={{
               width: Math.round(18 * scale), height: Math.round(18 * scale),
               borderRadius: '50%',
-              background: `radial-gradient(circle, ${archetipoSym.color}33, rgba(0,0,0,0.5))`,
-              border: `1px solid ${archetipoSym.color}66`,
+              background: `radial-gradient(circle, ${archetipoSym.color}44, rgba(7,5,26,0.6))`,
+              border: `1px solid ${archetipoSym.color}88`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: Math.round(9 * scale),
+              fontSize: Math.round(10 * scale), color: archetipoSym.color,
               flexShrink: 0,
             }}>{archetipoSym.sym}</div>
             <span style={{
               fontSize: Math.round(7.5 * scale), color: archetipoSym.color,
-              fontFamily: 'Orbitron, monospace', letterSpacing: 0.5,
-              opacity: 0.85, textTransform: 'uppercase',
+              fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+              letterSpacing: '0.16em', opacity: 0.9, textTransform: 'uppercase',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              maxWidth: Math.round(100 * scale),
+              maxWidth: Math.round(110 * scale),
+              fontWeight: 600,
             }}>{archetipoNome}</span>
           </div>
         )}
 
-        {/* ★ FASE 4: Abilità outfit (solo rarità non comune) */}
         {!isComune && outfit.abilita && (
           <AbilitaTag abilita={outfit.abilita} color={sc.primary} scale={scale} />
         )}
       </div>
 
-      {/* Copie badge */}
+      {/* COPIE */}
       {quantita > 1 && (
         <div style={{
-          position: 'absolute', top: Math.round(8 * scale), left: Math.round(8 * scale),
-          background: 'rgba(0,0,0,0.85)', border: `1px solid ${rb.inner}`,
-          color: rb.inner, fontSize: Math.round(8 * scale), fontWeight: 700,
-          padding: `${Math.round(2 * scale)}px ${Math.round(5 * scale)}px`,
-          borderRadius: Math.round(5 * scale), fontFamily: 'Orbitron, sans-serif',
+          position: 'absolute', top: Math.round(46 * scale), left: Math.round(8 * scale),
+          background: 'rgba(7,5,26,0.88)',
+          border: `1px solid ${rb.inner}88`,
+          color: rb.inner,
+          fontSize: Math.round(9 * scale), fontWeight: 700,
+          padding: `${Math.round(2*scale)}px ${Math.round(6*scale)}px`,
+          borderRadius: Math.round(6 * scale),
+          fontFamily: "var(--ff-mono, 'JetBrains Mono', monospace)",
+          backdropFilter: 'blur(4px)',
           zIndex: 7,
         }}>×{quantita}</div>
       )}
 
-      {/* Angoli decorativi */}
+      {/* CORNER BRACKETS */}
       {[
-        { top: Math.round(4*scale), left: Math.round(4*scale), r: 0 },
-        { top: Math.round(4*scale), right: Math.round(4*scale), r: 90 },
-        { bottom: Math.round(4*scale), right: Math.round(4*scale), r: 180 },
-        { bottom: Math.round(4*scale), left: Math.round(4*scale), r: 270 },
+        { top: Math.round(5*scale), left: Math.round(5*scale), borders: { borderTop: `1.5px solid ${rb.inner}`, borderLeft: `1.5px solid ${rb.inner}` } },
+        { top: Math.round(5*scale), right: Math.round(5*scale), borders: { borderTop: `1.5px solid ${rb.inner}`, borderRight: `1.5px solid ${rb.inner}` } },
+        { bottom: Math.round(5*scale), right: Math.round(5*scale), borders: { borderBottom: `1.5px solid ${rb.inner}`, borderRight: `1.5px solid ${rb.inner}` } },
+        { bottom: Math.round(5*scale), left: Math.round(5*scale), borders: { borderBottom: `1.5px solid ${rb.inner}`, borderLeft: `1.5px solid ${rb.inner}` } },
       ].map((c, i) => (
-        <svg key={i} viewBox="0 0 16 16" width={Math.round(12*scale)} height={Math.round(12*scale)}
-          style={{ position: 'absolute', transform: `rotate(${c.r}deg)`, zIndex: 5, ...c }}>
-          <path d="M0,0 L16,0 L16,2 L2,2 L2,16 L0,16 Z" fill={rb.inner} opacity="0.7" />
-        </svg>
+        <div key={i} style={{
+          position: 'absolute', width: Math.round(14 * scale), height: Math.round(14 * scale),
+          opacity: 0.65, zIndex: 5, pointerEvents: 'none',
+          ...c.borders,
+          top: c.top, bottom: c.bottom, left: c.left, right: c.right,
+        }} />
       ))}
     </div>
   );
 }
 
 // ====================================================================
-// CARTA POSA — Fase 4: placeholder silhouette variabile per posa
-//   + preview waifu associata (piccola anteprima faccia o nome)
+// CARTA POSA
 // ====================================================================
-
-// Silhouette SVG per posa: forme diverse per tipo posa
 const POSA_SILHOUETTES = {
   default: (color) => (
-    <svg viewBox="0 0 80 120" style={{ width: '60%', height: '70%', opacity: 0.18 }}>
-      {/* Testa */}
+    <svg viewBox="0 0 80 120" style={{ width: '60%', height: '70%', opacity: 0.22 }}>
       <ellipse cx="40" cy="18" rx="12" ry="13" fill={color} />
-      {/* Corpo */}
       <path d="M28,31 Q40,28 52,31 L56,75 Q40,80 24,75 Z" fill={color} />
-      {/* Gambe */}
       <rect x="28" y="73" width="10" height="35" rx="4" fill={color} />
       <rect x="42" y="73" width="10" height="35" rx="4" fill={color} />
-      {/* Braccia */}
       <rect x="13" y="32" width="9" height="30" rx="4" fill={color} transform="rotate(-8,17,32)" />
       <rect x="58" y="32" width="9" height="30" rx="4" fill={color} transform="rotate(8,63,32)" />
     </svg>
   ),
   seduta: (color) => (
-    <svg viewBox="0 0 80 100" style={{ width: '60%', height: '60%', opacity: 0.18 }}>
+    <svg viewBox="0 0 80 100" style={{ width: '60%', height: '60%', opacity: 0.22 }}>
       <ellipse cx="40" cy="14" rx="11" ry="12" fill={color} />
       <path d="M30,26 Q40,23 50,26 L52,58 Q40,62 28,58 Z" fill={color} />
-      {/* Gambe in avanti */}
       <rect x="26" y="57" width="10" height="28" rx="4" fill={color} transform="rotate(15,31,57)" />
       <rect x="42" y="57" width="10" height="28" rx="4" fill={color} transform="rotate(-15,47,57)" />
     </svg>
   ),
   combattimento: (color) => (
-    <svg viewBox="0 0 80 120" style={{ width: '60%', height: '70%', opacity: 0.18 }}>
+    <svg viewBox="0 0 80 120" style={{ width: '60%', height: '70%', opacity: 0.22 }}>
       <ellipse cx="38" cy="16" rx="11" ry="12" fill={color} />
       <path d="M26,28 Q38,24 52,28 L56,72 Q38,77 24,72 Z" fill={color} transform="rotate(-5,38,50)" />
       <rect x="10" y="28" width="9" height="34" rx="4" fill={color} transform="rotate(-35,14,28)" />
@@ -739,7 +813,7 @@ const POSA_SILHOUETTES = {
   ),
 };
 
-function PosaSilhouette({ tipoPosa, rarColor, scale = 1 }) {
+function PosaSilhouette({ tipoPosa, rarColor }) {
   const tipo = tipoPosa?.toLowerCase().includes('sedut') ? 'seduta'
     : tipoPosa?.toLowerCase().includes('combatt') ? 'combattimento'
     : 'default';
@@ -748,7 +822,9 @@ function PosaSilhouette({ tipoPosa, rarColor, scale = 1 }) {
     <div style={{
       width: '100%', height: '100%',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: `radial-gradient(ellipse at 50% 35%, ${rarColor}15, transparent 70%)`,
+      background:
+        `radial-gradient(ellipse at 50% 35%, ${rarColor}1f, transparent 70%),
+         repeating-linear-gradient(135deg, rgba(255,255,255,0.03) 0 4px, transparent 4px 12px)`,
     }}>
       {SvgFn(rarColor)}
     </div>
@@ -764,20 +840,19 @@ export function CartaPosa({ posa, quantita = 1, onClick, evidenziato = false, wa
   const H = Math.round(330 * scale);
   const borderW = dimensione === 'piccola' ? 2 : 3;
 
-  // Colore grigio-chiaro per silhouette (stile placeholder gacha)
-  const silColor = '#b0bec5';
+  const silColor = '#cdd6e3';
+  const showFoil = posa.rarita === 'epico' || posa.rarita === 'leggendario' || posa.rarita === 'immersivo';
 
   return (
     <div
       onClick={onClick}
       style={{
-        width: W, height: H,
-        position: 'relative',
-        borderRadius: Math.round(12 * scale),
-        border: `${borderW}px solid ${evidenziato ? '#ffd666' : rb.outer}`,
+        width: W, height: H, position: 'relative',
+        borderRadius: Math.round(14 * scale),
+        border: `${borderW}px solid ${evidenziato ? '#ffe9a8' : rb.outer}`,
         boxShadow: evidenziato
-          ? `0 0 30px rgba(255,214,102,0.6), inset 0 0 20px rgba(255,214,102,0.1)`
-          : `0 0 20px ${rb.glow}, inset 0 0 15px rgba(0,0,0,0.4)`,
+          ? `0 0 30px rgba(255,233,168,0.6), inset 0 0 20px rgba(255,233,168,0.1)`
+          : `0 0 22px ${rb.glow}, inset 0 0 18px rgba(0,0,0,0.35)`,
         cursor: onClick ? 'pointer' : 'default',
         overflow: 'hidden',
         background: rb.bg,
@@ -787,154 +862,158 @@ export function CartaPosa({ posa, quantita = 1, onClick, evidenziato = false, wa
       onMouseEnter={(e) => onClick && (e.currentTarget.style.transform = 'translateY(-6px) scale(1.02)')}
       onMouseLeave={(e) => onClick && (e.currentTarget.style.transform = 'translateY(0) scale(1)')}
     >
-      {/* Bordo interno */}
       <div style={{
         position: 'absolute', inset: Math.round(3 * scale),
-        borderRadius: Math.round(9 * scale),
-        border: `1px solid ${rb.inner}30`,
+        borderRadius: Math.round(11 * scale),
+        border: `1px solid ${rb.inner}3a`,
         pointerEvents: 'none', zIndex: 3,
       }} />
 
-      {/* --- AREA SILHOUETTE POSA (63% alto) --- */}
+      {/* SILHOUETTE area */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0,
-        height: '63%',
-        overflow: 'hidden',
-        borderRadius: `${Math.round(10 * scale)}px ${Math.round(10 * scale)}px 0 0`,
+        height: '63%', overflow: 'hidden',
+        borderRadius: `${Math.round(12 * scale)}px ${Math.round(12 * scale)}px 0 0`,
       }}>
         {posa.asset ? (
           <img src={posa.asset} alt={posa.nome}
-            style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center' }}
-          />
+            style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center' }} />
         ) : (
-          <PosaSilhouette tipoPosa={posa.fillers?.tipo || posa.nome} rarColor={silColor} scale={scale} />
+          <PosaSilhouette tipoPosa={posa.fillers?.tipo || posa.nome} rarColor={silColor} />
         )}
-        {/* Overlay fade basso */}
+        {showFoil && <div className="foil foil--soft" />}
         <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%',
-          background: `linear-gradient(0deg, #0d1015 0%, transparent 100%)`,
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: '42%',
+          background: `linear-gradient(0deg, rgba(0,0,0,0.92) 0%, transparent 100%)`,
         }} />
       </div>
 
       {/* TAG RARITÀ */}
       <div style={{
-        position: 'absolute', top: Math.round(8 * scale), right: 0,
+        position: 'absolute', top: Math.round(9 * scale), right: 0,
         background: `linear-gradient(135deg, ${rb.outer}, ${rb.inner})`,
-        color: '#000', padding: `${Math.round(2 * scale)}px ${Math.round(8 * scale)}px`,
-        fontSize: Math.round(7 * scale), fontWeight: 800, letterSpacing: 2,
-        fontFamily: 'Orbitron, sans-serif',
-        borderRadius: `${Math.round(4 * scale)}px 0 0 ${Math.round(4 * scale)}px`,
+        color: '#000',
+        padding: `${Math.round(2.5 * scale)}px ${Math.round(9 * scale)}px`,
+        fontSize: Math.round(7.5 * scale),
+        fontWeight: 800, letterSpacing: '0.2em',
+        fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+        borderRadius: `${Math.round(5 * scale)}px 0 0 ${Math.round(5 * scale)}px`,
         textTransform: 'uppercase',
-        boxShadow: `0 2px 8px ${rb.glow}`,
+        boxShadow: `0 2px 12px ${rb.glow}, 0 0 0 1px rgba(255,255,255,0.18) inset`,
         zIndex: 5,
       }}>{rar.nome}</div>
 
       {/* STELLE */}
       <div style={{
-        position: 'absolute', top: Math.round(8 * scale), left: Math.round(8 * scale),
-        display: 'flex', gap: 1, zIndex: 5,
+        position: 'absolute', top: Math.round(9 * scale), left: Math.round(9 * scale),
+        display: 'flex', gap: 1.5, zIndex: 5,
       }}>
         {[...Array(rar.stelle)].map((_, i) => (
-          <span key={i} style={{ color: rb.inner, fontSize: Math.round(10 * scale), textShadow: `0 0 6px ${rb.glow}` }}>★</span>
+          <span key={i} style={{ color: rb.inner, fontSize: Math.round(10 * scale),
+            textShadow: `0 0 6px ${rb.glow}`, filter: `drop-shadow(0 0 3px ${rb.inner})` }}>★</span>
         ))}
       </div>
 
-      {/* --- AREA INFO INFERIORE --- */}
+      {/* INFO */}
       <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        height: '37%',
-        padding: `${Math.round(8 * scale)}px ${Math.round(10 * scale)}px`,
-        background: 'linear-gradient(0deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 100%)',
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: '37%',
+        padding: `${Math.round(8 * scale)}px ${Math.round(11 * scale)}px`,
+        background: 'linear-gradient(0deg, rgba(0,0,0,0.96) 0%, rgba(0,0,0,0.72) 100%)',
         display: 'flex', flexDirection: 'column', justifyContent: 'flex-start',
         zIndex: 4,
       }}>
-        {/* Linea decorativa */}
         <div style={{
           width: '80%', height: 1, marginBottom: Math.round(6 * scale),
-          background: `linear-gradient(90deg, transparent, ${rb.inner}88, transparent)`,
+          background: `linear-gradient(90deg, transparent, ${rb.inner}aa, transparent)`,
         }} />
 
-        {/* Icona posa + Nome */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: Math.round(5 * scale), marginBottom: Math.round(4 * scale) }}>
-          <span style={{ fontSize: Math.round(14 * scale), filter: `drop-shadow(0 0 4px ${rb.glow})` }}>⚜</span>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: Math.round(6 * scale),
+          marginBottom: Math.round(5 * scale),
+        }}>
+          <span style={{ fontSize: Math.round(14 * scale), color: rb.inner,
+            filter: `drop-shadow(0 0 4px ${rb.glow})` }}>⚜</span>
           <div style={{
-            fontFamily: 'Orbitron, sans-serif',
-            fontSize: Math.round(11 * scale), fontWeight: 700,
-            color: '#fff', letterSpacing: 0.5, lineHeight: 1.2,
-            textShadow: `0 0 8px ${rb.glow}, 0 2px 4px rgba(0,0,0,0.8)`,
+            fontFamily: "var(--ff-display, 'Unbounded', sans-serif)",
+            fontSize: Math.round(12 * scale), fontWeight: 700,
+            color: '#fff', letterSpacing: '-0.005em', lineHeight: 1.15,
+            textShadow: `0 0 10px ${rb.glow}, 0 2px 4px rgba(0,0,0,0.85)`,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>{posa.nome}</div>
         </div>
 
-        {/* ★ FASE 4: Waifu associata — preview faccia o nome */}
         {(waifuPreview || posa.waifu_id) && (
           <div style={{
-            display: 'flex', alignItems: 'center', gap: Math.round(5 * scale),
+            display: 'flex', alignItems: 'center', gap: Math.round(6 * scale),
             background: 'rgba(255,255,255,0.05)',
-            borderRadius: Math.round(5 * scale),
-            padding: `${Math.round(3 * scale)}px ${Math.round(6 * scale)}px`,
-            border: `1px solid rgba(255,255,255,0.1)`,
+            borderRadius: Math.round(7 * scale),
+            padding: `${Math.round(3.5 * scale)}px ${Math.round(7 * scale)}px`,
+            border: '1px solid rgba(255,255,255,0.10)',
           }}>
-            {/* Mini avatar waifu */}
             <div style={{
               width: Math.round(22 * scale), height: Math.round(22 * scale),
               borderRadius: '50%', overflow: 'hidden',
-              border: `1.5px solid ${rb.inner}66`,
+              border: `1.5px solid ${rb.inner}88`,
               flexShrink: 0,
-              background: `radial-gradient(circle, ${rb.inner}22, rgba(0,0,0,0.5))`,
+              background: `radial-gradient(circle, ${rb.inner}33, rgba(7,5,26,0.6))`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               {waifuPreview?.asset_statica ? (
                 <img src={waifuPreview.asset_statica} alt={waifuPreview.nome}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 10%' }}
-                />
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 10%' }} />
               ) : (
-                <span style={{ fontSize: Math.round(11 * scale), opacity: 0.6 }}>♛</span>
+                <span style={{ fontSize: Math.round(11 * scale), opacity: 0.7, color: rb.inner }}>♛</span>
               )}
             </div>
             <span style={{
-              fontSize: Math.round(7.5 * scale), color: rb.inner,
-              fontFamily: 'Orbitron, monospace', letterSpacing: 0.5,
+              fontSize: Math.round(8 * scale), color: rb.inner,
+              fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+              letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 600,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              maxWidth: Math.round(100 * scale),
-            }}>
-              {waifuPreview?.nome || posa.waifu_id || 'Universale'}
-            </span>
+              maxWidth: Math.round(110 * scale),
+            }}>{waifuPreview?.nome || posa.waifu_id || 'Universale'}</span>
           </div>
         )}
 
-        {/* Universale se nessuna waifu_id */}
         {!posa.waifu_id && !waifuPreview && (
           <div style={{
-            fontSize: Math.round(7.5 * scale), color: 'rgba(255,255,255,0.4)',
-            fontFamily: 'Orbitron, monospace', letterSpacing: 1,
-            textTransform: 'uppercase',
+            fontSize: Math.round(8 * scale), color: 'rgba(241,235,255,0.45)',
+            fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+            letterSpacing: '0.22em', textTransform: 'uppercase',
           }}>◈ Universale</div>
         )}
       </div>
 
-      {/* Copie badge */}
+      {/* COPIE */}
       {quantita > 1 && (
         <div style={{
-          position: 'absolute', bottom: Math.round(8 * scale), right: Math.round(8 * scale),
-          background: 'rgba(0,0,0,0.8)', border: `1px solid ${rb.inner}`,
-          color: rb.inner, fontSize: Math.round(9 * scale), fontWeight: 700,
-          padding: `${Math.round(2 * scale)}px ${Math.round(6 * scale)}px`,
-          borderRadius: Math.round(6 * scale),
-          fontFamily: 'Orbitron, sans-serif', letterSpacing: 1, zIndex: 6,
+          position: 'absolute', bottom: Math.round(8*scale), right: Math.round(8*scale),
+          background: 'rgba(7,5,26,0.88)',
+          border: `1px solid ${rb.inner}88`,
+          color: rb.inner,
+          fontSize: Math.round(10 * scale), fontWeight: 700,
+          padding: `${Math.round(2*scale)}px ${Math.round(7*scale)}px`,
+          borderRadius: Math.round(7 * scale),
+          fontFamily: "var(--ff-mono, 'JetBrains Mono', monospace)",
+          backdropFilter: 'blur(4px)',
+          boxShadow: `0 0 8px ${rb.glow}`,
+          zIndex: 6,
         }}>×{quantita}</div>
       )}
 
-      {/* Angoli decorativi */}
+      {/* CORNERS */}
       {[
-        { top: Math.round(4*scale), left: Math.round(4*scale), r: 0 },
-        { top: Math.round(4*scale), right: Math.round(4*scale), r: 90 },
-        { bottom: Math.round(4*scale), right: Math.round(4*scale), r: 180 },
-        { bottom: Math.round(4*scale), left: Math.round(4*scale), r: 270 },
+        { top: Math.round(5*scale), left: Math.round(5*scale), borders: { borderTop: `1.5px solid ${rb.inner}`, borderLeft: `1.5px solid ${rb.inner}` } },
+        { top: Math.round(5*scale), right: Math.round(5*scale), borders: { borderTop: `1.5px solid ${rb.inner}`, borderRight: `1.5px solid ${rb.inner}` } },
+        { bottom: Math.round(5*scale), right: Math.round(5*scale), borders: { borderBottom: `1.5px solid ${rb.inner}`, borderRight: `1.5px solid ${rb.inner}` } },
+        { bottom: Math.round(5*scale), left: Math.round(5*scale), borders: { borderBottom: `1.5px solid ${rb.inner}`, borderLeft: `1.5px solid ${rb.inner}` } },
       ].map((c, i) => (
-        <svg key={i} viewBox="0 0 16 16" width={Math.round(12*scale)} height={Math.round(12*scale)}
-          style={{ position: 'absolute', transform: `rotate(${c.r}deg)`, zIndex: 5, ...c }}>
-          <path d="M0,0 L16,0 L16,2 L2,2 L2,16 L0,16 Z" fill={rb.inner} opacity="0.7" />
-        </svg>
+        <div key={i} style={{
+          position: 'absolute', width: Math.round(14 * scale), height: Math.round(14 * scale),
+          opacity: 0.65, zIndex: 5, pointerEvents: 'none',
+          ...c.borders,
+          top: c.top, bottom: c.bottom, left: c.left, right: c.right,
+        }} />
       ))}
     </div>
   );
