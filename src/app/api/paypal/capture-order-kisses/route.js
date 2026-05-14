@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getPayPalAccessToken, PAYPAL_BASE_URL, CLIENT_ID, CLIENT_SECRET } from '@/lib/paypalClient';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { getPrezzi, DEFAULT_PREZZI } from '@/lib/prezziServer';
 
 export const maxDuration = 30;
 
@@ -43,19 +42,12 @@ export async function POST(request) {
       return NextResponse.json({ success: true, tipo: 'pass_hard' });
     }
 
-    const prezzi = await getPrezzi();
-    const taglio = prezzi.tagli_kisses?.[taglioId];
-    if (!taglio) return NextResponse.json({ error: 'Taglio non valido: ' + taglioId }, { status: 400 });
-
-    // Usa i default come fallback nel caso Firestore abbia salvato campi parziali
-    const defaults   = DEFAULT_PREZZI.tagli_kisses?.[taglioId] ?? {};
-    const kisses     = Number(taglio.kisses     ?? defaults.kisses     ?? 0);
-    const bonus      = Number(taglio.bonus      ?? defaults.bonus      ?? 0);
-    const totalKisses = kisses + bonus;
-
+    // Legge il numero di kisses dal custom_id scritto al momento della creazione ordine —
+    // evita di rileggere Firestore e non dipende dalla cache prezzi.
+    const totalKisses = Number(capture.purchase_units?.[0]?.custom_id ?? 0);
     if (!Number.isFinite(totalKisses) || totalKisses < 1) {
-      console.error('[PayPal capture-kisses] totalKisses non valido', { taglioId, taglio, defaults, totalKisses });
-      return NextResponse.json({ error: 'Errore configurazione prezzi, contatta il supporto.' }, { status: 500 });
+      console.error('[PayPal capture-kisses] custom_id non valido', { taglioId, custom_id: capture.purchase_units?.[0]?.custom_id });
+      return NextResponse.json({ error: 'Impossibile determinare i Kisses da assegnare. Contatta il supporto.' }, { status: 500 });
     }
     await userRef.update({ kisses: FieldValue.increment(totalKisses) });
 

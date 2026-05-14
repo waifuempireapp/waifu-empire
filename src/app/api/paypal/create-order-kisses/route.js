@@ -45,6 +45,12 @@ export async function POST(request) {
     const taglio = prezzi.tagli_kisses[taglioId];
     if (!taglio) return NextResponse.json({ error: 'Taglio non valido' }, { status: 400 });
 
+    const totalKisses = Number(taglio.kisses ?? 0) + Number(taglio.bonus ?? 0);
+    if (!Number.isFinite(totalKisses) || totalKisses < 1) {
+      console.error('[PayPal create-kisses] kisses non validi', { taglioId, taglio });
+      return NextResponse.json({ error: 'Configurazione prezzi non valida per ' + taglioId }, { status: 500 });
+    }
+
     const accessToken = await getPayPalAccessToken();
     const res = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders`, {
       method: 'POST',
@@ -55,13 +61,17 @@ export async function POST(request) {
       },
       body: JSON.stringify({
         intent: 'CAPTURE',
-        purchase_units: [{ description: `Impero Waifu — ${taglio.label}`, amount: { currency_code: 'EUR', value: taglio.price_eur } }],
+        purchase_units: [{
+          description: `Impero Waifu — ${taglio.label}`,
+          amount: { currency_code: 'EUR', value: taglio.price_eur },
+          custom_id: String(totalKisses),   // portato nel capture senza rileggere Firestore
+        }],
         application_context: { brand_name: 'Impero Waifu', locale: 'it-IT', user_action: 'PAY_NOW' },
       }),
     });
     if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(`Creazione ordine fallita: ${JSON.stringify(err)}`); }
     const order = await res.json();
-    return NextResponse.json({ orderID: order.id, taglioId, kisses: taglio.kisses });
+    return NextResponse.json({ orderID: order.id, taglioId, kisses: totalKisses });
   } catch (e) {
     console.error('[PayPal create-order-kisses]', e);
     return NextResponse.json({ error: e.message || 'Errore creazione ordine' }, { status: 500 });
