@@ -237,7 +237,7 @@ export default function GiocoPage() {
 // ============================================================
 // HEADER — Fase 1: nome grassetto, popup energia, click pack→sbusta
 // ============================================================
-) {
+function _Header_UNUSED({ profilo, isAdmin, onLogout, setProfilo, user }) {
   const [popupEnergia, setPopupEnergia] = useState(false);
   const [popupImpero, setPopupImpero] = useState(false);
   const [tempoRefill, setTempoRefill] = useState('');
@@ -461,7 +461,7 @@ export default function GiocoPage() {
 }
 
 // Blocco Pack separato per chiarezza — click porta a tab Sbusto
-) {
+function PackBlock({ profilo }) {
   // Usa un evento custom per navigare al tab sbusta dal Header
   // Il Header non ha accesso diretto a setTab, quindi usiamo un evento custom
   const goToSbusta = () => {
@@ -500,7 +500,7 @@ export default function GiocoPage() {
   );
 }
 
-) {
+function KissesBlock({ profilo }) {
   return (
     <div style={{
       padding: '6px 12px',
@@ -527,6 +527,7 @@ export default function GiocoPage() {
 // ============================================================
 // NAV TABS — Desktop orizzontale + evento goto da Header
 // ============================================================
+// (TAB_DEFS usata da NavTabs e BottomNav)
 const TAB_DEFS = [
   { id: 'home',       label: 'Home',       icon: '🏠',  iconBig: '🏠' },
   { id: 'mappa',      label: 'Mappa',      icon: '⚔',  iconBig: '⚔' },
@@ -536,7 +537,7 @@ const TAB_DEFS = [
   { id: 'classifica', label: 'Classifica', icon: '🏆', iconBig: '🏆' },
 ];
 
-) {
+function _NavTabs_UNUSED({ tab, setTab }) {
   // Ascolta evento goto dall'Header (click pack → sbusta)
   useEffect(() => {
     const handler = (e) => setTab(e.detail);
@@ -568,7 +569,7 @@ const TAB_DEFS = [
 }
 
 // BottomNav stile Clash Royale per mobile
-) {
+function _BottomNav_UNUSED({ tab, setTab, isAdmin }) {
   // Ascolta anche qui l'evento goto
   useEffect(() => {
     const handler = (e) => setTab(e.detail);
@@ -632,7 +633,7 @@ const TAB_DEFS = [
 // ============================================================
 // TAB: HOME — FASE 2
 // ============================================================
-) {
+function _HomeTab_UNUSED({ profilo, setProfilo, collezione, waifuCat, outfitCat, poseCat, setTab, setColezSubTab, user, onApriPesca }) {
   const numWaifu = Object.keys(collezione.waifu || {}).length;
   const numOutfit = Object.keys(collezione.outfit || {}).length;
   const numPose = Object.keys(collezione.pose || {}).length;
@@ -829,7 +830,7 @@ const TAB_DEFS = [
 }
 
 // ── Statistiche Combattimento (Fase 2) ──────────────────────
-) {
+function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneClassifica }) {
   const vittorie = profilo.vittorie ?? 0;
   const sconfitte = profilo.sconfitte ?? 0;
   const livelloMappa = profilo.livelloMappa ?? 1;
@@ -925,7 +926,7 @@ const TAB_DEFS = [
 }
 
 // ── Banner Ultime Carte (Fase 2 + Fase 3: modal click) ─────
-) {
+function BannerUltimeCarte({ tutteLeWaifu, tuttiGliOutfit, tutteLePose, outfitCat, poseCat, collezione, profilo, setProfilo, user, totalPack, setTab }) {
   const [cartaSel, setCartaSel] = useState(null); // Fase 3: carta selezionata per modal
 
   // Ultime 20 carte: mescola waifu+outfit+posa, ordinate per acquisito (più recente prima) e limita a 20
@@ -1020,7 +1021,7 @@ const TAB_DEFS = [
 }
 
 // ── Card Pacchetto con Overlay (Prima card del banner) ──────
-) {
+function CardPacchettoOverlay({ profilo, totalPack, setTab }) {
   const [countdown, setCountdown] = useState('');
   const hasPack = totalPack > 0;
 
