@@ -26,7 +26,13 @@
       "Bash(dir openspec\\\\specs /b)",
       "Bash(powershell -Command \"\\(Get-Content 'src\\\\lib\\\\firestoreService.js' -Raw\\).Length\")",
       "Bash(npm run *)",
-      "Bash(powershell -Command \"\\(Get-Content 'src\\\\app\\\\admin\\\\page.jsx'\\).Count\")"
+      "Bash(powershell -Command \"\\(Get-Content 'src\\\\app\\\\admin\\\\page.jsx'\\).Count\")",
+      "Bash(mkdir openspec\\\\changes\\\\sbusta-rework\\\\specs\\\\sbusta-selection-screen)",
+      "Bash(mkdir openspec\\\\changes\\\\sbusta-rework\\\\specs\\\\sbusta-pack-opening)",
+      "Bash(mkdir openspec\\\\changes\\\\sbusta-rework\\\\specs\\\\sbusta-card-revelation)",
+      "Bash(mkdir openspec\\\\changes\\\\sbusta-rework\\\\specs\\\\sbusta-bulk-open)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d['instruction'][:500]\\)\")",
+      "Bash(powershell -Command \"\\(Get-Content 'src\\\\app\\\\gioco\\\\page.jsx'\\)[\\(2222-1\\)..\\(2435-1\\)] | Out-String | Measure-Object -Character | Select-Object -ExpandProperty Characters\")"
     ]
   }
 }

@@ -28,7 +28,7 @@ export default function PescaMisteriosaOverlay({ user, profilo, collezione, init
             }}
           >← INDIETRO</button>
           <div style={{ fontFamily: 'Orbitron', fontSize: 14, fontWeight: 900, color: '#ff4d9e', letterSpacing: 3 }}>
-            🎣 PESCA MISTERIOSA
+            🎣 WAIFU DROP
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

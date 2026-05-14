@@ -373,7 +373,7 @@ export function HomeTab({
         <QuickTile icon="🎁" label="Sbusta"  color="#f5c560" sub={`×${totalPack}`} highlight={totalPack > 0} onClick={() => setTab('sbusta')} />
         <QuickTile icon="🛒" label="Negozio" color="#a78bfa" sub="Novità" onClick={() => window.dispatchEvent(new CustomEvent('impero:apri-negozio'))} />
         {process.env.NEXT_PUBLIC_PESCA_ENABLED !== 'false'
-          ? <QuickTile icon="🎣" label="Waifu Drop" color="#ff85b6" sub="Prova" onClick={onApriPesca} />
+          ? <QuickTile icon="🎣" label="Waifu Drop" color="#ff85b6" sub="Pesca" onClick={onApriPesca} />
           : <QuickTile icon="💎" label="Cards" color="#ff85b6" sub={numWaifu} onClick={() => setTab('collezione')} />
         }
       </div>
