@@ -36,8 +36,7 @@ import {
   PannelloOrnato, TitoloOrnato, BtnDecorato, Chip,
   BarraRisorsa, CardInfo, Divider, StelleRarita, FramePersonaggio,
 } from '@/components/ui/UIKit';
-import { Header, NavTabs, BottomNav, HomeTab } from './_redesign';
-
+import { Header, NavTabs, BottomNav, HomeTab, AmiciTab, ClassificaTab } from './_redesign';
 export default function GiocoPage() {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
@@ -233,10 +232,6 @@ export default function GiocoPage() {
     </>
   );
 }
-
-// ============================================================
-// HEADER — Fase 1: nome grassetto, popup energia, click pack→sbusta
-// ============================================================
 function _Header_UNUSED({ profilo, isAdmin, onLogout, setProfilo, user }) {
   const [popupEnergia, setPopupEnergia] = useState(false);
   const [popupImpero, setPopupImpero] = useState(false);
@@ -461,7 +456,7 @@ function _Header_UNUSED({ profilo, isAdmin, onLogout, setProfilo, user }) {
 }
 
 // Blocco Pack separato per chiarezza — click porta a tab Sbusto
-function PackBlock({ profilo }) {
+) {
   // Usa un evento custom per navigare al tab sbusta dal Header
   // Il Header non ha accesso diretto a setTab, quindi usiamo un evento custom
   const goToSbusta = () => {
@@ -500,7 +495,7 @@ function PackBlock({ profilo }) {
   );
 }
 
-function KissesBlock({ profilo }) {
+) {
   return (
     <div style={{
       padding: '6px 12px',
@@ -523,10 +518,6 @@ function KissesBlock({ profilo }) {
     </div>
   );
 }
-
-// ============================================================
-// NAV TABS — Desktop orizzontale + evento goto da Header
-// ============================================================
 // (TAB_DEFS usata da NavTabs e BottomNav)
 const TAB_DEFS = [
   { id: 'home',       label: 'Home',       icon: '🏠',  iconBig: '🏠' },
@@ -629,10 +620,6 @@ function _BottomNav_UNUSED({ tab, setTab, isAdmin }) {
     </div>
   );
 }
-
-// ============================================================
-// TAB: HOME — FASE 2
-// ============================================================
 function _HomeTab_UNUSED({ profilo, setProfilo, collezione, waifuCat, outfitCat, poseCat, setTab, setColezSubTab, user, onApriPesca }) {
   const numWaifu = Object.keys(collezione.waifu || {}).length;
   const numOutfit = Object.keys(collezione.outfit || {}).length;
@@ -830,7 +817,7 @@ function _HomeTab_UNUSED({ profilo, setProfilo, collezione, waifuCat, outfitCat,
 }
 
 // ── Statistiche Combattimento (Fase 2) ──────────────────────
-function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneClassifica }) {
+) {
   const vittorie = profilo.vittorie ?? 0;
   const sconfitte = profilo.sconfitte ?? 0;
   const livelloMappa = profilo.livelloMappa ?? 1;
@@ -926,7 +913,7 @@ function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneCla
 }
 
 // ── Banner Ultime Carte (Fase 2 + Fase 3: modal click) ─────
-function BannerUltimeCarte({ tutteLeWaifu, tuttiGliOutfit, tutteLePose, outfitCat, poseCat, collezione, profilo, setProfilo, user, totalPack, setTab }) {
+) {
   const [cartaSel, setCartaSel] = useState(null); // Fase 3: carta selezionata per modal
 
   // Ultime 20 carte: mescola waifu+outfit+posa, ordinate per acquisito (più recente prima) e limita a 20
@@ -1021,7 +1008,7 @@ function BannerUltimeCarte({ tutteLeWaifu, tuttiGliOutfit, tutteLePose, outfitCa
 }
 
 // ── Card Pacchetto con Overlay (Prima card del banner) ──────
-function CardPacchettoOverlay({ profilo, totalPack, setTab }) {
+) {
   const [countdown, setCountdown] = useState('');
   const hasPack = totalPack > 0;
 
@@ -1401,7 +1388,7 @@ function MadalePosa({ posa }) {
 // ============================================================
 // TAB: AMICI
 // ============================================================
-function AmiciTab({ user, profilo, collezione, waifuCat, onCollectionRefresh }) {
+) {
   const [subTab, setSubTab] = useState('amici'); // 'amici' | 'scambi'
   const [scambiBadge, setScambiBadge] = useState(0);
   const tradeEnabled = process.env.NEXT_PUBLIC_TRADE_ENABLED === 'true';
@@ -1498,7 +1485,7 @@ function AmiciTab({ user, profilo, collezione, waifuCat, onCollectionRefresh }) 
 // ============================================================
 // TAB: CLASSIFICA — Fase 6 (implementazione completa)
 // ============================================================
-function ClassificaTab({ user }) {
+) {
   const [classifica, setClassifica] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errore, setErrore] = useState(null);
@@ -1737,10 +1724,6 @@ function ClassificaTab({ user }) {
     </div>
   );
 }
-
-// ============================================================
-// TAB: SBUSTAMENTO — Fase 6 (stile Pokémon Pocket)
-// ============================================================
 function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitCat, poseCat, user, mostraNotif, godPackProb = GOD_PACK_PROB_DEFAULT }) {
   const [stato, setStato] = useState('idle');
   const [carteRivelate, setCarteRivelate] = useState([]);
@@ -2756,10 +2739,6 @@ function CartaCoperta() {
     }}>?</div>
   );
 }
-
-// ============================================================
-// TAB: COLLEZIONE — Con separazione Carta / Baby-Doll
-// ============================================================
 // ============================================================
 // FONT "LEVEL UP!" — stile bold arcade
 // ============================================================
@@ -4596,10 +4575,6 @@ function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxS
     </div>
   );
 }
-
-// ============================================================
-// TAB: MAPPA — Tutto il codice battaglia invariato, solo UI reworkata
-// ============================================================
 function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, mostraNotif }) {
   // ── STATO MULTIPLAYER ──────────────────────────────────────
   const [modalitaMulti, setModalitaMulti] = useState(false); // true quando si entra nel multiplayer

@@ -3,10 +3,12 @@
  * Patch automatica per src/app/gioco/page.jsx
  *
  * Applica i seguenti cambiamenti in modo idempotente:
- *  1. Aggiunge `import { Header, NavTabs, BottomNav, HomeTab } from './_redesign';`
- *  2. Rimuove le 9 definizioni di funzione locali (Header, PackBlock, KissesBlock,
+ *  1. Aggiunge `import { Header, NavTabs, BottomNav, HomeTab, AmiciTab, ClassificaTab } from './_redesign';`
+ *     (Next.js risolve automaticamente `./_redesign` → `./_redesign/index.jsx`)
+ *  2. Rimuove le 11 definizioni di funzione locali (Header, PackBlock, KissesBlock,
  *     NavTabs, BottomNav, HomeTab, StatCombattimento, BannerUltimeCarte,
- *     CardPacchettoOverlay), che ora vengono importate dal modulo _redesign.jsx
+ *     CardPacchettoOverlay, AmiciTab, ClassificaTab) che ora vengono importate
+ *     dal modulo `_redesign/`.
  *  3. Aggiunge la prop `ModaleCarta={ModaleCarta}` al render di <HomeTab .../>
  *
  * USO (dalla root del progetto impero-waifu):
@@ -34,84 +36,74 @@ if (!fs.existsSync(bak)) {
   fs.writeFileSync(bak, src);
   console.log(`✓ Backup creato: ${bak}`);
 } else {
-  console.log(`ℹ Backup già esistente: ${bak}`);
+  console.log(`ℹ Backup già esistente: ${bak} (non sovrascritto)`);
 }
 
-// ── 2. Aggiungi import ────────────────────────────────────────
-const IMPORT_LINE = `import { Header, NavTabs, BottomNav, HomeTab } from './_redesign';`;
+// ── 2. Aggiungi/aggiorna import ──────────────────────────────
+const IMPORT_LINE = `import { Header, NavTabs, BottomNav, HomeTab, AmiciTab, ClassificaTab } from './_redesign';`;
+const OLD_IMPORT_RE = /import\s*\{[^}]*\}\s*from\s*['"]\.\/_redesign['"];\s*\n?/g;
 
-if (!src.includes(IMPORT_LINE)) {
-  // Inseriamo subito dopo l'import di UIKit
+if (OLD_IMPORT_RE.test(src)) {
+  src = src.replace(OLD_IMPORT_RE, IMPORT_LINE + '\n');
+  console.log('✓ Import aggiornato');
+} else {
   const uiKitImportRe = /(import\s*\{[^}]+\}\s*from\s*['"]@\/components\/ui\/UIKit['"];)/;
   if (uiKitImportRe.test(src)) {
     src = src.replace(uiKitImportRe, `$1\n${IMPORT_LINE}`);
     console.log('✓ Import aggiunto dopo UIKit');
   } else {
-    // Fallback: dopo la prima riga di import
     src = src.replace(/(^import .+;\s*\n)/m, `$1${IMPORT_LINE}\n`);
     console.log('✓ Import aggiunto in cima');
   }
-} else {
-  console.log('ℹ Import già presente — skip');
 }
 
-// ── 3. Rimuovi le 9 funzioni locali ───────────────────────────
+// ── 3. Rimuovi funzioni locali ───────────────────────────────
 const FUNCTIONS_TO_REMOVE = [
   'Header', 'PackBlock', 'KissesBlock', 'NavTabs', 'BottomNav',
   'HomeTab', 'StatCombattimento', 'BannerUltimeCarte', 'CardPacchettoOverlay',
+  'AmiciTab', 'ClassificaTab',
 ];
 
 let removed = 0;
 for (const fname of FUNCTIONS_TO_REMOVE) {
-  // Trova `function NAME(...)` con eventuale commento immediatamente sopra
   const startRe = new RegExp(`^function\\s+${fname}\\s*\\(`, 'm');
   const m = startRe.exec(src);
   if (!m) {
-    console.log(`  - ${fname}: non trovata (già rimossa?)`);
+    console.log(`  - ${fname}: non trovata (già rimossa)`);
     continue;
   }
   let start = m.index;
 
-  // Espandi all'indietro per inglobare eventuali commenti "// ──" / "// =="
-  // immediatamente precedenti (separati da una linea vuota o meno)
+  // Include eventuali commenti immediatamente sopra (max 6 righe)
   const before = src.slice(0, start);
-  const commentBlock = /(?:^\s*\/\/[^\n]*\n)+(?:^\s*\n)?$/m;
-  // Riallinea: cerca eventuali commenti immediatamente sopra
   const lines = before.split('\n');
   let backTrack = lines.length;
   while (backTrack > 0) {
     const ln = lines[backTrack - 1];
-    if (/^\s*$/.test(ln) || /^\s*\/\//.test(ln)) {
-      backTrack--;
-    } else break;
+    if (/^\s*$/.test(ln) || /^\s*\/\//.test(ln)) backTrack--;
+    else break;
   }
-  // Solo se troviamo commenti che descrivono la funzione, li includiamo
-  // (max 4 righe sopra)
-  const linesBackTracked = lines.length - backTrack;
-  if (linesBackTracked > 0 && linesBackTracked <= 6 && /^\s*\/\//.test(lines[lines.length-1])) {
+  const lookback = lines.length - backTrack;
+  if (lookback > 0 && lookback <= 8 && /^\s*\/\//.test(lines[lines.length - 1])) {
     start = lines.slice(0, backTrack).join('\n').length;
-    if (start > 0) start += 1; // newline
+    if (start > 0) start += 1;
   }
 
-  // Bilanciamento parentesi graffe per trovare la fine della funzione
+  // Trova fine funzione bilanciando le graffe
   const fnStart = src.indexOf('{', m.index);
-  if (fnStart === -1) {
-    console.log(`  ! ${fname}: { non trovata`);
-    continue;
-  }
+  if (fnStart === -1) { console.log(`  ! ${fname}: { non trovata`); continue; }
   let depth = 1;
   let i = fnStart + 1;
   while (i < src.length && depth > 0) {
     const c = src[i];
     if (c === '{') depth++;
     else if (c === '}') depth--;
-    else if (c === '/' && src[i+1] === '/') {
-      // commento line: skip a fine riga
+    else if (c === '/' && src[i + 1] === '/') {
       while (i < src.length && src[i] !== '\n') i++;
       continue;
     }
-    else if (c === '/' && src[i+1] === '*') {
-      i = src.indexOf('*/', i+2);
+    else if (c === '/' && src[i + 1] === '*') {
+      i = src.indexOf('*/', i + 2);
       if (i === -1) break;
       i += 2;
       continue;
@@ -126,11 +118,7 @@ for (const fname of FUNCTIONS_TO_REMOVE) {
     }
     i++;
   }
-  if (depth !== 0) {
-    console.log(`  ! ${fname}: graffe non bilanciate`);
-    continue;
-  }
-  // Includi newline finale
+  if (depth !== 0) { console.log(`  ! ${fname}: graffe non bilanciate`); continue; }
   let end = i;
   if (src[end] === '\n') end++;
   if (src[end] === '\n') end++;
@@ -141,21 +129,18 @@ for (const fname of FUNCTIONS_TO_REMOVE) {
 }
 
 // ── 4. Pulisci eventuali commenti di sezione orfani ───────────
-// Rimuovi blocchi "// =====...\n// NOME\n// =====...\n" rimasti senza la loro funzione
-src = src.replace(/\n\s*\/\/ ={5,}\s*\n\s*\/\/ (?:HEADER|NAV TABS|BOTTOM NAV|HOMETAB|TAB: HOME|FASE \d+|STAT.*|CARD PACCH.*|BANNER.*)[^\n]*\n\s*\/\/ ={5,}\s*\n(?=\s*(?:\/\/|\n|function))/gi, '\n');
+src = src.replace(/\n\s*\/\/ ={5,}\s*\n\s*\/\/ (?:HEADER|NAV TABS|BOTTOM NAV|HOMETAB|TAB:?[^\n]*|FASE \d+|STAT.*|CARD PACCH.*|BANNER.*|CLASSIFICA[^\n]*|AMICI[^\n]*)[^\n]*\n\s*\/\/ ={5,}\s*\n(?=\s*(?:\/\/|\n|function|export))/gi, '\n');
 
 // ── 5. Aggiungi prop ModaleCarta a <HomeTab .../> ─────────────
 const homeTabRe = /<HomeTab\b([^>]*?)\/>/m;
 const ht = homeTabRe.exec(src);
 if (ht && !/ModaleCarta\s*=/.test(ht[0])) {
-  src = src.replace(homeTabRe, (full, attrs) => {
-    return `<HomeTab${attrs} ModaleCarta={ModaleCarta} />`;
-  });
+  src = src.replace(homeTabRe, (full, attrs) => `<HomeTab${attrs} ModaleCarta={ModaleCarta} />`);
   console.log('✓ Prop ModaleCarta aggiunta a <HomeTab/>');
 } else if (ht) {
   console.log('ℹ Prop ModaleCarta già presente');
 } else {
-  console.warn('⚠ <HomeTab/> non trovato — passa la prop ModaleCarta a mano');
+  console.warn('⚠ <HomeTab/> non trovato — passa la prop a mano');
 }
 
 // ── 6. Scrivi ────────────────────────────────────────────────

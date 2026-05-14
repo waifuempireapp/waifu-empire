@@ -70,23 +70,32 @@ Tutte le feature funzionali esistenti sono mantenute:
 - Contatore copie quando `datiCollezione.copie > 1`
 - `evidenziato` per slot/team selezionato
 
-## 🎮 Patch Lobby (Header + Home + Navigazione)
+## 🎮 Patch Lobby + Amici + Classifica
 
 Le schermate hanno molti **inline styles** dentro `gioco/page.jsx`, quindi richiedono modifiche al JSX, non solo al CSS. Ecco la patch dedicata:
+
+### ⚠️ Se avevi già installato la v1
+
+La v1 usava `_redesign.jsx` (singolo file). La v2 usa `_redesign/` (cartella).
+Prima di copiare i file v2, **rimuovi il vecchio**:
+
+```bash
+rm src/app/gioco/_redesign.jsx
+```
 
 ### Modo veloce (script automatico)
 
 ```bash
-# Copia il modulo _redesign
+# 1. Copia tutti i nuovi file (UIKit, CartaWaifu, globals.css, e _redesign/)
 cp -R apply/src/* ./src/
 
-# Esegui lo script di patch (crea page.jsx.bak e applica le modifiche)
+# 2. Esegui lo script di patch
 node apply/patch-page.js
 ```
 
 Lo script:
-- Aggiunge l'import `{ Header, NavTabs, BottomNav, HomeTab } from './_redesign'`
-- Rimuove le 9 funzioni inline (`Header`, `PackBlock`, `KissesBlock`, `NavTabs`, `BottomNav`, `HomeTab`, `StatCombattimento`, `BannerUltimeCarte`, `CardPacchettoOverlay`)
+- Aggiunge l'import `{ Header, NavTabs, BottomNav, HomeTab, AmiciTab, ClassificaTab } from './_redesign'`
+- Rimuove le 11 funzioni inline (`Header`, `PackBlock`, `KissesBlock`, `NavTabs`, `BottomNav`, `HomeTab`, `StatCombattimento`, `BannerUltimeCarte`, `CardPacchettoOverlay`, `AmiciTab`, `ClassificaTab`)
 - Aggiunge `ModaleCarta={ModaleCarta}` al render di `<HomeTab .../>`
 - Crea backup `page.jsx.bak`
 
@@ -94,13 +103,24 @@ Lo script:
 
 Vedi `PATCH-LOBBY.md` per le istruzioni dettagliate passo per passo.
 
+## 📁 Struttura modulo `_redesign/`
+
+```
+src/app/gioco/_redesign/
+├── index.jsx       ← re-export di tutto
+├── _shared.jsx     ← token visivi (colori, font, sakura petals, sub-tab)
+├── Lobby.jsx       ← Header · NavTabs · BottomNav · HomeTab
+├── Amici.jsx       ← AmiciTab (con sub-tab Amici/Scambi)
+└── Classifica.jsx  ← ClassificaTab (con podio top 3)
+```
+
 ## 🔄 Prossimi step
 
-Dopo aver verificato che la Lobby appaia correttamente, posso ridisegnare allo stesso modo:
+Dopo aver verificato che Lobby + Amici + Classifica appaiano correttamente, posso ridisegnare allo stesso modo:
 - `SbustaTab` — animazione apertura pack
 - `MappaTab` — mappa di conquista
 - `CollezioneTab` — griglia + filtri
-- `AmiciTab` / `ClassificaTab` — amici, scambi, classifica
 - `NegozioOverlay` — popup negozio
+- `PescaMisteriosaFeed` — bustine amici
 
 Dimmi su quali vuoi che lavori dopo. Sono tutti cambiamenti **solo JSX/CSS** — la logica resta invariata.
