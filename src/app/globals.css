@@ -1037,16 +1037,47 @@ input:focus, textarea:focus, select:focus {
 /* ===== MISSIONI FAB ===== */
 .missioni-fab {
   position: fixed; bottom: 96px; right: 16px; z-index: 90;
-  width: 52px; height: 52px; border-radius: 50%;
-  background: linear-gradient(135deg, #a78bfa, #ff85b6);
+  width: 60px;
+  border-radius: 16px;
+  background: linear-gradient(160deg, #ff85b6, #c54a86);
   border: none; cursor: pointer;
-  display: grid; place-items: center;
-  box-shadow: 0 4px 20px rgba(167,139,250,0.5), 0 2px 8px rgba(0,0,0,0.4);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 8px 6px 7px;
+  box-shadow: 0 4px 20px rgba(255,133,182,0.5), 0 2px 8px rgba(0,0,0,0.4);
   transition: transform 0.15s, box-shadow 0.15s;
   font-size: 22px;
 }
-.missioni-fab:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(167,139,250,0.7); }
+.missioni-fab:hover { transform: scale(1.06); box-shadow: 0 6px 28px rgba(255,133,182,0.7); }
 .missioni-fab:active { transform: scale(0.95); }
+.missioni-fab__label {
+  font-family: 'Saira Condensed', sans-serif; font-size: 8px;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(255,255,255,0.92); font-weight: 700;
+  margin-top: 3px; line-height: 1;
+}
+/* Alert pulse when missions are ready to claim */
+@keyframes missioniAlert {
+  0%,100% { box-shadow: 0 4px 20px rgba(255,133,182,0.5), 0 2px 8px rgba(0,0,0,0.4); }
+  50%      { box-shadow: 0 0 32px rgba(255,133,182,0.9), 0 0 14px rgba(255,133,182,0.6); }
+}
+.missioni-fab--alert { animation: missioniAlert 1.4s ease-in-out infinite; }
+/* Notification CTA banner above FAB */
+.missioni-cta-banner {
+  position: fixed; bottom: 166px; right: 12px; z-index: 89;
+  background: linear-gradient(135deg, rgba(255,133,182,0.22), rgba(197,74,134,0.15));
+  border: 1px solid rgba(255,133,182,0.5); border-radius: 14px;
+  padding: 8px 12px 8px 10px;
+  display: flex; align-items: center; gap: 6px;
+  animation: fadeUp 0.3s ease-out;
+  backdrop-filter: blur(8px);
+  cursor: pointer; max-width: 200px;
+  box-shadow: 0 4px 16px rgba(255,133,182,0.3);
+}
+.missioni-cta-banner__text {
+  font-family: 'DM Sans', sans-serif; font-size: 11px;
+  color: #ffc3da; line-height: 1.3;
+}
+.missioni-cta-banner__icon { font-size: 16px; flex-shrink: 0; }
 .missioni-fab__badge {
   position: absolute; top: -3px; right: -3px;
   width: 18px; height: 18px; border-radius: 50%;
@@ -1506,26 +1537,27 @@ input:focus, textarea:focus, select:focus {
 
 /* 1.7 Badge */
 .sb-badge-new {
-  position: absolute; top: 6px; right: 6px;
-  background: linear-gradient(135deg, rgba(245,166,35,0.9), rgba(255,45,120,0.9));
-  color: #fff; font-family: 'Saira Condensed', sans-serif;
-  font-size: 8px; font-weight: 700; letter-spacing: 0.14em;
-  padding: 2px 6px; border-radius: 4px;
-  border: 1px solid rgba(255,255,255,0.35);
-  box-shadow: 0 0 8px rgba(245,166,35,0.5);
+  position: absolute; top: 8px; right: 8px;
+  background: linear-gradient(135deg, #f5a623, #ff2d78);
+  color: #fff; font-family: 'Unbounded', sans-serif;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.04em;
+  padding: 4px 9px; border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.4);
+  box-shadow: 0 0 14px rgba(245,166,35,0.7), 0 2px 8px rgba(0,0,0,0.4);
   pointer-events: none; z-index: 10; text-transform: uppercase;
 }
 .sb-badge-hot {
-  position: absolute; top: 6px; left: 6px;
-  background: linear-gradient(135deg, rgba(255,69,0,0.9), rgba(255,140,0,0.9));
-  color: #fff; font-family: 'Saira Condensed', sans-serif;
-  font-size: 8px; font-weight: 700; letter-spacing: 0.14em;
-  padding: 2px 6px; border-radius: 4px;
-  border: 1px solid rgba(255,255,255,0.35);
-  box-shadow: 0 0 8px rgba(255,69,0,0.6);
+  position: absolute; top: 8px; left: 8px;
+  background: linear-gradient(135deg, #ff4500, #ff8c00);
+  color: #fff; font-family: 'Unbounded', sans-serif;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.04em;
+  padding: 4px 9px; border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.4);
+  box-shadow: 0 0 14px rgba(255,69,0,0.7), 0 2px 8px rgba(0,0,0,0.4);
   pointer-events: none; z-index: 10; text-transform: uppercase;
+  animation: pulseStrong 1.2s ease-in-out infinite;
 }
-.sb-badge-hot--below { top: 26px; } /* se c'è anche NEW */
+.sb-badge-hot--below { top: 36px; } /* se c'è anche NEW */
 .sb-badge-godpack {
   text-align: center; padding: 14px 20px; margin-bottom: 16px;
   background: linear-gradient(135deg, rgba(245,166,35,0.18), rgba(236,72,153,0.18));
@@ -1689,14 +1721,16 @@ input:focus, textarea:focus, select:focus {
 }
 .sb-card-3d:hover { transform: rotateY(-6deg) rotateX(2deg); }
 .sb-card-reveal__nav-hint {
-  position: fixed; bottom: 86px; right: 16px; z-index: 90;
-  background: rgba(27,22,56,0.85); backdrop-filter: blur(8px);
-  border: 1px solid rgba(174,156,255,0.25); border-radius: 999px;
-  padding: 8px 14px 8px 12px;
-  display: flex; align-items: center; gap: 6px;
-  font-family: 'Saira Condensed', sans-serif; font-size: 9px;
-  letter-spacing: 0.16em; text-transform: uppercase;
-  color: rgba(241,235,255,0.6);
+  position: fixed; bottom: 96px; right: 14px; z-index: 90;
+  background: linear-gradient(135deg, rgba(27,22,56,0.92), rgba(7,5,26,0.88));
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(174,156,255,0.4); border-radius: 999px;
+  padding: 10px 16px 10px 14px;
+  display: flex; align-items: center; gap: 7px;
+  font-family: 'Saira Condensed', sans-serif; font-size: 10px;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(241,235,255,0.85);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 0 0 1px rgba(174,156,255,0.15);
 }
 .sb-card-reveal__tap-hint {
   margin-top: 12px; flex-shrink: 0;
@@ -1796,6 +1830,116 @@ input:focus, textarea:focus, select:focus {
   letter-spacing: 0.02em;
 }
 .sb-btn-avanti:hover { transform: translateY(-2px); box-shadow: 0 0 36px rgba(108,240,224,0.6); }
+
+/* ===== Drop Carousel ===== */
+.sb-drop-carousel {
+  position: relative; width: 100%; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 16px; height: 300px;
+  touch-action: pan-y;
+}
+.sb-drop-carousel__track {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0; width: 100%; position: relative;
+}
+.sb-drop-carousel__item {
+  position: absolute;
+  transition: transform 0.35s cubic-bezier(0.23,1,0.32,1), opacity 0.35s, z-index 0s;
+  cursor: pointer;
+  user-select: none;
+}
+.sb-drop-carousel__item--center {
+  z-index: 3; transform: translateX(0) scale(1); opacity: 1;
+}
+.sb-drop-carousel__item--left {
+  z-index: 2; transform: translateX(-52%) scale(0.72); opacity: 0.65;
+  filter: brightness(0.75);
+}
+.sb-drop-carousel__item--right {
+  z-index: 2; transform: translateX(52%) scale(0.72); opacity: 0.65;
+  filter: brightness(0.75);
+}
+.sb-drop-carousel__item--hidden {
+  z-index: 1; opacity: 0; pointer-events: none;
+  transform: translateX(-80%) scale(0.5);
+}
+
+/* Auto-hint after 3s in pack reveal */
+@keyframes sbTapHintPop {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.9); }
+  15%  { opacity: 1; transform: translateY(0) scale(1); }
+  85%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-5px); }
+}
+.sb-card-reveal__auto-hint {
+  position: fixed; bottom: 160px; left: 50%; transform: translateX(-50%);
+  z-index: 95;
+  background: rgba(7,5,26,0.92); backdrop-filter: blur(12px);
+  border: 1px solid rgba(245,197,96,0.4); border-radius: 999px;
+  padding: 10px 20px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+  color: #ffe9a8; white-space: nowrap;
+  animation: sbTapHintPop 3s ease-out forwards;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 12px rgba(245,197,96,0.2);
+}
+
+/* ===== Results fly animation ===== */
+@keyframes sbFlyCard {
+  0%   { opacity: 1; transform: scale(1) translate(0, 0); }
+  40%  { opacity: 0.9; transform: scale(0.55) translate(0, 30px); }
+  100% { opacity: 0; transform: scale(0) translate(0, 140px); }
+}
+.sb-results__card-wrap--flying {
+  animation: sbFlyCard 0.55s ease-in forwards;
+}
+
+/* ===== Pokémon Pocket style peek — draggable card stack ===== */
+.sb-pocket-peek {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(3,2,12,0.88); backdrop-filter: blur(14px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+  touch-action: none;
+}
+.sb-pocket-peek__stack {
+  position: relative; width: 200px; height: 260px;
+}
+.sb-pocket-peek__card {
+  position: absolute; width: 143px; height: 215px;
+  border-radius: 12px; border: 3px solid;
+  background: linear-gradient(160deg, #1b1638, #07051a);
+  cursor: grab; user-select: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.sb-pocket-peek__card--top {
+  z-index: 5;
+  left: 50%; transform: translateX(-50%);
+}
+.sb-pocket-peek__card--dragging {
+  cursor: grabbing;
+  transition: none;
+}
+.sb-pocket-peek__rarity-stripe {
+  position: absolute; top: 0; left: 0; right: 0; height: 6px;
+  opacity: 0.8;
+}
+.sb-pocket-peek__idx-label {
+  position: absolute; bottom: 6px; right: 8px;
+  font-family: 'JetBrains Mono', monospace; font-size: 9px;
+  opacity: 0.5; color: currentColor;
+}
+.sb-pocket-peek__hint {
+  margin-top: 24px;
+  font-family: 'Saira Condensed', sans-serif; font-size: 9px;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: rgba(241,235,255,0.35);
+}
+.sb-pocket-peek__dots {
+  display: flex; gap: 6px; margin-top: 12px;
+}
 
 /* ===== SelectionScreen: step labels e pack-type tiles ===== */
 .sb-step-label {

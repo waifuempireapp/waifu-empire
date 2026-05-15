@@ -184,9 +184,10 @@ export function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
           )}
         </div>
 
-        {/* KISSES */}
+        {/* KISSES — click apre il Negozio */}
         <ResourcePill color="#ff85b6" icon={<KissesIcon size={14} />}
-          value={profilo.kisses ?? 0} label="KISSES" />
+          value={profilo.kisses ?? 0} label="KISSES"
+          onClick={() => window.dispatchEvent(new CustomEvent('impero:apri-negozio'))} />
 
         <div className="hdr-divider" />
 
@@ -403,13 +404,24 @@ export function HomeTab({
       {/* TRA AMICI */}
       <TraAmici attivita={attivitaAmici} profilo={profilo} />
 
+      {/* Notification CTA sopra il FAB quando ci sono missioni completate */}
+      {missioniBadge > 0 && !missioniAperte && (
+        <div className="missioni-cta-banner" onClick={() => setMissioniAperte(true)}>
+          <span className="missioni-cta-banner__icon">🎯</span>
+          <span className="missioni-cta-banner__text">
+            {missioniBadge} missione{missioniBadge > 1 ? 'i' : ''} completata{missioniBadge > 1 ? 'i' : ''}! Riscuoti
+          </span>
+        </div>
+      )}
+
       {/* FAB MISSIONI */}
       <button
-        className="missioni-fab"
+        className={`missioni-fab${missioniBadge > 0 ? ' missioni-fab--alert' : ''}`}
         onClick={() => setMissioniAperte(true)}
         title="Missioni"
       >
-        🎯
+        <span style={{ fontSize: 22 }}>🎯</span>
+        <span className="missioni-fab__label">Missioni</span>
         {missioniBadge > 0 && (
           <span className="missioni-fab__badge">{missioniBadge}</span>
         )}

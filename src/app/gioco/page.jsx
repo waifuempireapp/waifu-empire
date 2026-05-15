@@ -88,6 +88,9 @@ export default function GiocoPage() {
           catalogRef.current = { ws, os, ps };
           return catalogRef.current;
         });
+    // Prefetch drops so Sbusta loads instantly (uses 5min cache)
+    listDropsAttivi().catch(() => {});
+
     const [p, c, { ws, os, ps }] = await Promise.all([
       getUserProfile(user.uid), getCollezione(user.uid),
       catalogPromise,
@@ -1774,12 +1777,14 @@ function isWaifuPackDrop(drop) {
 // ── PackOpeningScreen ────────────────────────────────────────────────────
 // TEMP: new pack-reveal components — PackClosedScreen, CardRevealScreen, PeekOverlay, ResultsScreen
 
+// TEMP: pack reveal v2 components — all UTF-8 correct
+
 const RARITY_COLORS = {
-  comune:     '#b4bcc8',
-  raro:       '#5aa9ff',
-  epico:      '#b573ff',
-  leggendario:'#ffc861',
-  immersivo:  '#ff85b6',
+  comune:      '#b4bcc8',
+  raro:        '#5aa9ff',
+  epico:       '#b573ff',
+  leggendario: '#ffc861',
+  immersivo:   '#ff85b6',
 };
 
 function getRarityColor(card) {
@@ -1789,9 +1794,279 @@ function getRarityColor(card) {
   return '#b4bcc8';
 }
 
-// ── PackClosedScreen ────────────────────────────────────────────────────
+// ── DropCarousel (punto 6) ──────────────────────────────────────────────
+function DropCarousel({ dropsAttivi, dropSelId, setDropSelId }) {
+  const [dragStart, setDragStart] = useState(null);
+  const [dragging, setDragging] = useState(false);
+
+  const currentIdx = dropsAttivi.findIndex(d => d.id === dropSelId);
+  const safeIdx = currentIdx < 0 ? 0 : currentIdx;
+
+  const goLeft  = () => setDropSelId(dropsAttivi[Math.max(0, safeIdx - 1)].id);
+  const goRight = () => setDropSelId(dropsAttivi[Math.min(dropsAttivi.length - 1, safeIdx + 1)].id);
+
+  const handleDragStart = (e) => {
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    setDragStart(x);
+    setDragging(true);
+  };
+  const handleDragEnd = (e) => {
+    if (!dragging || dragStart === null) return;
+    const x = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+    const diff = dragStart - x;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0) goRight();
+      else goLeft();
+    }
+    setDragStart(null);
+    setDragging(false);
+  };
+
+  const getPosition = (i) => {
+    const d = i - safeIdx;
+    if (d === 0) return 'center';
+    if (d === -1) return 'left';
+    if (d === 1) return 'right';
+    return 'hidden';
+  };
+
+  return (
+    <div
+      className="sb-drop-carousel"
+      onTouchStart={handleDragStart}
+      onTouchEnd={handleDragEnd}
+      onMouseDown={handleDragStart}
+      onMouseUp={handleDragEnd}
+    >
+      <div className="sb-drop-carousel__track">
+        {dropsAttivi.map((d, i) => {
+          const pos = getPosition(i);
+          const col  = d.colore  || '#9b59ff';
+          const col2 = d.colore2 || '#ff2d78';
+          const isCenter = pos === 'center';
+          return (
+            <div
+              key={d.id}
+              className={`sb-drop-carousel__item sb-drop-carousel__item--${pos}`}
+              onClick={() => pos !== 'center' && setDropSelId(d.id)}
+              style={{ pointerEvents: pos === 'hidden' ? 'none' : 'auto' }}
+            >
+              {d.asset_bustina ? (
+                <img
+                  src={d.asset_bustina}
+                  style={{
+                    width: isCenter ? '52vw' : '40vw',
+                    maxWidth: isCenter ? 220 : 170,
+                    borderRadius: isCenter ? 18 : 14,
+                    boxShadow: isCenter
+                      ? `0 0 40px ${col}50, 0 16px 50px rgba(0,0,0,0.6)`
+                      : '0 8px 24px rgba(0,0,0,0.4)',
+                    display: 'block',
+                    objectFit: 'cover',
+                    userSelect: 'none',
+                    draggable: false,
+                  }}
+                  alt={d.nome}
+                  draggable={false}
+                />
+              ) : (
+                <div style={{
+                  width: isCenter ? '52vw' : '40vw',
+                  maxWidth: isCenter ? 220 : 170,
+                  height: isCenter ? '75vw' : '58vw',
+                  maxHeight: isCenter ? 320 : 248,
+                  borderRadius: isCenter ? 18 : 14,
+                  background: `linear-gradient(160deg, #1a0a36 0%, #07051a 100%)`,
+                  border: `${isCenter ? 2 : 1.5}px solid ${col}${isCenter ? '88' : '50'}`,
+                  boxShadow: isCenter
+                    ? `0 0 40px ${col}40, 0 16px 50px rgba(0,0,0,0.6)`
+                    : '0 8px 24px rgba(0,0,0,0.4)',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                  position: 'relative', overflow: 'hidden',
+                }}>
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    background: `radial-gradient(ellipse at 50% 20%, ${col}25, transparent 60%)`,
+                  }} />
+                  <div style={{
+                    fontFamily: 'Unbounded, sans-serif',
+                    fontSize: isCenter ? 52 : 38,
+                    color: col, textShadow: `0 0 28px ${col}`,
+                    position: 'relative', zIndex: 1,
+                  }}>♛</div>
+                  <div style={{
+                    fontFamily: 'Unbounded, sans-serif',
+                    fontSize: isCenter ? 11 : 9, fontWeight: 800,
+                    color: '#fff', marginTop: 8,
+                    textAlign: 'center', padding: '0 12px',
+                    position: 'relative', zIndex: 1,
+                  }}>{d.nome}</div>
+                </div>
+              )}
+              {isCenter && (
+                <div style={{ textAlign: 'center', marginTop: 8 }}>
+                  <div style={{ fontFamily: 'Saira Condensed, sans-serif', fontSize: 9, color: col, letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700 }}>
+                    {d.waifuIds?.length || 0} waifu disponibili
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Dots indicator */}
+      {dropsAttivi.length > 1 && (
+        <div style={{ position: 'absolute', bottom: 4, display: 'flex', gap: 5 }}>
+          {dropsAttivi.map((d, i) => (
+            <div key={d.id} onClick={() => setDropSelId(d.id)} style={{
+              width: i === safeIdx ? 16 : 6, height: 6, borderRadius: 999,
+              background: i === safeIdx ? '#ffe9a8' : 'rgba(241,235,255,0.25)',
+              cursor: 'pointer', transition: 'all 0.25s',
+            }} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Pokémon Pocket style PeekOverlay (punto 17) ─────────────────────────
+// Shows original pack cards (carteOriginali) in a draggable stack
+// Swipe left → reveal next card in stack; swipe right → go back
+function PocketPeekOverlay({ carteOriginali, onClose }) {
+  const [topIdx, setTopIdx] = useState(carteOriginali.length - 1); // start from back
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartX = useRef(null);
+
+  // Sort by rarity: lowest first (back), highest last (front) — viewer sees from front
+  const sorted = useMemo(() => {
+    const rar = ['immersivo','leggendario','epico','raro','comune'];
+    return [...carteOriginali].sort((a, b) =>
+      rar.indexOf(b.data?.rarita ?? 'comune') - rar.indexOf(a.data?.rarita ?? 'comune')
+    );
+  }, [carteOriginali]);
+  // topIdx: which card is on top (0 = lowest rarity, length-1 = highest rarity)
+
+  const handleDragStart = (e) => {
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    dragStartX.current = x;
+    setIsDragging(true);
+  };
+  const handleDragMove = (e) => {
+    if (!isDragging || dragStartX.current === null) return;
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    setDragX(x - dragStartX.current);
+  };
+  const handleDragEnd = () => {
+    if (Math.abs(dragX) > 60) {
+      if (dragX < 0 && topIdx > 0) setTopIdx(i => i - 1); // swipe left = reveal rarer card
+      else if (dragX > 0 && topIdx < sorted.length - 1) setTopIdx(i => i + 1); // swipe right = go back
+    }
+    setDragX(0);
+    setIsDragging(false);
+    dragStartX.current = null;
+  };
+
+  return (
+    <div
+      className="sb-pocket-peek"
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div style={{ fontFamily: 'Saira Condensed, sans-serif', fontSize: 9, letterSpacing: '0.28em', textTransform: 'uppercase', color: 'rgba(241,235,255,0.4)', marginBottom: 12 }}>
+        Anteprima rarità — scorri
+      </div>
+
+      <div
+        className="sb-pocket-peek__stack"
+        onTouchStart={handleDragStart}
+        onTouchMove={handleDragMove}
+        onTouchEnd={handleDragEnd}
+        onMouseDown={handleDragStart}
+        onMouseMove={isDragging ? handleDragMove : undefined}
+        onMouseUp={handleDragEnd}
+        onMouseLeave={handleDragEnd}
+        style={{ touchAction: 'none' }}
+      >
+        {sorted.map((card, i) => {
+          const rarCol = getRarityColor(card);
+          const isTop = i === topIdx;
+          const isAbove = i > topIdx; // cards below top in stack order
+          const depth = topIdx - i; // how many cards below top (0=top, 1=one below, etc.)
+
+          if (isAbove) return null; // cards above top are hidden (revealed)
+          if (depth > 4) return null; // only show 5 cards in stack
+
+          const stackOffset = depth * 4;
+          const stackScale  = 1 - depth * 0.03;
+          const baseTransform = `translateX(-50%) translateY(${stackOffset}px) scale(${stackScale})`;
+          const topTransform = isTop && isDragging
+            ? `translateX(calc(-50% + ${dragX}px)) translateY(${stackOffset}px) scale(${stackScale}) rotate(${dragX * 0.05}deg)`
+            : baseTransform;
+
+          return (
+            <div
+              key={i}
+              className={`sb-pocket-peek__card${isTop && isDragging ? ' sb-pocket-peek__card--dragging' : ''}`}
+              style={{
+                borderColor: rarCol,
+                zIndex: 10 - depth,
+                left: '50%',
+                top: 20 + depth * 10,
+                transform: topTransform,
+                transition: isDragging && isTop ? 'none' : 'transform 0.3s',
+                boxShadow: isTop
+                  ? `0 0 24px ${rarCol}55, 0 12px 36px rgba(0,0,0,0.6)`
+                  : '0 6px 18px rgba(0,0,0,0.4)',
+              }}
+            >
+              {/* Rarity stripe at top */}
+              <div className="sb-pocket-peek__rarity-stripe" style={{ background: rarCol }} />
+              {/* Card back design */}
+              <div style={{
+                position: 'absolute', inset: 6, borderRadius: 8,
+                background: `radial-gradient(ellipse at 50% 30%, ${rarCol}18, transparent 60%)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexDirection: 'column', gap: 6,
+              }}>
+                <span style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 32, color: rarCol, textShadow: `0 0 18px ${rarCol}`, opacity: 0.6 }}>♛</span>
+                <span style={{ fontFamily: 'Saira Condensed, sans-serif', fontSize: 8, letterSpacing: '0.3em', textTransform: 'uppercase', color: rarCol, opacity: 0.7 }}>
+                  {card.data?.rarita || '?'}
+                </span>
+              </div>
+              <div className="sb-pocket-peek__idx-label" style={{ color: rarCol }}>
+                {i + 1}/{sorted.length}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Dots */}
+      <div className="sb-pocket-peek__dots">
+        {sorted.map((card, i) => {
+          const rarCol = getRarityColor(card);
+          return (
+            <div key={i} onClick={() => setTopIdx(i)} style={{
+              width: i === topIdx ? 14 : 7, height: 7, borderRadius: 999,
+              background: i <= topIdx ? rarCol : 'rgba(174,156,255,0.2)',
+              cursor: 'pointer', transition: 'all 0.2s',
+              boxShadow: i === topIdx ? `0 0 8px ${rarCol}` : 'none',
+            }} />
+          );
+        })}
+      </div>
+
+      <div className="sb-pocket-peek__hint">Scorri per esplorare · Tocca fuori per chiudere</div>
+    </div>
+  );
+}
+
+// ── PackClosedScreen (ripristino + fixes) ──────────────────────────────
 function PackClosedScreen({ drop, isGodPack, onOpen }) {
-  const [phase, setPhase] = useState('idle'); // 'idle' | 'opening'
+  const [phase, setPhase] = useState('idle');
 
   const handleTap = () => {
     if (phase !== 'idle') return;
@@ -1807,59 +2082,28 @@ function PackClosedScreen({ drop, isGodPack, onOpen }) {
     <div className="sb-pack-closed" onClick={handleTap}>
       <div className={`sb-pack-closed__pack sb-pack-closed__pack--${phase}`}>
         {hasImage ? (
-          <img
-            src={drop.asset_bustina}
-            className="sb-pack-closed__img"
-            alt={drop.nome}
-          />
+          <img src={drop.asset_bustina} className="sb-pack-closed__img" alt={drop.nome} draggable={false} />
         ) : (
-          <div
-            style={{
-              width: '72vw', maxWidth: 300, height: '105vw', maxHeight: 440,
-              borderRadius: 20, position: 'relative', overflow: 'hidden',
-              background: isGodPack
-                ? `linear-gradient(160deg, #2a1a00 0%, #1a0800 100%)`
-                : `linear-gradient(160deg, #1a0a36 0%, #07051a 100%)`,
-              border: isGodPack
-                ? '3px solid rgba(245,197,96,0.8)'
-                : `3px solid ${col}80`,
-              boxShadow: isGodPack
-                ? '0 0 60px rgba(245,197,96,0.5), 0 20px 60px rgba(0,0,0,0.6)'
-                : `0 0 40px ${col}40, 0 20px 60px rgba(0,0,0,0.6)`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
+          <div style={{
+            width: '72vw', maxWidth: 300, height: '105vw', maxHeight: 440,
+            borderRadius: 20, position: 'relative', overflow: 'hidden',
+            background: isGodPack ? 'linear-gradient(160deg,#2a1a00,#1a0800)' : 'linear-gradient(160deg,#1a0a36,#07051a)',
+            border: isGodPack ? '3px solid rgba(245,197,96,0.8)' : `3px solid ${col}80`,
+            boxShadow: isGodPack ? '0 0 60px rgba(245,197,96,0.5),0 20px 60px rgba(0,0,0,0.6)' : `0 0 40px ${col}40,0 20px 60px rgba(0,0,0,0.6)`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
             {isGodPack && <div className="foil foil--strong" />}
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: `radial-gradient(ellipse 80% 60% at 50% 20%, ${col}25, transparent 60%),
-                           radial-gradient(ellipse 60% 80% at 80% 80%, ${col2}15, transparent 60%)`,
-            }} />
+            <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse 80% 60% at 50% 20%,${col}25,transparent 60%),radial-gradient(ellipse 60% 80% at 80% 80%,${col2}15,transparent 60%)` }} />
             <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
-              <div style={{
-                fontFamily: 'Unbounded, sans-serif', fontSize: 72,
-                color: isGodPack ? '#f5c560' : col,
-                textShadow: `0 0 40px ${isGodPack ? 'rgba(245,197,96,0.8)' : col + 'aa'}`,
-                lineHeight: 1,
-              }}>♛</div>
-              <div style={{
-                fontFamily: 'Unbounded, sans-serif', fontSize: 13, fontWeight: 800,
-                color: '#fff', marginTop: 12, letterSpacing: '-0.01em',
-                textShadow: '0 2px 8px rgba(0,0,0,0.6)',
-              }}>{drop?.nome || 'Pack Scellato'}</div>
-              <div style={{
-                fontFamily: 'Saira Condensed, sans-serif', fontSize: 9,
-                color: isGodPack ? '#ffc861' : col, opacity: 0.8,
-                letterSpacing: '0.3em', textTransform: 'uppercase',
-                marginTop: 6,
-              }}>
+              <div style={{ fontFamily: 'Unbounded,sans-serif', fontSize: 72, color: isGodPack ? '#f5c560' : col, textShadow: `0 0 40px ${isGodPack ? 'rgba(245,197,96,0.8)' : col+'aa'}`, lineHeight: 1 }}>♛</div>
+              <div style={{ fontFamily: 'Unbounded,sans-serif', fontSize: 13, fontWeight: 800, color: '#fff', marginTop: 12, letterSpacing: '-0.01em', textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>{drop?.nome || 'Pack Scellato'}</div>
+              <div style={{ fontFamily: 'Saira Condensed,sans-serif', fontSize: 9, color: isGodPack ? '#ffc861' : col, opacity: 0.8, letterSpacing: '0.3em', textTransform: 'uppercase', marginTop: 6 }}>
                 {isGodPack ? '✦ WAIFU PACK ✦' : '5 carte · 1 epico+'}
               </div>
             </div>
           </div>
         )}
       </div>
-
       {phase === 'idle' && (
         <>
           <div className="sb-pack-closed__tap-hint">Tocca per aprire</div>
@@ -1870,102 +2114,22 @@ function PackClosedScreen({ drop, isGodPack, onOpen }) {
   );
 }
 
-// ── PeekOverlay ─────────────────────────────────────────────────────────
-function PeekOverlay({ carteShuffled, currentIdx }) {
-  const CARD_W = 90;
-  const CARD_SPACING = 56; // overlap amount
-  const totalCards = carteShuffled.length;
-
-  return (
-    <div className="sb-peek-overlay">
-      <div className="sb-peek-label">Anteprima rarità — tieni premuto</div>
-
-      {/* Fan of card backs */}
-      <div style={{
-        position: 'relative',
-        width: CARD_W + (totalCards - 1) * CARD_SPACING + 20,
-        height: 200,
-        display: 'flex', alignItems: 'center',
-      }}>
-        {carteShuffled.map((c, i) => {
-          const rarCol = getRarityColor(c);
-          const revealed = i <= currentIdx;
-          const offset = i * CARD_SPACING;
-          const rotation = (i - 2) * 5; // fan rotation -10..+10 deg
-
-          return (
-            <div
-              key={i}
-              className="sb-peek-card"
-              style={{
-                position: 'absolute',
-                left: offset,
-                borderColor: rarCol,
-                transform: `rotate(${rotation}deg) translateY(${Math.abs(i - 2) * 4}px)`,
-                zIndex: i,
-                boxShadow: revealed
-                  ? `0 0 14px ${rarCol}55, 0 8px 24px rgba(0,0,0,0.5)`
-                  : '0 8px 24px rgba(0,0,0,0.5)',
-              }}
-            >
-              <div className="sb-peek-card__inner">
-                <div
-                  className="sb-peek-card__rarity-glow"
-                  style={{ background: rarCol }}
-                />
-                {/* Crown symbol in rarity color, semi-transparent */}
-                <span style={{
-                  fontFamily: 'Unbounded, sans-serif',
-                  fontSize: 26, color: rarCol, opacity: revealed ? 0.7 : 0.35,
-                }}>♛</span>
-              </div>
-              {revealed && (
-                <div style={{
-                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                  borderRadius: 8, background: `${rarCol}22`,
-                  border: `1px solid ${rarCol}55`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <span style={{ fontSize: 10, color: rarCol, opacity: 0.8 }}>✓</span>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <div style={{ marginTop: 20, display: 'flex', gap: 8, alignItems: 'center' }}>
-        {carteShuffled.map((c, i) => {
-          const rarCol = getRarityColor(c);
-          return (
-            <div key={i} style={{
-              width: 8, height: 8, borderRadius: '50%',
-              background: i <= currentIdx ? rarCol : 'rgba(174,156,255,0.2)',
-              boxShadow: i <= currentIdx ? `0 0 6px ${rarCol}` : 'none',
-              transition: 'all 0.2s',
-            }} />
-          );
-        })}
-      </div>
-
-      <div className="sb-peek-release-hint">Rilascia per tornare alla carta</div>
-    </div>
-  );
-}
-
-// ── CardRevealScreen ─────────────────────────────────────────────────────
+// ── CardRevealScreen v2 (punti 7,8,11,12,16) ───────────────────────────
 function CardRevealScreen({
   carteShuffled, currentIdx, onNext, onAllDone,
+  carteOriginali, // original pack order for peek (punto 12)
   profilo, collezione, avviaVideoSbusto,
-  cartaDettaglioSbus, setCartaDettaglioSbus,
-  outfitCat, poseCat, ModaleCarta, setProfilo, user,
+  sbusVideoAttivo, sbusVideoFinito, sbusCartaImmersiva, sbusVideoRef,
+  setSbusVideoFinito, chiudiVideoSbusto, rivediVideoSbusto,
 }) {
   const [peeking, setPeeking] = useState(false);
+  const [showAutoHint, setShowAutoHint] = useState(false);
   const longPressTimer = useRef(null);
-  const stageRef = useRef(null);
+  const autoHintTimer = useRef(null);
+  const IMMC = '#ec4899';
 
   const card = carteShuffled[currentIdx];
-  const isLast = currentIdx === carteShuffled.length - 1;
+  const isLast   = currentIdx === carteShuffled.length - 1;
   const isWaifu  = card.tipo === 'waifu';
   const isOutfit = card.tipo === 'outfit';
   const isPosa   = card.tipo === 'posa';
@@ -1973,8 +2137,22 @@ function CardRevealScreen({
   const isHot    = isWaifu && card.data?.hot === true && !!profilo?.hardPass;
   const isNew    = card.isNuova;
 
+  // Auto-hint after 3s (punto 8)
+  useEffect(() => {
+    clearTimeout(autoHintTimer.current);
+    setShowAutoHint(false);
+    autoHintTimer.current = setTimeout(() => setShowAutoHint(true), 3000);
+    return () => clearTimeout(autoHintTimer.current);
+  }, [currentIdx]);
+
+  const resetAutoHint = () => {
+    clearTimeout(autoHintTimer.current);
+    setShowAutoHint(false);
+  };
+
   const handlePointerDown = (e) => {
     e.preventDefault();
+    resetAutoHint();
     longPressTimer.current = setTimeout(() => setPeeking(true), 380);
   };
   const handlePointerUp = (e) => {
@@ -1986,19 +2164,21 @@ function CardRevealScreen({
   };
   const handlePointerLeave = () => {
     clearTimeout(longPressTimer.current);
-    setPeeking(false);
+    if (peeking) setPeeking(false);
   };
+
+  // Glow by rarity for dramatic entrance
+  const rarGlow = isWaifu ? RARITY_COLORS[card.data?.rarita] : null;
+  const isRare = isWaifu && ['leggendario','immersivo','epico'].includes(card.data?.rarita);
 
   return (
     <div className="sb-card-reveal">
-      {/* Progress */}
       <div className="sb-card-reveal__progress">
         Carta {currentIdx + 1} / {carteShuffled.length}
       </div>
 
-      {/* Card stage */}
+      {/* Main stage — no card detail on click (punto 7) */}
       <div
-        ref={stageRef}
         className="sb-card-reveal__stage"
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
@@ -2006,41 +2186,60 @@ function CardRevealScreen({
         onContextMenu={e => e.preventDefault()}
         style={{ touchAction: 'none' }}
       >
-        {/* Badges */}
-        <div style={{ position: 'absolute', top: 0, left: 16, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {isNew && <div className="sb-badge-new">NEW ✦</div>}
-          {isHot && <div className="sb-badge-hot">HOT 🔥</div>}
-        </div>
+        {/* Badges (punto 9 — more visible) */}
+        {(isNew || isHot) && (
+          <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 20, display: 'flex', flexDirection: 'column', gap: 6, pointerEvents: 'none' }}>
+            {isNew && <div className="sb-badge-new">NEW ✦</div>}
+            {isHot && <div className={`sb-badge-hot${isNew ? ' sb-badge-hot--below' : ''}`}>HOT 🔥</div>}
+          </div>
+        )}
+
+        {/* Rarity glow aura for rare+ cards */}
+        {isRare && rarGlow && (
+          <div style={{
+            position: 'absolute', inset: -20, borderRadius: 30,
+            background: `radial-gradient(ellipse, ${rarGlow}30, transparent 65%)`,
+            animation: 'pulseStrong 1.4s ease-in-out infinite',
+            pointerEvents: 'none', zIndex: 0,
+          }} />
+        )}
 
         <div className="sb-card-3d-wrap" key={currentIdx}>
-          <div className="sb-card-3d">
-            {isWaifu && (
-              <CartaWaifu
-                waifu={card.data}
-                dimensione="normale"
-                tipo="auto"
-                onClick={() => setCartaDettaglioSbus({ tipo: 'waifu', w: card.data, dati: collezione.waifu?.[card.data.id] || { copie: 1, livello: 1, stat_bonus: {} } })}
-              />
-            )}
-            {isOutfit && (
-              <CartaOutfit outfit={card.data} dimensione="normale"
-                onClick={() => setCartaDettaglioSbus({ tipo: 'outfit', o: card.data })} />
-            )}
-            {isPosa && (
-              <CartaPosa posa={card.data} dimensione="normale"
-                onClick={() => setCartaDettaglioSbus({ tipo: 'posa', p: card.data })} />
-            )}
+          <div className="sb-card-3d" style={{
+            boxShadow: rarGlow
+              ? `18px 18px 50px rgba(0,0,0,0.55), 0 0 30px ${rarGlow}40, -4px -4px 20px rgba(255,255,255,0.05)`
+              : '18px 18px 50px rgba(0,0,0,0.55), -4px -4px 20px rgba(255,255,255,0.05)',
+          }}>
+            {isWaifu  && <CartaWaifu waifu={card.data}  dimensione="normale" tipo="auto" />}
+            {isOutfit && <CartaOutfit outfit={card.data} dimensione="normale" />}
+            {isPosa   && <CartaPosa   posa={card.data}   dimensione="normale" />}
           </div>
         </div>
 
-        {/* Video immersiva button */}
-        {isImm && card.data?.asset_video && (
-          <div style={{ position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)' }}>
-            <button
-              className="sb-btn-video sb-btn-video--active"
-              onPointerDown={e => e.stopPropagation()}
-              onClick={e => { e.stopPropagation(); avviaVideoSbusto(card.data); }}
-            >▶ Carta Immersiva</button>
+        {/* Video immersiva button (punto 10+11) */}
+        {isImm && (
+          <div
+            style={{
+              position: 'absolute', bottom: 100, left: '50%', transform: 'translateX(-50%)',
+              zIndex: 30, display: 'flex', gap: 8,
+            }}
+          >
+            {card.data?.asset_video && (
+              <button
+                className="sb-btn-video sb-btn-video--active"
+                style={{ padding: '10px 18px', fontSize: 11, fontWeight: 700 }}
+                onPointerDown={e => e.stopPropagation()}
+                onPointerUp={e => { e.stopPropagation(); avviaVideoSbusto(card.data); }}
+              >▶ Carta Immersiva</button>
+            )}
+            {card.data?.asset_video_hard && profilo?.hardPass && (
+              <button
+                className="sb-btn-video sb-btn-video--active"
+                style={{ padding: '10px 18px', fontSize: 11, fontWeight: 700, background: 'linear-gradient(135deg,rgba(255,69,0,0.25),rgba(255,140,0,0.15))', borderColor: 'rgba(255,69,0,0.6)', color: '#ff8c00' }}
+                onPointerDown={e => e.stopPropagation()}
+                onPointerUp={e => { e.stopPropagation(); avviaVideoSbusto({ ...card.data, asset_video: card.data.asset_video_hard }); }}
+              >🔥 Video Hard</button>
+            )}
           </div>
         )}
       </div>
@@ -2049,79 +2248,113 @@ function CardRevealScreen({
         {isLast ? 'Tocca per vedere i risultati' : 'Tocca per la prossima carta'}
       </div>
 
-      {/* Hold hint */}
-      <div className="sb-card-reveal__nav-hint">
+      {/* Hold hint (punto 10 — più in alto, più visibile) */}
+      <div className="sb-card-reveal__nav-hint"
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+      >
         ►► Tieni premuto
       </div>
 
-      {/* Peek overlay */}
-      {peeking && (
-        <PeekOverlay carteShuffled={carteShuffled} currentIdx={currentIdx} />
+      {/* Auto-hint popup (punto 8) */}
+      {showAutoHint && (
+        <div className="sb-card-reveal__auto-hint">
+          Tocca per vedere la prossima carta
+        </div>
       )}
 
-      {/* Card detail modal */}
-      {cartaDettaglioSbus && ModaleCarta && (
-        <ModaleCarta carta={cartaDettaglioSbus} onClose={() => setCartaDettaglioSbus(null)}
-          outfitCat={outfitCat} poseCat={poseCat}
-          collezione={collezione} profilo={profilo} setProfilo={setProfilo} user={user} />
+      {/* Pokémon Pocket style peek (punto 17) */}
+      {peeking && (
+        <PocketPeekOverlay
+          carteOriginali={carteOriginali}
+          onClose={() => setPeeking(false)}
+        />
+      )}
+
+      {/* Video overlay */}
+      {sbusVideoAttivo && sbusCartaImmersiva && (
+        <div
+          onClick={() => { if (sbusVideoFinito) chiudiVideoSbusto(); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.96)', backdropFilter: 'blur(20px)', zIndex: 300, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <style>{`@keyframes scaleIn { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
+          <div onClick={e => e.stopPropagation()} style={{ animation: 'scaleIn 0.2s ease-out' }}>
+            <CartaWaifu waifu={sbusCartaImmersiva} dimensione="grande" tipo="auto"
+              videoAttivo={sbusVideoAttivo} videoRef={sbusVideoRef}
+              onVideoEnd={() => setSbusVideoFinito(true)} />
+          </div>
+          {!sbusVideoFinito && <div style={{ marginTop: 16, fontSize: 9, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', letterSpacing: 2 }}>In riproduzione…</div>}
+          {sbusVideoFinito && (
+            <div onClick={e => e.stopPropagation()} style={{ marginTop: 16, display: 'flex', gap: 10 }}>
+              <button onClick={rivediVideoSbusto} style={{ background: `linear-gradient(135deg,${IMMC}33,${IMMC}18)`, border: `1px solid ${IMMC}88`, borderRadius: 10, color: IMMC, fontFamily: 'Orbitron,monospace', fontSize: 10, fontWeight: 700, letterSpacing: 2, padding: '10px 22px', cursor: 'pointer' }}>↺ RIVEDI</button>
+              <button onClick={chiudiVideoSbusto} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: 'rgba(238,232,220,0.7)', fontFamily: 'Orbitron,monospace', fontSize: 10, fontWeight: 700, letterSpacing: 2, padding: '10px 22px', cursor: 'pointer' }}>✕ CHIUDI</button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
 }
 
-// ── ResultsScreen ────────────────────────────────────────────────────────
+// ── ResultsScreen v2 (punti 13, 14) ────────────────────────────────────
 function ResultsScreen({
   carteShuffled, profilo, collezione,
   outfitCat, poseCat, ModaleCarta, setProfilo, user,
-  avviaVideoSbusto,
   cartaDettaglioSbus, setCartaDettaglioSbus,
   onAvanti,
 }) {
-  const hasMore = typeof onAvanti === 'function';
+  const [flyOut, setFlyOut] = useState(false);
+
+  const handleAvanti = () => {
+    setFlyOut(true);
+    setTimeout(onAvanti, 700);
+  };
+
+  const sorted = useMemo(() => {
+    const rar = ['comune','raro','epico','leggendario','immersivo'];
+    return [...carteShuffled].sort((a, b) =>
+      rar.indexOf(a.data?.rarita ?? '') - rar.indexOf(b.data?.rarita ?? '')
+    );
+  }, [carteShuffled]);
 
   const renderCard = (card, i) => {
     const isWaifu  = card.tipo === 'waifu';
-    const isOutfit = card.tipo === 'outfit';
     const isHot    = isWaifu && card.data?.hot === true && !!profilo?.hardPass;
     const isNew    = card.isNuova;
+    const delay    = i * 60;
     return (
-      <div key={i} className="sb-results__card-wrap">
-        {isWaifu && (
-          <CartaWaifu
-            waifu={card.data} dimensione="piccola" tipo="auto"
-            onClick={() => setCartaDettaglioSbus({ tipo: 'waifu', w: card.data, dati: collezione.waifu?.[card.data.id] || { copie: 1, livello: 1, stat_bonus: {} } })}
-          />
-        )}
-        {isOutfit && <CartaOutfit outfit={card.data} dimensione="piccola" onClick={() => setCartaDettaglioSbus({ tipo: 'outfit', o: card.data })} />}
-        {card.tipo === 'posa' && <CartaPosa posa={card.data} dimensione="piccola" onClick={() => setCartaDettaglioSbus({ tipo: 'posa', p: card.data })} />}
-        {isNew && <div className="sb-badge-new">NEW ✦</div>}
-        {isHot && <div className="sb-badge-hot">HOT 🔥</div>}
+      // Mini wrapper (punto 13): fixed-size box with scaled card inside
+      <div key={i} style={{ width: 100, height: 150, overflow: 'visible', position: 'relative', flexShrink: 0 }}>
+        <div
+          className={flyOut ? `sb-results__card-wrap--flying` : ''}
+          style={{
+            transform: 'scale(0.70)',
+            transformOrigin: 'top left',
+            position: 'absolute', top: 0, left: 0,
+            animationDelay: flyOut ? `${delay}ms` : undefined,
+          }}
+        >
+          <div style={{ position: 'relative' }}>
+            {isWaifu && (
+              <CartaWaifu waifu={card.data} dimensione="piccola" tipo="auto"
+                onClick={() => setCartaDettaglioSbus({ tipo: 'waifu', w: card.data, dati: collezione.waifu?.[card.data.id] || { copie: 1, livello: 1, stat_bonus: {} } })} />
+            )}
+            {card.tipo === 'outfit' && <CartaOutfit outfit={card.data} dimensione="piccola" onClick={() => setCartaDettaglioSbus({ tipo: 'outfit', o: card.data })} />}
+            {card.tipo === 'posa'   && <CartaPosa   posa={card.data}   dimensione="piccola" onClick={() => setCartaDettaglioSbus({ tipo: 'posa', p: card.data })} />}
+            {isNew && <div className="sb-badge-new">NEW ✦</div>}
+            {isHot && <div className="sb-badge-hot">HOT 🔥</div>}
+          </div>
+        </div>
       </div>
     );
   };
-
-  // Sort by rarity for display: highest last (hero effect)
-  const sorted = [...carteShuffled].sort((a, b) => {
-    const rar = ['comune','raro','epico','leggendario','immersivo'];
-    return rar.indexOf(a.data?.rarita ?? '') - rar.indexOf(b.data?.rarita ?? '');
-  });
 
   return (
     <div className="sb-results fade-in">
       <div className="sb-results__title">Risultati apertura</div>
       <div className="sb-results__divider" />
-
-      {/* Row 1: first 3 cards */}
-      <div className="sb-results__row">
-        {sorted.slice(0, 3).map((c, i) => renderCard(c, i))}
-      </div>
-      {/* Row 2: last 2 cards centered */}
-      <div className="sb-results__row">
-        {sorted.slice(3, 5).map((c, i) => renderCard(c, i + 3))}
-      </div>
-
-      <button className="sb-btn-avanti" onClick={onAvanti}>Avanti</button>
-
+      <div className="sb-results__row">{sorted.slice(0, 3).map((c, i) => renderCard(c, i))}</div>
+      <div className="sb-results__row">{sorted.slice(3, 5).map((c, i) => renderCard(c, i + 3))}</div>
+      {!flyOut && <button className="sb-btn-avanti" onClick={handleAvanti}>Avanti</button>}
       {cartaDettaglioSbus && ModaleCarta && (
         <ModaleCarta carta={cartaDettaglioSbus} onClose={() => setCartaDettaglioSbus(null)}
           outfitCat={outfitCat} poseCat={poseCat}
@@ -2155,7 +2388,7 @@ function SelectionScreen({ drop, dropsAttivi, dropSelId, setDropSelId, profilo, 
         : Number(profilo.ultimaRicaricaPacchetti) || 0;
       if (!lastMs) return;
       const diff = lastMs + TIMER.PACCHETTO_HOURS * 3600000 - Date.now();
-      if (diff <= 0) { setCdOmaggio('Disponibile!'); return; }
+      if (diff <= 0) { setCdOmaggio(''); return; }
       const h = Math.floor(diff / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
       setCdOmaggio(`${h}h ${m}m`);
@@ -2288,7 +2521,7 @@ function SelectionScreen({ drop, dropsAttivi, dropSelId, setDropSelId, profilo, 
                 {pt.label}
               </span>
               <span className="sb-pack-type-tile__count" style={{ color: pt.col }}>
-                {cnt > 0 ? `×${cnt}` : (pt.id === 'omaggio' && cdOmaggio ? cdOmaggio : '—')}
+                {cnt > 0 ? `×${cnt}` : (pt.id === 'omaggio' && cdOmaggio ? `⏱ ${cdOmaggio}` : '—')}
               </span>
             </div>
           );
@@ -2332,7 +2565,7 @@ function SelectionScreen({ drop, dropsAttivi, dropSelId, setDropSelId, profilo, 
           style={!selectedType ? { opacity: 0.55 } : {}}
           onClick={() => handleOpenClick(() => canOpen10 && onApriMulti(selectedType))}
         >
-          × {selectedType ? Math.min(10, selCount) : 10} &nbsp; APRI
+          × {selectedType && selCount > 0 ? Math.min(10, selCount) : 10} &nbsp; APRI
         </button>
       </div>
 
@@ -2360,6 +2593,8 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
   const [carteRevealShuffled, setCarteRevealShuffled] = useState([]);
   const [currentRevealIdx, setCurrentRevealIdx] = useState(0);
   const [mostraCatalogo, setMostraCatalogo] = useState(false);
+  const [catalogPage, setCatalogPage] = useState(0);
+  const CATALOG_PAGE_SIZE = 20;
   const [catTab, setCatTab] = useState('tutte');
   const [filtroRarita, setFiltroRarita] = useState('tutte');
   const [ordine, setOrdine] = useState('nome');
@@ -2539,6 +2774,9 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
   const packCommonProps = {
     profilo, collezione, outfitCat, poseCat, ModaleCarta, setProfilo, user,
     avviaVideoSbusto, cartaDettaglioSbus, setCartaDettaglioSbus,
+    // Video overlay props for CardRevealScreen
+    sbusVideoAttivo, sbusVideoFinito, sbusCartaImmersiva, sbusVideoRef,
+    setSbusVideoFinito, chiudiVideoSbusto, rivediVideoSbusto,
   };
 
   if (stato === 'pack_closed') {
@@ -2566,6 +2804,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
       <div style={{ padding: '8px 16px' }}>
         <CardRevealScreen
           carteShuffled={carteRevealShuffled}
+          carteOriginali={carteRivelate}
           currentIdx={currentRevealIdx}
           onNext={handleNext}
           onAllDone={handleAllDone}
@@ -2758,7 +2997,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
           </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', maxHeight: 400, overflowY: 'auto', padding: 4 }}>
-            {catalogoFiltrato.map((c, i) => (
+            {catalogoFiltrato.slice(catalogPage * CATALOG_PAGE_SIZE, (catalogPage + 1) * CATALOG_PAGE_SIZE).map((c, i) => (
               c._tipo === 'waifu' ? <CartaWaifu key={c.id} waifu={c} dimensione="piccola" tipo="auto" isHot={c.hot === true} censurata={c.hot === true && !profilo?.hardPass} /> :
               c._tipo === 'outfit' ? <CartaOutfit key={c.id} outfit={c} dimensione="piccola" /> :
               <CartaPosa key={c.id} posa={c} dimensione="piccola" />
