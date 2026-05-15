@@ -1838,9 +1838,9 @@ function EdgeSpoilerOverlay({ carteShuffled, currentIdx, onClose }) {
   const isOutfit = currentCard?.tipo === 'outfit';
 
   // Strip constants
-  const STRIP_W   = 32;  // px of each card back strip visible
-  const STRIP_GAP = 10;  // px gap between strips (simulates card thickness)
-  const CARD_H    = 215; // cartaWaifu piccola height approximation
+  const STRIP_W   = 12;  // px visible per card edge (tight physical stack)
+  const STRIP_GAP = 3;   // px gap between edges (card thickness illusion)
+  const CARD_H    = 215; // cartaWaifu piccola height
 
   return (
     <div
@@ -1955,8 +1955,9 @@ function DropCarousel({ dropsAttivi, dropSelId, setDropSelId }) {
   const [dragDelta, setDragDelta] = useState(0);
   const [dragging, setDragging] = useState(false);
 
-  const prev = () => { if (currentIdx > 0) setDropSelId(dropsAttivi[currentIdx - 1].id); };
-  const next = () => { if (currentIdx < dropsAttivi.length - 1) setDropSelId(dropsAttivi[currentIdx + 1].id); };
+  const n = dropsAttivi.length;
+  const prev = () => setDropSelId(dropsAttivi[(currentIdx - 1 + n) % n].id);
+  const next = () => setDropSelId(dropsAttivi[(currentIdx + 1) % n].id);
 
   const handleDown = (e) => {
     dragStart.current = (e.touches ? e.touches[0] : e).clientX;
@@ -1978,13 +1979,16 @@ function DropCarousel({ dropsAttivi, dropSelId, setDropSelId }) {
 
   return (
     <div
-      style={{ width: '100%', overflow: 'hidden', position: 'relative', height: 280, marginBottom: 16 }}
+      style={{ width: '100%', overflow: 'hidden', position: 'relative', height: 230, marginBottom: 14 }}
       onTouchStart={handleDown} onTouchMove={handleMove} onTouchEnd={handleUp}
       onMouseDown={handleDown} onMouseMove={dragging ? handleMove : undefined} onMouseUp={handleUp}
       onMouseLeave={() => { if (dragging) { setDragging(false); setDragDelta(0); } }}
     >
       {dropsAttivi.map((d, i) => {
-        const dist = i - currentIdx;
+        let dist = i - currentIdx;
+        // Circular wrap: show items that wrap around the ends
+        if (dist > n / 2) dist -= n;
+        if (dist < -n / 2) dist += n;
         // Position: center at 50% + dist * 54vw offset
         const offset = dist * 54; // vw units
         const scale = i === currentIdx ? 1 : 0.70;
@@ -2014,7 +2018,7 @@ function DropCarousel({ dropsAttivi, dropSelId, setDropSelId }) {
               <img
                 src={d.asset_bustina}
                 style={{
-                  width: '52vw', maxWidth: 210,
+                  width: '44vw', maxWidth: 175,
                   borderRadius: 18, display: 'block',
                   boxShadow: i === currentIdx
                     ? `0 0 40px ${col}55, 0 16px 50px rgba(0,0,0,0.6)`
@@ -2026,7 +2030,7 @@ function DropCarousel({ dropsAttivi, dropSelId, setDropSelId }) {
               />
             ) : (
               <div style={{
-                width: '52vw', maxWidth: 210,
+                width: '44vw', maxWidth: 175,
                 height: '76vw', maxHeight: 310,
                 borderRadius: 18,
                 background: 'linear-gradient(160deg,#1a0a36,#07051a)',
@@ -2120,9 +2124,9 @@ function CardRevealScreen({
     setSkipping(true);
     const totalRemaining = carteShuffled.length - currentIdx;
     for (let i = 0; i < totalRemaining; i++) {
-      setTimeout(() => setSkipIdx(currentIdx + i), i * 300);
+      setTimeout(() => setSkipIdx(currentIdx + i), i * 500);
     }
-    setTimeout(onAllDone, totalRemaining * 300 + 200);
+    setTimeout(onAllDone, totalRemaining * 500 + 200);
   };
 
   const handleStageDown = (e) => {
@@ -2276,7 +2280,7 @@ function CardRevealScreen({
 
 
 // ── PackClosedScreen (ripristino + fixes) ──────────────────────────────
-function PackClosedScreen({ drop, isGodPack, onOpen }) {
+function PackClosedScreen({ drop, isGodPack, onOpen, packNumber, totalPacks }) {
   const [phase, setPhase] = useState('idle');
 
   const handleTap = () => {
@@ -2317,6 +2321,11 @@ function PackClosedScreen({ drop, isGodPack, onOpen }) {
       </div>
       {phase === 'idle' && (
         <>
+          {packNumber && totalPacks && (
+            <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:12, color:'rgba(241,235,255,0.55)', letterSpacing:'-0.01em', marginBottom:6 }}>
+              Pack {packNumber} / {totalPacks}
+            </div>
+          )}
           <div className="sb-pack-closed__tap-hint">Tocca per aprire</div>
           <div className="sb-pack-closed__sub">Tappa ovunque</div>
         </>
@@ -2793,6 +2802,8 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
           drop={dropAttivo}
           isGodPack={isGodPackAperto}
           onOpen={handlePackOpen}
+          packNumber={multiPackCarte.length > 1 ? multiPackIndice + 1 : null}
+          totalPacks={multiPackCarte.length > 1 ? multiPackCarte.length : null}
         />
       </div>
     );
