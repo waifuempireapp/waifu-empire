@@ -1833,35 +1833,48 @@ input:focus, textarea:focus, select:focus {
 
 /* ===== Drop Carousel ===== */
 .sb-drop-carousel {
-  position: relative; width: 100%; overflow: hidden;
-  display: flex; align-items: center; justify-content: center;
-  margin-bottom: 16px; height: 300px;
+  position: relative; width: 100%;
+  height: 290px;
+  margin-bottom: 16px;
   touch-action: pan-y;
+  overflow: visible;
 }
-.sb-drop-carousel__track {
-  display: flex; align-items: center; justify-content: center;
-  gap: 0; width: 100%; position: relative;
-}
+/* each item absolutely positioned from left:50% */
 .sb-drop-carousel__item {
   position: absolute;
-  transition: transform 0.35s cubic-bezier(0.23,1,0.32,1), opacity 0.35s, z-index 0s;
-  cursor: pointer;
-  user-select: none;
+  left: 50%; top: 50%;
+  /* default: hidden */
+  transform: translate(-50%, -50%) translateX(0) scale(0.5);
+  opacity: 0; pointer-events: none;
+  transition: transform 0.38s cubic-bezier(0.23,1,0.32,1), opacity 0.3s, filter 0.3s;
+  cursor: pointer; user-select: none; -webkit-user-drag: none;
 }
 .sb-drop-carousel__item--center {
-  z-index: 3; transform: translateX(0) scale(1); opacity: 1;
+  z-index: 3;
+  transform: translate(-50%, -50%) translateX(0) scale(1);
+  opacity: 1; pointer-events: auto;
 }
 .sb-drop-carousel__item--left {
-  z-index: 2; transform: translateX(-52%) scale(0.72); opacity: 0.65;
-  filter: brightness(0.75);
+  z-index: 2;
+  transform: translate(-50%, -50%) translateX(-170px) scale(0.70);
+  opacity: 0.7; pointer-events: auto;
+  filter: brightness(0.70) saturate(0.8);
 }
 .sb-drop-carousel__item--right {
-  z-index: 2; transform: translateX(52%) scale(0.72); opacity: 0.65;
-  filter: brightness(0.75);
+  z-index: 2;
+  transform: translate(-50%, -50%) translateX(170px) scale(0.70);
+  opacity: 0.7; pointer-events: auto;
+  filter: brightness(0.70) saturate(0.8);
 }
-.sb-drop-carousel__item--hidden {
-  z-index: 1; opacity: 0; pointer-events: none;
-  transform: translateX(-80%) scale(0.5);
+.sb-drop-carousel__item--far-left {
+  z-index: 1;
+  transform: translate(-50%, -50%) translateX(-280px) scale(0.45);
+  opacity: 0.25; pointer-events: none;
+}
+.sb-drop-carousel__item--far-right {
+  z-index: 1;
+  transform: translate(-50%, -50%) translateX(280px) scale(0.45);
+  opacity: 0.25; pointer-events: none;
 }
 
 /* Auto-hint after 3s in pack reveal */
@@ -1891,6 +1904,100 @@ input:focus, textarea:focus, select:focus {
 }
 .sb-results__card-wrap--flying {
   animation: sbFlyCard 0.55s ease-in forwards;
+}
+
+/* ===== Edge Spoiler System ===== */
+@keyframes sbEdgeShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes sbEdgeGlowPulse {
+  0%,100% { opacity: var(--eg-base, 0.7); }
+  50%      { opacity: 1; }
+}
+.sb-edge-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.15s ease-out;
+  touch-action: none;
+}
+.sb-edge-stage {
+  position: relative;
+  display: flex; align-items: center;
+}
+.sb-edge-current-card {
+  position: relative; z-index: 10; flex-shrink: 0;
+  /* current card shown normally */
+  filter: drop-shadow(0 0 16px rgba(255,255,255,0.15));
+}
+.sb-edge-fan {
+  position: absolute;
+  right: -12px; top: 0; bottom: 0;
+  display: flex; align-items: center;
+  transition: transform 0.12s;
+}
+/* Individual edge card slot */
+.sb-edge-slot {
+  position: absolute;
+  right: 0;
+  transform-origin: bottom center;
+}
+/* The visible edge strip */
+.sb-edge-strip {
+  width: 16px; height: 215px;
+  border-radius: 4px 0 0 4px;
+  position: relative; overflow: hidden;
+  /* Left border = rarity color */
+  border-left: 3px solid var(--ec, #b4bcc8);
+  /* Dark body hiding artwork */
+  background: linear-gradient(90deg,
+    var(--ec, #b4bcc8) 0%,
+    rgba(5,3,18,0.97) 30%,
+    rgba(5,3,18,0.99) 100%
+  );
+}
+/* Glow for rare+ */
+.sb-edge-strip--rare {
+  box-shadow: -2px 0 12px var(--ec), 0 0 8px var(--ec-30, rgba(90,169,255,0.3));
+}
+.sb-edge-strip--epic {
+  box-shadow: -2px 0 18px var(--ec), 0 0 14px var(--ec-50, rgba(181,115,255,0.5));
+  animation: sbEdgeGlowPulse 2.2s ease-in-out infinite;
+}
+.sb-edge-strip--legendary {
+  box-shadow: -2px 0 22px var(--ec), 0 0 20px var(--ec-60, rgba(255,200,97,0.6)), inset 1px 0 8px var(--ec-20);
+  animation: sbEdgeGlowPulse 1.6s ease-in-out infinite;
+}
+.sb-edge-strip--immersive {
+  box-shadow: -2px 0 28px var(--ec), 0 0 28px var(--ec-70, rgba(255,133,182,0.7)), inset 1px 0 12px var(--ec-30);
+  animation: sbEdgeGlowPulse 1.2s ease-in-out infinite;
+}
+/* Foil shimmer for epic+ */
+.sb-edge-shimmer {
+  position: absolute; inset: 0;
+  background: linear-gradient(115deg,
+    transparent 30%, rgba(255,255,255,0.18) 45%,
+    rgba(255,255,255,0.06) 55%, transparent 70%);
+  background-size: 200% 100%;
+  animation: sbEdgeShimmer 2s linear infinite;
+  pointer-events: none;
+}
+/* Label */
+.sb-edge-label {
+  position: absolute; bottom: -28px; left: 50%; transform: translateX(-50%);
+  font-family: 'Saira Condensed', sans-serif; font-size: 9px;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(241,235,255,0.35); white-space: nowrap;
+}
+
+/* ===== Skip animation ===== */
+@keyframes sbCardFlash {
+  0%,85%  { opacity: 1; }
+  95%,100% { opacity: 0; transform: scale(1.05); }
+}
+.sb-card-3d--flashing {
+  animation: sbCardFlash 0.15s ease-out forwards;
 }
 
 /* ===== Pokémon Pocket style peek — draggable card stack ===== */
