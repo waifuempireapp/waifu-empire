@@ -283,6 +283,7 @@ input:focus, textarea:focus, select:focus {
   -webkit-overflow-scrolling: touch;
   cursor: grab;
   position: relative;
+  border: 0.8px solid rgba(167,139,250,0.18);
 }
 .mappa-scroll-container:active { cursor: grabbing; }
 .mappa-scroll-container::-webkit-scrollbar { width: 4px; height: 4px; }

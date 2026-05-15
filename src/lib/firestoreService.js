@@ -575,6 +575,52 @@ export async function incrementaMissioneProgresso(uid, tipoEvento, amount = 1) {
   } catch (_) {}
 }
 
+// =================== TERRITORI POST-BATTAGLIA ===================
+// USAGE: chiamare PRIMA di mostrare il result popup, PRIMA di aggiornare lo stato React
+// Se lancia errore: mostrare messaggio all'utente, NON aggiornare map state in-memory
+
+/**
+ * Aggiorna atomicamente l'ownership di un territorio post-battaglia.
+ * @param {string} uid — UID del vincitore (attaccante)
+ * @param {string} territorioId — ID del territorio conteso
+ * @param {'conquistato'|'difeso'|'pareggio'} esito — risultato della battaglia
+ */
+export async function aggiornaTerritorioPossBattaglia(uid, territorioId, esito) {
+  if (esito !== 'conquistato') return; // solo se attaccante vince
+
+  try {
+    const userRef = doc(db, 'users', uid);
+    const snap = await getDoc(userRef);
+    if (!snap.exists()) throw new Error('User document not found');
+
+    const dati = snap.data();
+    const territoriUtente = dati.territoriUtente || {};
+
+    // Aggiornamento atomico: marca il territorio come conquistato
+    const nuoviTerritori = {
+      ...territoriUtente,
+      [territorioId]: {
+        ...(territoriUtente[territorioId] || {}),
+        conquistato: true,
+        impero: dati.nomeImpero || uid,
+        coloreImpero: dati.coloreImpero || '#f5a623',
+        aggiornato: Date.now(),
+      },
+    };
+
+    await updateDoc(userRef, { territoriUtente: nuoviTerritori });
+    return { success: true };
+  } catch (err) {
+    console.error('[aggiornaTerritorioPossBattaglia] FAILED', {
+      territorioId,
+      winnerUid: uid,
+      timestamp: new Date().toISOString(),
+      error: err.message,
+    });
+    throw err; // re-throw per gestione nell'UI
+  }
+}
+
 // =================== ATTIVITA AMICI ===================
 export async function writeAttivita(uid, tipo, dettaglio) {
   const ref = collection(db, 'users', uid, 'attivita');

@@ -33,7 +33,16 @@
       "Bash(mkdir openspec\\\\changes\\\\sbusta-rework\\\\specs\\\\sbusta-bulk-open)",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d['instruction'][:500]\\)\")",
       "Bash(powershell -Command \"\\(Get-Content 'src\\\\app\\\\gioco\\\\page.jsx'\\)[\\(2222-1\\)..\\(2435-1\\)] | Out-String | Measure-Object -Character | Select-Object -ExpandProperty Characters\")",
-      "Bash(node fix-encoding.js)"
+      "Bash(node fix-encoding.js)",
+      "Bash(python3)",
+      "Bash(node)",
+      "Bash(node fix_map.js)",
+      "Bash(Get-ChildItem \"C:\\\\Progetti\\\\Impero delle waifu\\\\impero-waifu\\\\src\\\\components\")",
+      "Bash(Select-Object Name)",
+      "Skill(opsx:apply)",
+      "Skill(opsx:apply:*)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'Progress: {d[\\\\\"progress\\\\\"][\\\\\"complete\\\\\"]}/{d[\\\\\"progress\\\\\"][\\\\\"total\\\\\"]} complete'\\)\")",
+      "Bash(node -e \"let d=''; process.stdin.on\\('data',c=>d+=c\\); process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\); console.log\\('Progress: '+j.progress.complete+'/'+j.progress.total\\)}\\)\")"
     ]
   }
 }

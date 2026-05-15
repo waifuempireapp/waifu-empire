@@ -462,3 +462,27 @@ export async function inizializzaArena(codice, uid, teamIds) {
     aggiornato: serverTimestamp(),
   });
 }
+
+// ── PvP Pick Phase: salva i picks del giocatore ──────────────────────────
+// picks = array di {id, slot} — slot 1=starter, 2=bench1, 3=bench2
+// Il campo è separato e i valori singoli non espongono l'ordine all'avversario
+// prima della rivelazione (Security Rules devono proteggere pvpPicks.{uid} in lettura).
+export async function salvaPvpPicks(codicePartita, uid, picksIds) {
+  const docRef = doc(db, 'partite_multi', codicePartita);
+  await updateDoc(docRef, {
+    [`pvpPicks.${uid}`]: picksIds,
+    [`pvpPicksLockTime.${uid}`]: Date.now(),
+    aggiornato: serverTimestamp(),
+  });
+}
+
+// ── PvP Pick Phase: ascolta i picks e notifica quando entrambi hanno scelto ─
+// callback riceve l'oggetto picks = { [uid]: picksIds[] }
+export function ascoltaPvpPicks(codicePartita, callback) {
+  const docRef = doc(db, 'partite_multi', codicePartita);
+  return onSnapshot(docRef, (snap) => {
+    const data = snap.data();
+    const picks = data?.pvpPicks || {};
+    callback(picks);
+  });
+}

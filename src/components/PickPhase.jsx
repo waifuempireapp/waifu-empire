@@ -3,6 +3,7 @@
 // PickPhase: hidden 3-from-roster draft before WaifuBattleArena loads.
 // Supports CPU mode and PvP pass-the-device mode.
 // Secrecy is client-side only (acceptable for casual/social play).
+// Named exports: RevealScreen (standalone reveal used when both picks are known)
 import { useState, useEffect } from 'react';
 import { TYPE_COLORS, initBattleWaifu, computeSpeed, computeCritChance } from '@/lib/battleEngine';
 
@@ -199,8 +200,8 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
   };
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Not enough waifu guard
-  if (roster5P.length < 3) {
+  // Not enough waifu guard (min 5 for pick phase — pick 3 from 5)
+  if (roster5P.length < 5) {
     return (
       <div style={S.root}>
         <div style={{ ...S.header, textAlign: 'center' }}>
@@ -212,7 +213,7 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
           <div>
             <div style={{ fontSize: 40, marginBottom: 16 }}>😔</div>
             <div style={{ fontFamily: 'Fredoka', fontSize: 14, color: '#eedcd4', lineHeight: 1.6 }}>
-              Hai bisogno di almeno 3 waifu per combattere.
+              Hai bisogno di almeno 5 waifu per partecipare alla pick phase.
             </div>
             <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,.4)', marginTop: 8, letterSpacing: 1 }}>
               Apri bustine nella sezione Sbusta per ottenerne di più.
@@ -391,6 +392,90 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
           {activeSlots.length === 3 ? '✓ CONFERMA TEAM' : `SCEGLI ${3 - activeSlots.length} WAIFU`}
         </button>
       </div>
+    </div>
+  );
+}
+
+// ─── RevealScreen — named export ─────────────────────────────────────────────
+/**
+ * RevealScreen — schermata di rivelazione standalone.
+ * Usata quando entrambi i pick sono noti (es. dopo PickPhase vs CPU o PvP online).
+ *
+ * @param {Object}   myStarter       — waifu oggetto del player (slot 0)
+ * @param {Object}   opponentStarter — waifu oggetto dell'avversario (slot 0)
+ * @param {string}   myName          — nome del player
+ * @param {string}   opponentName    — nome dell'avversario
+ * @param {Function} onStart         — callback quando il player preme "INIZIA"
+ */
+export function RevealScreen({ myStarter, opponentStarter, myName = 'Tu', opponentName = 'CPU', onStart }) {
+  const myBs   = myStarter?._battleStats   ?? myStarter?.battleStats   ?? {};
+  const oppBs  = opponentStarter?._battleStats ?? opponentStarter?.battleStats ?? {};
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 45, overflow: 'hidden',
+      background: 'linear-gradient(180deg,#080318 0%,#120528 50%,#080318 100%)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      padding: 24, paddingBottom: 'env(safe-area-inset-bottom,0px)',
+    }}>
+      <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#f5a623', letterSpacing: 3, marginBottom: 10 }}>
+        RIVELAZIONE
+      </div>
+      <div style={{ fontFamily: 'Orbitron', fontSize: 22, fontWeight: 900, color: '#eedcd4', letterSpacing: 4, marginBottom: 28, textAlign: 'center' }}>
+        ⚔ BATTAGLIA!
+      </div>
+
+      {/* Starter vs Starter */}
+      <div style={{ display: 'flex', gap: 28, alignItems: 'flex-end', justifyContent: 'center', marginBottom: 28 }}>
+        {/* My starter */}
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: '#00C8FF', letterSpacing: 2, marginBottom: 6 }}>
+            {myName}
+          </div>
+          <div style={{ width: 100, height: 148, borderRadius: 10, overflow: 'hidden', border: '2px solid rgba(0,200,255,.4)', background: 'rgba(6,3,15,.8)' }}>
+            {myStarter?.asset_statica
+              ? <img src={myStarter.asset_statica} alt={myStarter.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
+              : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 32, opacity: 0.2 }}>◈</div>
+            }
+          </div>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#eedcd4', marginTop: 6, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {myStarter?.nome ?? myStarter?.name ?? '—'}
+          </div>
+          <TypeBadge type={myBs.type ?? 'Arcana'} />
+        </div>
+
+        <div style={{ fontFamily: 'Orbitron', fontSize: 26, fontWeight: 900, color: '#ff2d78', marginBottom: 36 }}>VS</div>
+
+        {/* Opponent starter */}
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: '#FF3355', letterSpacing: 2, marginBottom: 6 }}>
+            {opponentName}
+          </div>
+          <div style={{ width: 100, height: 148, borderRadius: 10, overflow: 'hidden', border: '2px solid rgba(255,50,80,.4)', background: 'rgba(6,3,15,.8)' }}>
+            {opponentStarter?.asset_statica
+              ? <img src={opponentStarter.asset_statica} alt={opponentStarter.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
+              : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 32, opacity: 0.2 }}>◈</div>
+            }
+          </div>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#eedcd4', marginTop: 6, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {opponentStarter?.nome ?? opponentStarter?.name ?? '—'}
+          </div>
+          <TypeBadge type={oppBs.type ?? 'Arcana'} />
+        </div>
+      </div>
+
+      <button
+        onClick={onStart}
+        style={{
+          padding: '14px 40px',
+          background: 'linear-gradient(135deg,#f5a623,#d4880a)',
+          border: 'none', borderRadius: 12, cursor: 'pointer',
+          fontFamily: 'Orbitron', fontSize: 13, fontWeight: 700,
+          color: '#000', letterSpacing: 2,
+          boxShadow: 'rgba(245,166,35,0.4) 0px 8px 24px 0px',
+        }}
+      >
+        ⚔ INIZIA LA BATTAGLIA
+      </button>
     </div>
   );
 }

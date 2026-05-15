@@ -17,7 +17,8 @@ const BATTLE_CSS = `
   @keyframes koFx  {0%{transform:scale(1);opacity:1}60%{transform:scale(.82) translateY(10px);opacity:.4}100%{transform:scale(.38) translateY(32px);opacity:0}}
   @keyframes fadeMsg  {from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
   @keyframes floatDmg {0%{opacity:1;transform:translateY(0) scale(.82)}20%{transform:translateY(-24px) scale(1.18)}65%{opacity:1;transform:translateY(-55px) scale(1)}100%{opacity:0;transform:translateY(-82px) scale(.85)}}
-  @keyframes hpCrit   {0%,100%{filter:brightness(1)}50%{filter:brightness(1.7)}}
+  @keyframes hpCrit   {0%,100%{filter:brightness(1)}50%{filter:brightness(1.8) saturate(1.5)}}
+  .wba-hp-crit { animation: hpCrit 0.8s ease-in-out infinite; }
   @keyframes timerUrg {0%,100%{transform:scale(1)}50%{transform:scale(1.16)}}
   @keyframes benchPop {from{transform:scale(.88);opacity:.65}to{transform:scale(1);opacity:1}}
   @keyframes victPop  {0%{transform:scale(.5);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
@@ -86,22 +87,30 @@ function PpDots({ pp, maxPp }) {
 }
 
 // ─── HP BAR ───────────────────────────────────────────────────────────────────
-function HpBar({ hp, maxHp, showNums, h=8 }) {
+function HpBar({ hp, maxHp, showNums, h=8, isPlayer }) {
   const pct = maxHp>0 ? Math.max(0,Math.min(100,(hp/maxHp)*100)) : 0;
-  const col = pct>50?'#00e676':pct>25?'#ffd666':'#ff4d4d';
   const isCrit = pct<=25 && hp>0;
+  // Task 19.3 & 19.4: gradient per lato; 19.5: classe wba-hp-crit sotto 25%
+  const barBg = isPlayer === true
+    ? 'linear-gradient(90deg, #6cf0e0, #a78bfa)'
+    : isPlayer === false
+      ? 'linear-gradient(90deg, #ff85b6, #a78bfa)'
+      : (pct>50?'#00e676':pct>25?'#ffd666':'#ff4d4d');
+  const numCol = isPlayer === true ? '#6cf0e0' : isPlayer === false ? '#ff85b6' : (pct>50?'#00e676':pct>25?'#ffd666':'#ff4d4d');
   return (
     <div>
       <div style={{height:h,background:'rgba(0,0,0,.5)',borderRadius:h,overflow:'hidden'}}>
-        <div style={{
-          width:`${pct}%`,height:'100%',background:col,borderRadius:h,
-          transition:'width .6s cubic-bezier(.25,.8,.25,1),background .5s ease',
-          animation:isCrit?'hpCrit 1s ease-in-out infinite':'none',
-        }}/>
+        <div
+          className={isCrit ? 'wba-hp-crit' : undefined}
+          style={{
+            width:`${pct}%`,height:'100%',background:barBg,borderRadius:h,
+            transition:'width .6s cubic-bezier(.25,.8,.25,1)',
+          }}
+        />
       </div>
       {showNums&&(
         <div style={{display:'flex',justifyContent:'flex-end',marginTop:2,gap:2}}>
-          <span style={{fontFamily:'Orbitron',fontSize:11,fontWeight:700,color:col}}>{Math.max(0,hp)}</span>
+          <span style={{fontFamily:'Orbitron',fontSize:11,fontWeight:700,color:numCol}}>{Math.max(0,hp)}</span>
           <span style={{fontFamily:'Orbitron',fontSize:9,color:'rgba(238,220,212,.28)',alignSelf:'flex-end',marginBottom:1}}>/{maxHp}</span>
         </div>
       )}
@@ -109,14 +118,28 @@ function HpBar({ hp, maxHp, showNums, h=8 }) {
   );
 }
 
+// ─── RARITY CARD BACKGROUND (Task 19.2) ──────────────────────────────────────
+function getRarityCardBg(rarità) {
+  switch (rarità?.toLowerCase()) {
+    case 'leggendario': return 'linear-gradient(160deg, rgb(74,49,5) 0%, rgb(29,17,2) 100%)';
+    case 'epico':       return 'linear-gradient(160deg, rgb(42,18,85) 0%, rgb(16,5,42) 100%)';
+    case 'immersivo':   return 'linear-gradient(160deg, rgb(79,18,69) 0%, rgb(30,4,32) 100%)';
+    case 'raro':        return 'linear-gradient(160deg, rgb(20,42,85) 0%, rgb(6,17,44) 100%)';
+    default:            return 'linear-gradient(160deg, #1a1a2e 0%, #0d0d1a 100%)';
+  }
+}
+const FOIL_RARITIES = ['epico','leggendario','immersivo'];
+
 // ─── WAIFU SPRITE ─────────────────────────────────────────────────────────────
 function WaifuSprite({ waifu, size=120, anim='', style={}, isPlayer=false }) {
   if (!waifu) return null;
   const tc = TYPE_COLORS[waifu.type]?.border ?? '#444';
+  const cardBg = getRarityCardBg(waifu.rarità);
+  const hasFoil = FOIL_RARITIES.includes(waifu?.rarità?.toLowerCase());
   return (
     <div className={anim} style={{
       width:size, aspectRatio:'2/3', borderRadius:12, overflow:'hidden',
-      background:'linear-gradient(160deg,#1c0b34,#0d0618)',
+      background: cardBg,
       border:`2px solid ${tc}66`,
       boxShadow: isPlayer
         ? `0 12px 40px rgba(0,0,0,.75)`
@@ -132,6 +155,14 @@ function WaifuSprite({ waifu, size=120, anim='', style={}, isPlayer=false }) {
             <div style={{fontFamily:'Orbitron',fontSize:7,color:'rgba(238,232,220,.28)',textAlign:'center',padding:'0 6px',lineHeight:1.3}}>{waifu.name}</div>
           </div>
       }
+      {/* Foil effect for Epico, Leggendario, Immersivo */}
+      {hasFoil && (
+        <div style={{
+          position:'absolute', inset:0, borderRadius:'inherit',
+          background:'repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 6px, transparent 6px, transparent 14px)',
+          pointerEvents:'none',
+        }}/>
+      )}
       {waifu.isKO&&(
         <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,.72)',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(2px)'}}>
           <span style={{fontFamily:'Orbitron',fontSize:20,color:'#ff4d4d',fontWeight:900,letterSpacing:2,textShadow:'0 0 16px #ff4d4d88'}}>KO</span>
@@ -155,7 +186,7 @@ function EnemyHud({ waifu }) {
         <span style={{fontFamily:'Orbitron',fontSize:8,color:'rgba(255,90,110,.5)',flexShrink:0}}>Lv{waifu.level}</span>
       </div>
       <div style={{marginBottom:5}}><TypeBadge type={waifu.type} sm/></div>
-      <HpBar hp={waifu.hp} maxHp={waifu.maxHp} h={5}/>
+      <HpBar hp={waifu.hp} maxHp={waifu.maxHp} h={5} isPlayer={false}/>
     </div>
   );
 }
@@ -174,7 +205,7 @@ function PlayerHud({ waifu }) {
         <span style={{fontFamily:'Orbitron',fontSize:8,color:'rgba(0,200,255,.5)',flexShrink:0}}>Lv{waifu.level}</span>
       </div>
       <div style={{marginBottom:5}}><TypeBadge type={waifu.type} sm/></div>
-      <HpBar hp={waifu.hp} maxHp={waifu.maxHp} h={8} showNums/>
+      <HpBar hp={waifu.hp} maxHp={waifu.maxHp} h={8} showNums isPlayer={true}/>
     </div>
   );
 }
@@ -195,13 +226,26 @@ function MoveBtn({ move, idx, locked, outPp, cooldown, enemyType, playerType, on
     'No effect':           {col:'#ff4d4d',icon:'✕', lbl:'×0'},
   };
   const effInfo = effMap[eff];
+  const isOutPp = !!(outPp);
   return (
     <button className="wba-move-btn" onClick={()=>!dis&&onSelect(idx)} disabled={dis} style={{
       height:'100%', padding:'8px 11px', borderRadius:12, width:'100%',
-      background: dis?'rgba(10,5,20,.4)':`rgba(${hexToRgb(bdr)},.09)`,
-      border:`1.5px solid ${dis?'rgba(255,255,255,.06)':`${bdr}88`}`,
+      background: isOutPp
+        ? 'rgba(255,255,255,0.03)'
+        : dis
+          ? 'rgba(255,255,255,0.03)'
+          : 'linear-gradient(rgba(255,255,255,0.08), rgba(255,255,255,0.02))',
+      border: isOutPp
+        ? '0.8px solid rgba(255,255,255,0.06)'
+        : dis
+          ? '0.8px solid rgba(255,255,255,0.06)'
+          : '0.8px solid rgba(255,255,255,0.14)',
+      backdropFilter: dis ? 'none' : 'blur(8px)',
+      WebkitBackdropFilter: dis ? 'none' : 'blur(8px)',
       boxShadow: dis?'none':`0 2px 12px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06)`,
-      opacity:dis?.4:1,
+      color: isOutPp || dis ? 'rgba(241,235,255,0.2)' : '#f1ebff',
+      fontFamily: "'DM Sans', sans-serif",
+      cursor: dis ? 'not-allowed' : 'pointer',
       display:'flex',flexDirection:'column',gap:5,alignItems:'flex-start',
       position:'relative',overflow:'hidden',
     }}>
@@ -291,17 +335,25 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
       </>
     : <>—</>;
 
+  const hoVinto = isVictory && !isDraw;
   return (
     <div style={{position:'fixed',inset:0,zIndex:50,background:'rgba(0,0,0,.92)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto'}}>
       <div className="wba-fm" style={{
-        background:'rgba(12,6,24,.96)',
-        border:`1px solid ${outcomeCol}44`,
-        borderRadius:18,padding:24,maxWidth:380,width:'100%',textAlign:'center',
-        boxShadow:`0 0 60px ${outcomeCol}18`,
+        background:'rgba(10,7,38,0.97)',
+        backdropFilter:'blur(20px)',
+        WebkitBackdropFilter:'blur(20px)',
+        border:`1px solid ${hoVinto ? 'rgba(245,197,96,0.5)' : isDraw ? 'rgba(167,139,250,0.35)' : 'rgba(255,133,182,0.35)'}`,
+        borderRadius:20,padding:28,maxWidth:380,width:'100%',textAlign:'center',
+        boxShadow: hoVinto ? '0 0 40px rgba(245,197,96,0.15)' : isDraw ? '0 0 40px rgba(167,139,250,0.1)' : '0 0 40px rgba(255,133,182,0.1)',
         margin:'auto',
       }}>
         <div style={{fontSize:48,marginBottom:8}}>{isDraw?'🤝':isVictory?'👑':'💔'}</div>
-        <div style={{fontFamily:'Orbitron',fontSize:20,fontWeight:700,color:isDraw?'#f5a623':isVictory?'#00e676':'#ff3d3d',letterSpacing:3,marginBottom:4}}>
+        <div style={{
+          fontFamily:"'Unbounded', sans-serif",
+          fontSize:22, fontWeight:700,
+          color: isDraw ? '#a78bfa' : hoVinto ? '#f5c560' : '#ff85b6',
+          letterSpacing:2, marginBottom:4,
+        }}>
           {isDraw?'PAREGGIO':isVictory?'VITTORIA!':'SCONFITTA'}
         </div>
 
@@ -340,10 +392,17 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
         )}
 
         <button onClick={onContinue} style={{
-          padding:'13px 28px',width:'100%',
-          background:'linear-gradient(135deg,#f5a623,#ff2d78)',border:'none',borderRadius:12,
-          cursor:'pointer',color:'#000',fontFamily:'Orbitron',fontSize:13,fontWeight:700,letterSpacing:2,
-        }}>CONTINUA →</button>
+          padding:'12px 24px', width:'100%',
+          background:'linear-gradient(rgba(245,197,96,0.32), rgba(245,197,96,0.1))',
+          border:'0.8px solid rgba(255,233,168,0.6)',
+          borderRadius:12, cursor:'pointer',
+          color:'rgb(42,31,0)',
+          fontFamily:"'Saira Condensed', Saira, sans-serif",
+          fontSize:13, fontWeight:700, letterSpacing:1.6, textTransform:'uppercase',
+          backdropFilter:'blur(8px)',
+          WebkitBackdropFilter:'blur(8px)',
+          boxShadow:'rgba(245,197,96,0.35) 0px 6px 20px 0px',
+        }}>TORNA ALLA MAPPA →</button>
       </div>
     </div>
   );
@@ -755,7 +814,7 @@ export default function WaifuBattleArena({
   return (
     <div style={{
       position:'fixed', inset:0, zIndex:40, overflow:'hidden',
-      background:'linear-gradient(180deg,#080318 0%,#120528 45%,#080318 100%)',
+      background:'radial-gradient(60% 40% at 50% 30%, rgba(108,240,224,0.18), transparent 70%), radial-gradient(60% 40% at 50% 80%, rgba(255,126,182,0.2), transparent 70%), linear-gradient(#060418 0%, #0e0827 100%)',
       display:'flex', flexDirection:'column',
       paddingBottom:'env(safe-area-inset-bottom,12px)',
     }}>
@@ -800,10 +859,17 @@ export default function WaifuBattleArena({
         height:44, flexShrink:0,
         display:'flex', alignItems:'center', justifyContent:'space-between',
         padding:'0 14px',
-        background:'rgba(6,3,15,.55)',
-        borderBottom:'1px solid rgba(255,255,255,.05)',
+        background:'rgba(10,7,38,0.85)',
+        backdropFilter:'blur(12px)',
+        WebkitBackdropFilter:'blur(12px)',
+        border:'0.8px solid rgba(167,139,250,0.2)',
+        borderRadius:12,
+        margin:'6px 8px 0',
       }}>
-        <span style={{fontFamily:'Orbitron',fontSize:9,letterSpacing:1.5,color:turnCol}}>
+        <span style={{
+          fontFamily:"'Unbounded', sans-serif",
+          fontSize:16, fontWeight:700, color:'#f1ebff',
+        }}>
           {turnLabel}
         </span>
         {isPvP&&(
@@ -950,25 +1016,39 @@ export default function WaifuBattleArena({
             {/* Bench row — altezza fissa, non si espande */}
             <div style={{flexShrink:0,display:'flex',alignItems:'center',padding:'4px 12px 3px',gap:8}}>
               {/* Swap button */}
-              <div style={{flexShrink:0,width:52}}>
-                {isChoose&&!isAnim&&!(isPvP&&pvpWaiting)?(
-                  <button onClick={startVoluntarySwap} style={{
-                    fontFamily:'Orbitron',fontSize:7,letterSpacing:.6,
-                    background:'rgba(155,89,255,.12)',border:'1px solid rgba(155,89,255,.4)',
-                    borderRadius:8,color:'#9b59ff',padding:'5px 4px',cursor:'pointer',
-                    display:'flex',flexDirection:'column',alignItems:'center',gap:1,width:'100%',
-                    transition:'background .15s',
-                  }}>
-                    <span style={{fontSize:13}}>↻</span>
-                    <span>CAMBIA</span>
-                  </button>
-                ):(
-                  <div style={{width:'100%',display:'flex',flexDirection:'column',alignItems:'center',gap:1,opacity:.25}}>
-                    <span style={{fontSize:13,color:'#555'}}>↻</span>
-                    <span style={{fontFamily:'Orbitron',fontSize:7,color:'#555'}}>CAMBIA</span>
+              {(() => {
+                const hasBenchAlive = pTeam.some((w,i) => i !== pActive && !w.isKO);
+                const canSwitch = isChoose && !isAnim && !(isPvP && pvpWaiting) && hasBenchAlive;
+                const switchDisabled = !isChoose || isAnim || (isPvP && pvpWaiting) || !hasBenchAlive;
+                return (
+                  <div style={{flexShrink:0,width:52}}>
+                    <button
+                      onClick={canSwitch ? startVoluntarySwap : undefined}
+                      disabled={switchDisabled}
+                      style={{
+                        fontFamily:'Orbitron',fontSize:7,letterSpacing:.6,
+                        background: switchDisabled
+                          ? 'rgba(255,255,255,0.03)'
+                          : 'linear-gradient(rgba(167,139,250,0.25), rgba(167,139,250,0.08))',
+                        border: switchDisabled
+                          ? '0.8px solid rgba(255,255,255,0.06)'
+                          : '0.8px solid rgba(167,139,250,0.4)',
+                        borderRadius:12,
+                        color: switchDisabled ? 'rgba(167,139,250,0.25)' : '#a78bfa',
+                        backdropFilter: switchDisabled ? 'none' : 'blur(8px)',
+                        WebkitBackdropFilter: switchDisabled ? 'none' : 'blur(8px)',
+                        padding:'5px 4px',
+                        cursor: switchDisabled ? 'not-allowed' : 'pointer',
+                        display:'flex',flexDirection:'column',alignItems:'center',gap:1,width:'100%',
+                        transition:'background .15s',
+                      }}
+                    >
+                      <span style={{fontSize:13}}>↻</span>
+                      <span>CAMBIA</span>
+                    </button>
                   </div>
-                )}
-              </div>
+                );
+              })()}
 
               {/* Player bench slots (display only) */}
               <div style={{display:'flex',gap:7,flex:1,justifyContent:'center'}}>
@@ -992,6 +1072,19 @@ export default function WaifuBattleArena({
                 ):null}
               </div>
             </div>
+
+            {/* Action panel title — Task 19.9 */}
+            {isChoose && !isAnim && !(isPvP && pvpWaiting) && (
+              <div style={{
+                fontFamily:"'Saira Condensed', Saira, sans-serif",
+                fontSize:11, fontWeight:700, color:'#6cf0e0',
+                letterSpacing:1.5, textTransform:'uppercase',
+                padding:'2px 12px 0',
+                flexShrink:0,
+              }}>
+                SCEGLI L'AZIONE — {player?.name ?? ''}
+              </div>
+            )}
 
             {/* Move grid — flex:1 per riempire lo spazio rimasto nell'action panel */}
             <div style={{flex:1,position:'relative',padding:'2px 10px 6px',display:'flex',flexDirection:'column',minHeight:0}}>

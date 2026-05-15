@@ -236,19 +236,36 @@ function ModaleNomePartita({ nomeDefault, onConferma, onAnnulla }) {
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
-      background: 'rgba(0,0,0,0.75)', display: 'flex',
+      background: 'rgba(0,0,0,0.8)', display: 'flex',
       alignItems: 'center', justifyContent: 'center', padding: 16,
     }}>
       <div style={{
-        background: 'linear-gradient(135deg, #0d0820, #06030f)',
-        border: '1px solid rgba(245,166,35,0.4)',
-        borderRadius: 16, padding: 28, maxWidth: 360, width: '100%',
-        boxShadow: '0 0 40px rgba(245,166,35,0.15)',
+        background: 'rgba(10,7,38,0.97)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '0.8px solid rgba(167,139,250,0.3)',
+        borderRadius: 20,
+        padding: 28,
+        maxWidth: 360,
+        width: '100%',
+        boxShadow: '0 0 40px rgba(167,139,250,0.15)',
       }}>
-        <div style={{ fontFamily: 'Orbitron', fontSize: 14, fontWeight: 700, color: '#f5a623', letterSpacing: 2, marginBottom: 6, textAlign: 'center' }}>
-          💾 SALVA PARTITA
-        </div>
-        <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', marginBottom: 16, textAlign: 'center' }}>
+        <div style={{
+          fontFamily: "'Unbounded', sans-serif",
+          fontSize: 14,
+          fontWeight: 700,
+          color: '#f1ebff',
+          letterSpacing: 1,
+          marginBottom: 6,
+          textAlign: 'center',
+        }}>💾 SALVA PARTITA</div>
+        <div style={{
+          fontSize: 11,
+          color: 'rgba(167,139,250,0.6)',
+          fontFamily: "'DM Sans', sans-serif",
+          marginBottom: 16,
+          textAlign: 'center',
+        }}>
           Dai un nome a questa partita — lo vedrai solo tu nella lista delle partite salvate
         </div>
         <input
@@ -258,9 +275,7 @@ function ModaleNomePartita({ nomeDefault, onConferma, onAnnulla }) {
           maxLength={40}
           autoFocus
           style={{
-            width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(245,166,35,0.3)', borderRadius: 8, color: '#eee8dc',
-            fontFamily: 'Orbitron', fontSize: 11, outline: 'none', boxSizing: 'border-box',
+            ...inputStyle,
             marginBottom: 16,
           }}
           onKeyDown={e => { if (e.key === 'Enter' && nome.trim()) onConferma(nome.trim()); }}
@@ -269,10 +284,24 @@ function ModaleNomePartita({ nomeDefault, onConferma, onAnnulla }) {
           <button onClick={onAnnulla} style={btnStyle('#666', true)}>ANNULLA</button>
           <button
             onClick={() => onConferma(nome.trim() || nomeDefault)}
-            style={btnStyle('#f5a623')}
-          >
-            💾 SALVA ED ESCI
-          </button>
+            style={{
+              flex: 1,
+              padding: '10px 16px',
+              background: 'linear-gradient(rgba(245,197,96,0.32), rgba(245,197,96,0.1))',
+              border: '0.8px solid rgba(255,233,168,0.6)',
+              borderRadius: 12,
+              cursor: 'pointer',
+              color: 'rgb(42,31,0)',
+              fontFamily: "'Saira Condensed', Saira, sans-serif",
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: 1.6,
+              textTransform: 'uppercase',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              boxShadow: 'rgba(245,197,96,0.35) 0px 6px 20px 0px',
+            }}
+          >💾 SALVA ED ESCI</button>
         </div>
       </div>
     </div>
@@ -285,27 +314,93 @@ function ModaleNomePartita({ nomeDefault, onConferma, onAnnulla }) {
 function MenuMultiplayer({ onCrea, onUnisciti, onCarica, onIndietro }) {
   return (
     <div className="fade-in">
-      <PannelloOrnato glow="#9b59ff" style={{ textAlign: 'center', padding: 28 }}>
+      <div style={{
+        background: 'rgba(10,7,38,0.7)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        border: '0.8px solid rgba(167,139,250,0.2)',
+        borderRadius: 20,
+        padding: 28,
+        textAlign: 'center',
+      }}>
         <div style={{ fontSize: 44, marginBottom: 8 }}>🌐</div>
-        <TitoloOrnato livello={1} colore="#9b59ff">MULTIPLAYER</TitoloOrnato>
-        <div style={{ color: 'rgba(238,232,220,0.5)', fontSize: 10, letterSpacing: 2, fontFamily: 'Orbitron', marginBottom: 24 }}>
+        <div style={{
+          fontFamily: "'Unbounded', sans-serif",
+          fontSize: 22,
+          fontWeight: 700,
+          color: '#a78bfa',
+          letterSpacing: 2,
+          marginBottom: 8,
+        }}>MULTIPLAYER</div>
+        <div style={{
+          color: 'rgba(167,139,250,0.5)',
+          fontSize: 10,
+          letterSpacing: 2,
+          fontFamily: "'Saira Condensed', Saira, sans-serif",
+          textTransform: 'uppercase',
+          marginBottom: 24,
+        }}>
           CONQUISTA IL MONDO CON ALTRI GIOCATORI
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 320, margin: '0 auto' }}>
-          <button onClick={onCrea} style={btnStyle('#9b59ff')}>
-            🏰 CREA PARTITA
-          </button>
-          <button onClick={onUnisciti} style={btnStyle('#00e676')}>
-            🔑 UNISCITI A UNA PARTITA
-          </button>
-          <button onClick={onCarica} style={btnStyle('#f5a623')}>
-            💾 CARICA PARTITA
-          </button>
+          {/* CREA PARTITA — gold */}
+          <button onClick={onCrea} style={{
+            padding: '12px 18px',
+            background: 'linear-gradient(rgba(245,197,96,0.32), rgba(245,197,96,0.1))',
+            border: '0.8px solid rgba(255,233,168,0.6)',
+            borderRadius: 12,
+            cursor: 'pointer',
+            color: 'rgb(42,31,0)',
+            fontFamily: "'Saira Condensed', Saira, sans-serif",
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: 1.6,
+            textTransform: 'uppercase',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            boxShadow: 'rgba(245,197,96,0.35) 0px 8px 24px 0px',
+          }}>🏰 CREA PARTITA</button>
+
+          {/* UNISCITI — aqua */}
+          <button onClick={onUnisciti} style={{
+            padding: '12px 18px',
+            background: 'linear-gradient(rgba(108,240,224,0.15), rgba(108,240,224,0.04))',
+            border: '0.8px solid rgba(108,240,224,0.35)',
+            borderRadius: 12,
+            cursor: 'pointer',
+            color: '#6cf0e0',
+            fontFamily: "'Saira Condensed', Saira, sans-serif",
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: 1.6,
+            textTransform: 'uppercase',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+          }}>🔑 UNISCITI A UNA PARTITA</button>
+
+          {/* CARICA — crystal */}
+          <button onClick={onCarica} style={{
+            padding: '12px 18px',
+            background: 'linear-gradient(rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
+            border: '0.8px solid rgba(255,255,255,0.16)',
+            borderRadius: 12,
+            cursor: 'pointer',
+            color: '#f1ebff',
+            fontFamily: "'Saira Condensed', Saira, sans-serif",
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: 1.6,
+            textTransform: 'uppercase',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+          }}>💾 CARICA PARTITA</button>
+
+          {/* INDIETRO — secondary */}
           <button onClick={onIndietro} style={btnStyle('#666', true)}>
             ← INDIETRO
           </button>
         </div>
-      </PannelloOrnato>
+      </div>
     </div>
   );
 }
@@ -337,8 +432,21 @@ function CreaPartita({ profilo, user, onCreata, onAnnulla }) {
 
   return (
     <div className="fade-in">
-      <PannelloOrnato glow="#9b59ff" style={{ padding: 24 }}>
-        <TitoloOrnato livello={2} colore="#9b59ff">CREA PARTITA</TitoloOrnato>
+      <div style={{
+        background: 'rgba(10,7,38,0.7)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        border: '0.8px solid rgba(167,139,250,0.2)',
+        borderRadius: 20,
+        padding: 24,
+      }}>
+        <div style={{
+          fontFamily: "'Unbounded', sans-serif",
+          fontSize: 18,
+          fontWeight: 700,
+          color: '#a78bfa',
+          marginBottom: 16,
+        }}>CREA PARTITA</div>
         <FormImpero
           nomeImpero={nomeImpero}
           setNomeImpero={setNomeImpero}
@@ -352,7 +460,7 @@ function CreaPartita({ profilo, user, onCreata, onAnnulla }) {
             {loading ? '...' : '🏰 CREA'}
           </button>
         </div>
-      </PannelloOrnato>
+      </div>
     </div>
   );
 }
@@ -404,8 +512,21 @@ function UniscitiPartita({ profilo, user, onUnito, onAnnulla }) {
 
   return (
     <div className="fade-in">
-      <PannelloOrnato glow="#00e676" style={{ padding: 24 }}>
-        <TitoloOrnato livello={2} colore="#00e676">UNISCITI A UNA PARTITA</TitoloOrnato>
+      <div style={{
+        background: 'rgba(10,7,38,0.7)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        border: '0.8px solid rgba(167,139,250,0.2)',
+        borderRadius: 20,
+        padding: 24,
+      }}>
+        <div style={{
+          fontFamily: "'Unbounded', sans-serif",
+          fontSize: 18,
+          fontWeight: 700,
+          color: '#a78bfa',
+          marginBottom: 16,
+        }}>UNISCITI A UNA PARTITA</div>
 
         {step === 'codice' && (
           <>
@@ -428,7 +549,7 @@ function UniscitiPartita({ profilo, user, onUnito, onAnnulla }) {
 
         {step === 'configura' && (
           <>
-            <div style={{ marginBottom: 12, padding: '8px 12px', background: 'rgba(0,230,118,0.08)', borderRadius: 8, border: '1px solid rgba(0,230,118,0.2)', fontSize: 10, color: '#00e676', fontFamily: 'Orbitron', textAlign: 'center' }}>
+            <div style={{ marginBottom: 12, padding: '8px 12px', background: 'rgba(108,240,224,0.08)', borderRadius: 8, border: '0.8px solid rgba(108,240,224,0.35)', fontSize: 10, color: '#6cf0e0', fontFamily: "'DM Sans', sans-serif", textAlign: 'center' }}>
               ✅ CODICE: {codice.toUpperCase()}
             </div>
             <FormImpero
@@ -446,7 +567,7 @@ function UniscitiPartita({ profilo, user, onUnito, onAnnulla }) {
             </div>
           </>
         )}
-      </PannelloOrnato>
+      </div>
     </div>
   );
 }
@@ -500,8 +621,21 @@ function CaricaPartita({ user, onCaricata, onAnnulla }) {
 
   return (
     <div className="fade-in">
-      <PannelloOrnato glow="#f5a623" style={{ padding: 20 }}>
-        <TitoloOrnato livello={2} colore="#f5a623">CARICA PARTITA</TitoloOrnato>
+      <div style={{
+        background: 'rgba(10,7,38,0.7)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        border: '0.8px solid rgba(167,139,250,0.2)',
+        borderRadius: 20,
+        padding: 20,
+      }}>
+        <div style={{
+          fontFamily: "'Unbounded', sans-serif",
+          fontSize: 18,
+          fontWeight: 700,
+          color: '#a78bfa',
+          marginBottom: 16,
+        }}>CARICA PARTITA</div>
 
         {partiteSalvate === null && (
           <div style={{ textAlign: 'center', padding: 32, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', fontSize: 10 }}>
@@ -528,22 +662,22 @@ function CaricaPartita({ user, onCaricata, onAnnulla }) {
               const isLoading = loadingCodice === p.codice;
               return (
                 <div key={p.codice} style={{
-                  background: 'rgba(245,166,35,0.05)', border: '1px solid rgba(245,166,35,0.2)',
+                  background: 'rgba(167,139,250,0.06)', border: '0.8px solid rgba(167,139,250,0.15)',
                   borderRadius: 12, padding: '12px 14px',
                   display: 'flex', alignItems: 'center', gap: 12,
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: 'Orbitron', fontSize: 12, color: '#f5a623', fontWeight: 700, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 12, color: '#f1ebff', fontWeight: 700, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {nomePersonale}
                     </div>
-                    <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: 9, color: '#b6aed6', fontFamily: "'DM Sans', sans-serif", display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                       <span>🏴 {mieiTerritori}/{totTerritori}</span>
                       <span>👥 {numGiocatori} giocatori</span>
                       <span style={{ color: p.stato === 'in_gioco' ? '#00e676' : '#9b59ff' }}>
                         {p.stato === 'in_gioco' ? '▶ In gioco' : '⏸ In lobby'}
                       </span>
                     </div>
-                    <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.25)', fontFamily: 'Orbitron', marginTop: 2 }}>
+                    <div style={{ fontSize: 8, color: 'rgba(167,139,250,0.4)', fontFamily: "'DM Sans', sans-serif", marginTop: 2 }}>
                       {formatData(p.aggiornato)} · {p.codice}
                     </div>
                   </div>
@@ -567,7 +701,7 @@ function CaricaPartita({ user, onCaricata, onAnnulla }) {
         )}
 
         {/* Fallback manuale con codice */}
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 14, marginTop: 4 }}>
+        <div style={{ borderTop: '1px solid rgba(167,139,250,0.1)', paddingTop: 14, marginTop: 4 }}>
           <button
             onClick={() => setMostraFallback(v => !v)}
             style={{ background: 'none', border: 'none', color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer', letterSpacing: 1, width: '100%', textAlign: 'center' }}
@@ -591,7 +725,7 @@ function CaricaPartita({ user, onCaricata, onAnnulla }) {
         </div>
 
         <button onClick={onAnnulla} style={{ ...btnStyle('#666', true), marginTop: 14, width: '100%' }}>← ANNULLA</button>
-      </PannelloOrnato>
+      </div>
     </div>
   );
 }
@@ -611,8 +745,15 @@ function Lobby({ partita, codice, user, onAvvia, onEsci, mostraNotif }) {
 
   return (
     <div className="fade-in">
-      <PannelloOrnato glow="#9b59ff" style={{ padding: 20 }}>
-        <TitoloOrnato livello={2} colore="#9b59ff">LOBBY</TitoloOrnato>
+      <div style={{
+        background: 'rgba(10,7,38,0.7)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        border: '0.8px solid rgba(167,139,250,0.2)',
+        borderRadius: 20,
+        padding: 20,
+      }}>
+        <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 18, fontWeight: 700, color: '#a78bfa', marginBottom: 16 }}>LOBBY</div>
 
         {/* Codice partita */}
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
@@ -620,10 +761,19 @@ function Lobby({ partita, codice, user, onAvvia, onEsci, mostraNotif }) {
             CODICE PARTITA — condividilo con gli amici
           </div>
           <button onClick={copiaLink} style={{
-            background: 'rgba(155,89,255,0.08)', border: '1px solid rgba(155,89,255,0.4)',
-            borderRadius: 10, padding: '10px 24px', cursor: 'pointer',
-            fontFamily: 'Orbitron', fontSize: 26, fontWeight: 700,
-            color: '#9b59ff', letterSpacing: 10,
+            background: 'linear-gradient(rgba(245,197,96,0.32), rgba(245,197,96,0.1))',
+            border: '0.8px solid rgba(255,233,168,0.6)',
+            borderRadius: 12,
+            padding: '12px 28px',
+            cursor: 'pointer',
+            fontFamily: "'Unbounded', sans-serif",
+            fontSize: 28,
+            fontWeight: 700,
+            color: '#f1ebff',
+            letterSpacing: 8,
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            boxShadow: 'rgba(245,197,96,0.25) 0px 6px 20px 0px',
           }}>
             {codice} <span style={{ fontSize: 12, opacity: 0.5 }}>📋</span>
           </button>
@@ -637,8 +787,9 @@ function Lobby({ partita, codice, user, onAvvia, onEsci, mostraNotif }) {
           {giocatori.map(g => (
             <div key={g.uid} style={{
               display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
-              background: 'rgba(255,255,255,0.03)', borderRadius: 8, marginBottom: 6,
-              border: `1px solid ${g.coloreImpero}30`,
+              background: 'rgba(167,139,250,0.05)', borderRadius: 10, marginBottom: 6,
+              border: `0.8px solid rgba(167,139,250,0.12)`,
+              borderLeft: `3px solid ${g.coloreImpero}`,
             }}>
               <div style={{ width: 16, height: 16, borderRadius: '50%', background: g.coloreImpero, flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
@@ -648,7 +799,7 @@ function Lobby({ partita, codice, user, onAvvia, onEsci, mostraNotif }) {
                   {g.uid === partita?.creatore && <span style={{ fontSize: 8, color: '#ffd666', marginLeft: 6 }}>👑</span>}
                 </div>
               </div>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#00e676' }} title="Connesso" />
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#6cf0e0' }} title="Connesso" />
             </div>
           ))}
         </div>
@@ -662,7 +813,23 @@ function Lobby({ partita, codice, user, onAvvia, onEsci, mostraNotif }) {
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={onEsci} style={btnStyle('#666', true)}>← ESCI</button>
           {possoAvviare && (
-            <button onClick={onAvvia} style={btnStyle('#9b59ff')}>
+            <button onClick={onAvvia} style={{
+              flex: 1,
+              padding: '12px 18px',
+              background: 'linear-gradient(rgba(167,139,250,0.35), rgba(167,139,250,0.1))',
+              border: '0.8px solid rgba(167,139,250,0.5)',
+              borderRadius: 12,
+              cursor: 'pointer',
+              color: '#f1ebff',
+              fontFamily: "'Saira Condensed', Saira, sans-serif",
+              fontSize: 13,
+              fontWeight: 700,
+              letterSpacing: 1.6,
+              textTransform: 'uppercase',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              boxShadow: 'rgba(167,139,250,0.3) 0px 6px 20px 0px',
+            }}>
               ⚔ AVVIA PARTITA ({giocatori.length} giocatori)
             </button>
           )}
@@ -672,7 +839,7 @@ function Lobby({ partita, codice, user, onAvvia, onEsci, mostraNotif }) {
             </div>
           )}
         </div>
-      </PannelloOrnato>
+      </div>
     </div>
   );
 }
@@ -709,8 +876,10 @@ function SchermataPartita({
 
   if (!partita) {
     return (
-      <div style={{ padding: 40, textAlign: 'center', color: '#f5a623', fontFamily: 'Orbitron' }}>
-        Caricamento partita…
+      <div style={{ padding: 40, textAlign: 'center' }}>
+        <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 16, fontWeight: 700, color: '#a78bfa' }}>
+          Caricamento partita…
+        </div>
       </div>
     );
   }
@@ -732,11 +901,25 @@ function SchermataPartita({
     return (
       <div className="fade-in" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
         <div style={{
-          background: 'rgba(6,3,15,0.97)', border: `2px solid ${hoVinto ? '#00e676' : '#ff3d3d'}40`,
-          borderRadius: 20, padding: 36, textAlign: 'center', maxWidth: 360,
+          background: 'rgba(10,7,38,0.97)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: `1px solid ${hoVinto ? 'rgba(245,197,96,0.5)' : 'rgba(255,133,182,0.35)'}`,
+          borderRadius: 20,
+          padding: 36,
+          textAlign: 'center',
+          maxWidth: 360,
+          boxShadow: hoVinto ? '0 0 40px rgba(245,197,96,0.15)' : '0 0 40px rgba(255,133,182,0.1)',
         }}>
           <div style={{ fontSize: 56, marginBottom: 12 }}>{hoVinto ? '👑' : '💔'}</div>
-          <div style={{ fontFamily: 'Orbitron', fontSize: 22, fontWeight: 700, color: hoVinto ? '#00e676' : '#ff3d3d', letterSpacing: 3, marginBottom: 8 }}>
+          <div style={{
+            fontFamily: "'Unbounded', sans-serif",
+            fontSize: 22,
+            fontWeight: 700,
+            color: hoVinto ? '#f5c560' : '#ff85b6',
+            letterSpacing: 2,
+            marginBottom: 8,
+          }}>
             {hoVinto ? 'HAI VINTO!' : 'PARTITA FINITA'}
           </div>
           {vincitore && (
@@ -744,7 +927,21 @@ function SchermataPartita({
               🏆 {vincitore.nomeImpero} ha conquistato il mondo!
             </div>
           )}
-          <button onClick={onEsciEsalva} style={btnStyle('#f5a623')}>TORNA AL MENU</button>
+          <button onClick={onEsciEsalva} style={{
+            padding: '12px 24px',
+            background: 'linear-gradient(rgba(245,197,96,0.32), rgba(245,197,96,0.1))',
+            border: '0.8px solid rgba(255,233,168,0.6)',
+            borderRadius: 12,
+            cursor: 'pointer',
+            color: 'rgb(42,31,0)',
+            fontFamily: "'Saira Condensed', Saira, sans-serif",
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: 1.6,
+            textTransform: 'uppercase',
+            backdropFilter: 'blur(8px)',
+            boxShadow: 'rgba(245,197,96,0.35) 0px 6px 20px 0px',
+          }}>TORNA AL MENU</button>
         </div>
       </div>
     );
@@ -814,19 +1011,41 @@ function SchermataPartita({
       // Mostra scelta: aspetta o guarda
       return (
         <div className="fade-in">
-          <PannelloOrnato glow="#9b59ff" style={{ padding: 28, textAlign: 'center' }}>
+          <div style={{
+            background: 'rgba(255,133,182,0.06)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '0.8px solid rgba(255,133,182,0.25)',
+            borderRadius: 20,
+            padding: 28,
+            textAlign: 'center',
+          }}>
             <div style={{ fontSize: 36, marginBottom: 10 }}>⚔️</div>
-            <TitoloOrnato livello={2} colore="#ff2d78">SFIDA IN CORSO</TitoloOrnato>
-            <div style={{ fontSize: 11, fontFamily: 'Orbitron', marginBottom: 6, marginTop: 4 }}>
+            <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 18, fontWeight: 700, color: '#ff85b6', marginBottom: 8 }}>SFIDA IN CORSO</div>
+            <div style={{ fontSize: 11, fontFamily: "'DM Sans', sans-serif", marginBottom: 6, marginTop: 4 }}>
               <span style={{ color: gAtt?.coloreImpero }}>{gAtt?.nomeImpero}</span>
               <span style={{ color: 'rgba(238,232,220,0.4)', margin: '0 8px' }}>vs</span>
               <span style={{ color: gDif?.coloreImpero }}>{gDif?.nomeImpero}</span>
             </div>
-            <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 24 }}>
+            <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.4)', fontFamily: "'DM Sans', sans-serif", marginBottom: 24 }}>
               per {TERRITORI.find(t => t.id === battaglia.territorioId)?.nome}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 280, margin: '0 auto' }}>
-              <button onClick={() => setSceltaSpettatore('guarda')} style={btnStyle('#ff2d78')}>
+              <button onClick={() => setSceltaSpettatore('guarda')} style={{
+                width: '100%',
+                padding: '12px 18px',
+                background: 'linear-gradient(rgba(255,133,182,0.2), rgba(255,133,182,0.06))',
+                border: '0.8px solid rgba(255,133,182,0.4)',
+                borderRadius: 12,
+                cursor: 'pointer',
+                color: '#ff85b6',
+                fontFamily: "'Saira Condensed', Saira, sans-serif",
+                fontSize: 13,
+                fontWeight: 700,
+                letterSpacing: 1.6,
+                textTransform: 'uppercase',
+                backdropFilter: 'blur(8px)',
+              }}>
                 👁 GUARDA LA SFIDA
               </button>
               <button onClick={() => setSceltaSpettatore('aspetta')} style={btnStyle('#666', true)}>
@@ -834,11 +1053,11 @@ function SchermataPartita({
               </button>
             </div>
             <div style={{ marginTop: 20 }}>
-              <button onClick={onEsciEsalva} style={{ background: 'none', border: 'none', color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer', letterSpacing: 1 }}>
+              <button onClick={onEsciEsalva} style={{ background: 'none', border: 'none', color: 'rgba(238,232,220,0.3)', fontFamily: "'DM Sans', sans-serif", fontSize: 9, cursor: 'pointer', letterSpacing: 1 }}>
                 💾 SALVA ED ESCI
               </button>
             </div>
-          </PannelloOrnato>
+          </div>
         </div>
       );
     }
@@ -846,31 +1065,54 @@ function SchermataPartita({
     if (sceltaSpettatore === 'aspetta') {
       return (
         <div className="fade-in">
-          <PannelloOrnato glow="#9b59ff" style={{ padding: 24, textAlign: 'center' }}>
+          <div style={{
+            background: 'rgba(10,7,38,0.7)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '0.8px solid rgba(167,139,250,0.2)',
+            borderRadius: 20,
+            padding: 24,
+            textAlign: 'center',
+          }}>
             <div style={{ fontSize: 36, marginBottom: 10 }}>⏳</div>
-            <TitoloOrnato livello={2} colore="#f5a623">IN ATTESA</TitoloOrnato>
-            <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', marginBottom: 8 }}>
+            <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 18, fontWeight: 700, color: '#a78bfa', marginBottom: 8 }}>IN ATTESA</div>
+            <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: "'DM Sans', sans-serif", marginBottom: 8 }}>
               Sfida in corso tra
             </div>
-            <div style={{ fontSize: 12, fontFamily: 'Orbitron', marginBottom: 20 }}>
+            <div style={{ fontSize: 12, fontFamily: "'DM Sans', sans-serif", marginBottom: 20 }}>
               <span style={{ color: gAtt?.coloreImpero }}>{gAtt?.nomeImpero}</span>
               <span style={{ color: 'rgba(238,232,220,0.3)', margin: '0 8px' }}>vs</span>
               <span style={{ color: gDif?.coloreImpero }}>{gDif?.nomeImpero}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 20 }}>
               {[0,1,2].map(i => (
-                <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: '#f5a623', animation: `mmpulse 1.2s ease-in-out ${i*0.4}s infinite` }} />
+                <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: '#a78bfa', animation: `mmpulse 1.2s ease-in-out ${i*0.4}s infinite` }} />
               ))}
             </div>
-            <button onClick={() => setSceltaSpettatore('guarda')} style={{ ...btnStyle('#ff2d78'), marginBottom: 10 }}>
+            <button onClick={() => setSceltaSpettatore('guarda')} style={{
+              width: '100%',
+              padding: '12px 18px',
+              background: 'linear-gradient(rgba(255,133,182,0.2), rgba(255,133,182,0.06))',
+              border: '0.8px solid rgba(255,133,182,0.4)',
+              borderRadius: 12,
+              cursor: 'pointer',
+              color: '#ff85b6',
+              fontFamily: "'Saira Condensed', Saira, sans-serif",
+              fontSize: 13,
+              fontWeight: 700,
+              letterSpacing: 1.6,
+              textTransform: 'uppercase',
+              backdropFilter: 'blur(8px)',
+              marginBottom: 10,
+            }}>
               👁 GUARDA LA SFIDA
             </button>
             <div style={{ marginTop: 10 }}>
-              <button onClick={onEsciEsalva} style={{ background: 'none', border: 'none', color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer', letterSpacing: 1 }}>
+              <button onClick={onEsciEsalva} style={{ background: 'none', border: 'none', color: 'rgba(238,232,220,0.3)', fontFamily: "'DM Sans', sans-serif", fontSize: 9, cursor: 'pointer', letterSpacing: 1 }}>
                 💾 SALVA ED ESCI
               </button>
             </div>
-          </PannelloOrnato>
+          </div>
         </div>
       );
     }
@@ -930,21 +1172,36 @@ function SchermataPartita({
   return (
     <div className="fade-in">
       {/* Header partita */}
-      <PannelloOrnato glow="#9b59ff" style={{ padding: '8px 14px', marginBottom: 10 }}>
+      <div style={{
+        background: 'rgba(10,7,38,0.85)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '0.8px solid rgba(167,139,250,0.2)',
+        borderRadius: 12,
+        padding: '8px 14px',
+        marginBottom: 10,
+      }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <div>
-            <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', letterSpacing: 2 }}>PARTITA MULTIPLAYER</div>
-            <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: myGiocatore?.coloreImpero || '#f5a623' }}>
+            <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.4)', fontFamily: "'Saira Condensed', Saira, sans-serif", letterSpacing: 2 }}>PARTITA MULTIPLAYER</div>
+            <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 11, fontWeight: 700, color: myGiocatore?.coloreImpero || '#a78bfa' }}>
               {myGiocatore?.nomeImpero}
-              {sonoEliminato && <span style={{ color: '#ff3d3d', marginLeft: 6 }}> ELIMINATO</span>}
+              {sonoEliminato && <span style={{ color: '#ff85b6', marginLeft: 6 }}> ELIMINATO</span>}
             </div>
           </div>
           <div style={{ textAlign: 'center' }}>
             {isMioTurno && !sonoEliminato ? (
-              <div style={{ fontSize: 10, color: '#00e676', fontFamily: 'Orbitron', letterSpacing: 2 }}>⚡ TUO TURNO</div>
+              <div style={{
+                color: '#6cf0e0',
+                fontFamily: "'Unbounded', sans-serif",
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: 1,
+                textShadow: '0 0 12px rgba(108,240,224,0.5)',
+              }}>⚡ È IL TUO TURNO</div>
             ) : (
-              <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron' }}>
-                Turno di: <span style={{ color: giocatori[turnoUid]?.coloreImpero || '#f5a623' }}>
+              <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.4)', fontFamily: "'DM Sans', sans-serif" }}>
+                Turno di: <span style={{ fontFamily: "'Unbounded', sans-serif", color: giocatori[turnoUid]?.coloreImpero || '#a78bfa' }}>
                   {giocatori[turnoUid]?.nomeImpero || '…'}
                 </span>
               </div>
@@ -954,11 +1211,11 @@ function SchermataPartita({
             <Chip colore="#9b59ff" size="xs">🏴 {mieiTerritori.length}</Chip>
             <button onClick={onEsciEsalva} style={{
               padding: '4px 10px', background: 'rgba(100,100,100,0.15)', border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 6, color: 'rgba(238,232,220,0.6)', fontSize: 9, cursor: 'pointer', fontFamily: 'Orbitron',
+              borderRadius: 6, color: 'rgba(238,232,220,0.6)', fontSize: 9, cursor: 'pointer', fontFamily: "'Saira Condensed', Saira, sans-serif",
             }}>💾 ESCI</button>
           </div>
         </div>
-      </PannelloOrnato>
+      </div>
 
       {/* Mappa */}
       <PannelloOrnato glow="#9b59ff" style={{ padding: 8, marginBottom: 10, position: 'relative' }}>
@@ -977,7 +1234,7 @@ function SchermataPartita({
         {!isMioTurno && !sonoEliminato && (
           <div style={{
             position: 'absolute', inset: 0, zIndex: 30,
-            background: 'rgba(6,3,15,0.72)', backdropFilter: 'blur(3px)',
+            background: 'rgba(10,7,38,0.72)', backdropFilter: 'blur(3px)',
             borderRadius: 10,
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             gap: 10,
@@ -1009,7 +1266,7 @@ function SchermataPartita({
           return (
             <div style={{
               position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-              background: 'rgba(6,3,15,0.96)', backdropFilter: 'blur(14px)',
+              background: 'rgba(10,7,38,0.96)', backdropFilter: 'blur(14px)',
               border: `1px solid ${info.coloreImpero || '#9b59ff'}40`,
               borderRadius: 14, padding: 18, minWidth: 240, maxWidth: 300, zIndex: 50,
               boxShadow: `0 0 30px rgba(155,89,255,0.2)`,
@@ -2085,13 +2342,21 @@ function BattagliaMultiplayer({
     if (attesaMazzoAvv) {
       return (
         <div className="fade-in">
-          <PannelloOrnato glow="#ff2d78" style={{ padding: 28, textAlign: 'center' }}>
-            <TitoloOrnato livello={2} colore="#ff2d78">BATTAGLIA PER {terrData?.nome}</TitoloOrnato>
+          <div style={{
+            background: 'rgba(10,7,38,0.85)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '0.8px solid rgba(255,133,182,0.2)',
+            borderRadius: 20,
+            padding: 28,
+            textAlign: 'center',
+          }}>
+            <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 16, fontWeight: 700, color: '#ff85b6', marginBottom: 12 }}>BATTAGLIA PER {terrData?.nome}</div>
             <div style={{ fontSize: 36, margin: '20px 0' }}>⏳</div>
-            <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#ffd666', letterSpacing: 2, marginBottom: 8 }}>
+            <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 11, fontWeight: 700, color: '#f5c560', letterSpacing: 1, marginBottom: 8 }}>
               MAZZO INVIATO!
             </div>
-            <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', marginBottom: 20 }}>
+            <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: "'DM Sans', sans-serif", marginBottom: 20 }}>
               In attesa che <span style={{ color: coloreAvversario }}>{nomeAvversario}</span> scelga il suo team…
             </div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}>
@@ -2108,7 +2373,7 @@ function BattagliaMultiplayer({
                 ANNULLA
               </button>
             </div>
-          </PannelloOrnato>
+          </div>
         </div>
       );
     }
@@ -2116,13 +2381,20 @@ function BattagliaMultiplayer({
     const canConfirm = teamSel && teamSel !== 'manuale' ? !!teams[teamSel] : waifuSel.length >= 3;
     return (
       <div className="fade-in">
-        <PannelloOrnato glow="#ff2d78" style={{ padding: 20 }}>
-          <TitoloOrnato livello={2} colore="#ff2d78">BATTAGLIA PER {terrData?.nome}</TitoloOrnato>
+        <div style={{
+          background: 'rgba(10,7,38,0.85)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: '0.8px solid rgba(255,133,182,0.2)',
+          borderRadius: 20,
+          padding: 20,
+        }}>
+          <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 16, fontWeight: 700, color: '#ff85b6', marginBottom: 12 }}>BATTAGLIA PER {terrData?.nome}</div>
           <div style={{ textAlign: 'center', marginBottom: 12 }}>
-            <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron' }}>
+            <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: "'DM Sans', sans-serif" }}>
               vs <span style={{ color: coloreAvversario }}>{nomeAvversario}</span>
               {!isCpu && (
-                <span style={{ display: 'block', marginTop: 4, color: '#ffd666', fontSize: 9 }}>
+                <span style={{ display: 'block', marginTop: 4, color: '#f5c560', fontSize: 9 }}>
                   ⚡ SFIDA CONTRO GIOCATORE REALE
                 </span>
               )}
@@ -2130,26 +2402,26 @@ function BattagliaMultiplayer({
           </div>
           {Object.keys(teams).length > 0 && (
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 10, color: '#00e676', letterSpacing: 2, marginBottom: 6, textAlign: 'center', fontFamily: 'Orbitron' }}>TEAM SALVATI</div>
+              <div style={{ fontSize: 10, color: '#6cf0e0', letterSpacing: 2, marginBottom: 6, textAlign: 'center', fontFamily: "'Saira Condensed', Saira, sans-serif" }}>TEAM SALVATI</div>
               <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
                 {Object.entries(teams).map(([id, team]) => (
                   <button key={id} onClick={() => { setTeamSel(id); setWaifuSel([]); }} style={{
-                    padding: '8px 16px', background: teamSel === id ? 'linear-gradient(135deg, #00e676, #00e67680)' : 'rgba(255,255,255,0.03)',
-                    color: teamSel === id ? '#000' : '#eee8dc', border: `1px solid ${teamSel === id ? 'transparent' : 'rgba(0,230,118,0.2)'}`,
-                    borderRadius: 8, cursor: 'pointer', fontFamily: 'Orbitron', fontSize: 10, fontWeight: 600,
+                    padding: '8px 16px', background: teamSel === id ? 'linear-gradient(rgba(108,240,224,0.25), rgba(108,240,224,0.08))' : 'rgba(255,255,255,0.03)',
+                    color: teamSel === id ? '#6cf0e0' : '#eee8dc', border: `0.8px solid ${teamSel === id ? 'rgba(108,240,224,0.5)' : 'rgba(108,240,224,0.15)'}`,
+                    borderRadius: 8, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600,
                   }}>{team.nome} ({team.waifu.length})</button>
                 ))}
                 <button onClick={() => setTeamSel('manuale')} style={{
-                  padding: '8px 16px', background: teamSel === 'manuale' ? 'linear-gradient(135deg, #f5a623, #f5a62380)' : 'rgba(255,255,255,0.03)',
-                  color: teamSel === 'manuale' ? '#000' : '#eee8dc', border: `1px solid ${teamSel === 'manuale' ? 'transparent' : 'rgba(245,166,35,0.2)'}`,
-                  borderRadius: 8, cursor: 'pointer', fontFamily: 'Orbitron', fontSize: 10, fontWeight: 600,
+                  padding: '8px 16px', background: teamSel === 'manuale' ? 'linear-gradient(rgba(245,197,96,0.25), rgba(245,197,96,0.08))' : 'rgba(255,255,255,0.03)',
+                  color: teamSel === 'manuale' ? '#f5c560' : '#eee8dc', border: `0.8px solid ${teamSel === 'manuale' ? 'rgba(245,197,96,0.5)' : 'rgba(245,197,96,0.15)'}`,
+                  borderRadius: 8, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 600,
                 }}>✋ MANUALE</button>
               </div>
             </div>
           )}
           {(teamSel === 'manuale' || Object.keys(teams).length === 0) && (
             <div>
-              <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', textAlign: 'center', marginBottom: 8 }}>SCEGLI ROSTER (3–5 WAIFU)</div>
+              <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: "'Saira Condensed', Saira, sans-serif", textAlign: 'center', marginBottom: 8 }}>SCEGLI ROSTER (3–5 WAIFU)</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: 12 }}>
                 {waifuDisponibili.map(w => {
                   const sel = waifuSel.includes(w.id);
@@ -2157,7 +2429,7 @@ function BattagliaMultiplayer({
                     <div key={w.id} onClick={() => {
                       if (sel) setWaifuSel(waifuSel.filter(x => x !== w.id));
                       else if (waifuSel.length < 5) setWaifuSel([...waifuSel, w.id]);
-                    }} style={{ cursor: 'pointer', opacity: sel ? 1 : 0.5, border: sel ? '2px solid #00e676' : '2px solid transparent', borderRadius: 8 }}>
+                    }} style={{ cursor: 'pointer', opacity: sel ? 1 : 0.5, border: sel ? '2px solid #6cf0e0' : '2px solid transparent', borderRadius: 8 }}>
                       <CartaWaifu waifu={w} dimensione="mini" />
                     </div>
                   );
@@ -2174,7 +2446,7 @@ function BattagliaMultiplayer({
             <button onClick={() => onBattagliaFinita(null)} style={btnStyle('#666', true)}>ANNULLA</button>
             <button onClick={confermaEAvvia} disabled={!canConfirm} style={btnStyle('#ff2d78')}>⚔ BATTAGLIA!</button>
           </div>
-        </PannelloOrnato>
+        </div>
       </div>
     );
   }
@@ -2285,32 +2557,40 @@ function BattagliaMultiplayer({
   return (
     <div className="fade-in">
       {/* ── Header punteggio ── */}
-      <PannelloOrnato glow="#ff2d78" style={{ padding: 10, marginBottom: 10 }}>
+      <div style={{
+        background: 'rgba(10,7,38,0.95)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '0.8px solid rgba(255,133,182,0.2)',
+        borderRadius: 12,
+        padding: 10,
+        marginBottom: 10,
+      }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ textAlign: 'left' }}>
-            <div style={{ fontSize: 8, opacity: 0.5, letterSpacing: 2, fontFamily: 'Orbitron' }}>{profilo.nomeImpero}</div>
-            <div style={{ fontSize: 28, color: '#00e676', fontFamily: 'Orbitron', fontWeight: 700 }}>{punteggio.player}</div>
+            <div style={{ fontSize: 8, opacity: 0.5, letterSpacing: 2, fontFamily: "'Saira Condensed', Saira, sans-serif" }}>{profilo.nomeImpero}</div>
+            <div style={{ fontSize: 28, color: '#00e676', fontFamily: "'Unbounded', sans-serif", fontWeight: 700 }}>{punteggio.player}</div>
           </div>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontFamily: 'Orbitron', letterSpacing: 2, fontSize: 10, color: '#ff2d78' }}>
+            <div style={{ fontFamily: "'Unbounded', sans-serif", letterSpacing: 1, fontSize: 10, fontWeight: 700, color: '#ff85b6' }}>
               {inSuddenDeath ? '⚡ SUDDEN DEATH' : `ROUND ${round}/5`}
             </div>
-            <div style={{ fontSize: 9, opacity: 0.5, marginTop: 2, fontFamily: 'Orbitron' }}>
+            <div style={{ fontSize: 9, opacity: 0.5, marginTop: 2, fontFamily: "'Saira Condensed', Saira, sans-serif" }}>
               {turno === 'player' ? 'TUO TURNO' : `TURNO ${nomeAvversario.toUpperCase()}`}
             </div>
             {showTimer && (
-              <div style={{ fontSize: 20, color: timeLeft <= 5 ? '#ff3d3d' : '#ffd666', fontFamily: 'Orbitron', fontWeight: 700, marginTop: 2 }}>
+              <div style={{ fontSize: 20, color: timeLeft <= 5 ? '#ff3d3d' : '#ffd666', fontFamily: "'Unbounded', sans-serif", fontWeight: 700, marginTop: 2 }}>
                 ⏱ {timeLeft}s
               </div>
             )}
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 8, opacity: 0.5, letterSpacing: 2, fontFamily: 'Orbitron' }}>{nomeAvversario}</div>
-            <div style={{ fontSize: 28, color: coloreAvversario, fontFamily: 'Orbitron', fontWeight: 700 }}>{punteggio.cpu}</div>
+            <div style={{ fontSize: 8, opacity: 0.5, letterSpacing: 2, fontFamily: "'Saira Condensed', Saira, sans-serif" }}>{nomeAvversario}</div>
+            <div style={{ fontSize: 28, color: coloreAvversario, fontFamily: "'Unbounded', sans-serif", fontWeight: 700 }}>{punteggio.cpu}</div>
           </div>
         </div>
         {labelFase() && (
-          <div style={{ textAlign: 'center', marginTop: 6, fontSize: 10, color: '#ffd666', fontFamily: 'Orbitron', letterSpacing: 1 }}>
+          <div style={{ textAlign: 'center', marginTop: 6, fontSize: 10, color: '#ffd666', fontFamily: "'DM Sans', sans-serif", letterSpacing: 1 }}>
             {labelFase()}
           </div>
         )}
@@ -2320,7 +2600,7 @@ function BattagliaMultiplayer({
             const usata = statsUsatePartita.includes(s.key);
             return (
               <div key={s.key} style={{
-                padding: '2px 7px', borderRadius: 5, fontSize: 8, fontFamily: 'Orbitron',
+                padding: '2px 7px', borderRadius: 5, fontSize: 8, fontFamily: "'Saira Condensed', Saira, sans-serif",
                 background: usata ? 'rgba(255,61,61,0.08)' : 'rgba(0,230,118,0.10)',
                 border: `1px solid ${usata ? '#ff3d3d30' : '#00e67630'}`,
                 color: usata ? '#ff3d3d50' : '#00e676',
@@ -2332,7 +2612,7 @@ function BattagliaMultiplayer({
             );
           })}
         </div>
-      </PannelloOrnato>
+      </div>
 
       {/* Territorio in gioco */}
       {terrData && (
@@ -2342,7 +2622,15 @@ function BattagliaMultiplayer({
       )}
 
       {/* ── Campo di battaglia: carte ── */}
-      <PannelloOrnato style={{ padding: 14, marginBottom: 10 }}>
+      <div style={{
+        background: 'rgba(10,7,38,0.85)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '0.8px solid rgba(167,139,250,0.15)',
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 10,
+      }}>
         <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-start', flexWrap: 'nowrap', gap: 8 }}>
           {/* Carta Player */}
           <div style={{ textAlign: 'center', flexShrink: 0 }}>
@@ -2418,11 +2706,19 @@ function BattagliaMultiplayer({
             }
           </div>
         </div>
-      </PannelloOrnato>
+      </div>
 
       {/* ── Mazzo del player (sempre visibile con stati) ── */}
-      <PannelloOrnato style={{ padding: 10, marginBottom: 10 }}>
-        <div style={{ fontSize: 9, letterSpacing: 2, color: '#ff2d78', textAlign: 'center', marginBottom: 8, fontFamily: 'Orbitron' }}>
+      <div style={{
+        background: 'rgba(10,7,38,0.85)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '0.8px solid rgba(167,139,250,0.15)',
+        borderRadius: 12,
+        padding: 10,
+        marginBottom: 10,
+      }}>
+        <div style={{ fontSize: 9, letterSpacing: 2, color: '#ff85b6', textAlign: 'center', marginBottom: 8, fontFamily: "'Saira Condensed', Saira, sans-serif" }}>
           {pvpDeveScegliereWaifu || (!isCpu && ['playerScegliWaifu', 'playerScegliWaifuVsCPU', 'suddenDeathWaifu'].includes(fase))
             ? '👇 SCEGLI LA TUA WAIFU' : 'IL TUO TEAM'}
         </div>
@@ -2479,15 +2775,15 @@ function BattagliaMultiplayer({
             );
           })}
         </div>
-      </PannelloOrnato>
+      </div>
 
       {/* ── MODAL: Scelta statistica ── */}
       {(fase === 'playerScegliStat' || fase === 'pvpScegliStat') && carteP && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(8px)', zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div className="fade-up" style={{ background: 'rgba(12,6,24,0.96)', border: '1px solid rgba(255,45,120,0.3)', borderRadius: 16, padding: 22, maxWidth: 380, width: '100%', boxShadow: '0 0 50px rgba(255,45,120,0.2)' }}>
+          <div className="fade-up" style={{ background: 'rgba(10,7,38,0.96)', border: '0.8px solid rgba(255,133,182,0.3)', borderRadius: 16, padding: 22, maxWidth: 380, width: '100%', boxShadow: '0 0 50px rgba(255,133,182,0.2)' }}>
             <div style={{ textAlign: 'center', marginBottom: 14 }}>
-              <div style={{ fontSize: 11, letterSpacing: 3, color: '#ff2d78', fontFamily: 'Orbitron' }}>🎯 SCEGLI STATISTICA</div>
-              <div style={{ fontSize: 18, color: timeLeft <= 5 ? '#ff3d3d' : '#ffd666', fontFamily: 'Orbitron', fontWeight: 700, marginTop: 4 }}>⏱ {timeLeft}s</div>
+              <div style={{ fontSize: 11, letterSpacing: 3, color: '#ff85b6', fontFamily: "'Saira Condensed', Saira, sans-serif" }}>🎯 SCEGLI STATISTICA</div>
+              <div style={{ fontSize: 18, color: timeLeft <= 5 ? '#ff3d3d' : '#ffd666', fontFamily: "'Unbounded', sans-serif", fontWeight: 700, marginTop: 4 }}>⏱ {timeLeft}s</div>
             </div>
             {/* Stat usate */}
             <div style={{ display: 'flex', gap: 4, justifyContent: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
@@ -2539,12 +2835,12 @@ function BattagliaMultiplayer({
       {/* ── MODAL: Scelta direzione ── */}
       {(fase === 'playerScegliDir' || fase === 'pvpScegliDir') && statInfo && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(8px)', zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div className="fade-up" style={{ background: 'rgba(12,6,24,0.96)', border: '1px solid rgba(255,45,120,0.3)', borderRadius: 16, padding: 24, maxWidth: 340, width: '100%', textAlign: 'center', boxShadow: '0 0 50px rgba(255,45,120,0.2)' }}>
+          <div className="fade-up" style={{ background: 'rgba(10,7,38,0.96)', border: '0.8px solid rgba(255,133,182,0.3)', borderRadius: 16, padding: 24, maxWidth: 340, width: '100%', textAlign: 'center', boxShadow: '0 0 50px rgba(255,133,182,0.2)' }}>
             <div style={{ fontSize: 24, marginBottom: 6 }}>{statInfo?.icon}</div>
-            <div style={{ fontFamily: 'Orbitron', fontSize: 13, color: '#ff2d78', letterSpacing: 2, marginBottom: 4 }}>
+            <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 13, fontWeight: 700, color: '#ff85b6', letterSpacing: 1, marginBottom: 4 }}>
               {statInfo?.label}: <strong>{carteP?.[statScelta]}</strong>
             </div>
-            <div style={{ fontSize: 18, color: timeLeft <= 5 ? '#ff3d3d' : '#ffd666', fontFamily: 'Orbitron', fontWeight: 700, marginBottom: 16 }}>⏱ {timeLeft}s</div>
+            <div style={{ fontSize: 18, color: timeLeft <= 5 ? '#ff3d3d' : '#ffd666', fontFamily: "'Unbounded', sans-serif", fontWeight: 700, marginBottom: 16 }}>⏱ {timeLeft}s</div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
               <button
                 onClick={() => isCpu ? onScegliDirCpu('piu') : pvpScegliDir('piu')}
@@ -2624,26 +2920,28 @@ function RoundEndBarMulti({ vincitoreRound, statScelta, direzione, carteP, carte
     <div style={{
       position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 110,
       padding: '10px 16px 74px 16px',
-      background: 'rgba(6,3,15,0.96)',
-      borderTop: `2px solid ${colore}`,
+      background: 'rgba(10,7,38,0.96)',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+      borderTop: `1px solid ${colore}80`,
     }}>
       <div style={{ maxWidth: 500, margin: '0 auto', textAlign: 'center' }}>
         {/* Esito round */}
-        <div style={{ fontSize: 13, fontFamily: 'Orbitron', fontWeight: 700, marginBottom: 4, color: colore }}>
+        <div style={{ fontSize: 13, fontFamily: "'Unbounded', sans-serif", fontWeight: 700, marginBottom: 4, color: colore }}>
           {testoEsito}
           {isCpu && timer !== null && <span style={{ fontSize: 11, marginLeft: 8, opacity: 0.6 }}>({timer}s)</span>}
         </div>
         {/* Stat confronto */}
         {statInfo && carteP && carteC && (
-          <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.6)', marginBottom: 8 }}>
+          <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.6)', marginBottom: 8, fontFamily: "'DM Sans', sans-serif" }}>
             {statInfo.icon} {statInfo.label} {direzione === 'piu' ? '▲' : '▼'} — Tu: <strong>{carteP[statScelta]}</strong> vs {nomeAvversario}: <strong>{carteC[statScelta]}</strong>
           </div>
         )}
         {/* Punteggio mini */}
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, marginBottom: 10 }}>
-          <span style={{ fontFamily: 'Orbitron', fontWeight: 700, color: '#00e676', fontSize: 18 }}>{punteggio.player}</span>
-          <span style={{ fontFamily: 'Orbitron', fontSize: 11, color: 'rgba(238,232,220,0.3)' }}>—</span>
-          <span style={{ fontFamily: 'Orbitron', fontWeight: 700, color: coloreAvversario, fontSize: 18 }}>{punteggio.cpu}</span>
+          <span style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 700, color: '#6cf0e0', fontSize: 18 }}>{punteggio.player}</span>
+          <span style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 11, color: 'rgba(238,232,220,0.3)' }}>—</span>
+          <span style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 700, color: coloreAvversario, fontSize: 18 }}>{punteggio.cpu}</span>
         </div>
         {/* Pulsante / stato attesa PvP */}
         {!isCpu && pvpHoPremutoProsegui ? (
@@ -2777,35 +3075,58 @@ function PopupGameEnd({ vittoria, pFin, coloreRisultato, testoTerritorio, nomeAv
       alignItems: 'center', justifyContent: 'center', padding: 16,
     }}>
       <div className="fade-in" style={{
-        background: 'linear-gradient(135deg, #0d0820, #06030f)',
-        border: `2px solid ${coloreRisultato}50`,
+        background: 'rgba(10,7,38,0.97)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: `1px solid ${vittoria ? 'rgba(245,197,96,0.5)' : 'rgba(255,133,182,0.35)'}`,
         borderRadius: 20, padding: 32, maxWidth: 360, width: '100%',
-        textAlign: 'center', boxShadow: `0 0 60px ${coloreRisultato}30`,
+        textAlign: 'center',
+        boxShadow: vittoria ? '0 0 60px rgba(245,197,96,0.2)' : '0 0 60px rgba(255,133,182,0.15)',
       }}>
         <div style={{ fontSize: 52, marginBottom: 12 }}>{vittoria ? '👑' : '💔'}</div>
-        <div style={{ fontFamily: 'Orbitron', fontSize: 20, fontWeight: 700, color: coloreRisultato, letterSpacing: 3, marginBottom: 6 }}>
+        <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 20, fontWeight: 700, color: vittoria ? '#f5c560' : '#ff85b6', letterSpacing: 2, marginBottom: 6 }}>
           {vittoria ? 'VITTORIA!' : 'SCONFITTA'}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 16 }}>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>TU</div>
-            <div style={{ fontSize: 34, fontFamily: 'Orbitron', fontWeight: 800, color: '#00e676' }}>{pFin.player}</div>
+            <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', fontFamily: "'Saira Condensed', Saira, sans-serif", marginBottom: 2 }}>TU</div>
+            <div style={{ fontSize: 34, fontFamily: "'Unbounded', sans-serif", fontWeight: 800, color: '#6cf0e0' }}>{pFin.player}</div>
           </div>
-          <div style={{ fontSize: 16, color: '#444', fontFamily: 'Orbitron' }}>—</div>
+          <div style={{ fontSize: 16, color: '#444', fontFamily: "'Unbounded', sans-serif" }}>—</div>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', marginBottom: 2 }}>{(nomeAvversario || 'AVVERSARIO').toUpperCase()}</div>
-            <div style={{ fontSize: 34, fontFamily: 'Orbitron', fontWeight: 800, color: coloreAvversario }}>{pFin.cpu}</div>
+            <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', fontFamily: "'Saira Condensed', Saira, sans-serif", marginBottom: 2 }}>{(nomeAvversario || 'AVVERSARIO').toUpperCase()}</div>
+            <div style={{ fontSize: 34, fontFamily: "'Unbounded', sans-serif", fontWeight: 800, color: coloreAvversario }}>{pFin.cpu}</div>
           </div>
         </div>
         <div style={{
           padding: '12px 18px', borderRadius: 10, marginBottom: 20,
-          background: `${coloreRisultato}12`, border: `1px solid ${coloreRisultato}35`,
-          fontSize: 12, fontFamily: 'Orbitron', fontWeight: 700,
-          color: coloreRisultato, letterSpacing: 1,
+          background: vittoria ? 'rgba(245,197,96,0.08)' : 'rgba(255,133,182,0.08)',
+          border: `0.8px solid ${vittoria ? 'rgba(245,197,96,0.3)' : 'rgba(255,133,182,0.3)'}`,
+          fontSize: 12, fontFamily: "'DM Sans', sans-serif", fontWeight: 600,
+          color: vittoria ? '#f5c560' : '#ff85b6', letterSpacing: 0.5,
         }}>
           {testoTerritorio}
         </div>
-        <button onClick={procedi} style={{ ...btnStyle(coloreRisultato), width: '100%' }}>
+        <button onClick={procedi} style={{
+          width: '100%',
+          padding: '12px 24px',
+          background: vittoria
+            ? 'linear-gradient(rgba(245,197,96,0.32), rgba(245,197,96,0.1))'
+            : 'linear-gradient(rgba(255,133,182,0.2), rgba(255,133,182,0.06))',
+          border: vittoria
+            ? '0.8px solid rgba(255,233,168,0.6)'
+            : '0.8px solid rgba(255,133,182,0.4)',
+          borderRadius: 12,
+          cursor: 'pointer',
+          color: vittoria ? 'rgb(42,31,0)' : '#ff85b6',
+          fontFamily: "'Saira Condensed', Saira, sans-serif",
+          fontSize: 13,
+          fontWeight: 700,
+          letterSpacing: 1.6,
+          textTransform: 'uppercase',
+          backdropFilter: 'blur(8px)',
+          boxShadow: vittoria ? 'rgba(245,197,96,0.35) 0px 6px 20px 0px' : 'none',
+        }}>
           ✓ PROCEDI ({timer}s)
         </button>
       </div>
@@ -3136,38 +3457,46 @@ function SpettatoreView({ partita, giocatori, battaglia, waifuCat, onAspetta, on
 // ─── Stili helper ────────────────────────────────────────────────────
 const btnStyle = (color, secondary = false) => ({
   flex: secondary ? undefined : 1,
-  padding: '12px 18px',
-  background: secondary ? 'rgba(255,255,255,0.04)' : `linear-gradient(135deg, ${color}, ${color}cc)`,
-  border: `1px solid ${secondary ? 'rgba(255,255,255,0.1)' : color + '60'}`,
-  borderRadius: 10,
+  padding: '10px 16px',
+  background: secondary
+    ? 'rgba(255,255,255,0.04)'
+    : `linear-gradient(${color}50, ${color}1a)`,
+  border: secondary
+    ? '0.8px solid rgba(167,139,250,0.2)'
+    : `0.8px solid ${color}99`,
+  borderRadius: 12,
   cursor: 'pointer',
-  color: secondary ? 'rgba(238,232,220,0.6)' : '#fff',
-  fontFamily: 'Orbitron',
+  color: secondary ? 'rgba(241,235,255,0.5)' : color === 'rgb(42,31,0)' ? 'rgb(42,31,0)' : '#f1ebff',
+  fontFamily: "'Saira Condensed', Saira, sans-serif",
   fontSize: 11,
   fontWeight: 700,
-  letterSpacing: 2,
+  letterSpacing: 1.6,
+  textTransform: 'uppercase',
   textAlign: 'center',
+  backdropFilter: 'blur(8px)',
+  WebkitBackdropFilter: 'blur(8px)',
   transition: 'all 0.15s',
 });
 
 const labelStyle = {
   display: 'block',
-  fontSize: 9,
-  color: 'rgba(238,232,220,0.4)',
-  fontFamily: 'Orbitron',
-  letterSpacing: 2,
+  fontSize: 10,
+  color: 'rgba(167,139,250,0.7)',
+  fontFamily: "'Saira Condensed', Saira, sans-serif",
+  letterSpacing: 1.5,
+  textTransform: 'uppercase',
   marginBottom: 6,
 };
 
 const inputStyle = {
   width: '100%',
   padding: '10px 14px',
-  background: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.12)',
-  borderRadius: 8,
-  color: '#eee8dc',
-  fontFamily: 'Orbitron',
-  fontSize: 13,
+  background: 'rgba(167,139,250,0.06)',
+  border: '0.8px solid rgba(167,139,250,0.25)',
+  borderRadius: 10,
+  color: '#f1ebff',
+  fontFamily: "'DM Sans', sans-serif",
+  fontSize: 14,
   outline: 'none',
   boxSizing: 'border-box',
 };

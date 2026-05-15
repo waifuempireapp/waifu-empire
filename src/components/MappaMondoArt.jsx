@@ -4,7 +4,7 @@
 //           pulsazione forte per confinanti, non-confinanti più scuri,
 //           nessun colore duplicato tra il proprio impero e gli altri.
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import { TERRITORI, COLORI_CONTINENTI, NOMI_CONTINENTI } from '@/lib/constants';
 
 // ─── palette continenti (base) ────────────────────────────────────────────────
@@ -79,11 +79,13 @@ export default function MappaMondoArt({
     ? mieiTerrIdsMulti.length
     : Object.values(territoriUtente).filter(t => t?.conquistato).length;
 
+  const [legendaAperta, setLegendaAperta] = useState(true);
+
   return (
     <div style={{
       position: 'relative',
       width, height,
-      background: 'radial-gradient(ellipse at 38% 28%, #0b0520 0%, #050210 55%, #000 100%)',
+      background: 'radial-gradient(1200px 600px at 15% -10%, rgba(167,139,250,0.18), rgba(0,0,0,0) 60%), radial-gradient(900px 500px at 100% 110%, rgba(255,126,182,0.12), rgba(0,0,0,0) 55%), radial-gradient(700px 400px, rgba(108,240,224,0.06), rgba(0,0,0,0) 60%), linear-gradient(#0a0726 0%, #050314 60%, #02010a 100%)',
       borderRadius: 16,
       overflow: 'hidden',
       border: '1px solid rgba(245,166,35,0.25)',
@@ -118,9 +120,9 @@ export default function MappaMondoArt({
         <defs>
           {/* ── Oceano ── */}
           <radialGradient id="ocean-g" cx="48%" cy="45%" r="75%">
-            <stop offset="0%" stopColor="#0d1e35" />
-            <stop offset="60%" stopColor="#070d1c" />
-            <stop offset="100%" stopColor="#020509" />
+            <stop offset="0%" stopColor="#0a0726" />
+            <stop offset="60%" stopColor="#050314" />
+            <stop offset="100%" stopColor="#02010a" />
           </radialGradient>
 
           {/* ── Grid tenue ── */}
@@ -202,7 +204,7 @@ export default function MappaMondoArt({
         {/* ── Linee orizzontali dell'oceano ── */}
         {[0.17,0.33,0.5,0.67,0.83].map((f, i) => (
           <line key={i} x1="0" y1={720*f} x2="1060" y2={720*f}
-            stroke="rgba(0,180,255,0.025)" strokeWidth="0.6"/>
+            stroke="rgba(108,240,224,0.02)" strokeWidth="0.6"/>
         ))}
 
         {/* ── Continenti — blob decorativi (per dare impressione organica) ── */}
@@ -435,7 +437,7 @@ export default function MappaMondoArt({
             BORDO DECORATIVO
             ════════════════════════════════════════════════════ */}
         <rect x="6" y="6" width="1048" height="708" fill="none"
-          stroke="rgba(245,166,35,0.15)" strokeWidth="1" rx="12"/>
+          stroke="rgba(167,139,250,0.2)" strokeWidth="1" rx="12"/>
 
         {/* Angoli stile manga */}
         {[
@@ -444,7 +446,7 @@ export default function MappaMondoArt({
         ].map((c,i) => (
           <g key={i} transform={`translate(${c.x},${c.y}) rotate(${c.r})`}>
             <path d="M6,6 L36,6 L36,8.5 L8.5,8.5 L8.5,36 L6,36 Z"
-              fill={coloreImpero} opacity="0.55"/>
+              fill="rgba(167,139,250,0.5)" opacity="1"/>
           </g>
         ))}
 
@@ -453,140 +455,23 @@ export default function MappaMondoArt({
             ════════════════════════════════════════════════════ */}
         <g transform="translate(530,36)">
           <rect x="-150" y="-19" width="300" height="36" rx="8"
-            fill="rgba(5,2,14,0.88)" stroke="rgba(245,166,35,0.35)" strokeWidth="1"/>
+            fill="rgba(5,2,14,0.88)" stroke="rgba(167,139,250,0.35)" strokeWidth="1"/>
           {/* piccole stelle decorative ai lati */}
-          <text x="-128" y="7" fontSize="9" fill="rgba(245,166,35,0.5)">✦</text>
-          <text x="128"  y="7" fontSize="9" fill="rgba(245,166,35,0.5)" textAnchor="end">✦</text>
+          <text x="-128" y="7" fontSize="9" fill="rgba(167,139,250,0.5)">✦</text>
+          <text x="128"  y="7" fontSize="9" fill="rgba(167,139,250,0.5)" textAnchor="end">✦</text>
           <text textAnchor="middle" y="7" fontSize="11"
-            fontFamily="Orbitron, sans-serif" fill="#f5a623" letterSpacing="3.5" fontWeight="700">
+            fontFamily="Orbitron, sans-serif" fill="#a78bfa" letterSpacing="3.5" fontWeight="700">
             MONDO CONOSCIUTO
           </text>
         </g>
 
-        {/* ════════════════════════════════════════════════════
-            CONTATORE CONQUISTATI — più grande e visibile
-            ════════════════════════════════════════════════════ */}
-        <g transform="translate(870,634)">
-          {/* glow sfondo */}
-          <rect x="-2" y="-2" width="178" height="62" rx="10"
-            fill={coloreImpero} opacity="0.08" filter="url(#glow-m)"/>
-          <rect x="0" y="0" width="174" height="58" rx="9"
-            fill="rgba(5,2,14,0.92)" stroke={coloreImpero} strokeWidth="1.2"/>
-          {/* etichetta */}
-          <text x="87" y="17" textAnchor="middle" fontSize="8"
-            fontFamily="Orbitron, sans-serif" fill={coloreImpero}
-            letterSpacing="2.5" fontWeight="600">TERRITORI CONQUISTATI</text>
-          {/* numero */}
-          <text x="56" y="44" textAnchor="middle" fontSize="24"
-            fontFamily="Orbitron, sans-serif" fill="#ffd666" fontWeight="800">
-            {numConquistati}
-          </text>
-          <text x="87" y="44" textAnchor="middle" fontSize="14"
-            fontFamily="Orbitron, sans-serif" fill="rgba(255,214,102,0.35)">/</text>
-          <text x="118" y="44" textAnchor="middle" fontSize="24"
-            fontFamily="Orbitron, sans-serif" fill="rgba(255,214,102,0.45)">
-            {TERRITORI.length}
-          </text>
-        </g>
 
-        {/* ════════════════════════════════════════════════════
-            LEGENDA IMPERI — più visibile
-            ════════════════════════════════════════════════════ */}
-        <g transform="translate(14,500)">
-          {(() => {
-            const rowH = 20;
-            const boxH = listaImperi.length * rowH + 38;
-            return (
-              <>
-                {/* Sfondo con glow */}
-                <rect x="-2" y="-2" width="242" height={boxH + 4} rx="11"
-                  fill={coloreImpero} opacity="0.07" filter="url(#glow-m)"/>
-                <rect x="0" y="0" width="238" height={boxH} rx="10"
-                  fill="rgba(5,2,14,0.92)" stroke="rgba(245,166,35,0.3)" strokeWidth="1"/>
-
-                {/* Titolo legenda */}
-                <rect x="0" y="0" width="238" height="24" rx="10"
-                  fill="rgba(245,166,35,0.1)" stroke="none"/>
-                <text x="119" y="15.5" textAnchor="middle" fontSize="8"
-                  fontFamily="Orbitron, sans-serif" fill="#f5a623" letterSpacing="3" fontWeight="700">
-                  ⚑ LEGENDA IMPERI ⚑
-                </text>
-
-                {/* Separatore */}
-                <line x1="10" y1="24" x2="228" y2="24"
-                  stroke="rgba(245,166,35,0.2)" strokeWidth="0.6"/>
-
-                {/* Righe imp */}
-                {listaImperi.map(([nome, { colore, count, mio }], i) => (
-                  <g key={nome} transform={`translate(10,${i * rowH + 30})`}>
-                    {/* badge colore */}
-                    {mio ? (
-                      <>
-                        <rect x="0" y="-1" width="14" height="14" rx="3"
-                          fill={colore} stroke="#ffd666" strokeWidth="1.2"/>
-                        <text x="7" y="10" textAnchor="middle" fontSize="8"
-                          fill="#fff">⚑</text>
-                      </>
-                    ) : (
-                      <rect x="0" y="-1" width="14" height="14" rx="3" fill={colore}/>
-                    )}
-
-                    {/* nome imp */}
-                    <text x="20" y="10"
-                      fontSize={mio ? '9' : '8'}
-                      fill={mio ? '#ffd666' : 'rgba(238,232,220,0.75)'}
-                      fontFamily="Fredoka, sans-serif"
-                      fontWeight={mio ? '700' : '400'}>
-                      {nome.length > 18 ? nome.slice(0,16)+'…' : nome}
-                    </text>
-
-                    {/* count */}
-                    <rect x="192" y="-2" width="30" height="16" rx="4"
-                      fill={mio ? colore+'33' : 'rgba(255,255,255,0.06)'}
-                      stroke={mio ? colore+'55' : 'rgba(255,255,255,0.1)'} strokeWidth="0.6"/>
-                    <text x="207" y="9.5" textAnchor="middle"
-                      fontSize="8" fill={mio ? '#ffd666' : 'rgba(238,232,220,0.6)'}
-                      fontFamily="Orbitron" fontWeight={mio ? '700' : '400'}>
-                      {count}
-                    </text>
-                  </g>
-                ))}
-
-                {/* se lista vuota */}
-                {listaImperi.length === 0 && (
-                  <text x="119" y="50" textAnchor="middle"
-                    fontSize="8" fill="rgba(238,232,220,0.3)"
-                    fontFamily="Orbitron">Nessun impero ancora</text>
-                )}
-              </>
-            );
-          })()}
-        </g>
-
-        {/* ════════════════════════════════════════════════════
-            LEGENDA STATI (confinante / non confinante)
-            ════════════════════════════════════════════════════ */}
-        <g transform="translate(14,452)">
-          <rect x="0" y="0" width="238" height="42" rx="8"
-            fill="rgba(5,2,14,0.88)" stroke="rgba(245,166,35,0.2)" strokeWidth="0.7"/>
-
-          {/* Confinante */}
-          <circle cx="18" cy="13" r="5" fill="#ffd666" opacity="0.85"/>
-          <circle cx="18" cy="13" r="8" fill="none" stroke="#ffd666" strokeWidth="1" opacity="0.4"/>
-          <text x="30" y="17" fontSize="8" fill="rgba(255,214,102,0.9)"
-            fontFamily="Fredoka, sans-serif">Conquistabile (confinante)</text>
-
-          {/* Non confinante */}
-          <circle cx="18" cy="31" r="5" fill="#334" opacity="0.7"/>
-          <text x="30" y="35" fontSize="8" fill="rgba(238,232,220,0.4)"
-            fontFamily="Fredoka, sans-serif">Non raggiungibile</text>
-        </g>
 
         {/* ════════════════════════════════════════════════════
             BUSSOLA — stile anime
             ════════════════════════════════════════════════════ */}
         <g transform="translate(990,72)">
-          <circle r="26" fill="rgba(5,2,14,0.78)" stroke="rgba(245,166,35,0.3)" strokeWidth="0.8"/>
+          <circle r="26" fill="rgba(5,2,14,0.78)" stroke="rgba(167,139,250,0.3)" strokeWidth="0.8"/>
           {/* quadranti */}
           {[0,45,90,135,180,225,270,315].map((a,i) => {
             const rad = a * Math.PI / 180;
@@ -595,19 +480,168 @@ export default function MappaMondoArt({
               x1={0} y1={0}
               x2={Math.sin(rad) * (isMaj ? 20 : 14)}
               y2={-Math.cos(rad) * (isMaj ? 20 : 14)}
-              stroke={isMaj ? 'rgba(245,166,35,0.5)' : 'rgba(245,166,35,0.18)'}
+              stroke={isMaj ? 'rgba(108,240,224,0.5)' : 'rgba(167,139,250,0.18)'}
               strokeWidth={isMaj ? 0.7 : 0.4}/>;
           })}
-          {/* freccia N (rossa) */}
-          <path d="M0,-20 L3.5,-4 L0,2 L-3.5,-4 Z" fill={coloreImpero} opacity="0.85"/>
+          {/* freccia N (aqua) */}
+          <path d="M0,-20 L3.5,-4 L0,2 L-3.5,-4 Z" fill="#6cf0e0" opacity="0.9"/>
           {/* freccia S */}
           <path d="M0,20 L3.5,4 L0,-2 L-3.5,4 Z" fill="rgba(245,166,35,0.25)"/>
           <circle r="2.5" fill="#ffd666"/>
-          <text y="-23" textAnchor="middle" fill="rgba(245,166,35,0.7)"
+          <text y="-23" textAnchor="middle" fill="rgba(108,240,224,0.8)"
             fontSize="6" fontFamily="Orbitron">N</text>
         </g>
 
       </svg>
+
+      {/* HTML overlay legenda — visibile di default, collassabile su mobile */}
+      <div style={{
+        position: 'absolute',
+        bottom: 12,
+        left: 12,
+        zIndex: 10,
+        maxWidth: legendaAperta ? 180 : 32,
+        transition: 'max-width 0.3s ease',
+        overflow: 'hidden',
+      }}>
+        <div style={{
+          background: 'rgba(10,7,38,0.88)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          border: '0.8px solid rgba(167,139,250,0.25)',
+          borderRadius: 12,
+          padding: legendaAperta ? '10px 12px' : '6px',
+          minWidth: 28,
+        }}>
+          {/* Toggle button */}
+          <button
+            onClick={() => setLegendaAperta(v => !v)}
+            style={{
+              display: 'block',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#a78bfa',
+              fontSize: 12,
+              padding: 0,
+              marginBottom: legendaAperta ? 8 : 0,
+              lineHeight: 1,
+            }}
+            title={legendaAperta ? 'Nascondi legenda' : 'Mostra legenda'}
+          >
+            {legendaAperta ? '⚑' : '⚑'}
+          </button>
+
+          {legendaAperta && (
+            <>
+              {/* Titolo */}
+              <div style={{
+                fontFamily: "'Saira Condensed', Saira, sans-serif",
+                fontSize: 8,
+                fontWeight: 700,
+                color: 'rgba(167,139,250,0.8)',
+                letterSpacing: 1.5,
+                textTransform: 'uppercase',
+                marginBottom: 8,
+                borderBottom: '0.5px solid rgba(167,139,250,0.15)',
+                paddingBottom: 6,
+              }}>⚑ Legenda Imperi</div>
+
+              {/* Lista imperi */}
+              {listaImperi.map(([nome, { colore, count, mio }]) => (
+                <div key={nome} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+                  <div style={{
+                    width: 10, height: 10, borderRadius: 3, flexShrink: 0,
+                    background: colore,
+                    border: mio ? '1px solid rgba(255,233,168,0.6)' : 'none',
+                    boxShadow: mio ? `0 0 6px ${colore}80` : 'none',
+                  }}/>
+                  <span style={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: mio ? 10 : 9,
+                    color: mio ? '#f1ebff' : 'rgba(182,174,214,0.8)',
+                    fontWeight: mio ? 700 : 400,
+                    flex: 1,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {nome.length > 14 ? nome.slice(0, 12) + '…' : nome}
+                  </span>
+                  <span style={{
+                    fontFamily: "'Saira Condensed', Saira, sans-serif",
+                    fontSize: 9,
+                    color: mio ? '#6cf0e0' : 'rgba(167,139,250,0.6)',
+                    fontWeight: 700,
+                  }}>{count}</span>
+                </div>
+              ))}
+
+              {listaImperi.length === 0 && (
+                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 9, color: 'rgba(167,139,250,0.4)' }}>
+                  Nessun impero
+                </div>
+              )}
+
+              {/* Legenda stati */}
+              <div style={{
+                marginTop: 8,
+                paddingTop: 6,
+                borderTop: '0.5px solid rgba(167,139,250,0.12)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#ffd666', boxShadow: '0 0 4px #ffd666' }}/>
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 8, color: 'rgba(255,214,102,0.8)' }}>Conquistabile</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(60,50,80,0.7)' }}/>
+                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 8, color: 'rgba(167,139,250,0.4)' }}>Non raggiungibile</span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* HTML overlay contatore conquistati */}
+      <div style={{
+        position: 'absolute',
+        bottom: 12,
+        right: 12,
+        zIndex: 10,
+        background: 'rgba(10,7,38,0.88)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        border: '0.8px solid rgba(167,139,250,0.25)',
+        borderRadius: 12,
+        padding: '8px 14px',
+        textAlign: 'center',
+        minWidth: 80,
+      }}>
+        <div style={{
+          fontFamily: "'Saira Condensed', Saira, sans-serif",
+          fontSize: 8,
+          fontWeight: 700,
+          color: 'rgba(167,139,250,0.7)',
+          letterSpacing: 1.5,
+          textTransform: 'uppercase',
+          marginBottom: 2,
+        }}>CONQUISTATI</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 3 }}>
+          <span style={{
+            fontFamily: "'Unbounded', sans-serif",
+            fontSize: 22,
+            fontWeight: 700,
+            color: '#6cf0e0',
+            lineHeight: 1,
+          }}>{numConquistati}</span>
+          <span style={{
+            fontFamily: "'Saira Condensed', sans-serif",
+            fontSize: 12,
+            color: 'rgba(167,139,250,0.4)',
+          }}>/{TERRITORI.length}</span>
+        </div>
+      </div>
     </div>
   );
 }

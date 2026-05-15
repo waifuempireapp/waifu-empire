@@ -54,6 +54,9 @@ export function getEffectiveness(moveType, attackerType, defenderType) {
 // ─── DAMAGE CALCULATION ────────────────────────────────────────────────────
 /**
  * Calcola il danno di una mossa.
+ * Compatibile con il flusso unificato (PvCPU + PvP): accetta oggetti WaifuBattleStat
+ * prodotti da initBattleWaifu() e MoveInstance con power/damage_crit.
+ * Non dipende da speed stored — speed computed via calculateSpeed() — never stored.
  * @param {WaifuBattleStat} attacker
  * @param {MoveInstance}    move   — mossa usata (con pp aggiornati)
  * @param {WaifuBattleStat} defender
@@ -81,11 +84,13 @@ export function calculateDamage(attacker, move, defender) {
 /**
  * Determina chi attacca per primo questo turno.
  * Aggiunge jitter ±5 alla speed per evitare ordine deterministico.
+ * La speed viene calcolata runtime via calculateSpeed() — never stored.
  * @returns {'player'|'enemy'}
  */
 export function determineTurnOrder(playerWaifu, enemyWaifu) {
-  const pSpeed = (playerWaifu.speed ?? 50) + (Math.random() * 10 - 5);
-  const eSpeed = (enemyWaifu.speed  ?? 50) + (Math.random() * 10 - 5);
+  // speed computed via calculateSpeed() — never stored
+  const pSpeed = calculateSpeed(playerWaifu) + (Math.random() * 10 - 5);
+  const eSpeed = calculateSpeed(enemyWaifu)  + (Math.random() * 10 - 5);
   return pSpeed >= eSpeed ? 'player' : 'enemy';
 }
 
@@ -171,32 +176,38 @@ function _generateMovesForRarity(rarita) {
 }
 
 // ─── SPEED FORMULA ────────────────────────────────────────────────────────────
+// Speed formula — calcolata runtime, mai memorizzata
+// Defaults per stat mancanti: tette=4, eta=20, esperienza=0, capelli=5, taglia_piedi=39
+export function calculateSpeed(waifu) {
+  const tette        = waifu?.tette        ?? 4;
+  const eta          = waifu?.eta          ?? 20;
+  const esperienza   = waifu?.esperienza   ?? 0;
+  const capelli      = waifu?.capelli      ?? 5;
+  const taglia_piedi = waifu?.taglia_piedi ?? 39;
+
+  const t  = (tette - 1) / 6;
+  const e  = (eta - 18) / 4982;
+  const es = esperienza / 5000;
+  const c  = (capelli - 1) / 8;
+  const p  = (taglia_piedi - 34) / 11;
+
+  const speed_raw = (1 - t) * 0.20 + (1 - e) * 0.20 + es * 0.25 + (1 - c) * 0.15 + (1 - p) * 0.20;
+  return Math.round(speed_raw * 999) + 1;
+}
+
 /**
  * Calcola la velocità di una waifu a runtime dai suoi stat fisici.
  * Il campo `battleStats.speed` salvato in Firestore viene IGNORATO — questo
  * valore calcolato ha sempre la precedenza (combat-system-v2).
  *
- * Formula (ogni componente normalizzata 0–1):
- *   t  = (tette - 1) / 6          → invertita (più tette = più lenta)
- *   e  = (eta - 18) / 4982        → invertita (più vecchia = più lenta)
- *   es = esperienza / 5000        → diretta   (più exp = più veloce)
- *   c  = (colore_capelli - 1) / 8 → invertita (colore più alto = più lenta)
- *   p  = (taglia_piedi - 34) / 11 → invertita (piedi più grandi = più lenta)
- *
- *   speed = round((1-t)*0.20 + (1-e)*0.20 + es*0.25 + (1-c)*0.15 + (1-p)*0.20 × 999) + 1
- *   Risultato: intero 1–1000.
- *
+ * Alias di calculateSpeed() per compatibilità con il codice esistente.
  * @param {Object} w — documento waifu Firestore (catalogo_waifu)
  * @returns {number} intero 1–1000
+ * @deprecated Usa calculateSpeed() — stessa formula, stesso risultato.
  */
 export function computeSpeed(w) {
-  const t  = ((w.tette          ?? 4)  - 1)  / 6;
-  const e  = ((w.eta            ?? 25) - 18) / 4982;
-  const es = (w.esperienza      ?? 0)        / 5000;
-  const c  = ((w.colore_capelli ?? 5)  - 1)  / 8;
-  const p  = ((w.taglia_piedi   ?? 39) - 34) / 11;
-  const raw = (1-t)*0.20 + (1-e)*0.20 + es*0.25 + (1-c)*0.15 + (1-p)*0.20;
-  return Math.round(Math.max(0, Math.min(1, raw)) * 999) + 1;
+  // speed computed via calculateSpeed() — never stored
+  return calculateSpeed(w);
 }
 
 // [WAIFU CHAMPIONS REFACTOR — CRIT]
@@ -321,15 +332,103 @@ export function generateCPUTeam(waifuCat, playerIds = new Set(), cpuLevel = 1) {
   return shuffled.map(w => {
     const base = initBattleWaifu(w);
     // Scala HP e speed per il livello CPU
+    // speed computed via calculateSpeed() — never stored; qui scala il valore già calcolato
     const bonus = (cpuLevel - 1) * 0.1;
+    const baseSpeed = calculateSpeed(w); // ricalcola runtime per sicurezza
     return {
       ...base,
       level: Math.min(10, cpuLevel),
       maxHp: Math.round(base.maxHp * (1 + bonus)),
       hp:    Math.round(base.maxHp * (1 + bonus)),
-      speed: Math.min(1000, Math.round(base.speed * (1 + bonus * 0.5))),
+      speed: Math.min(1000, Math.round(baseSpeed * (1 + bonus * 0.5))),
     };
   });
+}
+
+/**
+ * Genera un roster di 5 waifu CPU casuali, poi sceglie silenziosamente 3 per la pick phase.
+ * Restituisce { roster5, picks3 } come array di WaifuBattleStat già inizializzati.
+ */
+export function generateCPUTeamOf5(waifuPool, livelloCPU = 1) {
+  const pool = waifuPool || [];
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  const source5 = shuffled.slice(0, Math.min(5, shuffled.length));
+
+  const bonus = (livelloCPU - 1) * 0.1;
+  const applyLevel = (w) => {
+    const base = initBattleWaifu(w);
+    const baseSpeed = calculateSpeed(w);
+    return {
+      ...base,
+      level: Math.min(10, livelloCPU),
+      maxHp: Math.round(base.maxHp * (1 + bonus)),
+      hp:    Math.round(base.maxHp * (1 + bonus)),
+      speed: Math.min(1000, Math.round(baseSpeed * (1 + bonus * 0.5))),
+    };
+  };
+
+  const roster5 = source5.map(applyLevel);
+
+  // CPU sceglie silenziosamente 3 in ordine casuale dal roster
+  const picks3 = [...roster5].sort(() => Math.random() - 0.5).slice(0, 3);
+
+  return { roster5, picks3 };
+}
+
+// ─── BATTLE TRACKER (result popup stats) ──────────────────────────────────
+/**
+ * Crea un tracker per le statistiche della battaglia (usato dal result popup).
+ * Inizializza tutti i contatori a zero.
+ */
+export function createBattleTracker() {
+  return {
+    totalDamageP1: 0,
+    totalDamageP2: 0,
+    turniTotali: 0,
+    koCountP1: 0,
+    koCountP2: 0,
+    biggestHit: { damage: 0, waifuName: '', moveName: '' },
+  };
+}
+
+/**
+ * Aggiorna il tracker dopo ogni attacco.
+ * @param {ReturnType<createBattleTracker>} tracker
+ * @param {{ isP1: boolean, damage: number, waifuName: string, moveName: string }} hit
+ */
+export function updateBattleTracker(tracker, { isP1, damage, waifuName, moveName }) {
+  if (isP1) {
+    tracker.totalDamageP1 += damage;
+  } else {
+    tracker.totalDamageP2 += damage;
+  }
+  if (damage > tracker.biggestHit.damage) {
+    tracker.biggestHit = { damage, waifuName, moveName };
+  }
+  return tracker;
+}
+
+/**
+ * Aggiorna KO count.
+ * @param {ReturnType<createBattleTracker>} tracker
+ * @param {boolean} isP1KO — true se la waifu di P1 è stata messa KO
+ */
+export function recordKO(tracker, isP1KO) {
+  if (isP1KO) {
+    tracker.koCountP2 += 1; // P2 HA fatto il KO di P1
+  } else {
+    tracker.koCountP1 += 1; // P1 ha fatto il KO di P2
+  }
+  return tracker;
+}
+
+/**
+ * Incrementa il contatore dei turni.
+ * @param {ReturnType<createBattleTracker>} tracker
+ */
+export function incrementTurn(tracker) {
+  tracker.turniTotali += 1;
+  return tracker;
 }
 
 // ─── CPU AI ────────────────────────────────────────────────────────────────

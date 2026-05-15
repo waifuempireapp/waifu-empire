@@ -30,7 +30,8 @@ import ScambiList from '@/components/ScambiList';
 import MappaMondoArt from '@/components/MappaMondoArt';
 import MappaMultiplayer from '@/components/MappaMultiplayer';
 import WaifuBattleArena from '@/components/WaifuBattleArena';
-import { initBattleWaifu, generateCPUTeam, generateBattleStats, computeSpeed, computeCritChance } from '@/lib/battleEngine';
+import PickPhase, { RevealScreen } from '@/components/PickPhase';
+import { initBattleWaifu, generateCPUTeam, generateCPUTeamOf5, generateBattleStats, computeSpeed, computeCritChance } from '@/lib/battleEngine';
 import {
   PannelloOrnato, TitoloOrnato, BtnDecorato, Chip,
   BarraRisorsa, CardInfo, Divider, StelleRarita, FramePersonaggio,
@@ -5445,6 +5446,11 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   const [waifuBattleActive, setWaifuBattleActive] = useState(false);
   const [waifuBattlePlayerTeam, setWaifuBattlePlayerTeam] = useState([]);
 
+  // ── PICK PHASE (draft 3-from-5 prima dell'arena) ───────────
+  const [pickPhaseActive, setPickPhaseActive] = useState(false);
+  // cpuPickResult: { roster5, picks3 } da generateCPUTeamOf5 — calcolato al momento dell'attacco
+  const [cpuPickResult, setCpuPickResult] = useState(null);
+
   // ── STATO BATTAGLIA ────────────────────────────────────────
   // Fasi possibili:
   //   null                   → mappa
@@ -5511,6 +5517,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   ];
 
   // ── INIZIALIZZAZIONE MAPPA ─────────────────────────────────
+  // Territory state always loaded from DB (via profilo fetch) — no local cache
   useEffect(() => {
     if (!profilo) return;
     let terr = profilo.territoriUtente || {};
@@ -5796,16 +5803,19 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
     setStatsUsatePartita([]); // FIX: reset stat usate
     setCpuWaifuPending(null); setCpuStatPending(null); setCpuDirPending(null);
     setPunteggio({ player: 0, cpu: 0 }); setRound(1);
+    // Reset pick phase state
+    setPickPhaseActive(false); setCpuPickResult(null);
   };
 
   // ── INIZIA BATTAGLIA (verifica prerequisiti) ───────────────
   const iniziaBattaglia = () => {
     if ((profilo.energia ?? 0) < 1) { mostraNotif('Energia insufficiente!', '#ff3d3d'); return; }
     if (waifuDisponibili.length < 5) { mostraNotif('Servono almeno 5 waifu!', '#ff3d3d'); return; }
-    const teamKeys = Object.keys(teams);
-    if (teamKeys.length > 0) setTeamSelezionato(teamKeys[0]);
-    else setTeamSelezionato('manuale');
-    setModoBattaglia(true);
+    // Genera il roster CPU di 5 (con picks silenziosi già scelti) prima di aprire la pick phase
+    const cpuResult = generateCPUTeamOf5(waifuCat || [], livelloCPU);
+    setCpuPickResult(cpuResult);
+    setPickPhaseActive(true);
+    // Nota: il vecchio flusso modoBattaglia è mantenuto per rollback ma non più raggiunto qui
   };
 
   // ── CONFERMA TEAM E AVVIA (NUOVO SISTEMA WaifuBattleArena) ──
@@ -6350,6 +6360,30 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   }
 
   // ================================================================
+  // PICK PHASE (draft 3-from-5 prima di WaifuBattleArena)
+  // ================================================================
+  if (pickPhaseActive && cpuPickResult && !waifuBattleActive) {
+    // Prendi le prime 5 waifu disponibili del giocatore come roster della pick phase
+    const myRoster5 = waifuDisponibili.slice(0, 5);
+    return (
+      <PickPhase
+        roster5P={myRoster5}
+        roster5E={cpuPickResult.roster5}
+        isCpu={true}
+        isPvP={false}
+        battleCtx={{ terrSel, nomeImperoAvversario }}
+        onConfirm={(playerTeam, enemyTeam) => {
+          // playerTeam e enemyTeam sono array WaifuBattleStat[] pronti per WaifuBattleArena
+          setWaifuBattlePlayerTeam(playerTeam);
+          setPickPhaseActive(false);
+          setCpuPickResult(null);
+          setWaifuBattleActive(true);
+        }}
+      />
+    );
+  }
+
+  // ================================================================
   // NUOVO SISTEMA BATTAGLIA (WaifuBattleArena)
   // ================================================================
   if (waifuBattleActive) {
@@ -6391,37 +6425,140 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
       ) : (
       <div>
       {/* Bottoni modalità multiplayer */}
-      <PannelloOrnato glow="#9b59ff" style={{ padding: '10px 14px', marginBottom: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', letterSpacing: 2 }}>MODALITÀ</div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <button onClick={() => apriMulti('crea')} style={{
-              padding: '6px 14px', background: 'linear-gradient(135deg, #9b59ff, #9b59ffaa)',
-              border: '1px solid #9b59ff60', borderRadius: 8, cursor: 'pointer',
-              color: '#fff', fontFamily: 'Orbitron', fontSize: 9, fontWeight: 700, letterSpacing: 1,
-            }}>ðŸ° CREA PARTITA</button>
-            <button onClick={() => apriMulti('unisciti')} style={{
-              padding: '6px 14px', background: 'rgba(0,230,118,0.08)',
-              border: '1px solid rgba(0,230,118,0.3)', borderRadius: 8, cursor: 'pointer',
-              color: '#00e676', fontFamily: 'Orbitron', fontSize: 9, fontWeight: 700, letterSpacing: 1,
-            }}>ðŸ”‘ UNISCITI</button>
-            <button onClick={() => apriMulti('carica')} style={{
-              padding: '6px 14px', background: 'rgba(245,166,35,0.08)',
-              border: '1px solid rgba(245,166,35,0.3)', borderRadius: 8, cursor: 'pointer',
-              color: '#f5a623', fontFamily: 'Orbitron', fontSize: 9, fontWeight: 700, letterSpacing: 1,
-            }}>💾 CARICA</button>
-          </div>
-        </div>
-      </PannelloOrnato>
+      <div style={{
+        background: 'rgba(10,7,38,0.7)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        border: '0.8px solid rgba(167,139,250,0.15)',
+        borderRadius: 16,
+        padding: '12px 14px',
+        marginBottom: 10,
+      }}>
+        {/* Label modalità */}
+        <div style={{
+          fontSize: 9,
+          color: 'rgba(167,139,250,0.6)',
+          fontFamily: "'Saira Condensed', Saira, sans-serif",
+          letterSpacing: 2,
+          textTransform: 'uppercase',
+          marginBottom: 8,
+        }}>MODALITÀ MULTIPLAYER</div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {/* CREA PARTITA — gold */}
+          <button onClick={() => apriMulti('crea')} style={{
+            padding: '8px 14px',
+            background: 'linear-gradient(rgba(245,197,96,0.32), rgba(245,197,96,0.1))',
+            border: '0.8px solid rgba(255,233,168,0.6)',
+            borderRadius: 12,
+            cursor: 'pointer',
+            color: 'rgb(42,31,0)',
+            fontFamily: "'Saira Condensed', Saira, sans-serif",
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: 1.6,
+            textTransform: 'uppercase',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            boxShadow: 'rgba(245,197,96,0.35) 0px 8px 24px 0px',
+          }}>🏰 Crea Partita</button>
 
-      <PannelloOrnato glow="#f5a623" style={{ padding: 8, marginBottom: 10, position: 'relative' }}>
-        <div style={{ padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-          <Chip colore="#9b59ff" icon="🗺" size="md">MAPPA LV.{livelloMappa}</Chip>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <span style={{ fontSize: 9, fontFamily: 'Orbitron', color: '#00e676', letterSpacing: 1 }}>
-              <strong style={{ fontSize: 12 }}>{numConquistati}</strong>/{TERRITORI.length} <span style={{ opacity: 0.6 }}>CONQUISTATI</span>
-            </span>
-            <Chip colore="#f5a623" icon="✦">{profilo.energia ?? 0}/10</Chip>
+          {/* UNISCITI — aqua */}
+          <button onClick={() => apriMulti('unisciti')} style={{
+            padding: '8px 14px',
+            background: 'linear-gradient(rgba(108,240,224,0.15), rgba(108,240,224,0.04))',
+            border: '0.8px solid rgba(108,240,224,0.35)',
+            borderRadius: 12,
+            cursor: 'pointer',
+            color: '#6cf0e0',
+            fontFamily: "'Saira Condensed', Saira, sans-serif",
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: 1.6,
+            textTransform: 'uppercase',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+          }}>🔑 Unisciti</button>
+
+          {/* CARICA — crystal default */}
+          <button onClick={() => apriMulti('carica')} style={{
+            padding: '8px 14px',
+            background: 'linear-gradient(rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
+            border: '0.8px solid rgba(255,255,255,0.16)',
+            borderRadius: 12,
+            cursor: 'pointer',
+            color: '#f1ebff',
+            fontFamily: "'Saira Condensed', Saira, sans-serif",
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: 1.6,
+            textTransform: 'uppercase',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+          }}>💾 Carica</button>
+        </div>
+      </div>
+
+      <div style={{
+        background: 'rgba(10,7,38,0.6)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '0.8px solid rgba(167,139,250,0.18)',
+        borderRadius: 16,
+        padding: 8,
+        marginBottom: 10,
+        position: 'relative',
+      }}>
+        <div style={{
+          padding: '8px 10px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 8,
+        }}>
+          {/* Nome impero + livello */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{
+              fontFamily: "'Unbounded', sans-serif",
+              fontSize: 14,
+              fontWeight: 700,
+              color: '#f1ebff',
+              lineHeight: 1.2,
+            }}>{profilo.nomeImpero || 'Il Tuo Impero'}</span>
+            <span style={{
+              fontFamily: "'Saira Condensed', Saira, sans-serif",
+              fontSize: 10,
+              fontWeight: 700,
+              color: '#a78bfa',
+              letterSpacing: 1.5,
+              textTransform: 'uppercase',
+            }}>MAPPA LV.{livelloMappa}</span>
+          </div>
+          {/* Contatore conquistati */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{
+                fontFamily: "'Unbounded', sans-serif",
+                fontSize: 18,
+                fontWeight: 700,
+                color: '#6cf0e0',
+                lineHeight: 1,
+              }}>{numConquistati}</span>
+              <span style={{
+                fontFamily: "'Saira Condensed', sans-serif",
+                fontSize: 11,
+                color: 'rgba(167,139,250,0.5)',
+                marginLeft: 2,
+              }}>/ {TERRITORI.length}</span>
+              <div style={{
+                fontFamily: "'Saira Condensed', Saira, sans-serif",
+                fontSize: 8,
+                color: 'rgba(167,139,250,0.6)',
+                letterSpacing: 1.5,
+                textTransform: 'uppercase',
+              }}>CONQUISTATI</div>
+            </div>
+            <Chip colore="#a78bfa" icon="✦">{profilo.energia ?? 0}/10</Chip>
           </div>
         </div>
         <MappaScrollabile
@@ -6444,29 +6581,67 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
           return (
             <div style={{
               position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-              background: 'rgba(6,3,15,0.95)', backdropFilter: 'blur(14px)',
-              border: `1px solid ${eMio ? (profilo.coloreImpero || '#00e676') : (terrData.coloreImpero || 'rgba(155,89,255,0.4)')}60`,
-              borderRadius: 14, padding: 18, minWidth: 240, maxWidth: 320, zIndex: 50,
-              boxShadow: `0 0 30px ${eMio ? 'rgba(0,230,118,0.2)' : 'rgba(155,89,255,0.2)'}`,
+              background: 'rgba(10,7,38,0.96)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: `1px solid rgba(167,139,250,0.25)`,
+              borderRadius: 16,
+              padding: 18,
+              minWidth: 240,
+              maxWidth: 320,
+              zIndex: 50,
+              boxShadow: `0 0 30px rgba(167,139,250,0.15)`,
             }}>
               <button onClick={() => setTerrSel(null)} style={{ position: 'absolute', top: 8, right: 12, background: 'none', border: 'none', color: 'rgba(238,232,220,0.5)', fontSize: 18, cursor: 'pointer' }}>✕</button>
-              <div style={{ fontFamily: 'Orbitron', fontSize: 15, color: '#ffd666', fontWeight: 700, marginBottom: 6 }}>{terrSel.nome}</div>
-              <div style={{ fontSize: 9, opacity: 0.5, marginBottom: 3 }}>Continente: <span style={{ color: '#9b59ff' }}>{NOMI_CONTINENTI[terrSel.cont] || terrSel.cont}</span></div>
-              <div style={{ fontSize: 9, marginBottom: 3 }}>Impero: <strong style={{ color: terrData.coloreImpero || '#666' }}>{terrData.impero || 'Libero'}</strong>{eMio && <span style={{ color: '#00e676', marginLeft: 6 }}>★ TUO</span>}</div>
-              <div style={{ fontSize: 8, opacity: 0.4, marginBottom: 12 }}>Confini: {terrSel.conf?.length ? terrSel.conf.map(c => { const t = TERRITORI?.find(x => x.id === c); return t?.nome; }).filter(Boolean).join(', ') : '—'}</div>
-              {!terrData.conquistato && (
-                <button onClick={() => possoAttaccare && iniziaBattaglia()} disabled={!possoAttaccare} style={{
-                  width: '100%', padding: '10px 0',
-                  background: possoAttaccare ? 'linear-gradient(135deg, #f5a623, #ff2d78)' : 'rgba(60,60,60,0.3)',
-                  border: 'none', borderRadius: 8, cursor: possoAttaccare ? 'pointer' : 'not-allowed',
-                  color: possoAttaccare ? '#000' : '#555', fontFamily: 'Orbitron', fontSize: 12, fontWeight: 700, letterSpacing: 2,
-                }}>⚔ CONQUISTA</button>
-              )}
-              {!possoAttaccare && !terrData.conquistato && <div style={{ fontSize: 9, color: '#ff3d3d', textAlign: 'center', marginTop: 4 }}>Non confinante</div>}
+              <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 15, color: '#f1ebff', fontWeight: 700, marginBottom: 6 }}>{terrSel.nome}</div>
+              <div style={{ fontFamily: "'DM Sans', sans-serif", color: '#b6aed6', opacity: 1, fontSize: 10, marginBottom: 3 }}>Continente: <span style={{ color: '#9b59ff' }}>{NOMI_CONTINENTI[terrSel.cont] || terrSel.cont}</span></div>
+              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: '#b6aed6', marginBottom: 3 }}>Impero: <strong style={{ color: terrData.coloreImpero || '#666' }}>{terrData.impero || 'Libero'}</strong>{eMio && <span style={{ color: '#6cf0e0', marginLeft: 6, textShadow: '0 0 8px rgba(108,240,224,0.6)' }}>★ TUO</span>}</div>
+              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 9, color: 'rgba(167,139,250,0.4)', opacity: 1, marginBottom: 12 }}>Confini: {terrSel.conf?.length ? terrSel.conf.map(c => { const t = TERRITORI?.find(x => x.id === c); return t?.nome; }).filter(Boolean).join(', ') : '—'}</div>
+              {(() => {
+                const haRoster5 = (collezione?.length ?? 0) >= 5;
+                return !terrData.conquistato && (
+                  <div>
+                    {!haRoster5 ? (
+                      <div style={{
+                        width: '100%',
+                        padding: '10px 0',
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '0.8px solid rgba(255,255,255,0.08)',
+                        borderRadius: 12,
+                        color: 'rgba(241,235,255,0.35)',
+                        fontFamily: "'Saira Condensed', Saira, sans-serif",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        textAlign: 'center',
+                        letterSpacing: 1,
+                      }}>Raccogli 5 waifu per combattere</div>
+                    ) : (
+                      <button onClick={() => possoAttaccare && iniziaBattaglia()} disabled={!possoAttaccare} style={{
+                        width: '100%',
+                        padding: '10px 0',
+                        background: possoAttaccare ? 'linear-gradient(rgba(245,197,96,0.32), rgba(245,197,96,0.1))' : 'rgba(255,255,255,0.04)',
+                        border: possoAttaccare ? '0.8px solid rgba(255,233,168,0.6)' : '0.8px solid rgba(255,255,255,0.08)',
+                        borderRadius: 12,
+                        cursor: possoAttaccare ? 'pointer' : 'not-allowed',
+                        color: possoAttaccare ? 'rgb(42,31,0)' : 'rgba(241,235,255,0.25)',
+                        fontFamily: "'Saira Condensed', Saira, sans-serif",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        letterSpacing: 1.6,
+                        textTransform: 'uppercase',
+                        backdropFilter: 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)',
+                        boxShadow: possoAttaccare ? 'rgba(245,197,96,0.35) 0px 8px 24px 0px' : 'none',
+                      }}>⚔ CONQUISTA</button>
+                    )}
+                    {!possoAttaccare && haRoster5 && <div style={{ fontSize: 9, color: '#ff3d3d', textAlign: 'center', marginTop: 4 }}>Non confinante</div>}
+                  </div>
+                );
+              })()}
             </div>
           );
         })()}
-      </PannelloOrnato>
+      </div>
 
       {mappaCompleta && (
         <PannelloOrnato variant="accent" glow="#00e676" style={{ marginTop: 10, textAlign: 'center', padding: 20 }}>
@@ -6496,7 +6671,7 @@ function MappaScrollabile({ territoriUtente, coloreImpero, nomeImpero, territori
   }, []);
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', background: 'radial-gradient(60% 40% at 50% 30%, rgba(167,139,250,0.08), transparent 70%), #02010a' }}>
       {/* Controlli zoom */}
       <div style={{
         position: 'absolute', top: 8, right: 8, zIndex: 20,
@@ -6504,20 +6679,20 @@ function MappaScrollabile({ territoriUtente, coloreImpero, nomeImpero, territori
       }}>
         <button onClick={() => setZoom(z => Math.min(MAX_ZOOM, z + ZOOM_STEP))} style={{
           width: 28, height: 28, borderRadius: 6,
-          background: 'rgba(6,3,15,0.9)', border: '1px solid rgba(245,166,35,0.35)',
-          color: '#f5a623', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(6,3,15,0.9)', border: '1px solid rgba(167,139,250,0.35)',
+          color: '#a78bfa', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontWeight: 700,
         }}>+</button>
         <button onClick={() => setZoom(1)} style={{
           width: 28, height: 14, borderRadius: 4,
-          background: 'rgba(6,3,15,0.9)', border: '1px solid rgba(245,166,35,0.2)',
-          color: 'rgba(245,166,35,0.5)', fontSize: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: 'Orbitron',
+          background: 'rgba(6,3,15,0.9)', border: '1px solid rgba(167,139,250,0.2)',
+          color: 'rgba(167,139,250,0.5)', fontSize: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: "'Saira Condensed', Saira, sans-serif",
         }}>1:1</button>
         <button onClick={() => setZoom(z => Math.max(MIN_ZOOM, z - ZOOM_STEP))} style={{
           width: 28, height: 28, borderRadius: 6,
-          background: 'rgba(6,3,15,0.9)', border: '1px solid rgba(245,166,35,0.35)',
-          color: '#f5a623', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(6,3,15,0.9)', border: '1px solid rgba(167,139,250,0.35)',
+          color: '#a78bfa', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontWeight: 700,
         }}>âˆ’</button>
       </div>
@@ -6526,7 +6701,7 @@ function MappaScrollabile({ territoriUtente, coloreImpero, nomeImpero, territori
       <div
         className="mappa-scroll-container"
         onWheel={handleWheel}
-        style={{ borderRadius: 10, overflow: 'auto', maxHeight: 'min(62vh, 520px)' }}
+        style={{ borderRadius: 10, overflow: 'auto', maxHeight: typeof window !== 'undefined' && window.innerWidth < 640 ? '55vw' : '68vh', minHeight: 200 }}
       >
         <div style={{
           transform: `scale(${zoom})`,
