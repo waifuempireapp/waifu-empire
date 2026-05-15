@@ -1893,7 +1893,7 @@ function EdgeSpoilerOverlay({ carteShuffled, currentIdx, onClose }) {
                   overflow: 'hidden', // clips the full card back to just STRIP_W px
                   borderRadius: '0 6px 6px 0',
                   position: 'relative',
-                  transform: `translateY(${seed.tinyNoise}px) rotate(${(i + 1) * 1.5}deg)`,
+                  transform: `translateY(${seed.tinyNoise * 0.3}px) rotate(${(i + 1) * 0.4}deg)`,
                   transformOrigin: 'bottom center',
                   zIndex: 5 - i,
                   boxShadow: glowPx > 0
@@ -1904,20 +1904,19 @@ function EdgeSpoilerOverlay({ carteShuffled, currentIdx, onClose }) {
                     : 'none',
                 }}
               >
-                {/* Full 143px card back — clipped to STRIP_W by overflow:hidden */}
+                {/* Full 143px card back — marginLeft negative shows rightmost STRIP_W px */}
                 <div style={{
                   width: 143, height: '100%',
                   borderRadius: 10,
-                  background: 'linear-gradient(160deg, #1b1638 0%, #07051a 100%)',
-                  borderLeft: `4px solid ${rarCol}`,
+                  background: 'linear-gradient(160deg, #07051a 0%, #1f1a40 100%)',
+                  borderRight: `4px solid ${rarCol}`,
                   position: 'relative', overflow: 'hidden',
-                  // Slight gradient toward the right, fading into darkness
-                  backgroundImage: `linear-gradient(160deg, #1f1a40 0%, #07051a 60%)`,
+                  marginLeft: -(143 - STRIP_W),  // shift left → right edge is visible
                 }}>
-                  {/* Rarity glow strip inside (reinforces color) */}
+                  {/* Rarity glow strip on right side */}
                   <div style={{
-                    position: 'absolute', left: 0, top: 0, bottom: 0, width: 10,
-                    background: `linear-gradient(90deg, ${rarCol}${Math.round(glowAlpha * 200).toString(16).padStart(2,'0')}, transparent)`,
+                    position: 'absolute', right: 0, top: 0, bottom: 0, width: 10,
+                    background: `linear-gradient(270deg, ${rarCol}${Math.round(glowAlpha * 200).toString(16).padStart(2,'0')}, transparent)`,
                     pointerEvents: 'none',
                   }} />
                   {/* Shimmer for epic+ */}
@@ -1990,8 +1989,7 @@ function DropCarousel({ dropsAttivi, dropSelId, setDropSelId }) {
         // Circular wrap: show items that wrap around the ends
         if (dist > n / 2) dist -= n;
         if (dist < -n / 2) dist += n;
-        // Position: center at 50% + dist * 54vw offset
-        const offset = dist * 54; // vw units
+        // Position: center at 50% + dist * 27vw offset (halved)
         const scale = i === currentIdx ? 1 : 0.70;
         const opacity = Math.abs(dist) > 1 ? 0 : (i === currentIdx ? 1 : 0.65);
         const brightness = i === currentIdx ? 1 : 0.68;
@@ -2005,7 +2003,7 @@ function DropCarousel({ dropsAttivi, dropSelId, setDropSelId }) {
               position: 'absolute',
               left: '50%',
               top: '50%',
-              transform: `translate(-50%, -50%) translateX(${offset}vw) scale(${scale})`,
+              transform: `translate(-50%, -50%) translateX(${dist * 27}vw) scale(${scale})`,
               opacity,
               filter: `brightness(${brightness})`,
               transition: dragging ? 'none' : 'transform 0.38s cubic-bezier(0.23,1,0.32,1), opacity 0.3s, filter 0.3s',
@@ -2500,15 +2498,6 @@ function SelectionScreen({ drop, dropsAttivi, dropSelId, setDropSelId, profilo, 
 
       {/* DropCarousel — sempre visibile, sostituisce pills e pack card */}
       <DropCarousel dropsAttivi={dropsAttivi} dropSelId={dropSelId} setDropSelId={setDropSelId} />
-      {/* Probabilità */}
-      <div className="sb-odds">
-        {ODDS.map(o => (
-          <div key={o.label} className="sb-odds__item">
-            <span className="sb-odds__label" style={{ color: o.col }}>{o.label}</span>
-            <span className="sb-odds__pct">{o.pct}</span>
-          </div>
-        ))}
-      </div>
 
       {/* Step 2: Tipo pacchetto — con selezione evidente */}
       <div className="sb-step-label" style={{ color: !selectedType ? '#ffe9a8' : 'rgba(241,235,255,0.45)' }}>
@@ -2609,6 +2598,16 @@ function SelectionScreen({ drop, dropsAttivi, dropSelId, setDropSelId, profilo, 
       {needBuy && selectedType === 'omaggio' && cdOmaggio && (
         <div className="sb-countdown" style={{ marginBottom: 12 }}>⏱ Prossimo omaggio tra {cdOmaggio}</div>
       )}
+
+      {/* Probabilità rarità — spostate qui, prima di "Vedi carte disponibili" */}
+      <div className="sb-odds" style={{ marginTop: 8 }}>
+        {ODDS.map(o => (
+          <div key={o.label} className="sb-odds__item">
+            <span className="sb-odds__label" style={{ color: o.col }}>{o.label}</span>
+            <span className="sb-odds__pct">{o.pct}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -3041,6 +3040,24 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
               </div>
             )}
           </div>
+          {/* Pagination controls (fix 3) */}
+          {catalogoFiltrato.length > CATALOG_PAGE_SIZE && (
+            <div style={{ display:'flex', gap:8, justifyContent:'center', alignItems:'center', marginTop:10, padding:'6px 0' }}>
+              <button
+                onClick={() => setCatalogPage(p => Math.max(0, p-1))}
+                disabled={catalogPage === 0}
+                style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:8, color:catalogPage===0?'rgba(238,232,220,0.25)':'#eedcd4', fontFamily:'Orbitron', fontSize:10, padding:'7px 14px', cursor:catalogPage===0?'not-allowed':'pointer' }}
+              >{'<'} Prec</button>
+              <span style={{ fontFamily:'Orbitron', fontSize:9, color:'rgba(238,232,220,0.5)', letterSpacing:1 }}>
+                {catalogPage+1} / {Math.ceil(catalogoFiltrato.length/CATALOG_PAGE_SIZE)}
+              </span>
+              <button
+                onClick={() => setCatalogPage(p => Math.min(Math.ceil(catalogoFiltrato.length/CATALOG_PAGE_SIZE)-1, p+1))}
+                disabled={(catalogPage+1)*CATALOG_PAGE_SIZE>=catalogoFiltrato.length}
+                style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:8, color:(catalogPage+1)*CATALOG_PAGE_SIZE>=catalogoFiltrato.length?'rgba(238,232,220,0.25)':'#eedcd4', fontFamily:'Orbitron', fontSize:10, padding:'7px 14px', cursor:(catalogPage+1)*CATALOG_PAGE_SIZE>=catalogoFiltrato.length?'not-allowed':'pointer' }}
+              >Succ {'>'}</button>
+            </div>
+          )}
         </PannelloOrnato>
       )}
 
