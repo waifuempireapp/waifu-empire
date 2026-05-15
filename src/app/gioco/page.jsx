@@ -1840,7 +1840,7 @@ function EdgeSpoilerOverlay({ carteShuffled, currentIdx, onClose }) {
   // Strip constants
   const STRIP_W   = 12;  // px visible per card edge (tight physical stack)
   const STRIP_GAP = 1;   // px gap between edges (1px = physical card thickness)
-  const CARD_H    = 340; // match CartaWaifu 'normale' height
+  const CARD_H    = 310; // fixed strip height per spec
 
   return (
     <div
@@ -1891,7 +1891,8 @@ function EdgeSpoilerOverlay({ carteShuffled, currentIdx, onClose }) {
                   height: CARD_H + Math.abs(seed.tinyNoise),
                   flexShrink: 0,
                   overflow: 'hidden', // clips the full card back to just STRIP_W px
-                  borderRadius: '6px 0 0 6px',
+                  borderRadius: '0 6px 6px 0',
+                  position: 'relative',
                   transform: `translateY(${seed.tinyNoise}px) rotate(${(i + 1) * 1.5}deg)`,
                   transformOrigin: 'bottom center',
                   zIndex: 5 - i,
@@ -1979,7 +1980,7 @@ function DropCarousel({ dropsAttivi, dropSelId, setDropSelId }) {
 
   return (
     <div
-      style={{ width: '100%', overflow: 'hidden', position: 'relative', height: 240, marginBottom: 14 }}
+      style={{ width: '100%', overflow: 'hidden', position: 'relative', height: 360, marginBottom: 14 }}
       onTouchStart={handleDown} onTouchMove={handleMove} onTouchEnd={handleUp}
       onMouseDown={handleDown} onMouseMove={dragging ? handleMove : undefined} onMouseUp={handleUp}
       onMouseLeave={() => { if (dragging) { setDragging(false); setDragDelta(0); } }}
