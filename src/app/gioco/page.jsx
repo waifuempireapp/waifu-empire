@@ -1839,8 +1839,8 @@ function EdgeSpoilerOverlay({ carteShuffled, currentIdx, onClose }) {
 
   // Strip constants
   const STRIP_W   = 12;  // px visible per card edge (tight physical stack)
-  const STRIP_GAP = 3;   // px gap between edges (card thickness illusion)
-  const CARD_H    = 215; // cartaWaifu piccola height
+  const STRIP_GAP = 1;   // px gap between edges (1px = physical card thickness)
+  const CARD_H    = 340; // match CartaWaifu 'normale' height
 
   return (
     <div
@@ -1979,7 +1979,7 @@ function DropCarousel({ dropsAttivi, dropSelId, setDropSelId }) {
 
   return (
     <div
-      style={{ width: '100%', overflow: 'hidden', position: 'relative', height: 230, marginBottom: 14 }}
+      style={{ width: '100%', overflow: 'hidden', position: 'relative', height: 240, marginBottom: 14 }}
       onTouchStart={handleDown} onTouchMove={handleMove} onTouchEnd={handleUp}
       onMouseDown={handleDown} onMouseMove={dragging ? handleMove : undefined} onMouseUp={handleUp}
       onMouseLeave={() => { if (dragging) { setDragging(false); setDragDelta(0); } }}
@@ -2088,6 +2088,7 @@ function CardRevealScreen({
   const [showAutoHint, setShowAutoHint] = useState(false);
   const [skipping, setSkipping] = useState(false);
   const [skipIdx, setSkipIdx] = useState(currentIdx);
+  const [skipPhase, setSkipPhase] = useState('showing'); // 'showing' | 'exiting'
   const longPressTimer = useRef(null);
   const autoHintTimer = useRef(null);
   const skipHoldTimer = useRef(null);
@@ -2118,15 +2119,32 @@ function CardRevealScreen({
     return () => clearTimeout(autoHintTimer.current);
   }, [currentIdx, skipping]);
 
-  // Skip: flash 1-per-1 at 300ms each
+  // Skip: preload all card images, then show each for 500ms with exit animation
   const startSkip = () => {
     if (skipping) return;
+    // Preload images for all remaining cards
+    carteShuffled.slice(currentIdx).forEach(card => {
+      const tryLoad = (url) => { if (url && typeof url === 'string') { const img = new Image(); img.src = url; } };
+      if (card.data) {
+        ['asset_carta','asset_url','img_url','asset_img','asset','asset_bustina','url'].forEach(k => tryLoad(card.data[k]));
+      }
+    });
     setSkipping(true);
-    const totalRemaining = carteShuffled.length - currentIdx;
-    for (let i = 0; i < totalRemaining; i++) {
-      setTimeout(() => setSkipIdx(currentIdx + i), i * 500);
+    setSkipPhase('showing');
+    setSkipIdx(currentIdx);
+    // Schedule each card: 500ms show → 180ms exit → next
+    const SHOW_MS = 500;
+    const EXIT_MS = 180;
+    const STEP    = SHOW_MS + EXIT_MS;
+    const remaining = carteShuffled.length - currentIdx;
+    for (let i = 0; i < remaining; i++) {
+      setTimeout(() => { setSkipIdx(currentIdx + i); setSkipPhase('showing'); }, i * STEP);
+      if (i < remaining - 1) {
+        setTimeout(() => setSkipPhase('exiting'), i * STEP + SHOW_MS);
+      }
     }
-    setTimeout(onAllDone, totalRemaining * 500 + 200);
+    // Go to results after last card is shown
+    setTimeout(onAllDone, remaining * STEP + 100);
   };
 
   const handleStageDown = (e) => {
@@ -2181,9 +2199,9 @@ function CardRevealScreen({
         style={{ touchAction: 'none' }}
       >
         {(isNew || isHot) && (
-          <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 20, display: 'flex', flexDirection: 'column', gap: 6, pointerEvents: 'none' }}>
+          <div className="sb-reveal-badges">
             {isNew && <div className="sb-badge-new">NEW ✦</div>}
-            {isHot && <div className={`sb-badge-hot${isNew ? ' sb-badge-hot--below' : ''}`}>HOT 🔥</div>}
+            {isHot && <div className="sb-badge-hot">HOT 🔥</div>}
           </div>
         )}
 

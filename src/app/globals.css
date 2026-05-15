@@ -1878,11 +1878,12 @@ input:focus, textarea:focus, select:focus {
 }
 
 /* Auto-hint after 3s in pack reveal */
+/* FIX: translateX(-50%) must be in keyframes or animation overrides it → right-aligned bug */
 @keyframes sbTapHintPop {
-  0%   { opacity: 0; transform: translateY(10px) scale(0.9); }
-  15%  { opacity: 1; transform: translateY(0) scale(1); }
-  85%  { opacity: 1; }
-  100% { opacity: 0; transform: translateY(-5px); }
+  0%   { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.9); }
+  15%  { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  85%  { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-5px) scale(1); }
 }
 .sb-card-reveal__auto-hint {
   position: fixed; bottom: 160px; left: 50%; transform: translateX(-50%);
@@ -1991,13 +1992,31 @@ input:focus, textarea:focus, select:focus {
   color: rgba(241,235,255,0.35); white-space: nowrap;
 }
 
-/* ===== Skip animation ===== */
-@keyframes sbCardFlash {
-  0%,85%  { opacity: 1; }
-  95%,100% { opacity: 0; transform: scale(1.05); }
+/* ===== Skip animation — smooth exit per card ===== */
+@keyframes sbCardExitLeft {
+  0%   { opacity: 1; transform: rotateY(-10deg) rotateX(4deg) scale(1) translateX(0); }
+  100% { opacity: 0; transform: rotateY(-10deg) rotateX(4deg) scale(0.88) translateX(-45px); }
 }
-.sb-card-3d--flashing {
-  animation: sbCardFlash 0.15s ease-out forwards;
+@keyframes sbCardEnterRight {
+  0%   { opacity: 0; transform: translateX(60px) rotateY(-25deg) scale(0.85); }
+  100% { opacity: 1; transform: translateX(0) rotateY(-10deg) scale(1); }
+}
+.sb-card-3d--exiting {
+  animation: sbCardExitLeft 0.18s ease-in forwards;
+}
+/* Badge HOT/NEW centrati su mobile durante rivelazione */
+@media (max-width: 768px) {
+  .sb-reveal-badges {
+    position: absolute;
+    top: -14px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 6px; white-space: nowrap; z-index: 20;
+    pointer-events: none;
+  }
+  .sb-reveal-badges .sb-badge-new,
+  .sb-reveal-badges .sb-badge-hot {
+    position: static; /* override absolute positioning */
+    flex-shrink: 0;
+  }
 }
 
 /* ===== Pokémon Pocket style peek — draggable card stack ===== */
