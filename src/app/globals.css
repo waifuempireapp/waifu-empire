@@ -1897,15 +1897,36 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 12px rgba(245,197,96,0.2);
 }
 
-/* ===== Results fly animation ===== */
+/* ===== Results fly animation — DOWN toward bottom navbar collection icon ===== */
 @keyframes sbFlyCard {
   0%   { opacity: 1; transform: scale(1) translate(0, 0); }
-  40%  { opacity: 0.9; transform: scale(0.55) translate(0, 30px); }
-  100% { opacity: 0; transform: scale(0) translate(0, 140px); }
+  40%  { opacity: 0.85; transform: scale(0.45) translate(0, 80px); }
+  100% { opacity: 0; transform: scale(0) translate(0, 260px); }
 }
 .sb-results__card-wrap--flying {
-  animation: sbFlyCard 0.55s ease-in forwards;
+  animation: sbFlyCard 0.6s ease-in forwards;
 }
+/* Waifu Pack badge in results / reveal */
+.sb-waifu-pack-banner {
+  width: 100%;
+  text-align: center; padding: 8px 0; margin-bottom: 8px;
+  background: linear-gradient(90deg, transparent, rgba(245,197,96,0.18), transparent);
+  border-top: 1px solid rgba(245,197,96,0.3);
+  border-bottom: 1px solid rgba(245,197,96,0.3);
+  font-family: 'Unbounded', sans-serif; font-size: 13px; font-weight: 800;
+  color: #f5c560;
+  text-shadow: 0 0 18px rgba(245,197,96,0.7);
+  animation: pulseStrong 1.5s ease-in-out infinite;
+  letter-spacing: 0.04em;
+}
+/* Multi-pack results: pack group label */
+.sb-results__pack-label {
+  font-family: 'Saira Condensed', sans-serif; font-size: 9px;
+  letter-spacing: 0.28em; text-transform: uppercase;
+  color: rgba(241,235,255,0.4); font-weight: 700;
+  text-align: center; margin: 10px 0 6px;
+}
+.sb-results__pack-group { margin-bottom: 6px; }
 
 /* ===== Edge Spoiler System ===== */
 @keyframes sbEdgeShimmer {

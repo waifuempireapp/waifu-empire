@@ -2079,6 +2079,7 @@ function DropCarousel({ dropsAttivi, dropSelId, setDropSelId }) {
 function CardRevealScreen({
   carteShuffled, currentIdx, onNext, onAllDone,
   carteOriginali,
+  isGodPack, autoSkip, onSkipActivated,
   profilo, collezione, avviaVideoSbusto,
   sbusVideoAttivo, sbusVideoFinito, sbusCartaImmersiva, sbusVideoRef,
   setSbusVideoFinito, chiudiVideoSbusto, rivediVideoSbusto,
@@ -2097,6 +2098,14 @@ function CardRevealScreen({
   useEffect(() => {
     setSkipIdx(currentIdx);
   }, [currentIdx]);
+
+  // autoSkip: when true (from globalSkip mode), start skip immediately on mount
+  useEffect(() => {
+    if (autoSkip && !skipping) {
+      const t = setTimeout(() => startSkip(), 100);
+      return () => clearTimeout(t);
+    }
+  }, [autoSkip]); // eslint-disable-line
 
   // Card to display: during skip use skipIdx, otherwise use currentIdx
   const displayIdx = skipping ? skipIdx : currentIdx;
@@ -2166,7 +2175,10 @@ function CardRevealScreen({
 
   const handleSkipBtnDown = (e) => {
     e.stopPropagation();
-    skipHoldTimer.current = setTimeout(startSkip, 800);
+    skipHoldTimer.current = setTimeout(() => {
+      if (onSkipActivated) onSkipActivated(); // notify parent for globalSkip mode
+      startSkip();
+    }, 800);
   };
   const handleSkipBtnUp = (e) => {
     e.stopPropagation();
@@ -2185,6 +2197,9 @@ function CardRevealScreen({
 
   return (
     <div className="sb-card-reveal">
+      {isGodPack && (
+        <div className="sb-waifu-pack-banner">✦ WAIFU PACK ✦</div>
+      )}
       <div className="sb-card-reveal__progress">
         Carta {currentIdx + 1} / {carteShuffled.length}
       </div>
@@ -2351,8 +2366,12 @@ function PackClosedScreen({ drop, isGodPack, onOpen, packNumber, totalPacks }) {
   );
 }
 // ── ResultsScreen v2 (punti 13, 14) ────────────────────────────────────
+// TEMP: ResultsScreen v3 — multi-pack grouped display + fly DOWN + Waifu Pack banner
+
 function ResultsScreen({
-  carteShuffled, profilo, collezione,
+  carteShuffled,        // single pack (or last pack for legacy)
+  allPacksCartes,       // multi-pack: Card[][] (one array per pack), or null for single
+  profilo, collezione,
   outfitCat, poseCat, ModaleCarta, setProfilo, user,
   cartaDettaglioSbus, setCartaDettaglioSbus,
   onAvanti,
@@ -2361,27 +2380,28 @@ function ResultsScreen({
 
   const handleAvanti = () => {
     setFlyOut(true);
-    setTimeout(onAvanti, 700);
+    setTimeout(onAvanti, 750);
   };
 
-  // Show in reveal order (left-to-right, top-to-bottom = first revealed to last)
-  const sorted = carteShuffled;
+  // Determine whether this is multi-pack or single
+  const isMulti = allPacksCartes && allPacksCartes.length > 1;
+  const packs = isMulti ? allPacksCartes : [carteShuffled];
 
-  const renderCard = (card, i) => {
+  const renderCard = (card, packIdx, cardIdx) => {
+    const key = `${packIdx}-${cardIdx}`;
     const isWaifu  = card.tipo === 'waifu';
     const isHot    = isWaifu && card.data?.hot === true && !!profilo?.hardPass;
     const isNew    = card.isNuova;
-    const delay    = i * 60;
+    const flyDelay = (packIdx * 5 + cardIdx) * 55;
     return (
-      // Mini wrapper (punto 13): fixed-size box with scaled card inside
-      <div key={i} style={{ width: 100, height: 150, overflow: 'visible', position: 'relative', flexShrink: 0 }}>
+      <div key={key} style={{ width: 100, height: 150, overflow: 'visible', position: 'relative', flexShrink: 0 }}>
         <div
-          className={flyOut ? `sb-results__card-wrap--flying` : ''}
+          className={flyOut ? 'sb-results__card-wrap--flying' : ''}
           style={{
             transform: 'scale(0.70)',
             transformOrigin: 'top left',
             position: 'absolute', top: 0, left: 0,
-            animationDelay: flyOut ? `${delay}ms` : undefined,
+            animationDelay: flyOut ? `${flyDelay}ms` : undefined,
           }}
         >
           <div style={{ position: 'relative' }}>
@@ -2390,7 +2410,7 @@ function ResultsScreen({
                 onClick={() => setCartaDettaglioSbus({ tipo: 'waifu', w: card.data, dati: collezione.waifu?.[card.data.id] || { copie: 1, livello: 1, stat_bonus: {} } })} />
             )}
             {card.tipo === 'outfit' && <CartaOutfit outfit={card.data} dimensione="piccola" onClick={() => setCartaDettaglioSbus({ tipo: 'outfit', o: card.data })} />}
-            {card.tipo === 'posa'   && <CartaPosa   posa={card.data}   dimensione="piccola" onClick={() => setCartaDettaglioSbus({ tipo: 'posa', p: card.data })} />}
+            {card.tipo === 'posa'   && <CartaPosa   posa={card.data}   dimensione="piccola" onClick={() => setCartaDettaglioSbus({ tipo: 'posa',   p: card.data })} />}
             {isNew && <div className="sb-badge-new">NEW ✦</div>}
             {isHot && <div className="sb-badge-hot">HOT 🔥</div>}
           </div>
@@ -2403,9 +2423,33 @@ function ResultsScreen({
     <div className="sb-results fade-in">
       <div className="sb-results__title">Risultati apertura</div>
       <div className="sb-results__divider" />
-      <div className="sb-results__row">{sorted.slice(0, 3).map((c, i) => renderCard(c, i))}</div>
-      <div className="sb-results__row">{sorted.slice(3, 5).map((c, i) => renderCard(c, i + 3))}</div>
+
+      {packs.map((packCards, pi) => {
+        // Detect Waifu Pack for this pack
+        const isWaifuPack = packCards.every(c => c.tipo === 'waifu' && c.isGodPack);
+
+        return (
+          <div key={pi} className="sb-results__pack-group">
+            {/* Pack label — only shown in multi-pack mode */}
+            {isMulti && (
+              <div className="sb-results__pack-label">
+                {isWaifuPack ? '✦ WAIFU PACK ✦' : `Pack ${pi + 1}`}
+              </div>
+            )}
+            {/* Waifu Pack banner for single-pack or multi */}
+            {isWaifuPack && !isMulti && (
+              <div className="sb-waifu-pack-banner">✦ WAIFU PACK ✦</div>
+            )}
+            {/* Row of 5 cards */}
+            <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 4, flexWrap: 'nowrap' }}>
+              {packCards.map((card, ci) => renderCard(card, pi, ci))}
+            </div>
+          </div>
+        );
+      })}
+
       {!flyOut && <button className="sb-btn-avanti" onClick={handleAvanti}>Avanti</button>}
+
       {cartaDettaglioSbus && ModaleCarta && (
         <ModaleCarta carta={cartaDettaglioSbus} onClose={() => setCartaDettaglioSbus(null)}
           outfitCat={outfitCat} poseCat={poseCat}
@@ -2414,7 +2458,6 @@ function ResultsScreen({
     </div>
   );
 }
-
 
 
 function SelectionScreen({ drop, dropsAttivi, dropSelId, setDropSelId, profilo, onApri, onApriMulti, onCompraSfida }) {
@@ -2620,6 +2663,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
   // New pack-reveal flow
   const [carteRevealShuffled, setCarteRevealShuffled] = useState([]);
   const [currentRevealIdx, setCurrentRevealIdx] = useState(0);
+  const [globalSkip, setGlobalSkip] = useState(false); // skip mode: auto-advance across packs
   const [mostraCatalogo, setMostraCatalogo] = useState(false);
   const [catalogPage, setCatalogPage] = useState(0);
   const CATALOG_PAGE_SIZE = 20;
@@ -2799,6 +2843,19 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
   const chiudiVideoSbusto = () => { setSbusVideoAttivo(false); setSbusVideoFinito(false); setSbusCartaImmersiva(null); };
 
     // ── New pack-reveal flow ─────────────────────────────────────────────
+  // globalSkip: auto-open next pack after 500ms when in skip mode
+  useEffect(() => {
+    if (stato === 'pack_closed' && globalSkip) {
+      const t = setTimeout(() => {
+        const shuffled = [...carteRivelate].sort(() => Math.random() - 0.5);
+        setCarteRevealShuffled(shuffled);
+        setCurrentRevealIdx(0);
+        setStato('card_reveal');
+      }, 500);
+      return () => clearTimeout(t);
+    }
+  }, [stato, globalSkip, carteRivelate]);
+
   const packCommonProps = {
     profilo, collezione, outfitCat, poseCat, ModaleCarta, setProfilo, user,
     avviaVideoSbusto, cartaDettaglioSbus, setCartaDettaglioSbus,
@@ -2829,25 +2886,11 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
 
   if (stato === 'card_reveal') {
     const handleNext = () => setCurrentRevealIdx(i => i + 1);
-    const handleAllDone = () => setStato('results');
-    return (
-      <div style={{ padding: '8px 16px' }}>
-        <CardRevealScreen
-          carteShuffled={carteRevealShuffled}
-          carteOriginali={carteRivelate}
-          currentIdx={currentRevealIdx}
-          onNext={handleNext}
-          onAllDone={handleAllDone}
-          {...packCommonProps}
-        />
-      </div>
-    );
-  }
-
-  if (stato === 'results') {
-    const isMultiPack = multiPackCarte.length > 1;
-    const handleAvanti = () => {
-      if (isMultiPack && multiPackIndice < multiPackCarte.length - 1) {
+    // After last card: for multi-pack, advance to next pack (skip results); only show results after last pack
+    const handleAllDone = () => {
+      const isLastPack = multiPackCarte.length === 0 || multiPackIndice >= multiPackCarte.length - 1;
+      if (!isLastPack) {
+        // Advance to next pack without results
         const prossimo = multiPackIndice + 1;
         const carte = multiPackCarte[prossimo];
         const gp = carte.every(c => c.tipo === 'waifu' && c.isGodPack);
@@ -2857,17 +2900,43 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
         setMultiPackIndice(prossimo);
         setStato('pack_closed');
       } else {
-        setStato('selection');
-        setCarteRivelate([]);
-        setCarteRevealShuffled([]);
-        setMultiPackCarte([]);
-        setMultiPackIndice(0);
+        setGlobalSkip(false); // done skipping
+        setStato('results');
       }
     };
     return (
       <div style={{ padding: '8px 16px' }}>
+        <CardRevealScreen
+          carteShuffled={carteRevealShuffled}
+          carteOriginali={carteRivelate}
+          currentIdx={currentRevealIdx}
+          onNext={handleNext}
+          onAllDone={handleAllDone}
+          isGodPack={isGodPackAperto}
+          autoSkip={globalSkip}
+          onSkipActivated={() => setGlobalSkip(true)}
+          {...packCommonProps}
+        />
+      </div>
+    );
+  }
+
+  if (stato === 'results') {
+    const isMultiPack = multiPackCarte.length > 1;
+    // After results: always go back to selection (no intermediate packs shown anymore)
+    const handleAvanti = () => {
+      setStato('selection');
+      setCarteRivelate([]);
+      setCarteRevealShuffled([]);
+      setMultiPackCarte([]);
+      setMultiPackIndice(0);
+      setGlobalSkip(false);
+    };
+    return (
+      <div style={{ padding: '8px 16px', overflowY: 'auto' }}>
         <ResultsScreen
           carteShuffled={carteRevealShuffled}
+          allPacksCartes={isMultiPack ? multiPackCarte : null}
           onAvanti={handleAvanti}
           {...packCommonProps}
         />
