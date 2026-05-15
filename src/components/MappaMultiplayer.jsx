@@ -2192,9 +2192,10 @@ function BattagliaMultiplayer({
     }
   };
 
-  // Costruisce un team arena (4 waifu) da IDs usando il catalog raw + battleStats
+  // Costruisce un team arena da IDs usando il catalog raw + battleStats
+  // Supporta team da 3–5 waifu (pick phase seleziona 3 da roster di 5)
   const buildArenaTeam = (waifuIds, useCollData = false) =>
-    waifuIds.slice(0, 4).map(id => {
+    (waifuIds ?? []).map(id => {
       const rawW = waifuCat.find(x => x.id === id);
       if (!rawW) return null;
       const collData = useCollData ? (collezione?.waifu?.[id] ?? null) : null;
@@ -2219,21 +2220,18 @@ function BattagliaMultiplayer({
     if (!attesaMazzoAvv || isCpu) return;
     const mazziPartita = partita?.battagliaCorrente?.mazzi || {};
     const mazzoAvvIds = mazziPartita[avversarioUid];
-    const mioMazzoIds = mazziPartita[myUid];
-    if (!mazzoAvvIds || mazzoAvvIds.length < 4) return;
-    if (!mioMazzoIds || mioMazzoIds.length < 4) return;
+    // Picks sono 3 waifu — controllo corretto: >= 3
+    if (!mazzoAvvIds || mazzoAvvIds.length < 3) return;
 
     const eTeam = buildArenaTeam(mazzoAvvIds, false);
-    const pTeam = buildArenaTeam(mioMazzoIds, true);
-    if (eTeam.length < 4 || pTeam.length < 4) return;
+    if (eTeam.length < 1) return;
 
     arenaTurnoRef.current = 0;
     arenaVincitoreRef.current = null;
-    setArenaPlayerTeam(pTeam);
+    // arenaPlayerTeam è già stato impostato in handlePickConfirm
     setArenaEnemyTeam(eTeam);
     setArenaAttiva(true);
     setAttesaMazzoAvv(false);
-    setModoBattaglia(false);
   }, [partita?.battagliaCorrente?.mazzi, attesaMazzoAvv]); // eslint-disable-line
 
   // [WAIFU CHAMPIONS REFACTOR] — launches PickPhase instead of arena directly
@@ -2245,7 +2243,7 @@ function BattagliaMultiplayer({
     } else {
       waifuIds = waifuSel;
     }
-    if (waifuIds.length < 3) { mostraNotif('Seleziona almeno 3 waifu!', '#ff3d3d'); return; }
+    if (waifuIds.length < 5) { mostraNotif('Seleziona esattamente 5 waifu per la Pick Phase!', '#ff3d3d'); return; }
 
     // Build player roster: raw waifu docs with livello from collection, up to 5
     const rosterP = waifuIds.slice(0, 5).map(id => {
@@ -2307,33 +2305,84 @@ function BattagliaMultiplayer({
       setArenaEnemyTeam(enemyTeam);
       setArenaAttiva(true);
     } else {
-      // PvP: save player's 3 picks to Firestore, then follow existing sync logic
-      const mazzoIds = playerTeam.map(w => w.id);
+      // PvP: mostra SUBITO la schermata di attesa prima di qualsiasi await,
+      // così il render non cade nel vecchio sistema di battaglia (coin flip ecc.)
+      setArenaPlayerTeam(playerTeam);
+      setAttesaMazzoAvv(true); // schermata attesa visibile immediatamente
+      setPickPhaseAttiva(false);
+
+      // Salva le 3 picks su Firestore
+      const mazzoIds = playerTeam.map(w => w.id ?? w._id).filter(Boolean);
       try {
         await salvaMazzoBattaglia(codice, myUid, mazzoIds);
         setMazzoSalvato(true);
       } catch (e) {
         mostraNotif('Errore salvataggio mazzo', '#ff3d3d');
+        setAttesaMazzoAvv(false);
         return;
       }
+
+      // Dopo il salvataggio, controlla se l'avversario aveva già scelto
+      // (potrebbe essere già in Firestore se era il secondo a scegliere)
       const mazziPartita = partita?.battagliaCorrente?.mazzi || {};
       const mazzoAvvIds = mazziPartita[avversarioUid];
       if (mazzoAvvIds && mazzoAvvIds.length >= 3) {
+        // L'avversario aveva già scelto: avvia l'arena subito
         const eTeam = buildArenaTeam(mazzoAvvIds, false);
         arenaTurnoRef.current = 0;
         arenaVincitoreRef.current = null;
-        setArenaPlayerTeam(playerTeam);
         setArenaEnemyTeam(eTeam);
         setArenaAttiva(true);
-      } else {
-        setArenaPlayerTeam(playerTeam); // preserve picks while waiting for opponent
-        setAttesaMazzoAvv(true);
+        setAttesaMazzoAvv(false);
       }
+      // Altrimenti: attesaMazzoAvv=true rimane e il useEffect gestirà l'arrivo
     }
   };
 
   const nomeAvversario = isCpu ? 'CPU' : (avversario?.nomeImpero || 'Avversario');
   const coloreAvversario = isCpu ? '#666' : (avversario?.coloreImpero || '#ff3d3d');
+
+  // ── Attesa mazzo 3-waifu avversario (PvP: player ha scelto ma avversario no) ──
+  // Nota: questo check è a livello TOP-LEVEL, fuori da modoBattaglia, per essere
+  // visibile anche dopo che confermaEAvvia ha impostato modoBattaglia=false.
+  if (attesaMazzoAvv && !arenaAttiva && !pickPhaseAttiva) {
+    return (
+      <div className="fade-in">
+        <div style={{
+          background: 'rgba(10,7,38,0.85)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: '0.8px solid rgba(167,139,250,0.2)',
+          borderRadius: 20,
+          padding: 28,
+          textAlign: 'center',
+        }}>
+          <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 16, fontWeight: 700, color: '#a78bfa', marginBottom: 12 }}>
+            PICK PHASE
+          </div>
+          <div style={{ fontSize: 36, margin: '16px 0' }}>⚔️</div>
+          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#b6aed6', marginBottom: 6 }}>
+            Le tue 3 waifu sono pronte.
+          </div>
+          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: 'rgba(167,139,250,0.6)', marginBottom: 20 }}>
+            In attesa che <span style={{ color: coloreAvversario, fontWeight: 700 }}>{nomeAvversario}</span> scelga il suo team…
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
+            {[0, 1, 2].map(i => (
+              <div key={i} style={{
+                width: 10, height: 10, borderRadius: '50%', background: '#a78bfa',
+                animation: `pulse 1.2s ease-in-out ${i * 0.4}s infinite`,
+              }} />
+            ))}
+          </div>
+          <style>{`@keyframes pulse { 0%,100%{opacity:0.2;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }`}</style>
+          <button onClick={() => { setAttesaMazzoAvv(false); onBattagliaFinita(null); }} style={btnStyle('#666', true)}>
+            ANNULLA
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // [WAIFU CHAMPIONS REFACTOR] — PickPhase before arena
   if (pickPhaseAttiva) {
@@ -2393,9 +2442,12 @@ function BattagliaMultiplayer({
 
   // ── Arena WaifuBattleArena attiva ─────────────────────────────────
   if (arenaAttiva) {
+    const myGiocatore = partita?.giocatori?.[myUid];
     const battleCtx = {
       terrSel: terrData,
       nomeImperoAvversario: nomeAvversario,
+      sonoAttaccante,
+      nomeImpero: myGiocatore?.nomeImpero || profilo?.nomeImpero || 'Tu',
     };
     return (
       <WaifuBattleArena
@@ -2459,7 +2511,11 @@ function BattagliaMultiplayer({
       );
     }
 
-    const canConfirm = teamSel && teamSel !== 'manuale' ? !!teams[teamSel] : waifuSel.length >= 3;
+    // Esattamente 5 waifu richieste per la Pick Phase
+    const teamSavedSize = teamSel && teamSel !== 'manuale' ? (teams[teamSel]?.waifu?.length ?? 0) : 0;
+    const canConfirm = teamSel && teamSel !== 'manuale'
+      ? (teamSavedSize >= 5)   // saved team deve avere almeno 5 waifu
+      : waifuSel.length === 5; // selezione manuale: esattamente 5
     return (
       <div className="fade-in">
         <div style={{
@@ -2502,7 +2558,7 @@ function BattagliaMultiplayer({
           )}
           {(teamSel === 'manuale' || Object.keys(teams).length === 0) && (
             <div>
-              <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: "'Saira Condensed', Saira, sans-serif", textAlign: 'center', marginBottom: 8 }}>SCEGLI ROSTER (3–5 WAIFU)</div>
+              <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: "'Saira Condensed', Saira, sans-serif", textAlign: 'center', marginBottom: 8 }}>SCEGLI IL TUO ROSTER (esattamente 5 waifu) — {waifuSel.length}/5</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: 12 }}>
                 {waifuDisponibili.map(w => {
                   const sel = waifuSel.includes(w.id);

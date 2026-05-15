@@ -32,7 +32,8 @@ function MiniHpBar({ hp, maxHp }) {
 }
 
 // ─── WaifuPickCard ──────────────────────────────────────────────────────────
-function WaifuPickCard({ waifu, slot, selectable, onTap }) {
+// hideStats=true → show only name, image, type (used for opponent roster)
+function WaifuPickCard({ waifu, slot, selectable, onTap, hideStats = false }) {
   const bs = waifu._battleStats ?? waifu.battleStats ?? {};
   const maxHp = bs.maxHp ?? 300;
   const tc = TYPE_COLORS[bs.type ?? 'Arcana']?.border ?? '#444';
@@ -80,16 +81,20 @@ function WaifuPickCard({ waifu, slot, selectable, onTap }) {
             {waifu.nome ?? waifu.name ?? '—'}
           </div>
           <div style={{ marginTop: 3 }}><TypeBadge type={bs.type ?? 'Arcana'} /></div>
-          <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,.4)', marginTop: 3 }}>
-            Lv {waifu.livello ?? 1} · HP {maxHp}
-          </div>
-          {/* [WAIFU CHAMPIONS REFACTOR — CRIT] Speed + Crit% computed at render time */}
-          <div style={{ fontFamily: 'Orbitron', fontSize: 7, color: 'rgba(238,232,220,.45)', marginTop: 2 }}>
-            <span style={{ color: '#00C8FF' }}>Spd {computeSpeed(waifu)}</span>
-            {'  '}
-            <span style={{ color: '#f5a623' }}>Crit {Math.round(computeCritChance(waifu) * 100)}%</span>
-          </div>
-          <MiniHpBar hp={maxHp} maxHp={maxHp} />
+          {/* Stats shown only for own roster, hidden for opponent */}
+          {!hideStats && (
+            <>
+              <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,.4)', marginTop: 3 }}>
+                Lv {waifu.livello ?? 1} · HP {maxHp}
+              </div>
+              <div style={{ fontFamily: 'Orbitron', fontSize: 7, color: 'rgba(238,232,220,.45)', marginTop: 2 }}>
+                <span style={{ color: '#00C8FF' }}>Spd {computeSpeed(waifu)}</span>
+                {'  '}
+                <span style={{ color: '#f5a623' }}>Crit {Math.round(computeCritChance(waifu) * 100)}%</span>
+              </div>
+              <MiniHpBar hp={maxHp} maxHp={maxHp} />
+            </>
+          )}
         </div>
       </div>
     </button>
@@ -149,24 +154,26 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
     if (p1Slots.length < 3) return;
     if (isOnlinePvP) {
       // Online PvP: each player picks independently on their own device.
-      // No pass-the-device handoff, no reveal (opponent is on a separate device).
-      // Call onConfirm immediately — caller saves picks to Firestore and waits.
+      // No reveal — go directly to arena via Firestore sync.
       const playerTeam = buildTeam(roster5P, p1Slots);
       onConfirm?.(playerTeam, []);
     } else if (isPvP) {
       // Pass-the-device PvP: go to handoff screen for P2
       setPvpStep('handoff');
     } else {
-      // CPU mode: show reveal then start
-      setPvpStep('reveal');
-      startRevealTimer();
+      // CPU mode: go directly to arena, no reveal screen needed.
+      const playerTeam = buildTeam(roster5P, p1Slots);
+      const enemyTeam  = cpuPicks.map(w => initBattleWaifu(w, { livello: w.livello ?? 1 }));
+      onConfirm?.(playerTeam, enemyTeam);
     }
   };
 
   const handleP2Confirm = () => {
     if (p2Slots.length < 3) return;
-    setPvpStep('reveal');
-    startRevealTimer();
+    // No reveal step — go directly to arena
+    const playerTeam = buildTeam(roster5P, p1Slots);
+    const enemyTeam  = buildTeam(roster5E, p2Slots);
+    onConfirm?.(playerTeam, enemyTeam);
   };
 
   const startRevealTimer = () => {
@@ -381,12 +388,12 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
           </div>
         </div>
 
-        {/* Opponent roster (read-only) */}
+        {/* Opponent roster (read-only, stats hidden) */}
         <div style={S.section}>
           <div style={S.label}>ROSTER AVVERSARIO — {nomeImperoAvversario ?? 'CPU'}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {opponentRoster.map((w, idx) => (
-              <WaifuPickCard key={w.id ?? idx} waifu={w} slot={null} selectable={false} onTap={null} />
+              <WaifuPickCard key={w.id ?? idx} waifu={w} slot={null} selectable={false} onTap={null} hideStats={true} />
             ))}
           </div>
           {isCpu && (
@@ -396,9 +403,18 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
           )}
         </div>
 
-        {/* Confirm */}
+      </div>
+
+      {/* Sticky footer — confirm button always visible at bottom */}
+      <div style={{
+        flexShrink: 0,
+        padding: '8px 14px',
+        paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))',
+        background: 'rgba(6,3,15,.92)',
+        borderTop: '1px solid rgba(255,255,255,.07)',
+      }}>
         <button style={S.confirmBtn(activeSlots.length === 3)} onClick={activeSlots.length === 3 ? handleConfirm : undefined}>
-          {activeSlots.length === 3 ? '✓ CONFERMA TEAM' : `SCEGLI ${3 - activeSlots.length} WAIFU`}
+          {activeSlots.length === 3 ? '⚔ CONFERMA TEAM' : `SCEGLI ANCORA ${3 - activeSlots.length} WAIFU`}
         </button>
       </div>
     </div>

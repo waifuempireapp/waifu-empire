@@ -5810,39 +5810,28 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   // ── INIZIA BATTAGLIA (verifica prerequisiti) ───────────────
   const iniziaBattaglia = () => {
     if ((profilo.energia ?? 0) < 1) { mostraNotif('Energia insufficiente!', '#ff3d3d'); return; }
-    if (waifuDisponibili.length < 5) { mostraNotif('Servono almeno 5 waifu!', '#ff3d3d'); return; }
-    // Genera il roster CPU di 5 (con picks silenziosi già scelti) prima di aprire la pick phase
-    const cpuResult = generateCPUTeamOf5(waifuCat || [], livelloCPU);
-    setCpuPickResult(cpuResult);
-    setPickPhaseActive(true);
-    // Nota: il vecchio flusso modoBattaglia è mantenuto per rollback ma non più raggiunto qui
+    if (waifuDisponibili.length < 5) { mostraNotif('Servono almeno 5 waifu per combattere!', '#ff3d3d'); return; }
+    // Prima mostra la selezione del roster (5 waifu) — il giocatore sceglie il suo team
+    setModoBattaglia(true);
   };
 
-  // ── CONFERMA TEAM E AVVIA (NUOVO SISTEMA WaifuBattleArena) ──
+  // ── CONFERMA TEAM E AVVIA — Ora porta alla Pick Phase (draft 3-from-5) ──
   const confermaEAvvia = () => {
-    // Costruisce il team del giocatore per il nuovo sistema di battaglia
-    const buildWaifuBattleTeam = () => {
-      let ids;
-      if (teamSelezionato && teamSelezionato !== 'manuale' && teams[teamSelezionato]) {
-        ids = teams[teamSelezionato].waifu.slice(0, 4);
-      } else {
-        ids = waifuSelezionate.slice(0, 4);
-      }
-      return ids.map(id => {
-        const w = waifuCat.find(x => x.id === id);
-        const dati = collezione.waifu?.[id];
-        if (!w) return null;
-        return initBattleWaifu(w, dati);
-      }).filter(Boolean);
-    };
+    // Raccoglie gli ID delle 5 waifu selezionate dal giocatore
+    let ids;
+    if (teamSelezionato && teamSelezionato !== 'manuale' && teams[teamSelezionato]) {
+      ids = teams[teamSelezionato].waifu;
+    } else {
+      ids = waifuSelezionate;
+    }
+    if (ids.length < 5) { mostraNotif('Seleziona esattamente 5 waifu!', '#ff3d3d'); return; }
 
-    const playerTeam = buildWaifuBattleTeam();
-    if (playerTeam.length < 1) { mostraNotif('Team insufficiente!', '#ff3d3d'); return; }
-
-    setWaifuBattlePlayerTeam(playerTeam);
+    // Genera il roster CPU di 5 (con picks silenziosi)
+    const cpuResult = generateCPUTeamOf5(waifuCat || [], livelloCPU);
+    setCpuPickResult(cpuResult);
     setModoBattaglia(false);
-    setWaifuBattleActive(true);
-    return; // Usa il nuovo sistema — il vecchio codice sotto è mantenuto per reference
+    setPickPhaseActive(true);
+    return; // Il vecchio codice sotto è mantenuto come riferimento
 
     // ── VECCHIO SISTEMA (mantenuto per rollback) ──
     // Helper: costruisce una waifu da battaglia applicando stat_bonus + abilità outfit
@@ -5953,8 +5942,9 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   // ================================================================
   // RENDER: SELEZIONE TEAM
   if (modoBattaglia) {
+    // Il roster deve avere esattamente 5 waifu (team salvato ≥5 o selezione manuale = 5)
     const canConfirmBattaglia = teamSelezionato && teamSelezionato !== 'manuale'
-      ? !!teams[teamSelezionato]
+      ? (teams[teamSelezionato]?.waifu?.length ?? 0) >= 5
       : waifuSelezionate.length === 5;
     return (
       <div className="fade-in" style={{ position: 'relative' }}>
@@ -6363,15 +6353,18 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   // PICK PHASE (draft 3-from-5 prima di WaifuBattleArena)
   // ================================================================
   if (pickPhaseActive && cpuPickResult && !waifuBattleActive) {
-    // Prendi le prime 5 waifu disponibili del giocatore come roster della pick phase
-    const myRoster5 = waifuDisponibili.slice(0, 5);
+    // Usa le waifu selezionate dal giocatore in modoBattaglia (già 5 validate)
+    const selectedIds = (teamSelezionato && teamSelezionato !== 'manuale' && teams[teamSelezionato])
+      ? teams[teamSelezionato].waifu
+      : waifuSelezionate;
+    const myRoster5 = selectedIds.map(id => waifuDisponibili.find(w => w.id === id)).filter(Boolean);
     return (
       <PickPhase
         roster5P={myRoster5}
         roster5E={cpuPickResult.roster5}
         isCpu={true}
         isPvP={false}
-        battleCtx={{ terrSel, nomeImperoAvversario }}
+        battleCtx={{ terrSel, nomeImperoAvversario, sonoAttaccante: true, nomeImpero: profilo?.nomeImpero || 'Tu' }}
         onConfirm={(playerTeam, enemyTeam) => {
           // playerTeam e enemyTeam sono array WaifuBattleStat[] pronti per WaifuBattleArena
           setWaifuBattlePlayerTeam(playerTeam);
@@ -6391,7 +6384,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
       <WaifuBattleArena
         playerTeam={waifuBattlePlayerTeam}
         waifuCat={waifuCat}
-        battleCtx={{ terrSel, nomeImperoAvversario }}
+        battleCtx={{ terrSel, nomeImperoAvversario, sonoAttaccante: true, nomeImpero: profilo?.nomeImpero || 'Tu' }}
         onBattleResult={async (isVictory) => {
           // Stessa logica di fineBattaglia del vecchio sistema
           await fineBattaglia(isVictory);

@@ -312,7 +312,9 @@ function BenchSlot({ waifu, selectable, onSelect, size=48 }) {
 // ─── TERRITORY RESULT ─────────────────────────────────────────────────────────
 // [WAIFU CHAMPIONS REFACTOR] — extended result popup (combat-system-v2)
 function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, statsP, statsE, biggestHit, isDraw }) {
-  const { terrSel, nomeImperoAvversario, sonoAttaccante } = battleCtx ?? {};
+  const { terrSel, nomeImperoAvversario, sonoAttaccante, nomeImpero } = battleCtx ?? {};
+  const winnerName   = isVictory ? (nomeImpero || 'Tu') : (nomeImperoAvversario || 'CPU');
+  const loserName    = isVictory ? (nomeImperoAvversario || 'CPU') : (nomeImpero || 'Tu');
 
   // Outcome label: CONQUISTATO / DIFESO / PAREGGIO
   const outcome     = isDraw ? 'PAREGGIO' : (sonoAttaccante && isVictory) ? 'CONQUISTATO' : (!sonoAttaccante && isVictory) ? 'DIFESO' : sonoAttaccante ? 'NON CONQUISTATO' : 'PERSO';
@@ -356,6 +358,15 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
         }}>
           {isDraw?'PAREGGIO':isVictory?'VITTORIA!':'SCONFITTA'}
         </div>
+
+        {/* Winner / Loser names */}
+        {!isDraw && (
+          <div style={{marginBottom:8,fontSize:11,color:'rgba(238,232,220,.6)',fontFamily:'Fredoka',lineHeight:1.6}}>
+            <span style={{color:'#6cf0e0',fontWeight:700}}>{winnerName}</span>
+            {' '}ha sconfitto{' '}
+            <span style={{color:'#ff85b6',fontWeight:700}}>{loserName}</span>
+          </div>
+        )}
 
         {/* Outcome label */}
         {terrSel && (
@@ -950,13 +961,15 @@ export default function WaifuBattleArena({
         </div>
       </div>
 
-      {/* ── ZONE 5+6: Action Panel — altezza basata su dvh per adattarsi a ogni schermo ── */}
+      {/* ── ZONE 5+6: Action Panel — altezza flessibile, scrollabile internamente ── */}
       <div style={{
         flexShrink:0,
-        height:'clamp(188px, 37dvh, 252px)',
+        minHeight:'clamp(188px, 37dvh, 252px)',
+        maxHeight:'clamp(220px, 45dvh, 300px)',
         display:'flex', flexDirection:'column',
         background:'rgba(4,2,10,.92)',
         borderTop:'1px solid rgba(255,255,255,.07)',
+        overflowY:'auto',
       }}>
 
         {/* Timer progress bar */}
