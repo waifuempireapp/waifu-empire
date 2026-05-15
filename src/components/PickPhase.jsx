@@ -100,16 +100,18 @@ function WaifuPickCard({ waifu, slot, selectable, onTap }) {
 /**
  * PickPhase — hidden 3-from-roster draft before WaifuBattleArena.
  *
- * @param {Object[]} roster5P   — up to 5 waifu Firestore docs for the player
- * @param {Object[]} roster5E   — up to 5 waifu Firestore docs for the enemy/CPU
- * @param {boolean}  isCpu      — true when fighting CPU
- * @param {boolean}  isPvP      — true when PvP pass-the-device mode
- * @param {Object}   battleCtx  — { terrSel, nomeImperoAvversario }
- * @param {Function} onConfirm  — called with (playerTeam WaifuBattleStat[], enemyTeam WaifuBattleStat[])
+ * @param {Object[]} roster5P     — up to 5 waifu Firestore docs for the player
+ * @param {Object[]} roster5E     — up to 5 waifu Firestore docs for the enemy/CPU
+ * @param {boolean}  isCpu        — true when fighting CPU
+ * @param {boolean}  isPvP        — true when PvP pass-the-device mode (same device)
+ * @param {boolean}  isOnlinePvP  — true when PvP online (each player picks on own device)
+ * @param {Object}   battleCtx    — { terrSel, nomeImperoAvversario }
+ * @param {Function} onConfirm    — called with (playerTeam WaifuBattleStat[], enemyTeam WaifuBattleStat[])
  */
-export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, isPvP = false, battleCtx = {}, onConfirm }) {
-  // pvpStep: 'p1pick' | 'handoff' | 'p2pick' | 'reveal' | 'cpuReveal'
-  const [pvpStep, setPvpStep] = useState(isPvP ? 'p1pick' : 'cpuReveal');
+export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, isPvP = false, isOnlinePvP = false, battleCtx = {}, onConfirm }) {
+  // pvpStep: 'p1pick' | 'handoff' | 'p2pick' | 'reveal'
+  // Always start at 'p1pick' — never jump directly to reveal on mount
+  const [pvpStep, setPvpStep] = useState('p1pick');
 
   // CPU silently drafts 3 random waifu on mount
   const [cpuPicks] = useState(() => {
@@ -145,10 +147,17 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
   // ── Confirm handlers ────────────────────────────────────────────────────
   const handleP1Confirm = () => {
     if (p1Slots.length < 3) return;
-    if (isPvP) {
+    if (isOnlinePvP) {
+      // Online PvP: each player picks independently on their own device.
+      // No pass-the-device handoff, no reveal (opponent is on a separate device).
+      // Call onConfirm immediately — caller saves picks to Firestore and waits.
+      const playerTeam = buildTeam(roster5P, p1Slots);
+      onConfirm?.(playerTeam, []);
+    } else if (isPvP) {
+      // Pass-the-device PvP: go to handoff screen for P2
       setPvpStep('handoff');
     } else {
-      // CPU mode: go to reveal
+      // CPU mode: show reveal then start
       setPvpStep('reveal');
       startRevealTimer();
     }

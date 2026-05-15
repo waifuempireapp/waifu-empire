@@ -291,6 +291,17 @@ export async function salvaMazzoBattaglia(codice, uid, mazzoIds) {
   });
 }
 
+// ── Salva il roster di 5 waifu (pick phase) nella battaglia corrente ──
+// roster5.{uid} = array di waifuId (5 waifu visibili all'avversario prima della pick phase)
+// Distinto da mazzi.{uid} che contiene le 3 waifu finali scelte nella pick phase
+export async function salvaRoster5Battaglia(codice, uid, waifuIds) {
+  const ref = doc(db, 'partite_multi', codice);
+  await updateDoc(ref, {
+    [`battagliaCorrente.roster5.${uid}`]: waifuIds,
+    aggiornato: serverTimestamp(),
+  });
+}
+
 // ── Salva il risultato del round nella battaglia corrente ─────────────
 // Usato per sincronizzare l'esito di ogni round tra i due giocatori
 export async function salvaRisultatoRound(codice, { round, attaccanteWaifuId, difensoreWaifuId, stat, direzione, vincitoreRound }) {

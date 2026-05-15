@@ -7,7 +7,7 @@ import {
   creaPartitaMultiplayer, uniscitiPartita, avviaPartitaMultiplayer,
   caricaPartita, ascoltaPartita, scegliAttacco,
   registraRisultatoBattaglia, salvaPartitaConNome, setGiocatoreInLobby,
-  getColoriUsatiLobby, salvaMazzoBattaglia,
+  getColoriUsatiLobby, salvaMazzoBattaglia, salvaRoster5Battaglia,
   salvaSceltaPvpRound, salvaPrimoTurnoPvp,
   salvaProseguiTurnoRound, registraRisultatoBattagliaPvp,
   salvaRisultatoPvpRound, getPartiteSalvateUtente,
@@ -1442,6 +1442,9 @@ function BattagliaMultiplayer({
   const [pickPhaseAttiva, setPickPhaseAttiva] = useState(false);
   const [pickRoster5P, setPickRoster5P]       = useState([]);
   const [pickRoster5E, setPickRoster5E]       = useState([]);
+  // PvP: roster5 inviato su Firestore, in attesa del roster5 dell'avversario
+  const [attesaRoster5Avv, setAttesaRoster5Avv] = useState(false);
+  const mioRoster5Ref = useRef([]); // roster5 del giocatore corrente (usato dal listener)
   const [pvpOpponentMove, setPvpOpponentMove] = useState(null);
   const [pvpWaiting, setPvpWaiting]           = useState(false);
   const arenaTurnoRef    = useRef(0);   // turno corrente arena (PvP move sync)
@@ -2198,6 +2201,19 @@ function BattagliaMultiplayer({
       return initBattleWaifu(rawW, collData);
     }).filter(Boolean);
 
+  // Quando arriva il roster5 dell'avversario (PvP pick phase), avvia la PickPhase
+  useEffect(() => {
+    if (!attesaRoster5Avv || isCpu) return;
+    const roster5Partita = partita?.battagliaCorrente?.roster5 || {};
+    const roster5AvvIds = roster5Partita[avversarioUid];
+    if (!roster5AvvIds || roster5AvvIds.length < 1) return;
+    // Entrambi i roster5 pronti → mostra pick phase
+    const rosterE = roster5AvvIds.map(id => waifuCat.find(x => x.id === id)).filter(Boolean);
+    setPickRoster5E(rosterE);
+    setPickPhaseAttiva(true);
+    setAttesaRoster5Avv(false);
+  }, [partita?.battagliaCorrente?.roster5, attesaRoster5Avv]); // eslint-disable-line
+
   // Quando arriva il mazzo avversario (PvP in attesa), avvia l'arena
   useEffect(() => {
     if (!attesaMazzoAvv || isCpu) return;
@@ -2253,8 +2269,32 @@ function BattagliaMultiplayer({
     }
 
     setPickRoster5P(rosterP);
-    setPickRoster5E(rosterE);
-    setPickPhaseAttiva(true);
+    mioRoster5Ref.current = rosterP;
+
+    if (!isCpu) {
+      // PvP online: salva il roster5 su Firestore e aspetta quello dell'avversario
+      try {
+        await salvaRoster5Battaglia(codice, myUid, rosterP.map(w => w.id));
+      } catch (e) {
+        mostraNotif('Errore salvataggio roster', '#ff3d3d');
+        return;
+      }
+      // Se il roster5 avversario è già in Firestore, mostra subito la pick phase
+      const roster5Partita = partita?.battagliaCorrente?.roster5 || {};
+      const roster5AvvIds = roster5Partita[avversarioUid];
+      if (roster5AvvIds && roster5AvvIds.length >= 1) {
+        const rosterEFromDb = roster5AvvIds.map(id => waifuCat.find(x => x.id === id)).filter(Boolean);
+        setPickRoster5E(rosterEFromDb);
+        setPickPhaseAttiva(true);
+      } else {
+        // Aspetta che l'avversario invii il suo roster5
+        setPickRoster5E(rosterE); // potrebbe essere vuoto, verrà aggiornato dal listener
+        setAttesaRoster5Avv(true);
+      }
+    } else {
+      setPickRoster5E(rosterE);
+      setPickPhaseAttiva(true);
+    }
     setModoBattaglia(false);
   };
 
@@ -2304,9 +2344,50 @@ function BattagliaMultiplayer({
         roster5E={pickRoster5E}
         isCpu={isCpu}
         isPvP={false}
+        isOnlinePvP={!isCpu}  // PvP online: ogni giocatore sceglie sul proprio device
         battleCtx={battleCtx}
         onConfirm={handlePickConfirm}
       />
+    );
+  }
+
+  // ── Attesa roster5 avversario (PvP: player ha cliccato BATTAGLIA! ma avversario non ancora) ──
+  if (attesaRoster5Avv) {
+    return (
+      <div className="fade-in">
+        <div style={{
+          background: 'rgba(10,7,38,0.85)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: '0.8px solid rgba(167,139,250,0.2)',
+          borderRadius: 20,
+          padding: 28,
+          textAlign: 'center',
+        }}>
+          <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 16, fontWeight: 700, color: '#a78bfa', marginBottom: 12 }}>
+            PICK PHASE
+          </div>
+          <div style={{ fontSize: 36, margin: '16px 0' }}>⚔️</div>
+          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#b6aed6', marginBottom: 6 }}>
+            Il tuo roster è pronto.
+          </div>
+          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: 'rgba(167,139,250,0.6)', marginBottom: 20 }}>
+            In attesa che <span style={{ color: coloreAvversario }}>{nomeAvversario}</span> scelga il suo roster…
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
+            {[0, 1, 2].map(i => (
+              <div key={i} style={{
+                width: 10, height: 10, borderRadius: '50%', background: '#a78bfa',
+                animation: `pulse 1.2s ease-in-out ${i * 0.4}s infinite`,
+              }} />
+            ))}
+          </div>
+          <style>{`@keyframes pulse { 0%,100%{opacity:0.2;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }`}</style>
+          <button onClick={() => { setAttesaRoster5Avv(false); setModoBattaglia(false); onBattagliaFinita(null); }} style={btnStyle('#666', true)}>
+            ANNULLA
+          </button>
+        </div>
+      </div>
     );
   }
 
