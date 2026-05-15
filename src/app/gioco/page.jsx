@@ -1781,6 +1781,8 @@ function isWaifuPackDrop(drop) {
 
 // TEMP: pack v3 — EdgeSpoilerOverlay, DropCarousel v2, CardRevealScreen v3
 
+// TEMP pack v4 — Edge Spoiler (real card strips), DropCarousel (flex), CardRevealScreen fixes
+
 const RARITY_COLORS = {
   comune:      '#b4bcc8',
   raro:        '#5aa9ff',
@@ -1791,7 +1793,6 @@ const RARITY_COLORS = {
 const RARITY_LEVEL = { comune: 0, raro: 1, epico: 2, leggendario: 3, immersivo: 4 };
 
 function getRarityColor(card) {
-  // Rarity ONLY — not card type
   const rar = card.data?.rarita ?? card.rarita ?? 'comune';
   return RARITY_COLORS[rar] || RARITY_COLORS.comune;
 }
@@ -1799,51 +1800,47 @@ function getRarityLevel(card) {
   const rar = card.data?.rarita ?? card.rarita ?? 'comune';
   return RARITY_LEVEL[rar] ?? 0;
 }
-function getRarityStripClass(level) {
-  if (level >= 4) return 'sb-edge-strip--immersive';
-  if (level >= 3) return 'sb-edge-strip--legendary';
-  if (level >= 2) return 'sb-edge-strip--epic';
-  if (level >= 1) return 'sb-edge-strip--rare';
-  return '';
-}
 
 // ── EdgeSpoilerOverlay ──────────────────────────────────────────────────
-// Shows current card + edge-only strips of hidden cards (no artwork visible)
+// Current card shown normally. Hidden cards show as 32px back-strips to the right.
+// Strips show: rarity-colored left border + dark card back background + glow.
+// NO artwork, silhouette, text, card type icons visible.
 function EdgeSpoilerOverlay({ carteShuffled, currentIdx, onClose }) {
-  const [fanDrag, setFanDrag] = useState(0);
-  const dragRef = useRef(null);
+  const [panX, setPanX] = useState(0);
   const isDragging = useRef(false);
+  const dragStartX = useRef(0);
 
-  // Cards still hidden (after current)
   const hiddenCards = useMemo(
     () => carteShuffled.slice(currentIdx + 1),
     [carteShuffled, currentIdx]
   );
 
-  // Stable random multipliers per hidden card (fake randomness)
-  const randomSeeds = useMemo(
-    () => hiddenCards.map(() => ({
-      glowMult: 0.75 + Math.random() * 0.5,
-      shimmerDelay: (Math.random() * 1.5).toFixed(1) + 's',
-    })),
-    [hiddenCards.length]
-  );
+  // Fake randomness seeds (stable per render)
+  const seeds = useMemo(() => hiddenCards.map(() => ({
+    glowScale: 0.75 + Math.random() * 0.5,
+    shimmerDelay: (Math.random() * 1.8).toFixed(1) + 's',
+    tinyNoise: Math.random() * 4 - 2, // -2..+2 px vertical noise
+  })), [hiddenCards.length]);
 
   const handleDown = (e) => {
     isDragging.current = true;
-    dragRef.current = (e.touches ? e.touches[0] : e).clientX;
+    dragStartX.current = (e.touches ? e.touches[0] : e).clientX;
   };
   const handleMove = (e) => {
-    if (!isDragging.current || dragRef.current === null) return;
+    if (!isDragging.current) return;
     const x = (e.touches ? e.touches[0] : e).clientX;
-    const diff = x - dragRef.current;
-    setFanDrag(Math.max(-36, Math.min(36, diff)));
+    setPanX(Math.max(-28, Math.min(28, x - dragStartX.current)));
   };
-  const handleUp = () => { isDragging.current = false; setFanDrag(0); };
+  const handleUp = () => { isDragging.current = false; setPanX(0); };
 
   const currentCard = carteShuffled[currentIdx];
-  const isWaifu  = currentCard.tipo === 'waifu';
-  const isOutfit = currentCard.tipo === 'outfit';
+  const isWaifu  = currentCard?.tipo === 'waifu';
+  const isOutfit = currentCard?.tipo === 'outfit';
+
+  // Strip constants
+  const STRIP_W   = 32;  // px of each card back strip visible
+  const STRIP_GAP = 10;  // px gap between strips (simulates card thickness)
+  const CARD_H    = 215; // cartaWaifu piccola height approximation
 
   return (
     <div
@@ -1853,11 +1850,12 @@ function EdgeSpoilerOverlay({ carteShuffled, currentIdx, onClose }) {
       onPointerUp={handleUp}
       onPointerLeave={handleUp}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ cursor: 'grab' }}
+      style={{ cursor: 'grab', touchAction: 'none' }}
     >
-      <div className="sb-edge-stage">
-        {/* Current card — full view */}
-        <div className="sb-edge-current-card">
+      <div className="sb-edge-stage" style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+
+        {/* Current card — full view (current card shown normally) */}
+        <div style={{ position: 'relative', zIndex: 10, flexShrink: 0 }}>
           <div className="sb-card-3d">
             {isWaifu  && <CartaWaifu waifu={currentCard.data}  dimensione="normale" tipo="auto" />}
             {isOutfit && <CartaOutfit outfit={currentCard.data} dimensione="normale" />}
@@ -1865,43 +1863,73 @@ function EdgeSpoilerOverlay({ carteShuffled, currentIdx, onClose }) {
           </div>
         </div>
 
-        {/* Fan of hidden card edges */}
-        <div className="sb-edge-fan" style={{ transform: `translateX(${fanDrag}px)` }}>
+        {/* Hidden card back strips — to the right, showing colored edge only */}
+        <div style={{
+          position: 'absolute',
+          left: '100%', // starts right after the current card
+          top: 0, bottom: 0,
+          display: 'flex', alignItems: 'center',
+          transform: `translateX(${panX}px)`,
+          transition: isDragging.current ? 'none' : 'transform 0.2s',
+          gap: STRIP_GAP,
+          paddingLeft: 8,
+        }}>
           {hiddenCards.map((card, i) => {
             const rarCol   = getRarityColor(card);
             const rarLevel = getRarityLevel(card);
-            const seed     = randomSeeds[i] || { glowMult: 1, shimmerDelay: '0s' };
-            const hasShimmer = rarLevel >= 2;
-            const SLOT_OFFSET = 14 + i * 13; // each card edge peeks further out
+            const seed     = seeds[i] || { glowScale: 1, shimmerDelay: '0s', tinyNoise: 0 };
+
+            // Glow intensity scales with rarity + fake randomness
+            const glowPx    = [0, 8, 14, 20, 28][rarLevel] * seed.glowScale;
+            const glowAlpha = [0, 0.4, 0.55, 0.7, 0.85][rarLevel];
 
             return (
               <div
                 key={i}
-                className="sb-edge-slot"
                 style={{
-                  right: -SLOT_OFFSET,
-                  transform: `rotate(${(i + 1) * 3}deg)`,
+                  width: STRIP_W,
+                  height: CARD_H + Math.abs(seed.tinyNoise),
+                  flexShrink: 0,
+                  overflow: 'hidden', // clips the full card back to just STRIP_W px
+                  borderRadius: '6px 0 0 6px',
+                  transform: `translateY(${seed.tinyNoise}px) rotate(${(i + 1) * 1.5}deg)`,
+                  transformOrigin: 'bottom center',
                   zIndex: 5 - i,
+                  boxShadow: glowPx > 0
+                    ? `0 0 ${glowPx}px ${rarCol}, -2px 0 ${glowPx * 0.6}px ${rarCol}${Math.round(glowAlpha * 255).toString(16).padStart(2,'0')}`
+                    : 'none',
+                  filter: rarLevel >= 4
+                    ? `drop-shadow(0 0 ${6 * seed.glowScale}px ${rarCol})`
+                    : 'none',
                 }}
               >
-                <div
-                  className={`sb-edge-strip ${getRarityStripClass(rarLevel)}`}
-                  style={{
-                    '--ec': rarCol,
-                    '--ec-20': rarCol + '33',
-                    '--ec-30': rarCol + '4D',
-                    '--ec-50': rarCol + '80',
-                    '--ec-60': rarCol + '99',
-                    '--ec-70': rarCol + 'B3',
-                    '--eg-base': (0.6 * seed.glowMult).toFixed(2),
-                    // Scale glow with fake randomness
-                    filter: rarLevel >= 3
-                      ? `drop-shadow(0 0 ${(8 * seed.glowMult).toFixed(0)}px ${rarCol})`
-                      : 'none',
-                  }}
-                >
-                  {hasShimmer && (
+                {/* Full 143px card back — clipped to STRIP_W by overflow:hidden */}
+                <div style={{
+                  width: 143, height: '100%',
+                  borderRadius: 10,
+                  background: 'linear-gradient(160deg, #1b1638 0%, #07051a 100%)',
+                  borderLeft: `4px solid ${rarCol}`,
+                  position: 'relative', overflow: 'hidden',
+                  // Slight gradient toward the right, fading into darkness
+                  backgroundImage: `linear-gradient(160deg, #1f1a40 0%, #07051a 60%)`,
+                }}>
+                  {/* Rarity glow strip inside (reinforces color) */}
+                  <div style={{
+                    position: 'absolute', left: 0, top: 0, bottom: 0, width: 10,
+                    background: `linear-gradient(90deg, ${rarCol}${Math.round(glowAlpha * 200).toString(16).padStart(2,'0')}, transparent)`,
+                    pointerEvents: 'none',
+                  }} />
+                  {/* Shimmer for epic+ */}
+                  {rarLevel >= 2 && (
                     <div className="sb-edge-shimmer" style={{ animationDelay: seed.shimmerDelay }} />
+                  )}
+                  {/* Bloom overlay for immersive */}
+                  {rarLevel >= 4 && (
+                    <div style={{
+                      position: 'absolute', inset: 0,
+                      background: `radial-gradient(ellipse at 20% 50%, ${rarCol}30, transparent 70%)`,
+                      animation: 'pulseSoft 1.2s ease-in-out infinite',
+                    }} />
                   )}
                 </div>
               </div>
@@ -1909,116 +1937,130 @@ function EdgeSpoilerOverlay({ carteShuffled, currentIdx, onClose }) {
           })}
         </div>
 
+        {/* Label */}
         <div className="sb-edge-label">
-          {hiddenCards.length} carte rimaste · scorri per sbirciare
+          {hiddenCards.length > 0
+            ? `${hiddenCards.length} cart${hiddenCards.length > 1 ? 'e' : 'a'} rimanent${hiddenCards.length > 1 ? 'i' : 'e'} · scorri`
+            : 'Ultima carta!'}
         </div>
       </div>
     </div>
   );
 }
 
-// ── DropCarousel v2 ─────────────────────────────────────────────────────
+// ── DropCarousel v3 — flex-based, always visible ─────────────────────────
 function DropCarousel({ dropsAttivi, dropSelId, setDropSelId }) {
   const currentIdx = Math.max(0, dropsAttivi.findIndex(d => d.id === dropSelId));
-  const [dragStart, setDragStart] = useState(null);
+  const dragStart = useRef(null);
+  const [dragDelta, setDragDelta] = useState(0);
   const [dragging, setDragging] = useState(false);
 
   const prev = () => { if (currentIdx > 0) setDropSelId(dropsAttivi[currentIdx - 1].id); };
   const next = () => { if (currentIdx < dropsAttivi.length - 1) setDropSelId(dropsAttivi[currentIdx + 1].id); };
 
-  const handleDragStart = (e) => {
-    const x = e.touches ? e.touches[0].clientX : e.clientX;
-    setDragStart(x); setDragging(true);
+  const handleDown = (e) => {
+    dragStart.current = (e.touches ? e.touches[0] : e).clientX;
+    setDragging(true);
   };
-  const handleDragEnd = (e) => {
-    if (!dragging || dragStart === null) { setDragging(false); return; }
-    const x = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
-    const diff = dragStart - x;
-    if (Math.abs(diff) > 45) { diff > 0 ? next() : prev(); }
-    setDragStart(null); setDragging(false);
+  const handleMove = (e) => {
+    if (!dragging || dragStart.current === null) return;
+    const dx = (e.touches ? e.touches[0] : e).clientX - dragStart.current;
+    setDragDelta(dx);
+  };
+  const handleUp = () => {
+    if (Math.abs(dragDelta) > 45) { dragDelta < 0 ? next() : prev(); }
+    dragStart.current = null;
+    setDragDelta(0);
+    setDragging(false);
   };
 
-  const getItemClass = (i) => {
-    const d = i - currentIdx;
-    if (d === 0)  return 'sb-drop-carousel__item sb-drop-carousel__item--center';
-    if (d === -1) return 'sb-drop-carousel__item sb-drop-carousel__item--left';
-    if (d === 1)  return 'sb-drop-carousel__item sb-drop-carousel__item--right';
-    if (d === -2) return 'sb-drop-carousel__item sb-drop-carousel__item--far-left';
-    if (d === 2)  return 'sb-drop-carousel__item sb-drop-carousel__item--far-right';
-    return 'sb-drop-carousel__item'; // hidden (opacity: 0)
-  };
+  if (!dropsAttivi.length) return null;
 
   return (
     <div
-      className="sb-drop-carousel"
-      onTouchStart={handleDragStart} onTouchEnd={handleDragEnd}
-      onMouseDown={handleDragStart} onMouseUp={handleDragEnd}
-      onMouseLeave={() => { setDragging(false); setDragStart(null); }}
+      style={{ width: '100%', overflow: 'hidden', position: 'relative', height: 280, marginBottom: 16 }}
+      onTouchStart={handleDown} onTouchMove={handleMove} onTouchEnd={handleUp}
+      onMouseDown={handleDown} onMouseMove={dragging ? handleMove : undefined} onMouseUp={handleUp}
+      onMouseLeave={() => { if (dragging) { setDragging(false); setDragDelta(0); } }}
     >
       {dropsAttivi.map((d, i) => {
+        const dist = i - currentIdx;
+        // Position: center at 50% + dist * 54vw offset
+        const offset = dist * 54; // vw units
+        const scale = i === currentIdx ? 1 : 0.70;
+        const opacity = Math.abs(dist) > 1 ? 0 : (i === currentIdx ? 1 : 0.65);
+        const brightness = i === currentIdx ? 1 : 0.68;
         const col  = d.colore  || '#9b59ff';
         const col2 = d.colore2 || '#ff2d78';
-        const isCenter = i === currentIdx;
-        const packW = isCenter ? 'min(56vw, 210px)' : 'min(42vw, 160px)';
-        const packH = isCenter ? 'min(82vw, 310px)' : 'min(62vw, 230px)';
+
         return (
           <div
             key={d.id}
-            className={getItemClass(i)}
-            onClick={() => { if (i !== currentIdx) setDropSelId(d.id); }}
-            draggable={false}
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              transform: `translate(-50%, -50%) translateX(${offset}vw) scale(${scale})`,
+              opacity,
+              filter: `brightness(${brightness})`,
+              transition: dragging ? 'none' : 'transform 0.38s cubic-bezier(0.23,1,0.32,1), opacity 0.3s, filter 0.3s',
+              zIndex: i === currentIdx ? 3 : 2,
+              cursor: i !== currentIdx ? 'pointer' : 'default',
+              pointerEvents: Math.abs(dist) > 1 ? 'none' : 'auto',
+            }}
+            onClick={() => { if (i !== currentIdx && !dragging) setDropSelId(d.id); }}
           >
             {d.asset_bustina ? (
               <img
                 src={d.asset_bustina}
                 style={{
-                  width: packW, height: packH,
-                  borderRadius: isCenter ? 18 : 14,
-                  objectFit: 'cover', display: 'block',
-                  boxShadow: isCenter
+                  width: '52vw', maxWidth: 210,
+                  borderRadius: 18, display: 'block',
+                  boxShadow: i === currentIdx
                     ? `0 0 40px ${col}55, 0 16px 50px rgba(0,0,0,0.6)`
                     : '0 8px 24px rgba(0,0,0,0.4)',
+                  userSelect: 'none',
                 }}
                 alt={d.nome}
                 draggable={false}
               />
             ) : (
               <div style={{
-                width: packW, height: packH,
-                borderRadius: isCenter ? 18 : 14,
+                width: '52vw', maxWidth: 210,
+                height: '76vw', maxHeight: 310,
+                borderRadius: 18,
                 background: 'linear-gradient(160deg,#1a0a36,#07051a)',
-                border: `${isCenter ? 2 : 1.5}px solid ${col}${isCenter ? '99' : '55'}`,
-                boxShadow: isCenter
-                  ? `0 0 40px ${col}50, 0 16px 50px rgba(0,0,0,0.6)`
+                border: `2px solid ${col}${i === currentIdx ? '99' : '55'}`,
+                boxShadow: i === currentIdx
+                  ? `0 0 40px ${col}50,0 16px 50px rgba(0,0,0,0.6)`
                   : '0 8px 24px rgba(0,0,0,0.4)',
                 display: 'flex', flexDirection: 'column',
                 alignItems: 'center', justifyContent: 'center',
                 position: 'relative', overflow: 'hidden',
+                userSelect: 'none',
               }}>
                 <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse at 50% 20%,${col}25,transparent 60%)` }} />
-                <div style={{ fontFamily: 'Unbounded,sans-serif', fontSize: isCenter ? 52 : 38, color: col, textShadow: `0 0 28px ${col}`, position: 'relative', zIndex: 1 }}>♛</div>
-                <div style={{ fontFamily: 'Unbounded,sans-serif', fontSize: isCenter ? 11 : 9, fontWeight: 800, color: '#fff', marginTop: 8, textAlign: 'center', padding: '0 10px', position: 'relative', zIndex: 1 }}>{d.nome}</div>
-              </div>
-            )}
-            {isCenter && d.waifuIds && (
-              <div style={{ textAlign: 'center', marginTop: 8 }}>
-                <div style={{ fontFamily: 'Saira Condensed,sans-serif', fontSize: 9, color: col, letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700 }}>
-                  {d.waifuIds.length} waifu
-                </div>
+                <div style={{ fontFamily: 'Unbounded,sans-serif', fontSize: 52, color: col, textShadow: `0 0 28px ${col}`, position: 'relative', zIndex: 1 }}>♛</div>
+                <div style={{ fontFamily: 'Unbounded,sans-serif', fontSize: 11, fontWeight: 800, color: '#fff', marginTop: 8, textAlign: 'center', padding: '0 12px', position: 'relative', zIndex: 1 }}>{d.nome}</div>
+                {i === currentIdx && d.waifuIds && (
+                  <div style={{ fontFamily: 'Saira Condensed,sans-serif', fontSize: 9, color: col, letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700, marginTop: 8, position: 'relative', zIndex: 1 }}>
+                    {d.waifuIds.length} waifu
+                  </div>
+                )}
               </div>
             )}
           </div>
         );
       })}
 
-      {/* Dots indicator */}
+      {/* Dots */}
       {dropsAttivi.length > 1 && (
-        <div style={{ position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 5, zIndex: 10 }}>
+        <div style={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 6, zIndex: 10 }}>
           {dropsAttivi.map((d, i) => (
             <div key={d.id} onClick={() => setDropSelId(d.id)} style={{
-              width: i === currentIdx ? 18 : 7, height: 7, borderRadius: 999,
-              background: i === currentIdx ? '#ffe9a8' : 'rgba(241,235,255,0.2)',
-              cursor: 'pointer', transition: 'all 0.28s',
+              width: i === currentIdx ? 20 : 7, height: 7, borderRadius: 999,
+              background: i === currentIdx ? '#ffe9a8' : 'rgba(241,235,255,0.25)',
+              cursor: 'pointer', transition: 'all 0.3s',
             }} />
           ))}
         </div>
@@ -2027,8 +2069,10 @@ function DropCarousel({ dropsAttivi, dropSelId, setDropSelId }) {
   );
 }
 
-// ── CardRevealScreen v3 ─────────────────────────────────────────────────
-// Changes: EdgeSpoilerOverlay, "Tieni Premuto" skip (flash 1-per-1)
+// ── CardRevealScreen v4 ─────────────────────────────────────────────────
+// FIX: card was stuck because skipIdx wasn't synced with currentIdx
+// FIX: skip speed 300ms
+// FIX: edge spoiler shows correctly
 function CardRevealScreen({
   carteShuffled, currentIdx, onNext, onAllDone,
   carteOriginali,
@@ -2045,13 +2089,20 @@ function CardRevealScreen({
   const skipHoldTimer = useRef(null);
   const IMMC = '#ec4899';
 
-  const card = carteShuffled[skipIdx] ?? carteShuffled[currentIdx];
+  // CRITICAL FIX: sync skipIdx when currentIdx changes (from parent tap)
+  useEffect(() => {
+    setSkipIdx(currentIdx);
+  }, [currentIdx]);
+
+  // Card to display: during skip use skipIdx, otherwise use currentIdx
+  const displayIdx = skipping ? skipIdx : currentIdx;
+  const card = carteShuffled[displayIdx] ?? carteShuffled[currentIdx];
   const isLast   = currentIdx === carteShuffled.length - 1;
-  const isWaifu  = card.tipo === 'waifu';
-  const isOutfit = card.tipo === 'outfit';
-  const isImm    = isWaifu && card.data?.rarita === 'immersivo';
-  const isHot    = isWaifu && card.data?.hot === true && !!profilo?.hardPass;
-  const isNew    = card.isNuova;
+  const isWaifu  = card?.tipo === 'waifu';
+  const isOutfit = card?.tipo === 'outfit';
+  const isImm    = isWaifu && card?.data?.rarita === 'immersivo';
+  const isHot    = isWaifu && card?.data?.hot === true && !!profilo?.hardPass;
+  const isNew    = card?.isNuova;
 
   // Auto-hint after 3s
   useEffect(() => {
@@ -2063,20 +2114,17 @@ function CardRevealScreen({
     return () => clearTimeout(autoHintTimer.current);
   }, [currentIdx, skipping]);
 
-  // Skip: flash through remaining cards 1-per-1
+  // Skip: flash 1-per-1 at 300ms each
   const startSkip = () => {
     if (skipping) return;
     setSkipping(true);
-    const remaining = carteShuffled.slice(currentIdx);
-    remaining.forEach((_, i) => {
-      const delay = i * 150;
-      setTimeout(() => setSkipIdx(currentIdx + i), delay);
-    });
-    // After all flashed → go to results
-    setTimeout(onAllDone, remaining.length * 150 + 200);
+    const totalRemaining = carteShuffled.length - currentIdx;
+    for (let i = 0; i < totalRemaining; i++) {
+      setTimeout(() => setSkipIdx(currentIdx + i), i * 300);
+    }
+    setTimeout(onAllDone, totalRemaining * 300 + 200);
   };
 
-  // Stage hold → peek; TIENI PREMUTO button hold → skip
   const handleStageDown = (e) => {
     e.preventDefault();
     clearTimeout(autoHintTimer.current); setShowAutoHint(false);
@@ -2102,16 +2150,17 @@ function CardRevealScreen({
   const handleSkipBtnUp = (e) => {
     e.stopPropagation();
     clearTimeout(skipHoldTimer.current);
-    // Short tap on button = just show peek for that moment
-    if (!skipping) setPeeking(p => !p);
+    if (!skipping && !peeking) setPeeking(true);
   };
   const handleSkipBtnLeave = (e) => {
     e.stopPropagation();
     clearTimeout(skipHoldTimer.current);
   };
 
-  const rarGlow = isWaifu ? RARITY_COLORS[card.data?.rarita] : null;
-  const isRare  = isWaifu && ['leggendario','immersivo','epico'].includes(card.data?.rarita);
+  const rarGlow = isWaifu ? RARITY_COLORS[card?.data?.rarita] : null;
+  const isRare  = isWaifu && ['leggendario','immersivo','epico'].includes(card?.data?.rarita);
+
+  if (!card) return null;
 
   return (
     <div className="sb-card-reveal">
@@ -2119,7 +2168,6 @@ function CardRevealScreen({
         Carta {currentIdx + 1} / {carteShuffled.length}
       </div>
 
-      {/* Stage */}
       <div
         className="sb-card-reveal__stage"
         onPointerDown={handleStageDown}
@@ -2128,7 +2176,6 @@ function CardRevealScreen({
         onContextMenu={e => e.preventDefault()}
         style={{ touchAction: 'none' }}
       >
-        {/* Badges */}
         {(isNew || isHot) && (
           <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 20, display: 'flex', flexDirection: 'column', gap: 6, pointerEvents: 'none' }}>
             {isNew && <div className="sb-badge-new">NEW ✦</div>}
@@ -2136,12 +2183,12 @@ function CardRevealScreen({
           </div>
         )}
 
-        {/* Rarity aura */}
         {isRare && rarGlow && (
           <div style={{ position: 'absolute', inset: -20, borderRadius: 30, background: `radial-gradient(ellipse,${rarGlow}30,transparent 65%)`, animation: 'pulseStrong 1.4s ease-in-out infinite', pointerEvents: 'none', zIndex: 0 }} />
         )}
 
-        <div className="sb-card-3d-wrap" key={skipIdx}>
+        {/* KEY uses displayIdx so animation re-triggers on each card change */}
+        <div className="sb-card-3d-wrap" key={displayIdx}>
           <div className={`sb-card-3d${skipping ? ' sb-card-3d--flashing' : ''}`} style={{
             boxShadow: rarGlow
               ? `18px 18px 50px rgba(0,0,0,0.55),0 0 30px ${rarGlow}40,-4px -4px 20px rgba(255,255,255,0.05)`
@@ -2149,11 +2196,10 @@ function CardRevealScreen({
           }}>
             {isWaifu  && <CartaWaifu waifu={card.data}  dimensione="normale" tipo="auto" />}
             {isOutfit && <CartaOutfit outfit={card.data} dimensione="normale" />}
-            {!isWaifu && !isOutfit && <CartaPosa posa={card.data} dimensione="normale" />}
+            {!isWaifu && !isOutfit && card.tipo === 'posa' && <CartaPosa posa={card.data} dimensione="normale" />}
           </div>
         </div>
 
-        {/* Video button */}
         {isImm && !skipping && (
           <div style={{ position: 'absolute', bottom: 100, left: '50%', transform: 'translateX(-50%)', zIndex: 30, display: 'flex', gap: 8 }}>
             {card.data?.asset_video && (
@@ -2180,7 +2226,6 @@ function CardRevealScreen({
         </div>
       )}
 
-      {/* Tieni Premuto button: tap = toggle peek, hold 0.8s = skip */}
       {!skipping && (
         <div
           className="sb-card-reveal__nav-hint"
@@ -2188,7 +2233,7 @@ function CardRevealScreen({
           onPointerUp={handleSkipBtnUp}
           onPointerLeave={handleSkipBtnLeave}
           style={{ cursor: 'pointer' }}
-          title="Tieni premuto per saltare"
+          title="Tap = anteprima rarità · Tieni 0.8s = salta tutto"
         >
           ►► Tieni premuto
         </div>
@@ -2198,7 +2243,6 @@ function CardRevealScreen({
         <div className="sb-card-reveal__auto-hint">Tocca per vedere la prossima carta</div>
       )}
 
-      {/* Edge Spoiler */}
       {peeking && !skipping && (
         <EdgeSpoilerOverlay
           carteShuffled={carteShuffled}
@@ -2207,11 +2251,10 @@ function CardRevealScreen({
         />
       )}
 
-      {/* Video overlay */}
       {sbusVideoAttivo && sbusCartaImmersiva && (
         <div onClick={() => { if (sbusVideoFinito) chiudiVideoSbusto(); }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.96)', backdropFilter: 'blur(20px)', zIndex: 300, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <style>{`@keyframes scaleIn { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
+          <style>{`@keyframes scaleIn{from{transform:scale(0.7);opacity:0}to{transform:scale(1);opacity:1}}`}</style>
           <div onClick={e => e.stopPropagation()} style={{ animation: 'scaleIn 0.2s ease-out' }}>
             <CartaWaifu waifu={sbusCartaImmersiva} dimensione="grande" tipo="auto"
               videoAttivo={sbusVideoAttivo} videoRef={sbusVideoRef}
@@ -2220,8 +2263,8 @@ function CardRevealScreen({
           {!sbusVideoFinito && <div style={{ marginTop: 16, fontSize: 9, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', letterSpacing: 2 }}>In riproduzione…</div>}
           {sbusVideoFinito && (
             <div onClick={e => e.stopPropagation()} style={{ marginTop: 16, display: 'flex', gap: 10 }}>
-              <button onClick={rivediVideoSbusto} style={{ background: `linear-gradient(135deg,${IMMC}33,${IMMC}18)`, border: `1px solid ${IMMC}88`, borderRadius: 10, color: IMMC, fontFamily: 'Orbitron,monospace', fontSize: 10, fontWeight: 700, letterSpacing: 2, padding: '10px 22px', cursor: 'pointer' }}>↺ RIVEDI</button>
-              <button onClick={chiudiVideoSbusto} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: 'rgba(238,232,220,0.7)', fontFamily: 'Orbitron,monospace', fontSize: 10, fontWeight: 700, letterSpacing: 2, padding: '10px 22px', cursor: 'pointer' }}>✕ CHIUDI</button>
+              <button onClick={rivediVideoSbusto} style={{ background:`linear-gradient(135deg,${IMMC}33,${IMMC}18)`,border:`1px solid ${IMMC}88`,borderRadius:10,color:IMMC,fontFamily:'Orbitron,monospace',fontSize:10,fontWeight:700,letterSpacing:2,padding:'10px 22px',cursor:'pointer' }}>↺ RIVEDI</button>
+              <button onClick={chiudiVideoSbusto} style={{ background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:10,color:'rgba(238,232,220,0.7)',fontFamily:'Orbitron,monospace',fontSize:10,fontWeight:700,letterSpacing:2,padding:'10px 22px',cursor:'pointer' }}>✕ CHIUDI</button>
             </div>
           )}
         </div>
@@ -2295,12 +2338,8 @@ function ResultsScreen({
     setTimeout(onAvanti, 700);
   };
 
-  const sorted = useMemo(() => {
-    const rar = ['comune','raro','epico','leggendario','immersivo'];
-    return [...carteShuffled].sort((a, b) =>
-      rar.indexOf(a.data?.rarita ?? '') - rar.indexOf(b.data?.rarita ?? '')
-    );
-  }, [carteShuffled]);
+  // Show in reveal order (left-to-right, top-to-bottom = first revealed to last)
+  const sorted = carteShuffled;
 
   const renderCard = (card, i) => {
     const isWaifu  = card.tipo === 'waifu';
@@ -2431,32 +2470,8 @@ function SelectionScreen({ drop, dropsAttivi, dropSelId, setDropSelId, profilo, 
         </div>
       </div>
 
-      {/* Drop selector */}
-      {dropsAttivi.length > 1 && (
-        <>
-          <div className="sb-step-label">◆ Scegli espansione</div>
-          <div className="sb-drop-selector">
-            {dropsAttivi.map(d => (
-              <button key={d.id}
-                className={`sb-drop-tab${d.id === dropSelId ? ' sb-drop-tab--active' : ' sb-drop-tab--inactive'}`}
-                onClick={() => setDropSelId(d.id)}>{d.nome}</button>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Pack card */}
-      <div className={`sb-pack-card${isHolo ? ' sb-pack-card--holo' : ' sb-pack-card--standard'}`}>
-        {isHolo && <div className="foil foil--soft" />}
-        <div className="sb-pack-card__art" style={{ background: `linear-gradient(135deg,${col}30,${col2}20)` }} />
-        {isHolo && <div className="sb-pack-card__waifu-only">✦ WAIFU PACK</div>}
-        <div className="sb-pack-card__center">
-          <div className="sb-pack-card__symbol" style={{ color: col }}>♛</div>
-          <div className="sb-pack-card__name">{drop?.nome || 'Pack Scellato'}</div>
-          <div className="sb-pack-card__desc">5 carte · 1 epico+ garantito</div>
-        </div>
-      </div>
-
+      {/* DropCarousel — sempre visibile, sostituisce pills e pack card */}
+      <DropCarousel dropsAttivi={dropsAttivi} dropSelId={dropSelId} setDropSelId={setDropSelId} />
       {/* Probabilità */}
       <div className="sb-odds">
         {ODDS.map(o => (
