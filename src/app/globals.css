@@ -1899,12 +1899,12 @@ input:focus, textarea:focus, select:focus {
 
 /* ===== Results fly animation — DOWN toward bottom navbar collection icon ===== */
 @keyframes sbFlyCard {
-  0%   { opacity: 1; transform: scale(1) translate(0, 0); }
-  40%  { opacity: 0.85; transform: scale(0.45) translate(0, 80px); }
-  100% { opacity: 0; transform: scale(0) translate(0, 260px); }
+  0%   { opacity: 1;    transform: translateY(0)     scale(1);   }
+  35%  { opacity: 0.9;  transform: translateY(50px)  scale(0.6); }
+  100% { opacity: 0;    transform: translateY(220px) scale(0.1); }
 }
 .sb-results__card-wrap--flying {
-  animation: sbFlyCard 0.6s ease-in forwards;
+  animation: sbFlyCard 0.65s ease-in forwards;
 }
 /* Waifu Pack badge in results / reveal */
 .sb-waifu-pack-banner {

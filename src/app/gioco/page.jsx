@@ -2201,7 +2201,7 @@ function CardRevealScreen({
         <div className="sb-waifu-pack-banner">✦ WAIFU PACK ✦</div>
       )}
       <div className="sb-card-reveal__progress">
-        Carta {currentIdx + 1} / {carteShuffled.length}
+        Carta {displayIdx + 1} / {carteShuffled.length}
       </div>
 
       <div
@@ -2420,7 +2420,7 @@ function ResultsScreen({
   };
 
   return (
-    <div className="sb-results fade-in">
+    <div className="sb-results fade-in" style={{ overflowY: 'auto', flex: 1 }}>
       <div className="sb-results__title">Risultati apertura</div>
       <div className="sb-results__divider" />
 
@@ -2440,15 +2440,23 @@ function ResultsScreen({
             {isWaifuPack && !isMulti && (
               <div className="sb-waifu-pack-banner">✦ WAIFU PACK ✦</div>
             )}
-            {/* Row of 5 cards */}
+            {/* Row 1: 3 cards */}
             <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 4, flexWrap: 'nowrap' }}>
-              {packCards.map((card, ci) => renderCard(card, pi, ci))}
+              {packCards.slice(0, 3).map((card, ci) => renderCard(card, pi, ci))}
+            </div>
+            {/* Row 2: 2 cards */}
+            <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 6, flexWrap: 'nowrap' }}>
+              {packCards.slice(3, 5).map((card, ci) => renderCard(card, pi, ci + 3))}
             </div>
           </div>
         );
       })}
 
-      {!flyOut && <button className="sb-btn-avanti" onClick={handleAvanti}>Avanti</button>}
+      {!flyOut && (
+        <button className="sb-btn-avanti"
+          style={{ position: 'sticky', bottom: 16, zIndex: 10, flexShrink: 0 }}
+          onClick={handleAvanti}>Avanti</button>
+      )}
 
       {cartaDettaglioSbus && ModaleCarta && (
         <ModaleCarta carta={cartaDettaglioSbus} onClose={() => setCartaDettaglioSbus(null)}
@@ -2933,7 +2941,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
       setGlobalSkip(false);
     };
     return (
-      <div style={{ padding: '8px 16px', overflowY: 'auto' }}>
+      <div style={{ padding: '8px 16px', overflowY: 'auto', maxHeight: 'calc(100vh - 160px)', display: 'flex', flexDirection: 'column' }}>
         <ResultsScreen
           carteShuffled={carteRevealShuffled}
           allPacksCartes={isMultiPack ? multiPackCarte : null}
