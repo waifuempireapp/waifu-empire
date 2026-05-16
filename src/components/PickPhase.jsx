@@ -84,6 +84,36 @@ function TypeBadge({ type }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// COSTANTI RARITÀ
+// Mappa rarità → colore del badge e gradiente di sfondo della card.
+// Principio OCP: aggiungere una nuova rarità richiede solo una riga qui.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Colori e sfondi per ciascuna rarità waifu.
+ * - `badge`  : colore del testo/bordo del pill rarità
+ * - `glow`   : colore del glow intorno al pill (versione semi-trasparente)
+ * - `cardBg` : gradiente di sfondo della card per i livelli più alti
+ */
+const RARITY_STYLE = {
+  immersivo:   { badge: '#ff7eb6', glow: 'rgba(255,126,182,0.35)', cardBg: 'linear-gradient(160deg, rgba(127,24,112,0.28), rgba(6,3,15,.75))' },
+  leggendario: { badge: '#ffc861', glow: 'rgba(255,200,97,0.35)',  cardBg: 'linear-gradient(160deg, rgba(74,49,5,0.28),   rgba(6,3,15,.75))' },
+  epico:       { badge: '#b573ff', glow: 'rgba(181,115,255,0.35)', cardBg: 'linear-gradient(160deg, rgba(42,18,85,0.28),  rgba(6,3,15,.75))' },
+  raro:        { badge: '#5aa9ff', glow: 'rgba(90,169,255,0.35)',  cardBg: 'linear-gradient(160deg, rgba(20,42,85,0.28),  rgba(6,3,15,.75))' },
+  comune:      { badge: '#b4bcc8', glow: 'rgba(180,188,200,0.2)',  cardBg: 'rgba(6,3,15,.6)' },
+};
+
+/**
+ * Restituisce le costanti di stile per una rarità, con fallback su 'comune'.
+ *
+ * @param {string|undefined} rarita - Valore rarità della waifu (es. 'Epico').
+ * @returns {{ badge: string, glow: string, cardBg: string }}
+ */
+function getRarityStyle(rarita) {
+  return RARITY_STYLE[(rarita ?? '').toLowerCase()] ?? RARITY_STYLE.comune;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SUB-COMPONENT: MiniHpBar
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -137,11 +167,21 @@ function WaifuPickCard({ waifu, slot, selectable, onTap, hideStats = false }) {
   const maxHp = bs.maxHp ?? 300;
   const tc = TYPE_COLORS[bs.type ?? 'Arcana']?.border ?? '#444';
   const isSelected = slot !== null;
+
+  // Rarità: prova i campi italiani e inglesi, fallback su 'comune'
+  const rarita = waifu.rarità ?? waifu.rarita ?? waifu.rarity ?? 'Comune';
+  const rs = getRarityStyle(rarita);
+
+  // Immagine: prova più campi per compatibilità con diversi formati waifu
+  // (waifu del catalogo, waifu CPU generate, waifu PvP da Firestore)
+  const imgUrl = waifu.asset_statica ?? waifu.img ?? waifu.imgUrl ?? waifu.image ?? null;
+
   return (
     <button onClick={selectable ? onTap : undefined} style={{
-      border: `2px solid ${isSelected ? '#00e676' : tc + '55'}`,
+      border: `2px solid ${isSelected ? '#00e676' : rs.badge + '55'}`,
       borderRadius: 12,
-      background: isSelected ? 'rgba(0,230,118,.08)' : 'rgba(6,3,15,.6)',
+      // Le rarità alte (Epico+) hanno un leggero gradiente tematico anche da non selezionate
+      background: isSelected ? 'rgba(0,230,118,.08)' : rs.cardBg,
       padding: '8px 10px',
       cursor: selectable ? 'pointer' : 'default',
       position: 'relative',
@@ -149,8 +189,12 @@ function WaifuPickCard({ waifu, slot, selectable, onTap, hideStats = false }) {
       width: '100%',
       transition: 'border-color .15s, background .15s',
       WebkitTapHighlightColor: 'transparent',
+      // Leggero glow laterale per rarità alte — aggiunge visibilità senza sovrastare
+      boxShadow: ['epico','leggendario','immersivo'].includes(rarita.toLowerCase())
+        ? `0 0 8px ${rs.glow}`
+        : 'none',
     }}>
-      {/* Slot badge — numero d'ordine di selezione, visibile solo se selezionata */}
+      {/* Badge slot — numero d'ordine di selezione */}
       {isSelected && (
         <div style={{
           position: 'absolute', top: -8, right: -8,
@@ -161,29 +205,69 @@ function WaifuPickCard({ waifu, slot, selectable, onTap, hideStats = false }) {
           border: '2px solid rgba(0,230,118,.6)',
         }}>{slot}</div>
       )}
-      {/* Card layout: immagine thumbnail a sinistra + info a destra */}
+
+      {/* Card layout: thumbnail a sinistra + info a destra */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-        {/* Thumbnail immagine statica della waifu */}
+
+        {/* Thumbnail — con overlay rarità in basso */}
         <div style={{
-          width: 48, height: 72, borderRadius: 7, overflow: 'hidden',
+          width: 52, height: 78, borderRadius: 8, overflow: 'hidden',
           background: 'rgba(255,255,255,.04)', flexShrink: 0,
-          border: `1px solid ${tc}44`,
+          border: `1.5px solid ${rs.badge}66`,
+          position: 'relative',
         }}>
-          {waifu.asset_statica
-            ? <img src={waifu.asset_statica} alt={waifu.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
-            : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 18, opacity: 0.2 }}>◈</div>
+          {imgUrl
+            ? <img
+                src={imgUrl}
+                alt={waifu.nome ?? waifu.name ?? ''}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
+              />
+            : <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                height: '100%', fontSize: 20, color: rs.badge, opacity: 0.3,
+              }}>◈</div>
           }
+          {/* Pill rarità sovrapposto in basso sulla thumbnail — sempre visibile */}
+          <div style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0,
+            background: `linear-gradient(transparent, rgba(0,0,0,0.8))`,
+            padding: '8px 4px 3px',
+            textAlign: 'center',
+          }}>
+            <span style={{
+              fontFamily: 'Orbitron', fontSize: 6, fontWeight: 900,
+              color: rs.badge, letterSpacing: 0.5,
+              textShadow: `0 0 6px ${rs.glow}`,
+            }}>{rarita.toUpperCase()}</span>
+          </div>
         </div>
-        {/* Info: nome, tipo, e statistiche (quest'ultime nascoste per il roster avversario) */}
+
+        {/* Info testo */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700, color: '#eedcd4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {/* Nome waifu */}
+          <div style={{
+            fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700,
+            color: '#eedcd4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
             {waifu.nome ?? waifu.name ?? '—'}
           </div>
-          <div style={{ marginTop: 3 }}><TypeBadge type={bs.type ?? 'Arcana'} /></div>
-          {/* Stats shown only for own roster, hidden for opponent */}
+
+          {/* Badge rarità testuale + badge tipo — sempre visibili per entrambi i roster */}
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 4, flexWrap: 'wrap' }}>
+            <span style={{
+              fontFamily: 'Orbitron', fontSize: 7, fontWeight: 800,
+              color: rs.badge, background: `${rs.badge}18`,
+              border: `1px solid ${rs.badge}55`,
+              borderRadius: 4, padding: '1px 5px', letterSpacing: 0.5,
+              whiteSpace: 'nowrap',
+            }}>{rarita}</span>
+            <TypeBadge type={bs.type ?? 'Arcana'} />
+          </div>
+
+          {/* Statistiche — visibili solo per il roster del giocatore (hideStats=false) */}
           {!hideStats && (
             <>
-              <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,.4)', marginTop: 3 }}>
+              <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,.4)', marginTop: 4 }}>
                 Lv {waifu.livello ?? 1} · HP {maxHp}
               </div>
               <div style={{ fontFamily: 'Orbitron', fontSize: 7, color: 'rgba(238,232,220,.45)', marginTop: 2 }}>
@@ -228,8 +312,10 @@ const S = {
   // `top` non è hardcoded qui: viene calcolato dinamicamente nel componente
   // misurando l'altezza reale di .hdr-root + .ntabs-root per non finire
   // sotto l'header sticky. bottom/left/right restano 0.
-  root: (topOffset = 0) => ({
-    position: 'fixed', top: topOffset, left: 0, right: 0, bottom: 0, zIndex: 40,
+  // bottomOffset: altezza della bottom navbar (`.bottom-nav-mobile`), misurata dinamicamente.
+  // In questo modo il panel termina esattamente sopra la navbar, invece di finirci dietro.
+  root: (topOffset = 0, bottomOffset = 0) => ({
+    position: 'fixed', top: topOffset, left: 0, right: 0, bottom: bottomOffset, zIndex: 40,
     background: 'linear-gradient(180deg,#080318 0%,#120528 50%,#080318 100%)',
     display: 'flex', flexDirection: 'column',
     overflow: 'hidden', // il body interno scorre, non il root
@@ -302,16 +388,19 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
   // step 'handoff' o 'p2pick'.
   const [pvpStep, setPvpStep] = useState('picking');
 
-  // topOffset: offset dal top della viewport per non finire sotto l'header sticky.
-  // Viene calcolato misurando l'altezza reale di .hdr-root + .ntabs-root al mount.
-  const [topOffset, setTopOffset] = useState(0);
+  // topOffset: altezza dell'header + tabs superiori, per non sovrapporre la UI sopra.
+  // bottomOffset: altezza della bottom navbar (.bottom-nav-mobile), per non finire sotto la nav.
+  // Entrambi vengono misurati dal DOM reale così si adattano a qualsiasi viewport.
+  const [topOffset,    setTopOffset]    = useState(0);
+  const [bottomOffset, setBottomOffset] = useState(0);
   useEffect(() => {
     const calcOffset = () => {
       const hdr   = document.querySelector('.hdr-root');
       const ntabs = document.querySelector('.ntabs-root');
-      const hdrH   = hdr   ? hdr.getBoundingClientRect().height   : 0;
-      const ntabsH = ntabs ? ntabs.getBoundingClientRect().height : 0;
-      setTopOffset(hdrH + ntabsH);
+      const bnav  = document.querySelector('.bottom-nav-mobile');
+      setTopOffset((hdr  ? hdr.getBoundingClientRect().height  : 0)
+                 + (ntabs ? ntabs.getBoundingClientRect().height : 0));
+      setBottomOffset(bnav ? bnav.getBoundingClientRect().height : 0);
     };
     calcOffset();
     window.addEventListener('resize', calcOffset);
@@ -387,7 +476,7 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
   // ─────────────────────────────────────────────────────────────────────────
   if (roster5P.length < ROSTER_MIN) {
     return (
-      <div style={S.root(topOffset)}>
+      <div style={S.root(topOffset, bottomOffset)}>
         <div style={{ ...S.header, textAlign: 'center' }}>
           <div style={{ fontFamily: 'Orbitron', fontSize: 13, fontWeight: 700, color: '#ff4d4d', letterSpacing: 2 }}>
             ⚠ WAIFU INSUFFICIENTI
@@ -426,7 +515,7 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
     const p2Bs = p2Active?._battleStats ?? p2Active?.battleStats ?? {};
     const { terrSel, nomeImperoAvversario } = battleCtx;
     return (
-      <div style={{ ...S.root(topOffset), alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ ...S.root(topOffset, bottomOffset), alignItems: 'center', justifyContent: 'center' }}>
         {terrSel && (
           <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: '#f5a623', letterSpacing: 2, marginBottom: 12 }}>
             ⚔ {terrSel.nome}
@@ -491,7 +580,7 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
   const { terrSel, nomeImperoAvversario } = battleCtx;
 
   return (
-    <div style={S.root(topOffset)}>
+    <div style={S.root(topOffset, bottomOffset)}>
       {/* ── Header fisso ──────────────────────────────────────────────────────
           Mostra il titolo "SCELTA TEAM", il contesto battaglia e il badge
           che indica quale giocatore sta selezionando (P1 o P2). */}
@@ -569,8 +658,7 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
         <div style={{
           position: 'sticky',
           bottom: 0,
-          padding: '10px 0',
-          paddingBottom: 'max(10px, env(safe-area-inset-bottom, 10px))',
+          padding: '10px 0 12px',
           background: 'rgba(6,3,15,.96)',
           borderTop: '1px solid rgba(255,255,255,.07)',
           marginTop: 8,
