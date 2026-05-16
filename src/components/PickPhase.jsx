@@ -192,17 +192,18 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
   // ── Shared styles ─────────────────────────────────────────────────────────
   const S = {
     root: {
-      position: 'fixed', inset: 0, zIndex: 40, overflow: 'hidden',
+      position: 'fixed', inset: 0, zIndex: 40,
       background: 'linear-gradient(180deg,#080318 0%,#120528 50%,#080318 100%)',
       display: 'flex', flexDirection: 'column',
-      paddingBottom: 'env(safe-area-inset-bottom,0px)',
+      overflow: 'hidden', // il body interno scorre, non il root
     },
     header: {
-      padding: '14px 16px 10px',
+      flexShrink: 0,
+      padding: '10px 14px 8px',
       borderBottom: '1px solid rgba(255,255,255,.07)',
       background: 'rgba(6,3,15,.55)',
     },
-    body: { flex: 1, overflowY: 'auto', padding: '12px 14px' },
+    body: { flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '10px 12px', WebkitOverflowScrolling: 'touch' },
     section: { marginBottom: 16 },
     label: { fontFamily: 'Orbitron', fontSize: 8, letterSpacing: 2, color: 'rgba(238,232,220,.4)', marginBottom: 6 },
     confirmBtn: (active) => ({
@@ -372,7 +373,7 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
         {/* Player roster */}
         <div style={S.section}>
           <div style={S.label}>IL TUO ROSTER</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
             {activeRoster.map((w, idx) => {
               const slotPos = activeSlots.indexOf(idx);
               return (
@@ -391,7 +392,7 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
         {/* Opponent roster (read-only, stats hidden) */}
         <div style={S.section}>
           <div style={S.label}>ROSTER AVVERSARIO — {nomeImperoAvversario ?? 'CPU'}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
             {opponentRoster.map((w, idx) => (
               <WaifuPickCard key={w.id ?? idx} waifu={w} slot={null} selectable={false} onTap={null} hideStats={true} />
             ))}

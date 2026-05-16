@@ -1755,11 +1755,13 @@ function BattagliaMultiplayer({
     const myMoveData  = arenaMosse?.[`t${t}`]?.[myUid];
     const oppMoveData = arenaMosse?.[`t${t}`]?.[avversarioUid];
     if (myMoveData?.moveIndex === undefined || oppMoveData?.moveIndex === undefined) return;
-    // RESOLVER: entrambe le mosse ricevute → sblocca animazione locale
-    // WaifuBattleArena usa pvpIsResolver=true → calcola localmente e poi chiama onPvPTurnResolved
-    setPvpOpponentMove(oppMoveData.moveIndex); // mossa dell'enemy (avversario) vista dall'attaccante
-    setPvpWaiting(false);
-    // NON avanzare arenaTurnoRef qui — lo farà handlePvPTurnResolved dopo aver scritto il risultato
+    // RESOLVER: entrambe le mosse ricevute.
+    // Delay di 400ms per permettere al RECEIVER di ricevere il seed e prepararsi,
+    // garantendo che entrambi i client vedano l'animazione in modo quasi simultaneo.
+    setTimeout(() => {
+      setPvpOpponentMove(oppMoveData.moveIndex); // trigger animazione locale
+      setPvpWaiting(false);
+    }, 400);
   }, [partita?.battagliaCorrente?.arenaMosse, arenaAttiva, sonoAttaccante, pvpBattleSeed]); // eslint-disable-line
 
   // ── Arena PvP: RECEIVER (difensore) — legge il risultato da Firestore ─────
@@ -1775,10 +1777,12 @@ function BattagliaMultiplayer({
     const t = arenaTurnoRef.current;
     const risultato = arenaRisultato?.[`t${t}`];
     if (!risultato) return;
-    // Informa WaifuBattleArena del risultato pre-calcolato
+    // Il RESOLVER ha scritto il risultato: il RECEIVER può animare.
+    // Il RESOLVER ha già aspettato 400ms — il risultato su Firestore arriva dopo,
+    // quindi la ricezione qui avviene circa allo stesso momento in cui il RESOLVER
+    // inizia l'animazione → entrambi i client animano quasi in simultanea.
     setPvpTurnResult(risultato);
-    // Sul device del difensore, la mossa dell'avversario (attaccante) è pMoveIdx
-    setPvpOpponentMove(risultato.pMoveIdx);
+    setPvpOpponentMove(risultato.pMoveIdx); // mossa dell'avversario (attaccante) vista dal difensore
     setPvpWaiting(false);
   }, [partita?.battagliaCorrente?.arenaRisultato, partita?.battagliaCorrente?.battleSeed, arenaAttiva, sonoAttaccante]); // eslint-disable-line
 

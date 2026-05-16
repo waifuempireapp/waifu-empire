@@ -953,21 +953,20 @@ export default function WaifuBattleArena({
         </div>
       ))}
 
-      {/* ── ZONE 1: Combat Header ── */}
+      {/* ── ZONE 1: Combat Header — compatto su mobile ── */}
       <div style={{
-        height:44, flexShrink:0,
+        flexShrink:0,
         display:'flex', alignItems:'center', justifyContent:'space-between',
-        padding:'0 14px',
+        padding:'4px 10px',
         background:'rgba(10,7,38,0.85)',
         backdropFilter:'blur(12px)',
         WebkitBackdropFilter:'blur(12px)',
-        border:'0.8px solid rgba(167,139,250,0.2)',
-        borderRadius:12,
-        margin:'6px 8px 0',
+        borderBottom:'0.8px solid rgba(167,139,250,0.2)',
+        minHeight: 36,
       }}>
         <span style={{
           fontFamily:"'Unbounded', sans-serif",
-          fontSize:16, fontWeight:700, color:'#f1ebff',
+          fontSize: isMobile ? 11 : 14, fontWeight:700, color:'#f1ebff',
         }}>
           {turnLabel}
         </span>
@@ -991,8 +990,8 @@ export default function WaifuBattleArena({
       {/* ── ZONE 2+3+4: Battle Arena ── */}
       <div style={{flex:1, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative', minHeight:0}}>
 
-        {/* Enemy Zone (top ~46%) */}
-        <div style={{flex:'0 0 46%', position:'relative', overflow:'hidden'}}>
+        {/* Enemy Zone (top ~42% su mobile, 46% su desktop) */}
+        <div style={{flex: isMobile ? '0 0 40%' : '0 0 46%', position:'relative', overflow:'hidden'}}>
           {/* Enemy HUD: top-left */}
           <div style={{position:'absolute', top:10, left:12, zIndex:3}}>
             <EnemyHud waifu={enemy}/>
@@ -1017,19 +1016,19 @@ export default function WaifuBattleArena({
           <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 75% 30%, rgba(200,20,40,.07) 0%, transparent 70%)',pointerEvents:'none',zIndex:1}}/>
         </div>
 
-        {/* Message Bar */}
+        {/* Message Bar — compatto su mobile */}
         <div style={{
-          flexShrink:0, height:40,
-          display:'flex', alignItems:'center', padding:'0 14px',
+          flexShrink:0, minHeight: isMobile ? 28 : 40, maxHeight: 40,
+          display:'flex', alignItems:'center', padding:'0 12px',
           background:'rgba(4,2,12,.78)',
           borderTop:'1px solid rgba(255,255,255,.05)',
           borderBottom:'1px solid rgba(255,255,255,.05)',
         }}>
           <p className="wba-fm" key={message} style={{
-            fontFamily:'Fredoka', fontSize:13, color:'#eedcd4',
-            margin:0, lineHeight:1.4,
+            fontFamily:'Fredoka', fontSize: isMobile ? 11 : 13, color:'#eedcd4',
+            margin:0, lineHeight:1.3,
             overflow:'hidden',
-            display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical',
+            display:'-webkit-box', WebkitLineClamp:1, WebkitBoxOrient:'vertical',
           }}>{message}</p>
         </div>
 
@@ -1049,15 +1048,17 @@ export default function WaifuBattleArena({
         </div>
       </div>
 
-      {/* ── ZONE 5+6: Action Panel — altezza flessibile, scrollabile internamente ── */}
+      {/* ── ZONE 5+6: Action Panel — altezza adattiva, internamente scrollabile ── */}
       <div style={{
         flexShrink:0,
-        minHeight:'clamp(188px, 37dvh, 252px)',
-        maxHeight:'clamp(220px, 45dvh, 300px)',
+        // Su mobile portrait: occupa almeno 210px (4 bottoni visibili) o il 44% del viewport
+        minHeight: isMobile ? 'min(210px, 44dvh)' : 'clamp(188px, 37dvh, 252px)',
+        maxHeight: isMobile ? '50dvh' : 'clamp(220px, 45dvh, 300px)',
         display:'flex', flexDirection:'column',
         background:'rgba(4,2,10,.92)',
         borderTop:'1px solid rgba(255,255,255,.07)',
         overflowY:'auto',
+        WebkitOverflowScrolling:'touch',
       }}>
 
         {/* Timer progress bar */}
@@ -1206,7 +1207,7 @@ export default function WaifuBattleArena({
                   </div>
                 </div>
               )}
-              <div style={{flex:1,display:'grid',gridTemplateColumns:'1fr 1fr',gridTemplateRows:'1fr 1fr',gap:6}}>
+              <div style={{flex:1,display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,minHeight: isMobile ? 112 : 0}}>
                 {(player?.moves??[null,null,null,null]).map((move,i)=>(
                   <MoveBtn key={i} move={move} idx={i}
                     locked={!isChoose||isAnim||(isPvP&&pvpWaiting)}

@@ -6591,7 +6591,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
               <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: '#b6aed6', marginBottom: 3 }}>Impero: <strong style={{ color: terrData.coloreImpero || '#666' }}>{terrData.impero || 'Libero'}</strong>{eMio && <span style={{ color: '#6cf0e0', marginLeft: 6, textShadow: '0 0 8px rgba(108,240,224,0.6)' }}>★ TUO</span>}</div>
               <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 9, color: 'rgba(167,139,250,0.4)', opacity: 1, marginBottom: 12 }}>Confini: {terrSel.conf?.length ? terrSel.conf.map(c => { const t = TERRITORI?.find(x => x.id === c); return t?.nome; }).filter(Boolean).join(', ') : '—'}</div>
               {(() => {
-                const haRoster5 = (collezione?.length ?? 0) >= 5;
+                const haRoster5 = Object.keys(collezione?.waifu ?? {}).length >= 5;
                 return !terrData.conquistato && (
                   <div>
                     {!haRoster5 ? (
