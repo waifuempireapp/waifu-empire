@@ -666,50 +666,70 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
         </div>
 
         {/* ── Waifu MVP ─────────────────────────────────────────────────────────
-            La tua waifu che ha fatto più danno — mostrata con corona e statistiche.
-            Immagine grande + danno (primario) + KO (secondario). */}
+            La waifu con più danno tra entrambe le squadre.
+            Mostra immagine + corona + squad + danno (primario) + KO (secondario). */}
         {mvp && (
           <div style={{
             display:'flex', alignItems:'center', gap:12,
-            background:'linear-gradient(135deg, rgba(245,197,96,0.1), rgba(167,139,250,0.06))',
-            border:'1px solid rgba(245,197,96,0.3)',
+            background: mvp.side==='player'
+              ? 'linear-gradient(135deg, rgba(108,240,224,0.08), rgba(245,197,96,0.06))'
+              : 'linear-gradient(135deg, rgba(255,133,182,0.08), rgba(167,139,250,0.06))',
+            border: `1px solid ${mvp.side==='player' ? 'rgba(245,197,96,0.4)' : 'rgba(255,133,182,0.35)'}`,
             borderRadius:14, padding:'10px 14px',
             marginBottom:14,
           }}>
-            {/* Immagine MVP con badge corona */}
+            {/* Thumbnail MVP con corona sovrapposta */}
             <div style={{position:'relative', flexShrink:0}}>
               <div style={{
-                width:56, height:82, borderRadius:9, overflow:'hidden',
-                border:'1.5px solid rgba(245,197,96,0.55)',
-                background:'rgba(255,255,255,.04)',
+                width:60, height:88, borderRadius:10, overflow:'hidden',
+                border: `2px solid ${mvp.side==='player' ? 'rgba(245,197,96,0.6)' : 'rgba(255,133,182,0.5)'}`,
+                background:'rgba(6,3,15,.8)',
+                // Senza immagine il box è comunque visibile
+                display:'flex', alignItems:'center', justifyContent:'center',
               }}>
                 {mvp.imgUrl
-                  ? <img src={mvp.imgUrl} alt={mvp.name}
-                      style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top'}}/>
-                  : <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:22,color:'#ffd666',opacity:.3}}>◈</div>
+                  ? <img
+                      src={mvp.imgUrl}
+                      alt={mvp.name}
+                      style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top',display:'block'}}
+                    />
+                  : <span style={{fontSize:26,opacity:.25}}>◈</span>
                 }
               </div>
-              {/* Corona MVP */}
+              {/* 👑 corona — sopra il thumbnail */}
               <div style={{
-                position:'absolute', top:-10, left:'50%', transform:'translateX(-50%)',
-                fontSize:18, lineHeight:1, filter:'drop-shadow(0 0 4px rgba(245,197,96,0.7))',
+                position:'absolute', top:-12, left:'50%', transform:'translateX(-50%)',
+                fontSize:20, lineHeight:1,
+                filter:'drop-shadow(0 0 5px rgba(245,197,96,0.8))',
+                userSelect:'none',
               }}>👑</div>
             </div>
+
             {/* Info testuale MVP */}
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontFamily:'Orbitron',fontSize:7,letterSpacing:2,color:'rgba(245,197,96,.6)',marginBottom:2}}>
-                WAIFU MVP
+              {/* Label squadra */}
+              <div style={{
+                fontFamily:'Orbitron', fontSize:7, letterSpacing:2, marginBottom:2,
+                color: mvp.side==='player' ? 'rgba(108,240,224,.7)' : 'rgba(255,133,182,.7)',
+              }}>
+                MVP · {mvp.side==='player' ? (nomeImpero||'TU') : (nomeImperoAvversario||'CPU')}
               </div>
-              <div style={{fontFamily:"'Unbounded',sans-serif",fontSize:11,fontWeight:700,color:'#ffd666',
-                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginBottom:6}}>
+              {/* Nome waifu */}
+              <div style={{
+                fontFamily:"'Unbounded',sans-serif", fontSize:11, fontWeight:700,
+                color:'#ffd666', overflow:'hidden', textOverflow:'ellipsis',
+                whiteSpace:'nowrap', marginBottom:6,
+              }}>
                 {mvp.name}
               </div>
-              {/* Danno — elemento principale, più grande */}
-              <div style={{display:'flex',alignItems:'baseline',gap:4,marginBottom:3}}>
-                <span style={{fontFamily:'Orbitron',fontSize:18,fontWeight:900,color:'#f5c560',lineHeight:1}}>
+              {/* Danno totale — elemento principale */}
+              <div style={{display:'flex',alignItems:'baseline',gap:4,marginBottom:4}}>
+                <span style={{fontFamily:'Orbitron',fontSize:20,fontWeight:900,color:'#f5c560',lineHeight:1}}>
                   {mvp.dmg.toLocaleString()}
                 </span>
-                <span style={{fontFamily:'Orbitron',fontSize:7,color:'rgba(245,197,96,.5)'}}>DANNO</span>
+                <span style={{fontFamily:'Orbitron',fontSize:7,color:'rgba(245,197,96,.45)',letterSpacing:1}}>
+                  DANNO
+                </span>
               </div>
               {/* KO — elemento secondario */}
               <div style={{fontFamily:'Orbitron',fontSize:9,color:'rgba(255,133,182,.7)'}}>
@@ -1265,30 +1285,34 @@ export default function WaifuBattleArena({
 
       // ── Statistiche per lato (player / enemy) ────────────────────────────────
       const isKO = newDef.isKO;
+
+      // Totali per lato
       if(side==='player'){
         setStatsP(s=>{ const n={ ko: s.ko+(isKO?1:0), dmg: s.dmg+damage }; statsPRef.current=n; return n; });
-        // Animazione: il contatore "Tu" nel score header fa pop dopo 300ms (quando appare il KO)
         if(isKO){
           clearTimeout(koAnimPTimerRef.current);
           koAnimPTimerRef.current = setTimeout(()=>{ setKoAnimP(true); setTimeout(()=>setKoAnimP(false), 500); }, 320);
         }
-        // Traccia danno e KO per ogni singola waifu (per il calcolo MVP)
-        const imgUrl = att.asset_statica ?? att.img ?? att.imgUrl ?? null;
-        setWaifuStats(prev=>{
-          const existing = prev[att.name] ?? { name:att.name, imgUrl, kos:0, dmg:0 };
-          const updated  = { ...existing, dmg:existing.dmg+damage, kos:existing.kos+(isKO?1:0) };
-          const next = { ...prev, [att.name]: updated };
-          waifuStatsRef.current = next;
-          return next;
-        });
       } else {
         setStatsE(s=>{ const n={ ko: s.ko+(isKO?1:0), dmg: s.dmg+damage }; statsERef.current=n; return n; });
-        // Animazione: il contatore "Avv." nel score header fa pop dopo 300ms
         if(isKO){
           clearTimeout(koAnimETimerRef.current);
           koAnimETimerRef.current = setTimeout(()=>{ setKoAnimE(true); setTimeout(()=>setKoAnimE(false), 500); }, 320);
         }
       }
+
+      // Traccia danno e KO per ogni singola waifu — ENTRAMBE le squadre (per il calcolo MVP).
+      // La chiave usa anche il lato per evitare collisioni di nome tra i due team.
+      const waifuKey = `${side}:${att.name}`;
+      // Prova più campi immagine: il WaifuBattleStat spreads il documento originale
+      const imgUrl = att.asset_statica ?? att.img ?? att.imgUrl ?? att.image ?? null;
+      setWaifuStats(prev=>{
+        const existing = prev[waifuKey] ?? { name:att.name, imgUrl, kos:0, dmg:0, side };
+        const updated  = { ...existing, dmg:existing.dmg+damage, kos:existing.kos+(isKO?1:0) };
+        const next = { ...prev, [waifuKey]: updated };
+        waifuStatsRef.current = next;
+        return next;
+      });
       setBiggestHit(bh=>{ const n=damage>bh.dmg ? { dmg:damage, waifuName:att.name, moveName:move.name, wasCrit:isCrit, side } : bh; biggestHitRef.current=n; return n; });
 
       const msgs=[];
