@@ -400,13 +400,18 @@ function MoveBtn({ move, idx, locked, outPp, cooldown, enemyType, playerType, on
   const { label:eff } = getEffectiveness(move.type, playerType, enemyType);
   const c = TYPE_COLORS[move.type] ?? {bg:'#111',text:'#eee',border:'#555'};
   const bdr = c.border;
+  // Mappa efficacia → etichetta italiana colorata mostrata in ogni bottone mossa.
+  // "Efficace" appare anche per l'efficacia normale così il giocatore ha sempre
+  // un riferimento visivo chiaro per ogni mossa.
   const effMap = {
-    'Extremely effective': {col:'#ff8c00',icon:'🔥',lbl:'×2.5'},
-    'Super effective':     {col:'#00e676',icon:'⚡',lbl:'×2'},
-    'Not very effective':  {col:'#888',   icon:'↓', lbl:'×0.5'},
-    'No effect':           {col:'#ff4d4d',icon:'✕', lbl:'×0'},
+    'Extremely effective': { col:'#ff8c00', lbl:'Super efficace!' },
+    'Super effective':     { col:'#00e676', lbl:'Super efficace'  },
+    'Not very effective':  { col:'#aaa',    lbl:'Poco efficace'   },
+    'No effect':           { col:'#ff4d4d', lbl:'Nullo'           },
+    'Normal':              { col:'rgba(238,232,220,.35)', lbl:'Efficace' },
   };
-  const effInfo = effMap[eff];
+  // Fallback: se getEffectiveness restituisce null o un valore non mappato, usa "Efficace"
+  const effInfo = effMap[eff] ?? effMap['Normal'];
   const isOutPp = !!(outPp);
   return (
     <button className="wba-move-btn" onClick={()=>!dis&&onSelect(idx)} disabled={dis} style={{
@@ -439,16 +444,25 @@ function MoveBtn({ move, idx, locked, outPp, cooldown, enemyType, playerType, on
         }}>{move.name}</span>
         <TypeBadge type={move.type} sm/>
       </div>
+      {/* Riga inferiore: PP dots + etichetta efficacia + stati speciali */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%'}}>
         <PpDots pp={move.pp??0} maxPp={move.maxPp}/>
         <div style={{display:'flex',alignItems:'center',gap:4}}>
           {cooldown&&<span style={{fontSize:10}}>🔒</span>}
-          {outPp&&<span style={{fontFamily:'Orbitron',fontSize:7,color:'#ff4d4d'}}>PP 0</span>}
-          {!dis&&effInfo&&(
-            <span style={{fontFamily:'Fredoka',fontSize:8,color:effInfo.col,letterSpacing:.3,whiteSpace:'nowrap'}}>
-              {effInfo.icon} {effInfo.lbl}
-            </span>
-          )}
+          {outPp
+            ? <span style={{fontFamily:'Orbitron',fontSize:7,color:'#ff4d4d'}}>PP 0</span>
+            : (
+              /* Etichetta efficacia — visibile per tutte le mosse, anche "Efficace" (normale).
+                 Aiuta il giocatore a capire il matchup di tipo a colpo d'occhio. */
+              <span style={{
+                fontFamily:'Fredoka', fontSize:9, fontWeight:700,
+                color: dis ? 'rgba(238,232,220,.18)' : effInfo.col,
+                letterSpacing:.3, whiteSpace:'nowrap',
+              }}>
+                {effInfo.lbl}
+              </span>
+            )
+          }
         </div>
       </div>
     </button>
@@ -719,13 +733,18 @@ export default function WaifuBattleArena({
   // ── Responsive: isMobile ─────────────────────────────────────────────────────
   const [isMobile, setIsMobile] = useState(true);
 
-  // topOffset: offset dal top della viewport per non finire sotto l'header sticky.
-  const [topOffset, setTopOffset] = useState(0);
+  // topOffset: offset dal top per non finire sotto l'header sticky.
+  // bottomOffset: altezza della bottom navbar (.bottom-nav-mobile), per non nascondere
+  // le mosse in basso — stesso pattern usato in PickPhase.
+  const [topOffset,    setTopOffset]    = useState(0);
+  const [bottomOffset, setBottomOffset] = useState(0);
   useEffect(() => {
     const calcOffset = () => {
       const hdr   = document.querySelector('.hdr-root');
       const ntabs = document.querySelector('.ntabs-root');
+      const bnav  = document.querySelector('.bottom-nav-mobile');
       setTopOffset((hdr?.getBoundingClientRect().height ?? 0) + (ntabs?.getBoundingClientRect().height ?? 0));
+      setBottomOffset(bnav?.getBoundingClientRect().height ?? 0);
     };
     calcOffset();
     window.addEventListener('resize', calcOffset);
@@ -1341,7 +1360,7 @@ export default function WaifuBattleArena({
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div style={{
-      position:'fixed', top:topOffset, left:0, right:0, bottom:0, zIndex:40, overflowY:'auto',
+      position:'fixed', top:topOffset, left:0, right:0, bottom:bottomOffset, zIndex:40, overflowY:'auto',
       background:'radial-gradient(60% 40% at 50% 30%, rgba(108,240,224,0.18), transparent 70%), radial-gradient(60% 40% at 50% 80%, rgba(255,126,182,0.2), transparent 70%), linear-gradient(#060418 0%, #0e0827 100%)',
       display:'flex', flexDirection:'column',
       paddingBottom:'env(safe-area-inset-bottom,12px)',
