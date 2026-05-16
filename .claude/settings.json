@@ -42,7 +42,11 @@
       "Skill(opsx:apply)",
       "Skill(opsx:apply:*)",
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'Progress: {d[\\\\\"progress\\\\\"][\\\\\"complete\\\\\"]}/{d[\\\\\"progress\\\\\"][\\\\\"total\\\\\"]} complete'\\)\")",
-      "Bash(node -e \"let d=''; process.stdin.on\\('data',c=>d+=c\\); process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\); console.log\\('Progress: '+j.progress.complete+'/'+j.progress.total\\)}\\)\")"
+      "Bash(node -e \"let d=''; process.stdin.on\\('data',c=>d+=c\\); process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\); console.log\\('Progress: '+j.progress.complete+'/'+j.progress.total\\)}\\)\")",
+      "Bash(find \"/mnt/c/Progetti\" -name \"page.jsx\" 2>/dev/null)",
+      "Read(//mnt/c/**)",
+      "Bash(node --input-type=module --eval ' *)",
+      "Bash(powershell -Command \"\\(Get-Content 'C:\\\\Progetti\\\\Impero delle waifu\\\\impero-waifu\\\\src\\\\components\\\\MappaMultiplayer.jsx'\\).Count\")"
     ]
   }
 }

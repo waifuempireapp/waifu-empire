@@ -1,12 +1,73 @@
 'use client';
+
+/**
+ * @module WaifuBattleArena
+ * @description Arena di battaglia turno per turno per modalità PvCPU e PvP online.
+ *
+ * Il componente supporta 3 ruoli distinti:
+ *   1. PvCPU  — La CPU sceglie la mossa casualmente e il danno è calcolato
+ *      localmente. Nessuna sincronizzazione Firebase.
+ *   2. PvP RESOLVER (attaccante, `pvpIsResolver=true`) — Calcola il turno
+ *      localmente e scrive il risultato su Firestore via `onPvPTurnResolved`.
+ *   3. PvP RECEIVER (difensore, `pvpIsResolver=false`) — Riceve il risultato
+ *      pre-calcolato via `pvpTurnResult` e non ricalcola nulla localmente.
+ *
+ * Layout visivo (top → bottom, `position:fixed`):
+ *   ┌──────────────────────────────────────┐
+ *   │  Header (turno N, timer, badge PvP)  │  ~36 px, flexShrink:0
+ *   ├──────────────────────────────────────┤
+ *   │  Enemy Zone  (sprite + HUD nemico)   │  40 % viewport su mobile
+ *   ├──────────────────────────────────────┤
+ *   │  Message Bar  (log testuale turno)   │  ~28 px, flexShrink:0
+ *   ├──────────────────────────────────────┤
+ *   │  Player Zone (sprite + HUD player)   │  flex:1
+ *   ├──────────────────────────────────────┤
+ *   │  Action Panel (mosse 2×2 + switch)   │  44 dvh su mobile, scrollabile
+ *   └──────────────────────────────────────┘
+ *
+ * Principi SOLID applicati:
+ *   SRP — ogni sub-componente ha una e una sola responsabilità.
+ *   OCP — nuovi tipi di mossa o HUD possono essere aggiunti senza toccare il core.
+ *   DIP — il RESOLVER dipende dall'astrazione `onPvPTurnResolved`, non da Firestore.
+ */
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   TYPE_COLORS, TYPE_NAMES,
   calculateDamage, getEffectiveness,
-  isMoveBlocked, applyDamage, cpuChooseMove, initBattleTeam, generateCPUTeam,
+  isMoveBlocked, applyDamage, cpuChooseMove, cpuDecideSwap, initBattleTeam, generateCPUTeam,
 } from '@/lib/battleEngine';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// COSTANTI DI TIMING ANIMAZIONI
+// SRP: i magic number sono definiti una volta sola con nome esplicito.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Durata dell'animazione di attacco (swing) in ms. */
+const ANIM_ATTACK_MS = 320;
+/** Durata dello shake quando si riceve danno in ms. */
+const ANIM_SHAKE_MS = 120;
+/** Pausa tra il primo e il secondo attacco nello stesso turno. */
+const ANIM_BETWEEN_ATTACKS_MS = 300;
+/** Durata dell'animazione KO (caduta waifu) in ms. */
+const ANIM_KO_MS = 600;
+/** Durata della transizione di ingresso nuova waifu in ms. */
+const ANIM_ENTER_MS = 500;
+/** Pausa prima di tornare allo stato di scelta mossa dopo uno swap volontario. */
+const ANIM_VOLUNTARY_SWAP_MS = 900;
+/** Ritardo in ms prima di mostrare l'animazione di risultato alla fine. */
+const ANIM_RESULT_DELAY_MS = 400;
+
 // ─── CSS ─────────────────────────────────────────────────────────────────────
+
+/**
+ * CSS iniettato tramite <style> tag nel componente.
+ * Contiene le animazioni keyframe (slideIn, attack, shake, KO, ecc.)
+ * e le classi di utility per le animazioni della battaglia.
+ *
+ * Nota: le classi con `.wba-` prefix sono scoped al componente
+ * per evitare collisioni globali.
+ */
 const BATTLE_CSS = `
   @keyframes slideInLeft  {from{transform:translateX(-115%) scaleX(.92);opacity:0}to{transform:translateX(0) scaleX(1);opacity:1}}
   @keyframes slideInRight {from{transform:translateX(115%) scaleX(.92);opacity:0}to{transform:translateX(0) scaleX(1);opacity:1}}
@@ -41,8 +102,22 @@ const BATTLE_CSS = `
 `;
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
+
+/**
+ * Helper async sleep: restituisce una Promise che si risolve dopo `ms` millisecondi.
+ *
+ * @param {number} ms — Durata dell'attesa in millisecondi.
+ * @returns {Promise<void>}
+ */
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
+/**
+ * Converte un colore esadecimale a 6 cifre in una stringa `"R,G,B"` utilizzabile
+ * nelle funzioni `rgba()` dei CSS inline.
+ *
+ * @param {string} [hex='#555'] — Colore hex (con o senza `#`). Default `'#555'`.
+ * @returns {string} Stringa nel formato `"R,G,B"` (es. `"85,85,85"`).
+ */
 function hexToRgb(hex = '#555') {
   const h = (hex || '#555').replace('#', '');
   if (h.length < 6) return '85,85,85';
@@ -50,6 +125,18 @@ function hexToRgb(hex = '#555') {
 }
 
 // ─── TYPE BADGE ───────────────────────────────────────────────────────────────
+
+/**
+ * Badge colorato che mostra il tipo elemento di una waifu o di una mossa.
+ *
+ * Principio SRP: si occupa esclusivamente di renderizzare l'etichetta del tipo,
+ * senza conoscere né la waifu né la mossa a cui appartiene.
+ *
+ * @param {Object}  props
+ * @param {string}  props.type — Identificatore del tipo (es. `'Fuoco'`, `'Acqua'`).
+ * @param {boolean} [props.sm] — Se `true`, usa dimensioni ridotte (per i MoveBtn).
+ * @returns {JSX.Element}
+ */
 function TypeBadge({ type, sm }) {
   const c = TYPE_COLORS[type] ?? { bg:'#1a1a1a', text:'#999', border:'#555' };
   const bdr = c.border;
@@ -66,6 +153,19 @@ function TypeBadge({ type, sm }) {
 }
 
 // ─── PP DOTS ─────────────────────────────────────────────────────────────────
+
+/**
+ * Indicatore visivo dei PP (Power Points) rimasti per una mossa.
+ * Mostra fino a 8 pallini; se `maxPp` supera 8 aggiunge testo numerico.
+ *
+ * Principio SRP: si occupa esclusivamente di rappresentare graficamente
+ * il contatore PP, senza gestire logica di blocco o selezione mossa.
+ *
+ * @param {Object} props
+ * @param {number} props.pp    — PP correnti della mossa.
+ * @param {number} props.maxPp — PP massimi della mossa.
+ * @returns {JSX.Element}
+ */
 function PpDots({ pp, maxPp }) {
   const count = Math.min(maxPp ?? 8, 8);
   const filled = Math.max(0, Math.min(count, pp ?? 0));
@@ -87,6 +187,24 @@ function PpDots({ pp, maxPp }) {
 }
 
 // ─── HP BAR ───────────────────────────────────────────────────────────────────
+
+/**
+ * Barra HP con gradiente cromatico adattivo al lato del campo e alla percentuale
+ * di HP rimasta. Sotto il 25% attiva l'animazione pulsante `wba-hp-crit`.
+ *
+ * Principio SRP: si occupa esclusivamente di visualizzare lo stato HP,
+ * senza conoscere la waifu o il contesto di battaglia.
+ *
+ * @param {Object}  props
+ * @param {number}  props.hp       — HP correnti.
+ * @param {number}  props.maxHp    — HP massimi.
+ * @param {boolean} [props.showNums] — Se `true`, mostra i valori numerici HP/MaxHP.
+ * @param {number}  [props.h=8]    — Altezza in pixel della barra.
+ * @param {boolean} [props.isPlayer] — `true` = lato giocatore (gradiente ciano-viola),
+ *                                     `false` = lato nemico (gradiente rosa-viola),
+ *                                     `undefined` = colore dinamico (verde→giallo→rosso).
+ * @returns {JSX.Element}
+ */
 function HpBar({ hp, maxHp, showNums, h=8, isPlayer }) {
   const pct = maxHp>0 ? Math.max(0,Math.min(100,(hp/maxHp)*100)) : 0;
   const isCrit = pct<=25 && hp>0;
@@ -131,6 +249,23 @@ function getRarityCardBg(rarità) {
 const FOIL_RARITIES = ['epico','leggendario','immersivo'];
 
 // ─── WAIFU SPRITE ─────────────────────────────────────────────────────────────
+
+/**
+ * Carta-sprite della waifu con sfondo per rarità, effetto foil e overlay KO.
+ * Applica la classe CSS di animazione passata via `anim` (es. `'wba-aR'`, `'wba-ko'`).
+ *
+ * Principio SRP: si occupa esclusivamente della presentazione visiva della waifu
+ * (immagine, carta, overlay KO). La logica di battaglia e gli stati HP
+ * sono gestiti altrove.
+ *
+ * @param {Object}  props
+ * @param {Object}  props.waifu        — Oggetto WaifuBattleStat da renderizzare.
+ * @param {number}  [props.size=120]   — Larghezza in pixel della carta.
+ * @param {string}  [props.anim='']    — Classe CSS dell'animazione corrente.
+ * @param {Object}  [props.style={}]   — Stili CSS aggiuntivi applicati al contenitore.
+ * @param {boolean} [props.isPlayer=false] — `true` = lato giocatore (prospettiva e glow diversi).
+ * @returns {JSX.Element|null} `null` se `waifu` è falsy.
+ */
 function WaifuSprite({ waifu, size=120, anim='', style={}, isPlayer=false }) {
   if (!waifu) return null;
   const tc = TYPE_COLORS[waifu.type]?.border ?? '#444';
@@ -173,6 +308,18 @@ function WaifuSprite({ waifu, size=120, anim='', style={}, isPlayer=false }) {
 }
 
 // ─── ENEMY HUD ────────────────────────────────────────────────────────────────
+
+/**
+ * HUD (Heads-Up Display) del nemico: mostra nome, livello, tipo e barra HP.
+ * Posizionato in alto a sinistra nella Enemy Zone.
+ *
+ * Principio SRP: si occupa esclusivamente di visualizzare le statistiche
+ * del nemico correntemente in campo, senza conoscere il team nemico completo.
+ *
+ * @param {Object} props
+ * @param {Object} props.waifu — Oggetto WaifuBattleStat del nemico attivo.
+ * @returns {JSX.Element|null} `null` se `waifu` è falsy.
+ */
 function EnemyHud({ waifu }) {
   if (!waifu) return null;
   return (
@@ -192,6 +339,18 @@ function EnemyHud({ waifu }) {
 }
 
 // ─── PLAYER HUD ───────────────────────────────────────────────────────────────
+
+/**
+ * HUD (Heads-Up Display) del giocatore: mostra nome, livello, tipo,
+ * barra HP con valori numerici. Posizionato in basso a destra nella Player Zone.
+ *
+ * Principio SRP: si occupa esclusivamente di visualizzare le statistiche
+ * della waifu del giocatore attualmente in campo, senza conoscere il team completo.
+ *
+ * @param {Object} props
+ * @param {Object} props.waifu — Oggetto WaifuBattleStat della waifu del giocatore attiva.
+ * @returns {JSX.Element|null} `null` se `waifu` è falsy.
+ */
 function PlayerHud({ waifu }) {
   if (!waifu) return null;
   return (
@@ -211,6 +370,28 @@ function PlayerHud({ waifu }) {
 }
 
 // ─── MOVE BUTTON ──────────────────────────────────────────────────────────────
+
+/**
+ * Bottone interattivo per una singola mossa della waifu del giocatore.
+ * Mostra nome, tipo, PP rimasti e badge efficacia contro il nemico attivo.
+ * Si disabilita automaticamente se: in attesa di animazione (`locked`),
+ * PP esauriti (`outPp`) o mossa in cooldown (`cooldown`).
+ *
+ * Principio SRP: si occupa esclusivamente di presentare una mossa e
+ * propagare la selezione tramite `onSelect`. Non conosce né il turno
+ * né la logica di battaglia.
+ *
+ * @param {Object}   props
+ * @param {Object}   props.move       — Oggetto mossa `{ name, type, pp, maxPp }`.
+ * @param {number}   props.idx        — Indice della mossa nel array mosse (0–3).
+ * @param {boolean}  props.locked     — `true` se l'input è disabilitato globalmente.
+ * @param {boolean}  props.outPp      — `true` se i PP di questa mossa sono a 0.
+ * @param {boolean}  props.cooldown   — `true` se la mossa è in cooldown (blocco turno).
+ * @param {string}   props.enemyType  — Tipo elemento del nemico attivo (per calcolo efficacia).
+ * @param {string}   props.playerType — Tipo elemento della waifu del giocatore (per calcolo efficacia).
+ * @param {Function} props.onSelect   — Callback `(idx: number) => void` alla pressione.
+ * @returns {JSX.Element}
+ */
 function MoveBtn({ move, idx, locked, outPp, cooldown, enemyType, playerType, onSelect }) {
   if (!move) return (
     <div style={{height:'100%',borderRadius:12,background:'rgba(10,5,20,.3)',border:'1px solid rgba(255,255,255,.04)'}}/>
@@ -275,6 +456,23 @@ function MoveBtn({ move, idx, locked, outPp, cooldown, enemyType, playerType, on
 }
 
 // ─── BENCH SLOT ───────────────────────────────────────────────────────────────
+
+/**
+ * Slot circolare per una waifu in panchina. Mostra immagine, miniatura HP e
+ * overlay KO. Se `selectable` è `true` e la waifu non è KO, il bottone è
+ * cliccabile e attiva l'animazione `benchPop`.
+ *
+ * Principio SRP: si occupa esclusivamente di presentare lo stato di una waifu
+ * in panchina e di propagare la selezione. Non gestisce né il cambio di campo
+ * né la logica di turno.
+ *
+ * @param {Object}   props
+ * @param {Object}   props.waifu       — Oggetto WaifuBattleStat della waifu in panchina.
+ * @param {boolean}  props.selectable  — `true` = il bottone è cliccabile (fase di swap).
+ * @param {Function} props.onSelect    — Callback `() => void` al click.
+ * @param {number}   [props.size=48]   — Diametro in pixel del cerchio.
+ * @returns {JSX.Element|null} `null` se `waifu` è falsy.
+ */
 function BenchSlot({ waifu, selectable, onSelect, size=48 }) {
   if (!waifu) return null;
   const isKO = waifu.isKO;
@@ -310,6 +508,28 @@ function BenchSlot({ waifu, selectable, onSelect, size=48 }) {
 }
 
 // ─── TERRITORY RESULT ─────────────────────────────────────────────────────────
+
+/**
+ * Popup a schermo intero mostrato al termine della battaglia.
+ * Visualizza esito (VITTORIA / SCONFITTA / PAREGGIO), statistiche di combattimento
+ * (turni, KO, danno totale, colpo più forte con eventuale badge CRITICAL),
+ * contesto territoriale e un bottone per tornare alla mappa.
+ *
+ * Principio SRP: si occupa esclusivamente di presentare il riepilogo post-battaglia.
+ * Non calcola né modifica alcuno stato di gioco.
+ *
+ * @param {Object}   props
+ * @param {boolean}  props.isVictory          — `true` se il giocatore ha vinto.
+ * @param {number}   props.turns              — Numero di turni totali della battaglia.
+ * @param {number}   props.totalDmg           — Danno totale inflitto (legacy, usato come fallback).
+ * @param {Object}   [props.battleCtx]        — Contesto `{ terrSel, nomeImperoAvversario, sonoAttaccante, nomeImpero }`.
+ * @param {Function} props.onContinue         — Callback al click su "TORNA ALLA MAPPA".
+ * @param {Object}   [props.statsP]           — Statistiche giocatore `{ ko, dmg }`.
+ * @param {Object}   [props.statsE]           — Statistiche nemico `{ ko, dmg }`.
+ * @param {Object}   [props.biggestHit]       — Colpo più forte `{ dmg, waifuName, moveName, wasCrit }`.
+ * @param {boolean}  [props.isDraw]           — `true` se la battaglia è finita in pareggio.
+ * @returns {JSX.Element}
+ */
 // [WAIFU CHAMPIONS REFACTOR] — extended result popup (combat-system-v2)
 function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, statsP, statsE, biggestHit, isDraw }) {
   const { terrSel, nomeImperoAvversario, sonoAttaccante, nomeImpero } = battleCtx ?? {};
@@ -420,18 +640,28 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
 }
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+
 /**
- * WaifuBattleArena
- * @param {WaifuBattleStat[]} playerTeam
- * @param {WaifuBattleStat[]} enemyTeam — se omesso, genera CPU team
- * @param {function} onExit — quando escono dalla schermata risultati
- * @param {function} onBattleResult(isVictory) — callback con esito (per aggiornare mappa)
- * @param {object}   battleCtx — { terrSel, nomeImperoAvversario } per mostrare risultato territorio
- * @param {object[]} waifuCat
- * @param {boolean}  isPvP — modalità PvP (mosse sincronizzate esternamente)
- * @param {number|null} pvpOpponentMove — mossa avversario ricevuta da Firebase (PvP)
- * @param {function} onPvPMoveSubmit(moveIdx) — invia mossa a Firebase (PvP)
- * @param {boolean}  pvpWaiting — true se si aspetta la mossa avversario (PvP)
+ * Arena di battaglia principale. Gestisce il ciclo di turni, le animazioni,
+ * la sincronizzazione PvP e il popup del risultato finale.
+ *
+ * @param {Object}      props
+ * @param {Array}       props.playerTeam           — Team player (WaifuBattleStat[]).
+ * @param {Array}       [props.enemyTeam]           — Team nemico. Generato dalla CPU se omesso.
+ * @param {Object}      [props.battleCtx]           — Contesto battaglia (terrSel, nomeImperoAvversario, sonoAttaccante, nomeImpero).
+ * @param {Function}    [props.onBattleResult]      — Callback (isVictory) al termine della battaglia.
+ * @param {Function}    [props.onExit]              — Callback quando il popup viene chiuso.
+ * @param {boolean}     [props.isPvP=false]         — true = modalità PvP online.
+ * @param {boolean}     [props.pvpIsResolver=false] — true = questo client è il RESOLVER (attaccante).
+ * @param {Object|null} [props.pvpTurnResult]       — Risultato turno pre-calcolato ricevuto da Firestore (solo RECEIVER).
+ * @param {Function}    [props.onPvPTurnResolved]   — Callback RESOLVER: invia il risultato a Firestore.
+ * @param {Function}    [props.onPvPTurnConsumed]   — Callback RECEIVER: notifica che il turno è stato applicato.
+ * @param {number|null} [props.pvpOpponentMove]     — Indice mossa avversario (RESOLVER, da Firestore).
+ * @param {boolean}     [props.pvpWaiting=false]    — true = in attesa della mossa avversaria.
+ * @param {Function}    [props.onPvPMoveSubmit]     — Callback per inviare la mossa scelta a Firestore.
+ * @param {number|null} [props.pvpBattleSeed]       — Seed RNG condiviso (per audit del determinismo).
+ * @param {Object}      [props.waifuCat]            — Catalogo waifu (usato per generare il team CPU).
+ * @returns {JSX.Element}
  */
 export default function WaifuBattleArena({
   playerTeam, enemyTeam, onExit, onBattleResult,
@@ -461,11 +691,22 @@ export default function WaifuBattleArena({
     return generateCPUTeam(waifuCat,pids,3);
   },[enemyTeam,playerTeam,waifuCat]);
 
-  // ── Combat state (UNCHANGED) ─────────────────────────────────────────────
+  // ── Stato team: posizioni attive, copia mutabile durante resolveTurn ──────────
   const [pTeam,setPTeam]   = useState(()=>buildPlayer());
   const [eTeam,setETeam]   = useState(()=>buildEnemy());
   const [pActive,setPActive] = useState(0);
   const [eActive,setEActive] = useState(0);
+
+  // ── Animazioni UI: sprite animations, flash, bench visibility ────────────────
+  const [pAnim,setPAnim] = useState('wba-sL');
+  const [eAnim,setEAnim] = useState('wba-sR');
+  const [flash,setFlash] = useState(false);
+  const [showBench,setShowBench] = useState(false);
+
+  // ── Floating damage numbers (UI puro, non influenza la logica) ───────────────
+  const [dmgFloats, setDmgFloats] = useState([]);
+
+  // ── Fase e turno: phase, turn, timer ─────────────────────────────────────────
   const [phase,setPhase]   = useState('entering');
   const [message,setMsg]   = useState('Che la battaglia abbia inizio!');
   const [turn,setTurn]     = useState(1);
@@ -474,22 +715,43 @@ export default function WaifuBattleArena({
   const [timer,setTimer]   = useState(30);
   const [lastPMove,setLastPMove] = useState(null);
   const [lastEMove,setLastEMove] = useState(null);
-  const [pAnim,setPAnim] = useState('wba-sL');
-  const [eAnim,setEAnim] = useState('wba-sR');
-  const [flash,setFlash] = useState(false);
-  const [showBench,setShowBench] = useState(false);
 
-  // ── UI-only state (new) ───────────────────────────────────────────────────
-  const [dmgFloats, setDmgFloats] = useState([]);
+  // ── Responsive: isMobile ─────────────────────────────────────────────────────
+  const [isMobile, setIsMobile] = useState(true);
+
+  // topOffset: offset dal top della viewport per non finire sotto l'header sticky.
+  const [topOffset, setTopOffset] = useState(0);
+  useEffect(() => {
+    const calcOffset = () => {
+      const hdr   = document.querySelector('.hdr-root');
+      const ntabs = document.querySelector('.ntabs-root');
+      setTopOffset((hdr?.getBoundingClientRect().height ?? 0) + (ntabs?.getBoundingClientRect().height ?? 0));
+    };
+    calcOffset();
+    window.addEventListener('resize', calcOffset);
+    return () => window.removeEventListener('resize', calcOffset);
+  }, []);
+
+  // ── Statistiche per il popup risultato finale ─────────────────────────────────
   // [WAIFU CHAMPIONS REFACTOR] — per-side battle stats for result popup
   const [statsP, setStatsP] = useState({ ko: 0, dmg: 0 });
   const [statsE, setStatsE] = useState({ ko: 0, dmg: 0 });
   const [biggestHit, setBiggestHit] = useState({ dmg: 0, waifuName: '', moveName: '', wasCrit: false });
-  const [isMobile, setIsMobile] = useState(true);
+  // Ref speculari: aggiornati in sync con i setter per essere leggibili
+  // immediatamente nel momento in cui phase diventa 'victory'/'defeat',
+  // evitando la race condition tra setState (asincrono) e il render del popup.
+  const statsPRef = useRef({ ko: 0, dmg: 0 });
+  const statsERef = useRef({ ko: 0, dmg: 0 });
+  const biggestHitRef = useRef({ dmg: 0, waifuName: '', moveName: '', wasCrit: false });
+
   const prevPHpRef  = useRef(null);
   const prevEHpRef  = useRef(null);
   const dmgIdRef    = useRef(0);
   const lastCritRef = useRef(false); // [WAIFU CHAMPIONS REFACTOR — CRIT] set by execAttack, read by float useEffects
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // EFFETTI REACTIVI — timer, sincronizzazione PvP, animazioni danno
+  // ─────────────────────────────────────────────────────────────────────────────
 
   useEffect(()=>{
     const check=()=>setIsMobile(window.innerWidth<768);
@@ -498,10 +760,11 @@ export default function WaifuBattleArena({
     return()=>window.removeEventListener('resize',check);
   },[]);
 
-  // ── Floating damage numbers: tracks HP deltas (pure UI) ──────────────────
+  // Waifu attivi (shortcut derivato dallo stato team)
   const player = pTeam[pActive];
   const enemy  = eTeam[eActive];
 
+  // Floating damage numbers: traccia i delta HP del giocatore (UI pura)
   useEffect(()=>{
     const curr=player?.hp;
     if(curr===undefined)return;
@@ -515,6 +778,7 @@ export default function WaifuBattleArena({
     prevPHpRef.current=curr??null;
   },[player?.hp]); // eslint-disable-line
 
+  // Floating damage numbers: traccia i delta HP del nemico (UI pura)
   useEffect(()=>{
     const curr=enemy?.hp;
     if(curr===undefined)return;
@@ -528,18 +792,34 @@ export default function WaifuBattleArena({
     prevEHpRef.current=curr??null;
   },[enemy?.hp]); // eslint-disable-line
 
-  // ── Combat logic refs ────────────────────────────────────────────────────
+  // Refs per la logica di combattimento (non causano re-render)
   const timerRef   = useRef(null);
   const resolveRef = useRef(false);
 
+  /**
+   * Restituisce `true` se ogni waifu del team è KO (HP <= 0 o flag isKO).
+   * Usato per determinare la fine della battaglia.
+   *
+   * @param {Array} t — Array di WaifuBattleStat del team da controllare.
+   * @returns {boolean}
+   */
   const allKO = t=>t.every(w=>w.isKO);
+
+  /**
+   * Trova l'indice della prossima waifu viva (non KO) nel team,
+   * partendo dalla posizione successiva a `cur` in senso circolare.
+   *
+   * @param {Array}  team — Array di WaifuBattleStat.
+   * @param {number} cur  — Indice corrente nel team.
+   * @returns {number} Indice della prossima waifu viva, oppure `-1` se non ne esistono.
+   */
   const nextAlive = (team,cur)=>{
     for(let i=1;i<team.length;i++){const idx=(cur+i)%team.length;if(!team[idx].isKO)return idx;}
     return -1;
   };
   const triggerFlash = ()=>{setFlash(true);setTimeout(()=>setFlash(false),180);};
 
-  // ── Entry animation (UNCHANGED) ──────────────────────────────────────────
+  // Animazione di entrata: dopo 800ms passa alla fase di scelta mossa
   useEffect(()=>{
     if(phase!=='entering')return;
     const t=setTimeout(()=>{
@@ -549,7 +829,39 @@ export default function WaifuBattleArena({
     return()=>clearTimeout(t);
   },[phase]); // eslint-disable-line
 
-  // ── Timer countdown (UNCHANGED) ─────────────────────────────────────────
+  // Cambio volontario CPU: all'inizio di ogni fase playerChoose, se non è PvP,
+  // la CPU valuta se cambiare waifu strategicamente prima che il giocatore attacchi.
+  // Se decide di cambiare, esegue il cambio e la CPU non attacca in questo turno
+  // (poi sarà il giocatore ad attaccare al turno successivo).
+  useEffect(()=>{
+    if(phase!=='playerChoose') return;
+    if(isPvP) return;
+    if(isAnim) return;
+    const curEnemy = eTeam[eActive];
+    const curPlayer = pTeam[pActive];
+    if(!curEnemy||!curPlayer) return;
+    const { shouldSwap, swapToIdx } = cpuDecideSwap([...eTeam], eActive, curPlayer);
+    if(!shouldSwap) return;
+    // La CPU vuole cambiare: blocca l'input, anima il cambio, poi restituisce il turno
+    setIsAnim(true);
+    setPhase('resolving');
+    (async()=>{
+      await wait(ANIM_RESULT_DELAY_MS);
+      setEActive(swapToIdx);
+      setEAnim('wba-sR');
+      setMsg(`La CPU manda in campo ${eTeam[swapToIdx]?.name}!`);
+      await wait(ANIM_ENTER_MS);
+      setEAnim('');
+      await new Promise(r=>setTimeout(r,200));
+      setMsg('La CPU ha cambiato waifu — scegli la tua mossa!');
+      setTurn(t=>t+1);
+      setIsAnim(false);
+      setPhase('playerChoose');
+      setTimer(30);
+    })();
+  },[phase, isPvP, isAnim, eTeam, eActive, pTeam, pActive]); // eslint-disable-line
+
+  // Countdown timer: se scade, seleziona automaticamente una mossa disponibile o forza swap
   useEffect(()=>{
     if(phase!=='playerChoose'){clearInterval(timerRef.current);return;}
     timerRef.current=setInterval(()=>{
@@ -570,13 +882,14 @@ export default function WaifuBattleArena({
     return()=>clearInterval(timerRef.current);
   },[phase,pActive]); // eslint-disable-line
 
-  // ── PvP move sync ────────────────────────────────────────────────────────
+  // Refs per la sincronizzazione PvP
   const pendingPMoveRef = useRef(null);
   const pvpOpMoveRef    = useRef(null);
   useEffect(()=>{ pvpOpMoveRef.current=pvpOpponentMove; },[pvpOpponentMove]);
 
-  // RECEIVER: quando arriva il risultato pre-calcolato da Firestore
-  // Non ricalcola nulla — usa i valori di Firestore come verità
+  // ─── RECEIVER (difensore) ────────────────────────────────────────────────────
+  // Usa il danno pre-calcolato da Firestore (externalResult) — NON chiama calculateDamage().
+  // Quando arriva il risultato pre-calcolato da Firestore, applica il turno senza ricalcolare.
   useEffect(()=>{
     if(!isPvP||pvpIsResolver) return; // solo RECEIVER
     if(pvpTurnResult===null||pendingPMoveRef.current===null) return;
@@ -587,44 +900,119 @@ export default function WaifuBattleArena({
     pendingPMoveRef.current=null;
   },[pvpTurnResult]); // eslint-disable-line
 
-  // RESOLVER: quando arriva la mossa dell'avversario da Firestore (pvpOpponentMove)
-  // Calcola il turno localmente e poi chiama onPvPTurnResolved per scrivere su Firestore
+  // ─── RESOLVER (attaccante) ───────────────────────────────────────────────────
+  // Calcola il danno localmente con calculateDamage(), poi lo scrive su Firestore.
+  // Quando arriva la mossa dell'avversario da Firestore, calcola il turno e chiama onPvPTurnResolved.
   useEffect(()=>{
     if(!isPvP||!pvpIsResolver) return; // solo RESOLVER
     if(pvpOpponentMove==null||pendingPMoveRef.current==null) return;
     if(resolveRef.current) return;
-    resolveTurn(pendingPMoveRef.current, pvpOpponentMove, null); // null = calcola localmente
+    resolveTurn(pendingPMoveRef.current, pvpOpponentMove, null); // null = calcola localmente (RESOLVER)
     pendingPMoveRef.current=null;
   },[pvpOpponentMove]); // eslint-disable-line
 
-  // ── Voluntary swap (UNCHANGED) ───────────────────────────────────────────
+  // Avvia la fase di cambio volontario (swap senza KO)
   const startVoluntarySwap = ()=>{
     setShowBench(true); setPhase('voluntarySwap');
     setMsg('Scegli la waifu da mandare in campo!');
     clearInterval(timerRef.current);
   };
 
-  const handleVoluntarySwap = useCallback((newIdx)=>{
+  const handleVoluntarySwap = useCallback(async (newIdx)=>{
     if(phase!=='voluntarySwap') return;
     clearInterval(timerRef.current);
     setIsAnim(true);
+    setShowBench(false);
+    setPhase('resolving');
+
+    // ── Fase 1: animazione entrata nuova waifu del giocatore ──
     setPActive(newIdx);
     setPAnim('wba-sL');
-    setTimeout(()=>setPAnim(''),450);
-    setShowBench(false);
-    // Il cambio conta come mossa del giocatore: nessun attacco da nessuna parte
-    setPhase('resolving');
     setMsg(`${pTeam[newIdx]?.name} entra in campo!`);
-    setTimeout(()=>{
-      setTurn(t=>t+1);
-      setIsAnim(false);
-      setPhase('playerChoose');
-      setMsg('Scegli la tua mossa!');
-      setTimer(30);
-    },900);
-  },[phase,pTeam]); // eslint-disable-line
+    await wait(ANIM_ENTER_MS);
+    setPAnim('');
+    await new Promise(r=>setTimeout(r,200));
 
-  // ── Player selects a move (UNCHANGED) ────────────────────────────────────
+    if(!isPvP){
+      // ── Modalità CPU ──────────────────────────────────────────────────────
+      // La CPU decide se cambiare anch'essa o attaccare
+      const { shouldSwap: cpuSwaps, swapToIdx: cpuNewIdx } =
+        cpuDecideSwap([...eTeam], eActive, pTeam[newIdx]);
+
+      if(cpuSwaps){
+        // ── Entrambi cambiano: nessun attacco, turno avanza ──────────────
+        setEActive(cpuNewIdx);
+        setEAnim('wba-sR');
+        setMsg(`La CPU manda in campo ${eTeam[cpuNewIdx]?.name}!`);
+        await wait(ANIM_ENTER_MS);
+        setEAnim('');
+        await new Promise(r=>setTimeout(r,200));
+        setMsg('Entrambi hanno cambiato waifu!');
+        await wait(ANIM_RESULT_DELAY_MS);
+      } else {
+        // ── La CPU attacca la waifu appena entrata ────────────────────────
+        const curPUpdated = [...pTeam];
+        const curEUpdated = [...eTeam];
+        const cpuAttacker = curEUpdated[eActive];
+        const playerDefender = curPUpdated[newIdx];
+        const eMi = cpuChooseMove(cpuAttacker, playerDefender, lastEMove);
+        const move = cpuAttacker.moves[eMi];
+
+        if(move && (move.pp??0)>0){
+          setEAnim('wba-aL');
+          setMsg(`${cpuAttacker.name} usa ${move.name}!`);
+          await wait(ANIM_ENTER_MS);
+          setEAnim('');
+
+          const { damage, isCrit, effectiveness } = calculateDamage(cpuAttacker, move, playerDefender);
+          setPAnim('wba-sh');
+          await wait(ANIM_BETWEEN_ATTACKS_MS);
+          setPAnim('');
+
+          const newDef = {...playerDefender, hp: Math.max(0, playerDefender.hp-damage), isKO: (playerDefender.hp-damage)<=0};
+          const newAtt = {...cpuAttacker, moves: cpuAttacker.moves.map((m,i)=>i===eMi?{...m,pp:Math.max(0,(m.pp??0)-1)}:m)};
+          const nextPTeam = curPUpdated.map((w,i)=>i===newIdx?newDef:w);
+          const nextETeam = curEUpdated.map((w,i)=>i===eActive?newAtt:w);
+          setPTeam(nextPTeam);
+          setETeam(nextETeam);
+          setStatsE(s=>{ const n={ko:s.ko+(newDef.isKO?1:0),dmg:s.dmg+damage}; statsERef.current=n; return n; });
+          setTotalDmg(d=>d+damage);
+          setLastEMove(eMi);
+
+          if(isCrit){ setMsg('Colpo critico! 💥'); await new Promise(r=>setTimeout(r,350)); }
+          if(effectiveness==='Super effective'||effectiveness==='Extremely effective'){ setMsg('Super efficace!'); await new Promise(r=>setTimeout(r,350)); }
+          else if(effectiveness==='Not very effective'){ setMsg('Poco efficace…'); await new Promise(r=>setTimeout(r,350)); }
+
+          if(newDef.isKO){
+            setMsg(`${newDef.name} è fuori combattimento!`);
+            setPAnim('wba-ko');
+            await wait(ANIM_KO_MS);
+            setPAnim('');
+            if(nextPTeam.every(w=>w.isKO)){
+              setRisultatoFinale({ isVictory:false, statsP:{...statsPRef.current}, statsE:{...statsERef.current}, biggestHit:{...biggestHitRef.current}, isDraw:false });
+              onBattleResult?.(false);
+              setTimeout(()=>setPhase('result'),ANIM_RESULT_DELAY_MS);
+              resolveRef.current=false; setIsAnim(false); return;
+            }
+            resolveRef.current=false; setIsAnim(false);
+            setPhase('playerSwap');
+            setMsg('La tua waifu è KO! Scegli la sostituta.');
+            return;
+          }
+        }
+      }
+    }
+    // PvP: il cambio volontario online è gestito lato Firestore/MappaMultiplayer
+
+    setTurn(t=>t+1);
+    resolveRef.current=false;
+    setIsAnim(false);
+    setPhase('playerChoose');
+    setMsg('Scegli la tua mossa!');
+    setTimer(30);
+  },[phase, pTeam, eTeam, eActive, isPvP, lastEMove, onBattleResult]); // eslint-disable-line
+
+  // Gestisce la selezione di una mossa da parte del giocatore
   const handleMove = useCallback((moveIdx)=>{
     if(isAnim||phase!=='playerChoose') return;
     if(!player||!enemy) return;
@@ -646,12 +1034,26 @@ export default function WaifuBattleArena({
         pendingPMoveRef.current=null;
       }
     } else {
+      // ─── VS CPU ──────────────────────────────────────────────────────────────────
+      // Calcola il danno localmente con calculateDamage(). Nessuna sincronizzazione.
       const eMi=cpuChooseMove(enemy,player,lastEMove);
       resolveTurn(moveIdx,eMi);
     }
   },[isAnim,phase,player,enemy,lastPMove,lastEMove,isPvP,onPvPMoveSubmit,eTeam,pTeam,eActive,pActive]); // eslint-disable-line
 
-  // ── Core turn resolution ──────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────────
+  // CORE LOOP — resolveTurn, execAttack, handleMove
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Risolve un intero turno di battaglia: determina l'ordine di attacco,
+   * esegue le animazioni, applica i danni e gestisce i KO.
+   *
+   * @param {number}      pMi            — Indice mossa del giocatore (0–3).
+   * @param {number}      eMi            — Indice mossa del nemico (0–3).
+   * @param {Object|null} [externalResult=null] — Risultato pre-calcolato da Firestore
+   *   (solo RECEIVER). Se `null`, i danni vengono calcolati localmente.
+   */
   // externalResult: se non null, è il risultato pre-calcolato dal RESOLVER (attaccante)
   //   → usato solo dal RECEIVER (difensore) per animare senza ricalcolare danni
   //   → se null: calcola localmente (vs CPU o se RESOLVER PvP)
@@ -677,6 +1079,15 @@ export default function WaifuBattleArena({
         ((curE[cEA].speed??50)+(Math.random()*10-5))
         ? 'player' : 'enemy';                                          // RESOLVER/CPU: calcola localmente
 
+    /**
+     * Esegue l'animazione e applica il danno di un singolo attacco.
+     *
+     * @param {'player'|'enemy'} side         — Chi attacca.
+     * @param {number}           mi           — Indice mossa dell'attaccante.
+     * @param {number|null}      [overrideDamage=null]  — Danno da Firestore (RECEIVER); se `null` calcola localmente.
+     * @param {boolean|null}     [overrideCrit=null]    — Flag critico da Firestore (RECEIVER).
+     * @returns {Promise<boolean>} `true` se il difensore è andato KO.
+     */
     // execAttack: esegue animazione e applica danno
     // overrideDamage/overrideCrit: usati dal RECEIVER per applicare valori da Firestore
     const execAttack=async(side, mi, overrideDamage=null, overrideCrit=null)=>{
@@ -688,12 +1099,14 @@ export default function WaifuBattleArena({
 
       let damage, isCrit, effectiveness;
       if(overrideDamage!==null){
-        // RECEIVER: usa valori da Firestore — NON ricalcola
+        // ─── RECEIVER (difensore) ────────────────────────────────────────────────────
+        // Usa il danno pre-calcolato da Firestore (externalResult) — NON chiama calculateDamage().
         damage=overrideDamage;
         isCrit=overrideCrit??false;
         effectiveness='Normal';
       } else {
-        // RESOLVER/CPU: calcola localmente
+        // ─── RESOLVER (attaccante) / VS CPU ──────────────────────────────────────────
+        // Calcola il danno localmente con calculateDamage().
         const result=calculateDamage(att,move,def);
         damage=result.damage; isCrit=result.isCrit; effectiveness=result.effectiveness;
       }
@@ -704,11 +1117,11 @@ export default function WaifuBattleArena({
 
       if(side==='player'){setPAnim('wba-aR');}else{setEAnim('wba-aL');}
       setMsg(`${att.name} usa ${move.name}!`);
-      await wait(320);
+      await wait(ANIM_ATTACK_MS);
       if(side==='player'){setPAnim('');}else{setEAnim('');}
       triggerFlash();
       if(side==='player'){setEAnim('wba-sh');}else{setPAnim('wba-sh');}
-      await wait(120);
+      await wait(ANIM_SHAKE_MS);
       if(side==='player'){setEAnim('');}else{setPAnim('');}
 
       const newDef={...def,hp:Math.max(0,def.hp-damage),isKO:(def.hp-damage)<=0};
@@ -727,11 +1140,11 @@ export default function WaifuBattleArena({
 
       // [WAIFU CHAMPIONS REFACTOR] — per-side stats tracking
       if(side==='player'){
-        setStatsP(s=>({ ko: s.ko+(newDef.isKO?1:0), dmg: s.dmg+damage }));
+        setStatsP(s=>{ const n={ ko: s.ko+(newDef.isKO?1:0), dmg: s.dmg+damage }; statsPRef.current=n; return n; });
       } else {
-        setStatsE(s=>({ ko: s.ko+(newDef.isKO?1:0), dmg: s.dmg+damage }));
+        setStatsE(s=>{ const n={ ko: s.ko+(newDef.isKO?1:0), dmg: s.dmg+damage }; statsERef.current=n; return n; });
       }
-      setBiggestHit(bh=>damage>bh.dmg ? { dmg:damage, waifuName:att.name, moveName:move.name, wasCrit:isCrit } : bh);
+      setBiggestHit(bh=>{ const n=damage>bh.dmg ? { dmg:damage, waifuName:att.name, moveName:move.name, wasCrit:isCrit } : bh; biggestHitRef.current=n; return n; });
 
       const msgs=[];
       if(isCrit) msgs.push('Colpo critico! 💥');
@@ -744,22 +1157,22 @@ export default function WaifuBattleArena({
       return newDef.isKO;
     };
 
-    // Esegue gli attacchi nell'ordine corretto
-    // Se RECEIVER con externalResult: passa danno/crit da Firestore
-    // NOTA prospettive: RESOLVER p=attaccante, RECEIVER p=difensore (invertite)
+    // Esegue gli attacchi nell'ordine corretto.
+    // Se RECEIVER con externalResult: passa danno/crit da Firestore.
+    // NOTA prospettive: RESOLVER p=attaccante, RECEIVER p=difensore (invertite).
     // firstMover già flippato sopra → first==='player' = difensore, first==='enemy' = attaccante
     // → danni: 'player' (difensore) = externalResult.eDmg; 'enemy' (attaccante) = externalResult.pDmg
     const firstMi=first==='player'?pMi:eMi;
     const firstDmg  = externalResult ? (first==='player' ? externalResult.eDmg : externalResult.pDmg) : null;
     const firstCrit = externalResult ? (first==='player' ? externalResult.eCrit : externalResult.pCrit) : null;
     const firstKO=await execAttack(first,firstMi,firstDmg,firstCrit);
-    await wait(300);
+    await wait(ANIM_BETWEEN_ATTACKS_MS);
 
     if(firstKO){
       const koName=first==='player'?curE[cEA]?.name:curP[cPA]?.name;
       setMsg(`${koName} è fuori combattimento!`);
       if(first==='player'){setEAnim('wba-ko');}else{setPAnim('wba-ko');}
-      await wait(600);
+      await wait(ANIM_KO_MS);
       if(first==='player'){setEAnim('');}else{setPAnim('');}
     } else {
       const second=first==='player'?'enemy':'player';
@@ -767,12 +1180,12 @@ export default function WaifuBattleArena({
       const secondDmg  = externalResult ? (second==='player' ? externalResult.eDmg : externalResult.pDmg) : null;
       const secondCrit = externalResult ? (second==='player' ? externalResult.eCrit : externalResult.pCrit) : null;
       const secondKO=await execAttack(second,secondMi,secondDmg,secondCrit);
-      await wait(300);
+      await wait(ANIM_BETWEEN_ATTACKS_MS);
       if(secondKO){
         const koName2=second==='player'?curE[cEA]?.name:curP[cPA]?.name;
         setMsg(`${koName2} è fuori combattimento!`);
         if(second==='player'){setEAnim('wba-ko');}else{setPAnim('wba-ko');}
-        await wait(600);
+        await wait(ANIM_KO_MS);
         if(second==='player'){setEAnim('');}else{setPAnim('');}
       }
     }
@@ -780,8 +1193,8 @@ export default function WaifuBattleArena({
     setLastPMove(pMi); setLastEMove(eMi);
     setTotalDmg(d=>d+dmgAcc); setTurn(t=>t+1);
 
-    // RESOLVER PvP: scrivi il risultato su Firestore dopo aver animato il turno
-    // Usa il turno corrente (state React) tramite setTurn — usiamo il valore prima dell'incremento
+    // ─── RESOLVER (attaccante) ───────────────────────────────────────────────────
+    // Dopo aver animato il turno, scrive il risultato su Firestore tramite onPvPTurnResolved.
     if(isPvP&&pvpIsResolver&&onPvPTurnResolved&&!externalResult){
       // Il numero turno corrente è quello che era prima di setTurn(t=>t+1)
       // Lo usiamo dal ref di MappaMultiplayer (arenaTurnoRef), qui usiamo turn state pre-increment
@@ -803,7 +1216,8 @@ export default function WaifuBattleArena({
       onPvPTurnResolved(turn - 1, turnResult); // turn - 1 perché setTurn(t=>t+1) non ha ancora aggiornato
     }
 
-    // RECEIVER PvP: notifica MappaMultiplayer che il risultato è stato applicato
+    // ─── RECEIVER (difensore) ────────────────────────────────────────────────────
+    // Notifica MappaMultiplayer che il risultato pre-calcolato è stato applicato e animato.
     if(isPvP&&!pvpIsResolver&&externalResult){
       onPvPTurnConsumed?.();
     }
@@ -821,7 +1235,7 @@ export default function WaifuBattleArena({
       setEAnim('wba-sR');
       setMsg(`${curE[nextE]?.name} entra in campo!`);
       setTimeout(()=>setEAnim(''),450);
-      await wait(500);
+      await wait(ANIM_ENTER_MS);
     }
 
     if(pKO){
@@ -837,7 +1251,7 @@ export default function WaifuBattleArena({
     setPhase('playerChoose'); setMsg('Scegli la tua mossa!'); setTimer(30);
   },[pTeam,eTeam,pActive,eActive,triggerFlash,isPvP,pvpIsResolver,onPvPTurnResolved,onPvPTurnConsumed,turn]); // eslint-disable-line
 
-  // ── Player KO swap (UNCHANGED) ───────────────────────────────────────────
+  // Gestisce il cambio forzato dopo un KO del giocatore
   const handlePlayerSwap=useCallback((newIdx)=>{
     setPActive(newIdx);
     setPAnim('wba-sL');
@@ -846,31 +1260,46 @@ export default function WaifuBattleArena({
     setPhase('playerChoose'); setMsg(`${pTeam[newIdx]?.name} entra in campo! Scegli la mossa!`); setTimer(30);
   },[pTeam]);
 
-  // ── Result handling (UNCHANGED) ──────────────────────────────────────────
+  // Callback per chiudere il popup risultato e tornare alla mappa
   const handleResultContinue=useCallback(()=>{ onExit?.(); },[onExit]);
 
+  // Risultato finale "congelato" al momento della vittoria/sconfitta.
+  // Usiamo uno state separato (invece di leggere statsP/statsE nel render di 'result')
+  // per evitare la race condition: setState è asincrono, quindi al momento del
+  // render di TerritoryResult i valori di statsP/E potrebbero non essere ancora
+  // aggiornati. Salvando tutto in un unico oggetto sincrono con i ref risolviamo il bug.
+  const [risultatoFinale, setRisultatoFinale] = useState(null);
+
+  // Effetto: al termine della battaglia congela le stats, notifica il genitore,
+  // e dopo 400ms mostra il popup risultato.
   useEffect(()=>{
     if(phase==='victory'||phase==='defeat'){
       const won=phase==='victory';
+      // Congela le stats in questo istante usando i ref (sempre aggiornati in sync)
+      setRisultatoFinale({
+        isVictory: won,
+        statsP: { ...statsPRef.current },
+        statsE: { ...statsERef.current },
+        biggestHit: { ...biggestHitRef.current },
+        isDraw: false, // se sono qui, c'è un vincitore chiaro
+      });
       onBattleResult?.(won);
-      setTimeout(()=>setPhase('result'),400);
+      setTimeout(()=>setPhase('result'),ANIM_RESULT_DELAY_MS);
     }
   },[phase]); // eslint-disable-line
 
-  const isWon = useRef(false);
-  useEffect(()=>{ if(phase==='victory') isWon.current=true; if(phase==='defeat') isWon.current=false; },[phase]);
-
   if(phase==='result'){
+    const rf = risultatoFinale ?? { isVictory: false, statsP: statsPRef.current, statsE: statsERef.current, biggestHit: biggestHitRef.current, isDraw: false };
     return <TerritoryResult
-      isVictory={isWon.current}
+      isVictory={rf.isVictory}
       turns={turn}
       totalDmg={totalDmg}
       battleCtx={battleCtx}
       onContinue={handleResultContinue}
-      statsP={statsP}
-      statsE={statsE}
-      biggestHit={biggestHit}
-      isDraw={!isWon.current && allKO(pTeam) && allKO(eTeam)}
+      statsP={rf.statsP}
+      statsE={rf.statsE}
+      biggestHit={rf.biggestHit}
+      isDraw={rf.isDraw}
     />;
   }
 
@@ -912,7 +1341,7 @@ export default function WaifuBattleArena({
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div style={{
-      position:'fixed', inset:0, zIndex:40, overflow:'hidden',
+      position:'fixed', top:topOffset, left:0, right:0, bottom:0, zIndex:40, overflowY:'auto',
       background:'radial-gradient(60% 40% at 50% 30%, rgba(108,240,224,0.18), transparent 70%), radial-gradient(60% 40% at 50% 80%, rgba(255,126,182,0.2), transparent 70%), linear-gradient(#060418 0%, #0e0827 100%)',
       display:'flex', flexDirection:'column',
       paddingBottom:'env(safe-area-inset-bottom,12px)',

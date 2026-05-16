@@ -1,16 +1,166 @@
-// src/components/MappaMondoArt.jsx
-// FASE 5 — Mappa Anime-Fantasy: grafica organica, continenti curvilinei,
-//           legenda più visibile, "Conquistati" più evidente,
-//           pulsazione forte per confinanti, non-confinanti più scuri,
-//           nessun colore duplicato tra il proprio impero e gli altri.
+/**
+ * @module MappaMondoArt
+ * @description Mappa SVG anime-fantasy del "Mondo Conosciuto" per il gioco
+ * "Impero delle waifu". Renderizza tutti i territori con grafica organica
+ * (continenti curvilinei, stelle di sfondo, bussola decorativa), applica
+ * colorazione dinamica in base allo stato del territorio (conquistato /
+ * confinante / non raggiungibile) e supporta sia la modalità single-player
+ * che la modalità multiplayer (mappaMulti + myUid).
+ *
+ * Principio SOLID applicato — SRP (Single Responsibility Principle):
+ *   - Le funzioni `lighten` e `darken` gestiscono SOLO la manipolazione del colore.
+ *   - La costante `STARS` definisce SOLO le posizioni delle stelle decorative.
+ *   - La costante `CONTINENT_BLOBS` definisce SOLO i blob continentali.
+ *   - Il componente principale gestisce SOLO il rendering e lo stato UI.
+ *   - La logica di colorazione territorio è concentrata in un blocco isolato
+ *     (vedere commento "stati visuali" all'interno del map dei territori).
+ *
+ * FASE 5 — grafica organica, legenda collassabile, pulsazione confinanti,
+ *           non-confinanti più scuri, nessun colore duplicato tra impero e avversari.
+ */
 'use client';
 import React, { useState } from 'react';
 import { TERRITORI, COLORI_CONTINENTI, NOMI_CONTINENTI } from '@/lib/constants';
 
-// ─── palette continenti (base) ────────────────────────────────────────────────
-// I colori sono distinti tra loro e non coincidono con il colore dell'impero del player,
-// che viene calcolato a runtime e gestito con un override nella SVG.
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS PURI — manipolazione colori
+// Principio SRP: queste funzioni fanno UNA sola cosa (schiarire / scurire un hex).
+// Sono estratte prima del componente per riuso e testabilità indipendente.
+// ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Schiarisce un colore esadecimale aggiungendo una percentuale di bianco ai
+ * canali RGB.
+ *
+ * SRP: responsabile esclusivamente del calcolo del colore più chiaro.
+ *
+ * @param {string} hex - Colore di partenza in formato `#rrggbb`.
+ * @param {number} pct - Percentuale di schiarimento (0–100). Ogni unità aggiunge
+ *   circa 2.55 punti a ciascun canale (clampato a 255).
+ * @returns {string} Nuovo colore in formato `#rrggbb`, o `hex` invariato in caso
+ *   di errore di parsing.
+ */
+function lighten(hex, pct) {
+  try {
+    const n = parseInt(hex.replace('#',''), 16);
+    const a = Math.round(2.55 * pct);
+    const R = Math.min(255,(n>>16)+a), G = Math.min(255,((n>>8)&0xFF)+a), B = Math.min(255,(n&0xFF)+a);
+    return `#${(0x1000000+R*0x10000+G*0x100+B).toString(16).slice(1)}`;
+  } catch { return hex; }
+}
+
+/**
+ * Scurisce un colore esadecimale sottraendo una percentuale di bianco dai
+ * canali RGB.
+ *
+ * SRP: responsabile esclusivamente del calcolo del colore più scuro.
+ *
+ * @param {string} hex - Colore di partenza in formato `#rrggbb`.
+ * @param {number} pct - Percentuale di scurimento (0–100). Ogni unità rimuove
+ *   circa 2.55 punti da ciascun canale (clampato a 0).
+ * @returns {string} Nuovo colore in formato `#rrggbb`, o `hex` invariato in caso
+ *   di errore di parsing.
+ */
+function darken(hex, pct) {
+  try {
+    const n = parseInt(hex.replace('#',''), 16);
+    const a = Math.round(2.55 * pct);
+    const R = Math.max(0,(n>>16)-a), G = Math.max(0,((n>>8)&0xFF)-a), B = Math.max(0,(n&0xFF)-a);
+    return `#${(0x1000000+R*0x10000+G*0x100+B).toString(16).slice(1)}`;
+  } catch { return hex; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COSTANTI DECORATIVE
+// Principio SRP: dati statici separati dalla logica di rendering.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Coordinate e opacità delle stelle di sfondo nella SVG.
+ *
+ * Ogni entry è un array `[cx, cy, r, opacity]`:
+ *   - `cx`      : coordinata X nell'area viewBox (0–1060)
+ *   - `cy`      : coordinata Y nell'area viewBox (0–720)
+ *   - `r`       : raggio del cerchio stella (px SVG)
+ *   - `opacity` : opacità alpha (0–1)
+ *
+ * Le stelle sono distribuite lungo il bordo superiore e inferiore
+ * per non sovrapporsi ai territori centrali.
+ *
+ * @type {Array<[number, number, number, number]>}
+ */
+const STARS = [
+  [42,18,0.8,0.5],[88,55,1.2,0.4],[130,22,0.7,0.6],[205,44,1.0,0.3],[280,14,0.9,0.5],
+  [370,35,0.7,0.4],[450,19,1.1,0.6],[520,8,0.8,0.3],[610,28,0.7,0.5],[690,15,1.0,0.4],
+  [760,40,0.9,0.3],[840,22,0.7,0.6],[930,12,1.2,0.4],[1000,35,0.8,0.5],[1040,18,0.7,0.3],
+  [55,640,0.8,0.3],[120,680,1.0,0.4],[200,660,0.7,0.5],[300,695,0.9,0.3],[420,650,0.8,0.4],
+  [540,700,0.7,0.3],[630,665,1.1,0.5],[700,690,0.8,0.4],[800,658,0.9,0.3],[900,682,0.7,0.4],
+];
+
+/**
+ * Blob ellittici decorativi che danno un senso di massa organica ai continenti.
+ * Vengono renderizzati con opacità molto bassa (0.06) sopra l'oceano e sotto
+ * i territori, creando un senso di profondità geografica.
+ *
+ * Ogni entry descrive un'ellisse:
+ *   - `cont` : chiave continente (deve esistere in `COLORI_CONTINENTI`)
+ *   - `cx`   : centro X nel viewBox
+ *   - `cy`   : centro Y nel viewBox
+ *   - `rx`   : semi-asse orizzontale
+ *   - `ry`   : semi-asse verticale
+ *   - `rot`  : rotazione in gradi (opzionale, attorno al centro)
+ *
+ * @type {Array<{cont: string, cx: number, cy: number, rx: number, ry: number, rot?: number}>}
+ */
+const CONTINENT_BLOBS = [
+  { cont:'NA', cx:215, cy:215, rx:170, ry:140, rot:-8 },
+  { cont:'SA', cx:330, cy:470, rx:90,  ry:120, rot:5  },
+  { cont:'EU', cx:595, cy:250, rx:120, ry:90,  rot:-5 },
+  { cont:'AF', cx:630, cy:440, rx:95,  ry:120, rot:3  },
+  { cont:'AS', cx:840, cy:290, rx:185, ry:145, rot:-4 },
+  { cont:'OC', cx:920, cy:540, rx:75,  ry:60,  rot:6  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTE PRINCIPALE
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Mappa SVG interattiva del "Mondo Conosciuto".
+ *
+ * Supporta due modalità operative:
+ *   1. **Single-player** — usa `territoriUtente` per determinare conquiste e
+ *      confinanti rispetto al proprio impero.
+ *   2. **Multiplayer** — se `mappaMulti` e `myUid` sono forniti, la logica
+ *      di colorazione viene sostituita con i colori reali di ciascun impero.
+ *
+ * Principio SRP: il componente è responsabile del solo rendering e dello stato
+ * UI (legenda aperta/chiusa). La logica di colorazione è isolata nei blocchi
+ * "stati visuali" dentro il `.map(t => ...)`.
+ *
+ * @param {Object}   props
+ * @param {Object}   [props.territoriUtente={}]
+ *   Mappa `{ [territorioId]: { conquistato: boolean, impero?: string, coloreImpero?: string } }`.
+ *   Usata in modalità single-player per identificare conquiste e avversari.
+ * @param {string}   [props.coloreImpero='#f5a623']
+ *   Colore esadecimale dell'impero del giocatore corrente.
+ * @param {string}   [props.nomeImpero='Il Tuo Impero']
+ *   Nome dell'impero del giocatore, visualizzato nella legenda.
+ * @param {Function} [props.onTerritorioClick]
+ *   Callback `(territorio: Object) => void` invocata al click su un territorio.
+ * @param {string}   [props.territorioSelezionato]
+ *   ID del territorio attualmente selezionato (evidenziato con stroke bianco).
+ * @param {string}   [props.width='100%']
+ *   Larghezza del contenitore (CSS).
+ * @param {string}   [props.height='70vh']
+ *   Altezza del contenitore (CSS).
+ * @param {Object|null} [props.mappaMulti=null]
+ *   Modalità multiplayer: `{ [territorioId]: { uid, coloreImpero, nomeImpero } }`.
+ *   Se presente insieme a `myUid`, sovrascrive la logica single-player.
+ * @param {string|null} [props.myUid=null]
+ *   UID Firebase del giocatore corrente. Usato per distinguere "mio" da "altrui"
+ *   in modalità multiplayer.
+ */
 export default function MappaMondoArt({
   territoriUtente = {},
   coloreImpero = '#f5a623',
@@ -25,6 +175,10 @@ export default function MappaMondoArt({
   mappaMulti = null,
   myUid = null,
 }) {
+  // ── Dati derivati single-player ───────────────────────────────────────────
+  // mieiTerrIds: lista degli ID territori conquistati dal giocatore corrente.
+  // primoAttacco: true se il giocatore non ha ancora conquistato nulla
+  //   (in questo caso TUTTI i territori sono confinanti = attaccabili).
   const mieiTerrIds = Object.entries(territoriUtente)
     .filter(([, v]) => v?.conquistato)
     .map(([k]) => k);
@@ -32,7 +186,9 @@ export default function MappaMondoArt({
 
   // ── Modalità Multiplayer: dati derivati da mappaMulti ─────────────────────
   // imperiMulti: Map uid → { coloreImpero, nomeImpero, count }
-  // mieiTerrIdsMulti: array di territorioId posseduti da myUid
+  //   Aggrega tutti i giocatori presenti in mappaMulti per costruire la legenda.
+  // mieiTerrIdsMulti: array di territorioId posseduti da myUid.
+  //   Usato per calcolare i confinanti in modalità multiplayer.
   let imperiMulti = null;
   let mieiTerrIdsMulti = [];
   if (mappaMulti && myUid) {
@@ -47,7 +203,9 @@ export default function MappaMondoArt({
     imperiMulti = empMap;
   }
 
-  // ── Calcoliamo legenda: il mio impero + avversari ───────────────────────────
+  // ── Costruzione della legenda ─────────────────────────────────────────────
+  // In single-player: il proprio impero + fino a 5 avversari ordinati per territorio.
+  // In multiplayer: tutti gli imperi da imperiMulti, il proprio primo.
   const imperiMap = {};
   let mioCount = 0;
   Object.values(territoriUtente).forEach(v => {
@@ -75,23 +233,32 @@ export default function MappaMondoArt({
     avversari.forEach(([n, d]) => listaImperi.push([n, d]));
   }
 
+  // ── Contatore totale territori conquistati ────────────────────────────────
+  // In multiplayer usa mieiTerrIdsMulti, in single-player conta dai territoriUtente.
   const numConquistati = imperiMulti && myUid
     ? mieiTerrIdsMulti.length
     : Object.values(territoriUtente).filter(t => t?.conquistato).length;
 
+  // ── Stato UI legenda ──────────────────────────────────────────────────────
+  // legendaAperta: controlla se il pannello legenda in basso a sinistra è visibile.
   const [legendaAperta, setLegendaAperta] = useState(true);
 
   return (
     <div style={{
       position: 'relative',
       width, height,
+      // Sfondo oceano: tre gradienti radiali sovrapposti + gradiente lineare nero.
       background: 'radial-gradient(1200px 600px at 15% -10%, rgba(167,139,250,0.18), rgba(0,0,0,0) 60%), radial-gradient(900px 500px at 100% 110%, rgba(255,126,182,0.12), rgba(0,0,0,0) 55%), radial-gradient(700px 400px, rgba(108,240,224,0.06), rgba(0,0,0,0) 60%), linear-gradient(#0a0726 0%, #050314 60%, #02010a 100%)',
       borderRadius: 16,
       overflow: 'hidden',
       border: '1px solid rgba(245,166,35,0.25)',
       boxShadow: '0 0 60px rgba(155,89,255,0.18), inset 0 0 80px rgba(0,0,0,0.5)',
     }}>
-      {/* CSS per animazioni keyframe */}
+      {/* ── CSS per animazioni keyframe ───────────────────────────────────────
+          pulseConf : pulsazione luminosa per i territori confinanti (attaccabili).
+          dotPulse  : animazione del cerchio pulsante sovrapposto al territorio.
+          shimmer   : shimmer dorato applicabile agli stop-color dei gradienti.
+      */}
       <style>{`
         @keyframes pulseConf {
           0%,100% { opacity: 0.55; filter: brightness(1); }
@@ -117,26 +284,29 @@ export default function MappaMondoArt({
         preserveAspectRatio="xMidYMid meet"
         style={{ display: 'block' }}
       >
+        {/* ── DEFS: gradienti, pattern, filtri, clipPath, stelle ──────────── */}
         <defs>
-          {/* ── Oceano ── */}
+          {/* ── Oceano: gradiente radiale centrato leggermente in alto a sinistra ── */}
           <radialGradient id="ocean-g" cx="48%" cy="45%" r="75%">
             <stop offset="0%" stopColor="#0a0726" />
             <stop offset="60%" stopColor="#050314" />
             <stop offset="100%" stopColor="#02010a" />
           </radialGradient>
 
-          {/* ── Grid tenue ── */}
+          {/* ── Pattern griglia tenue (linee porpora, opacità 5%) ── */}
           <pattern id="grid-p" width="52" height="52" patternUnits="userSpaceOnUse">
             <path d="M52,0 L52,52 M0,52 L52,52" stroke="rgba(155,89,255,0.05)" strokeWidth="0.5"/>
           </pattern>
 
-          {/* ── Esagoni fantasia ── */}
+          {/* ── Pattern esagonale fantasia (linee dorate, opacità 3.5%) ── */}
           <pattern id="hex-p" width="32" height="28" patternUnits="userSpaceOnUse">
             <path d="M16,0 L32,8 L32,20 L16,28 L0,20 L0,8 Z"
               fill="none" stroke="rgba(245,166,35,0.035)" strokeWidth="0.4"/>
           </pattern>
 
-          {/* ── Gradiente per ogni continente ── */}
+          {/* ── Gradiente lineare per ogni continente (chiaro→scuro diagonale) ──
+               Generato dalla palette COLORI_CONTINENTI tramite lighten/darken.
+               L'id `cg-${key}` è referenziato nel fill dei territori single-player. */}
           {Object.entries(COLORI_CONTINENTI).map(([key, c]) => (
             <linearGradient key={key} id={`cg-${key}`} x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%"   stopColor={lighten(c, 14)} stopOpacity="0.95"/>
@@ -144,13 +314,16 @@ export default function MappaMondoArt({
             </linearGradient>
           ))}
 
-          {/* ── Gradiente per il mio impero ── */}
+          {/* ── Gradiente per il mio impero (single-player) ──
+               Usa coloreImpero come base; applicato ai territori conquistati. */}
           <linearGradient id="my-empire-g" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%"   stopColor={lighten(coloreImpero, 20)} stopOpacity="0.9"/>
             <stop offset="100%" stopColor={darken(coloreImpero, 20)}  stopOpacity="0.8"/>
           </linearGradient>
 
-          {/* ── Gradienti per-impero multiplayer ── */}
+          {/* ── Gradienti per-impero in modalità multiplayer ──
+               Un gradiente dedicato per ogni uid presente in imperiMulti.
+               L'id `emp-g-${uid}` è referenziato nel fill dei territori multiplayer. */}
           {imperiMulti && Object.entries(imperiMulti).map(([uid, { coloreImpero: c }]) => (
             <linearGradient key={`emp-g-${uid}`} id={`emp-g-${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%"   stopColor={lighten(c, 18)} stopOpacity="0.92"/>
@@ -158,7 +331,11 @@ export default function MappaMondoArt({
             </linearGradient>
           ))}
 
-          {/* ── Filtri glow ── */}
+          {/* ── Filtri glow a intensità crescente ──
+               glow-s  : small  (blur 3)  — selezione, bandierine
+               glow-m  : medium (blur 5)  — halo confinanti
+               glow-xl : extra large (blur 9) — halo territori posseduti
+               darken-f: matrice per scurire/desaturare — non confinanti */}
           <filter id="glow-s" x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur stdDeviation="3" result="blur"/>
             <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
@@ -179,35 +356,43 @@ export default function MappaMondoArt({
                       0   0   0   0.6 0"/>
           </filter>
 
-          {/* ── Clip per il viewbox ── */}
+          {/* ── ClipPath per tagliare la SVG ai bordi arrotondati del contenitore ── */}
           <clipPath id="map-clip">
             <rect width="1060" height="720" rx="14"/>
           </clipPath>
 
-          {/* ── Stelle di sfondo ── */}
+          {/* ── Definizione stelle (usate solo come riferimento, non renderizzate qui) ── */}
           {STARS.map((s, i) => (
             <circle key={i} id={`star-${i}`} cx={s[0]} cy={s[1]} r={s[2]}
               fill="rgba(255,255,255,0.6)"/>
           ))}
         </defs>
 
-        {/* ── Sfondo oceano ── */}
+        {/* ── SFONDO OCEANO ─────────────────────────────────────────────────────
+            Tre livelli sovrapposti: gradiente oceano + griglia + pattern esagonale.
+            Il clipPath arrotonda i bordi dell'area di sfondo. */}
         <rect width="1060" height="720" fill="url(#ocean-g)" clipPath="url(#map-clip)"/>
         <rect width="1060" height="720" fill="url(#grid-p)" clipPath="url(#map-clip)"/>
         <rect width="1060" height="720" fill="url(#hex-p)"  clipPath="url(#map-clip)"/>
 
-        {/* ── Stelle ── */}
+        {/* ── STELLE DI SFONDO ──────────────────────────────────────────────────
+            Renderizzate come cerchi bianchi semi-trasparenti nelle fasce
+            superiore e inferiore del viewBox (lontano dai territori centrali). */}
         {STARS.map((s, i) => (
           <circle key={i} cx={s[0]} cy={s[1]} r={s[2]} fill={`rgba(255,255,255,${s[3]})`}/>
         ))}
 
-        {/* ── Linee orizzontali dell'oceano ── */}
+        {/* ── LINEE ORIZZONTALI DELL'OCEANO ─────────────────────────────────────
+            Cinque linee orizzontali turchesi quasi invisibili (2%) che simulano
+            paralleli cartografici stilizzati. */}
         {[0.17,0.33,0.5,0.67,0.83].map((f, i) => (
           <line key={i} x1="0" y1={720*f} x2="1060" y2={720*f}
             stroke="rgba(108,240,224,0.02)" strokeWidth="0.6"/>
         ))}
 
-        {/* ── Continenti — blob decorativi (per dare impressione organica) ── */}
+        {/* ── BLOB CONTINENTALI DECORATIVI ──────────────────────────────────────
+            Ellissi a bassa opacità (6%) che danno massa organica ai continenti.
+            Definiti dalla costante CONTINENT_BLOBS (vedi sopra). */}
         {CONTINENT_BLOBS.map((b, i) => (
           <ellipse key={i} cx={b.cx} cy={b.cy} rx={b.rx} ry={b.ry}
             fill={COLORI_CONTINENTI[b.cont] || '#333'}
@@ -216,13 +401,29 @@ export default function MappaMondoArt({
           />
         ))}
 
-        {/* ════════════════════════════════════════════════════
+        {/* ════════════════════════════════════════════════════════════════════
             TERRITORI
-            ════════════════════════════════════════════════════ */}
+            Per ogni territorio in TERRITORI viene scelto il ramo di rendering
+            corretto (multiplayer o single-player) e vengono calcolati:
+              - fillCol  : URL del gradiente da usare come fill
+              - strokeCol: colore del bordo
+              - strokeW  : spessore del bordo
+              - opac     : opacità del body
+            Principio SRP: la logica di colorazione (stati visuali) è isolata
+            in ogni ramo if/else, separata dal render SVG vero e proprio.
+            ════════════════════════════════════════════════════════════════════ */}
         {TERRITORI.map(t => {
-          // ════════════════════════════════════════════════════
-          // MODALITÀ MULTIPLAYER
-          // ════════════════════════════════════════════════════
+
+          // ════════════════════════════════════════════════════════════════════
+          // RAMO MULTIPLAYER
+          // Attivo quando mappaMulti e myUid sono entrambi definiti.
+          // Logica:
+          //   - Il proprietario del territorio è ricavato da mappaMulti[t.id].uid.
+          //   - "mio" = uid corrisponde a myUid.
+          //   - "cpu" = uid è la stringa 'cpu' (territorio non assegnato a un giocatore reale).
+          //   - eConfinante = non mio E (non ho ancora territori OPPURE almeno un
+          //     mio territorio è adiacente a t). I confinanti sono attaccabili.
+          // ════════════════════════════════════════════════════════════════════
           if (imperiMulti && myUid) {
             const infoMulti = mappaMulti[t.id];
             const proprietarioUid = infoMulti?.uid || 'cpu';
@@ -238,6 +439,9 @@ export default function MappaMondoArt({
               (t.conf || []).some(cId => mieiTerrIdsMulti.includes(cId))
             );
 
+            // ── stati visuali (multiplayer) ──────────────────────────────────
+            // Principio SRP: la scelta di fillCol/strokeCol è concentrata qui.
+            // tre stati possibili → mio | confinante | non raggiungibile
             let fillCol, strokeCol, strokeW, opac;
             if (isMio) {
               fillCol = `url(#emp-g-${myUid})`;
@@ -260,20 +464,20 @@ export default function MappaMondoArt({
               <g key={t.id} style={{ cursor: isMio ? 'default' : 'pointer' }}
                 onClick={() => onTerritorioClick && onTerritorioClick(t)}>
 
-                {/* Glow halo mio territorio */}
+                {/* Glow halo mio territorio — cerchio luminoso attorno ai territori posseduti */}
                 {isMio && (
                   <path d={t.path} fill="none"
                     stroke={coloreImpero} strokeWidth="8" opacity="0.25"
                     filter="url(#glow-xl)"/>
                 )}
-                {/* Glow halo confinante attaccabile */}
+                {/* Glow halo confinante attaccabile — evidenzia i target raggiungibili */}
                 {eConfinante && (
                   <path d={t.path} fill="none"
                     stroke="#ffd666" strokeWidth="6" opacity="0.35"
                     filter="url(#glow-m)"/>
                 )}
 
-                {/* Body territorio */}
+                {/* Body territorio — forma principale con fill gradiente e bordo */}
                 <path
                   d={t.path}
                   fill={fillCol}
@@ -285,12 +489,12 @@ export default function MappaMondoArt({
                   style={{ transition: 'stroke 0.2s, stroke-width 0.2s' }}
                 />
 
-                {/* Overlay scuro per non confinanti non miei */}
+                {/* Overlay scuro per i territori non confinanti e non miei */}
                 {!isMio && !eConfinante && (
                   <path d={t.path} fill="rgba(0,0,0,0.48)" stroke="none"/>
                 )}
 
-                {/* Bandierina mio territorio */}
+                {/* Bandierina mio territorio — icona ⚑ con colore e glow dell'impero */}
                 {isMio && (
                   <g transform={`translate(${t.cx},${t.cy - 18})`} filter="url(#glow-s)">
                     <text fontSize="15" fill={coloreImpero} textAnchor="middle" y="0"
@@ -298,7 +502,7 @@ export default function MappaMondoArt({
                   </g>
                 )}
 
-                {/* Bandierina altri giocatori (visibile per confinanti) */}
+                {/* Bandierina altri giocatori — visibile solo sui confinanti non miei */}
                 {!isMio && !isCpu && eConfinante && (
                   <g transform={`translate(${t.cx},${t.cy - 18})`}>
                     <text fontSize="11" fill={coloreProprietario} textAnchor="middle" y="0"
@@ -306,7 +510,7 @@ export default function MappaMondoArt({
                   </g>
                 )}
 
-                {/* Nome territorio */}
+                {/* Nome territorio — stile e dimensione variano in base allo stato */}
                 <text
                   x={t.cx} y={t.cy + (isMio ? 14 : eConfinante ? 8 : 6)}
                   textAnchor="middle"
@@ -317,7 +521,7 @@ export default function MappaMondoArt({
                   style={{ letterSpacing: 0.5, fontWeight: isMio || eConfinante ? 700 : 400 }}
                 >{t.nome}</text>
 
-                {/* Nome proprietario sotto il territorio (per confinanti non miei) */}
+                {/* Nome proprietario — mostrato sotto il territorio per i confinanti non miei */}
                 {eConfinante && !isMio && (
                   <text
                     x={t.cx} y={t.cy + 20}
@@ -330,7 +534,7 @@ export default function MappaMondoArt({
                   >{nomeProprietario.length > 12 ? nomeProprietario.slice(0,10)+'…' : nomeProprietario}</text>
                 )}
 
-                {/* Punto pulsante confinante */}
+                {/* Punto pulsante dorato — segnale visivo per i territori attaccabili */}
                 {eConfinante && (
                   <circle cx={t.cx} cy={t.cy - 16} r="3.5" fill="#ffd666"
                     className="dot-pulse"/>
@@ -339,9 +543,14 @@ export default function MappaMondoArt({
             );
           }
 
-          // ════════════════════════════════════════════════════
-          // MODALITÀ SINGLE PLAYER (comportamento originale)
-          // ════════════════════════════════════════════════════
+          // ════════════════════════════════════════════════════════════════════
+          // RAMO SINGLE-PLAYER (comportamento originale)
+          // Logica:
+          //   - conquistato: il giocatore possiede questo territorio.
+          //   - eConfinante: non conquistato E (primoAttacco OPPURE almeno un
+          //     territorio conquistato è adiacente). Confinanti = attaccabili.
+          //   - altrimenti: non raggiungibile → scuro e desaturato.
+          // ════════════════════════════════════════════════════════════════════
           const terrData = territoriUtente[t.id] || {};
           const conquistato = terrData.conquistato;
           const selez = territorioSelezionato === t.id;
@@ -349,7 +558,9 @@ export default function MappaMondoArt({
             primoAttacco || (t.conf || []).some(cId => mieiTerrIds.includes(cId))
           );
 
-          // ── stati visuali ──
+          // ── stati visuali (single-player) ────────────────────────────────────
+          // Principio SRP: la scelta di fillCol/strokeCol è concentrata qui.
+          // tre stati possibili → conquistato | confinante | non raggiungibile
           let fillCol, strokeCol, strokeW, opac;
 
           if (conquistato) {
@@ -360,10 +571,10 @@ export default function MappaMondoArt({
           } else if (eConfinante) {
             fillCol = `url(#cg-${t.cont})`;
             strokeCol = '#ffd666';
-            opac = 0.75;    // viene sovrascritta dall'animazione CSS
+            opac = 0.75;    // viene sovrascritta dall'animazione CSS pulseConf
             strokeW = 2;
           } else {
-            // non confinante → più scuro e desaturato
+            // non confinante → più scuro e desaturato per ridurre la distrazione visiva
             fillCol = `url(#cg-${t.cont})`;
             strokeCol = COLORI_CONTINENTI[t.cont] + '40';
             opac = 0.22;
@@ -433,13 +644,14 @@ export default function MappaMondoArt({
           );
         })}
 
-        {/* ════════════════════════════════════════════════════
+        {/* ════════════════════════════════════════════════════════════════════
             BORDO DECORATIVO
-            ════════════════════════════════════════════════════ */}
+            Rettangolo interno con stroke porpora tenue + quattro angoli stile manga.
+            ════════════════════════════════════════════════════════════════════ */}
         <rect x="6" y="6" width="1048" height="708" fill="none"
           stroke="rgba(167,139,250,0.2)" strokeWidth="1" rx="12"/>
 
-        {/* Angoli stile manga */}
+        {/* Angoli stile manga — quattro "L" agli angoli, ruotate di 90° l'una dall'altra */}
         {[
           {x:2,y:2,r:0}, {x:1058,y:2,r:90},
           {x:1058,y:718,r:180}, {x:2,y:718,r:270},
@@ -450,9 +662,10 @@ export default function MappaMondoArt({
           </g>
         ))}
 
-        {/* ════════════════════════════════════════════════════
-            TITOLO
-            ════════════════════════════════════════════════════ */}
+        {/* ════════════════════════════════════════════════════════════════════
+            TITOLO "MONDO CONOSCIUTO"
+            Pannello centrato in cima con stelle decorative ai lati.
+            ════════════════════════════════════════════════════════════════════ */}
         <g transform="translate(530,36)">
           <rect x="-150" y="-19" width="300" height="36" rx="8"
             fill="rgba(5,2,14,0.88)" stroke="rgba(167,139,250,0.35)" strokeWidth="1"/>
@@ -465,14 +678,14 @@ export default function MappaMondoArt({
           </text>
         </g>
 
-
-
-        {/* ════════════════════════════════════════════════════
+        {/* ════════════════════════════════════════════════════════════════════
             BUSSOLA — stile anime
-            ════════════════════════════════════════════════════ */}
+            Posizionata in alto a destra. Indicatore N in turchese, S in oro tenue.
+            Otto raggi: 4 principali (più lunghi, turchesi) + 4 intermedi (più corti, porpora).
+            ════════════════════════════════════════════════════════════════════ */}
         <g transform="translate(990,72)">
           <circle r="26" fill="rgba(5,2,14,0.78)" stroke="rgba(167,139,250,0.3)" strokeWidth="0.8"/>
-          {/* quadranti */}
+          {/* Raggi della bussola: quelli a multipli di 90° sono principali (più lunghi e più visibili) */}
           {[0,45,90,135,180,225,270,315].map((a,i) => {
             const rad = a * Math.PI / 180;
             const isMaj = a % 90 === 0;
@@ -483,18 +696,23 @@ export default function MappaMondoArt({
               stroke={isMaj ? 'rgba(108,240,224,0.5)' : 'rgba(167,139,250,0.18)'}
               strokeWidth={isMaj ? 0.7 : 0.4}/>;
           })}
-          {/* freccia N (aqua) */}
+          {/* Freccia Nord — romboidale in turchese */}
           <path d="M0,-20 L3.5,-4 L0,2 L-3.5,-4 Z" fill="#6cf0e0" opacity="0.9"/>
-          {/* freccia S */}
+          {/* Freccia Sud — romboidale in oro tenue */}
           <path d="M0,20 L3.5,4 L0,-2 L-3.5,4 Z" fill="rgba(245,166,35,0.25)"/>
+          {/* Centro bussola */}
           <circle r="2.5" fill="#ffd666"/>
+          {/* Etichetta N */}
           <text y="-23" textAnchor="middle" fill="rgba(108,240,224,0.8)"
             fontSize="6" fontFamily="Orbitron">N</text>
         </g>
 
       </svg>
 
-      {/* HTML overlay legenda — visibile di default, collassabile su mobile */}
+      {/* ── LEGENDA COLLASSABILE (HTML overlay) ────────────────────────────────
+          Posizionata in basso a sinistra. Mostra gli imperi con conteggio territori.
+          Il pulsante toggle riduce la larghezza a 32px nascondendo il contenuto.
+          Principio SRP: rendering puro della legenda, nessuna logica di business. */}
       <div style={{
         position: 'absolute',
         bottom: 12,
@@ -513,7 +731,7 @@ export default function MappaMondoArt({
           padding: legendaAperta ? '10px 12px' : '6px',
           minWidth: 28,
         }}>
-          {/* Toggle button */}
+          {/* Toggle button — alterna legenda aperta/chiusa */}
           <button
             onClick={() => setLegendaAperta(v => !v)}
             style={{
@@ -534,7 +752,7 @@ export default function MappaMondoArt({
 
           {legendaAperta && (
             <>
-              {/* Titolo */}
+              {/* Titolo sezione legenda */}
               <div style={{
                 fontFamily: "'Saira Condensed', Saira, sans-serif",
                 fontSize: 8,
@@ -547,7 +765,7 @@ export default function MappaMondoArt({
                 paddingBottom: 6,
               }}>⚑ Legenda Imperi</div>
 
-              {/* Lista imperi */}
+              {/* Lista degli imperi con quadratino colorato, nome e conteggio */}
               {listaImperi.map(([nome, { colore, count, mio }]) => (
                 <div key={nome} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
                   <div style={{
@@ -583,7 +801,7 @@ export default function MappaMondoArt({
                 </div>
               )}
 
-              {/* Legenda stati */}
+              {/* Legenda degli stati visivi: conquistabile e non raggiungibile */}
               <div style={{
                 marginTop: 8,
                 paddingTop: 6,
@@ -603,7 +821,10 @@ export default function MappaMondoArt({
         </div>
       </div>
 
-      {/* HTML overlay contatore conquistati */}
+      {/* ── CONTATORE TERRITORI CONQUISTATI (HTML overlay) ─────────────────────
+          Posizionato in basso a destra. Mostra numConquistati / totale.
+          Principio SRP: rendering puro del contatore, aggiornato automaticamente
+          dai dati derivati calcolati in alto (numConquistati). */}
       <div style={{
         position: 'absolute',
         bottom: 12,
@@ -645,40 +866,3 @@ export default function MappaMondoArt({
     </div>
   );
 }
-
-// ─── helpers colore ────────────────────────────────────────────────────────────
-function lighten(hex, pct) {
-  try {
-    const n = parseInt(hex.replace('#',''), 16);
-    const a = Math.round(2.55 * pct);
-    const R = Math.min(255,(n>>16)+a), G = Math.min(255,((n>>8)&0xFF)+a), B = Math.min(255,(n&0xFF)+a);
-    return `#${(0x1000000+R*0x10000+G*0x100+B).toString(16).slice(1)}`;
-  } catch { return hex; }
-}
-function darken(hex, pct) {
-  try {
-    const n = parseInt(hex.replace('#',''), 16);
-    const a = Math.round(2.55 * pct);
-    const R = Math.max(0,(n>>16)-a), G = Math.max(0,((n>>8)&0xFF)-a), B = Math.max(0,(n&0xFF)-a);
-    return `#${(0x1000000+R*0x10000+G*0x100+B).toString(16).slice(1)}`;
-  } catch { return hex; }
-}
-
-// ─── stelle di sfondo ─────────────────────────────────────────────────────────
-const STARS = [
-  [42,18,0.8,0.5],[88,55,1.2,0.4],[130,22,0.7,0.6],[205,44,1.0,0.3],[280,14,0.9,0.5],
-  [370,35,0.7,0.4],[450,19,1.1,0.6],[520,8,0.8,0.3],[610,28,0.7,0.5],[690,15,1.0,0.4],
-  [760,40,0.9,0.3],[840,22,0.7,0.6],[930,12,1.2,0.4],[1000,35,0.8,0.5],[1040,18,0.7,0.3],
-  [55,640,0.8,0.3],[120,680,1.0,0.4],[200,660,0.7,0.5],[300,695,0.9,0.3],[420,650,0.8,0.4],
-  [540,700,0.7,0.3],[630,665,1.1,0.5],[700,690,0.8,0.4],[800,658,0.9,0.3],[900,682,0.7,0.4],
-];
-
-// ─── blob continentali decorativi ─────────────────────────────────────────────
-const CONTINENT_BLOBS = [
-  { cont:'NA', cx:215, cy:215, rx:170, ry:140, rot:-8 },
-  { cont:'SA', cx:330, cy:470, rx:90,  ry:120, rot:5  },
-  { cont:'EU', cx:595, cy:250, rx:120, ry:90,  rot:-5 },
-  { cont:'AF', cx:630, cy:440, rx:95,  ry:120, rot:3  },
-  { cont:'AS', cx:840, cy:290, rx:185, ry:145, rot:-4 },
-  { cont:'OC', cx:920, cy:540, rx:75,  ry:60,  rot:6  },
-];

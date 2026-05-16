@@ -1,6 +1,23 @@
 // src/lib/constants.js
 // Costanti di gioco condivise tra client e server
+//
+// Principio SOLID applicato: SRP (Single Responsibility Principle)
+// Le costanti sono raggruppate per dominio tramite commenti di sezione.
+// Ogni sezione ha una sola responsabilità concettuale: rarità, aspetto, stat,
+// configurazione UI, geografia, outfit. In futuro ogni sezione può essere spostata
+// nel proprio file senza impattare le altre.
 
+// ── RARITÀ ─────────────────────────────────────────────────────────────────
+/**
+ * Configurazione delle rarità waifu.
+ * Usata per: gacha (prob), rendering carte (colore/glow/stelle), bilanciamento.
+ *
+ * @property {string} nome   - Nome visualizzato nella UI
+ * @property {string} colore - Colore HEX principale del badge rarità
+ * @property {string} glow   - Colore RGBA per il glow/aura della carta
+ * @property {number} stelle - Numero di stelle mostrate (1–5)
+ * @property {number} prob   - Probabilità di drop nel gacha [0, 1] (somma = 1.00)
+ */
 export const RARITA = {
   comune:      { nome: 'Comune',      colore: '#9ca3af', glow: 'rgba(156,163,175,0.4)', stelle: 1, prob: 0.55 },
   raro:        { nome: 'Raro',        colore: '#3b82f6', glow: 'rgba(59,130,246,0.5)',  stelle: 2, prob: 0.27 },
@@ -9,6 +26,19 @@ export const RARITA = {
   immersivo:   { nome: 'Immersivo',   colore: '#ec4899', glow: 'rgba(236,72,153,0.8)',  stelle: 5, prob: 0.01 },
 };
 
+// ── ASPETTO WAIFU ───────────────────────────────────────────────────────────
+/**
+ * Mappa colore capelli ID → dati di rendering.
+ * La chiave è un intero 1–10 che corrisponde al campo `colore_capelli` in Firestore.
+ *
+ * `hex` può essere un valore CSS speciale ('gradient-bicolor', 'gradient-fantasy')
+ * per i colori che richiedono un gradiente — in quel caso usare `solid` come fallback
+ * per contesti che non supportano gradienti (es. badge monocromatici).
+ *
+ * @property {string} nome   - Nome leggibile del colore
+ * @property {string} hex    - Valore CSS (HEX o identificatore gradiente)
+ * @property {string} solid  - Colore HEX solido (fallback per contesti non-gradient)
+ */
 export const COLORI_CAPELLI = {
   1:  { nome: 'Castano',  hex: '#6b4423', solid: '#6b4423' },
   2:  { nome: 'Nero',     hex: '#1a1a1a', solid: '#1a1a1a' },
@@ -22,13 +52,24 @@ export const COLORI_CAPELLI = {
   10: { nome: 'Fantasy',  hex: 'gradient-fantasy', solid: '#06d6a0' },
 };
 
+/**
+ * Etichette per le categorie di tette (stat `tette`, range 1–7).
+ * Usata in schede waifu, filtri di ricerca e UI admin.
+ * @type {Record<number, string>}
+ */
 export const CATEGORIE_TETTE = {
   1: 'Petite', 2: 'Small', 3: 'Medium', 4: 'Full',
   5: 'Large', 6: 'Very Large', 7: 'Oppai Fantasy',
 };
 
-// Range statistiche waifu (modificabili da admin via Firestore /config/stat_ranges)
-// Questi sono i valori di default; il gioco carica i valori reali da Firestore se disponibili
+// ── RANGE STATISTICHE ────────────────────────────────────────────────────────
+/**
+ * Range statistiche waifu di default (modificabili da admin via Firestore /config/stat_ranges).
+ * Il gioco carica i valori reali da Firestore se disponibili; questo oggetto è il fallback.
+ *
+ * Nota: i range influenzano la formula di calculateSpeed() e computeCritChance()
+ * in battleEngine.js — modificarli via admin aggiorna automaticamente il bilanciamento.
+ */
 export const STAT_RANGES_DEFAULT = {
   tette:          { min: 1,  max: 7    },
   colore_capelli: { min: 1,  max: 10   },
@@ -37,7 +78,10 @@ export const STAT_RANGES_DEFAULT = {
   esperienza:     { min: 0,  max: 5000 },
 };
 
-// Incrementi di default per il level-up (modificabili da admin via Firestore /config/upgrade_steps)
+/**
+ * Incrementi di default per il level-up di ogni stat (modificabili da admin via Firestore /config/upgrade_steps).
+ * Usato nella schermata di upgrade waifu per calcolare il costo e il risultato del potenziamento.
+ */
 export const UPGRADE_STEPS_DEFAULT = {
   tette:          1,
   colore_capelli: 1,
@@ -46,6 +90,12 @@ export const UPGRADE_STEPS_DEFAULT = {
   esperienza:     50,
 };
 
+// ── UI — OUTFIT & STAT ────────────────────────────────────────────────────────
+/**
+ * Slot dell'outfit waifu con etichette e icone per la UI.
+ * Ogni waifu ha 4 slot vestito: faccia, petto, gambe, piedi.
+ * @type {Record<string, { nome: string, icon: string }>}
+ */
 export const SLOT_OUTFIT = {
   faccia: { nome: 'Faccia', icon: '👁' },
   petto:  { nome: 'Petto',  icon: '✦' },
@@ -53,6 +103,11 @@ export const SLOT_OUTFIT = {
   piedi:  { nome: 'Piedi',  icon: '◈' },
 };
 
+/**
+ * Definizione degli stat visualizzati nella scheda waifu.
+ * `key` corrisponde al campo in Firestore; `icon` è il simbolo nel badge stat.
+ * @type {Array<{ key: string, label: string, icon: string }>}
+ */
 export const STATS = [
   { key: 'tette',          label: 'Tette',         icon: '✦' },
   { key: 'taglia_piedi',   label: 'Taglia Piedi',  icon: '⚘' },
@@ -61,7 +116,16 @@ export const STATS = [
   { key: 'esperienza',     label: 'Esperienza',    icon: '★' },
 ];
 
-// Timer ricarica (in millisecondi)
+// ── TIMER & ENERGIA ───────────────────────────────────────────────────────────
+/**
+ * Configurazione timer di ricarica (tempi in ore, capacità massime).
+ * Usato dal sistema di pacchetti e energia.
+ *
+ * @property {number} PACCHETTO_HOURS - Ore di attesa tra pacchetti gratuiti
+ * @property {number} ENERGIA_HOURS   - Ore per ricaricare 1 punto energia
+ * @property {number} MAX_ENERGIA     - Energia massima accumulabile
+ * @property {number} MAX_PACCHETTI   - Pacchetti gratuiti massimi accumulabili
+ */
 export const TIMER = {
   PACCHETTO_HOURS: 12,
   ENERGIA_HOURS: 12,
@@ -69,12 +133,29 @@ export const TIMER = {
   MAX_PACCHETTI: 2,
 };
 
-// Energia guadagnata scartando (per rarità)
+/**
+ * Energia guadagnata scartando una waifu per rarità.
+ * Bilancia il valore di scarto: rarità più alte valgono più energia.
+ * @type {Record<string, number>}
+ */
 export const ENERGIA_SCARTO = {
   comune: 1, raro: 2, epico: 3, leggendario: 5, immersivo: 8,
 };
 
-// Mappa territori (28 territori, 6 continenti)
+// ── MAPPA TERRITORI ──────────────────────────────────────────────────────────
+/**
+ * Lista dei 28 territori della mappa risiko-style (6 continenti).
+ * Ogni territorio ha:
+ *   - id:    identificatore univoco (usato come chiave in mappaTerritori Firestore)
+ *   - nome:  nome visualizzato sulla mappa
+ *   - cont:  codice continente (NA|SA|EU|AF|AS|OC)
+ *   - cx/cy: coordinate centro del territorio (per posizionare il marker)
+ *   - path:  SVG path del poligono del territorio
+ *   - conf:  array di id dei territori confinanti (per validazione attacchi)
+ *
+ * Usato da: avviaPartitaMultiplayer (assegnazione), MappaMultiplayer (rendering),
+ * registraRisultatoBattaglia (log testuale).
+ */
 export const TERRITORI = [
   { id: 't_alaska',       nome: 'Alaska',        cont: 'NA', cx: 95,  cy: 130, path: 'M50,80 L150,75 L160,150 L100,180 L40,160 Z',     conf: ['t_canada_w', 't_kamchatka'] },
   { id: 't_canada_w',     nome: 'Canada Ovest',  cont: 'NA', cx: 200, cy: 145, path: 'M150,75 L260,90 L255,180 L160,150 Z',           conf: ['t_alaska', 't_canada_e', 't_usa_w'] },
@@ -106,19 +187,46 @@ export const TERRITORI = [
   { id: 't_australia',    nome: 'Australia',     cont: 'OC', cx: 935, cy: 555, path: 'M870,510 L1000,515 L995,600 L880,595 Z',        conf: ['t_indonesia'] },
 ];
 
+/**
+ * Colori di rendering per continente nella mappa SVG.
+ * Usati da MappaMultiplayer per colorare i territori in base al continente di appartenenza.
+ * @type {Record<string, string>}
+ */
 export const COLORI_CONTINENTI = {
   NA: '#7c3aed', SA: '#fbbf24', EU: '#0ea5e9',
   AF: '#16a34a', AS: '#dc2626', OC: '#f97316',
 };
 
+/**
+ * Nomi leggibili dei continenti (per UI, legende, tooltip).
+ * @type {Record<string, string>}
+ */
 export const NOMI_CONTINENTI = {
   NA: 'Nord America', SA: 'Sud America', EU: 'Europa',
   AF: 'Africa', AS: 'Asia', OC: 'Oceania',
 };
 
-// Mappa progressiva: territori per livello
-// Livello 1: solo continenti
-// Livello 2+: aggiungi stati progressivamente
+// ── MAPPA PROGRESSIVA ────────────────────────────────────────────────────────
+/**
+ * Territori della mappa progressiva, organizzati per livello di gioco.
+ * Al livello 1 la mappa mostra solo i 6 continenti; ogni livello aggiunge
+ * stati dettagliati progressivamente (fino al livello 7 = Oceania).
+ *
+ * Struttura di ogni territorio:
+ *   - id:    identificatore univoco
+ *   - nome:  nome visualizzato
+ *   - tipo:  'continente' | 'stato'
+ *   - cx/cy: coordinate centro per il marker
+ *   - conf:  array id confinanti (solo per tipo 'stato')
+ *
+ * Livello 1: continenti (6 macro-aree)
+ * Livello 2: Europa (10 stati)
+ * Livello 3: Nord America (5 stati)
+ * Livello 4: Sud America (5 stati)
+ * Livello 5: Africa (5 stati)
+ * Livello 6: Asia (5 stati)
+ * Livello 7: Oceania (2 stati)
+ */
 export const TERRITORI_PER_LIVELLO = {
   1: [ // Solo continenti (6 territori)
     { id: 'cont_NA', nome: 'Nord America', tipo: 'continente', cx: 250, cy: 250, path: 'M100,100 L400,100 L400,400 L100,400 Z' },
@@ -174,7 +282,14 @@ export const TERRITORI_PER_LIVELLO = {
   ],
 };
 
-// Funzione helper: ottieni territori per un dato livello (cumulativo)
+/**
+ * Restituisce i territori cumulativi per un dato livello di mappa.
+ * Il risultato include tutti i territori dei livelli da 1 a `livello` (inclusivo).
+ * Clamped a 7 (livello massimo definito in TERRITORI_PER_LIVELLO).
+ *
+ * @param {number} livello - Livello corrente del giocatore
+ * @returns {Array<Object>} Array piatto di territori (continenti + stati sbloccati)
+ */
 export function getTerritori_ForLivello(livello) {
   let territori = [];
   for (let i = 1; i <= Math.min(livello, 7); i++) {
@@ -183,22 +298,26 @@ export function getTerritori_ForLivello(livello) {
   return territori;
 }
 
-// ============================================================
-// CONFIGURAZIONE OUTFIT (modificabile da admin via Firestore /config/outfit_config)
-// ============================================================
-// Numero di copie per salire di livello
-// maxArchetipi[livello] = quanti archetipi compatibili ha l'outfit a quel livello
-// maxLivello = quanti livelli può raggiungere l'outfit
-// archetipiStart = quanti archetipi ha al livello 1
-
+// ── CONFIGURAZIONE OUTFIT ────────────────────────────────────────────────────
+/**
+ * Configurazione outfit di default (modificabile da admin via Firestore /config/outfit_config).
+ *
+ * Struttura per rarità:
+ *   - maxLivello:        quanti livelli può raggiungere l'outfit
+ *   - archetipiStart:    archetipi compatibili al livello 1
+ *   - archetipiMax:      archetipi al livello massimo (-1 = tutti gli archetipi)
+ *   - archetipiPerLivello: incremento archetipi per livello (salvo eccezioni leggendario)
+ *
+ * Logica speciale leggendario/immersivo:
+ *   - Lv 8→9: archetipi → 10
+ *   - Lv 9→10: archetipi → 15
+ *   - Lv 10: archetipi → tutti (-1)
+ *
+ * copiePerLivello: numero di copie duplicate necessarie per passare al livello successivo.
+ */
 export const OUTFIT_CONFIG_DEFAULT = {
   copiePerLivello: 15, // copie necessarie per passare al livello successivo
 
-  // Per rarità: { maxLivello, archetipiStart, archetipiMax }
-  // - archetipiStart: quanti archetipi ha al livello 1
-  // - maxLivello:     quanti livelli può raggiungere
-  // - archetipiMax:   quanti archetipi al livello massimo
-  // Nota: i leggendari hanno logica speciale (livello 8→9: 10→15, 9→10: 15→tutti)
   rarità: {
     comune:      { maxLivello: 5,  archetipiStart: 1, archetipiMax: 5,  archetipiPerLivello: 1 },
     raro:        { maxLivello: 6,  archetipiStart: 2, archetipiMax: 7,  archetipiPerLivello: 1 },
@@ -215,17 +334,28 @@ export const OUTFIT_CONFIG_DEFAULT = {
   },
 };
 
-// Tipi di abilità outfit (usati sia in admin che in battaglia)
+// ── ABILITÀ OUTFIT ───────────────────────────────────────────────────────────
+/**
+ * Tipi di abilità outfit — usati sia in admin (creazione outfit) che in battaglia (applicazione).
+ * `target`: a chi si applica l'effetto ('self' | 'opp' | 'dual')
+ * `direzione`: +1 = boost, -1 = penalità, 0 = doppio (usato per abilità tipo 'doppia')
+ * @type {Record<string, { label: string, target: string, direzione: number }>}
+ */
 export const ABILITA_TIPI = {
   stat_up_self:   { label: '↑ Boost stat propria',       target: 'self',  direzione: +1 },
   stat_down_self: { label: '↓ Abbassa stat propria',      target: 'self',  direzione: -1 },
   stat_up_opp:    { label: '⬆ Boost stat avversaria',    target: 'opp',   direzione: +1 },
   stat_down_opp:  { label: '⬇ Abbassa stat avversaria',  target: 'opp',   direzione: -1 },
-  // doppia (solo leggendario/immersivo): agisce su 2 stat
+  // doppia (solo leggendario/immersivo): agisce su 2 stat contemporaneamente
   doppia:         { label: '✦ Doppia (2 stat)',           target: 'dual',  direzione: 0  },
 };
 
-// Valori abilità per rarità (valore assoluto della modifica)
+/**
+ * Range dei valori di modifica stat per abilità outfit, divisi per rarità.
+ * Il valore assoluto della modifica viene scelto casualmente in [min, max]
+ * al momento della creazione dell'outfit (dal seeder admin).
+ * @type {Record<string, { min: number, max: number }>}
+ */
 export const ABILITA_VALORI = {
   raro:        { min: 1, max: 2 },
   epico:       { min: 2, max: 4 },

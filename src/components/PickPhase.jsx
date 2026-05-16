@@ -1,13 +1,75 @@
+/**
+ * @module PickPhase
+ * @description Schermata di draft segreta "3-from-roster" che precede il caricamento
+ * di WaifuBattleArena. Ogni giocatore sceglie 3 waifu dal proprio roster (da 5)
+ * senza vedere le scelte dell'avversario.
+ *
+ * Modalità supportate:
+ *   - CPU        : il giocatore sceglie 3 waifu; la CPU pesca casualmente al mount.
+ *   - PvP Online : ogni giocatore sceglie sul proprio dispositivo;
+ *                  la sync avviene via Firestore (gestita dal parent MappaMultiplayer).
+ *
+ * NON esiste più la modalità "pass-the-device" (stesso dispositivo).
+ * Il PvP è sempre online e sincronizzato.
+ *
+ * Principio SOLID applicato — SRP (Single Responsibility Principle):
+ *   - `MiniHpBar`    : responsabile SOLO del rendering della barra HP.
+ *   - `WaifuPickCard`: responsabile SOLO del rendering di una singola card waifu.
+ *   - `TypeBadge`    : responsabile SOLO del badge del tipo elemento.
+ *   - `S`            : costante che centralizza SOLO gli stili condivisi (DRY).
+ *   - `PickPhase`    : gestisce SOLO la logica di pick e il routing degli step.
+ *   - `RevealScreen` : componente standalone responsabile SOLO della schermata di reveal.
+ *
+ * Named exports: RevealScreen (usata quando entrambi i pick sono noti).
+ * La segretezza è client-side (accettabile per gioco casual/social).
+ */
 'use client';
 // [WAIFU CHAMPIONS REFACTOR] — combat-system-v2
 // PickPhase: hidden 3-from-roster draft before WaifuBattleArena loads.
-// Supports CPU mode and PvP pass-the-device mode.
-// Secrecy is client-side only (acceptable for casual/social play).
+// Supports CPU mode and Online PvP mode (each player picks on their own device).
+// Pass-the-device PvP removed — all PvP is online/synchronized via Firestore.
 // Named exports: RevealScreen (standalone reveal used when both picks are known)
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { TYPE_COLORS, initBattleWaifu, computeSpeed, computeCritChance } from '@/lib/battleEngine';
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// COSTANTI DI LOGICA
+// Principio SRP: i magic numbers sono definiti UNA sola volta qui, con
+// documentazione esplicita del loro significato.
+// DRY: sostituiscono valori hardcoded sparsi nel file.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Numero di waifu che il giocatore deve selezionare per confermare il team.
+ * Il primo slot entra subito in campo, gli altri sono la riserva.
+ *
+ * @type {number}
+ */
+const PICKS_RICHIESTI = 3;
+
+/**
+ * Numero minimo di waifu nel roster per accedere alla pick phase.
+ * La pick phase richiede un pool più ampio del team finale (5 > 3)
+ * per garantire varietà strategica nella scelta.
+ *
+ * @type {number}
+ */
+const ROSTER_MIN = 5;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SUB-COMPONENT: TypeBadge
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Badge colorato che mostra il tipo elemento di una waifu.
+ * I colori sono derivati da `TYPE_COLORS` definito in battleEngine.
+ *
+ * Principio SRP: responsabile esclusivamente del rendering del badge tipo.
+ *
+ * @param {Object} props
+ * @param {string} props.type - Stringa del tipo elemento (es. 'Arcana', 'Fuoco', ecc.).
+ * @returns {JSX.Element}
+ */
 function TypeBadge({ type }) {
   const c = TYPE_COLORS[type] ?? { border: '#555', bg: '#111' };
   return (
@@ -21,6 +83,24 @@ function TypeBadge({ type }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SUB-COMPONENT: MiniHpBar
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Barra HP miniaturizzata per le card del roster.
+ * Cambia colore in base alla percentuale di HP rimanenti:
+ *   - > 50% → verde (#00e676)
+ *   - 25–50% → giallo (#ffd666)
+ *   - < 25% → rosso (#ff4d4d)
+ *
+ * Principio SRP: responsabile esclusivamente del rendering della barra HP.
+ *
+ * @param {Object} props
+ * @param {number} props.hp    - HP correnti della waifu.
+ * @param {number} props.maxHp - HP massimi della waifu (usati per calcolare la percentuale).
+ * @returns {JSX.Element}
+ */
 function MiniHpBar({ hp, maxHp }) {
   const pct = maxHp > 0 ? Math.max(0, Math.min(100, (hp / maxHp) * 100)) : 0;
   const col = pct > 50 ? '#00e676' : pct > 25 ? '#ffd666' : '#ff4d4d';
@@ -31,8 +111,27 @@ function MiniHpBar({ hp, maxHp }) {
   );
 }
 
-// ─── WaifuPickCard ──────────────────────────────────────────────────────────
-// hideStats=true → show only name, image, type (used for opponent roster)
+// ─────────────────────────────────────────────────────────────────────────────
+// SUB-COMPONENT: WaifuPickCard
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Card interattiva per una singola waifu nella pick phase.
+ * Mostra thumbnail, nome, tipo e (se `hideStats` è false) statistiche di battaglia.
+ * Se selezionata, mostra un badge numerico col numero dello slot.
+ *
+ * Principio SRP: responsabile esclusivamente del rendering e dell'interazione
+ * di una singola card waifu nel contesto del draft.
+ *
+ * @param {Object}   props
+ * @param {Object}   props.waifu          - Documento Firestore della waifu.
+ * @param {number|null} props.slot        - Numero di slot (1-based) se selezionata, null altrimenti.
+ * @param {boolean}  props.selectable     - Se true, la card è cliccabile.
+ * @param {Function} [props.onTap]        - Callback invocata al click se `selectable` è true.
+ * @param {boolean}  [props.hideStats=false]
+ *   Se true, mostra solo nome, immagine e tipo (usato per il roster avversario).
+ * @returns {JSX.Element}
+ */
 function WaifuPickCard({ waifu, slot, selectable, onTap, hideStats = false }) {
   const bs = waifu._battleStats ?? waifu.battleStats ?? {};
   const maxHp = bs.maxHp ?? 300;
@@ -51,7 +150,7 @@ function WaifuPickCard({ waifu, slot, selectable, onTap, hideStats = false }) {
       transition: 'border-color .15s, background .15s',
       WebkitTapHighlightColor: 'transparent',
     }}>
-      {/* Slot badge */}
+      {/* Slot badge — numero d'ordine di selezione, visibile solo se selezionata */}
       {isSelected && (
         <div style={{
           position: 'absolute', top: -8, right: -8,
@@ -62,9 +161,9 @@ function WaifuPickCard({ waifu, slot, selectable, onTap, hideStats = false }) {
           border: '2px solid rgba(0,230,118,.6)',
         }}>{slot}</div>
       )}
-      {/* Card layout: image + info */}
+      {/* Card layout: immagine thumbnail a sinistra + info a destra */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-        {/* Thumbnail */}
+        {/* Thumbnail immagine statica della waifu */}
         <div style={{
           width: 48, height: 72, borderRadius: 7, overflow: 'hidden',
           background: 'rgba(255,255,255,.04)', flexShrink: 0,
@@ -75,7 +174,7 @@ function WaifuPickCard({ waifu, slot, selectable, onTap, hideStats = false }) {
             : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 18, opacity: 0.2 }}>◈</div>
           }
         </div>
-        {/* Info */}
+        {/* Info: nome, tipo, e statistiche (quest'ultime nascoste per il roster avversario) */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700, color: '#eedcd4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {waifu.nome ?? waifu.name ?? '—'}
@@ -101,47 +200,153 @@ function WaifuPickCard({ waifu, slot, selectable, onTap, hideStats = false }) {
   );
 }
 
-// ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
-/**
- * PickPhase — hidden 3-from-roster draft before WaifuBattleArena.
- *
- * @param {Object[]} roster5P     — up to 5 waifu Firestore docs for the player
- * @param {Object[]} roster5E     — up to 5 waifu Firestore docs for the enemy/CPU
- * @param {boolean}  isCpu        — true when fighting CPU
- * @param {boolean}  isPvP        — true when PvP pass-the-device mode (same device)
- * @param {boolean}  isOnlinePvP  — true when PvP online (each player picks on own device)
- * @param {Object}   battleCtx    — { terrSel, nomeImperoAvversario }
- * @param {Function} onConfirm    — called with (playerTeam WaifuBattleStat[], enemyTeam WaifuBattleStat[])
- */
-export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, isPvP = false, isOnlinePvP = false, battleCtx = {}, onConfirm }) {
-  // pvpStep: 'p1pick' | 'handoff' | 'p2pick' | 'reveal'
-  // Always start at 'p1pick' — never jump directly to reveal on mount
-  const [pvpStep, setPvpStep] = useState('p1pick');
+// ─────────────────────────────────────────────────────────────────────────────
+// STILI CONDIVISI
+// Principio SRP: gli stili sono separati dalla logica di rendering.
+// DRY: centralizzati qui per evitare duplicazioni tra gli step della pick phase.
+// Nota: `S` è definito FUORI dal componente perché non dipende da props o state —
+// è una costante statica (uguale per tutti i render).
+// ─────────────────────────────────────────────────────────────────────────────
 
-  // CPU silently drafts 3 random waifu on mount
+/**
+ * Stili condivisi del componente PickPhase.
+ * Centralizzati qui per evitare duplicazioni (DRY) e per facilitare
+ * modifiche globali al layout senza toccare il render.
+ *
+ * Principio SRP: gli stili sono separati dalla logica di rendering.
+ *
+ * @type {Object}
+ * @property {Object}   root       - Contenitore fullscreen fixed.
+ * @property {Object}   header     - Header fisso in cima, non scrollabile.
+ * @property {Object}   body       - Area centrale scrollabile.
+ * @property {Object}   section    - Sezione interna con margine inferiore.
+ * @property {Object}   label      - Label di sezione in stile Orbitron uppercase.
+ * @property {Function} confirmBtn - Funzione `(active: boolean) => Object` che
+ *   restituisce gli stili del pulsante di conferma (attivo o disabilitato).
+ */
+const S = {
+  // `top` non è hardcoded qui: viene calcolato dinamicamente nel componente
+  // misurando l'altezza reale di .hdr-root + .ntabs-root per non finire
+  // sotto l'header sticky. bottom/left/right restano 0.
+  root: (topOffset = 0) => ({
+    position: 'fixed', top: topOffset, left: 0, right: 0, bottom: 0, zIndex: 40,
+    background: 'linear-gradient(180deg,#080318 0%,#120528 50%,#080318 100%)',
+    display: 'flex', flexDirection: 'column',
+    overflow: 'hidden', // il body interno scorre, non il root
+  }),
+  header: {
+    flexShrink: 0,
+    padding: '10px 14px 8px',
+    borderBottom: '1px solid rgba(255,255,255,.07)',
+    background: 'rgba(6,3,15,.55)',
+  },
+  body: { flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '10px 12px', WebkitOverflowScrolling: 'touch' },
+  section: { marginBottom: 16 },
+  label: { fontFamily: 'Orbitron', fontSize: 8, letterSpacing: 2, color: 'rgba(238,232,220,.4)', marginBottom: 6 },
+  confirmBtn: (active) => ({
+    width: '100%', padding: '14px 0', marginTop: 10,
+    background: active ? 'linear-gradient(135deg,#00e676,#00b050)' : 'rgba(255,255,255,.06)',
+    border: active ? 'none' : '1px solid rgba(255,255,255,.1)',
+    borderRadius: 12, cursor: active ? 'pointer' : 'not-allowed', opacity: active ? 1 : 0.45,
+    fontFamily: 'Orbitron', fontSize: 12, fontWeight: 700,
+    color: active ? '#000' : 'rgba(238,232,220,.4)', letterSpacing: 2,
+  }),
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTE PRINCIPALE: PickPhase
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Schermata di pick phase: draft segreto prima di WaifuBattleArena.
+ *
+ * Il giocatore (e, in modalità PvP, anche l'avversario) seleziona {@link PICKS_RICHIESTI}
+ * waifu dal proprio roster di {@link ROSTER_MIN}. La prima waifu selezionata entra
+ * subito in campo; le altre costituiscono la riserva.
+ *
+ * Flusso:
+ *   Ogni giocatore vede la schermata di picking sul proprio dispositivo.
+ *   Dopo aver confermato 3 waifu, `onConfirm` viene chiamato immediatamente.
+ *   NON esistono step 'handoff' o 'p2pick' — la modalità pass-the-device è rimossa.
+ *
+ * Principio SRP: il componente gestisce SOLO il routing tra gli step del draft
+ * e la costruzione dei team da passare a `onConfirm`. Il rendering di ogni step
+ * è isolato nel proprio blocco condizionale.
+ *
+ * @param {Object}   props
+ * @param {Object[]} [props.roster5P=[]]
+ *   Fino a {@link ROSTER_MIN} documenti Firestore delle waifu del giocatore.
+ * @param {Object[]} [props.roster5E=[]]
+ *   Fino a {@link ROSTER_MIN} documenti Firestore delle waifu dell'avversario/CPU.
+ * @param {boolean}  [props.isCpu=true]
+ *   True quando il giocatore combatte contro la CPU.
+ *   La CPU pesca {@link PICKS_RICHIESTI} waifu casuali al mount.
+ * @param {boolean}  [props.isOnlinePvP=false]
+ *   True in modalità PvP online (dispositivi separati, sempre sincronizzato via Firestore).
+ *   Il giocatore conferma il proprio team e `onConfirm` viene chiamato immediatamente;
+ *   il team avversario arriva tramite Firestore (gestito dal parent).
+ * @param {Object}   [props.battleCtx={}]
+ *   Contesto della battaglia: `{ terrSel, nomeImperoAvversario }`.
+ *   Usato per mostrare il nome del territorio e dell'avversario nell'header.
+ * @param {Function} [props.onConfirm]
+ *   Callback `(playerTeam: WaifuBattleStat[], enemyTeam: WaifuBattleStat[]) => void`
+ *   invocata quando entrambi i team sono pronti per cominciare la battaglia.
+ */
+export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, isOnlinePvP = false, battleCtx = {}, onConfirm }) {
+  // pvpStep: usato per la reveal screen interna (CPU).
+  // Valori possibili: 'picking' | 'cpuReveal'
+  // La reveal interna (pvpStep === 'reveal') non è più raggiungibile.
+  // pvpStep: usato solo internamente per tracciare lo stato della pick.
+  // 'picking' = fase di selezione (l'unica fase visibile al giocatore)
+  // In PvP online ogni giocatore sceglie sul proprio dispositivo — non esistono
+  // step 'handoff' o 'p2pick'.
+  const [pvpStep, setPvpStep] = useState('picking');
+
+  // topOffset: offset dal top della viewport per non finire sotto l'header sticky.
+  // Viene calcolato misurando l'altezza reale di .hdr-root + .ntabs-root al mount.
+  const [topOffset, setTopOffset] = useState(0);
+  useEffect(() => {
+    const calcOffset = () => {
+      const hdr   = document.querySelector('.hdr-root');
+      const ntabs = document.querySelector('.ntabs-root');
+      const hdrH   = hdr   ? hdr.getBoundingClientRect().height   : 0;
+      const ntabsH = ntabs ? ntabs.getBoundingClientRect().height : 0;
+      setTopOffset(hdrH + ntabsH);
+    };
+    calcOffset();
+    window.addEventListener('resize', calcOffset);
+    return () => window.removeEventListener('resize', calcOffset);
+  }, []);
+
+  // CPU pesca silenziosamente PICKS_RICHIESTI waifu casuali al mount (lazy initializer).
+  // L'utente non vedrà mai queste scelte fino all'inizio della battaglia.
   const [cpuPicks] = useState(() => {
     const shuffled = [...roster5E].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, 3);
+    return shuffled.slice(0, PICKS_RICHIESTI);
   });
 
-  // Player selections: array of roster index in slot order [slot1, slot2, slot3]
-  const [p1Slots, setP1Slots] = useState([]); // indices into roster5P
-  const [p2Slots, setP2Slots] = useState([]); // indices into roster5E (PvP only)
+  // Selezioni del giocatore 1: array di indici nel roster (in ordine di selezione → slot order).
+  const [p1Slots, setP1Slots] = useState([]); // indici in roster5P
+  // NON esiste più un secondo giocatore sulla stessa schermata.
 
+  // Riferimento al timer della reveal (usato per pulire il timeout se il componente smonta).
   const [revealTimer, setRevealTimer] = useState(null);
 
-  // ── Slot selection logic ──────────────────────────────────────────────────
+  // ── Logica di selezione slot ──────────────────────────────────────────────
+  // Tap su una card: se è già selezionata la deseleziona, altrimenti la aggiunge
+  // (fino a PICKS_RICHIESTI slot disponibili). Principio SRP: logica pura, nessun side effect.
   const handleTapRoster = (idx, slots, setSlots, maxRoster) => {
     const pos = slots.indexOf(idx);
     if (pos !== -1) {
-      // Deselect — remove from slots
+      // Deseleziona — rimuove l'indice dagli slot mantenendo l'ordine degli altri
       setSlots(slots.filter((_, i) => i !== pos));
-    } else if (slots.length < 3) {
+    } else if (slots.length < PICKS_RICHIESTI) {
       setSlots([...slots, idx]);
     }
   };
 
-  // ── Build WaifuBattleStat teams from picks ───────────────────────────────
+  // ── Costruzione del team WaifuBattleStat dagli indici selezionati ─────────
+  // Principio SRP: responsabile SOLO della trasformazione roster[idx] → WaifuBattleStat.
   const buildTeam = (roster, picks) =>
     picks.map(idx => {
       const w = roster[idx];
@@ -149,78 +354,40 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
       return initBattleWaifu(w, { livello: w.livello ?? 1 });
     }).filter(Boolean);
 
-  // ── Confirm handlers ────────────────────────────────────────────────────
+  // ── Handler conferma giocatore ──────────────────────────────────────────
+  // Due percorsi a seconda della modalità:
+  //   1. isOnlinePvP → chiama onConfirm immediatamente (sync via Firestore nel parent)
+  //   2. CPU         → chiama onConfirm con il team CPU già estratto al mount
   const handleP1Confirm = () => {
-    if (p1Slots.length < 3) return;
+    if (p1Slots.length < PICKS_RICHIESTI) return;
+    const playerTeam = buildTeam(roster5P, p1Slots);
     if (isOnlinePvP) {
-      // Online PvP: each player picks independently on their own device.
-      // No reveal — go directly to arena via Firestore sync.
-      const playerTeam = buildTeam(roster5P, p1Slots);
+      // PvP Online: ogni giocatore sceglie sul proprio dispositivo.
+      // Il team avversario è vuoto qui — arriverà tramite Firestore (gestito dal parent).
       onConfirm?.(playerTeam, []);
-    } else if (isPvP) {
-      // Pass-the-device PvP: go to handoff screen for P2
-      setPvpStep('handoff');
     } else {
-      // CPU mode: go directly to arena, no reveal screen needed.
-      const playerTeam = buildTeam(roster5P, p1Slots);
-      const enemyTeam  = cpuPicks.map(w => initBattleWaifu(w, { livello: w.livello ?? 1 }));
+      // Modalità CPU: l'avversario ha già pescato al mount, passiamo il suo team.
+      const enemyTeam = cpuPicks.map(w => initBattleWaifu(w, { livello: w.livello ?? 1 }));
       onConfirm?.(playerTeam, enemyTeam);
     }
   };
 
-  const handleP2Confirm = () => {
-    if (p2Slots.length < 3) return;
-    // No reveal step — go directly to arena
-    const playerTeam = buildTeam(roster5P, p1Slots);
-    const enemyTeam  = buildTeam(roster5E, p2Slots);
-    onConfirm?.(playerTeam, enemyTeam);
-  };
+  // handleP2Confirm rimosso: la modalità pass-the-device non esiste più.
+  // In PvP online ogni giocatore è sul proprio dispositivo.
 
-  const startRevealTimer = () => {
-    const t = setTimeout(() => {
-      const playerTeam = buildTeam(roster5P, p1Slots);
-      const enemyTeam  = isPvP
-        ? buildTeam(roster5E, p2Slots)
-        : cpuPicks.map(w => initBattleWaifu(w, { livello: w.livello ?? 1 }));
-      onConfirm?.(playerTeam, enemyTeam);
-    }, 2200);
-    setRevealTimer(t);
-  };
+  // startRevealTimer: funzione rimossa (il reveal screen usato nel PvP pass-the-device
+  // è stato eliminato insieme alla modalità stessa).
 
+  // Cleanup del timer alla distruzione del componente
   useEffect(() => () => { if (revealTimer) clearTimeout(revealTimer); }, [revealTimer]);
 
-  // ── Shared styles ─────────────────────────────────────────────────────────
-  const S = {
-    root: {
-      position: 'fixed', inset: 0, zIndex: 40,
-      background: 'linear-gradient(180deg,#080318 0%,#120528 50%,#080318 100%)',
-      display: 'flex', flexDirection: 'column',
-      overflow: 'hidden', // il body interno scorre, non il root
-    },
-    header: {
-      flexShrink: 0,
-      padding: '10px 14px 8px',
-      borderBottom: '1px solid rgba(255,255,255,.07)',
-      background: 'rgba(6,3,15,.55)',
-    },
-    body: { flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '10px 12px', WebkitOverflowScrolling: 'touch' },
-    section: { marginBottom: 16 },
-    label: { fontFamily: 'Orbitron', fontSize: 8, letterSpacing: 2, color: 'rgba(238,232,220,.4)', marginBottom: 6 },
-    confirmBtn: (active) => ({
-      width: '100%', padding: '14px 0', marginTop: 10,
-      background: active ? 'linear-gradient(135deg,#00e676,#00b050)' : 'rgba(255,255,255,.06)',
-      border: active ? 'none' : '1px solid rgba(255,255,255,.1)',
-      borderRadius: 12, cursor: active ? 'pointer' : 'not-allowed', opacity: active ? 1 : 0.45,
-      fontFamily: 'Orbitron', fontSize: 12, fontWeight: 700,
-      color: active ? '#000' : 'rgba(238,232,220,.4)', letterSpacing: 2,
-    }),
-  };
-
   // ─────────────────────────────────────────────────────────────────────────
-  // Not enough waifu guard (min 5 for pick phase — pick 3 from 5)
-  if (roster5P.length < 5) {
+  // GUARD: roster insufficiente
+  // Il giocatore ha meno di ROSTER_MIN waifu → mostra errore e blocca il draft.
+  // ─────────────────────────────────────────────────────────────────────────
+  if (roster5P.length < ROSTER_MIN) {
     return (
-      <div style={S.root}>
+      <div style={S.root(topOffset)}>
         <div style={{ ...S.header, textAlign: 'center' }}>
           <div style={{ fontFamily: 'Orbitron', fontSize: 13, fontWeight: 700, color: '#ff4d4d', letterSpacing: 2 }}>
             ⚠ WAIFU INSUFFICIENTI
@@ -230,7 +397,7 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
           <div>
             <div style={{ fontSize: 40, marginBottom: 16 }}>😔</div>
             <div style={{ fontFamily: 'Fredoka', fontSize: 14, color: '#eedcd4', lineHeight: 1.6 }}>
-              Hai bisogno di almeno 5 waifu per partecipare alla pick phase.
+              Hai bisogno di almeno {ROSTER_MIN} waifu per partecipare alla pick phase.
             </div>
             <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,.4)', marginTop: 8, letterSpacing: 1 }}>
               Apri bustine nella sezione Sbusta per ottenerne di più.
@@ -241,44 +408,25 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // PvP: handoff screen
-  if (pvpStep === 'handoff') {
-    return (
-      <div style={{ ...S.root, alignItems: 'center', justifyContent: 'center', gap: 0 }}>
-        <div style={{ textAlign: 'center', padding: '0 28px' }}>
-          <div style={{ fontSize: 52, marginBottom: 16 }}>🔄</div>
-          <div style={{ fontFamily: 'Orbitron', fontSize: 14, fontWeight: 700, color: '#f5a623', letterSpacing: 2, marginBottom: 10 }}>
-            PASSA IL DISPOSITIVO
-          </div>
-          <div style={{ fontFamily: 'Fredoka', fontSize: 13, color: 'rgba(238,232,220,.6)', lineHeight: 1.6, marginBottom: 28 }}>
-            Giocatore 1 ha scelto il suo team.
-            <br />Passa il dispositivo al <strong style={{ color: '#9b59ff' }}>Giocatore 2</strong> prima di continuare.
-          </div>
-          <button onClick={() => setPvpStep('p2pick')} style={{
-            padding: '14px 32px',
-            background: 'linear-gradient(135deg,#9b59ff,#7b39df)',
-            border: 'none', borderRadius: 12, cursor: 'pointer',
-            fontFamily: 'Orbitron', fontSize: 12, fontWeight: 700,
-            color: '#fff', letterSpacing: 2,
-          }}>
-            GIOCATORE 2 — INIZIA →
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // STEP 'handoff' rimosso: la modalità pass-the-device è stata eliminata.
+  // In PvP online ogni giocatore sceglie sul proprio dispositivo.
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Reveal screen
+  // STEP: reveal / cpuReveal — schermata di rivelazione degli starter
+  // Mostra il confronto "starter P1 vs starter P2/CPU" prima di entrare in arena.
+  // Principio SRP: questo blocco gestisce SOLO l'UI della reveal interna.
+  // Nota: la reveal esterna (più comune) è `RevealScreen` (named export).
+  // ─────────────────────────────────────────────────────────────────────────
+  // Nota: pvpStep 'reveal' e 'cpuReveal' non sono più usati nel flusso principale.
+  // RevealScreen è ora un componente standalone (named export) usato dal parent.
   if (pvpStep === 'reveal' || pvpStep === 'cpuReveal') {
     const p1Active = roster5P[p1Slots[0]];
-    const p2Active = isPvP ? roster5E[p2Slots[0]] : cpuPicks[0];
+    const p2Active = cpuPicks[0]; // In CPU mode — isPvP rimosso
     const p1Bs = p1Active?._battleStats ?? p1Active?.battleStats ?? {};
     const p2Bs = p2Active?._battleStats ?? p2Active?.battleStats ?? {};
     const { terrSel, nomeImperoAvversario } = battleCtx;
     return (
-      <div style={{ ...S.root, alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ ...S.root(topOffset), alignItems: 'center', justifyContent: 'center' }}>
         {terrSel && (
           <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: '#f5a623', letterSpacing: 2, marginBottom: 12 }}>
             ⚔ {terrSel.nome}
@@ -288,7 +436,7 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
           RIVELAZIONE!
         </div>
         <div style={{ display: 'flex', gap: 24, alignItems: 'flex-end', justifyContent: 'center' }}>
-          {/* Player starter */}
+          {/* Starter del giocatore — slot 0 = prima waifu selezionata = quella che entra in campo */}
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: '#00C8FF', letterSpacing: 2, marginBottom: 6 }}>TU</div>
             <div style={{ width: 90, height: 135, borderRadius: 10, overflow: 'hidden', border: '2px solid rgba(0,200,255,.4)', background: 'rgba(6,3,15,.8)' }}>
@@ -303,7 +451,7 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
             <TypeBadge type={p1Bs.type ?? 'Arcana'} />
           </div>
           <div style={{ fontFamily: 'Orbitron', fontSize: 22, fontWeight: 900, color: '#ff2d78', marginBottom: 30 }}>VS</div>
-          {/* Enemy/CPU starter */}
+          {/* Starter avversario/CPU */}
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: '#FF3355', letterSpacing: 2, marginBottom: 6 }}>
               {nomeImperoAvversario ?? 'CPU'}
@@ -328,20 +476,25 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Determine current picking state
-  const isP2Turn = isPvP && pvpStep === 'p2pick';
-  const activeRoster  = isP2Turn ? roster5E : roster5P;
-  const activeSlots   = isP2Turn ? p2Slots  : p1Slots;
-  const setActiveSlots = isP2Turn ? setP2Slots : setP1Slots;
-  const handleConfirm  = isP2Turn ? handleP2Confirm : handleP1Confirm;
-  const playerLabel    = isPvP ? (isP2Turn ? 'GIOCATORE 2' : 'GIOCATORE 1') : 'TU';
-  const opponentRoster = isP2Turn ? roster5P : roster5E;
+  // STEP PRINCIPALE: picking
+  // Un solo giocatore per dispositivo — non esiste più il doppio turno
+  // (pass-the-device rimosso). Ogni giocatore vede il proprio roster e
+  // quello dell'avversario (in sola lettura, senza statistiche).
+  // ─────────────────────────────────────────────────────────────────────────
+  const activeRoster   = roster5P;
+  const activeSlots    = p1Slots;
+  const setActiveSlots = setP1Slots;
+  const handleConfirm  = handleP1Confirm;
+  const playerLabel    = 'TU';
+  const opponentRoster = roster5E;
 
   const { terrSel, nomeImperoAvversario } = battleCtx;
 
   return (
-    <div style={S.root}>
-      {/* Header */}
+    <div style={S.root(topOffset)}>
+      {/* ── Header fisso ──────────────────────────────────────────────────────
+          Mostra il titolo "SCELTA TEAM", il contesto battaglia e il badge
+          che indica quale giocatore sta selezionando (P1 o P2). */}
       <div style={S.header}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
@@ -354,23 +507,25 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
               </div>
             )}
           </div>
+          {/* Badge giocatore — sempre il giocatore corrente sul questo dispositivo */}
           <div style={{
             fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700,
-            color: isP2Turn ? '#9b59ff' : '#00C8FF',
-            background: isP2Turn ? 'rgba(155,89,255,.12)' : 'rgba(0,200,255,.10)',
-            border: `1px solid ${isP2Turn ? 'rgba(155,89,255,.35)' : 'rgba(0,200,255,.3)'}`,
+            color: '#00C8FF',
+            background: 'rgba(0,200,255,.10)',
+            border: '1px solid rgba(0,200,255,.3)',
             borderRadius: 8, padding: '4px 10px',
           }}>{playerLabel}</div>
         </div>
+        {/* Sottotitolo: istruzione + contatore selezioni correnti */}
         <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: 'rgba(238,232,220,.5)', marginTop: 6 }}>
-          Scegli 3 waifu in ordine — la prima entra subito in campo.
-          {' '}<span style={{ color: '#00e676', fontWeight: 700 }}>{activeSlots.length}/3 selezionate</span>
+          Scegli {PICKS_RICHIESTI} waifu in ordine — la prima entra subito in campo.
+          {' '}<span style={{ color: '#00e676', fontWeight: 700 }}>{activeSlots.length}/{PICKS_RICHIESTI} selezionate</span>
         </div>
       </div>
 
-      {/* Body */}
+      {/* ── Body scrollabile ───────────────────────────────────────────────── */}
       <div style={S.body}>
-        {/* Player roster */}
+        {/* Sezione: roster del giocatore attivo (selezionabile) */}
         <div style={S.section}>
           <div style={S.label}>IL TUO ROSTER</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
@@ -389,7 +544,7 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
           </div>
         </div>
 
-        {/* Opponent roster (read-only, stats hidden) */}
+        {/* Sezione: roster avversario (sola lettura, statistiche nascoste per mantenere la segretezza) */}
         <div style={S.section}>
           <div style={S.label}>ROSTER AVVERSARIO — {nomeImperoAvversario ?? 'CPU'}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
@@ -406,7 +561,9 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
 
       </div>
 
-      {/* Sticky footer — confirm button always visible at bottom */}
+      {/* ── Footer sticky — pulsante di conferma sempre visibile ──────────────
+          Abilitato solo quando sono state selezionate esattamente PICKS_RICHIESTI waifu.
+          Usa S.confirmBtn(active) per differenziare lo stile attivo/disabilitato. */}
       <div style={{
         flexShrink: 0,
         padding: '8px 14px',
@@ -414,31 +571,54 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
         background: 'rgba(6,3,15,.92)',
         borderTop: '1px solid rgba(255,255,255,.07)',
       }}>
-        <button style={S.confirmBtn(activeSlots.length === 3)} onClick={activeSlots.length === 3 ? handleConfirm : undefined}>
-          {activeSlots.length === 3 ? '⚔ CONFERMA TEAM' : `SCEGLI ANCORA ${3 - activeSlots.length} WAIFU`}
+        <button style={S.confirmBtn(activeSlots.length === PICKS_RICHIESTI)} onClick={activeSlots.length === PICKS_RICHIESTI ? handleConfirm : undefined}>
+          {activeSlots.length === PICKS_RICHIESTI ? '⚔ CONFERMA TEAM' : `SCEGLI ANCORA ${PICKS_RICHIESTI - activeSlots.length} WAIFU`}
         </button>
       </div>
     </div>
   );
 }
 
-// ─── RevealScreen — named export ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// NAMED EXPORT: RevealScreen
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * RevealScreen — schermata di rivelazione standalone.
+ * Schermata di rivelazione standalone degli starter.
  * Usata quando entrambi i pick sono noti (es. dopo PickPhase vs CPU o PvP online).
+ * Mostra il confronto "starter del giocatore VS starter dell'avversario" con
+ * un pulsante per avviare la battaglia.
  *
- * @param {Object}   myStarter       — waifu oggetto del player (slot 0)
- * @param {Object}   opponentStarter — waifu oggetto dell'avversario (slot 0)
- * @param {string}   myName          — nome del player
- * @param {string}   opponentName    — nome dell'avversario
- * @param {Function} onStart         — callback quando il player preme "INIZIA"
+ * Principio SRP: componente autonomo responsabile SOLO della schermata di reveal.
+ * Non gestisce logica di pick né stato di draft.
+ *
+ * @param {Object}   props
+ * @param {Object}   props.myStarter         - Documento waifu del giocatore (slot 0 del team).
+ * @param {Object}   props.opponentStarter   - Documento waifu dell'avversario (slot 0 del team).
+ * @param {string}   [props.myName='Tu']     - Nome del giocatore visualizzato sopra il suo starter.
+ * @param {string}   [props.opponentName='CPU'] - Nome dell'avversario visualizzato sopra il suo starter.
+ * @param {Function} [props.onStart]         - Callback invocata quando il giocatore preme "INIZIA LA BATTAGLIA".
+ * @returns {JSX.Element}
  */
 export function RevealScreen({ myStarter, opponentStarter, myName = 'Tu', opponentName = 'CPU', onStart }) {
   const myBs   = myStarter?._battleStats   ?? myStarter?.battleStats   ?? {};
   const oppBs  = opponentStarter?._battleStats ?? opponentStarter?.battleStats ?? {};
+
+  const [topOffset, setTopOffset] = useState(0);
+  useEffect(() => {
+    const calcOffset = () => {
+      const hdr   = document.querySelector('.hdr-root');
+      const ntabs = document.querySelector('.ntabs-root');
+      setTopOffset((hdr?.getBoundingClientRect().height ?? 0) + (ntabs?.getBoundingClientRect().height ?? 0));
+    };
+    calcOffset();
+    window.addEventListener('resize', calcOffset);
+    return () => window.removeEventListener('resize', calcOffset);
+  }, []);
+
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 45, overflow: 'hidden',
+      position: 'fixed', top: topOffset, left: 0, right: 0, bottom: 0, zIndex: 45, overflow: 'hidden',
       background: 'linear-gradient(180deg,#080318 0%,#120528 50%,#080318 100%)',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       padding: 24, paddingBottom: 'env(safe-area-inset-bottom,0px)',
@@ -450,9 +630,9 @@ export function RevealScreen({ myStarter, opponentStarter, myName = 'Tu', oppone
         ⚔ BATTAGLIA!
       </div>
 
-      {/* Starter vs Starter */}
+      {/* Confronto starter: My starter VS Opponent starter */}
       <div style={{ display: 'flex', gap: 28, alignItems: 'flex-end', justifyContent: 'center', marginBottom: 28 }}>
-        {/* My starter */}
+        {/* Starter del giocatore */}
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: '#00C8FF', letterSpacing: 2, marginBottom: 6 }}>
             {myName}
@@ -471,7 +651,7 @@ export function RevealScreen({ myStarter, opponentStarter, myName = 'Tu', oppone
 
         <div style={{ fontFamily: 'Orbitron', fontSize: 26, fontWeight: 900, color: '#ff2d78', marginBottom: 36 }}>VS</div>
 
-        {/* Opponent starter */}
+        {/* Starter avversario */}
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: '#FF3355', letterSpacing: 2, marginBottom: 6 }}>
             {opponentName}
@@ -489,6 +669,7 @@ export function RevealScreen({ myStarter, opponentStarter, myName = 'Tu', oppone
         </div>
       </div>
 
+      {/* Pulsante di avvio battaglia */}
       <button
         onClick={onStart}
         style={{

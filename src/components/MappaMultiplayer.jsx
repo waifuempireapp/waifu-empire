@@ -1,16 +1,33 @@
-// src/components/MappaMultiplayer.jsx
-// Sistema multiplayer per Impero Waifu
-// Gestisce: Crea Partita, Unisciti, Carica, Lobby, Partita, Battaglia
+/**
+ * MappaMultiplayer — punto d'ingresso e orchestratore della sezione Multiplayer.
+ *
+ * Architettura (principi SOLID applicati):
+ *  - SRP : ogni sub-componente ha una sola responsabilità
+ *           (Menu, Lobby, CreaPartita, UniscitiPartita, CaricaPartita
+ *            sono estratti in src/components/multiplayer/).
+ *  - OCP : nuove viste si aggiungono senza toccare il router interno (switch su `vista`).
+ *  - LSP : tutti i sub-componenti rispettano il contratto di callback (onCreata/onUnito/…).
+ *  - ISP : ogni componente riceve solo le prop di cui ha bisogno.
+ *  - DIP : la logica Firebase è importata da @/lib/multiplayerService,
+ *           non accoppiata alle UI.
+ *
+ * Rimangono in questo file:
+ *  - MappaMultiplayer (default export) — router di viste + gestione listener
+ *  - SchermataPartita — troppo interdipendente con le prop per essere spostato ora
+ *  - BattagliaMultiplayer — idem (contiene tutto il motore PvP/CPU)
+ *  - Componenti interni di supporto: CartaTerritorio, MappaScrollabileMulti,
+ *    RoundEndBarMulti, PopupGameEnd, SpettatoreView
+ */
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  creaPartitaMultiplayer, uniscitiPartita, avviaPartitaMultiplayer,
-  caricaPartita, ascoltaPartita, scegliAttacco,
+  avviaPartitaMultiplayer,
+  ascoltaPartita, scegliAttacco,
   registraRisultatoBattaglia, salvaPartitaConNome, setGiocatoreInLobby,
-  getColoriUsatiLobby, salvaMazzoBattaglia, salvaRoster5Battaglia,
+  salvaMazzoBattaglia, salvaRoster5Battaglia,
   salvaSceltaPvpRound, salvaPrimoTurnoPvp,
   salvaProseguiTurnoRound, registraRisultatoBattagliaPvp,
-  salvaRisultatoPvpRound, getPartiteSalvateUtente,
+  salvaRisultatoPvpRound,
   salvaArenaMove, inizializzaArena,
   inizializzaArenaSeedRng, salvaArenaRisultato,
 } from '@/lib/multiplayerService';
@@ -27,16 +44,36 @@ import {
   PannelloOrnato, TitoloOrnato, BtnDecorato, Chip,
 } from '@/components/ui/UIKit';
 
-// ── Palette colori selezionabili ─────────────────────────────────────
-const PALETTE_COLORI = [
-  '#f5a623', '#00e676', '#ff2d78', '#9b59ff', '#00bcd4',
-  '#ff6b35', '#c0ca33', '#26c6da', '#ab47bc', '#ef5350',
-  '#42a5f5', '#66bb6a', '#ffa726', '#ec407a', '#7e57c2',
-];
+// ── Sub-componenti estratti (src/components/multiplayer/) ─────────────
+import MenuMultiplayer    from './multiplayer/MenuMultiplayer';
+import CreaPartita        from './multiplayer/CreaPartita';
+import UniscitiPartita    from './multiplayer/UniscitiPartita';
+import CaricaPartita      from './multiplayer/CaricaPartita';
+import Lobby              from './multiplayer/Lobby';
+import ModaleNomePartita  from './multiplayer/ModaleNomePartita';
+// Stili condivisi (usati dai componenti interni rimasti in questo file)
+import { btnStyle, inputStyle, labelStyle } from './multiplayer/sharedStyles';
+
 
 // ════════════════════════════════════════════════════════════════════
-// COMPONENTE PRINCIPALE
+// COMPONENTE PRINCIPALE — router di viste + gestione listener
 // ════════════════════════════════════════════════════════════════════
+
+/**
+ * Orchestratore della sezione Multiplayer.
+ * Gestisce il routing tra le viste (menu/crea/unisciti/carica/lobby/partita)
+ * e il ciclo di vita del listener Firestore.
+ *
+ * @param {Object}   props
+ * @param {Object}   props.profilo           - Profilo utente corrente.
+ * @param {Object}   props.user              - Oggetto Firebase Auth.
+ * @param {Object}   props.collezione        - Collezione del giocatore.
+ * @param {Object[]} props.waifuCat          - Catalogo waifu.
+ * @param {Object[]} props.outfitCat         - Catalogo outfit.
+ * @param {Function} props.mostraNotif       - Callback notifiche UI.
+ * @param {Function} props.onEsci            - Esce dalla sezione multiplayer.
+ * @param {string}   [props.vistaIniziale]   - Vista da mostrare all'avvio (default: 'menu').
+ */
 export default function MappaMultiplayer({
   profilo, user, collezione, waifuCat, outfitCat,
   mostraNotif, onEsci, vistaIniziale = 'menu',
@@ -229,626 +266,30 @@ export default function MappaMultiplayer({
   );
 }
 
-// ════════════════════════════════════════════════════════════════════
-// MODALE NOME PARTITA
-// Chiede all'utente di dare un nome alla partita prima di salvarla.
-// ════════════════════════════════════════════════════════════════════
-function ModaleNomePartita({ nomeDefault, onConferma, onAnnulla }) {
-  const [nome, setNome] = useState(nomeDefault || '');
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 9999,
-      background: 'rgba(0,0,0,0.8)', display: 'flex',
-      alignItems: 'center', justifyContent: 'center', padding: 16,
-    }}>
-      <div style={{
-        background: 'rgba(10,7,38,0.97)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        border: '0.8px solid rgba(167,139,250,0.3)',
-        borderRadius: 20,
-        padding: 28,
-        maxWidth: 360,
-        width: '100%',
-        boxShadow: '0 0 40px rgba(167,139,250,0.15)',
-      }}>
-        <div style={{
-          fontFamily: "'Unbounded', sans-serif",
-          fontSize: 14,
-          fontWeight: 700,
-          color: '#f1ebff',
-          letterSpacing: 1,
-          marginBottom: 6,
-          textAlign: 'center',
-        }}>💾 SALVA PARTITA</div>
-        <div style={{
-          fontSize: 11,
-          color: 'rgba(167,139,250,0.6)',
-          fontFamily: "'DM Sans', sans-serif",
-          marginBottom: 16,
-          textAlign: 'center',
-        }}>
-          Dai un nome a questa partita — lo vedrai solo tu nella lista delle partite salvate
-        </div>
-        <input
-          value={nome}
-          onChange={e => setNome(e.target.value)}
-          placeholder="Es. Partita con Marco e Sara"
-          maxLength={40}
-          autoFocus
-          style={{
-            ...inputStyle,
-            marginBottom: 16,
-          }}
-          onKeyDown={e => { if (e.key === 'Enter' && nome.trim()) onConferma(nome.trim()); }}
-        />
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onAnnulla} style={btnStyle('#666', true)}>ANNULLA</button>
-          <button
-            onClick={() => onConferma(nome.trim() || nomeDefault)}
-            style={{
-              flex: 1,
-              padding: '10px 16px',
-              background: 'linear-gradient(rgba(245,197,96,0.32), rgba(245,197,96,0.1))',
-              border: '0.8px solid rgba(255,233,168,0.6)',
-              borderRadius: 12,
-              cursor: 'pointer',
-              color: 'rgb(42,31,0)',
-              fontFamily: "'Saira Condensed', Saira, sans-serif",
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: 1.6,
-              textTransform: 'uppercase',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
-              boxShadow: 'rgba(245,197,96,0.35) 0px 6px 20px 0px',
-            }}
-          >💾 SALVA ED ESCI</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════
-// MENU PRINCIPALE MULTIPLAYER
-// ════════════════════════════════════════════════════════════════════
-function MenuMultiplayer({ onCrea, onUnisciti, onCarica, onIndietro }) {
-  return (
-    <div className="fade-in">
-      <div style={{
-        background: 'rgba(10,7,38,0.7)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        border: '0.8px solid rgba(167,139,250,0.2)',
-        borderRadius: 20,
-        padding: 28,
-        textAlign: 'center',
-      }}>
-        <div style={{ fontSize: 44, marginBottom: 8 }}>🌐</div>
-        <div style={{
-          fontFamily: "'Unbounded', sans-serif",
-          fontSize: 22,
-          fontWeight: 700,
-          color: '#a78bfa',
-          letterSpacing: 2,
-          marginBottom: 8,
-        }}>MULTIPLAYER</div>
-        <div style={{
-          color: 'rgba(167,139,250,0.5)',
-          fontSize: 10,
-          letterSpacing: 2,
-          fontFamily: "'Saira Condensed', Saira, sans-serif",
-          textTransform: 'uppercase',
-          marginBottom: 24,
-        }}>
-          CONQUISTA IL MONDO CON ALTRI GIOCATORI
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 320, margin: '0 auto' }}>
-          {/* CREA PARTITA — gold */}
-          <button onClick={onCrea} style={{
-            padding: '12px 18px',
-            background: 'linear-gradient(rgba(245,197,96,0.32), rgba(245,197,96,0.1))',
-            border: '0.8px solid rgba(255,233,168,0.6)',
-            borderRadius: 12,
-            cursor: 'pointer',
-            color: 'rgb(42,31,0)',
-            fontFamily: "'Saira Condensed', Saira, sans-serif",
-            fontSize: 13,
-            fontWeight: 700,
-            letterSpacing: 1.6,
-            textTransform: 'uppercase',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            boxShadow: 'rgba(245,197,96,0.35) 0px 8px 24px 0px',
-          }}>🏰 CREA PARTITA</button>
-
-          {/* UNISCITI — aqua */}
-          <button onClick={onUnisciti} style={{
-            padding: '12px 18px',
-            background: 'linear-gradient(rgba(108,240,224,0.15), rgba(108,240,224,0.04))',
-            border: '0.8px solid rgba(108,240,224,0.35)',
-            borderRadius: 12,
-            cursor: 'pointer',
-            color: '#6cf0e0',
-            fontFamily: "'Saira Condensed', Saira, sans-serif",
-            fontSize: 13,
-            fontWeight: 700,
-            letterSpacing: 1.6,
-            textTransform: 'uppercase',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-          }}>🔑 UNISCITI A UNA PARTITA</button>
-
-          {/* CARICA — crystal */}
-          <button onClick={onCarica} style={{
-            padding: '12px 18px',
-            background: 'linear-gradient(rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
-            border: '0.8px solid rgba(255,255,255,0.16)',
-            borderRadius: 12,
-            cursor: 'pointer',
-            color: '#f1ebff',
-            fontFamily: "'Saira Condensed', Saira, sans-serif",
-            fontSize: 13,
-            fontWeight: 700,
-            letterSpacing: 1.6,
-            textTransform: 'uppercase',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-          }}>💾 CARICA PARTITA</button>
-
-          {/* INDIETRO — secondary */}
-          <button onClick={onIndietro} style={btnStyle('#666', true)}>
-            ← INDIETRO
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════
-// CREA PARTITA
-// ════════════════════════════════════════════════════════════════════
-function CreaPartita({ profilo, user, onCreata, onAnnulla }) {
-  const [nomeImpero, setNomeImpero] = useState(profilo.nomeImpero || '');
-  const [coloreImpero, setColoreImpero] = useState(profilo.coloreImpero || PALETTE_COLORI[0]);
-  const [loading, setLoading] = useState(false);
-
-  const handleCrea = async () => {
-    if (!nomeImpero.trim()) return;
-    setLoading(true);
-    try {
-      const result = await creaPartitaMultiplayer({
-        uid: user.uid,
-        nomeImpero: nomeImpero.trim(),
-        coloreImpero,
-      });
-      onCreata(result);
-    } catch (e) {
-      alert(e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fade-in">
-      <div style={{
-        background: 'rgba(10,7,38,0.7)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        border: '0.8px solid rgba(167,139,250,0.2)',
-        borderRadius: 20,
-        padding: 24,
-      }}>
-        <div style={{
-          fontFamily: "'Unbounded', sans-serif",
-          fontSize: 18,
-          fontWeight: 700,
-          color: '#a78bfa',
-          marginBottom: 16,
-        }}>CREA PARTITA</div>
-        <FormImpero
-          nomeImpero={nomeImpero}
-          setNomeImpero={setNomeImpero}
-          coloreImpero={coloreImpero}
-          setColoreImpero={setColoreImpero}
-          coloriBloccati={[]}
-        />
-        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-          <button onClick={onAnnulla} style={btnStyle('#666', true)}>ANNULLA</button>
-          <button onClick={handleCrea} disabled={loading || !nomeImpero.trim()} style={btnStyle('#9b59ff')}>
-            {loading ? '...' : '🏰 CREA'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════
-// UNISCITI
-// ════════════════════════════════════════════════════════════════════
-function UniscitiPartita({ profilo, user, onUnito, onAnnulla }) {
-  const [codice, setCodice] = useState('');
-  const [nomeImpero, setNomeImpero] = useState(profilo.nomeImpero || '');
-  const [coloreImpero, setColoreImpero] = useState(profilo.coloreImpero || PALETTE_COLORI[1]);
-  const [coloriBloccati, setColoriBloccati] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState('codice'); // 'codice' | 'configura'
-
-  const verificaCodice = async () => {
-    if (codice.trim().length < 6) return;
-    setLoading(true);
-    try {
-      const usati = await getColoriUsatiLobby(codice.trim());
-      setColoriBloccati(usati);
-      // Scegli colore libero di default
-      const libero = PALETTE_COLORI.find(c => !usati.includes(c));
-      if (libero) setColoreImpero(libero);
-      setStep('configura');
-    } catch (e) {
-      alert(e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUnisciti = async () => {
-    if (!nomeImpero.trim()) return;
-    setLoading(true);
-    try {
-      await uniscitiPartita({
-        codice: codice.trim(),
-        uid: user.uid,
-        nomeImpero: nomeImpero.trim(),
-        coloreImpero,
-      });
-      onUnito({ codice: codice.trim().toUpperCase() });
-    } catch (e) {
-      alert(e.message);
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fade-in">
-      <div style={{
-        background: 'rgba(10,7,38,0.7)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        border: '0.8px solid rgba(167,139,250,0.2)',
-        borderRadius: 20,
-        padding: 24,
-      }}>
-        <div style={{
-          fontFamily: "'Unbounded', sans-serif",
-          fontSize: 18,
-          fontWeight: 700,
-          color: '#a78bfa',
-          marginBottom: 16,
-        }}>UNISCITI A UNA PARTITA</div>
-
-        {step === 'codice' && (
-          <>
-            <label style={labelStyle}>CODICE PARTITA</label>
-            <input
-              value={codice}
-              onChange={e => setCodice(e.target.value.toUpperCase())}
-              placeholder="ES: AB3K7X"
-              maxLength={6}
-              style={{ ...inputStyle, letterSpacing: 8, textAlign: 'center', fontSize: 20, textTransform: 'uppercase' }}
-            />
-            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <button onClick={onAnnulla} style={btnStyle('#666', true)}>ANNULLA</button>
-              <button onClick={verificaCodice} disabled={loading || codice.trim().length < 6} style={btnStyle('#00e676')}>
-                {loading ? '...' : 'VERIFICA →'}
-              </button>
-            </div>
-          </>
-        )}
-
-        {step === 'configura' && (
-          <>
-            <div style={{ marginBottom: 12, padding: '8px 12px', background: 'rgba(108,240,224,0.08)', borderRadius: 8, border: '0.8px solid rgba(108,240,224,0.35)', fontSize: 10, color: '#6cf0e0', fontFamily: "'DM Sans', sans-serif", textAlign: 'center' }}>
-              ✅ CODICE: {codice.toUpperCase()}
-            </div>
-            <FormImpero
-              nomeImpero={nomeImpero}
-              setNomeImpero={setNomeImpero}
-              coloreImpero={coloreImpero}
-              setColoreImpero={setColoreImpero}
-              coloriBloccati={coloriBloccati}
-            />
-            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <button onClick={() => setStep('codice')} style={btnStyle('#666', true)}>← INDIETRO</button>
-              <button onClick={handleUnisciti} disabled={loading || !nomeImpero.trim()} style={btnStyle('#00e676')}>
-                {loading ? '...' : '🔑 ENTRA'}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════
-// CARICA PARTITA — mostra lista partite salvate dell'utente
-// ════════════════════════════════════════════════════════════════════
-function CaricaPartita({ user, onCaricata, onAnnulla }) {
-  const [partiteSalvate, setPartiteSalvate] = useState(null); // null = caricamento
-  const [errore, setErrore] = useState('');
-  const [loadingCodice, setLoadingCodice] = useState(''); // codice in caricamento
-  // Fallback manuale: se l'utente ha un codice "vecchio" non indicizzato
-  const [mostraFallback, setMostraFallback] = useState(false);
-  const [codiceFallback, setCodiceFallback] = useState('');
-  const [loadingFallback, setLoadingFallback] = useState(false);
-
-  useEffect(() => {
-    let attivo = true;
-    getPartiteSalvateUtente(user.uid)
-      .then(lista => { if (attivo) setPartiteSalvate(lista); })
-      .catch(() => { if (attivo) { setPartiteSalvate([]); setErrore('Errore nel caricamento della lista.'); } });
-    return () => { attivo = false; };
-  }, [user.uid]);
-
-  const entraInPartita = async (codice) => {
-    setLoadingCodice(codice);
-    try {
-      const p = await caricaPartita(codice);
-      if (!p.giocatori?.[user.uid]) throw new Error('Non sei un giocatore di questa partita');
-      if (p.stato === 'terminata') throw new Error('Questa partita è già terminata');
-      if (p.stato === 'in_gioco' && p.giocatori[user.uid]?.eliminato) throw new Error('Il tuo impero è stato eliminato');
-      onCaricata(p);
-    } catch (e) {
-      setErrore(e.message);
-      setLoadingCodice('');
-    }
-  };
-
-  const handleFallback = async () => {
-    if (codiceFallback.trim().length < 6) return;
-    setLoadingFallback(true);
-    await entraInPartita(codiceFallback.trim().toUpperCase());
-    setLoadingFallback(false);
-  };
-
-  const formatData = (ts) => {
-    if (!ts) return '';
-    const d = new Date(typeof ts === 'number' ? ts : ts * 1000);
-    return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
-  };
-
-  return (
-    <div className="fade-in">
-      <div style={{
-        background: 'rgba(10,7,38,0.7)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        border: '0.8px solid rgba(167,139,250,0.2)',
-        borderRadius: 20,
-        padding: 20,
-      }}>
-        <div style={{
-          fontFamily: "'Unbounded', sans-serif",
-          fontSize: 18,
-          fontWeight: 700,
-          color: '#a78bfa',
-          marginBottom: 16,
-        }}>CARICA PARTITA</div>
-
-        {partiteSalvate === null && (
-          <div style={{ textAlign: 'center', padding: 32, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', fontSize: 10 }}>
-            ⏳ Caricamento partite…
-          </div>
-        )}
-
-        {partiteSalvate !== null && partiteSalvate.length === 0 && !errore && (
-          <div style={{ textAlign: 'center', padding: 24 }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>📭</div>
-            <div style={{ color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', fontSize: 10, marginBottom: 16 }}>
-              Nessuna partita salvata trovata
-            </div>
-          </div>
-        )}
-
-        {partiteSalvate !== null && partiteSalvate.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-            {partiteSalvate.map(p => {
-              const nomePersonale = p.nomiPartita?.[user.uid] || p.codice;
-              const numGiocatori = Object.keys(p.giocatori || {}).filter(k => k !== 'cpu').length;
-              const mieiTerritori = Object.values(p.mappaTerritori || {}).filter(t => t?.uid === user.uid).length;
-              const totTerritori = Object.keys(p.mappaTerritori || {}).length;
-              const isLoading = loadingCodice === p.codice;
-              return (
-                <div key={p.codice} style={{
-                  background: 'rgba(167,139,250,0.06)', border: '0.8px solid rgba(167,139,250,0.15)',
-                  borderRadius: 12, padding: '12px 14px',
-                  display: 'flex', alignItems: 'center', gap: 12,
-                }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 12, color: '#f1ebff', fontWeight: 700, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {nomePersonale}
-                    </div>
-                    <div style={{ fontSize: 9, color: '#b6aed6', fontFamily: "'DM Sans', sans-serif", display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                      <span>🏴 {mieiTerritori}/{totTerritori}</span>
-                      <span>👥 {numGiocatori} giocatori</span>
-                      <span style={{ color: p.stato === 'in_gioco' ? '#00e676' : '#9b59ff' }}>
-                        {p.stato === 'in_gioco' ? '▶ In gioco' : '⏸ In lobby'}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 8, color: 'rgba(167,139,250,0.4)', fontFamily: "'DM Sans', sans-serif", marginTop: 2 }}>
-                      {formatData(p.aggiornato)} · {p.codice}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => entraInPartita(p.codice)}
-                    disabled={!!loadingCodice}
-                    style={btnStyle('#f5a623')}
-                  >
-                    {isLoading ? '⏳' : '▶ ENTRA'}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {errore && (
-          <div style={{ color: '#ff3d3d', fontFamily: 'Orbitron', fontSize: 9, textAlign: 'center', marginBottom: 12 }}>
-            ⚠ {errore}
-          </div>
-        )}
-
-        {/* Fallback manuale con codice */}
-        <div style={{ borderTop: '1px solid rgba(167,139,250,0.1)', paddingTop: 14, marginTop: 4 }}>
-          <button
-            onClick={() => setMostraFallback(v => !v)}
-            style={{ background: 'none', border: 'none', color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer', letterSpacing: 1, width: '100%', textAlign: 'center' }}
-          >
-            {mostraFallback ? '▲ Nascondi' : '▼ Hai un codice partita? Inseriscilo manualmente'}
-          </button>
-          {mostraFallback && (
-            <div style={{ marginTop: 10 }}>
-              <input
-                value={codiceFallback}
-                onChange={e => setCodiceFallback(e.target.value.toUpperCase())}
-                placeholder="ES: AB3K7X"
-                maxLength={6}
-                style={{ ...inputStyle, letterSpacing: 8, textAlign: 'center', fontSize: 18, textTransform: 'uppercase' }}
-              />
-              <button onClick={handleFallback} disabled={loadingFallback || codiceFallback.trim().length < 6} style={{ ...btnStyle('#f5a623'), marginTop: 8, width: '100%' }}>
-                {loadingFallback ? '⏳' : '💾 CARICA CON CODICE'}
-              </button>
-            </div>
-          )}
-        </div>
-
-        <button onClick={onAnnulla} style={{ ...btnStyle('#666', true), marginTop: 14, width: '100%' }}>← ANNULLA</button>
-      </div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════
-// LOBBY
-// ════════════════════════════════════════════════════════════════════
-function Lobby({ partita, codice, user, onAvvia, onEsci, mostraNotif }) {
-  const giocatori = Object.values(partita?.giocatori || {});
-  const sonoCreatore = partita?.creatore === user.uid;
-  const possoAvviare = sonoCreatore && giocatori.length >= 2;
-
-  const copiaLink = () => {
-    navigator.clipboard?.writeText(codice);
-    mostraNotif('Codice copiato!', '#00e676');
-  };
-
-  return (
-    <div className="fade-in">
-      <div style={{
-        background: 'rgba(10,7,38,0.7)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        border: '0.8px solid rgba(167,139,250,0.2)',
-        borderRadius: 20,
-        padding: 20,
-      }}>
-        <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 18, fontWeight: 700, color: '#a78bfa', marginBottom: 16 }}>LOBBY</div>
-
-        {/* Codice partita */}
-        <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', marginBottom: 6 }}>
-            CODICE PARTITA — condividilo con gli amici
-          </div>
-          <button onClick={copiaLink} style={{
-            background: 'linear-gradient(rgba(245,197,96,0.32), rgba(245,197,96,0.1))',
-            border: '0.8px solid rgba(255,233,168,0.6)',
-            borderRadius: 12,
-            padding: '12px 28px',
-            cursor: 'pointer',
-            fontFamily: "'Unbounded', sans-serif",
-            fontSize: 28,
-            fontWeight: 700,
-            color: '#f1ebff',
-            letterSpacing: 8,
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            boxShadow: 'rgba(245,197,96,0.25) 0px 6px 20px 0px',
-          }}>
-            {codice} <span style={{ fontSize: 12, opacity: 0.5 }}>📋</span>
-          </button>
-        </div>
-
-        {/* Lista giocatori */}
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', letterSpacing: 2, marginBottom: 8 }}>
-            GIOCATORI ({giocatori.length}/15)
-          </div>
-          {giocatori.map(g => (
-            <div key={g.uid} style={{
-              display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
-              background: 'rgba(167,139,250,0.05)', borderRadius: 10, marginBottom: 6,
-              border: `0.8px solid rgba(167,139,250,0.12)`,
-              borderLeft: `3px solid ${g.coloreImpero}`,
-            }}>
-              <div style={{ width: 16, height: 16, borderRadius: '50%', background: g.coloreImpero, flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: g.coloreImpero }}>
-                  {g.nomeImpero}
-                  {g.uid === user.uid && <span style={{ fontSize: 8, opacity: 0.5, marginLeft: 6 }}>(TU)</span>}
-                  {g.uid === partita?.creatore && <span style={{ fontSize: 8, color: '#ffd666', marginLeft: 6 }}>👑</span>}
-                </div>
-              </div>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#6cf0e0' }} title="Connesso" />
-            </div>
-          ))}
-        </div>
-
-        {giocatori.length < 2 && (
-          <div style={{ textAlign: 'center', color: 'rgba(238,232,220,0.4)', fontSize: 9, fontFamily: 'Orbitron', marginBottom: 12 }}>
-            In attesa di almeno 1 altro giocatore…
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onEsci} style={btnStyle('#666', true)}>← ESCI</button>
-          {possoAvviare && (
-            <button onClick={onAvvia} style={{
-              flex: 1,
-              padding: '12px 18px',
-              background: 'linear-gradient(rgba(167,139,250,0.35), rgba(167,139,250,0.1))',
-              border: '0.8px solid rgba(167,139,250,0.5)',
-              borderRadius: 12,
-              cursor: 'pointer',
-              color: '#f1ebff',
-              fontFamily: "'Saira Condensed', Saira, sans-serif",
-              fontSize: 13,
-              fontWeight: 700,
-              letterSpacing: 1.6,
-              textTransform: 'uppercase',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
-              boxShadow: 'rgba(167,139,250,0.3) 0px 6px 20px 0px',
-            }}>
-              ⚔ AVVIA PARTITA ({giocatori.length} giocatori)
-            </button>
-          )}
-          {!sonoCreatore && (
-            <div style={{ flex: 1, textAlign: 'center', fontSize: 10, color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              In attesa che il creatore avvii…
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+// (sub-componenti estratti — ora importati da ./multiplayer/)
 
 // ════════════════════════════════════════════════════════════════════
 // SCHERMATA PARTITA
+// Gestisce la vista della mappa durante una partita in corso.
+// Rimane in questo file perché è fortemente interdipendente con
+// BattagliaMultiplayer e con le funzioni Firebase del padre.
 // ════════════════════════════════════════════════════════════════════
+
+/**
+ * Vista principale della partita in corso (mappa + turni + log).
+ *
+ * @param {Object}   props
+ * @param {Object|null} props.partita       - Documento partita (aggiornato in real-time dal listener).
+ * @param {string}   props.codice           - Codice partita a 6 caratteri.
+ * @param {Object}   props.user             - Oggetto Firebase Auth (uid).
+ * @param {Object}   props.profilo          - Profilo utente corrente.
+ * @param {Object}   props.collezione       - Collezione waifu/team/equipaggiamento del giocatore.
+ * @param {Object[]} props.waifuCat         - Catalogo waifu completo.
+ * @param {Object[]} props.outfitCat        - Catalogo outfit/abilità.
+ * @param {Function} props.mostraNotif      - Mostra una notifica temporanea.
+ * @param {Function} props.onEsciEsalva     - Esce dalla partita con salvataggio.
+ * @param {Function} props.onAggiornata     - Notifica il padre di un aggiornamento locale della partita.
+ */
 function SchermataPartita({
   partita, codice, user, profilo, collezione, waifuCat, outfitCat,
   mostraNotif, onEsciEsalva, onAggiornata,
@@ -1384,7 +825,32 @@ function CartaTerritorio({ territorio, infoImpero }) {
 
 // ════════════════════════════════════════════════════════════════════
 // BATTAGLIA MULTIPLAYER — PvP vero tra 2 giocatori (o vs CPU)
+//
+// Architettura interna:
+//  - Firestore è la fonte di verità per tutte le scelte PvP.
+//  - Solo l'attaccante (sonoAttaccante) risolve il round e scrive
+//    il risultato su Firestore; entrambi leggono da lì.
+//  - Il motore WaifuBattleArena gestisce le animazioni arena;
+//    la sincronizzazione avviene tramite arenaMosse / arenaRisultato.
+//  - Vs CPU tutta la logica è locale (nessuna scrittura Firestore
+//    per i round, solo il risultato finale).
 // ════════════════════════════════════════════════════════════════════
+
+/**
+ * Componente battaglia per una singola sfida territoriale.
+ *
+ * @param {Object}   props
+ * @param {Object}   props.partita           - Documento partita corrente.
+ * @param {string}   props.codice            - Codice partita.
+ * @param {Object}   props.user              - Oggetto Firebase Auth (uid).
+ * @param {Object}   props.profilo           - Profilo utente (nomeImpero, hardPass, …).
+ * @param {Object}   props.collezione        - Collezione del giocatore (waifu, teams, equipaggiamento).
+ * @param {Object[]} props.waifuCat          - Catalogo waifu completo.
+ * @param {Object[]} props.outfitCat         - Catalogo outfit/abilità.
+ * @param {boolean}  props.sonoAttaccante    - true se questo client è l'attaccante (RESOLVER PvP).
+ * @param {Function} props.onBattagliaFinita - Callback con vincitoreUid al termine della battaglia.
+ * @param {Function} props.mostraNotif       - Mostra una notifica temporanea.
+ */
 function BattagliaMultiplayer({
   partita, codice, user, profilo, collezione, waifuCat, outfitCat,
   sonoAttaccante, onBattagliaFinita, mostraNotif,
@@ -1406,7 +872,10 @@ function BattagliaMultiplayer({
     { key: 'esperienza', label: 'Esperienza', icon: '⭐' },
   ];
 
-  // ── Stato battaglia ────────────────────────────────────────────────
+  // ── STATO ARENA PvP ──────────────────────────────────────────────
+  // `fase` guida il flusso della battaglia:
+  //   coin → pvpScegliWaifu/playerScegliWaifu → scegliStat → scegliDir
+  //   → attesa/risoluzione → reveal → roundEnd → (prosegui) → prossimo round
   const [fase, setFase] = useState('coin');
   const [coinResult, setCoinResult] = useState(null);
   const [primoTurno, setPrimoTurno] = useState(null);   // 'player' | 'cpu'
@@ -1755,6 +1224,9 @@ function BattagliaMultiplayer({
     const myMoveData  = arenaMosse?.[`t${t}`]?.[myUid];
     const oppMoveData = arenaMosse?.[`t${t}`]?.[avversarioUid];
     if (myMoveData?.moveIndex === undefined || oppMoveData?.moveIndex === undefined) return;
+    // Guardia: non applicare lo stesso turno due volte
+    // (pvpOpponentMove viene azzerato a null in handlePvPMoveSubmit prima di ogni turno)
+    if (pvpOpponentMove !== null) return;
     // RESOLVER: entrambe le mosse ricevute.
     // Delay di 400ms per permettere al RECEIVER di ricevere il seed e prepararsi,
     // garantendo che entrambi i client vedano l'animazione in modo quasi simultaneo.
@@ -1762,7 +1234,7 @@ function BattagliaMultiplayer({
       setPvpOpponentMove(oppMoveData.moveIndex); // trigger animazione locale
       setPvpWaiting(false);
     }, 400);
-  }, [partita?.battagliaCorrente?.arenaMosse, arenaAttiva, sonoAttaccante, pvpBattleSeed]); // eslint-disable-line
+  }, [partita?.battagliaCorrente?.arenaMosse, arenaAttiva, sonoAttaccante, pvpBattleSeed, pvpOpponentMove]); // eslint-disable-line
 
   // ── Arena PvP: RECEIVER (difensore) — legge il risultato da Firestore ─────
   // Il RECEIVER non calcola danni: usa il risultato pre-calcolato dall'attaccante.
@@ -1777,6 +1249,9 @@ function BattagliaMultiplayer({
     const t = arenaTurnoRef.current;
     const risultato = arenaRisultato?.[`t${t}`];
     if (!risultato) return;
+    // Guardia: se pvpTurnResult è già impostato per questo turno, non ri-applicare.
+    // Evita il re-trigger causato da snapshot multipli dello stesso documento Firestore.
+    if (pvpTurnResult !== null) return;
     // Il RESOLVER ha scritto il risultato: il RECEIVER può animare.
     // Il RESOLVER ha già aspettato 400ms — il risultato su Firestore arriva dopo,
     // quindi la ricezione qui avviene circa allo stesso momento in cui il RESOLVER
@@ -1784,11 +1259,15 @@ function BattagliaMultiplayer({
     setPvpTurnResult(risultato);
     setPvpOpponentMove(risultato.pMoveIdx); // mossa dell'avversario (attaccante) vista dal difensore
     setPvpWaiting(false);
-  }, [partita?.battagliaCorrente?.arenaRisultato, partita?.battagliaCorrente?.battleSeed, arenaAttiva, sonoAttaccante]); // eslint-disable-line
+  }, [partita?.battagliaCorrente?.arenaRisultato, partita?.battagliaCorrente?.battleSeed, arenaAttiva, sonoAttaccante, pvpTurnResult]); // eslint-disable-line
 
   const handlePvPMoveSubmit = async (moveIdx) => {
     const t = arenaTurnoRef.current;
-    setPvpOpponentMove(null); // reset prima che arrivi la mossa avversaria
+    // Reset pvpOpponentMove PRIMA di scrivere su Firestore: questo assicura che il
+    // listener RESOLVER (che controlla `pvpOpponentMove !== null`) non riutilizzi
+    // il valore del turno precedente mentre aspettiamo la mossa avversaria.
+    setPvpOpponentMove(null);
+    setPvpTurnResult(null); // RECEIVER: reset anche il risultato del turno precedente
     setPvpWaiting(true);
     try {
       await salvaArenaMove(codice, myUid, t, { moveIndex: moveIdx });
@@ -1809,10 +1288,11 @@ function BattagliaMultiplayer({
   }, [codice, mostraNotif]); // eslint-disable-line
 
   // RECEIVER: chiamato da WaifuBattleArena dopo aver applicato il risultato esterno
-  // Avanza il contatore turni e resetta il risultato corrente
+  // Avanza il contatore turni e resetta i flag del turno corrente
   const handlePvPTurnConsumed = useCallback(() => {
     arenaTurnoRef.current += 1;
     setPvpTurnResult(null);
+    setPvpOpponentMove(null); // pronto per il prossimo turno
   }, []);
 
   // Risolve il round (solo l'attaccante) e scrive il risultato su Firestore
@@ -2253,14 +1733,18 @@ function BattagliaMultiplayer({
       return initBattleWaifu(rawW, collData);
     }).filter(Boolean);
 
-  // Quando arriva il roster5 dell'avversario (PvP pick phase), avvia la PickPhase
+  // Quando arriva il roster5 dell'avversario (PvP pick phase), avvia la PickPhase.
+  // Guardia attesaRoster5Avv=true: si attiva SOLO mentre siamo in attesa del roster avversario.
+  // Questo evita il bug "roster avversario vuoto" che si verificava quando il listener
+  // sparava l'effetto prima che il giocatore avesse inviato il proprio roster5.
   useEffect(() => {
     if (!attesaRoster5Avv || isCpu) return;
     const roster5Partita = partita?.battagliaCorrente?.roster5 || {};
     const roster5AvvIds = roster5Partita[avversarioUid];
     if (!roster5AvvIds || roster5AvvIds.length < 1) return;
-    // Entrambi i roster5 pronti → mostra pick phase
+    // Entrambi i roster5 pronti → costruisci il roster avversario e mostra la pick phase
     const rosterE = roster5AvvIds.map(id => waifuCat.find(x => x.id === id)).filter(Boolean);
+    if (rosterE.length < 1) return; // waifu non trovate nel catalogo locale
     setPickRoster5E(rosterE);
     setPickPhaseAttiva(true);
     setAttesaRoster5Avv(false);
@@ -2277,8 +1761,13 @@ function BattagliaMultiplayer({
     const eTeam = buildArenaTeam(mazzoAvvIds, false);
     if (eTeam.length < 1) return;
 
+    // Reset atomico: arenaTurnoRef e pvpWaiting azzerati prima di attivare l'arena
+    // per evitare race condition dove il listener vede turno=0 ma l'arena non è ancora attiva.
     arenaTurnoRef.current = 0;
     arenaVincitoreRef.current = null;
+    setPvpOpponentMove(null);
+    setPvpWaiting(false);
+    setPvpTurnResult(null);
     // arenaPlayerTeam è già stato impostato in handlePickConfirm
     setArenaEnemyTeam(eTeam);
     // RESOLVER: l'attaccante genera e pubblica il seed RNG per la battaglia
@@ -2386,8 +1875,12 @@ function BattagliaMultiplayer({
       if (mazzoAvvIds && mazzoAvvIds.length >= 3) {
         // L'avversario aveva già scelto: avvia l'arena subito
         const eTeam = buildArenaTeam(mazzoAvvIds, false);
+        // Reset atomico prima di attivare l'arena (evita race condition)
         arenaTurnoRef.current = 0;
         arenaVincitoreRef.current = null;
+        setPvpOpponentMove(null);
+        setPvpWaiting(false);
+        setPvpTurnResult(null);
         setArenaEnemyTeam(eTeam);
         // RESOLVER: l'attaccante genera e pubblica il seed RNG per la battaglia
         if (sonoAttaccante) {
@@ -2455,8 +1948,7 @@ function BattagliaMultiplayer({
         roster5P={pickRoster5P}
         roster5E={pickRoster5E}
         isCpu={isCpu}
-        isPvP={false}
-        isOnlinePvP={!isCpu}  // PvP online: ogni giocatore sceglie sul proprio device
+        isOnlinePvP={!isCpu}
         battleCtx={battleCtx}
         onConfirm={handlePickConfirm}
       />
@@ -3206,51 +2698,7 @@ function MappaScrollabileMulti({ territoriUtente, coloreImpero, nomeImpero, terr
   );
 }
 
-// ════════════════════════════════════════════════════════════════════
-// FORM SELEZIONE IMPERO (nome + colore)
-// ════════════════════════════════════════════════════════════════════
-function FormImpero({ nomeImpero, setNomeImpero, coloreImpero, setColoreImpero, coloriBloccati = [] }) {
-  return (
-    <div>
-      <label style={labelStyle}>NOME IMPERO</label>
-      <input
-        value={nomeImpero}
-        onChange={e => setNomeImpero(e.target.value)}
-        placeholder="Es: Drago Dorato"
-        maxLength={30}
-        style={inputStyle}
-      />
-      <label style={{ ...labelStyle, marginTop: 14 }}>COLORE IMPERO</label>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-        {PALETTE_COLORI.map(c => {
-          const bloccato = coloriBloccati.includes(c);
-          return (
-            <button
-              key={c}
-              disabled={bloccato}
-              onClick={() => !bloccato && setColoreImpero(c)}
-              title={bloccato ? 'Già in uso' : c}
-              style={{
-                width: 32, height: 32, borderRadius: '50%',
-                background: c,
-                border: coloreImpero === c ? '3px solid #fff' : '2px solid rgba(255,255,255,0.1)',
-                cursor: bloccato ? 'not-allowed' : 'pointer',
-                opacity: bloccato ? 0.25 : 1,
-                boxShadow: coloreImpero === c ? `0 0 12px ${c}` : 'none',
-                transition: 'all 0.15s',
-              }}
-            />
-          );
-        })}
-      </div>
-      {/* Preview */}
-      <div style={{ marginTop: 14, padding: '8px 14px', borderRadius: 8, background: `${coloreImpero}15`, border: `1px solid ${coloreImpero}40`, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ width: 20, height: 20, borderRadius: '50%', background: coloreImpero }} />
-        <span style={{ fontFamily: 'Orbitron', fontSize: 12, color: coloreImpero }}>{nomeImpero || 'Il tuo Impero'}</span>
-      </div>
-    </div>
-  );
-}
+// FormImpero estratto in ./multiplayer/FormImpero.jsx
 
 // ════════════════════════════════════════════════════════════════════
 // POPUP GAME END — timer locale 5s indipendente per ogni client
@@ -3659,49 +3107,4 @@ function SpettatoreView({ partita, giocatori, battaglia, waifuCat, onAspetta, on
   );
 }
 
-// ─── Stili helper ────────────────────────────────────────────────────
-const btnStyle = (color, secondary = false) => ({
-  flex: secondary ? undefined : 1,
-  padding: '10px 16px',
-  background: secondary
-    ? 'rgba(255,255,255,0.04)'
-    : `linear-gradient(${color}50, ${color}1a)`,
-  border: secondary
-    ? '0.8px solid rgba(167,139,250,0.2)'
-    : `0.8px solid ${color}99`,
-  borderRadius: 12,
-  cursor: 'pointer',
-  color: secondary ? 'rgba(241,235,255,0.5)' : color === 'rgb(42,31,0)' ? 'rgb(42,31,0)' : '#f1ebff',
-  fontFamily: "'Saira Condensed', Saira, sans-serif",
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: 1.6,
-  textTransform: 'uppercase',
-  textAlign: 'center',
-  backdropFilter: 'blur(8px)',
-  WebkitBackdropFilter: 'blur(8px)',
-  transition: 'all 0.15s',
-});
-
-const labelStyle = {
-  display: 'block',
-  fontSize: 10,
-  color: 'rgba(167,139,250,0.7)',
-  fontFamily: "'Saira Condensed', Saira, sans-serif",
-  letterSpacing: 1.5,
-  textTransform: 'uppercase',
-  marginBottom: 6,
-};
-
-const inputStyle = {
-  width: '100%',
-  padding: '10px 14px',
-  background: 'rgba(167,139,250,0.06)',
-  border: '0.8px solid rgba(167,139,250,0.25)',
-  borderRadius: 10,
-  color: '#f1ebff',
-  fontFamily: "'DM Sans', sans-serif",
-  fontSize: 14,
-  outline: 'none',
-  boxSizing: 'border-box',
-};
+// btnStyle, labelStyle, inputStyle — ora importati da ./multiplayer/sharedStyles

@@ -2,17 +2,54 @@
 // REWORK COMPLETO UI/UX — Con separazione carta/baby-doll
 // Mobile: solo landscape con overlay rotazione
 'use client';
+
+/**
+ * @module gioco/page
+ * @description Pagina principale del gioco "Impero delle Waifu".
+ *
+ * Questa pagina-radice gestisce la navigazione a tab, il caricamento dei dati
+ * utente e il rendering della sezione attiva. Ogni tab è un componente separato.
+ *
+ * Tab disponibili: Home, Mappa, Sbusta, Collezione, Amici, Classifica.
+ *
+ * Principio SRP: ogni tab (MappaTab, CollezioneTab ecc.) è responsabile
+ * esclusivamente della propria sezione.
+ * Principio DIP: il componente radice dipende dalle astrazioni dei servizi
+ * (firestoreService, multiplayerService) e non da Firebase direttamente.
+ *
+ * File estratti da questa pagina:
+ *   - src/components/mappa/MappaTab.jsx        — segnaposto/doc per la sezione Mappa
+ *                                                (corpo ancora qui per dipendenze interne:
+ *                                                 RoundEndBar, SelezioneWaifuTeam, BarraFiltriWaifu)
+ *   - src/components/mappa/MappaScrollabile.jsx — wrapper scroll/zoom della mappa (estratto)
+ *
+ * Sezioni disponibili (tab):
+ *   - home        : Dashboard e profilo utente
+ *   - mappa       : Mappa Risiko-style per conquista territori
+ *   - sbusta      : Apertura pacchetti e gestione collezione
+ *   - collezione  : Visualizzazione e gestione waifu
+ *   - amici       : Sistema sociale e scambi
+ *   - classifica  : Leaderboard globale
+ *
+ * Principi SOLID applicati:
+ *   SRP — ogni funzione Tab (MappaTab, SbustaTab, ecc.) gestisce SOLO la propria sezione.
+ *   OCP — nuove sezioni si aggiungono senza modificare il core di navigazione.
+ *   DIP — le sezioni dipendono da props (profilo, collezione), non da stato globale diretto.
+ */
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, listDropsAttivi, getDropAttivo, getClassifica, premioPerPosizione, deleteTeamFromCollezione, isDropCompleto, progressioneDrop, createPackSnapshot, getFriendsList, getFriendRequests } from '@/lib/firestoreService';
-import { calcolaRicaricaPacchetti, calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, INCREMENTI_LEVELUP, clampStat, clampWaifuStats, GOD_PACK_PROB_DEFAULT } from '@/lib/gameLogic';
-import { TIMER, RARITA, COLORI_CAPELLI, CATEGORIE_TETTE, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, OUTFIT_CONFIG_DEFAULT, ABILITA_TIPI } from '@/lib/constants';
+import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, listDropsAttivi, getClassifica, premioPerPosizione, deleteTeamFromCollezione, createPackSnapshot, getFriendsList, getFriendRequests } from '@/lib/firestoreService';
+// Removed unused: getDropAttivo, isDropCompleto, progressioneDrop
+import { calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, INCREMENTI_LEVELUP, GOD_PACK_PROB_DEFAULT } from '@/lib/gameLogic';
+// Removed unused: calcolaRicaricaPacchetti, clampStat, clampWaifuStats
+import { TIMER, RARITA, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, OUTFIT_CONFIG_DEFAULT } from '@/lib/constants';
+// Removed unused: COLORI_CAPELLI, CATEGORIE_TETTE, ABILITA_TIPI
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { calcolaLivelloOutfit, getArchetipiCompatibili, puoEquipaggiare, applicaAbilitaOutfit, applicaModificatoriOpp } from '@/lib/gameLogic';
-import PaperDoll from '@/components/PaperDoll';
 // BabyDoll import removed — Baby-doll tab removed in collection-detail-rework
+// PaperDoll import removed — unused after collection-detail-rework
 import { CartaWaifu, CartaOutfit, CartaPosa } from '@/components/CartaWaifu';
 import KissesIcon from '@/components/KissesIcon';
 import PescaMisteriosaFeed from '@/components/PescaMisteriosaFeed';
@@ -23,20 +60,44 @@ import AddFriendForm from '@/components/AddFriendForm';
 import FriendRequestsList from '@/components/FriendRequestsList';
 import FriendsList from '@/components/FriendsList';
 import TradeRequestModal from '@/components/TradeRequestModal';
-import TradeIncomingModal from '@/components/TradeIncomingModal';
-import TradePendingConfirmModal from '@/components/TradePendingConfirmModal';
+// TradeIncomingModal removed — unused (handled inside ScambiList/AmiciTab)
+// TradePendingConfirmModal removed — unused (handled inside ScambiList/AmiciTab)
 import TradeReceiveAnimation from '@/components/TradeReceiveAnimation';
 import ScambiList from '@/components/ScambiList';
 import MappaMondoArt from '@/components/MappaMondoArt';
 import MappaMultiplayer from '@/components/MappaMultiplayer';
+// MappaScrollabile estratto in src/components/mappa/MappaScrollabile.jsx
+import MappaScrollabile from '@/components/mappa/MappaScrollabile';
 import WaifuBattleArena from '@/components/WaifuBattleArena';
-import PickPhase, { RevealScreen } from '@/components/PickPhase';
-import { initBattleWaifu, generateCPUTeam, generateCPUTeamOf5, generateBattleStats, computeSpeed, computeCritChance } from '@/lib/battleEngine';
+import PickPhase from '@/components/PickPhase';
+// RevealScreen removed — unused named re-export from PickPhase
+import { generateCPUTeamOf5, generateBattleStats, computeSpeed, computeCritChance } from '@/lib/battleEngine';
+// Removed unused: initBattleWaifu, generateCPUTeam
 import {
   PannelloOrnato, TitoloOrnato, BtnDecorato, Chip,
-  BarraRisorsa, CardInfo, Divider, StelleRarita, FramePersonaggio,
+  CardInfo, Divider, StelleRarita, FramePersonaggio,
 } from '@/components/ui/UIKit';
+// Removed unused: BarraRisorsa
 import { Header, NavTabs, BottomNav, HomeTab, SakuraPetals } from './_redesign';
+
+// ════════════════════════════════════════════════════════════════════════════
+// COMPONENTE: GiocoPage (default export)
+// Responsabilità: navigazione top-level, caricamento dati globali, stato sessione
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * GiocoPage — radice dell'applicazione di gioco.
+ *
+ * Gestisce l'autenticazione, il caricamento iniziale del profilo e della
+ * collezione da Firestore, la navigazione tra le sezioni (tab) e il render
+ * condizionale di ciascuna sezione tramite bottom navigation.
+ *
+ * Principio SRP: questo componente gestisce SOLO lo stato globale di sessione
+ * (profilo, collezione, tab attiva) e la struttura di navigazione. Ogni sezione
+ * ha il proprio componente Tab dedicato.
+ *
+ * @returns {JSX.Element} La pagina di gioco completa con navigazione e sezione attiva.
+ */
 export default function GiocoPage() {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
@@ -194,6 +255,11 @@ export default function GiocoPage() {
         }} />
 
         <div style={{ padding: '12px 16px', maxWidth: 1400, margin: '0 auto' }}>
+          {/* ═════════════════════════════════════════════════════════════════
+              TAB: HOME
+              Componente HomeTab — dashboard utente, statistiche, pacchetti omaggio.
+              Quando pescaAperta=true renderizza PescaMisteriosaFeed al posto di HomeTab.
+              ═════════════════════════════════════════════════════════════════ */}
           {tab === 'home' && !pescaAperta && <HomeTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} setTab={setTab} setColezSubTab={setColezSubTab} user={user} onApriPesca={() => setPescaAperta(true)} />}
           {tab === 'home' && pescaAperta && (
             <div className="fade-in" style={{ maxWidth: 480, margin: '0 auto', width: '100%' }}>
@@ -226,10 +292,37 @@ export default function GiocoPage() {
               />
             </div>
           )}
+          {/* ═════════════════════════════════════════════════════════════════
+              TAB: SBUSTA
+              Componente SbustaTab — apertura pacchetti, God Pack, drop attivi.
+              ═════════════════════════════════════════════════════════════════ */}
           {tab === 'sbusta' && <SbustaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} user={user} mostraNotif={mostraNotif} godPackProb={godPackProb}  ModaleCarta={ModaleCarta} />}
+
+          {/* ═════════════════════════════════════════════════════════════════
+              TAB: COLLEZIONE
+              Componente CollezioneTab — visualizzazione waifu, outfit, upgrade,
+              personalizzazione e gestione team salvati.
+              ═════════════════════════════════════════════════════════════════ */}
           {tab === 'collezione' && <CollezioneTab collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} profilo={profilo} setProfilo={setProfilo} user={user} mostraNotif={mostraNotif} initialSubTab={colezSubTab} statConfig={statConfig}  ModaPersonalizzazione={ModaPersonalizzazione} />}
+
+          {/* ═════════════════════════════════════════════════════════════════
+              TAB: MAPPA
+              Componente MappaTab — selezione territori, battaglia vs CPU,
+              pick phase (draft 3-from-5), WaifuBattleArena, modalità multiplayer.
+              Documentazione: src/components/mappa/MappaTab.jsx
+              ═════════════════════════════════════════════════════════════════ */}
           {tab === 'mappa' && <MappaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} user={user} mostraNotif={mostraNotif} />}
+
+          {/* ═════════════════════════════════════════════════════════════════
+              TAB: AMICI
+              Componente AmiciTab — lista amici, richieste, scambi waifu.
+              ═════════════════════════════════════════════════════════════════ */}
           {tab === 'amici' && <AmiciTab user={user} profilo={profilo} collezione={collezione} waifuCat={waifuCat} onCollectionRefresh={async () => { const c = await getCollezione(user.uid); setColl(c); }} />}
+
+          {/* ═════════════════════════════════════════════════════════════════
+              TAB: CLASSIFICA
+              Componente ClassificaTab — leaderboard globale con posizione utente.
+              ═════════════════════════════════════════════════════════════════ */}
           {tab === 'classifica' && <ClassificaTab user={user} />}
         </div>
 
@@ -825,7 +918,28 @@ function _HomeTab_UNUSED({ profilo, setProfilo, collezione, waifuCat, outfitCat,
   );
 }
 
-// ── Statistiche Combattimento (Fase 2) ──────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// COMPONENTE: StatCombattimento
+// Responsabilità: pannello statistiche di combattimento (vittorie, sconfitte,
+//   territori conquistati, livello mappa, posizione classifica)
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * StatCombattimento — pannello riepilogativo delle statistiche di battaglia.
+ *
+ * Mostra in forma compatta le statistiche di combattimento del giocatore:
+ * vittorie, sconfitte, territori conquistati, livello mappa e posizione in
+ * classifica globale. Il box classifica è cliccabile per navigare al tab dedicato.
+ *
+ * Principio SRP: responsabile SOLO della visualizzazione read-only delle statistiche.
+ * Non modifica stato né interagisce con Firestore.
+ *
+ * @param {Object} props
+ * @param {Object} props.profilo               — Profilo utente Firestore (vittorie, sconfitte, livelloMappa).
+ * @param {number} props.territoriConquistati  — Numero di territori attualmente sotto il controllo del giocatore.
+ * @param {Function} props.setTab              — Callback per navigare a un altro tab (es. 'classifica').
+ * @param {number|null} props.posizioneClassifica — Posizione corrente in classifica (null se non disponibile).
+ */
 function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneClassifica }) {
   const vittorie = profilo.vittorie ?? 0;
   const sconfitte = profilo.sconfitte ?? 0;
@@ -921,7 +1035,34 @@ function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneCla
   );
 }
 
-// ── Banner Ultime Carte (Fase 2 + Fase 3: modal click) ─────
+// ════════════════════════════════════════════════════════════════════════════
+// COMPONENTE: BannerUltimeCarte
+// Responsabilità: scrollable horizontal banner con le ultime 20 carte acquisite
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * BannerUltimeCarte — carosello orizzontale delle ultime carte acquisite.
+ *
+ * Aggrega waifu, outfit e pose ordinate per data di acquisizione e mostra le
+ * ultime 20 in uno scroll orizzontale. La prima card è sempre un accesso rapido
+ * all'apertura pacchetti. Ogni carta è cliccabile per aprire il modal di dettaglio.
+ *
+ * Principio SRP: responsabile SOLO della visualizzazione e selezione della carta
+ * da mostrare nel modal. Non modifica la collezione direttamente.
+ *
+ * @param {Object} props
+ * @param {Array}    props.tutteLeWaifu    — Lista waifu con dati { id, dati, ... }.
+ * @param {Array}    props.tuttiGliOutfit  — Lista outfit con dati { id, dati, ... }.
+ * @param {Array}    props.tutteLePose     — Lista pose con dati { id, dati, ... }.
+ * @param {Array}    props.outfitCat       — Catalogo outfit da Firestore.
+ * @param {Array}    props.poseCat         — Catalogo pose da Firestore.
+ * @param {Object}   props.collezione      — Collezione completa dell'utente.
+ * @param {Object}   props.profilo         — Profilo utente Firestore.
+ * @param {Function} props.setProfilo      — Setter stato profilo.
+ * @param {Object}   props.user            — Oggetto Firebase Auth user.
+ * @param {number}   props.totalPack       — Numero totale pacchetti disponibili.
+ * @param {Function} props.setTab          — Callback navigazione tab.
+ */
 function BannerUltimeCarte({ tutteLeWaifu, tuttiGliOutfit, tutteLePose, outfitCat, poseCat, collezione, profilo, setProfilo, user, totalPack, setTab }) {
   const [cartaSel, setCartaSel] = useState(null); // Fase 3: carta selezionata per modal
 
@@ -1394,9 +1535,28 @@ function MadalePosa({ posa }) {
   );
 }
 
-// ============================================================
-// TAB: AMICI
-// ============================================================
+// ════════════════════════════════════════════════════════════════════════════
+// COMPONENTE: AmiciTab
+// Responsabilità: sistema sociale — lista amici, richieste, scambi waifu
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * AmiciTab — sezione sociale del gioco.
+ *
+ * Gestisce due sotto-tab: "amici" (lista amici, richieste, aggiunta tramite ID)
+ * e "scambi" (lista scambi attivi, badge con counter richieste in entrata).
+ * I dati vengono caricati una sola volta al mount (pre-fetch centralizzato).
+ *
+ * Principio SRP: responsabile SOLO della gestione dell'interfaccia sociale.
+ * La logica di trade è delegata ai componenti ScambiList/TradeRequestModal.
+ *
+ * @param {Object}   props
+ * @param {Object}   props.user                 — Oggetto Firebase Auth user.
+ * @param {Object}   props.profilo              — Profilo utente Firestore.
+ * @param {Object}   props.collezione           — Collezione waifu/outfit dell'utente.
+ * @param {Array}    props.waifuCat             — Catalogo completo waifu.
+ * @param {Function} props.onCollectionRefresh  — Callback da invocare dopo uno scambio completato.
+ */
 function AmiciTab({ user, profilo, collezione, waifuCat, onCollectionRefresh }) {
   const [subTab, setSubTab] = useState('amici'); // 'amici' | 'scambi'
   const [scambiBadge, setScambiBadge] = useState(0);
@@ -1491,9 +1651,24 @@ function AmiciTab({ user, profilo, collezione, waifuCat, onCollectionRefresh }) 
   );
 }
 
-// ============================================================
-// TAB: CLASSIFICA — Fase 6 (implementazione completa)
-// ============================================================
+// ════════════════════════════════════════════════════════════════════════════
+// COMPONENTE: ClassificaTab
+// Responsabilità: leaderboard globale con podio, countdown reset settimanale
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * ClassificaTab — leaderboard globale del gioco.
+ *
+ * Carica i primi 200 giocatori ordinati per punteggio e mostra podio (top 3),
+ * lista completa e la posizione corrente dell'utente loggato evidenziata.
+ * Include countdown al reset settimanale del lunedì.
+ *
+ * Principio SRP: responsabile SOLO della visualizzazione della classifica.
+ * Non modifica punteggi né interagisce con altri sistemi di gioco.
+ *
+ * @param {Object} props
+ * @param {Object} props.user — Oggetto Firebase Auth user (per evidenziare la riga dell'utente).
+ */
 function ClassificaTab({ user }) {
   const [classifica, setClassifica] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2665,6 +2840,34 @@ function SelectionScreen({ drop, dropsAttivi, dropSelId, setDropSelId, profilo, 
 }
 
 
+// ════════════════════════════════════════════════════════════════════════════
+// COMPONENTE: SbustaTab
+// Responsabilità: apertura pacchetti, reveal animato, gestione drop attivi
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * SbustaTab — sezione apertura pacchetti del gioco.
+ *
+ * Gestisce l'intero flusso di apertura: selezione drop, schermata pacchetto chiuso,
+ * reveal animato carta per carta (con EdgeSpoilerOverlay), risultati e aggiornamento
+ * della collezione su Firestore. Supporta apertura singola e multi-pack.
+ *
+ * Principio SRP: responsabile SOLO del flusso di apertura pacchetti.
+ * La logica di generazione pacchetto è delegata a `generaPacchetto` (gameLogic).
+ *
+ * @param {Object}   props
+ * @param {Object}   props.profilo          — Profilo utente Firestore.
+ * @param {Function} props.setProfilo       — Setter stato profilo.
+ * @param {Object}   props.collezione       — Collezione corrente dell'utente.
+ * @param {Function} props.setColl          — Setter stato collezione.
+ * @param {Array}    props.waifuCat         — Catalogo waifu da Firestore.
+ * @param {Array}    props.outfitCat        — Catalogo outfit da Firestore.
+ * @param {Array}    props.poseCat          — Catalogo pose da Firestore.
+ * @param {Object}   props.user             — Oggetto Firebase Auth user.
+ * @param {Function} props.mostraNotif      — Callback per mostrare notifiche toast.
+ * @param {number}   [props.godPackProb]    — Probabilità god pack (default da costante).
+ * @param {Function} props.ModaleCarta      — Componente modal da iniettare per detail view.
+ */
 function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitCat, poseCat, user, mostraNotif, godPackProb = GOD_PACK_PROB_DEFAULT, ModaleCarta }) {
   const [stato, setStato] = useState('selection');
   const [carteRivelate, setCarteRivelate] = useState([]);
@@ -3362,6 +3565,36 @@ const stileLevelUp = {
   textShadow: '0 0 12px rgba(0,230,118,0.7), 0 0 4px rgba(0,230,118,0.4)',
 };
 
+// ════════════════════════════════════════════════════════════════════════════
+// COMPONENTE: CollezioneTab
+// Responsabilità: visualizzazione e gestione collezione (waifu, outfit, pose, team)
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * CollezioneTab — sezione gestione collezione completa.
+ *
+ * Gestisce quattro sotto-tab: waifu, outfit, pose e team. Per ogni waifu consente
+ * visualizzazione dettaglio, level-up statistiche, equipaggiamento outfit/pose,
+ * personalizzazione (ModaPersonalizzazione) e scambio. Per i team consente
+ * creazione, modifica e cancellazione.
+ *
+ * Principio SRP: responsabile SOLO dell'interfaccia di visualizzazione e gestione
+ * della collezione. Le operazioni su Firestore sono delegate a saveCollezione/updateUserProfile.
+ *
+ * @param {Object}   props
+ * @param {Object}   props.collezione           — Collezione corrente dell'utente.
+ * @param {Function} props.setColl              — Setter stato collezione.
+ * @param {Array}    props.waifuCat             — Catalogo waifu da Firestore.
+ * @param {Array}    props.outfitCat            — Catalogo outfit da Firestore.
+ * @param {Array}    props.poseCat              — Catalogo pose da Firestore.
+ * @param {Object}   props.profilo              — Profilo utente Firestore.
+ * @param {Function} props.setProfilo           — Setter stato profilo.
+ * @param {Object}   props.user                 — Oggetto Firebase Auth user.
+ * @param {Function} props.mostraNotif          — Callback per notifiche toast.
+ * @param {string}   [props.initialSubTab]      — Sotto-tab iniziale ('waifu'|'outfit'|'pose'|'team').
+ * @param {Object}   [props.statConfig]         — Config stat/upgrade (ranges e steps).
+ * @param {Function} props.ModaPersonalizzazione — Componente overlay personalizzazione outfit.
+ */
 function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, profilo, setProfilo, user, mostraNotif, initialSubTab = 'waifu', statConfig = { ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT }, ModaPersonalizzazione }) {
   const [tabSub, setTabSub] = useState(initialSubTab);
   const [waifuSel, setWaifuSel] = useState(null);
@@ -5293,11 +5526,36 @@ function BarraFiltriWaifu({ filtroNome, setFiltroNome, filtroRarita, setFiltroRa
   );
 }
 
-// ============================================================
-// COMPONENTE RIUTILIZZABILE: Selezione Waifu per Team
-// Usato in CollezionaTab (crea/modifica team) e MappaTab (selezione prima battaglia)
-// Include: filtri (rarità, stat, ordinamento), infinite scroll, bottoni sticky overlay
-// ============================================================
+// ════════════════════════════════════════════════════════════════════════════
+// COMPONENTE: SelezioneWaifuTeam
+// Responsabilità: interfaccia riutilizzabile selezione team per la battaglia
+// Usato in: CollezioneTab (crea/modifica team) e MappaTab (roster pre-battaglia)
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * SelezioneWaifuTeam — pannello di selezione waifu per la formazione del team.
+ *
+ * Mostra la lista di waifu disponibili con filtri (nome, rarità, drop, scambiabile,
+ * hot) e ordinamento multi-campo. Supporta infinite scroll (paginazione client-side)
+ * e bottoni di conferma/annulla sticky in overlay.
+ *
+ * Principio SRP: responsabile SOLO dell'interfaccia di selezione. Non persiste
+ * lo stato del team — la logica di conferma è delegata alla callback `onConferma`.
+ *
+ * @param {Object}   props
+ * @param {Array}    props.waifuDisponibili   — Lista completa di waifu selezionabili.
+ * @param {Array}    props.waifuSelezionate   — IDs delle waifu attualmente selezionate.
+ * @param {Function} props.onToggle           — Callback toggle selezione per ID waifu.
+ * @param {number}   [props.maxSel=5]         — Numero massimo di waifu selezionabili.
+ * @param {string}   [props.accentColor]      — Colore accent per elementi selezionati.
+ * @param {string}   [props.labelSel]         — Testo header selezione.
+ * @param {Function} props.onConferma         — Callback invocata alla conferma selezione.
+ * @param {Function} props.onAnnulla          — Callback invocata all'annullamento.
+ * @param {string}   [props.labelConferma]    — Testo bottone conferma.
+ * @param {boolean}  [props.disabledConferma] — Disabilita il bottone conferma.
+ * @param {Array}    [props.drops]            — Lista drop attivi per il filtro per drop.
+ * @param {Object}   props.profilo            — Profilo utente (per logiche di filtro avanzate).
+ */
 const TEAM_PAGE_SIZE = 12;
 
 function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxSel = 5, accentColor = '#ffd666', labelSel = 'SCEGLI 5 WAIFU', onConferma, onAnnulla, labelConferma = 'CONFERMA', disabledConferma = false, drops = [], profilo }) {
@@ -5421,6 +5679,37 @@ function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxS
     </div>
   );
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// COMPONENTE: MappaTab
+// Responsabilità: mappa Risiko-style, battaglia vs CPU, conquista territori,
+//   pick phase (draft 3-from-5), WaifuBattleArena, modalità multiplayer
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * MappaTab — sezione mappa e battaglia del gioco.
+ *
+ * Implementa il loop completo di una battaglia vs CPU:
+ *   1. Selezione territorio da attaccare (MappaScrollabile)
+ *   2. Selezione roster di 5 waifu (SelezioneWaifuTeam)
+ *   3. Pick phase draft 3-from-5 (PickPhase)
+ *   4. Arena di battaglia (WaifuBattleArena)
+ *   5. Aggiornamento profilo/territori su Firestore (fineBattaglia)
+ *
+ * Gestisce anche l'accesso alla modalità multiplayer (MappaMultiplayer).
+ *
+ * Principio SRP: coordina il flusso di battaglia, ma la logica di combattimento
+ * è delegata a battleEngine, la UI arena a WaifuBattleArena, la mappa a MappaMondoArt.
+ *
+ * @param {Object}   props
+ * @param {Object}   props.profilo      — Profilo utente Firestore (energia, vittorie, territori...).
+ * @param {Function} props.setProfilo   — Setter stato profilo.
+ * @param {Object}   props.collezione   — Collezione waifu/team dell'utente.
+ * @param {Array}    props.waifuCat     — Catalogo waifu da Firestore.
+ * @param {Array}    props.outfitCat    — Catalogo outfit da Firestore.
+ * @param {Object}   props.user         — Oggetto Firebase Auth user.
+ * @param {Function} props.mostraNotif  — Callback per notifiche toast.
+ */
 function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, mostraNotif }) {
   // ── STATO MULTIPLAYER ──────────────────────────────────────
   const [modalitaMulti, setModalitaMulti] = useState(false); // true quando si entra nel multiplayer
@@ -5756,8 +6045,21 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   };
 
   // ── FINE BATTAGLIA ─────────────────────────────────────────
-  const fineBattaglia = async (vittoria) => {
-    setFase('gameEnd');
+  /**
+   * fineBattaglia — gestisce l'esito finale di una battaglia vs CPU.
+   *
+   * In caso di vittoria: conquista il territorio selezionato, assegna un pacchetto
+   * sfida e incrementa il contatore vittorie. Se tutti i territori sono conquistati,
+   * incrementa il livello mappa/CPU e reinizializza la mappa con nuovi occupanti.
+   * In caso di sconfitta: decrementa energia (se disponibile) e incrementa sconfitte.
+   * Persiste tutte le modifiche su Firestore tramite updateUserProfile.
+   *
+   * @param {boolean} vittoria — true se il giocatore ha vinto la battaglia.
+   */
+  const fineBattaglia = async (vittoria, { usaNuovoSistema = false } = {}) => {
+    // Nel nuovo sistema (WaifuBattleArena) il popup risultato è gestito internamente
+    // dal componente stesso — non mostrare il vecchio popup legacy (gameEnd).
+    if (!usaNuovoSistema) setFase('gameEnd');
     if (vittoria) {
       const nt = { ...territoriUtente, [terrSel.id]: { conquistato: true, impero: profilo.nomeImpero, coloreImpero: profilo.coloreImpero || '#f5a623' } };
       setTerritoriUtente(nt);
@@ -6386,8 +6688,8 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
         waifuCat={waifuCat}
         battleCtx={{ terrSel, nomeImperoAvversario, sonoAttaccante: true, nomeImpero: profilo?.nomeImpero || 'Tu' }}
         onBattleResult={async (isVictory) => {
-          // Stessa logica di fineBattaglia del vecchio sistema
-          await fineBattaglia(isVictory);
+          // Stessa logica di fineBattaglia del vecchio sistema, ma senza popup legacy
+          await fineBattaglia(isVictory, { usaNuovoSistema: true });
         }}
         onExit={() => {
           setWaifuBattleActive(false);
@@ -6648,70 +6950,9 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   );
 }
 
-// ============================================================
-// MAPPA SCROLLABILE CON ZOOM — wrapper attorno a MappaMondoArt
-// ============================================================
-function MappaScrollabile({ territoriUtente, coloreImpero, nomeImpero, territorioSelezionato, onTerritorioClick, mieiTerritori = [] }) {
-  const [zoom, setZoom] = useState(1);
-  const MIN_ZOOM = 0.6;
-  const MAX_ZOOM = 2.2;
-  const ZOOM_STEP = 0.2;
-
-  const handleWheel = useCallback((e) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-    setZoom(z => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z + delta)));
-  }, []);
-
-  return (
-    <div style={{ position: 'relative', background: 'radial-gradient(60% 40% at 50% 30%, rgba(167,139,250,0.08), transparent 70%), #02010a' }}>
-      {/* Controlli zoom */}
-      <div style={{
-        position: 'absolute', top: 8, right: 8, zIndex: 20,
-        display: 'flex', flexDirection: 'column', gap: 4,
-      }}>
-        <button onClick={() => setZoom(z => Math.min(MAX_ZOOM, z + ZOOM_STEP))} style={{
-          width: 28, height: 28, borderRadius: 6,
-          background: 'rgba(6,3,15,0.9)', border: '1px solid rgba(167,139,250,0.35)',
-          color: '#a78bfa', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontWeight: 700,
-        }}>+</button>
-        <button onClick={() => setZoom(1)} style={{
-          width: 28, height: 14, borderRadius: 4,
-          background: 'rgba(6,3,15,0.9)', border: '1px solid rgba(167,139,250,0.2)',
-          color: 'rgba(167,139,250,0.5)', fontSize: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: "'Saira Condensed', Saira, sans-serif",
-        }}>1:1</button>
-        <button onClick={() => setZoom(z => Math.max(MIN_ZOOM, z - ZOOM_STEP))} style={{
-          width: 28, height: 28, borderRadius: 6,
-          background: 'rgba(6,3,15,0.9)', border: '1px solid rgba(167,139,250,0.35)',
-          color: '#a78bfa', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontWeight: 700,
-        }}>âˆ’</button>
-      </div>
-
-      {/* Container scrollabile */}
-      <div
-        className="mappa-scroll-container"
-        onWheel={handleWheel}
-        style={{ borderRadius: 10, overflow: 'auto', maxHeight: typeof window !== 'undefined' && window.innerWidth < 640 ? '55vw' : '68vh', minHeight: 200 }}
-      >
-        <div style={{
-          transform: `scale(${zoom})`,
-          transformOrigin: 'top left',
-          width: zoom > 1 ? `${zoom * 100}%` : '100%',
-          minWidth: zoom > 1 ? `${zoom * 100}%` : undefined,
-        }}>
-          <MappaMondoArt
-            territoriUtente={territoriUtente}
-            coloreImpero={coloreImpero}
-            nomeImpero={nomeImpero}
-            territorioSelezionato={territorioSelezionato}
-            onTerritorioClick={onTerritorioClick}
-            mieiTerritori={mieiTerritori}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
+// ═════════════════════════════════════════════════════════════════════════════
+// MAPPA SCROLLABILE CON ZOOM
+// Estratto in src/components/mappa/MappaScrollabile.jsx
+// Importato in cima a questo file tramite:
+//   import MappaScrollabile from ‘@/components/mappa/MappaScrollabile’;
+// ═════════════════════════════════════════════════════════════════════════════
