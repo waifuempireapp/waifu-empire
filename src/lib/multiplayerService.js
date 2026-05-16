@@ -465,6 +465,28 @@ export async function salvaArenaMove(codice, uid, turno, moveData) {
   });
 }
 
+// ── PvP Arena: salva il seed RNG condiviso all'inizio della battaglia arena ─
+// battagliaCorrente.battleSeed — intero 32-bit generato dall'attaccante (RESOLVER)
+// Tutti i client usano questo seed per garantire RNG deterministico e riproducibile
+export async function inizializzaArenaSeedRng(codice, battleSeed) {
+  const ref = doc(db, 'partite_multi', codice);
+  await updateDoc(ref, {
+    'battagliaCorrente.battleSeed': battleSeed,
+    aggiornato: serverTimestamp(),
+  });
+}
+
+// ── PvP Arena: salva il risultato del turno calcolato dall'attaccante ────────
+// arenaRisultato.t{N} = risultato completo (pDmg, eDmg, critici, HP finali, firstMover, ...)
+// Il DIFENSORE (RECEIVER) legge questo dato e mostra le animazioni senza ricalcolare
+export async function salvaArenaRisultato(codice, turno, risultato) {
+  const ref = doc(db, 'partite_multi', codice);
+  await updateDoc(ref, {
+    [`battagliaCorrente.arenaRisultato.t${turno}`]: risultato,
+    aggiornato: serverTimestamp(),
+  });
+}
+
 // ── PvP Arena: inizializza i team nell'arena ─────────────────────────────
 export async function inizializzaArena(codice, uid, teamIds) {
   const ref = doc(db, 'partite_multi', codice);

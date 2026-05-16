@@ -437,6 +437,12 @@ export default function WaifuBattleArena({
   playerTeam, enemyTeam, onExit, onBattleResult,
   battleCtx, waifuCat=[],
   isPvP=false, pvpOpponentMove=null, onPvPMoveSubmit, pvpWaiting=false,
+  // PvP Arena — Attacker-as-resolver sync
+  pvpIsResolver=false,       // true = RESOLVER (attaccante): calcola e scrive su Firestore
+  pvpTurnResult=null,        // RECEIVER (difensore): risultato pre-calcolato da Firestore
+  onPvPTurnResolved=null,    // RESOLVER chiama questo dopo aver risolto (scrive su Firestore)
+  onPvPTurnConsumed=null,    // RECEIVER chiama questo dopo aver applicato il risultato
+  pvpBattleSeed=null,        // seed RNG condiviso (usato dal RESOLVER per audit)
 }) {
 
   useEffect(()=>{
@@ -564,14 +570,30 @@ export default function WaifuBattleArena({
     return()=>clearInterval(timerRef.current);
   },[phase,pActive]); // eslint-disable-line
 
-  // ── PvP move sync (UNCHANGED) ────────────────────────────────────────────
+  // ── PvP move sync ────────────────────────────────────────────────────────
   const pendingPMoveRef = useRef(null);
   const pvpOpMoveRef    = useRef(null);
   useEffect(()=>{ pvpOpMoveRef.current=pvpOpponentMove; },[pvpOpponentMove]);
+
+  // RECEIVER: quando arriva il risultato pre-calcolato da Firestore
+  // Non ricalcola nulla — usa i valori di Firestore come verità
   useEffect(()=>{
-    if(!isPvP||pvpOpponentMove==null||pendingPMoveRef.current==null) return;
+    if(!isPvP||pvpIsResolver) return; // solo RECEIVER
+    if(pvpTurnResult===null||pendingPMoveRef.current===null) return;
     if(resolveRef.current) return;
-    resolveTurn(pendingPMoveRef.current, pvpOpponentMove);
+    // Usa il risultato di Firestore — pMoveIdx dal RESOLVER è la mossa dell'avversario (attaccante)
+    // Sul device del RECEIVER: l'attaccante è "enemy", quindi passiamo pMoveIdx come eMi
+    resolveTurn(pendingPMoveRef.current, pvpTurnResult.pMoveIdx, pvpTurnResult);
+    pendingPMoveRef.current=null;
+  },[pvpTurnResult]); // eslint-disable-line
+
+  // RESOLVER: quando arriva la mossa dell'avversario da Firestore (pvpOpponentMove)
+  // Calcola il turno localmente e poi chiama onPvPTurnResolved per scrivere su Firestore
+  useEffect(()=>{
+    if(!isPvP||!pvpIsResolver) return; // solo RESOLVER
+    if(pvpOpponentMove==null||pendingPMoveRef.current==null) return;
+    if(resolveRef.current) return;
+    resolveTurn(pendingPMoveRef.current, pvpOpponentMove, null); // null = calcola localmente
     pendingPMoveRef.current=null;
   },[pvpOpponentMove]); // eslint-disable-line
 
@@ -617,8 +639,10 @@ export default function WaifuBattleArena({
       pendingPMoveRef.current=moveIdx;
       onPvPMoveSubmit?.(moveIdx);
       setMsg('Mossa inviata! Attendo la mossa avversaria…');
-      if(pvpOpMoveRef.current!=null&&!resolveRef.current){
-        resolveTurn(moveIdx, pvpOpMoveRef.current);
+      // Early-fire solo per RESOLVER: se la mossa avversaria era già arrivata via ref
+      // RECEIVER non fa early-fire — aspetta pvpTurnResult via useEffect
+      if(pvpIsResolver&&pvpOpMoveRef.current!=null&&!resolveRef.current){
+        resolveTurn(moveIdx, pvpOpMoveRef.current, null); // null = calcola localmente (RESOLVER)
         pendingPMoveRef.current=null;
       }
     } else {
@@ -627,8 +651,11 @@ export default function WaifuBattleArena({
     }
   },[isAnim,phase,player,enemy,lastPMove,lastEMove,isPvP,onPvPMoveSubmit,eTeam,pTeam,eActive,pActive]); // eslint-disable-line
 
-  // ── Core turn resolution (UNCHANGED) ─────────────────────────────────────
-  const resolveTurn = useCallback(async(pMi,eMi)=>{
+  // ── Core turn resolution ──────────────────────────────────────────────────
+  // externalResult: se non null, è il risultato pre-calcolato dal RESOLVER (attaccante)
+  //   → usato solo dal RECEIVER (difensore) per animare senza ricalcolare danni
+  //   → se null: calcola localmente (vs CPU o se RESOLVER PvP)
+  const resolveTurn = useCallback(async(pMi, eMi, externalResult=null)=>{
     if(resolveRef.current) return;
     resolveRef.current=true;
     setPhase('resolving'); setIsAnim(true); setShowBench(false);
@@ -638,18 +665,42 @@ export default function WaifuBattleArena({
     let cPA=pActive; let cEA=eActive;
     let dmgAcc=0;
 
-    const pSpd=(curP[cPA].speed??50)+(Math.random()*10-5);
-    const eSpd=(curE[cEA].speed??50)+(Math.random()*10-5);
-    const first=pSpd>=eSpd?'player':'enemy';
+    // Variabili per tracking danni (usate da RESOLVER per onPvPTurnResolved)
+    let pDmgDealt=0, eDmgDealt=0, pAttackCrit=false, eAttackCrit=false;
 
-    const execAttack=async(side, mi)=>{
+    // Ordine di turno: usa external se disponibile (RECEIVER), altrimenti calcola (RESOLVER/CPU)
+    // NOTA: externalResult.firstMover è dalla prospettiva del RESOLVER (attaccante = 'player')
+    // Sul device del RECEIVER (difensore), le prospettive sono INVERTITE → flippiamo
+    const first = externalResult
+      ? (externalResult.firstMover === 'player' ? 'enemy' : 'player') // RECEIVER: flip prospettiva
+      : ((curP[cPA].speed??50)+(Math.random()*10-5)) >=
+        ((curE[cEA].speed??50)+(Math.random()*10-5))
+        ? 'player' : 'enemy';                                          // RESOLVER/CPU: calcola localmente
+
+    // execAttack: esegue animazione e applica danno
+    // overrideDamage/overrideCrit: usati dal RECEIVER per applicare valori da Firestore
+    const execAttack=async(side, mi, overrideDamage=null, overrideCrit=null)=>{
       const att=side==='player'?curP[cPA]:curE[cEA];
       const def=side==='player'?curE[cEA]:curP[cPA];
       if(!att||!def||att.isKO) return false;
       const move=att.moves[mi];
       if(!move) return false;
 
-      const {damage,isCrit,effectiveness}=calculateDamage(att,move,def);
+      let damage, isCrit, effectiveness;
+      if(overrideDamage!==null){
+        // RECEIVER: usa valori da Firestore — NON ricalcola
+        damage=overrideDamage;
+        isCrit=overrideCrit??false;
+        effectiveness='Normal';
+      } else {
+        // RESOLVER/CPU: calcola localmente
+        const result=calculateDamage(att,move,def);
+        damage=result.damage; isCrit=result.isCrit; effectiveness=result.effectiveness;
+      }
+
+      // Tracking danni per onPvPTurnResolved (RESOLVER)
+      if(side==='player'){ pDmgDealt=damage; pAttackCrit=isCrit; }
+      else { eDmgDealt=damage; eAttackCrit=isCrit; }
 
       if(side==='player'){setPAnim('wba-aR');}else{setEAnim('wba-aL');}
       setMsg(`${att.name} usa ${move.name}!`);
@@ -672,7 +723,7 @@ export default function WaifuBattleArena({
         setPTeam([...curP]); setETeam([...curE]);
       }
       dmgAcc+=damage;
-      lastCritRef.current = isCrit; // [WAIFU CHAMPIONS REFACTOR — CRIT] read by HP-delta useEffects for float coloring
+      lastCritRef.current=isCrit; // [WAIFU CHAMPIONS REFACTOR — CRIT] read by HP-delta useEffects
 
       // [WAIFU CHAMPIONS REFACTOR] — per-side stats tracking
       if(side==='player'){
@@ -693,8 +744,15 @@ export default function WaifuBattleArena({
       return newDef.isKO;
     };
 
+    // Esegue gli attacchi nell'ordine corretto
+    // Se RECEIVER con externalResult: passa danno/crit da Firestore
+    // NOTA prospettive: RESOLVER p=attaccante, RECEIVER p=difensore (invertite)
+    // firstMover già flippato sopra → first==='player' = difensore, first==='enemy' = attaccante
+    // → danni: 'player' (difensore) = externalResult.eDmg; 'enemy' (attaccante) = externalResult.pDmg
     const firstMi=first==='player'?pMi:eMi;
-    const firstKO=await execAttack(first,firstMi);
+    const firstDmg  = externalResult ? (first==='player' ? externalResult.eDmg : externalResult.pDmg) : null;
+    const firstCrit = externalResult ? (first==='player' ? externalResult.eCrit : externalResult.pCrit) : null;
+    const firstKO=await execAttack(first,firstMi,firstDmg,firstCrit);
     await wait(300);
 
     if(firstKO){
@@ -706,7 +764,9 @@ export default function WaifuBattleArena({
     } else {
       const second=first==='player'?'enemy':'player';
       const secondMi=second==='player'?pMi:eMi;
-      const secondKO=await execAttack(second,secondMi);
+      const secondDmg  = externalResult ? (second==='player' ? externalResult.eDmg : externalResult.pDmg) : null;
+      const secondCrit = externalResult ? (second==='player' ? externalResult.eCrit : externalResult.pCrit) : null;
+      const secondKO=await execAttack(second,secondMi,secondDmg,secondCrit);
       await wait(300);
       if(secondKO){
         const koName2=second==='player'?curE[cEA]?.name:curP[cPA]?.name;
@@ -719,6 +779,34 @@ export default function WaifuBattleArena({
 
     setLastPMove(pMi); setLastEMove(eMi);
     setTotalDmg(d=>d+dmgAcc); setTurn(t=>t+1);
+
+    // RESOLVER PvP: scrivi il risultato su Firestore dopo aver animato il turno
+    // Usa il turno corrente (state React) tramite setTurn — usiamo il valore prima dell'incremento
+    if(isPvP&&pvpIsResolver&&onPvPTurnResolved&&!externalResult){
+      // Il numero turno corrente è quello che era prima di setTurn(t=>t+1)
+      // Lo usiamo dal ref di MappaMultiplayer (arenaTurnoRef), qui usiamo turn state pre-increment
+      // Nota: turn è ancora il valore vecchio qua perché setTurn è async
+      const turnResult={
+        pMoveIdx: pMi,
+        eMoveIdx: eMi,
+        firstMover: first,
+        pDmg: pDmgDealt,
+        eDmg: eDmgDealt,
+        pCrit: pAttackCrit,
+        eCrit: eAttackCrit,
+        pHPFinal: curP[cPA]?.hp ?? 0,
+        eHPFinal: curE[cEA]?.hp ?? 0,
+        pIsKO: curP[cPA]?.isKO ?? false,
+        eIsKO: curE[cEA]?.isKO ?? false,
+      };
+      // turn è il numero turno React state (incrementato da setTurn sopra, ma ancora il vecchio in questa chiusura)
+      onPvPTurnResolved(turn - 1, turnResult); // turn - 1 perché setTurn(t=>t+1) non ha ancora aggiornato
+    }
+
+    // RECEIVER PvP: notifica MappaMultiplayer che il risultato è stato applicato
+    if(isPvP&&!pvpIsResolver&&externalResult){
+      onPvPTurnConsumed?.();
+    }
 
     const pKO=curP[cPA]?.isKO;
     const eKO=curE[cEA]?.isKO;
@@ -747,7 +835,7 @@ export default function WaifuBattleArena({
 
     setIsAnim(false); resolveRef.current=false;
     setPhase('playerChoose'); setMsg('Scegli la tua mossa!'); setTimer(30);
-  },[pTeam,eTeam,pActive,eActive,triggerFlash]); // eslint-disable-line
+  },[pTeam,eTeam,pActive,eActive,triggerFlash,isPvP,pvpIsResolver,onPvPTurnResolved,onPvPTurnConsumed,turn]); // eslint-disable-line
 
   // ── Player KO swap (UNCHANGED) ───────────────────────────────────────────
   const handlePlayerSwap=useCallback((newIdx)=>{
