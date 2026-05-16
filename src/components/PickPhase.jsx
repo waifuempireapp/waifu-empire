@@ -559,21 +559,32 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
           )}
         </div>
 
-      </div>
+        {/* ── Bottone CONFERMA — sticky dentro il body scrollabile ──────────────
+            Usare `position: sticky; bottom: 0` dentro il contenitore scroll è
+            più affidabile di un footer esterno su mobile:
+            - iOS Safari: il footer fisso esterno può finire sotto l'home indicator
+            - Android: la barra di navigazione può coprire il bottom fisso
+            Con sticky il bottone scorre con il contenuto ma si ferma in fondo
+            all'area visibile dello scroll — sempre raggiungibile con uno swipe. */}
+        <div style={{
+          position: 'sticky',
+          bottom: 0,
+          padding: '10px 0',
+          paddingBottom: 'max(10px, env(safe-area-inset-bottom, 10px))',
+          background: 'rgba(6,3,15,.96)',
+          borderTop: '1px solid rgba(255,255,255,.07)',
+          marginTop: 8,
+        }}>
+          <button
+            style={S.confirmBtn(activeSlots.length === PICKS_RICHIESTI)}
+            onClick={activeSlots.length === PICKS_RICHIESTI ? handleConfirm : undefined}
+          >
+            {activeSlots.length === PICKS_RICHIESTI
+              ? '⚔ CONFERMA TEAM'
+              : `SCEGLI ANCORA ${PICKS_RICHIESTI - activeSlots.length} WAIFU`}
+          </button>
+        </div>
 
-      {/* ── Footer sticky — pulsante di conferma sempre visibile ──────────────
-          Abilitato solo quando sono state selezionate esattamente PICKS_RICHIESTI waifu.
-          Usa S.confirmBtn(active) per differenziare lo stile attivo/disabilitato. */}
-      <div style={{
-        flexShrink: 0,
-        padding: '8px 14px',
-        paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))',
-        background: 'rgba(6,3,15,.92)',
-        borderTop: '1px solid rgba(255,255,255,.07)',
-      }}>
-        <button style={S.confirmBtn(activeSlots.length === PICKS_RICHIESTI)} onClick={activeSlots.length === PICKS_RICHIESTI ? handleConfirm : undefined}>
-          {activeSlots.length === PICKS_RICHIESTI ? '⚔ CONFERMA TEAM' : `SCEGLI ANCORA ${PICKS_RICHIESTI - activeSlots.length} WAIFU`}
-        </button>
       </div>
     </div>
   );
