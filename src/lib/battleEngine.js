@@ -518,12 +518,12 @@ export function initBattleWaifu(waifuFirestore, collectionData = null) {
  *
  * @param {Object[]} waifuList - Array di documenti waifu Firestore
  * @param {Object} collectionMap - Mappa uid → dati collezione ({ livello })
- * @returns {WaifuBattleStat[]} Team pronto per la battaglia (max 4 elementi)
+ * @returns {WaifuBattleStat[]} Team pronto per la battaglia (max 3 elementi — 3v3)
  */
 export function initBattleTeam(waifuList, collectionMap = {}) {
   return waifuList
     .filter(Boolean)
-    .slice(0, 4)
+    .slice(0, 3)   // 3v3: il team è sempre composto da 3 waifu
     .map(w => initBattleWaifu(w, collectionMap[w.id]));
 }
 
@@ -534,13 +534,13 @@ export function initBattleTeam(waifuList, collectionMap = {}) {
  * @param {Object[]} waifuCat - Catalogo completo delle waifu (da Firestore)
  * @param {Set<string>} playerIds - ID delle waifu del giocatore (da escludere se possibile)
  * @param {number} cpuLevel - Livello CPU (1–10) — scala HP e speed
- * @returns {WaifuBattleStat[]} Team CPU di 4 waifu
+ * @returns {WaifuBattleStat[]} Team CPU di 3 waifu (3v3 — coerente con la pick phase)
  */
 export function generateCPUTeam(waifuCat, playerIds = new Set(), cpuLevel = 1) {
   const pool = waifuCat.filter(w => !playerIds.has(w.id));
   // Se il pool esclusivo è insufficiente, usa tutto il catalogo (evita errori con pochi waifu)
-  const source = pool.length >= 4 ? pool : waifuCat;
-  const shuffled = [...source].sort(() => Math.random() - 0.5).slice(0, 4);
+  const source = pool.length >= 3 ? pool : waifuCat;
+  const shuffled = [...source].sort(() => Math.random() - 0.5).slice(0, 3); // 3v3
   return shuffled.map(w => {
     const base = initBattleWaifu(w);
     // Scala HP e speed per il livello CPU — bonus 10% per livello sopra 1

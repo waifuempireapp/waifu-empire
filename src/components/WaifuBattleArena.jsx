@@ -561,12 +561,17 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
     </div>
   );
 
-  // [WAIFU CHAMPIONS REFACTOR — CRIT] bhText becomes JSX to show ★ CRITICAL badge
+  // Biggest hit: autore ('player' → "Tu", 'enemy' → nome avversario)
+  const bhAutore = biggestHit?.side === 'player'
+    ? (nomeImpero || 'Tu')
+    : (nomeImperoAvversario || 'CPU');
+
   const bhContent = (biggestHit?.dmg ?? 0) > 0
     ? <>
+        <span style={{color:'rgba(238,232,220,.45)',fontSize:8,fontWeight:400}}>{bhAutore}: </span>
         {biggestHit.dmg} ({biggestHit.waifuName} — {biggestHit.moveName})
         {biggestHit.wasCrit && (
-          <span style={{color:'#f5a623',marginLeft:5,fontWeight:700}}>★ CRITICAL</span>
+          <span style={{color:'#f5a623',marginLeft:5,fontWeight:700}}>★ CRIT</span>
         )}
       </>
     : <>—</>;
@@ -593,6 +598,34 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
           {isDraw?'PAREGGIO':isVictory?'VITTORIA!':'SCONFITTA'}
         </div>
 
+        {/* KO score — in evidenza, subito sotto il titolo */}
+        {!isDraw && (
+          <div style={{
+            marginBottom:12,
+            display:'flex', alignItems:'center', justifyContent:'center', gap:16,
+            background:'rgba(255,77,158,.07)', borderRadius:10, padding:'8px 18px',
+            border:'1px solid rgba(255,77,158,.18)',
+          }}>
+            <div style={{textAlign:'center'}}>
+              <div style={{fontFamily:"'Unbounded',sans-serif",fontSize:28,fontWeight:900,color:'#6cf0e0',lineHeight:1}}>
+                {statsP?.ko??0}
+              </div>
+              <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:9,letterSpacing:1.5,color:'rgba(108,240,224,.6)',textTransform:'uppercase',marginTop:2}}>
+                {nomeImpero||'Tu'}
+              </div>
+            </div>
+            <div style={{fontFamily:'Orbitron',fontSize:16,color:'rgba(238,232,220,.25)',fontWeight:700}}>–</div>
+            <div style={{textAlign:'center'}}>
+              <div style={{fontFamily:"'Unbounded',sans-serif",fontSize:28,fontWeight:900,color:'#ff85b6',lineHeight:1}}>
+                {statsE?.ko??0}
+              </div>
+              <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:9,letterSpacing:1.5,color:'rgba(255,133,182,.6)',textTransform:'uppercase',marginTop:2}}>
+                {nomeImperoAvversario||'CPU'}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Winner / Loser names */}
         {!isDraw && (
           <div style={{marginBottom:8,fontSize:11,color:'rgba(238,232,220,.6)',fontFamily:'Fredoka',lineHeight:1.6}}>
@@ -616,8 +649,7 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
 
         {/* Stats table */}
         <div style={{textAlign:'left',padding:'0 4px',marginBottom:14}}>
-          <StatRow label="Turni" value={turns} col='#f5a623'/>
-          <StatRow label="KO (Tu — Avv.)" value={`${statsP?.ko??0}  –  ${statsE?.ko??0}`} col='#ff4d9e'/>
+          <StatRow label="Turni totali" value={turns} col='#f5a623'/>
           <StatRow label="Danno totale (Tu)" value={statsP?.dmg??totalDmg} col='#00C8FF'/>
           <StatRow label="Danno totale (Avv.)" value={statsE?.dmg??0} col='#FF3355'/>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'5px 0'}}>
@@ -1163,7 +1195,7 @@ export default function WaifuBattleArena({
       } else {
         setStatsE(s=>{ const n={ ko: s.ko+(newDef.isKO?1:0), dmg: s.dmg+damage }; statsERef.current=n; return n; });
       }
-      setBiggestHit(bh=>{ const n=damage>bh.dmg ? { dmg:damage, waifuName:att.name, moveName:move.name, wasCrit:isCrit } : bh; biggestHitRef.current=n; return n; });
+      setBiggestHit(bh=>{ const n=damage>bh.dmg ? { dmg:damage, waifuName:att.name, moveName:move.name, wasCrit:isCrit, side } : bh; biggestHitRef.current=n; return n; });
 
       const msgs=[];
       if(isCrit) msgs.push('Colpo critico! 💥');

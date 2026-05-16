@@ -5734,6 +5734,9 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   // Quando waifuBattleActive è true, mostra WaifuBattleArena al posto del vecchio sistema
   const [waifuBattleActive, setWaifuBattleActive] = useState(false);
   const [waifuBattlePlayerTeam, setWaifuBattlePlayerTeam] = useState([]);
+  // enemyTeam proveniente dalla PickPhase (3 waifu CPU già selezionate).
+  // Passarlo esplicitamente a WaifuBattleArena evita che generi un nuovo team da 4.
+  const [waifuBattleEnemyTeam, setWaifuBattleEnemyTeam] = useState([]);
 
   // ── PICK PHASE (draft 3-from-5 prima dell'arena) ───────────
   const [pickPhaseActive, setPickPhaseActive] = useState(false);
@@ -6668,8 +6671,10 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
         isPvP={false}
         battleCtx={{ terrSel, nomeImperoAvversario, sonoAttaccante: true, nomeImpero: profilo?.nomeImpero || 'Tu' }}
         onConfirm={(playerTeam, enemyTeam) => {
-          // playerTeam e enemyTeam sono array WaifuBattleStat[] pronti per WaifuBattleArena
+          // Salva ENTRAMBI i team — il CPU team (3 waifu) viene passato direttamente
+          // a WaifuBattleArena così non genera il proprio team di 4.
           setWaifuBattlePlayerTeam(playerTeam);
+          setWaifuBattleEnemyTeam(enemyTeam);
           setPickPhaseActive(false);
           setCpuPickResult(null);
           setWaifuBattleActive(true);
@@ -6685,6 +6690,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
     return (
       <WaifuBattleArena
         playerTeam={waifuBattlePlayerTeam}
+        enemyTeam={waifuBattleEnemyTeam}
         waifuCat={waifuCat}
         battleCtx={{ terrSel, nomeImperoAvversario, sonoAttaccante: true, nomeImpero: profilo?.nomeImpero || 'Tu' }}
         onBattleResult={async (isVictory) => {
@@ -6694,6 +6700,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
         onExit={() => {
           setWaifuBattleActive(false);
           setWaifuBattlePlayerTeam([]);
+          setWaifuBattleEnemyTeam([]);
           resetBattaglia();
         }}
       />
