@@ -39,9 +39,18 @@ export default function PixelDetail({
 
   const isOwn   = pixel.ownerId === userUid;
   const isCPU   = pixel.ownerId === 'CPU';
-  const price    = pixelPrice(pixel.ownerLevel ?? 1);
+  const price    = pixel.buyPrice ?? pixelPrice(pixel.ownerLevel ?? 1);
   const pixelKey = `${pixel.x}_${pixel.y}`;
   const pixelName = pixel.name || PIXEL_NAMES[pixelKey] || `(${pixel.x}, ${pixel.y})`;
+
+  // Motivi per cui non si può attaccare/comprare
+  const isAdj = pixel.isAdjacentToEmpire !== false; // default true se non calcolato
+  const canAfford = pixel.canAffordBuy !== false;
+  let attackBlockReason = null;
+  if (!isAdj) attackBlockReason = 'Non adiacente al tuo impero';
+  let buyBlockReason = null;
+  if (!isAdj) buyBlockReason = 'Non adiacente al tuo impero';
+  else if (!canAfford) buyBlockReason = `Kisses insufficienti (servono ${price})`;
 
   // Team difensore da visualizzare:
   // - proprio pixel → myDefenseTeam (già caricato da MappaPixel)
@@ -145,18 +154,38 @@ export default function PixelDetail({
           </div>
         </div>
 
+        {/* Messaggi di blocco */}
+        {!isOwn && (attackBlockReason || buyBlockReason) && (
+          <div style={{
+            marginBottom: 12, padding: '8px 12px',
+            background: 'rgba(255,91,108,0.08)', border: '1px solid rgba(255,91,108,0.2)',
+            borderRadius: 10, fontFamily: FF.body, fontSize: 11, color: 'rgba(255,91,108,0.9)',
+            lineHeight: 1.4,
+          }}>
+            ⚠️ {attackBlockReason || buyBlockReason}
+          </div>
+        )}
+
         {/* Azioni */}
         <div style={{ display: 'flex', gap: 10 }}>
           {isOwn ? (
-            <button onClick={onEditDefense} style={actionBtn(C.violet, 'rgba(167,139,250,0.12)')}>
+            <button onClick={onEditDefense} style={actionBtn(C.violet, 'rgba(167,139,250,0.12)', false)}>
               ⚔ Modifica Difesa
             </button>
           ) : (
             <>
-              <button onClick={onAttack} style={actionBtn(C.sakura, 'rgba(255,133,182,0.12)')}>
+              <button
+                onClick={!attackBlockReason ? onAttack : undefined}
+                disabled={!!attackBlockReason}
+                style={actionBtn(C.sakura, 'rgba(255,133,182,0.12)', !!attackBlockReason)}
+              >
                 ⚔ Attacca
               </button>
-              <button onClick={() => onPurchase?.({ price })} style={actionBtn(C.gold, 'rgba(245,197,96,0.12)')}>
+              <button
+                onClick={!buyBlockReason ? () => onPurchase?.({ price }) : undefined}
+                disabled={!!buyBlockReason}
+                style={actionBtn(C.gold, 'rgba(245,197,96,0.12)', !!buyBlockReason)}
+              >
                 💋 {isCPU ? `${price}K` : 'Offri'}
               </button>
             </>
@@ -167,12 +196,16 @@ export default function PixelDetail({
   );
 }
 
-function actionBtn(color, bg) {
+function actionBtn(color, bg, disabled = false) {
   return {
     flex: 1, padding: '13px 8px',
-    background: bg, border: `1px solid ${color}55`,
-    borderRadius: 12, color, fontFamily: FF.label,
-    fontSize: 12, letterSpacing: '0.18em',
-    textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer',
+    background: disabled ? 'rgba(255,255,255,0.04)' : bg,
+    border: `1px solid ${disabled ? 'rgba(174,156,255,0.1)' : color + '55'}`,
+    borderRadius: 12,
+    color: disabled ? 'rgba(241,235,255,0.25)' : color,
+    fontFamily: FF.label, fontSize: 12, letterSpacing: '0.18em',
+    textTransform: 'uppercase', fontWeight: 700,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.6 : 1,
   };
 }

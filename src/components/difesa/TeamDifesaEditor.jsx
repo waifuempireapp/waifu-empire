@@ -1,48 +1,8 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
+import { CartaWaifu } from '@/components/CartaWaifu';
 
-// Riusa MiniWaifuCard da BattleModal (stessa struttura compatta)
-function MiniWaifuCard({ waifu, selIdx, onClick }) {
-  const sel = selIdx !== -1;
-  const rarColor = {
-    comune: '#b4bcc8', raro: '#5aa9ff', epico: '#b573ff',
-    leggendario: '#ffc861', immersivo: '#ff7eb6',
-  }[waifu?.rarita] ?? '#b4bcc8';
-
-  return (
-    <div onClick={onClick} style={{
-      position: 'relative', cursor: 'pointer', borderRadius: 12,
-      border: `2px solid ${sel ? C.violet : 'rgba(174,156,255,0.12)'}`,
-      boxShadow: sel ? `0 0 14px ${C.violet}50` : 'none',
-      transition: 'border-color 0.15s, box-shadow 0.15s',
-      overflow: 'hidden', background: '#12102a',
-      aspectRatio: '3/4',
-    }}>
-      {waifu?.asset_immagine || waifu?.asset_statica || waifu?.asset_immersiva ? (
-        <img src={waifu.asset_immagine || waifu.asset_statica || waifu.asset_immersiva} alt={waifu.nome}
-          style={{ width: '100%', height: '75%', objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
-      ) : (
-        <div style={{ width: '100%', height: '75%', background: `${rarColor}22`, display: 'grid', placeItems: 'center' }}>
-          <span style={{ fontSize: 28, opacity: 0.4 }}>♛</span>
-        </div>
-      )}
-      <div style={{ padding: '4px 6px', height: '25%', background: 'linear-gradient(transparent, rgba(3,2,12,0.95))', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        <div style={{ fontFamily: FF.body, fontSize: 9, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{waifu?.nome}</div>
-        <div style={{ fontFamily: FF.label, fontSize: 7, color: rarColor, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 1 }}>{waifu?.rarita}</div>
-      </div>
-      {sel && (
-        <div style={{
-          position: 'absolute', top: 5, right: 5, zIndex: 2,
-          width: 20, height: 20, borderRadius: '50%',
-          background: C.violet, color: '#fff',
-          display: 'grid', placeItems: 'center',
-          fontWeight: 900, fontSize: 11, boxShadow: `0 2px 8px ${C.violet}80`,
-        }}>{selIdx + 1}</div>
-      )}
-    </div>
-  );
-}
 
 export default function TeamDifesaEditor({ pixelKey, collezione, waifuCat, user, profilo, currentTeam, onClose, onSaved }) {
   const [selectedIds, setSelectedIds] = useState(currentTeam?.length === 5 ? currentTeam : []);
@@ -54,7 +14,7 @@ export default function TeamDifesaEditor({ pixelKey, collezione, waifuCat, user,
   const ownedWaifu = Object.entries(collezione?.waifu || {})
     .map(([id, dati]) => {
       const w = waifuCat?.find(x => x.id === id);
-      return w ? { ...w, ...dati } : null;
+      return w ? { ...w, ...dati, _datiColl: dati } : null;
     })
     .filter(Boolean);
 
@@ -111,17 +71,34 @@ export default function TeamDifesaEditor({ pixelKey, collezione, waifuCat, user,
         <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(241,235,255,0.4)', fontSize: 22, cursor: 'pointer', paddingTop: 4 }}>✕</button>
       </div>
 
-      {/* Griglia waifu — stessa MiniWaifuCard di BattleModal */}
+      {/* Griglia CartaWaifu piccola (identica alla Collezione) */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '14px 14px 0' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-          {ownedWaifu.map(w => (
-            <MiniWaifuCard
-              key={w.id}
-              waifu={w}
-              selIdx={selectedIds.indexOf(w.id)}
-              onClick={() => toggle(w.id)}
-            />
-          ))}
+          {ownedWaifu.map(w => {
+            const selIdx = selectedIds.indexOf(w.id);
+            const sel = selIdx !== -1;
+            return (
+              <div key={w.id} style={{ position: 'relative', cursor: 'pointer' }} onClick={() => toggle(w.id)}>
+                <div style={{
+                  outline: sel ? `3px solid ${C.violet}` : '3px solid transparent',
+                  borderRadius: 14, transition: 'outline 0.15s',
+                  boxShadow: sel ? `0 0 16px ${C.violet}50` : 'none',
+                }}>
+                  <CartaWaifu waifu={w} datiCollezione={w._datiColl} dimensione="piccola" evidenziato={false} />
+                </div>
+                {sel && (
+                  <div style={{
+                    position: 'absolute', top: 6, right: 6, zIndex: 2,
+                    width: 22, height: 22, borderRadius: '50%',
+                    background: C.violet, color: '#fff',
+                    display: 'grid', placeItems: 'center',
+                    fontWeight: 900, fontSize: 12,
+                    boxShadow: `0 2px 8px ${C.violet}80`,
+                  }}>{selIdx + 1}</div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

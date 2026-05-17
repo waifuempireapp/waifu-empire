@@ -82,7 +82,9 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
     loadChunks();
     loadMyDefenseConfig();
     loadPendingOffers();
-    if ((profilo?.pixelCount ?? 0) === 0) setShowTutorial(true);
+    // Mostra tutorial se pixelCount è 0 o non inizializzato
+    const hasNoPixels = (profilo?.pixelCount ?? 0) === 0;
+    if (hasNoPixels) setShowTutorial(true);
   }, []);
 
   const invalidateAndReload = useCallback(async () => {
@@ -91,11 +93,37 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
     await loadChunks(true);
   }, [loadChunks]);
 
+  // ── CONTROLLO ADIACENZA CLIENT-SIDE ─────────────────────────────────────────
+  const checkAdjacentToEmpire = useCallback((tx, ty) => {
+    if (!chunks) return false;
+    const userPixelCount = profilo?.pixelCount ?? 0;
+    if (userPixelCount === 0) return true; // primo pixel → sempre adiacente
+    const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+    for (const [dx, dy] of dirs) {
+      const nx = tx + dx;
+      const ny = ty + dy;
+      if (nx < 0 || nx >= 50 || ny < 0 || ny >= 50) continue;
+      const chunkCol = Math.floor(nx / 10);
+      const chunkRow = Math.floor(ny / 10);
+      const cid = `chunk_${chunkCol}_${chunkRow}`;
+      if (chunks[cid]?.pixels?.[`${nx}_${ny}`]?.ownerId === user.uid) return true;
+    }
+    return false;
+  }, [chunks, user.uid, profilo?.pixelCount]);
+
   // ── SELEZIONE PIXEL ──────────────────────────────────────────────────────────
   // Quando si tocca un pixel non-proprio e non-CPU, carichiamo il defenderTeam dal server
   const handlePixelSelect = useCallback(async (pixel) => {
-    // Aggiungi il nome del paese al pixel
-    const pixelWithName = { ...pixel, name: PIXEL_NAMES[`${pixel.x}_${pixel.y}`] || null };
+    // Aggiungi il nome del paese e i flag di attaccabilità/acquistabilità
+    const isAdj = checkAdjacentToEmpire(pixel.x, pixel.y);
+    const price  = 200 + ((pixel.ownerLevel ?? 1) * 50);
+    const pixelWithName = {
+      ...pixel,
+      name: PIXEL_NAMES[`${pixel.x}_${pixel.y}`] || null,
+      isAdjacentToEmpire: isAdj,
+      canAffordBuy: (profilo?.kisses ?? 0) >= price,
+      buyPrice: price,
+    };
     setSelectedPixel(pixelWithName);
     if (pixel.ownerId !== 'CPU' && pixel.ownerId !== user.uid) {
       try {
@@ -165,8 +193,12 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
         setActiveBattle(null);
         await invalidateAndReload();
         if (data.status === 'attacker_wins') {
-          setProfilo(p => ({ ...p, pixelCount: (p.pixelCount ?? 0) + 1 }));
+          // Vittoria: +1 pixel, +1 pacchetto sfida
+          setProfilo(p => ({ ...p, pixelCount: (p.pixelCount ?? 0) + 1, pacchettiSfida: (p.pacchettiSfida ?? 0) + 1 }));
           setShowTutorial(false);
+        } else if (data.status === 'defender_wins') {
+          // Sconfitta: -1 energia
+          setProfilo(p => ({ ...p, energia: Math.max(0, (p.energia ?? 0) - 1) }));
         }
         setSelectedPixel(null);
       } else {

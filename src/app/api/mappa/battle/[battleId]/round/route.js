@@ -85,15 +85,27 @@ export async function POST(request, { params }) {
         { merge: true }
       );
 
-      // Incrementa pixelCount attaccante
+      // Incrementa pixelCount + aggiungi 1 pacchetto sfida (vittoria territorio)
       await adminDb.collection('users').doc(uid).update({
         pixelCount: FieldValue.increment(1),
+        pacchettiSfida: FieldValue.increment(1),
       });
 
       // Decrementa pixelCount difensore (se non CPU)
       if (battle.defenderUid && battle.defenderUid !== 'CPU') {
         await adminDb.collection('users').doc(battle.defenderUid).update({
           pixelCount: FieldValue.increment(-1),
+        });
+      }
+    }
+
+    // Se il difensore ha vinto il match: l'attaccante perde 1 energia
+    if (matchWinner === 'defender') {
+      const attackerEnergySnap = await adminDb.collection('users').doc(uid).get();
+      const currentEnergia = attackerEnergySnap.exists ? (attackerEnergySnap.data().energia ?? 0) : 0;
+      if (currentEnergia > 0) {
+        await adminDb.collection('users').doc(uid).update({
+          energia: FieldValue.increment(-1),
         });
       }
     }

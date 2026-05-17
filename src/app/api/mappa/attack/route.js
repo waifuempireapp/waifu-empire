@@ -41,7 +41,7 @@ export async function POST(request) {
     const decoded = await adminAuth.verifyIdToken(token);
     const uid = decoded.uid;
 
-    const { targetX, targetY, attackerTeam, isTutorial } = await request.json();
+    const { targetX, targetY, attackerTeam } = await request.json();
 
     if (
       typeof targetX !== 'number' || typeof targetY !== 'number' ||
@@ -52,8 +52,13 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Team offensivo non valido (richiede 5 waifu)' }, { status: 400 });
     }
 
-    // Validazione adiacenza (bypassata solo per il primo attacco tutorial)
-    if (!isTutorial) {
+    // Verifica server-side se è il primo pixel (non ci fidiamo del flag client)
+    const userSnap = await adminDb.collection('users').doc(uid).get();
+    const serverPixelCount = userSnap.exists ? (userSnap.data().pixelCount ?? 0) : 0;
+    const isFirstPixel = serverPixelCount === 0;
+
+    // Validazione adiacenza: si bypassa SOLO se il giocatore non ha ancora nessun pixel
+    if (!isFirstPixel) {
       const adjacent = await isAdjacentToEmpire(uid, targetX, targetY);
       if (!adjacent) return NextResponse.json({ error: 'Il pixel non è adiacente al tuo impero' }, { status: 400 });
     }

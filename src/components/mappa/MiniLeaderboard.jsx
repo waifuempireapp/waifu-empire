@@ -29,6 +29,19 @@ export default function MiniLeaderboard({ chunks, userUid, profilo, passiveRate,
   const [lastEarned, setLastEarned] = useState(null);
 
   const leaders = computeLeaderboard(chunks);
+
+  // Conta pixel CPU e totale pixel terra
+  const cpuCount = (() => {
+    if (!chunks) return 0;
+    let c = 0;
+    for (const chunk of Object.values(chunks)) {
+      if (!chunk.pixels) continue;
+      for (const data of Object.values(chunk.pixels)) {
+        if (data.ownerId === 'CPU') c++;
+      }
+    }
+    return c;
+  })();
   const pixelCount = profilo?.pixelCount ?? 0;
   const passivePerHour = pixelCount * (passiveRate ?? 1);
 
@@ -101,6 +114,16 @@ export default function MiniLeaderboard({ chunks, userUid, profilo, passiveRate,
             <span style={{ fontFamily: FF.mono, fontSize: 10, color: 'rgba(174,156,255,0.6)' }}>·{l.count}</span>
           </div>
         ))}
+
+        {/* CPU territory count */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
+          borderLeft: '1px solid rgba(174,156,255,0.1)', paddingLeft: 8,
+        }}>
+          <div style={{ width: 8, height: 8, borderRadius: 2, background: '#888888', flexShrink: 0 }} />
+          <span style={{ fontFamily: FF.label, fontSize: 10, letterSpacing: '0.12em', color: 'rgba(241,235,255,0.4)' }}>CPU</span>
+          <span style={{ fontFamily: FF.mono, fontSize: 10, color: 'rgba(174,156,255,0.5)' }}>·{cpuCount}</span>
+        </div>
 
         {leaders.length === 0 && (
           <span style={{ fontFamily: FF.body, fontSize: 12, color: 'rgba(241,235,255,0.3)' }}>
