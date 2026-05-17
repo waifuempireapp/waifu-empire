@@ -1652,6 +1652,101 @@ function AmiciTab({ user, profilo, collezione, waifuCat, onCollectionRefresh }) 
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// COMPONENTE: PodioTop3
+// 3 carte uguali in larghezza: 2° sinistra, 1° centro (più alto), 3° destra.
+// Centrato orizzontalmente, non va mai fuori schermo su mobile.
+// ════════════════════════════════════════════════════════════════════════════
+function PodioTop3({ classifica, user, podioColori, podioGradient, podioMedaglie }) {
+  // Ordine visivo: [1=2°posto a sinistra, 0=1°posto al centro, 2=3°posto a destra]
+  const cfg = [
+    { rankIdx: 1, height: 100 }, // 2° posto — sinistra
+    { rankIdx: 0, height: 130 }, // 1° posto — centro, più alto
+    { rankIdx: 2, height:  85 }, // 3° posto — destra
+  ];
+
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'flex-end',
+      gap: 6,
+      marginBottom: 20,
+      /* padding laterale = stesso del box premi per allineamento visivo */
+      paddingLeft: 14,
+      paddingRight: 14,
+    }}>
+      {cfg.map(({ rankIdx, height }, i) => {
+        const u = classifica[rankIdx];
+        const isMe = user && u.id === user.uid;
+        const col = podioColori[rankIdx];
+        const grad = podioGradient[rankIdx];
+        return (
+          <div
+            key={rankIdx}
+            style={{
+              /* Le 3 carte crescono/shrinkano in modo identico → stessa larghezza garantita */
+              flex: '1 1 0',
+              minWidth: 0,          /* impedisce all'elemento di essere più largo del flex-basis */
+              maxWidth: 120,        /* cap su schermi larghi */
+              height,
+              background: 'rgba(10,7,38,0.85)',
+              backdropFilter: 'blur(12px)',
+              border: `1px solid ${col}${isMe ? 'aa' : '35'}`,
+              borderRadius: '14px 14px 0 0',
+              boxShadow: isMe ? `0 0 18px ${col}50` : `inset 0 0 24px ${col}08`,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '8px 4px',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ fontSize: i === 1 ? 20 : 15, marginBottom: 3 }}>{podioMedaglie[rankIdx]}</div>
+            <div style={{
+              fontFamily: "'Unbounded', sans-serif",
+              fontSize: i === 1 ? 10 : 8,
+              fontWeight: 700,
+              color: '#f1ebff',
+              width: '100%',
+              textAlign: 'center',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              padding: '0 4px',
+              boxSizing: 'border-box',
+            }}>{u._nomeDisplay}</div>
+            <div style={{
+              fontFamily: "'Saira Condensed', sans-serif",
+              fontSize: i === 1 ? 13 : 10,
+              fontWeight: 900,
+              background: grad,
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              marginTop: 2,
+            }}>{(u._punteggi || 0).toLocaleString()}</div>
+            {isMe && (
+              <div style={{
+                position: 'absolute', top: -7, right: -3,
+                background: col, borderRadius: 6, padding: '1px 5px',
+                fontSize: 7, fontFamily: "'Saira Condensed', sans-serif",
+                fontWeight: 700, color: '#0a0726',
+              }}>TU</div>
+            )}
+            <div style={{
+              position: 'absolute', bottom: 3,
+              fontFamily: "'Saira Condensed', sans-serif", fontSize: 7,
+              color: `${col}70`, letterSpacing: 0.5,
+            }}>{u._territori}t</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // COMPONENTE: ClassificaTab
 // Responsabilità: leaderboard settimanale con podio, premi configurabili, countdown reset
 // ════════════════════════════════════════════════════════════════════════════
@@ -1824,68 +1919,15 @@ function ClassificaTab({ user }) {
       )}
 
       {/* ── Podio TOP 3 ── */}
-      {!loading && classifica.length >= 3 && (() => {
-        // Ordine visivo: 2° sinistra, 1° centro, 3° destra
-        const ordine = [1, 0, 2]; // indici in classifica
-        const altezze = [100, 130, 85]; // altezze visuali
-        return (
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, alignItems: 'end', width: '82%', maxWidth: 360 }}>
-            {ordine.map((idx, visualIdx) => {
-              const u = classifica[idx];
-              const isMe = user && u.id === user.uid;
-              const col = podioColori[idx];
-              const grad = podioGradient[idx];
-              return (
-                <div key={idx} style={{
-                  background: `rgba(10,7,38,0.8)`,
-                  backdropFilter: 'blur(12px)',
-                  border: `1px solid ${col}${isMe ? 'aa' : '30'}`,
-                  borderRadius: '14px 14px 0 0',
-                  height: altezze[visualIdx],
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  justifyContent: 'center', padding: '10px 6px',
-                  position: 'relative',
-                  boxShadow: isMe ? `0 0 20px ${col}50` : `inset 0 0 30px ${col}08`,
-                }}>
-                  {/* Medaglia */}
-                  <div style={{ fontSize: visualIdx === 1 ? 22 : 16, marginBottom: 4 }}>{podioMedaglie[idx]}</div>
-                  {/* Nome */}
-                  <div style={{
-                    fontFamily: "'Unbounded', sans-serif", fontSize: visualIdx === 1 ? 11 : 9,
-                    fontWeight: 700, color: '#f1ebff',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    maxWidth: '100%', textAlign: 'center',
-                  }}>{u._nomeDisplay}</div>
-                  {/* Score */}
-                  <div style={{
-                    fontFamily: "'Saira Condensed', sans-serif",
-                    fontSize: visualIdx === 1 ? 14 : 11, fontWeight: 900,
-                    background: grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                    marginTop: 2,
-                  }}>{(u._punteggi || 0).toLocaleString()}</div>
-                  {/* Badge "Tu" */}
-                  {isMe && (
-                    <div style={{
-                      position: 'absolute', top: -8, right: -4,
-                      background: col, borderRadius: 8, padding: '1px 6px',
-                      fontSize: 8, fontFamily: "'Saira Condensed', sans-serif",
-                      fontWeight: 700, color: '#0a0726',
-                    }}>TU</div>
-                  )}
-                  {/* Posizione badge */}
-                  <div style={{
-                    position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)',
-                    fontFamily: "'Saira Condensed', sans-serif", fontSize: 7,
-                    color: `${col}80`, letterSpacing: 1, textTransform: 'uppercase',
-                  }}>{u._territori} terr.</div>
-                </div>
-              );
-            })}
-            </div>
-          </div>
-        );
-      })()}
+      {!loading && classifica.length >= 3 && (
+        <PodioTop3
+          classifica={classifica}
+          user={user}
+          podioColori={podioColori}
+          podioGradient={podioGradient}
+          podioMedaglie={podioMedaglie}
+        />
+      )}
 
       {/* ── Lista classifica ── */}
       {!loading && classifica.length > 0 && (
