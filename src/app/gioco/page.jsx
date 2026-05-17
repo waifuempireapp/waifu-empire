@@ -1829,8 +1829,8 @@ function ClassificaTab({ user }) {
         const ordine = [1, 0, 2]; // indici in classifica
         const altezze = [100, 130, 85]; // altezze visuali
         return (
-          // Grid 3 colonne uguali — garantisce larghezze identiche su tutti i browser
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, alignItems: 'end', maxWidth: '82%', margin: '0 auto 20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, alignItems: 'end', width: '82%', maxWidth: 360 }}>
             {ordine.map((idx, visualIdx) => {
               const u = classifica[idx];
               const isMe = user && u.id === user.uid;
@@ -1882,6 +1882,7 @@ function ClassificaTab({ user }) {
                 </div>
               );
             })}
+            </div>
           </div>
         );
       })()}
