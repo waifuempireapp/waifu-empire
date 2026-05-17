@@ -58,6 +58,18 @@ const ANIM_VOLUNTARY_SWAP_MS = 900;
 /** Ritardo in ms prima di mostrare l'animazione di risultato alla fine. */
 const ANIM_RESULT_DELAY_MS = 400;
 
+// ─── SWAP ENCODING ───────────────────────────────────────────────────────────
+// Convenzione: moveIndex < 0 significa "swap alla waifu all'indice (-moveIndex - 1)".
+// moveIndex = 0,1,2,3 → attacca con quella mossa
+// moveIndex = -1 → swap alla waifu 0
+// moveIndex = -2 → swap alla waifu 1
+// moveIndex = -3 → swap alla waifu 2
+
+/** Converte un indice waifu in un "moveIndex" che rappresenta uno swap (valore negativo). */
+export function encodeSwap(waifuIdx) { return -(waifuIdx + 1); }
+/** Decodifica un moveIndex negativo nel corrispondente indice waifu. Restituisce -1 se non è uno swap. */
+export function decodeSwap(moveIdx) { return (typeof moveIdx === 'number' && moveIdx < 0) ? (-moveIdx - 1) : -1; }
+
 // ─── CSS ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -1037,11 +1049,13 @@ export default function WaifuBattleArena({
   // Quando arriva il risultato pre-calcolato da Firestore, applica il turno senza ricalcolare.
   useEffect(()=>{
     if(!isPvP||pvpIsResolver) return; // solo RECEIVER
-    if(pvpTurnResult===null||pendingPMoveRef.current===null) return;
+    if(pvpTurnResult===null) return;
     if(resolveRef.current) return;
-    // Usa il risultato di Firestore — pMoveIdx dal RESOLVER è la mossa dell'avversario (attaccante)
-    // Sul device del RECEIVER: l'attaccante è "enemy", quindi passiamo pMoveIdx come eMi
-    resolveTurn(pendingPMoveRef.current, pvpTurnResult.pMoveIdx, pvpTurnResult);
+    // Usa la mossa pendente locale oppure quella riportata nel result (eMoveIdx = receiver's move da RESOLVER perspective)
+    const myMoveIdx = pendingPMoveRef.current ?? pvpTurnResult.eMoveIdx;
+    if(myMoveIdx === undefined || myMoveIdx === null) return;
+    // L'azione dell'avversario (RESOLVER) è pMoveIdx nel result
+    resolveTurn(myMoveIdx, pvpTurnResult.pMoveIdx, pvpTurnResult);
     pendingPMoveRef.current=null;
   },[pvpTurnResult]); // eslint-disable-line
 
@@ -1147,7 +1161,21 @@ export default function WaifuBattleArena({
         }
       }
     }
-    // PvP: il cambio volontario online è gestito lato Firestore/MappaMultiplayer
+    if(isPvP){
+      // In PvP il cambio volontario è un'AZIONE DEL TURNO — deve essere inviata
+      // a Firestore come mossa. La risoluzione avviene dopo che ENTRAMBI i giocatori
+      // hanno confermato la loro azione (swap o attacco).
+      const swapMoveIdx = encodeSwap(newIdx); // moveIndex negativo = swap
+      pendingPMoveRef.current = swapMoveIdx;
+      onPvPMoveSubmit?.(swapMoveIdx); // invia a Firestore tramite MappaMultiplayer
+      // Non animare ancora — l'animazione avverrà in resolveTurn con il result da Firestore.
+      // Torna alla fase "scegli" ma con pvpWaiting=true (la mossa è già stata inviata)
+      setIsAnim(false);
+      setShowBench(false);
+      setPhase('playerChoose');
+      setMsg('Cambio inviato! Attendo la mossa avversaria…');
+      return; // aspetta il risultato da Firestore (pvpTurnResult o pvpOpponentMove)
+    }
 
     setTurn(t=>t+1);
     resolveRef.current=false;
@@ -1155,7 +1183,7 @@ export default function WaifuBattleArena({
     setPhase('playerChoose');
     setMsg('Scegli la tua mossa!');
     setTimer(30);
-  },[phase, pTeam, eTeam, eActive, isPvP, lastEMove, onBattleResult]); // eslint-disable-line
+  },[phase, pTeam, eTeam, eActive, isPvP, lastEMove, onBattleResult, onPvPMoveSubmit]); // eslint-disable-line
 
   // Gestisce la selezione di una mossa da parte del giocatore
   const handleMove = useCallback((moveIdx)=>{
@@ -1215,14 +1243,76 @@ export default function WaifuBattleArena({
     // Variabili per tracking danni (usate da RESOLVER per onPvPTurnResolved)
     let pDmgDealt=0, eDmgDealt=0, pAttackCrit=false, eAttackCrit=false;
 
-    // Ordine di turno: usa external se disponibile (RECEIVER), altrimenti calcola (RESOLVER/CPU)
-    // NOTA: externalResult.firstMover è dalla prospettiva del RESOLVER (attaccante = 'player')
-    // Sul device del RECEIVER (difensore), le prospettive sono INVERTITE → flippiamo
-    const first = externalResult
-      ? (externalResult.firstMover === 'player' ? 'enemy' : 'player') // RECEIVER: flip prospettiva
-      : ((curP[cPA].speed??50)+(Math.random()*10-5)) >=
-        ((curE[cEA].speed??50)+(Math.random()*10-5))
-        ? 'player' : 'enemy';                                          // RESOLVER/CPU: calcola localmente
+    // ── Decodifica azioni swap ───────────────────────────────────────────────────
+    // Se pMi < 0 il player ha scelto di swappare invece di attaccare.
+    // Se eMi < 0 l'avversario ha scelto di swappare.
+    const playerSwapIdx = decodeSwap(pMi); // -1 se non è uno swap
+    const enemySwapIdx  = decodeSwap(eMi); // -1 se non è uno swap
+    const isPlayerSwap  = playerSwapIdx >= 0;
+    const isEnemySwap   = enemySwapIdx  >= 0;
+
+    // ── Risoluzione swap (avviene PRIMA degli attacchi) ──────────────────────────
+    // La regola è: prima tutti gli swap, poi tutti gli attacchi.
+    // Se un giocatore swappa, la sua waifu non attacca in questo turno.
+
+    // Swap del player
+    if(isPlayerSwap){
+      const swapTargetP = externalResult?.pActiveAfter ?? playerSwapIdx;
+      setPActive(swapTargetP); cPA = swapTargetP;
+      setPAnim('wba-sL');
+      setMsg(`${curP[swapTargetP]?.name} entra in campo!`);
+      await wait(ANIM_ENTER_MS);
+      setPAnim('');
+      await new Promise(r=>setTimeout(r,150));
+    }
+
+    // Swap dell'avversario
+    if(isEnemySwap){
+      const swapTargetE = externalResult?.eActiveAfter ?? enemySwapIdx;
+      setEActive(swapTargetE); cEA = swapTargetE;
+      setEAnim('wba-sR');
+      setMsg(`${curE[swapTargetE]?.name} entra in campo!`);
+      await wait(ANIM_ENTER_MS);
+      setEAnim('');
+      await new Promise(r=>setTimeout(r,150));
+    }
+
+    // Se entrambi hanno swappato: nessun attacco, turno finisce
+    if(isPlayerSwap && isEnemySwap){
+      setMsg('Entrambi hanno cambiato waifu!');
+      await wait(ANIM_RESULT_DELAY_MS);
+      setLastPMove(pMi); setLastEMove(eMi);
+      setTotalDmg(d=>d+dmgAcc); setTurn(t=>t+1);
+      // Notifiche PvP
+      if(isPvP&&pvpIsResolver&&onPvPTurnResolved&&!externalResult){
+        onPvPTurnResolved(turn - 1, { pMoveIdx:pMi, eMoveIdx:eMi, firstMover:'none', pDmg:0, eDmg:0, pCrit:false, eCrit:false, pHPFinal:curP[cPA]?.hp??0, eHPFinal:curE[cEA]?.hp??0, pIsKO:false, eIsKO:false, pActiveAfter:cPA, eActiveAfter:cEA });
+      }
+      if(isPvP&&!pvpIsResolver&&externalResult){ onPvPTurnConsumed?.(); }
+      setIsAnim(false); resolveRef.current=false;
+      setPhase('playerChoose'); setMsg('Scegli la tua mossa!'); setTimer(30);
+      return; // esce da resolveTurn — nessun attacco da eseguire
+    }
+
+    // ── Ordine attacchi (solo per chi NON ha swappato) ──────────────────────────
+    // Se player ha swappato → solo enemy attacca
+    // Se enemy ha swappato → solo player attacca
+    // Se nessuno ha swappato → ordine per velocità come prima
+
+    let first;
+    if(isPlayerSwap){
+      first = 'enemy'; // solo enemy attacca
+    } else if(isEnemySwap){
+      first = 'player'; // solo player attacca
+    } else {
+      // Nessuno ha swappato: determina ordine per velocità
+      if(externalResult){
+        first = externalResult.firstMover === 'player' ? 'enemy' : 'player';
+      } else {
+        const pSpd=(curP[cPA].speed??50)+(Math.random()*10-5);
+        const eSpd=(curE[cEA].speed??50)+(Math.random()*10-5);
+        first=pSpd>=eSpd?'player':'enemy';
+      }
+    }
 
     /**
      * Esegue l'animazione e applica il danno di un singolo attacco.
@@ -1331,7 +1421,7 @@ export default function WaifuBattleArena({
     // NOTA prospettive: RESOLVER p=attaccante, RECEIVER p=difensore (invertite).
     // firstMover già flippato sopra → first==='player' = difensore, first==='enemy' = attaccante
     // → danni: 'player' (difensore) = externalResult.eDmg; 'enemy' (attaccante) = externalResult.pDmg
-    const firstMi=first==='player'?pMi:eMi;
+    const firstMi = first==='player' ? pMi : eMi;
     const firstDmg  = externalResult ? (first==='player' ? externalResult.eDmg : externalResult.pDmg) : null;
     const firstCrit = externalResult ? (first==='player' ? externalResult.eCrit : externalResult.pCrit) : null;
     const firstKO=await execAttack(first,firstMi,firstDmg,firstCrit);
@@ -1344,18 +1434,24 @@ export default function WaifuBattleArena({
       await wait(ANIM_KO_MS);
       if(first==='player'){setEAnim('');}else{setPAnim('');}
     } else {
-      const second=first==='player'?'enemy':'player';
-      const secondMi=second==='player'?pMi:eMi;
-      const secondDmg  = externalResult ? (second==='player' ? externalResult.eDmg : externalResult.pDmg) : null;
-      const secondCrit = externalResult ? (second==='player' ? externalResult.eCrit : externalResult.pCrit) : null;
-      const secondKO=await execAttack(second,secondMi,secondDmg,secondCrit);
-      await wait(ANIM_BETWEEN_ATTACKS_MS);
-      if(secondKO){
-        const koName2=second==='player'?curE[cEA]?.name:curP[cPA]?.name;
-        setMsg(`${koName2} è fuori combattimento!`);
-        if(second==='player'){setEAnim('wba-ko');}else{setPAnim('wba-ko');}
-        await wait(ANIM_KO_MS);
-        if(second==='player'){setEAnim('');}else{setPAnim('');}
+      // Il secondo attacco avviene SOLO se nessuno dei due ha swappato
+      // (chi swappa non attacca — se uno swappa, lui è first con side corretto
+      // ma second non dovrebbe esistere)
+      const canSecondAttack = !isPlayerSwap && !isEnemySwap;
+      if(canSecondAttack){
+        const second=first==='player'?'enemy':'player';
+        const secondMi=second==='player'?pMi:eMi;
+        const secondDmg  = externalResult ? (second==='player' ? externalResult.eDmg : externalResult.pDmg) : null;
+        const secondCrit = externalResult ? (second==='player' ? externalResult.eCrit : externalResult.pCrit) : null;
+        const secondKO=await execAttack(second,secondMi,secondDmg,secondCrit);
+        await wait(ANIM_BETWEEN_ATTACKS_MS);
+        if(secondKO){
+          const koName2=second==='player'?curE[cEA]?.name:curP[cPA]?.name;
+          setMsg(`${koName2} è fuori combattimento!`);
+          if(second==='player'){setEAnim('wba-ko');}else{setPAnim('wba-ko');}
+          await wait(ANIM_KO_MS);
+          if(second==='player'){setEAnim('');}else{setPAnim('');}
+        }
       }
     }
 
@@ -1380,6 +1476,8 @@ export default function WaifuBattleArena({
         eHPFinal: curE[cEA]?.hp ?? 0,
         pIsKO: curP[cPA]?.isKO ?? false,
         eIsKO: curE[cEA]?.isKO ?? false,
+        pActiveAfter: cPA, // indice waifu attiva del RESOLVER dopo il turno
+        eActiveAfter: cEA, // indice waifu attiva dell'avversario dopo il turno
       };
       // turn è il numero turno React state (incrementato da setTurn sopra, ma ancora il vecchio in questa chiusura)
       onPvPTurnResolved(turn - 1, turnResult); // turn - 1 perché setTurn(t=>t+1) non ha ancora aggiornato
@@ -1405,6 +1503,18 @@ export default function WaifuBattleArena({
       setMsg(`${curE[nextE]?.name} entra in campo!`);
       setTimeout(()=>setEAnim(''),450);
       await wait(ANIM_ENTER_MS);
+    }
+
+    // Sincronizza gli indici attivi con il RESOLVER per evitare desync
+    // (necessario perché swap e KO possono cambiare gli indici in modi che il RECEIVER
+    // potrebbe calcolare diversamente per effetti di latenza o state stale)
+    if(externalResult?.pActiveAfter !== undefined && externalResult.pActiveAfter !== cEA){
+      setEActive(externalResult.pActiveAfter);
+      cEA = externalResult.pActiveAfter;
+    }
+    if(externalResult?.eActiveAfter !== undefined && externalResult.eActiveAfter !== cPA){
+      setPActive(externalResult.eActiveAfter);
+      cPA = externalResult.eActiveAfter;
     }
 
     if(pKO){
