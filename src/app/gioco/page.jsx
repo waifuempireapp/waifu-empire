@@ -1707,7 +1707,14 @@ function ClassificaTab({ user }) {
     'linear-gradient(135deg, #ffc861, #a78bfa)', // 2° gold→violet
     'linear-gradient(135deg, #ff9b6b, #a78bfa)', // 3° bronzo→violet
   ];
-  const podioColori = ['#ff85b6', '#ffc861', '#ff9b6b'];
+  // Colori per le righe classifica: [colore nome (più scuro), colore sfondo riga]
+  // Due tonalità distinte come richiesto: nome più scuro dello sfondo
+  const rigaTop3 = [
+    { nome: '#c8854e', bg: 'rgba(255,200,97,0.10)',  border: 'rgba(255,200,97,0.30)'  }, // 1° oro
+    { nome: '#9ca3af', bg: 'rgba(180,188,200,0.10)', border: 'rgba(180,188,200,0.25)' }, // 2° argento
+    { nome: '#a0622a', bg: 'rgba(205,124,58,0.10)',  border: 'rgba(205,124,58,0.25)'  }, // 3° bronzo
+  ];
+  const podioColori = ['#ffc861', '#c8cfd8', '#cd7c3a']; // usato nel podio SVG (score gradient)
   const podioMedaglie = ['🥇', '🥈', '🥉'];
 
   // Helper: etichetta fascia premi
@@ -1743,32 +1750,59 @@ function ClassificaTab({ user }) {
           <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 9, color: 'rgba(167,139,250,0.6)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>
             🎁 PREMI DI FINE STAGIONE
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {/* Riga 1: top 3 — sfondo scuro con accento sakura, testo sempre leggibile */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             {[
-              { key: '1', label: '🥇 1°', col: '#ff85b6', g: podioGradient[0] },
-              { key: '2', label: '🥈 2°', col: '#ffc861', g: podioGradient[1] },
-              { key: '3', label: '🥉 3°', col: '#ff9b6b', g: podioGradient[2] },
-              { key: 'top10',  label: '🏅 Top 10',  col: '#a78bfa', g: 'linear-gradient(135deg, rgba(167,139,250,0.3), rgba(167,139,250,0.1))' },
-              { key: 'top100', label: '✦ Top 100', col: '#6cf0e0', g: 'linear-gradient(135deg, rgba(108,240,224,0.3), rgba(108,240,224,0.1))' },
-              { key: 'tutti',  label: '◈ Tutti',   col: 'rgba(182,174,214,0.7)', g: 'rgba(167,139,250,0.06)' },
-            ].map(({ key, label, col, g }) => {
+              { key: '1', label: '🥇 1° Posto',  textCol: '#ffc3da', borderCol: 'rgba(255,133,182,0.45)', bg: 'rgba(255,133,182,0.10)' },
+              { key: '2', label: '🥈 2° Posto',  textCol: '#ffe9a8', borderCol: 'rgba(245,197,96,0.45)',  bg: 'rgba(245,197,96,0.10)'  },
+              { key: '3', label: '🥉 3° Posto',  textCol: '#ffd4b8', borderCol: 'rgba(255,155,107,0.45)', bg: 'rgba(255,155,107,0.10)' },
+            ].map(({ key, label, textCol, borderCol, bg }) => {
               const p = premiConfig[key] || {};
               const hasPremio = p.energia > 0 || p.bustineSfida > 0 || p.kisses > 0;
               return (
                 <div key={key} style={{
-                  flex: '1 0 auto', minWidth: 70,
-                  background: g, border: `0.8px solid ${col}40`,
-                  borderRadius: 12, padding: '8px 10px', textAlign: 'center',
+                  flex: 1,
+                  background: bg, border: `0.8px solid ${borderCol}`,
+                  borderRadius: 12, padding: '10px 10px', textAlign: 'center',
                 }}>
-                  <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 10, fontWeight: 700, color: col, letterSpacing: 0.5, marginBottom: 4 }}>{label}</div>
+                  <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 11, fontWeight: 700, color: textCol, letterSpacing: 0.5, marginBottom: 5 }}>{label}</div>
                   {hasPremio ? (
-                    <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 9, color: '#b6aed6', lineHeight: 1.6 }}>
+                    <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: '#e8dff5', lineHeight: 1.7 }}>
                       {p.energia > 0 && <div>⚡ {p.energia} Energia</div>}
                       {p.bustineSfida > 0 && <div>🎴 {p.bustineSfida} Bustine</div>}
                       {p.kisses > 0 && <div>💋 {p.kisses} Kisses</div>}
                     </div>
                   ) : (
-                    <div style={{ fontSize: 8, color: 'rgba(167,139,250,0.35)' }}>—</div>
+                    <div style={{ fontSize: 9, color: 'rgba(167,139,250,0.35)' }}>—</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {/* Riga 2: top10, top100, tutti */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[
+              { key: 'top10',  label: '🏅 Top 10',  textCol: '#d4b8ff', borderCol: 'rgba(167,139,250,0.35)', bg: 'rgba(167,139,250,0.07)' },
+              { key: 'top100', label: '✦ Top 100', textCol: '#b8f5f0', borderCol: 'rgba(108,240,224,0.30)', bg: 'rgba(108,240,224,0.06)' },
+              { key: 'tutti',  label: '◈ Tutti',   textCol: 'rgba(214,207,232,0.8)', borderCol: 'rgba(167,139,250,0.18)', bg: 'rgba(167,139,250,0.04)' },
+            ].map(({ key, label, textCol, borderCol, bg }) => {
+              const p = premiConfig[key] || {};
+              const hasPremio = p.energia > 0 || p.bustineSfida > 0 || p.kisses > 0;
+              return (
+                <div key={key} style={{
+                  flex: 1,
+                  background: bg, border: `0.8px solid ${borderCol}`,
+                  borderRadius: 12, padding: '10px 10px', textAlign: 'center',
+                }}>
+                  <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 10, fontWeight: 700, color: textCol, letterSpacing: 0.5, marginBottom: 4 }}>{label}</div>
+                  {hasPremio ? (
+                    <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 9, color: '#c8c0dc', lineHeight: 1.6 }}>
+                      {p.energia > 0 && <div>⚡ {p.energia} Energia</div>}
+                      {p.bustineSfida > 0 && <div>🎴 {p.bustineSfida} Bustine</div>}
+                      {p.kisses > 0 && <div>💋 {p.kisses} Kisses</div>}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 8, color: 'rgba(167,139,250,0.3)' }}>—</div>
                   )}
                 </div>
               );
@@ -1795,7 +1829,8 @@ function ClassificaTab({ user }) {
         const ordine = [1, 0, 2]; // indici in classifica
         const altezze = [100, 130, 85]; // altezze visuali
         return (
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'flex-end', marginBottom: 20 }}>
+          // maxWidth ridotto rispetto al box premi → non overflow su mobile
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', alignItems: 'flex-end', marginBottom: 20, maxWidth: '82%', margin: '0 auto 20px' }}>
             {ordine.map((idx, visualIdx) => {
               const u = classifica[idx];
               const isMe = user && u.id === user.uid;
@@ -1897,35 +1932,50 @@ function ClassificaTab({ user }) {
           {classifica.map((u, i) => {
             const isMe = user && u.id === user.uid;
             const pos = i + 1;
-            const col = i < 3 ? podioColori[i] : (isMe ? '#6cf0e0' : 'rgba(182,174,214,0.7)');
+            const isTop3 = i < 3;
+            const r3 = isTop3 ? rigaTop3[i] : null;
+
+            // Colore nome: top3 usa il colore dedicato alla posizione; fuori top3 usa aqua se è
+            // il giocatore corrente, grigio tenue per gli altri
+            const nomeCol = isTop3
+              ? r3.nome
+              : isMe ? '#6cf0e0' : '#f1ebff';
+
+            // Sfondo riga: top3 usa il bg tematico, utente corrente (fuori top3) usa aqua sottile
+            const rigaBg = isTop3
+              ? r3.bg
+              : isMe ? 'rgba(108,240,224,0.04)' : (i % 2 === 0 ? 'transparent' : 'rgba(167,139,250,0.02)');
+
             return (
               <div key={u.id} style={{
                 display: 'grid', gridTemplateColumns: '40px 1fr 70px 50px',
                 padding: '9px 14px', alignItems: 'center',
-                background: isMe
-                  ? 'rgba(108,240,224,0.05)'
-                  : i % 2 === 0 ? 'transparent' : 'rgba(167,139,250,0.02)',
+                background: rigaBg,
                 borderBottom: '0.5px solid rgba(167,139,250,0.06)',
+                borderLeft: isMe && !isTop3 ? '3px solid rgba(108,240,224,0.6)' : isTop3 ? `3px solid ${r3.border}` : '3px solid transparent',
                 transition: 'background 0.15s',
               }}>
                 {/* Posizione */}
                 <div style={{
-                  fontFamily: i < 3 ? "'Unbounded', sans-serif" : "'Saira Condensed', sans-serif",
-                  fontSize: i < 3 ? 14 : 11, fontWeight: i < 3 ? 900 : 600,
-                  color: col,
+                  fontFamily: isTop3 ? "'Unbounded', sans-serif" : "'Saira Condensed', sans-serif",
+                  fontSize: isTop3 ? 14 : 11, fontWeight: isTop3 ? 900 : 600,
+                  color: isTop3 ? r3.nome : (isMe ? '#6cf0e0' : 'rgba(182,174,214,0.6)'),
                 }}>
-                  {i < 3 ? podioMedaglie[i] : `#${pos}`}
+                  {isTop3 ? podioMedaglie[i] : `#${pos}`}
                 </div>
                 {/* Nome */}
                 <div>
                   <div style={{
                     fontFamily: "'DM Sans', sans-serif", fontSize: 12,
-                    fontWeight: isMe || i < 3 ? 700 : 400,
-                    color: isMe ? '#6cf0e0' : i < 3 ? col : '#f1ebff',
+                    // top3: sempre fontWeight 700; utente corrente fuori top3: 700; altri: 400
+                    fontWeight: isTop3 ? 700 : (isMe ? 700 : 400),
+                    color: nomeCol,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
                     {u._nomeDisplay}
-                    {isMe && <span style={{ fontSize: 9, color: 'rgba(108,240,224,0.6)', marginLeft: 6 }}>· Tu</span>}
+                    {/* Badge "Tu" solo se fuori dal top3 — nei top3 il nomeCol li distingue già */}
+                    {isMe && !isTop3 && <span style={{ fontSize: 9, color: 'rgba(108,240,224,0.55)', marginLeft: 6 }}>· Tu</span>}
+                    {isMe && isTop3 && <span style={{ fontSize: 9, color: `${r3.nome}99`, marginLeft: 6 }}>· Tu</span>}
                   </div>
                   <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 8, color: 'rgba(167,139,250,0.4)', letterSpacing: 1 }}>
                     Lv.{u._livelloMappa} · {fasciaLabel(pos)}
@@ -1935,8 +1985,8 @@ function ClassificaTab({ user }) {
                 <div style={{
                   textAlign: 'right',
                   fontFamily: "'Unbounded', sans-serif",
-                  fontSize: i < 3 ? 12 : 10, fontWeight: 700,
-                  color: isMe ? '#6cf0e0' : i < 3 ? col : '#f1ebff',
+                  fontSize: isTop3 ? 12 : 10, fontWeight: 700,
+                  color: nomeCol,
                 }}>
                   {(u._punteggi || 0).toLocaleString()}
                 </div>
@@ -1944,7 +1994,7 @@ function ClassificaTab({ user }) {
                 <div style={{
                   textAlign: 'right',
                   fontFamily: "'Saira Condensed', sans-serif", fontSize: 11,
-                  color: isMe ? 'rgba(108,240,224,0.7)' : 'rgba(182,174,214,0.5)',
+                  color: isTop3 ? `${r3.nome}99` : isMe ? 'rgba(108,240,224,0.7)' : 'rgba(182,174,214,0.5)',
                 }}>
                   {u._territori}
                 </div>
