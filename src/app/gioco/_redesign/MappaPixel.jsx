@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { C, FF } from './_shared';
 import { LAND_SET, PIXEL_NAMES } from '@/lib/worldMap';
+import { updateUserProfile } from '@/lib/firestoreService';
 import PixelGrid from '@/components/mappa/PixelGrid';
 import PixelDetail from '@/components/mappa/PixelDetail';
 import MiniLeaderboard from '@/components/mappa/MiniLeaderboard';
@@ -94,12 +95,15 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
   }, [loadChunks]);
 
   // ── CONTROLLO ADIACENZA CLIENT-SIDE ─────────────────────────────────────────
+  // FIX: pixelCount=0 CHECK PRIMA di chunks (evita stale closure con chunks=null)
+  // Adiacenza a 8 direzioni (sopra/sotto/sinistra/destra + 4 diagonali)
   const checkAdjacentToEmpire = useCallback((tx, ty) => {
-    if (!chunks) return false;
     const userPixelCount = profilo?.pixelCount ?? 0;
-    if (userPixelCount === 0) return true; // primo pixel → sempre adiacente
-    const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
-    for (const [dx, dy] of dirs) {
+    // Se 0 pixel posseduti → può attaccare qualsiasi territorio
+    if (userPixelCount === 0) return true;
+    if (!chunks) return false;
+    const dirs8 = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+    for (const [dx, dy] of dirs8) {
       const nx = tx + dx;
       const ny = ty + dy;
       if (nx < 0 || nx >= 50 || ny < 0 || ny >= 50) continue;
@@ -112,9 +116,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
   }, [chunks, user.uid, profilo?.pixelCount]);
 
   // ── SELEZIONE PIXEL ──────────────────────────────────────────────────────────
-  // Quando si tocca un pixel non-proprio e non-CPU, carichiamo il defenderTeam dal server
   const handlePixelSelect = useCallback(async (pixel) => {
-    // Aggiungi il nome del paese e i flag di attaccabilità/acquistabilità
     const isAdj = checkAdjacentToEmpire(pixel.x, pixel.y);
     const price  = 200 + ((pixel.ownerLevel ?? 1) * 50);
     const pixelWithName = {
@@ -138,18 +140,18 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
         }
       } catch { /* ignora */ }
     }
-  }, [user, PIXEL_NAMES]);
+  // checkAdjacentToEmpire incluso nelle deps per evitare stale closure
+  }, [user, PIXEL_NAMES, checkAdjacentToEmpire, profilo?.kisses]);
 
   // ── ATTACCO ──────────────────────────────────────────────────────────────────
   // L'API attack ora ritorna anche cpuDifficulty
   const handleAttack = async (attackerTeam) => {
     try {
       const token = await user.getIdToken();
-      const isTutorial = (profilo?.pixelCount ?? 0) === 0;
       const res = await fetch('/api/mappa/attack', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetX: selectedPixel.x, targetY: selectedPixel.y, attackerTeam, isTutorial }),
+        body: JSON.stringify({ targetX: selectedPixel.x, targetY: selectedPixel.y, attackerTeam }),
       });
       const data = await res.json();
       if (!res.ok) { console.error('Attacco fallito:', data.error); return; }
@@ -329,7 +331,15 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
 
       {/* Tutorial (nuovo utente senza pixel) */}
       {showTutorial && (
-        <TutorialOverlay onClose={() => setShowTutorial(false)} />
+        <TutorialOverlay onClose={async () => {
+          setShowTutorial(false);
+          // Salva pixelCount = 0 → tutorial non riparte alla sessione successiva
+          // ma il giocatore può ancora attaccare qualsiasi pixel senza adiacenza
+          try {
+            await updateUserProfile(user.uid, { pixelCount: 0 });
+            setProfilo(p => ({ ...p, pixelCount: 0 }));
+          } catch { /* ignora errori di rete */ }
+        }} />
       )}
 
       {/* Selezione team offensivo */}

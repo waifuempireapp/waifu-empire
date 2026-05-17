@@ -7,7 +7,7 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { WORLD_MAP_PIXELS, LAND_SET } from '../src/lib/worldMap.js';
+import { UNIQUE_PIXELS, LAND_SET, PIXEL_NAMES } from '../src/lib/worldMap.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const keyPath = join(__dirname, '..', 'serviceAccountKey.json');
@@ -28,7 +28,7 @@ const CHUNKS_PER_ROW = 5;
 
 // Raggruppa pixel per chunk (deduplica con LAND_SET)
 const chunkMap = {};
-for (const p of WORLD_MAP_PIXELS) {
+for (const p of UNIQUE_PIXELS) {
   const key = `${p.x}_${p.y}`;
   if (!LAND_SET.has(key)) continue;
 
@@ -41,7 +41,7 @@ for (const p of WORLD_MAP_PIXELS) {
       ownerId: 'CPU',
       ownerColor: '#888888',
       ownerName: 'CPU',
-      name: p.name,
+      name: PIXEL_NAMES[key] || p.name, // usa il nome univoco
     };
   }
 }

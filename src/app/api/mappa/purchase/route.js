@@ -14,7 +14,7 @@ function pixelPrice(ownerLevel = 1) {
 }
 
 async function isAdjacentToEmpire(uid, tx, ty) {
-  const directions = [[-1,0],[1,0],[0,-1],[0,1]];
+  const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
   for (const [dx, dy] of directions) {
     const nx = tx + dx;
     const ny = ty + dy;

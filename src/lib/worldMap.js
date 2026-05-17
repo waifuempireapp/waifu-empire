@@ -496,10 +496,97 @@ export const WORLD_MAP_PIXELS = [
   ], 'Cina Sud-Vietnam'),
 ];
 
-// Set per lookup veloce (canvas rendering)
-export const LAND_SET = new Set(WORLD_MAP_PIXELS.map(p => `${p.x}_${p.y}`));
+// ── NOMI UNICI ──────────────────────────────────────────────────────────────
+// Ogni pixel deve avere un nome univoco. Per regioni con più pixel:
+// - Si calcola il centroide del gruppo
+// - Si assegna un suffisso geografico (Nord, Sud, Est, Ovest, NE, NO, SE, SO, Centro)
+// - Se due pixel dello stesso gruppo cadono nello stesso quadrante, si aggiunge un numero
 
-// Map per lookup nome (pixel info)
-export const PIXEL_NAMES = Object.fromEntries(
-  WORLD_MAP_PIXELS.map(p => [`${p.x}_${p.y}`, p.name])
-);
+function _directionSuffix(dx, dy) {
+  // dx > 0 = Est, dy > 0 = Sud (y aumenta verso il basso)
+  const t = 1.8; // soglia per "Centro"
+  const aX = Math.abs(dx);
+  const aY = Math.abs(dy);
+  if (aX <= t && aY <= t) return 'Centro';
+  if (aY > aX) {
+    if (dy < 0) return aX <= t ? 'Nord'     : (dx > 0 ? 'Nord-Est' : 'Nord-Ovest');
+    else         return aX <= t ? 'Sud'      : (dx > 0 ? 'Sud-Est'  : 'Sud-Ovest');
+  } else {
+    if (dx > 0) return aY <= t ? 'Est'      : (dy < 0 ? 'Nord-Est' : 'Sud-Est');
+    else         return aY <= t ? 'Ovest'    : (dy < 0 ? 'Nord-Ovest' : 'Sud-Ovest');
+  }
+}
+
+function _makeNamesUnique(pixels) {
+  // 1. Deduplica: mantieni solo la prima occorrenza per coordinate
+  const seenCoords = new Set();
+  const deduped = pixels.filter(p => {
+    const k = `${p.x}_${p.y}`;
+    if (seenCoords.has(k)) return false;
+    seenCoords.add(k);
+    return true;
+  });
+
+  // 2. Raggruppa per nome base
+  const groups = {};
+  deduped.forEach(p => {
+    if (!groups[p.name]) groups[p.name] = [];
+    groups[p.name].push(p);
+  });
+
+  // 3. Assegna nomi unici
+  const result = [];
+  for (const [baseName, group] of Object.entries(groups)) {
+    if (group.length === 1) {
+      result.push(group[0]);
+      continue;
+    }
+
+    // Ordina per y poi x (top→bottom, left→right) per determinismo
+    group.sort((a, b) => a.y - b.y || a.x - b.x);
+
+    // Centroide del gruppo
+    const cx = group.reduce((s, p) => s + p.x, 0) / group.length;
+    const cy = group.reduce((s, p) => s + p.y, 0) / group.length;
+
+    // Assegna suffisso direzionale, con contatore per disambiguare collisioni
+    const usedSuffixes = {};
+    for (const p of group) {
+      const dir = _directionSuffix(p.x - cx, p.y - cy);
+      usedSuffixes[dir] = (usedSuffixes[dir] || 0) + 1;
+      const count = usedSuffixes[dir];
+      const uniqueName = count === 1 ? `${baseName} ${dir}` : `${baseName} ${dir} ${count}`;
+      result.push({ ...p, name: uniqueName });
+    }
+  }
+  return result;
+}
+
+// Garanzia finale: scorre tutti i pixel in ordine e assegna un numero progressivo
+// a qualsiasi nome già incontrato, eliminando ogni duplicato residuo
+function _ensureGlobalUniqueness(pixels) {
+  const taken = new Set();
+  return pixels.map(p => {
+    if (!taken.has(p.name)) {
+      taken.add(p.name);
+      return p;
+    }
+    // Trova il primo numero disponibile
+    let n = 2;
+    while (taken.has(`${p.name} ${n}`)) n++;
+    const uniqueName = `${p.name} ${n}`;
+    taken.add(uniqueName);
+    return { ...p, name: uniqueName };
+  });
+}
+
+const _uniquePixels = _ensureGlobalUniqueness(_makeNamesUnique(WORLD_MAP_PIXELS));
+
+// Set per lookup veloce (canvas rendering) — usa coordinate deduplicate
+export const LAND_SET = new Set(_uniquePixels.map(p => `${p.x}_${p.y}`));
+
+// Map coordinate → nome univoco
+export const PIXEL_NAMES = Object.fromEntries(_uniquePixels.map(p => [`${p.x}_${p.y}`, p.name]));
+
+// Array completo con nomi unici (usato dal seed script)
+export const UNIQUE_PIXELS = _uniquePixels;

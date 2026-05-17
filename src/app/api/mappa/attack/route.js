@@ -17,8 +17,9 @@ function cpuDifficulty(ownerLevel = 1) {
 
 // Controlla se (tx, ty) è adiacente a qualsiasi pixel dell'utente uid
 async function isAdjacentToEmpire(uid, tx, ty) {
-  const directions = [[-1,0],[1,0],[0,-1],[0,1]];
-  for (const [dx, dy] of directions) {
+  // 8 direzioni: sopra/sotto/sinistra/destra + 4 diagonali
+  const dirs8 = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+  for (const [dx, dy] of dirs8) {
     const nx = tx + dx;
     const ny = ty + dy;
     if (nx < 0 || nx >= GRID_SIZE || ny < 0 || ny >= GRID_SIZE) continue;
