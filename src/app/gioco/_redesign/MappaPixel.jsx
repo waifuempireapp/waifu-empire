@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { C, FF } from './_shared';
+import { LAND_SET, PIXEL_NAMES } from '@/lib/worldMap';
 import PixelGrid from '@/components/mappa/PixelGrid';
 import PixelDetail from '@/components/mappa/PixelDetail';
 import MiniLeaderboard from '@/components/mappa/MiniLeaderboard';
@@ -18,6 +19,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
   const [selectedPixel, setSelectedPixel] = useState(null);
   const [myDefenseMap, setMyDefenseMap] = useState({}); // defense_config dell'utente corrente
 
+  const [pendingOffersCount, setPendingOffersCount] = useState(0);
   const [showBattle, setShowBattle] = useState(false);
   const [showRound, setShowRound] = useState(false);
   const [showPurchase, setShowPurchase] = useState(false);
@@ -66,9 +68,20 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
     } catch (e) { /* ignora */ }
   }, [user]);
 
+  // Carica il conteggio delle offerte in entrata in sospeso
+  const loadPendingOffers = useCallback(async () => {
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/mappa/offers', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      setPendingOffersCount((data.incoming || []).filter(o => o.status === 'pending').length);
+    } catch { /* ignora */ }
+  }, [user]);
+
   useEffect(() => {
     loadChunks();
     loadMyDefenseConfig();
+    loadPendingOffers();
     if ((profilo?.pixelCount ?? 0) === 0) setShowTutorial(true);
   }, []);
 
@@ -81,7 +94,9 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
   // ── SELEZIONE PIXEL ──────────────────────────────────────────────────────────
   // Quando si tocca un pixel non-proprio e non-CPU, carichiamo il defenderTeam dal server
   const handlePixelSelect = useCallback(async (pixel) => {
-    setSelectedPixel(pixel); // mostra subito il popup con i dati del chunk
+    // Aggiungi il nome del paese al pixel
+    const pixelWithName = { ...pixel, name: PIXEL_NAMES[`${pixel.x}_${pixel.y}`] || null };
+    setSelectedPixel(pixelWithName);
     if (pixel.ownerId !== 'CPU' && pixel.ownerId !== user.uid) {
       try {
         const token = await user.getIdToken();
@@ -95,7 +110,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
         }
       } catch { /* ignora */ }
     }
-  }, [user]);
+  }, [user, PIXEL_NAMES]);
 
   // ── ATTACCO ──────────────────────────────────────────────────────────────────
   // L'API attack ora ritorna anche cpuDifficulty
@@ -132,7 +147,8 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
   // Chiamata da RoundViewer.onExit SUBITO dopo che l'utente preme "Continua" nel popup.
   // Fix #2: l'API call avviene QUI (in MappaPixel), non in RoundViewer.
   // MappaPixel usa `key` su RoundViewer per rimontarlo tra round (resetta phase a 'pre').
-  const handleRoundComplete = useCallback(async (isVictory) => {
+  // choice: null (match concluso) | 'same' (stessa squadra) | 'switch' (cambia squadra)
+  const handleRoundComplete = useCallback(async (isVictory, choice, prevPlayerIds, prevEnemyIds) => {
     if (!activeBattle?.id) return;
     const roundWinner = isVictory ? 'attacker' : 'defender';
     try {
@@ -145,7 +161,6 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
       const data = await res.json();
 
       if (data.status === 'attacker_wins' || data.status === 'defender_wins') {
-        // Match finito → chiude RoundViewer e aggiorna la mappa
         setShowRound(false);
         setActiveBattle(null);
         await invalidateAndReload();
@@ -155,21 +170,26 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
         }
         setSelectedPixel(null);
       } else {
-        // Round finito, match in corso → aggiorna win counts in activeBattle.
-        // La `key` su RoundViewer cambierà → React rimonta RoundViewer → phase torna a 'pre'.
+        // Round in corso: aggiorna win counts + nextRoundChoice + team precedenti.
+        // La `key` cambia → React rimonta RoundViewer con la fase giusta.
         setActiveBattle(prev => ({
           ...prev,
           attackerWins: data.attackerWins ?? (prev.attackerWins + (roundWinner === 'attacker' ? 1 : 0)),
           defenderWins: data.defenderWins ?? (prev.defenderWins + (roundWinner === 'defender' ? 1 : 0)),
+          nextRoundChoice: choice,       // 'same' | 'switch' | null
+          prevPlayerTeamIds: prevPlayerIds ?? [],
+          prevEnemyTeamIds: prevEnemyIds ?? [],
         }));
       }
     } catch (e) {
       console.error('Errore round API:', e);
-      // Fallback: aggiorna localmente i win counts e rimonta RoundViewer
       setActiveBattle(prev => ({
         ...prev,
         attackerWins: prev.attackerWins + (roundWinner === 'attacker' ? 1 : 0),
         defenderWins: prev.defenderWins + (roundWinner === 'defender' ? 1 : 0),
+        nextRoundChoice: choice,
+        prevPlayerTeamIds: prevPlayerIds ?? [],
+        prevEnemyTeamIds: prevEnemyIds ?? [],
       }));
     }
   }, [activeBattle, user, invalidateAndReload, setProfilo]);
@@ -218,13 +238,26 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
           <div style={{ fontFamily: FF.display, fontSize: 20, color: '#fff', fontWeight: 800 }}>Mappa del Mondo</div>
         </div>
         <button
-          onClick={() => setShowOffers(true)}
+          onClick={() => { setShowOffers(true); }}
           style={{
+            position: 'relative',
             background: 'rgba(245,197,96,0.1)', border: '1px solid rgba(245,197,96,0.3)',
             borderRadius: 10, color: C.gold, fontFamily: FF.label, fontSize: 10,
             letterSpacing: '0.15em', textTransform: 'uppercase', padding: '6px 12px', cursor: 'pointer',
           }}
-        >💌 Offerte</button>
+        >
+          💌 Offerte
+          {pendingOffersCount > 0 && (
+            <span style={{
+              position: 'absolute', top: -6, right: -6,
+              background: '#ff5b6c', color: '#fff',
+              width: 16, height: 16, borderRadius: '50%',
+              display: 'grid', placeItems: 'center',
+              fontFamily: "'DM Sans', sans-serif", fontSize: 9, fontWeight: 800,
+              border: '1px solid rgba(3,2,12,0.8)',
+            }}>{pendingOffersCount}</span>
+          )}
+        </button>
       </div>
 
       {/* Canvas mappa */}
@@ -234,6 +267,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
           userUid={user.uid}
           selectedPixel={selectedPixel}
           onPixelSelect={handlePixelSelect}
+          landSet={LAND_SET}
         />
       </div>
 
@@ -282,7 +316,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
           così phase torna a 'pre' automaticamente senza logica extra */}
       {showRound && activeBattle && (
         <RoundViewer
-          key={`${activeBattle.id}-${activeBattle.attackerWins}-${activeBattle.defenderWins}`}
+          key={`${activeBattle.id}-${activeBattle.attackerWins}-${activeBattle.defenderWins}-${activeBattle.nextRoundChoice ?? ''}`}
           battle={activeBattle}
           waifuCat={waifuCat}
           collezione={collezione}
@@ -304,7 +338,12 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
 
       {/* Lista offerte */}
       {showOffers && (
-        <OffersPanel user={user} onClose={() => setShowOffers(false)} />
+        <OffersPanel
+          user={user}
+          onClose={() => { setShowOffers(false); loadPendingOffers(); }}
+          onKissesUpdate={(amount) => setProfilo(p => ({ ...p, kisses: (p.kisses ?? 0) + amount }))}
+          onMapUpdate={invalidateAndReload}
+        />
       )}
 
       {/* Editor team difensore */}

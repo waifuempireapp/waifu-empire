@@ -19,8 +19,8 @@ function MiniWaifuCard({ waifu, selIdx, onClick }) {
       overflow: 'hidden', background: '#12102a',
       aspectRatio: '3/4',
     }}>
-      {waifu?.asset_immagine ? (
-        <img src={waifu.asset_immagine} alt={waifu.nome}
+      {waifu?.asset_immagine || waifu?.asset_statica || waifu?.asset_immersiva ? (
+        <img src={waifu.asset_immagine || waifu.asset_statica || waifu.asset_immersiva} alt={waifu.nome}
           style={{ width: '100%', height: '75%', objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
       ) : (
         <div style={{ width: '100%', height: '75%', background: `${rarColor}22`, display: 'grid', placeItems: 'center' }}>

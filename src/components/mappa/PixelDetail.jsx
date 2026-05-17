@@ -1,5 +1,6 @@
 'use client';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
+import { PIXEL_NAMES } from '@/lib/worldMap';
 
 function pixelPrice(ownerLevel = 1) {
   return 200 + ownerLevel * 50;
@@ -38,7 +39,9 @@ export default function PixelDetail({
 
   const isOwn   = pixel.ownerId === userUid;
   const isCPU   = pixel.ownerId === 'CPU';
-  const price   = pixelPrice(pixel.ownerLevel ?? 1);
+  const price    = pixelPrice(pixel.ownerLevel ?? 1);
+  const pixelKey = `${pixel.x}_${pixel.y}`;
+  const pixelName = pixel.name || PIXEL_NAMES[pixelKey] || `(${pixel.x}, ${pixel.y})`;
 
   // Team difensore da visualizzare:
   // - proprio pixel → myDefenseTeam (già caricato da MappaPixel)
@@ -102,7 +105,7 @@ export default function PixelDetail({
               {isOwn && <span style={{ color: C.aqua, marginLeft: 8, fontSize: 10 }}>· tuo</span>}
             </div>
             <div style={{ fontFamily: FF.mono, fontSize: 10, color: 'rgba(241,235,255,0.4)', marginTop: 2 }}>
-              pixel ({pixel.x}, {pixel.y})
+              {pixelName}
             </div>
           </div>
         </div>

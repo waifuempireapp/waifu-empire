@@ -761,18 +761,49 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
           </div>
         )}
 
-        <button onClick={onContinue} style={{
-          padding:'12px 24px', width:'100%',
-          background:'linear-gradient(rgba(245,197,96,0.32), rgba(245,197,96,0.1))',
-          border:'0.8px solid rgba(255,233,168,0.6)',
-          borderRadius:12, cursor:'pointer',
-          color:'rgb(42,31,0)',
-          fontFamily:"'Saira Condensed', Saira, sans-serif",
-          fontSize:13, fontWeight:700, letterSpacing:1.6, textTransform:'uppercase',
-          backdropFilter:'blur(8px)',
-          WebkitBackdropFilter:'blur(8px)',
-          boxShadow:'rgba(245,197,96,0.35) 0px 6px 20px 0px',
-        }}>TORNA ALLA MAPPA →</button>
+        {/* Bottoni Bo3: 2 scelte per round intermedio, 1 solo per round finale */}
+        {(() => {
+          const bo3 = battleCtx?.bo3;
+          let matchOver = true;
+          if (bo3) {
+            const newAW = (bo3.attackerWins ?? 0) + (isVictory ? 1 : 0);
+            const newDW = (bo3.defenderWins ?? 0) + (isVictory ? 0 : 1);
+            matchOver = newAW >= 2 || newDW >= 2;
+          }
+          const btnBase = {
+            padding:'11px 10px', flex:1,
+            borderRadius:12, cursor:'pointer',
+            fontFamily:"'Saira Condensed', Saira, sans-serif",
+            fontSize:12, fontWeight:700, letterSpacing:1.4, textTransform:'uppercase',
+            backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)',
+          };
+          if (matchOver) {
+            return (
+              <button onClick={()=>onContinue(null)} style={{
+                ...btnBase, width:'100%', fontSize:13, letterSpacing:1.6,
+                background:'linear-gradient(rgba(245,197,96,0.32), rgba(245,197,96,0.1))',
+                border:'0.8px solid rgba(255,233,168,0.6)', color:'rgb(42,31,0)',
+                boxShadow:'rgba(245,197,96,0.35) 0px 6px 20px 0px',
+              }}>VAI ALLA MAPPA →</button>
+            );
+          }
+          return (
+            <div style={{display:'flex',gap:8,width:'100%'}}>
+              <button onClick={()=>onContinue('same')} style={{
+                ...btnBase,
+                background:'linear-gradient(rgba(108,240,224,0.25), rgba(108,240,224,0.08))',
+                border:'0.8px solid rgba(108,240,224,0.5)', color:'rgba(6,3,15,0.9)',
+                boxShadow:'rgba(108,240,224,0.25) 0px 4px 14px 0px',
+              }}>⚡ Stessa squadra</button>
+              <button onClick={()=>onContinue('switch')} style={{
+                ...btnBase,
+                background:'linear-gradient(rgba(167,139,250,0.25), rgba(167,139,250,0.08))',
+                border:'0.8px solid rgba(167,139,250,0.5)', color:'rgba(6,3,15,0.9)',
+                boxShadow:'rgba(167,139,250,0.25) 0px 4px 14px 0px',
+              }}>🔀 Cambia squadra</button>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
@@ -1520,8 +1551,9 @@ export default function WaifuBattleArena({
     if(isPvP) onPvPKoReplacement?.(newIdx);
   },[pTeam, isPvP, onPvPKoReplacement]);
 
-  // Callback per chiudere il popup risultato e tornare alla mappa
-  const handleResultContinue=useCallback(()=>{ onExit?.(); },[onExit]);
+  // Callback per chiudere il popup risultato.
+  // choice: null (match finito) | 'same' (stessa squadra) | 'switch' (cambia squadra)
+  const handleResultContinue=useCallback((choice=null)=>{ onExit?.(choice); },[onExit]);
 
   // Risultato finale "congelato" al momento della vittoria/sconfitta.
   // Usiamo uno state separato (invece di leggere statsP/statsE nel render di 'result')

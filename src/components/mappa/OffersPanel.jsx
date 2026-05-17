@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
 import KissesIcon from '@/components/KissesIcon';
 
-export default function OffersPanel({ user, onClose }) {
+export default function OffersPanel({ user, onClose, onKissesUpdate, onMapUpdate }) {
   const [offers, setOffers] = useState({ incoming: [], outgoing: [] });
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(null);
@@ -25,11 +25,20 @@ export default function OffersPanel({ user, onClose }) {
     setActing(offerId);
     try {
       const token = await user.getIdToken();
-      await fetch(`/api/mappa/offers/${offerId}`, {
+      // Trova l'offerta per sapere l'importo (per aggiornare la UI del venditore)
+      const offer = [...(offers.incoming || []), ...(offers.outgoing || [])].find(o => o.id === offerId);
+      const res = await fetch(`/api/mappa/offers/${offerId}`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ action }),
       });
+      const data = await res.json();
+      if (data.success && action === 'accept' && offer) {
+        // Il venditore (uid corrente) riceve i Kisses — aggiorna profilo UI
+        onKissesUpdate?.(offer.amount);
+        // La mappa deve aggiornarsi (pixel cambierà proprietario)
+        onMapUpdate?.();
+      }
       await loadOffers();
     } finally {
       setActing(null);
