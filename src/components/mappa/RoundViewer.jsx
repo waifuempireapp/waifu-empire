@@ -4,7 +4,6 @@ import WaifuBattleArena from '@/components/WaifuBattleArena';
 import { initBattleTeam, generateCPUTeamOf5 } from '@/lib/battleEngine';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
 
-// Mappa difficoltà → livello CPU numerico
 const DIFFICULTY_LEVEL = { easy: 3, medium: 12, hard: 35, expert: 55 };
 
 export default function RoundViewer({ battle, waifuCat, collezione, onRoundEnd, onClose }) {
@@ -12,26 +11,26 @@ export default function RoundViewer({ battle, waifuCat, collezione, onRoundEnd, 
 
   const difficulty = DIFFICULTY_LEVEL[battle?.cpuDifficulty ?? 'easy'];
 
-  // Inizializza team attaccante dalla collezione
+  // Team attaccante inizializzato dalla collezione del giocatore
   const attackerWaifuData = (battle?.attackerTeam || [])
     .map(id => waifuCat?.find(w => w.id === id))
     .filter(Boolean);
+  const playerTeam = initBattleTeam(attackerWaifuData, collezione?.waifu || {});
 
-  const attackerTeam = initBattleTeam(attackerWaifuData, collezione?.waifu || {});
-
-  // Team difensore: se CPU o non disponibile → genera team CPU
-  let defenderTeam;
+  // Team difensore: usa le waifu del proprietario se disponibili, altrimenti genera CPU
+  let enemyTeam;
   if (battle?.defenderTeam?.length === 5) {
     const defWaifuData = battle.defenderTeam
       .map(id => waifuCat?.find(w => w.id === id))
       .filter(Boolean);
-    defenderTeam = defWaifuData.length === 5
+    enemyTeam = defWaifuData.length === 5
       ? initBattleTeam(defWaifuData, {})
       : generateCPUTeamOf5(waifuCat || [], difficulty);
   } else {
-    defenderTeam = generateCPUTeamOf5(waifuCat || [], difficulty);
+    enemyTeam = generateCPUTeamOf5(waifuCat || [], difficulty);
   }
 
+  // Schermata pre-round: mostra punteggio e pulsante per avviare
   if (!started) {
     return (
       <div style={{
@@ -81,17 +80,23 @@ export default function RoundViewer({ battle, waifuCat, collezione, onRoundEnd, 
     );
   }
 
+  // Arena di battaglia: usa WaifuBattleArena esattamente come nella MappaTab originale
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: '#07051a' }}>
       <WaifuBattleArena
-        playerTeam={attackerTeam}
-        cpuTeam={defenderTeam}
-        cpuLevel={difficulty}
-        onBattleEnd={(result) => {
-          // result.winner: 'player' | 'cpu'
-          const roundWinner = result.winner === 'player' ? 'attacker' : 'defender';
+        playerTeam={playerTeam}
+        enemyTeam={enemyTeam}
+        waifuCat={waifuCat}
+        battleCtx={{
+          nomeImperoAvversario: battle?.defenderUid === 'CPU' ? 'CPU' : 'Avversario',
+          sonoAttaccante: true,
+          nomeImpero: 'Tu',
+        }}
+        onBattleResult={(isVictory) => {
+          const roundWinner = isVictory ? 'attacker' : 'defender';
           onRoundEnd?.(roundWinner);
         }}
+        onExit={onClose}
       />
     </div>
   );
