@@ -97,24 +97,51 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
     } catch (e) { console.error(e); }
   };
 
-  // ── RISULTATO MATCH ──────────────────────────────────────────────────────────
-  // Chiamata da RoundViewer.onExit DOPO che l'utente ha premuto "Continua" nel popup
-  const handleMatchEnd = useCallback(async (result) => {
-    setShowRound(false);
-    setActiveBattle(null);
+  // ── RISULTATO ROUND ───────────────────────────────────────────────────────────
+  // Chiamata da RoundViewer.onExit SUBITO dopo che l'utente preme "Continua" nel popup.
+  // Fix #2: l'API call avviene QUI (in MappaPixel), non in RoundViewer.
+  // MappaPixel usa `key` su RoundViewer per rimontarlo tra round (resetta phase a 'pre').
+  const handleRoundComplete = useCallback(async (isVictory) => {
+    if (!activeBattle?.id) return;
+    const roundWinner = isVictory ? 'attacker' : 'defender';
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/mappa/battle/${activeBattle.id}/round`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roundWinner }),
+      });
+      const data = await res.json();
 
-    // Ricarica la mappa fresca dal server
-    await invalidateAndReload();
-
-    if (result?.status === 'attacker_wins') {
-      setProfilo(p => ({ ...p, pixelCount: (p.pixelCount ?? 0) + 1 }));
-      setShowTutorial(false);
-    } else if (result?.status === 'defender_wins' && activeBattle?.defenderUid !== 'CPU') {
-      // Il difensore ha perso un pixel: il suo pixelCount è già aggiornato server-side
+      if (data.status === 'attacker_wins' || data.status === 'defender_wins') {
+        // Match finito → chiude RoundViewer e aggiorna la mappa
+        setShowRound(false);
+        setActiveBattle(null);
+        await invalidateAndReload();
+        if (data.status === 'attacker_wins') {
+          setProfilo(p => ({ ...p, pixelCount: (p.pixelCount ?? 0) + 1 }));
+          setShowTutorial(false);
+        }
+        setSelectedPixel(null);
+      } else {
+        // Round finito, match in corso → aggiorna win counts in activeBattle.
+        // La `key` su RoundViewer cambierà → React rimonta RoundViewer → phase torna a 'pre'.
+        setActiveBattle(prev => ({
+          ...prev,
+          attackerWins: data.attackerWins ?? (prev.attackerWins + (roundWinner === 'attacker' ? 1 : 0)),
+          defenderWins: data.defenderWins ?? (prev.defenderWins + (roundWinner === 'defender' ? 1 : 0)),
+        }));
+      }
+    } catch (e) {
+      console.error('Errore round API:', e);
+      // Fallback: aggiorna localmente i win counts e rimonta RoundViewer
+      setActiveBattle(prev => ({
+        ...prev,
+        attackerWins: prev.attackerWins + (roundWinner === 'attacker' ? 1 : 0),
+        defenderWins: prev.defenderWins + (roundWinner === 'defender' ? 1 : 0),
+      }));
     }
-
-    setSelectedPixel(null);
-  }, [activeBattle, invalidateAndReload, setProfilo]);
+  }, [activeBattle, user, invalidateAndReload, setProfilo]);
 
   // ── ACQUISTO ──────────────────────────────────────────────────────────────────
   const handlePurchase = async ({ amount }) => {
@@ -218,15 +245,17 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
         />
       )}
 
-      {/* Pick phase + Arena di battaglia */}
+      {/* Pick phase + Arena di battaglia.
+          key = win counts: cambia ad ogni round completato → React rimonta RoundViewer
+          così phase torna a 'pre' automaticamente senza logica extra */}
       {showRound && activeBattle && (
         <RoundViewer
+          key={`${activeBattle.id}-${activeBattle.attackerWins}-${activeBattle.defenderWins}`}
           battle={activeBattle}
           waifuCat={waifuCat}
           collezione={collezione}
-          user={user}
           profilo={profilo}
-          onMatchEnd={handleMatchEnd}
+          onRoundComplete={handleRoundComplete}
           onClose={() => { setShowRound(false); setActiveBattle(null); }}
         />
       )}
