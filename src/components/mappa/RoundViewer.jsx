@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import WaifuBattleArena from '@/components/WaifuBattleArena';
 import PickPhase from '@/components/PickPhase';
 import { generateCPUTeamOf5 } from '@/lib/battleEngine';
@@ -8,41 +8,50 @@ import { C, FF } from '@/app/gioco/_redesign/_shared';
 const DIFFICULTY_LEVEL = { easy: 3, medium: 12, hard: 35, expert: 55 };
 
 /**
- * Gestisce il ciclo completo di un round Bo3 territoriale:
- *   'pre'   → schermata punteggio + bottone "Combatti"
- *   'pick'  → PickPhase 3-from-5 (identica alla MappaTab originale)
- *   'battle'→ WaifuBattleArena
+ * Fasi: 'pre' → 'pick' → 'battle'
  *
- * L'API per registrare il round viene chiamata dentro onBattleResult
- * (mentre il popup risultato è ancora aperto), così il server aggiorna
- * il territorio PRIMA che l'utente prema "Continua".
- * Solo quando l'utente preme "Continua" (onExit) si torna alla mappa.
+ * Timing critico (Fix #3):
+ *   - WaifuBattleArena chiama onBattleResult() fire-and-forget (non awaited)
+ *   - Usiamo sia useState (per UI) sia useRef (per accesso sincrono in onExit)
+ *   - onExit controlla il ref; se il risultato non è ancora arrivato aspetta
+ *     via polling (max 3 tentativi da 300ms) prima di decidere
  */
 export default function RoundViewer({ battle, waifuCat, collezione, user, profilo, onMatchEnd, onClose }) {
-  const [phase, setPhase] = useState('pre');
+  const [phase, setPhase]           = useState('pre');
   const [playerTeam, setPlayerTeam] = useState(null);
-  const [enemyTeam, setEnemyTeam] = useState(null);
+  const [enemyTeam, setEnemyTeam]   = useState(null);
+  const [apiPending, setApiPending] = useState(false);
+
+  // Fix #3: usiamo ENTRAMBI ref + state per coprire il race condition
   const matchResultRef = useRef(null);
+  const [matchResult, setMatchResult] = useState(null);
 
   const difficulty = DIFFICULTY_LEVEL[battle?.cpuDifficulty ?? 'easy'];
 
-  // Roster 5 giocatore: oggetti waifu dal catalogo + dati collezione (stesso formato di waifuDisponibili)
-  const roster5P = (battle?.attackerTeam || [])
-    .map(id => {
-      const cat = waifuCat?.find(w => w.id === id);
-      const coll = collezione?.waifu?.[id] ?? {};
-      return cat ? { ...cat, ...coll } : null;
-    })
-    .filter(Boolean);
+  // Roster 5 giocatore (oggetti waifu + dati collezione, come waifuDisponibili nella MappaTab)
+  const roster5P = useMemo(() => (
+    (battle?.attackerTeam || [])
+      .map(id => {
+        const cat  = waifuCat?.find(w => w.id === id);
+        const coll = collezione?.waifu?.[id] ?? {};
+        return cat ? { ...cat, ...coll } : null;
+      })
+      .filter(Boolean)
+  ), [battle?.attackerTeam, waifuCat, collezione]);
 
-  // Roster 5 CPU: WaifuBattleStat[] da generateCPUTeamOf5 (stessa funzione della MappaTab)
-  const cpuResult = useRef(null);
-  if (!cpuResult.current && waifuCat?.length) {
-    cpuResult.current = generateCPUTeamOf5(waifuCat, difficulty);
-  }
-  const roster5E = cpuResult.current?.roster5 ?? [];
+  // Roster 5 CPU — generato una sola volta e memorizzato
+  // Fix #4: patchiamo asset_immagine come `image` perché initBattleWaifu usa asset_statica
+  const cpuData = useMemo(() => {
+    if (!waifuCat?.length) return { roster5: [], picks3: [] };
+    const result = generateCPUTeamOf5(waifuCat, difficulty);
+    const patchImage = (team) => team.map(w => ({
+      ...w,
+      image: w.image || waifuCat.find(c => c.id === w.id)?.asset_immagine || null,
+    }));
+    return { roster5: patchImage(result.roster5), picks3: patchImage(result.picks3) };
+  }, [waifuCat, difficulty]);
 
-  // ── PRE-ROUND ──────────────────────────────────────────────────────────────
+  // ── PRE-ROUND ─────────────────────────────────────────────────────────────
   if (phase === 'pre') {
     const roundNum = (battle?.attackerWins ?? 0) + (battle?.defenderWins ?? 0) + 1;
     return (
@@ -66,40 +75,29 @@ export default function RoundViewer({ battle, waifuCat, collezione, user, profil
         <div style={{ display: 'flex', gap: 32, marginBottom: 40 }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontFamily: FF.label, fontSize: 9, color: C.gold, letterSpacing: '0.2em', marginBottom: 6 }}>TU</div>
-            <div style={{ fontFamily: FF.display, fontSize: 36, color: C.aqua, fontWeight: 900 }}>{battle?.attackerWins ?? 0}</div>
+            <div style={{ fontFamily: FF.display, fontSize: 42, color: C.aqua, fontWeight: 900, lineHeight: 1 }}>{battle?.attackerWins ?? 0}</div>
           </div>
-          <div style={{ fontFamily: FF.display, fontSize: 28, color: 'rgba(241,235,255,0.2)', alignSelf: 'center' }}>VS</div>
+          <div style={{ fontFamily: FF.display, fontSize: 28, color: 'rgba(241,235,255,0.2)', alignSelf: 'center' }}>—</div>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontFamily: FF.label, fontSize: 9, color: C.sakura, letterSpacing: '0.2em', marginBottom: 6 }}>CPU</div>
-            <div style={{ fontFamily: FF.display, fontSize: 36, color: C.err, fontWeight: 900 }}>{battle?.defenderWins ?? 0}</div>
+            <div style={{ fontFamily: FF.display, fontSize: 42, color: C.err, fontWeight: 900, lineHeight: 1 }}>{battle?.defenderWins ?? 0}</div>
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: 12, width: '100%', maxWidth: 320 }}>
-          <button onClick={onClose} style={{
-            flex: 1, padding: '12px', background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(174,156,255,0.2)', borderRadius: 12,
-            color: 'rgba(241,235,255,0.5)', fontFamily: FF.label, fontSize: 12,
-            letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer',
-          }}>← Indietro</button>
-          <button onClick={() => setPhase('pick')} style={{
-            flex: 2, padding: '12px',
-            background: 'linear-gradient(135deg, #c54a86, #ff85b6)',
-            border: 'none', borderRadius: 12, color: '#fff',
-            fontFamily: FF.label, fontSize: 13, letterSpacing: '0.2em',
-            textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer',
-          }}>⚔ Combatti</button>
+          <button onClick={onClose} style={ghostBtn}>← Indietro</button>
+          <button onClick={() => setPhase('pick')} style={primaryBtn}>⚔ Combatti</button>
         </div>
       </div>
     );
   }
 
-  // ── PICK PHASE ─────────────────────────────────────────────────────────────
+  // ── PICK PHASE ────────────────────────────────────────────────────────────
   if (phase === 'pick') {
     return (
       <PickPhase
         roster5P={roster5P}
-        roster5E={roster5E}
+        roster5E={cpuData.roster5}
         isCpu={true}
         isPvP={false}
         battleCtx={{
@@ -110,13 +108,16 @@ export default function RoundViewer({ battle, waifuCat, collezione, user, profil
         onConfirm={(pTeam, eTeam) => {
           setPlayerTeam(pTeam);
           setEnemyTeam(eTeam);
+          // Reset risultato precedente prima di ogni nuovo round
+          matchResultRef.current = null;
+          setMatchResult(null);
           setPhase('battle');
         }}
       />
     );
   }
 
-  // ── BATTLE ─────────────────────────────────────────────────────────────────
+  // ── BATTLE ────────────────────────────────────────────────────────────────
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: '#07051a' }}>
       <WaifuBattleArena
@@ -129,9 +130,12 @@ export default function RoundViewer({ battle, waifuCat, collezione, user, profil
           nomeImpero: profilo?.nomeImpero || 'Tu',
         }}
         onBattleResult={async (isVictory) => {
-          // Chiamata API mentre il popup risultato è ancora aperto:
-          // il server aggiorna il territorio PRIMA che l'utente prema "Continua"
+          // Fix #3: WaifuBattleArena chiama questo FIRE-AND-FORGET (non awaited).
+          // Salviamo il risultato in entrambi ref + state.
+          // Il ref dà accesso sincrono immediato in onExit.
+          // Lo state causa re-render in caso di ritardi.
           const roundWinner = isVictory ? 'attacker' : 'defender';
+          setApiPending(true);
           try {
             const token = await user.getIdToken();
             const res = await fetch(`/api/mappa/battle/${battle.id}/round`, {
@@ -140,20 +144,39 @@ export default function RoundViewer({ battle, waifuCat, collezione, user, profil
               body: JSON.stringify({ roundWinner }),
             });
             const data = await res.json();
-            matchResultRef.current = data; // salva per onExit
+            if (res.ok) {
+              matchResultRef.current = data;
+              setMatchResult(data);
+            } else {
+              const fallback = { status: 'error', error: data.error, roundWinner };
+              matchResultRef.current = fallback;
+              setMatchResult(fallback);
+              console.error('API round error:', data.error);
+            }
           } catch (e) {
-            console.error('Errore registrazione round:', e);
-            // Fallback locale: l'utente può riprovare
-            matchResultRef.current = { status: 'error', roundWinner };
+            const fallback = { status: 'error', roundWinner };
+            matchResultRef.current = fallback;
+            setMatchResult(fallback);
+            console.error('Network error round:', e);
+          } finally {
+            setApiPending(false);
           }
         }}
-        onExit={() => {
-          const result = matchResultRef.current;
+        onExit={async () => {
+          // Fix #3: se l'API non ha ancora risposto (race condition), aspettiamo max 1.5s
+          let result = matchResultRef.current;
+          if (!result) {
+            for (let i = 0; i < 5 && !matchResultRef.current; i++) {
+              await new Promise(r => setTimeout(r, 300));
+            }
+            result = matchResultRef.current;
+          }
+
           if (result?.status === 'attacker_wins' || result?.status === 'defender_wins') {
-            // Match completo → torna alla mappa con il risultato
+            // Match completo → torna alla mappa
             onMatchEnd?.(result);
           } else {
-            // Round finito, match in corso → torna alla schermata pre-round
+            // Round concluso ma match in corso (o errore) → torna alla schermata pre-round
             setPhase('pre');
             setPlayerTeam(null);
             setEnemyTeam(null);
@@ -163,3 +186,22 @@ export default function RoundViewer({ battle, waifuCat, collezione, user, profil
     </div>
   );
 }
+
+const ghostBtn = {
+  flex: 1, padding: '13px',
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(174,156,255,0.2)',
+  borderRadius: 14, color: 'rgba(241,235,255,0.5)',
+  fontFamily: "'Saira Condensed', sans-serif",
+  fontSize: 12, letterSpacing: '0.18em',
+  textTransform: 'uppercase', cursor: 'pointer',
+};
+
+const primaryBtn = {
+  flex: 2, padding: '13px',
+  background: 'linear-gradient(135deg, #c54a86, #ff85b6)',
+  border: 'none', borderRadius: 14, color: '#fff',
+  fontFamily: "'Saira Condensed', sans-serif",
+  fontSize: 13, letterSpacing: '0.2em',
+  textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer',
+};
