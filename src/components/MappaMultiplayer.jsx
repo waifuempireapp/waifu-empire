@@ -29,7 +29,7 @@ import {
   salvaProseguiTurnoRound, registraRisultatoBattagliaPvp,
   salvaRisultatoPvpRound,
   salvaArenaMove, inizializzaArena,
-  inizializzaArenaSeedRng,
+  inizializzaArenaSeedRng, salvaKOReplacement,
 } from '@/lib/multiplayerService';
 import { resolvePvPTurn } from '@/lib/pvpArenaEngine';
 import WaifuBattleArena from '@/components/WaifuBattleArena';
@@ -302,8 +302,15 @@ function SchermataPartita({
   // Scelta spettatore: null = non ancora scelto, 'aspetta' | 'guarda'
   const [sceltaSpettatore, setSceltaSpettatore] = useState(null);
 
-  // NOTA: questo useEffect deve stare PRIMA di qualsiasi early return
-  // per rispettare la regola dei hook (stesso numero di hook per ogni render).
+  // Flag locale che mantiene BattagliaMultiplayer montato ANCHE dopo che il risultato
+  // è stato scritto su Firestore (battagliaCorrente: null). Ogni giocatore preme il
+  // bottone di conferma in autonomia: il primo a premere NON deve forzare l'uscita
+  // del secondo. Viene impostato a true quando la battaglia inizia e a false quando
+  // QUESTO giocatore preme "TORNA ALLA MAPPA" (via onEsciDallArena).
+  const [battagliaLocaleAttiva, setBattagliaLocaleAttiva] = useState(false);
+
+  // NOTA: tutti i hook devono stare PRIMA di qualsiasi early return
+  // per rispettare la regola dei hook (stesso numero per ogni render).
   const _ordine = partita?.ordineGiocatori || [];
   const _turnoUid = _ordine[partita?.turnoCorrente ?? 0];
   const _isMioTurno = _turnoUid === user?.uid;
@@ -316,6 +323,18 @@ function SchermataPartita({
   useEffect(() => {
     if (!_battagliaCorrente) setSceltaSpettatore(null);
   }, [_battagliaCorrente]);
+
+  // Attiva il flag locale quando la battaglia inizia per questo giocatore
+  const myUidForEffect = user?.uid;
+  useEffect(() => {
+    const bc = partita?.battagliaCorrente;
+    if (!bc) return;
+    const coinvolto = bc.attaccanteUid === myUidForEffect ||
+      (bc.difensoreUid === myUidForEffect && bc.difensoreUid !== 'cpu');
+    if (coinvolto && bc.statoFase === 'in_attesa') {
+      setBattagliaLocaleAttiva(true);
+    }
+  }, [partita?.battagliaCorrente?.statoFase, myUidForEffect]); // eslint-disable-line
 
   if (!partita) {
     return (
@@ -406,8 +425,15 @@ function SchermataPartita({
   // Se sono coinvolto: vado direttamente alla battaglia (nessun check presenza)
   // Fuori dalla battaglia: nessuna schermata d'attesa — il giocatore del turno agirà quando torna
 
-  if (battaglia && battaglia.statoFase === 'in_attesa' && (sonoAttaccante || (sonoDifensore && battaglia.difensoreUid !== 'cpu'))) {
-    // Avvia battaglia locale
+  // Mostra BattagliaMultiplayer se:
+  // (a) la battaglia è appena iniziata (condizione Firestore), oppure
+  // (b) la battaglia è già stata registrata su Firestore (battagliaCorrente: null)
+  //     ma QUESTO giocatore non ha ancora premuto "TORNA ALLA MAPPA".
+  // In questo modo ogni giocatore esce in autonomia senza dipendere dall'altro.
+  if (battagliaLocaleAttiva || (battaglia && battaglia.statoFase === 'in_attesa' && (sonoAttaccante || (sonoDifensore && battaglia.difensoreUid !== 'cpu')))) {
+    // battagliaSnapshot: usa i dati catturati al momento dell'attivazione locale
+    // (potrebbero essere null su Firestore dopo la registrazione del risultato)
+    const battagliaSnapshot = battaglia ?? battagliaInfo;
     return (
       <BattagliaMultiplayer
         partita={partita}
@@ -418,11 +444,17 @@ function SchermataPartita({
         waifuCat={waifuCat}
         outfitCat={outfitCat}
         sonoAttaccante={sonoAttaccante}
+        onEsciDallArena={() => setBattagliaLocaleAttiva(false)}
         onBattagliaFinita={async (vincitoreUid) => {
-          const isBattagliaPvp = battaglia.difensoreUid !== 'cpu';
+          // Usa battagliaSnapshot: potrebbe già essere null su Firestore
+          // (onBattagliaFinita viene ora chiamata da onBattleResult, prima del popup)
+          const snap = battaglia ?? battagliaSnapshot;
+          if (battaglia && !battagliaInfo) setBattagliaInfo(battaglia);
+          if (!snap) return; // battaglia già null e nessun snapshot — non fare nulla
+          const isBattagliaPvp = snap.difensoreUid !== 'cpu';
           if (isBattagliaPvp) {
             // PvP: usa registraRisultatoBattagliaPvp (no energia persa, territori marcati pvp)
-            await registraRisultatoBattagliaPvp({ codice, vincitoreUid, territorioId: battaglia.territorioId });
+            await registraRisultatoBattagliaPvp({ codice, vincitoreUid, territorioId: snap.territorioId });
             // Il vincitore ottiene un pacchetto sfida (solo se sono io il vincitore)
             if (vincitoreUid === myUid) {
               try {
@@ -435,7 +467,7 @@ function SchermataPartita({
               }
             }
           } else {
-            await registraRisultatoBattaglia({ codice, vincitoreUid, territorioId: battaglia.territorioId });
+            await registraRisultatoBattaglia({ codice, vincitoreUid, territorioId: snap.territorioId });
           }
         }}
         mostraNotif={mostraNotif}
@@ -853,7 +885,7 @@ function CartaTerritorio({ territorio, infoImpero }) {
  */
 function BattagliaMultiplayer({
   partita, codice, user, profilo, collezione, waifuCat, outfitCat,
-  sonoAttaccante, onBattagliaFinita, mostraNotif,
+  sonoAttaccante, onBattagliaFinita, mostraNotif, onEsciDallArena,
 }) {
   const myUid = user.uid;
   const giocatori = partita.giocatori || {};
@@ -917,6 +949,9 @@ function BattagliaMultiplayer({
   const [attesaRoster5Avv, setAttesaRoster5Avv] = useState(false);
   const mioRoster5Ref = useRef([]); // roster5 del giocatore corrente (usato dal listener)
   const [pvpOpponentMove, setPvpOpponentMove] = useState(null);
+  // Indice waifu scelto dall'avversario come sostituta dopo un KO.
+  // Ricevuto via Firestore — aggiorna eActive sul device locale.
+  const [pvpOpponentKoReplacement, setPvpOpponentKoReplacement] = useState(null);
   const [pvpWaiting, setPvpWaiting]           = useState(false);
   // PvP Arena sync — Attacker-as-resolver
   const [pvpBattleSeed, setPvpBattleSeed]     = useState(null);   // seed RNG condiviso (generato dall'attaccante)
@@ -1234,6 +1269,17 @@ function BattagliaMultiplayer({
     }
   }, [partita?.battagliaCorrente?.arenaMosse, arenaAttiva, myUid, avversarioUid]); // eslint-disable-line
 
+  // ── Arena PvP: sostituzione KO — ascolta la scelta dell'avversario ─────────────
+  // Quando il device dell'avversario ha una waifu messa KO e sceglie la sostituta,
+  // scrive l'indice su Firestore. Questo useEffect lo legge e aggiorna eActive
+  // localmente per mantenere i due device sincronizzati.
+  useEffect(() => {
+    if (!arenaAttiva || isCpu) return;
+    const koRepl = partita?.battagliaCorrente?.koReplacement?.[avversarioUid];
+    if (koRepl === undefined || koRepl === null) return;
+    setPvpOpponentKoReplacement(koRepl);
+  }, [partita?.battagliaCorrente?.koReplacement, arenaAttiva, avversarioUid]); // eslint-disable-line
+
   // ── Arena PvP: seed RNG — il difensore legge il seed pubblicato dall'attaccante ──
   // L'attaccante genera il seed e lo scrive su Firestore via inizializzaArenaSeedRng.
   // Il difensore lo legge qui e lo salva in pvpBattleSeed per il calcolo deterministico.
@@ -1261,9 +1307,20 @@ function BattagliaMultiplayer({
   // Chiamato da WaifuBattleArena al termine di ogni turno PvP.
   const handlePvPTurnAdvance = useCallback(() => {
     arenaTurnoRef.current += 1;
-    setPvpOpponentMove(null); // reset per il prossimo turno
-    setPvpWaiting(false);     // reset attesa
+    setPvpOpponentMove(null);          // reset mossa per il prossimo turno
+    setPvpWaiting(false);              // reset attesa
+    setPvpOpponentKoReplacement(null); // reset sostituzione KO per il prossimo turno
   }, []);
+
+  // Callback: il giocatore locale ha scelto la sostituta dopo un KO.
+  // Scrive l'indice su Firestore così l'avversario può aggiornare eActive.
+  const handlePvPKoReplacement = useCallback(async (waifuIdx) => {
+    try {
+      await salvaKOReplacement(codice, myUid, waifuIdx);
+    } catch (e) {
+      // Errore non bloccante — il turno prosegue comunque
+    }
+  }, [codice, myUid]);
 
   // Risolve il round (solo l'attaccante) e scrive il risultato su Firestore
   const _risolviERiscrivi = async (scelteRound, roundKey) => {
@@ -1978,12 +2035,20 @@ function BattagliaMultiplayer({
         enemyTeam={arenaEnemyTeam}
         battleCtx={battleCtx}
         onBattleResult={(isVictory) => {
-          arenaVincitoreRef.current = isVictory ? myUid : avversarioUid;
+          // Registra il risultato su Firestore quando la battaglia finisce
+          // (PRIMA che il popup venga mostrato, non quando il giocatore lo chiude).
+          // Questo permette a ciascun giocatore di chiudere il popup in autonomia
+          // senza che il primo a premere forzi l'uscita dell'altro.
+          const vincUid = isVictory ? myUid : avversarioUid;
+          arenaVincitoreRef.current = vincUid;
+          onBattagliaFinita(vincUid);
         }}
         onExit={() => {
+          // Solo uscita locale: non chiama onBattagliaFinita (già chiamata in onBattleResult).
+          // onEsciDallArena rimuove il flag battagliaLocaleAttiva in SchermataPartita,
+          // tornando alla schermata della mappa per QUESTO giocatore soltanto.
           setArenaAttiva(false);
-          const vincUid = arenaVincitoreRef.current ?? avversarioUid;
-          onBattagliaFinita(vincUid);
+          onEsciDallArena?.();
         }}
         isPvP={!isCpu}
         pvpOpponentMove={pvpOpponentMove}
@@ -1991,6 +2056,8 @@ function BattagliaMultiplayer({
         onPvPMoveSubmit={!isCpu ? handlePvPMoveSubmit : undefined}
         onPvPTurnAdvance={!isCpu ? handlePvPTurnAdvance : undefined}
         pvpBattleSeed={pvpBattleSeed}
+        pvpOpponentKoReplacement={!isCpu ? pvpOpponentKoReplacement : null}
+        onPvPKoReplacement={!isCpu ? handlePvPKoReplacement : undefined}
       />
     );
   }

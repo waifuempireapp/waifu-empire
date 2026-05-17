@@ -804,8 +804,10 @@ export default function WaifuBattleArena({
   battleCtx, waifuCat=[],
   isPvP=false, pvpOpponentMove=null, onPvPMoveSubmit, pvpWaiting=false,
   // PvP Arena — approccio deterministico simmetrico
-  onPvPTurnAdvance=null,     // chiamato da entrambi i device dopo la risoluzione del turno
-  pvpBattleSeed=null,        // seed RNG condiviso (stesso su entrambi i device)
+  onPvPTurnAdvance=null,          // chiamato da entrambi i device dopo la risoluzione del turno
+  pvpBattleSeed=null,             // seed RNG condiviso (stesso su entrambi i device)
+  pvpOpponentKoReplacement=null,  // indice waifu sostituta dell'avversario dopo un KO (da Firestore)
+  onPvPKoReplacement=null,        // callback per comunicare la propria scelta sostituta a Firestore
 }) {
 
   useEffect(()=>{
@@ -1046,6 +1048,25 @@ export default function WaifuBattleArena({
     resolveTurn(pendingPMoveRef.current, pvpOpponentMove, null);
     pendingPMoveRef.current=null;
   },[pvpOpponentMove]); // eslint-disable-line
+
+  // PvP: quando l'avversario sceglie la waifu sostituta dopo un KO, aggiorna eActive.
+  // Aspettiamo questo valore da Firestore (via pvpOpponentKoReplacement prop)
+  // invece di usare nextAlive(), così entrambi i device vedono la stessa waifu in campo.
+  useEffect(()=>{
+    if(!isPvP||pvpOpponentKoReplacement==null) return;
+    if(phase!=='pvpWaitingKoReplacement') return;
+    const chosenIdx = pvpOpponentKoReplacement;
+    setEActive(chosenIdx);
+    setEAnim('wba-sR');
+    setMsg(`${eTeam[chosenIdx]?.name} entra in campo!`);
+    setTimeout(()=>setEAnim(''),450);
+    // Dopo l'animazione di ingresso, torna alla scelta mossa
+    setTimeout(()=>{
+      setPhase('playerChoose');
+      setMsg('Scegli la tua mossa!');
+      setTimer(30);
+    }, ANIM_ENTER_MS);
+  },[pvpOpponentKoReplacement, phase, isPvP, eTeam]); // eslint-disable-line
 
   // Avvia la fase di cambio volontario (swap senza KO)
   const startVoluntarySwap = ()=>{
@@ -1433,6 +1454,16 @@ export default function WaifuBattleArena({
     if(eKO){
       const nextE=nextAlive(curE,cEA);
       if(nextE<0){setPhase('victory');setIsAnim(false);resolveRef.current=false;return;}
+      if(isPvP){
+        // PvP: non scegliamo noi la prossima waifu dell'avversario — aspetta che l'avversario
+        // comunichi la sua scelta via Firestore (pvpOpponentKoReplacement).
+        // L'animazione di ingresso è gestita dal useEffect 'pvpOpponentKoReplacement'.
+        setIsAnim(false); resolveRef.current=false;
+        setPhase('pvpWaitingKoReplacement');
+        setMsg('Attendi che l\'avversario scelga la prossima waifu…');
+        return;
+      }
+      // CPU mode: auto-seleziona la prossima waifu viva
       setEActive(nextE); cEA=nextE;
       setEAnim('wba-sR');
       setMsg(`${curE[nextE]?.name} entra in campo!`);
@@ -1460,7 +1491,10 @@ export default function WaifuBattleArena({
     setTimeout(()=>setPAnim(''),450);
     resolveRef.current=false;
     setPhase('playerChoose'); setMsg(`${pTeam[newIdx]?.name} entra in campo! Scegli la mossa!`); setTimer(30);
-  },[pTeam]);
+    // PvP: comunica la scelta all'avversario via Firestore.
+    // L'avversario legge il valore e aggiorna eActive per rimanere sincronizzato.
+    if(isPvP) onPvPKoReplacement?.(newIdx);
+  },[pTeam, isPvP, onPvPKoReplacement]);
 
   // Callback per chiudere il popup risultato e tornare alla mappa
   const handleResultContinue=useCallback(()=>{ onExit?.(); },[onExit]);
@@ -1507,9 +1541,10 @@ export default function WaifuBattleArena({
   }
 
   // ── Derived UI state ─────────────────────────────────────────────────────
-  const isChoose  = phase==='playerChoose';
-  const isSwap    = phase==='playerSwap';
-  const isVolSwap = phase==='voluntarySwap';
+  const isChoose        = phase==='playerChoose';
+  const isSwap          = phase==='playerSwap';
+  const isVolSwap       = phase==='voluntarySwap';
+  const isWaitingKoRepl = phase==='pvpWaitingKoReplacement'; // PvP: aspetta scelta sostituta dell'avversario
   const allPPOut  = (player?.moves??[]).every(m=>(m.pp??0)<=0);
 
   // Sprite sizes
@@ -1534,11 +1569,13 @@ export default function WaifuBattleArena({
     ? `⚔ TURNO ${turn}`
     : isSwap||isVolSwap
       ? '⚡ SCEGLI WAIFU'
-      : isPvP&&pvpWaiting
-        ? '⏳ ATTESA…'
-        : phase==='entering'
-          ? '◈ INIZIO'
-          : '⚡ RISOLUZIONE';
+      : isWaitingKoRepl
+        ? '⏳ ATTESA SOSTITUTA…'
+        : isPvP&&pvpWaiting
+          ? '⏳ ATTESA…'
+          : phase==='entering'
+            ? '◈ INIZIO'
+            : '⚡ RISOLUZIONE';
   const turnCol = isChoose?'#00e676':isSwap||isVolSwap?'#f5a623':'rgba(238,232,220,.38)';
 
   // ── Render ───────────────────────────────────────────────────────────────

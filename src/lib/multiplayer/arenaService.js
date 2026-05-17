@@ -147,3 +147,29 @@ export function ascoltaPvpPicks(codicePartita, callback) {
     callback(picks);
   });
 }
+
+// ── PvP Arena: salva la scelta di sostituzione dopo un KO ────────────────────
+/**
+ * Salva l'indice della waifu che il giocatore ha scelto come sostituta
+ * dopo che la sua waifu titolare è stata messa KO.
+ *
+ * Il valore viene letto dall'avversario per aggiornare `eActive` sul suo device,
+ * garantendo che entrambi i client vedano la stessa waifu in campo.
+ *
+ * Struttura Firestore: `battagliaCorrente.koReplacement.{uid}` = waifuIdx
+ *
+ * SRP: questa funzione gestisce SOLO la scrittura della scelta di sostituzione
+ * post-KO — non tocca le mosse né il risultato del turno.
+ *
+ * @param {string} codice   - Codice della partita
+ * @param {string} uid      - UID del giocatore che ha scelto la sostituta
+ * @param {number} waifuIdx - Indice (0-based) della waifu sostituta nel team
+ * @returns {Promise<void>}
+ */
+export async function salvaKOReplacement(codice, uid, waifuIdx) {
+  const ref = doc(db, 'partite_multi', codice);
+  await updateDoc(ref, {
+    [`battagliaCorrente.koReplacement.${uid}`]: waifuIdx,
+    aggiornato: serverTimestamp(),
+  });
+}
