@@ -52,7 +52,7 @@ export default function TutorialOverlay({ onSelectPixel, onClose }) {
           <button onClick={() => setStep(s => s + 1)} style={primaryBtn}>Avanti →</button>
         ) : (
           <button
-            onClick={() => {/* Let user pick any pixel */}}
+            onClick={onClose}
             style={{ ...primaryBtn, background: 'linear-gradient(135deg, #c54a86, #ff85b6)' }}
           >
             🗺️ Scegli pixel
