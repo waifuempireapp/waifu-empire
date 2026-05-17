@@ -10,6 +10,7 @@ import {
   getPrezziConfig, setPrezziConfig,
   getMissioniSezioni, upsertMissioneSezione, upsertMissione,
   deleteMissione, deleteMissioneSezione,
+  getPremiClassificaConfig, setPremiClassificaConfig, getDefaultPremiClassifica,
 } from '@/lib/firestoreService';
 import { uploadAsset, pathWaifu, pathOutfit, pathPosa, uploadLargeAsset } from '@/lib/storageService';
 import {
@@ -132,6 +133,7 @@ export default function AdminPage() {
           { k: 'config', l: '⚙ Config' },
           { k: 'prezzi', l: '💰 Prezzi' },
           { k: 'missioni', l: '🎯 Missioni' },
+          { k: 'classifica', l: '🏆 Classifica' },
         ].map(t => (
           <button key={t.k} onClick={() => setTab(t.k)} style={{
             padding: '6px 16px',
@@ -154,6 +156,7 @@ export default function AdminPage() {
         {tab === 'config' && <ConfigTab waifu={waifu} ricarica={carica} flash={flash} />}
         {tab === 'prezzi'    && <PrezziTab flash={flash} user={user} />}
         {tab === 'missioni'  && <MissioniTab flash={flash} />}
+        {tab === 'classifica' && <PremioClassificaTab flash={flash} />}
       </div>
     </div>
   );
@@ -3153,6 +3156,172 @@ function MissioniTab({ flash }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PREMIO CLASSIFICA TAB — configurazione premi settimanali per posizione
+// ════════════════════════════════════════════════════════════════════
+function PremioClassificaTab({ flash }) {
+  const [config, setConfig] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getPremiClassificaConfig().then(c => { setConfig(c); setLoading(false); });
+  }, []);
+
+  const fasce = [
+    { key: '1',      label: '🥇 1° posto',   desc: 'Il campione della stagione' },
+    { key: '2',      label: '🥈 2° posto',   desc: '' },
+    { key: '3',      label: '🥉 3° posto',   desc: '' },
+    { key: 'top10',  label: '🏅 Top 10',     desc: 'Posizioni 4–10' },
+    { key: 'top100', label: '✦ Top 100',     desc: 'Posizioni 11–100' },
+    { key: 'tutti',  label: '◈ Tutti gli altri', desc: 'Posizioni > 100' },
+  ];
+
+  const aggiorna = (fascia, campo, valore) => {
+    setConfig(prev => ({
+      ...prev,
+      [fascia]: { ...(prev[fascia] || {}), [campo]: Number(valore) || 0 }
+    }));
+  };
+
+  const salva = async () => {
+    setSaving(true);
+    try {
+      await setPremiClassificaConfig(config);
+      flash('✅ Premi classifica salvati!');
+    } catch (e) {
+      flash('❌ Errore: ' + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const ripristina = () => {
+    setConfig(getDefaultPremiClassifica());
+  };
+
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#f5e6d3', fontFamily: 'Orbitron' }}>Caricamento…</div>;
+
+  return (
+    <div style={{ padding: 20, maxWidth: 700, margin: '0 auto' }}>
+      <div style={{ fontFamily: 'Cinzel, serif', fontSize: 18, color: '#f5a623', marginBottom: 6 }}>🏆 Premi Classifica Settimanale</div>
+      <div style={{ fontSize: 11, color: 'rgba(245,230,211,0.5)', fontFamily: 'Orbitron', marginBottom: 20, lineHeight: 1.6 }}>
+        Configura i premi assegnati automaticamente ogni lunedì alle 01:00 in base alla posizione in classifica.<br/>
+        I premi sono cumulativi: un giocatore in 1° posto riceve solo la fascia "1° posto", non anche le fasce inferiori.
+      </div>
+
+      {/* Tabella configurazione */}
+      <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(245,158,11,0.2)' }}>
+        {/* Header tabella */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr 120px 120px 120px',
+          padding: '10px 16px',
+          background: 'rgba(245,158,11,0.08)',
+          borderBottom: '1px solid rgba(245,158,11,0.15)',
+          fontFamily: 'Orbitron', fontSize: 9, color: '#f5a623', letterSpacing: 1.5,
+        }}>
+          <div>FASCIA</div>
+          <div style={{ textAlign: 'center' }}>⚡ ENERGIA</div>
+          <div style={{ textAlign: 'center' }}>🎴 BUSTINE SFIDA</div>
+          <div style={{ textAlign: 'center' }}>💋 KISSES</div>
+        </div>
+
+        {/* Righe */}
+        {fasce.map(({ key, label, desc }, i) => {
+          const p = config?.[key] || {};
+          return (
+            <div key={key} style={{
+              display: 'grid', gridTemplateColumns: '1fr 120px 120px 120px',
+              padding: '12px 16px', alignItems: 'center',
+              background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)',
+              borderBottom: i < fasce.length - 1 ? '1px solid rgba(245,158,11,0.08)' : 'none',
+            }}>
+              <div>
+                <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#f5e6d3', fontWeight: 700 }}>{label}</div>
+                {desc && <div style={{ fontSize: 9, color: 'rgba(245,230,211,0.35)', marginTop: 2 }}>{desc}</div>}
+              </div>
+              {/* Energia */}
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <input
+                  type="number" min="0" max="99"
+                  value={p.energia ?? 0}
+                  onChange={e => aggiorna(key, 'energia', e.target.value)}
+                  style={{
+                    width: 64, padding: '6px 8px', textAlign: 'center',
+                    background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(245,158,11,0.25)',
+                    borderRadius: 8, color: '#f5e6d3', fontFamily: 'Orbitron', fontSize: 12,
+                    outline: 'none',
+                  }}
+                />
+              </div>
+              {/* Bustine Sfida */}
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <input
+                  type="number" min="0" max="999"
+                  value={p.bustineSfida ?? 0}
+                  onChange={e => aggiorna(key, 'bustineSfida', e.target.value)}
+                  style={{
+                    width: 64, padding: '6px 8px', textAlign: 'center',
+                    background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(245,158,11,0.25)',
+                    borderRadius: 8, color: '#f5e6d3', fontFamily: 'Orbitron', fontSize: 12,
+                    outline: 'none',
+                  }}
+                />
+              </div>
+              {/* Kisses */}
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <input
+                  type="number" min="0" max="99999"
+                  value={p.kisses ?? 0}
+                  onChange={e => aggiorna(key, 'kisses', e.target.value)}
+                  style={{
+                    width: 80, padding: '6px 8px', textAlign: 'center',
+                    background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(245,158,11,0.25)',
+                    borderRadius: 8, color: '#f5e6d3', fontFamily: 'Orbitron', fontSize: 12,
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Bottoni azione */}
+      <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'flex-end' }}>
+        <button onClick={ripristina} style={{
+          padding: '10px 20px', background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(245,158,11,0.2)', borderRadius: 10,
+          color: 'rgba(245,230,211,0.6)', fontFamily: 'Orbitron', fontSize: 10, cursor: 'pointer',
+        }}>
+          ↩ Ripristina default
+        </button>
+        <button onClick={salva} disabled={saving} style={{
+          padding: '10px 24px',
+          background: saving ? 'rgba(245,158,11,0.3)' : 'linear-gradient(135deg, #f59e0b, #ec4899)',
+          border: 'none', borderRadius: 10,
+          color: '#000', fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700,
+          cursor: saving ? 'not-allowed' : 'pointer',
+        }}>
+          {saving ? '⏳ Salvataggio…' : '💾 SALVA PREMI'}
+        </button>
+      </div>
+
+      {/* Info cron */}
+      <div style={{
+        marginTop: 24, padding: '12px 16px',
+        background: 'rgba(108,240,224,0.04)', border: '1px solid rgba(108,240,224,0.12)',
+        borderRadius: 10, fontSize: 10, color: 'rgba(108,240,224,0.5)',
+        fontFamily: 'Orbitron', lineHeight: 1.8,
+      }}>
+        ⏰ Reset automatico: ogni <strong style={{ color: 'rgba(108,240,224,0.7)' }}>lunedì alle 01:00 UTC</strong> via Vercel Cron Job.<br/>
+        L'endpoint <code style={{ color: 'rgba(108,240,224,0.7)' }}>/api/cron/reset-classifica</code> assegna i premi e azzera i punteggi settimanali.<br/>
+        Variabile ambiente richiesta: <code style={{ color: 'rgba(108,240,224,0.7)' }}>CRON_SECRET</code> (impostala nel dashboard Vercel).
+      </div>
     </div>
   );
 }

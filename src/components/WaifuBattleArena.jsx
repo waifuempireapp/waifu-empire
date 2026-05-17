@@ -1075,12 +1075,35 @@ export default function WaifuBattleArena({
     clearInterval(timerRef.current);
   };
 
-  const handleVoluntarySwap = useCallback(async (newIdx)=>{
-    if(phase!=='voluntarySwap') return;
+  // isPPExhausted: true quando il cambio è FORZATO da PP esauriti — in quel caso
+  // la waifu corrente viene marcata come KO e l'avversario guadagna 1 punto.
+  const handleVoluntarySwap = useCallback(async (newIdx, { isPPExhausted = false } = {})=>{
+    // Accetta sia 'voluntarySwap' (SWITCH volontario) sia 'playerChoose' (allPPOut forzato)
+    if(phase!=='voluntarySwap' && phase!=='playerChoose') return;
     clearInterval(timerRef.current);
     setIsAnim(true);
     setShowBench(false);
     setPhase('resolving');
+
+    // ── PP esauriti: marca la waifu corrente come KO e assegna punto all'avversario ──
+    if(isPPExhausted){
+      setPTeam(prev => {
+        const next = prev.map((w,i) => i===pActive ? {...w, isKO: true} : w);
+        // Controlla se tutte le waifu del player sono KO (sconfitta)
+        if(next.every(w=>w.isKO)){
+          setTimeout(()=>{
+            setPhase('defeat'); setIsAnim(false); resolveRef.current=false;
+          }, ANIM_ENTER_MS + 200);
+        }
+        return next;
+      });
+      // Incrementa il contatore KO dell'avversario (punto per l'avversario)
+      setStatsE(s=>{ const n={ko:s.ko+1,dmg:s.dmg}; statsERef.current=n; return n; });
+      setPAnim('wba-ko');
+      setMsg(`${pTeam[pActive]?.name} non ha più PP — fuori combattimento!`);
+      await wait(ANIM_KO_MS);
+      setPAnim('');
+    }
 
     // ── Fase 1: animazione entrata nuova waifu del giocatore ──
     setPActive(newIdx);
@@ -1798,7 +1821,7 @@ export default function WaifuBattleArena({
             <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
               {pTeam.map((w,i)=> i!==pActive&&!w.isKO&&(
                 <div key={w.id} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:5}}>
-                  <BenchSlot waifu={w} selectable size={64} onSelect={()=>handleVoluntarySwap(i)}/>
+                  <BenchSlot waifu={w} selectable size={64} onSelect={()=>handleVoluntarySwap(i, { isPPExhausted: true })}/>
                   <span style={{fontFamily:'Orbitron',fontSize:7,color:'rgba(238,232,220,.4)',textAlign:'center',maxWidth:64,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                     {w.name}
                   </span>

@@ -39,7 +39,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, listDropsAttivi, getClassifica, premioPerPosizione, deleteTeamFromCollezione, createPackSnapshot, getFriendsList, getFriendRequests } from '@/lib/firestoreService';
+import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, listDropsAttivi, getClassifica, premioPerPosizione, deleteTeamFromCollezione, createPackSnapshot, getFriendsList, getFriendRequests, getClassificaSettimanale, getPremiClassificaConfig } from '@/lib/firestoreService';
 // Removed unused: getDropAttivo, isDropCompleto, progressioneDrop
 import { calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, INCREMENTI_LEVELUP, GOD_PACK_PROB_DEFAULT } from '@/lib/gameLogic';
 // Removed unused: calcolaRicaricaPacchetti, clampStat, clampWaifuStats
@@ -1653,18 +1653,15 @@ function AmiciTab({ user, profilo, collezione, waifuCat, onCollectionRefresh }) 
 
 // ════════════════════════════════════════════════════════════════════════════
 // COMPONENTE: ClassificaTab
-// Responsabilità: leaderboard globale con podio, countdown reset settimanale
+// Responsabilità: leaderboard settimanale con podio, premi configurabili, countdown reset
 // ════════════════════════════════════════════════════════════════════════════
 
 /**
- * ClassificaTab — leaderboard globale del gioco.
+ * ClassificaTab — leaderboard settimanale del gioco.
  *
- * Carica i primi 200 giocatori ordinati per punteggio e mostra podio (top 3),
- * lista completa e la posizione corrente dell'utente loggato evidenziata.
- * Include countdown al reset settimanale del lunedì.
- *
- * Principio SRP: responsabile SOLO della visualizzazione della classifica.
- * Non modifica punteggi né interagisce con altri sistemi di gioco.
+ * Carica i primi 200 giocatori ordinati per punteggiSettimana e mostra podio (top 3),
+ * sezione premi configurabili, lista completa e posizione dell'utente loggato evidenziata.
+ * Include countdown al reset del lunedì alle 01:00.
  *
  * @param {Object} props
  * @param {Object} props.user — Oggetto Firebase Auth user (per evidenziare la riga dell'utente).
@@ -1673,238 +1670,289 @@ function ClassificaTab({ user }) {
   const [classifica, setClassifica] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errore, setErrore] = useState(null);
+  const [premiConfig, setPremiConfig] = useState(null);
 
   useEffect(() => {
-    getClassifica(200)
-      .then(d => { setClassifica(d); setLoading(false); })
-      .catch(e => { setErrore(e.message); setLoading(false); });
+    Promise.all([
+      getClassificaSettimanale(200),
+      getPremiClassificaConfig(),
+    ]).then(([cls, premi]) => {
+      setClassifica(cls);
+      setPremiConfig(premi);
+      setLoading(false);
+    }).catch(e => { setErrore(e.message); setLoading(false); });
   }, []);
 
-  const podiumColors = ['#f59e0b', '#9ca3af', '#cd7c3a'];
-  const podiumIcons = ['ðŸ¥‡', 'ðŸ¥ˆ', 'ðŸ¥‰'];
-
   const mioIndice = user ? classifica.findIndex(u => u.id === user.uid) : -1;
+  const myEntry   = mioIndice >= 0 ? classifica[mioIndice] : null;
 
-  // Calcola prossimo lunedì
-  const prossimoLunedi = (() => {
+  // Countdown al prossimo lunedì 01:00
+  const countdown = (() => {
     const ora = new Date();
     const giorno = ora.getDay(); // 0=Dom, 1=Lun…
     const diff = (8 - giorno) % 7 || 7;
     const lun = new Date(ora);
     lun.setDate(ora.getDate() + diff);
-    lun.setHours(0, 0, 0, 0);
-    const diffMs = lun - ora;
-    const giorni = Math.floor(diffMs / 86400000);
-    const ore = Math.floor((diffMs % 86400000) / 3600000);
-    const min = Math.floor((diffMs % 3600000) / 60000);
-    return giorni > 0 ? `${giorni}d ${ore}h ${min}m` : `${ore}h ${min}m`;
+    lun.setHours(1, 0, 0, 0); // 01:00
+    const ms = lun - ora;
+    const giorni = Math.floor(ms / 86400000);
+    const ore = Math.floor((ms % 86400000) / 3600000);
+    const min = Math.floor((ms % 3600000) / 60000);
+    return giorni > 0 ? `${giorni}g ${ore}h ${min}m` : `${ore}h ${min}m`;
   })();
 
-  return (
-    <div className="fade-in" style={{ padding: '12px 0' }}>
-      <TitoloOrnato livello={1} colore="#ffd666">🏆 CLASSIFICA GLOBALE</TitoloOrnato>
+  // Gradiente per ogni posizione del podio
+  const podioGradient = [
+    'linear-gradient(135deg, #ff85b6, #a78bfa)', // 1° sakura→violet
+    'linear-gradient(135deg, #ffc861, #a78bfa)', // 2° gold→violet
+    'linear-gradient(135deg, #ff9b6b, #a78bfa)', // 3° bronzo→violet
+  ];
+  const podioColori = ['#ff85b6', '#ffc861', '#ff9b6b'];
+  const podioMedaglie = ['🥇', '🥈', '🥉'];
 
-      {/* Premio settimanale */}
-      <div style={{
-        background: 'linear-gradient(135deg, rgba(245,158,11,0.08), rgba(255,45,120,0.06))',
-        border: '1px solid rgba(245,158,11,0.25)',
-        borderRadius: 14, padding: '14px 16px', marginBottom: 14,
-      }}>
-        <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#ffd666', letterSpacing: 2, marginBottom: 10, fontWeight: 700 }}>
-          🎁 PREMIO SETTIMANALE — RESET IN {prossimoLunedi}
+  // Helper: etichetta fascia premi
+  const fasciaLabel = (pos) => {
+    if (pos === 1) return '🥇 1°';
+    if (pos === 2) return '🥈 2°';
+    if (pos === 3) return '🥉 3°';
+    if (pos <= 10) return '🏅 Top 10';
+    if (pos <= 100) return '✦ Top 100';
+    return '◈ Tutti';
+  };
+
+  return (
+    <div className="fade-in" style={{ padding: '12px 0', minHeight: 400 }}>
+
+      {/* ── Header ── */}
+      <div style={{ textAlign: 'center', marginBottom: 16 }}>
+        <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 20, fontWeight: 900, color: '#f5c560', letterSpacing: 2 }}>
+          🏆 Classifica Globale
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {[
-            { label: 'ðŸ¥‡ 1°', pack: 10, col: '#f59e0b' },
-            { label: 'ðŸ¥ˆ 2°', pack: 5,  col: '#9ca3af' },
-            { label: 'ðŸ¥‰ 3°', pack: 3,  col: '#cd7c3a' },
-            { label: '🏅 Top 100', pack: 2, col: '#a855f7' },
-            { label: '✦ Tutti', pack: 1,  col: '#3b82f6' },
-          ].map(p => (
-            <div key={p.label} style={{
-              flex: '1 0 auto',
-              background: `${p.col}12`,
-              border: `1px solid ${p.col}30`,
-              borderRadius: 10, padding: '8px 12px', textAlign: 'center', minWidth: 70,
-            }}>
-              <div style={{ fontSize: 11, color: p.col, fontWeight: 700, fontFamily: 'Orbitron' }}>{p.label}</div>
-              <div style={{ fontSize: 16, color: '#fff', fontFamily: 'Orbitron', fontWeight: 900, marginTop: 2 }}>{p.pack}</div>
-              <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.4)', letterSpacing: 1 }}>🎴 PREMIO</div>
-            </div>
-          ))}
+        <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 11, color: 'rgba(167,139,250,0.6)', letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 4 }}>
+          Stagione termina in <span style={{ color: '#6cf0e0', fontWeight: 700 }}>{countdown}</span>
         </div>
       </div>
 
+      {/* ── Sezione Premi ── */}
+      {premiConfig && (
+        <div style={{
+          background: 'rgba(10,7,38,0.7)', backdropFilter: 'blur(12px)',
+          border: '0.8px solid rgba(167,139,250,0.2)', borderRadius: 16,
+          padding: '12px 14px', marginBottom: 16,
+        }}>
+          <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 9, color: 'rgba(167,139,250,0.6)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>
+            🎁 PREMI DI FINE STAGIONE
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {[
+              { key: '1', label: '🥇 1°', col: '#ff85b6', g: podioGradient[0] },
+              { key: '2', label: '🥈 2°', col: '#ffc861', g: podioGradient[1] },
+              { key: '3', label: '🥉 3°', col: '#ff9b6b', g: podioGradient[2] },
+              { key: 'top10',  label: '🏅 Top 10',  col: '#a78bfa', g: 'linear-gradient(135deg, rgba(167,139,250,0.3), rgba(167,139,250,0.1))' },
+              { key: 'top100', label: '✦ Top 100', col: '#6cf0e0', g: 'linear-gradient(135deg, rgba(108,240,224,0.3), rgba(108,240,224,0.1))' },
+              { key: 'tutti',  label: '◈ Tutti',   col: 'rgba(182,174,214,0.7)', g: 'rgba(167,139,250,0.06)' },
+            ].map(({ key, label, col, g }) => {
+              const p = premiConfig[key] || {};
+              const hasPremio = p.energia > 0 || p.bustineSfida > 0 || p.kisses > 0;
+              return (
+                <div key={key} style={{
+                  flex: '1 0 auto', minWidth: 70,
+                  background: g, border: `0.8px solid ${col}40`,
+                  borderRadius: 12, padding: '8px 10px', textAlign: 'center',
+                }}>
+                  <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 10, fontWeight: 700, color: col, letterSpacing: 0.5, marginBottom: 4 }}>{label}</div>
+                  {hasPremio ? (
+                    <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 9, color: '#b6aed6', lineHeight: 1.6 }}>
+                      {p.energia > 0 && <div>⚡ {p.energia} Energia</div>}
+                      {p.bustineSfida > 0 && <div>🎴 {p.bustineSfida} Bustine</div>}
+                      {p.kisses > 0 && <div>💋 {p.kisses} Kisses</div>}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 8, color: 'rgba(167,139,250,0.35)' }}>—</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {loading && (
-        <div style={{ textAlign: 'center', padding: 40, opacity: 0.5, fontFamily: 'Orbitron', fontSize: 11 }}>
-          Caricamento classifica...
+        <div style={{ textAlign: 'center', padding: 40, color: 'rgba(167,139,250,0.5)', fontFamily: "'Saira Condensed', sans-serif", letterSpacing: 2 }}>
+          CARICAMENTO…
         </div>
       )}
 
       {errore && (
-        <div style={{ textAlign: 'center', padding: 20, color: '#ff3d3d', fontSize: 11 }}>
+        <div style={{ textAlign: 'center', padding: 20, color: '#ff85b6', fontSize: 11, fontFamily: "'DM Sans', sans-serif" }}>
           Errore: {errore}
         </div>
       )}
 
-      {/* Podio TOP 3 */}
-      {!loading && classifica.length >= 3 && (
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 16, alignItems: 'flex-end' }}>
-          {[1, 0, 2].map(idx => {
-            const u = classifica[idx];
-            const col = podiumColors[idx];
-            const isMe = user && u.id === user.uid;
-            const altezze = [150, 120, 95];
-            return (
-              <div key={idx} style={{
-                flex: 1, maxWidth: 130,
-                background: `linear-gradient(180deg, ${col}18 0%, ${col}06 100%)`,
-                border: `2px solid ${col}${isMe ? 'ff' : '40'}`,
-                borderRadius: '14px 14px 0 0',
-                height: altezze[idx],
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
-                justifyContent: 'flex-end', padding: '10px 8px 12px',
-                position: 'relative',
-                boxShadow: isMe ? `0 0 20px ${col}60` : 'none',
-              }}>
-                {isMe && (
+      {/* ── Podio TOP 3 ── */}
+      {!loading && classifica.length >= 3 && (() => {
+        // Ordine visivo: 2° sinistra, 1° centro, 3° destra
+        const ordine = [1, 0, 2]; // indici in classifica
+        const altezze = [100, 130, 85]; // altezze visuali
+        return (
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'flex-end', marginBottom: 20 }}>
+            {ordine.map((idx, visualIdx) => {
+              const u = classifica[idx];
+              const isMe = user && u.id === user.uid;
+              const col = podioColori[idx];
+              const grad = podioGradient[idx];
+              return (
+                <div key={idx} style={{
+                  flex: visualIdx === 1 ? '0 0 38%' : '0 0 28%',
+                  background: `rgba(10,7,38,0.8)`,
+                  backdropFilter: 'blur(12px)',
+                  border: `1px solid ${col}${isMe ? 'aa' : '30'}`,
+                  borderRadius: '14px 14px 0 0',
+                  height: altezze[visualIdx],
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  justifyContent: 'center', padding: '10px 6px',
+                  position: 'relative',
+                  boxShadow: isMe ? `0 0 20px ${col}50` : `inset 0 0 30px ${col}08`,
+                }}>
+                  {/* Medaglia */}
+                  <div style={{ fontSize: visualIdx === 1 ? 22 : 16, marginBottom: 4 }}>{podioMedaglie[idx]}</div>
+                  {/* Nome */}
                   <div style={{
-                    position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)',
-                    background: col, borderRadius: 20, padding: '2px 8px',
-                    fontSize: 8, fontFamily: 'Orbitron', color: '#000', fontWeight: 700,
-                  }}>TU</div>
-                )}
-                <div style={{ fontSize: idx === 0 ? 28 : 22 }}>{podiumIcons[idx]}</div>
-                <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: col, fontWeight: 700, textAlign: 'center', marginTop: 4, wordBreak: 'break-all', lineHeight: 1.2 }}>
-                  {(u._nomeDisplay || u.nomeImpero || u.nome || u.email?.split('@')[0] || 'Giocatore').slice(0, 12)}
+                    fontFamily: "'Unbounded', sans-serif", fontSize: visualIdx === 1 ? 11 : 9,
+                    fontWeight: 700, color: '#f1ebff',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    maxWidth: '100%', textAlign: 'center',
+                  }}>{u._nomeDisplay}</div>
+                  {/* Score */}
+                  <div style={{
+                    fontFamily: "'Saira Condensed', sans-serif",
+                    fontSize: visualIdx === 1 ? 14 : 11, fontWeight: 900,
+                    background: grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                    marginTop: 2,
+                  }}>{(u._punteggi || 0).toLocaleString()}</div>
+                  {/* Badge "Tu" */}
+                  {isMe && (
+                    <div style={{
+                      position: 'absolute', top: -8, right: -4,
+                      background: col, borderRadius: 8, padding: '1px 6px',
+                      fontSize: 8, fontFamily: "'Saira Condensed', sans-serif",
+                      fontWeight: 700, color: '#0a0726',
+                    }}>TU</div>
+                  )}
+                  {/* Posizione badge */}
+                  <div style={{
+                    position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)',
+                    fontFamily: "'Saira Condensed', sans-serif", fontSize: 7,
+                    color: `${col}80`, letterSpacing: 1, textTransform: 'uppercase',
+                  }}>{u._territori} terr.</div>
                 </div>
-                <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
-                  <span style={{ fontSize: 8, color: 'rgba(238,232,220,0.5)', background: 'rgba(0,0,0,0.3)', padding: '1px 5px', borderRadius: 4 }}>
-                    Lv.{u._livelloMappa}
-                  </span>
-                  <span style={{ fontSize: 8, color: 'rgba(238,232,220,0.5)', background: 'rgba(0,0,0,0.3)', padding: '1px 5px', borderRadius: 4 }}>
-                    🏴{u._territori}
-                  </span>
+              );
+            })}
+          </div>
+        );
+      })()}
+
+      {/* ── Lista classifica ── */}
+      {!loading && classifica.length > 0 && (
+        <div style={{
+          background: 'rgba(10,7,38,0.6)', backdropFilter: 'blur(12px)',
+          border: '0.8px solid rgba(167,139,250,0.15)', borderRadius: 16,
+          overflow: 'hidden',
+        }}>
+          {/* Intestazione colonne */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: '40px 1fr 70px 50px',
+            padding: '8px 14px',
+            borderBottom: '0.5px solid rgba(167,139,250,0.12)',
+            fontFamily: "'Saira Condensed', sans-serif", fontSize: 9,
+            color: 'rgba(167,139,250,0.5)', letterSpacing: 1.5, textTransform: 'uppercase',
+          }}>
+            <div>#</div><div>Impero</div><div style={{ textAlign: 'right' }}>Punti</div><div style={{ textAlign: 'right' }}>Terr.</div>
+          </div>
+
+          {/* Riga "La tua posizione" se non visibile */}
+          {mioIndice >= 3 && myEntry && (
+            <div style={{
+              display: 'grid', gridTemplateColumns: '40px 1fr 70px 50px',
+              padding: '10px 14px', alignItems: 'center',
+              background: 'rgba(108,240,224,0.06)',
+              borderBottom: '0.5px solid rgba(108,240,224,0.2)',
+            }}>
+              <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 12, fontWeight: 900, color: '#6cf0e0' }}>#{mioIndice + 1}</div>
+              <div>
+                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 700, color: '#6cf0e0' }}>
+                  {myEntry._nomeDisplay} <span style={{ fontSize: 9, color: 'rgba(108,240,224,0.6)' }}>· Tu</span>
+                </div>
+              </div>
+              <div style={{ textAlign: 'right', fontFamily: "'Unbounded', sans-serif", fontSize: 11, fontWeight: 700, color: '#6cf0e0' }}>
+                {(myEntry._punteggi || 0).toLocaleString()}
+              </div>
+              <div style={{ textAlign: 'right', fontFamily: "'Saira Condensed', sans-serif", fontSize: 11, color: 'rgba(108,240,224,0.7)' }}>
+                {myEntry._territori}
+              </div>
+            </div>
+          )}
+
+          {/* Lista giocatori */}
+          {classifica.map((u, i) => {
+            const isMe = user && u.id === user.uid;
+            const pos = i + 1;
+            const col = i < 3 ? podioColori[i] : (isMe ? '#6cf0e0' : 'rgba(182,174,214,0.7)');
+            return (
+              <div key={u.id} style={{
+                display: 'grid', gridTemplateColumns: '40px 1fr 70px 50px',
+                padding: '9px 14px', alignItems: 'center',
+                background: isMe
+                  ? 'rgba(108,240,224,0.05)'
+                  : i % 2 === 0 ? 'transparent' : 'rgba(167,139,250,0.02)',
+                borderBottom: '0.5px solid rgba(167,139,250,0.06)',
+                transition: 'background 0.15s',
+              }}>
+                {/* Posizione */}
+                <div style={{
+                  fontFamily: i < 3 ? "'Unbounded', sans-serif" : "'Saira Condensed', sans-serif",
+                  fontSize: i < 3 ? 14 : 11, fontWeight: i < 3 ? 900 : 600,
+                  color: col,
+                }}>
+                  {i < 3 ? podioMedaglie[i] : `#${pos}`}
+                </div>
+                {/* Nome */}
+                <div>
+                  <div style={{
+                    fontFamily: "'DM Sans', sans-serif", fontSize: 12,
+                    fontWeight: isMe || i < 3 ? 700 : 400,
+                    color: isMe ? '#6cf0e0' : i < 3 ? col : '#f1ebff',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {u._nomeDisplay}
+                    {isMe && <span style={{ fontSize: 9, color: 'rgba(108,240,224,0.6)', marginLeft: 6 }}>· Tu</span>}
+                  </div>
+                  <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 8, color: 'rgba(167,139,250,0.4)', letterSpacing: 1 }}>
+                    Lv.{u._livelloMappa} · {fasciaLabel(pos)}
+                  </div>
+                </div>
+                {/* Punteggio */}
+                <div style={{
+                  textAlign: 'right',
+                  fontFamily: "'Unbounded', sans-serif",
+                  fontSize: i < 3 ? 12 : 10, fontWeight: 700,
+                  color: isMe ? '#6cf0e0' : i < 3 ? col : '#f1ebff',
+                }}>
+                  {(u._punteggi || 0).toLocaleString()}
+                </div>
+                {/* Territori */}
+                <div style={{
+                  textAlign: 'right',
+                  fontFamily: "'Saira Condensed', sans-serif", fontSize: 11,
+                  color: isMe ? 'rgba(108,240,224,0.7)' : 'rgba(182,174,214,0.5)',
+                }}>
+                  {u._territori}
                 </div>
               </div>
             );
           })}
         </div>
       )}
-
-      {/* Lista completa */}
-      {!loading && classifica.length > 0 && (
-        <PannelloOrnato glow="#ffd666" style={{ padding: '6px 0' }}>
-          {/* Mia posizione sticky se non in top 10 */}
-          {mioIndice >= 10 && (
-            <div style={{
-              background: 'rgba(245,158,11,0.1)',
-              borderBottom: '1px solid rgba(245,158,11,0.3)',
-              padding: '8px 14px',
-              display: 'flex', alignItems: 'center', gap: 10,
-            }}>
-              <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#ffd666', minWidth: 28, textAlign: 'center' }}>#{mioIndice + 1}</div>
-              <div style={{ flex: 1, fontFamily: 'Orbitron', fontSize: 10, color: '#ffd666' }}>
-                ⭐ La tua posizione
-              </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <Chip colore="#9b59ff" size="xs">Lv.{classifica[mioIndice]?._livelloMappa}</Chip>
-                <Chip colore="#ffd666" size="xs">🏴{classifica[mioIndice]?._territori}</Chip>
-              </div>
-              <div style={{ fontSize: 9, color: '#ffd666', fontFamily: 'Orbitron' }}>
-                {premioPerPosizione(mioIndice + 1)}🎴
-              </div>
-            </div>
-          )}
-
-          {/* Header colonne */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-            <div style={{ minWidth: 28, fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron' }}>#</div>
-            <div style={{ flex: 1, fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron' }}>GIOCATORE</div>
-            <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', minWidth: 40, textAlign: 'center' }}>MAPPA</div>
-            <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', minWidth: 40, textAlign: 'center' }}>🏴</div>
-            <div style={{ fontSize: 8, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', minWidth: 30, textAlign: 'right' }}>PREMIO</div>
-          </div>
-
-          <div style={{ maxHeight: 420, overflowY: 'auto' }}>
-            {classifica.map((u, i) => {
-              const isMe = user && u.id === user.uid;
-              const isTop3 = i < 3;
-              const col = isTop3 ? podiumColors[i] : isMe ? '#f5a623' : null;
-              const premio = premioPerPosizione(i + 1);
-              return (
-                <div key={u.id} style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '8px 14px',
-                  background: isMe ? 'rgba(245,166,35,0.07)' : i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)',
-                  borderLeft: isMe ? '3px solid #f5a623' : '3px solid transparent',
-                  transition: 'background 0.15s',
-                }}>
-                  {/* Posizione */}
-                  <div style={{ minWidth: 28, textAlign: 'center' }}>
-                    {isTop3
-                      ? <span style={{ fontSize: 16 }}>{podiumIcons[i]}</span>
-                      : <span style={{ fontFamily: 'Orbitron', fontSize: 10, color: col || 'rgba(238,232,220,0.4)', fontWeight: isMe ? 700 : 400 }}>#{i + 1}</span>
-                    }
-                  </div>
-
-                  {/* Nome */}
-                  <div style={{ flex: 1 }}>
-                    <div style={{
-                      fontFamily: 'Orbitron', fontSize: 10,
-                      color: col || 'rgba(238,232,220,0.8)',
-                      fontWeight: isMe || isTop3 ? 700 : 400,
-                    }}>
-                      {(u._nomeDisplay || u.nomeImpero || u.nome || u.email?.split('@')[0] || 'Giocatore').slice(0, 18)}
-                      {isMe && <span style={{ marginLeft: 6, fontSize: 8, color: '#f5a623' }}>← TU</span>}
-                    </div>
-                  </div>
-
-                  {/* Livello mappa */}
-                  <div style={{
-                    minWidth: 40, textAlign: 'center',
-                    fontFamily: 'Orbitron', fontSize: 10,
-                    color: col || 'rgba(238,232,220,0.6)',
-                  }}>
-                    Lv.{u._livelloMappa}
-                  </div>
-
-                  {/* Territori */}
-                  <div style={{
-                    minWidth: 40, textAlign: 'center',
-                    fontFamily: 'Orbitron', fontSize: 10,
-                    color: col || 'rgba(238,232,220,0.6)',
-                  }}>
-                    {u._territori}
-                  </div>
-
-                  {/* Premio */}
-                  <div style={{
-                    minWidth: 30, textAlign: 'right',
-                    fontFamily: 'Orbitron', fontSize: 9,
-                    color: premio >= 3 ? '#ffd666' : 'rgba(238,232,220,0.4)',
-                    fontWeight: premio >= 3 ? 700 : 400,
-                  }}>
-                    {premio}🎴
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {classifica.length === 0 && (
-            <div style={{ padding: 40, textAlign: 'center' }}>
-              <div style={{ fontSize: 36, marginBottom: 8 }}>🏆</div>
-              <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#f5a623', letterSpacing: 2, marginBottom: 6 }}>CLASSIFICA VUOTA</div>
-              <div style={{ opacity: 0.4, fontSize: 10, lineHeight: 1.6 }}>Sii il primo a conquistare territori<br/>e scalare la classifica!</div>
-            </div>
-          )}
-        </PannelloOrnato>
-      )}
-
-      <div style={{ textAlign: 'center', marginTop: 12, fontSize: 8, color: 'rgba(238,232,220,0.25)', fontFamily: 'Orbitron', letterSpacing: 1 }}>
-        CRITERI: LIVELLO MAPPA → TERRITORI → DATA ISCRIZIONE
-      </div>
     </div>
   );
 }

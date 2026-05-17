@@ -1054,6 +1054,13 @@ export async function aggiornaTerritorioPossBattaglia(uid, territorioId, esito) 
     };
 
     await updateDoc(userRef, { territoriUtente: nuoviTerritori });
+
+    // Incrementa punteggio settimanale del vincitore per la conquista
+    if (uid && uid !== 'cpu') {
+      const attuale = dati.punteggiSettimana ?? 0;
+      await updateDoc(userRef, { punteggiSettimana: attuale + 100 });
+    }
+
     return { success: true };
   } catch (err) {
     console.error('[aggiornaTerritorioPossBattaglia] FAILED', {
@@ -1105,4 +1112,93 @@ export async function getAttivitaAmici(amiciUids) {
   return results
     .filter(Boolean)
     .sort((a, b) => (b.ts?.toMillis?.() ?? 0) - (a.ts?.toMillis?.() ?? 0));
+}
+
+// ── CLASSIFICA: configurazione premi ──────────────────────────────────────────
+
+/**
+ * Legge la configurazione premi classifica da Firestore (config/premiClassifica).
+ * Struttura: { "1": {...}, "2": {...}, "3": {...}, "top10": {...}, "top100": {...}, "tutti": {...} }
+ * Ogni oggetto: { energia: number, bustineSfida: number, kisses: number }
+ */
+export async function getPremiClassificaConfig() {
+  const ref = doc(db, 'config', 'premiClassifica');
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return getDefaultPremiClassifica();
+  return snap.data();
+}
+
+/**
+ * Salva la configurazione premi classifica.
+ */
+export async function setPremiClassificaConfig(config) {
+  const ref = doc(db, 'config', 'premiClassifica');
+  await setDoc(ref, config);
+}
+
+/**
+ * Configurazione premi di default.
+ */
+export function getDefaultPremiClassifica() {
+  return {
+    "1":      { energia: 5, bustineSfida: 10, kisses: 2000 },
+    "2":      { energia: 3, bustineSfida: 5,  kisses: 1000 },
+    "3":      { energia: 2, bustineSfida: 3,  kisses: 500  },
+    "top10":  { energia: 0, bustineSfida: 2,  kisses: 200  },
+    "top100": { energia: 0, bustineSfida: 1,  kisses: 100  },
+    "tutti":  { energia: 0, bustineSfida: 0,  kisses: 50   },
+  };
+}
+
+/**
+ * Determina quale fascia premi spetta a una data posizione (1-based).
+ */
+export function fasciaPremiPerPosizione(pos, config) {
+  const cfg = config ?? getDefaultPremiClassifica();
+  if (pos === 1) return cfg["1"] ?? {};
+  if (pos === 2) return cfg["2"] ?? {};
+  if (pos === 3) return cfg["3"] ?? {};
+  if (pos <= 10) return cfg["top10"] ?? {};
+  if (pos <= 100) return cfg["top100"] ?? {};
+  return cfg["tutti"] ?? {};
+}
+
+/**
+ * Aggiorna il punteggio settimanale di un giocatore.
+ * Viene chiamato quando si ottiene una vittoria PvP o si conquista un territorio.
+ */
+export async function incrementaPunteggiSettimana(uid, punti = 100) {
+  const ref = doc(db, 'users', uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+  const attuale = snap.data().punteggiSettimana ?? 0;
+  await updateDoc(ref, { punteggiSettimana: attuale + punti });
+}
+
+/**
+ * Legge la classifica settimanale (ordinata per punteggiSettimana desc).
+ */
+export async function getClassificaSettimanale(limitN = 200) {
+  const q = query(collection(db, 'users'), limit(500));
+  const snap = await getDocs(q);
+  const utenti = snap.docs.map(d => {
+    const data = d.data();
+    return {
+      id: d.id,
+      ...data,
+      _nomeDisplay: data.nomeImpero || data.nome || (data.email?.split('@')[0]) || 'Giocatore',
+      _punteggi: data.punteggiSettimana ?? 0,
+      _territori: Object.values(data.territoriUtente || {}).filter(t => t?.conquistato).length,
+      _livelloMappa: data.livelloMappa ?? 1,
+    };
+  });
+
+  utenti.sort((a, b) => {
+    if (b._punteggi !== a._punteggi) return b._punteggi - a._punteggi;
+    if (b._livelloMappa !== a._livelloMappa) return b._livelloMappa - a._livelloMappa;
+    if (b._territori !== a._territori) return b._territori - a._territori;
+    return (a.creato?.toMillis?.() ?? 0) - (b.creato?.toMillis?.() ?? 0);
+  });
+
+  return utenti.slice(0, limitN);
 }

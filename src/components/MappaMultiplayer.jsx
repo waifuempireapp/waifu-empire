@@ -418,8 +418,15 @@ function SchermataPartita({
   // - Nessuno schermo d'attesa per i non-coinvolti (spettatori in partite 3+).
   const battaglia = partita.battagliaCorrente;
   const sonoCoinvolto = battaglia && (battaglia.attaccanteUid === myUid || battaglia.difensoreUid === myUid);
-  const sonoAttaccante = battaglia?.attaccanteUid === myUid;
-  const sonoDifensore = battaglia?.difensoreUid === myUid;
+
+  // IMPORTANTE: sonoAttaccante e sonoDifensore vengono calcolati usando battagliaInfo
+  // come fallback quando battaglia è null (dopo che Firestore ha azzerato battagliaCorrente).
+  // Senza questo, quando il risultato viene registrato e battagliaCorrente: null,
+  // sonoAttaccante diventerebbe false per tutti, causando il testo sbagliato nel popup:
+  // "[opponent] ha conquistato [territory]" invece di "Non sei riuscito a conquistare..."
+  const battagliaPerRuolo = battaglia ?? battagliaInfo;
+  const sonoAttaccante = battagliaPerRuolo?.attaccanteUid === myUid;
+  const sonoDifensore  = battagliaPerRuolo?.difensoreUid  === myUid;
 
   // Se c'è una battaglia PvP e NON sono coinvolto: mostro solo che è in corso ma non blocco
   // Se sono coinvolto: vado direttamente alla battaglia (nessun check presenza)

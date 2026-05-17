@@ -139,6 +139,18 @@ export async function registraRisultatoBattaglia({ codice, vincitoreUid, territo
     aggiornato: serverTimestamp(),
     log: [...(p.log || []).slice(-50), logEntry], // mantieni max 50 entry nel log
   });
+
+  // Incrementa punteggio settimanale dell'attaccante vincitore (solo vs CPU)
+  if (vincitoreUid === attaccanteUid && attaccanteUid && attaccanteUid !== 'cpu') {
+    try {
+      const vincRef = doc(db, 'users', attaccanteUid);
+      const vincSnap = await getDoc(vincRef);
+      if (vincSnap.exists()) {
+        const attuale = vincSnap.data().punteggiSettimana ?? 0;
+        await updateDoc(vincRef, { punteggiSettimana: attuale + 100 });
+      }
+    } catch (_) {}
+  }
 }
 
 // ── PvP: registra risultato battaglia senza scalare energia al perdente ─
@@ -216,6 +228,18 @@ export async function registraRisultatoBattagliaPvp({ codice, vincitoreUid, terr
     aggiornato: serverTimestamp(),
     log: [...(p.log || []).slice(-50), logEntry],
   });
+
+  // Incrementa punteggio settimanale del vincitore PvP
+  if (vincitoreUid && vincitoreUid !== 'cpu') {
+    try {
+      const vincRef = doc(db, 'users', vincitoreUid);
+      const vincSnap = await getDoc(vincRef);
+      if (vincSnap.exists()) {
+        const attuale = vincSnap.data().punteggiSettimana ?? 0;
+        await updateDoc(vincRef, { punteggiSettimana: attuale + 100 });
+      }
+    } catch (_) {}
+  }
 
   return { vincitoreFinale, attaccanteUid, difensoreUid };
 }
