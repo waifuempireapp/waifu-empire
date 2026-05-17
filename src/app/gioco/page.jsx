@@ -1829,8 +1829,8 @@ function ClassificaTab({ user }) {
         const ordine = [1, 0, 2]; // indici in classifica
         const altezze = [100, 130, 85]; // altezze visuali
         return (
-          // maxWidth ridotto rispetto al box premi → non overflow su mobile
-          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', alignItems: 'flex-end', marginBottom: 20, maxWidth: '82%', margin: '0 auto 20px' }}>
+          {/* Grid 3 colonne uguali — garantisce larghezze identiche su tutti i browser */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, alignItems: 'end', maxWidth: '82%', margin: '0 auto 20px' }}>
             {ordine.map((idx, visualIdx) => {
               const u = classifica[idx];
               const isMe = user && u.id === user.uid;
@@ -1838,7 +1838,6 @@ function ClassificaTab({ user }) {
               const grad = podioGradient[idx];
               return (
                 <div key={idx} style={{
-                  flex: '1 0 0',
                   background: `rgba(10,7,38,0.8)`,
                   backdropFilter: 'blur(12px)',
                   border: `1px solid ${col}${isMe ? 'aa' : '30'}`,
