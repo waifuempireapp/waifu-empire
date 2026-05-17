@@ -1700,7 +1700,7 @@ function PodioTop3({ classifica, user, podioColori, podioGradient, podioMedaglie
               justifyContent: 'center',
               padding: '8px 4px',
               position: 'relative',
-              overflow: 'hidden',
+              // No overflow:hidden — il badge "Tu" è posizionato con top negativo e verrebbe tagliato
             }}
           >
             <div style={{ fontSize: i === 1 ? 20 : 15, marginBottom: 3 }}>{podioMedaglie[rankIdx]}</div>

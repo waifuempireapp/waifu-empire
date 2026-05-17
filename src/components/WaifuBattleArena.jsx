@@ -1408,12 +1408,13 @@ export default function WaifuBattleArena({
       }
 
       // Traccia danno e KO per ogni singola waifu — ENTRAMBE le squadre (per il calcolo MVP).
-      // La chiave usa anche il lato per evitare collisioni di nome tra i due team.
-      const waifuKey = `${side}:${att.name}`;
-      // Prova più campi immagine: il WaifuBattleStat spreads il documento originale
-      const imgUrl = att.asset_statica ?? att.img ?? att.imgUrl ?? att.image ?? null;
+      // initBattleWaifu espone: name (da nome), image (da asset_statica/asset_immersiva).
+      // Usiamo att.id come chiave univoca se disponibile, fallback al nome.
+      const waifuName = att.name ?? att.nome ?? '—';
+      const waifuKey  = `${side}:${att.id ?? waifuName}`;
+      const imgUrl    = att.image ?? att.asset_statica ?? att.asset_immersiva ?? att.img ?? att.imgUrl ?? null;
       setWaifuStats(prev=>{
-        const existing = prev[waifuKey] ?? { name:att.name, imgUrl, kos:0, dmg:0, side };
+        const existing = prev[waifuKey] ?? { name: waifuName, imgUrl, kos:0, dmg:0, side };
         const updated  = { ...existing, dmg:existing.dmg+damage, kos:existing.kos+(isKO?1:0) };
         const next = { ...prev, [waifuKey]: updated };
         waifuStatsRef.current = next;
@@ -1541,6 +1542,8 @@ export default function WaifuBattleArena({
         statsE: { ...statsERef.current },
         biggestHit: { ...biggestHitRef.current },
         isDraw: false, // se sono qui, c'è un vincitore chiaro
+        // Snapshot di waifuStats per evitare problemi di timing col ref
+        waifuStats: { ...waifuStatsRef.current },
       });
       onBattleResult?.(won);
       setTimeout(()=>setPhase('result'),ANIM_RESULT_DELAY_MS);
@@ -1559,7 +1562,7 @@ export default function WaifuBattleArena({
       statsE={rf.statsE}
       biggestHit={rf.biggestHit}
       isDraw={rf.isDraw}
-      waifuStats={waifuStatsRef.current}
+      waifuStats={rf.waifuStats ?? waifuStatsRef.current}
     />;
   }
 
