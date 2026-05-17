@@ -38,18 +38,32 @@ export default function RoundViewer({ battle, waifuCat, collezione, profilo, onR
       .filter(Boolean)
   ), [battle?.attackerTeam, waifuCat, collezione]);
 
-  // Fix #3: roster CPU come RAW waifu con asset_statica patchato
-  // PickPhase chiama initBattleWaifu internamente → usa asset_statica per image
-  // Se la waifu ha solo asset_immagine, lo copiamo in asset_statica prima di passarla
+  // Fix #3: roster5E = le 5 waifu vere del difensore (da battle.defenderTeam),
+  // oppure 5 casuali dal catalogo se il difensore è la CPU o non ha un team impostato.
+  // PickPhase chiama initBattleWaifu internamente → usiamo RAW waifu con asset_statica patchato
+  // perché initBattleWaifu usa asset_statica per il campo image.
   const roster5E = useMemo(() => {
     if (!waifuCat?.length) return [];
-    const shuffled = [...waifuCat].sort(() => Math.random() - 0.5).slice(0, 5);
-    return shuffled.map(w => ({
+
+    const patchW = (w) => w ? ({
       ...w,
-      // Assicura che asset_statica sia set perché initBattleWaifu usa quello per il campo image
       asset_statica: w.asset_statica || w.asset_immagine || null,
-    }));
-  }, [waifuCat, difficulty]); // eslint-disable-line
+    }) : null;
+
+    // Se esiste un defenderTeam con 5 waifuId, usare quelle waifu specifiche
+    const defIds = battle?.defenderTeam;
+    if (Array.isArray(defIds) && defIds.length === 5) {
+      const resolved = defIds.map(id => {
+        const w = waifuCat.find(c => c.id === id);
+        return w ? patchW(w) : null;
+      }).filter(Boolean);
+      if (resolved.length === 5) return resolved;
+    }
+
+    // Fallback: 5 waifu casuali (es. pixel CPU)
+    const shuffled = [...waifuCat].sort(() => Math.random() - 0.5).slice(0, 5);
+    return shuffled.map(patchW).filter(Boolean);
+  }, [battle?.defenderTeam, waifuCat]); // dipende solo dal team fisso, non da difficulty
 
   // ── PRE-ROUND ─────────────────────────────────────────────────────────────
   if (phase === 'pre') {

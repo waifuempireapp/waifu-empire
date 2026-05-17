@@ -122,7 +122,12 @@ export async function POST(request) {
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    return NextResponse.json({ success: true, battleId: battleRef.id, cpuDifficulty: cpuDifficulty(defenderLevel) });
+    return NextResponse.json({
+      success: true,
+      battleId: battleRef.id,
+      cpuDifficulty: cpuDifficulty(defenderLevel),
+      defenderTeam, // array di 5 waifuId del difensore
+    });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

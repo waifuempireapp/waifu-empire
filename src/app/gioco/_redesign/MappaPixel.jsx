@@ -16,6 +16,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
   const [swapConfig, setSwapConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedPixel, setSelectedPixel] = useState(null);
+  const [myDefenseMap, setMyDefenseMap] = useState({}); // defense_config dell'utente corrente
 
   const [showBattle, setShowBattle] = useState(false);
   const [showRound, setShowRound] = useState(false);
@@ -55,8 +56,19 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
     }
   }, [user]);
 
+  // Carica defense_config dell'utente corrente una volta sola all'apertura della mappa
+  const loadMyDefenseConfig = useCallback(async () => {
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/difesa', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      setMyDefenseMap(data.defenseMap ?? {});
+    } catch (e) { /* ignora */ }
+  }, [user]);
+
   useEffect(() => {
     loadChunks();
+    loadMyDefenseConfig();
     if ((profilo?.pixelCount ?? 0) === 0) setShowTutorial(true);
   }, []);
 
@@ -65,6 +77,25 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
     sessionStorage.removeItem('pixel_map_chunks_at');
     await loadChunks(true);
   }, [loadChunks]);
+
+  // ── SELEZIONE PIXEL ──────────────────────────────────────────────────────────
+  // Quando si tocca un pixel non-proprio e non-CPU, carichiamo il defenderTeam dal server
+  const handlePixelSelect = useCallback(async (pixel) => {
+    setSelectedPixel(pixel); // mostra subito il popup con i dati del chunk
+    if (pixel.ownerId !== 'CPU' && pixel.ownerId !== user.uid) {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(
+          `/api/mappa/pixel/${pixel.x}/${pixel.y}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const data = await res.json();
+        if (data.defenderTeam) {
+          setSelectedPixel(prev => prev ? { ...prev, defenderTeam: data.defenderTeam } : prev);
+        }
+      } catch { /* ignora */ }
+    }
+  }, [user]);
 
   // ── ATTACCO ──────────────────────────────────────────────────────────────────
   // L'API attack ora ritorna anche cpuDifficulty
@@ -83,7 +114,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
         setActiveBattle({
           id: data.battleId,
           attackerTeam,
-          defenderTeam: selectedPixel.defenseTeam || [],
+          defenderTeam: data.defenderTeam || [], // 5 waifuId del difensore, dal server
           cpuDifficulty: data.cpuDifficulty || 'easy',
           attackerWins: 0,
           defenderWins: 0,
@@ -202,7 +233,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
           chunks={chunks}
           userUid={user.uid}
           selectedPixel={selectedPixel}
-          onPixelSelect={setSelectedPixel}
+          onPixelSelect={handlePixelSelect}
         />
       </div>
 
@@ -216,12 +247,13 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
         onKissesUpdate={(earned) => setProfilo(p => ({ ...p, kisses: (p.kisses ?? 0) + earned }))}
       />
 
-      {/* Pixel detail bottom sheet */}
+      {/* Pixel detail popup */}
       {selectedPixel && !showBattle && !showRound && !showPurchase && !showDefenseEditor && (
         <PixelDetail
           pixel={selectedPixel}
           userUid={user.uid}
           waifuCat={waifuCat}
+          myDefenseTeam={myDefenseMap[`${selectedPixel.x}_${selectedPixel.y}`] || []}
           onClose={() => setSelectedPixel(null)}
           onAttack={() => setShowBattle(true)}
           onPurchase={() => setShowPurchase(true)}
@@ -283,7 +315,9 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
           waifuCat={waifuCat}
           user={user}
           profilo={profilo}
+          currentTeam={myDefenseMap[`${selectedPixel.x}_${selectedPixel.y}`] || []}
           onClose={() => setShowDefenseEditor(false)}
+          onSaved={() => { loadMyDefenseConfig(); setShowDefenseEditor(false); }}
         />
       )}
     </div>

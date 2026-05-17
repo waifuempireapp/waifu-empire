@@ -3,7 +3,7 @@ import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 
 export const maxDuration = 15;
 
-// GET /api/mappa/pixel/[x]/[y] — info pixel + battle attiva se presente
+// GET /api/mappa/pixel/[x]/[y] — info pixel + battle attiva + team difensore
 export async function GET(request, { params }) {
   try {
     const token = request.headers.get('Authorization')?.replace('Bearer ', '');
@@ -18,11 +18,29 @@ export async function GET(request, { params }) {
 
     const chunkCol = Math.floor(x / 10);
     const chunkRow = Math.floor(y / 10);
-    const chunkId = `chunk_${chunkCol}_${chunkRow}`;
-    const chunkSnap = await adminDb.collection('map_chunks').doc(chunkId).get();
+    const chunkSnap = await adminDb.collection('map_chunks').doc(`chunk_${chunkCol}_${chunkRow}`).get();
 
     if (!chunkSnap.exists) return NextResponse.json({ error: 'Chunk non trovato' }, { status: 404 });
     const pixel = chunkSnap.data().pixels?.[`${x}_${y}`] ?? { ownerId: 'CPU', ownerColor: '#888888', ownerName: 'CPU' };
+
+    // Carica il team difensore del proprietario (se non è CPU)
+    let defenderTeam = [];
+    if (pixel.ownerId && pixel.ownerId !== 'CPU') {
+      const defSnap = await adminDb.collection('users').doc(pixel.ownerId)
+        .collection('defense_config').doc('main').get();
+      if (defSnap.exists) {
+        defenderTeam = defSnap.data()[`${x}_${y}`] || [];
+      }
+      // Fallback al preset #1 se non configurato
+      if (defenderTeam.length !== 5) {
+        const collSnap = await adminDb.collection('users').doc(pixel.ownerId)
+          .collection('collezione').doc('main').get();
+        if (collSnap.exists) {
+          const presets = collSnap.data().preset || {};
+          defenderTeam = presets[0] || presets['0'] || [];
+        }
+      }
+    }
 
     // Controlla se c'è una battaglia in corso su questo pixel
     const battleSnap = await adminDb.collection('territory_battles')
@@ -34,7 +52,7 @@ export async function GET(request, { params }) {
 
     const activeBattle = battleSnap.empty ? null : { id: battleSnap.docs[0].id, ...battleSnap.docs[0].data() };
 
-    return NextResponse.json({ x, y, pixel, activeBattle });
+    return NextResponse.json({ x, y, pixel, defenderTeam, activeBattle });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
