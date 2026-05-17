@@ -889,11 +889,22 @@ function BattagliaMultiplayer({
 }) {
   const myUid = user.uid;
   const giocatori = partita.giocatori || {};
-  const battaglia = partita.battagliaCorrente;
-  const avversarioUid = sonoAttaccante ? battaglia.difensoreUid : battaglia.attaccanteUid;
+
+  // Snapshot locale di battagliaCorrente: si aggiorna solo quando il valore Firestore
+  // è non-null. Quando Firestore azzera battagliaCorrente (dopo la registrazione del
+  // risultato), questo ref mantiene l'ultimo valore valido, evitando che il componente
+  // crashasse accedendo a `battaglia.attaccanteUid` su null.
+  // BattagliaMultiplayer rimane montato via `battagliaLocaleAttiva` in SchermataPartita.
+  const battagliaRef = useRef(partita.battagliaCorrente);
+  if (partita.battagliaCorrente != null) {
+    battagliaRef.current = partita.battagliaCorrente;
+  }
+  const battaglia = battagliaRef.current;
+
+  const avversarioUid = sonoAttaccante ? battaglia?.difensoreUid : battaglia?.attaccanteUid;
   const avversario = giocatori[avversarioUid];
   const isCpu = avversarioUid === 'cpu';
-  const territorioId = battaglia.territorioId;
+  const territorioId = battaglia?.territorioId;
   const terrData = TERRITORI.find(t => t.id === territorioId);
 
   const STATS_BATTAGLIA = [
