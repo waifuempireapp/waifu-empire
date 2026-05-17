@@ -46,7 +46,8 @@
       "Bash(find \"/mnt/c/Progetti\" -name \"page.jsx\" 2>/dev/null)",
       "Read(//mnt/c/**)",
       "Bash(node --input-type=module --eval ' *)",
-      "Bash(powershell -Command \"\\(Get-Content 'C:\\\\Progetti\\\\Impero delle waifu\\\\impero-waifu\\\\src\\\\components\\\\MappaMultiplayer.jsx'\\).Count\")"
+      "Bash(powershell -Command \"\\(Get-Content 'C:\\\\Progetti\\\\Impero delle waifu\\\\impero-waifu\\\\src\\\\components\\\\MappaMultiplayer.jsx'\\).Count\")",
+      "Bash(python3 -c ' *)"
     ]
   }
 }

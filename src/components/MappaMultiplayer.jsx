@@ -29,7 +29,7 @@ import {
   salvaProseguiTurnoRound, registraRisultatoBattagliaPvp,
   salvaRisultatoPvpRound,
   salvaArenaMove, inizializzaArena,
-  inizializzaArenaSeedRng, salvaArenaRisultato,
+  inizializzaArenaSeedRng,
 } from '@/lib/multiplayerService';
 import { resolvePvPTurn } from '@/lib/pvpArenaEngine';
 import WaifuBattleArena from '@/components/WaifuBattleArena';
@@ -920,7 +920,7 @@ function BattagliaMultiplayer({
   const [pvpWaiting, setPvpWaiting]           = useState(false);
   // PvP Arena sync — Attacker-as-resolver
   const [pvpBattleSeed, setPvpBattleSeed]     = useState(null);   // seed RNG condiviso (generato dall'attaccante)
-  const [pvpTurnResult, setPvpTurnResult]     = useState(null);   // risultato turno (per il difensore/RECEIVER)
+  // pvpTurnResult rimosso: approccio deterministico simmetrico — nessun RECEIVER
   const arenaTurnoRef    = useRef(0);   // turno corrente arena (PvP move sync)
   const arenaVincitoreRef = useRef(null); // vincitore UID arena, settato da onBattleResult
 
@@ -1212,62 +1212,43 @@ function BattagliaMultiplayer({
     }
   }, [partita?.battagliaCorrente, fase, iniziata]);
 
-  // ── Arena PvP: RESOLVER (attaccante) — entrambe le mosse ricevute → trigger animazione ──
-  // Il RESOLVER calcola il risultato in WaifuBattleArena e lo scrive su Firestore via onPvPTurnResolved.
-  // Qui si attiva solo il trigger "mossa avversario ricevuta" per sbloccare WaifuBattleArena.
-  // L'avanzamento di arenaTurnoRef avviene DOPO la scrittura su Firestore (in handlePvPTurnResolved).
+  // ── Arena PvP: sincronizzazione mosse — SIMMETRICO per entrambi i giocatori ──
+  // Quando ENTRAMBE le mosse sono in Firestore, sblocca la risoluzione del turno.
+  // Il calcolo avviene in modo deterministico su entrambi i device (stesso seed RNG).
   useEffect(() => {
-    if (!arenaAttiva || isCpu || !sonoAttaccante || !pvpBattleSeed) return;
+    if (!arenaAttiva || isCpu) return;
     const arenaMosse = partita?.battagliaCorrente?.arenaMosse;
     if (!arenaMosse) return;
     const t = arenaTurnoRef.current;
     const myMoveData  = arenaMosse?.[`t${t}`]?.[myUid];
     const oppMoveData = arenaMosse?.[`t${t}`]?.[avversarioUid];
-    if (myMoveData?.moveIndex === undefined || oppMoveData?.moveIndex === undefined) return;
-    // Guardia: non applicare lo stesso turno due volte
-    // (pvpOpponentMove viene azzerato a null in handlePvPMoveSubmit prima di ogni turno)
-    if (pvpOpponentMove !== null) return;
-    // RESOLVER: entrambe le mosse ricevute.
-    // Delay di 400ms per permettere al RECEIVER di ricevere il seed e prepararsi,
-    // garantendo che entrambi i client vedano l'animazione in modo quasi simultaneo.
-    setTimeout(() => {
-      setPvpOpponentMove(oppMoveData.moveIndex); // trigger animazione locale
-      setPvpWaiting(false);
-    }, 400);
-  }, [partita?.battagliaCorrente?.arenaMosse, arenaAttiva, sonoAttaccante, pvpBattleSeed, pvpOpponentMove]); // eslint-disable-line
 
-  // ── Arena PvP: RECEIVER (difensore) — legge il risultato da Firestore ─────
-  // Il RECEIVER non calcola danni: usa il risultato pre-calcolato dall'attaccante.
-  // L'avanzamento di arenaTurnoRef avviene in handlePvPTurnConsumed (chiamato da WaifuBattleArena).
+    // Passa la mossa dell'avversario a WaifuBattleArena appena disponibile
+    if (oppMoveData?.moveIndex !== undefined) {
+      setPvpOpponentMove(oppMoveData.moveIndex);
+    }
+
+    // Sblocca l'attesa solo quando ENTRAMBI hanno inviato la mossa
+    if (myMoveData?.moveIndex !== undefined && oppMoveData?.moveIndex !== undefined) {
+      setPvpWaiting(false);
+    }
+  }, [partita?.battagliaCorrente?.arenaMosse, arenaAttiva, myUid, avversarioUid]); // eslint-disable-line
+
+  // ── Arena PvP: seed RNG — il difensore legge il seed pubblicato dall'attaccante ──
+  // L'attaccante genera il seed e lo scrive su Firestore via inizializzaArenaSeedRng.
+  // Il difensore lo legge qui e lo salva in pvpBattleSeed per il calcolo deterministico.
   useEffect(() => {
     if (!arenaAttiva || isCpu || sonoAttaccante) return;
-    const arenaRisultato = partita?.battagliaCorrente?.arenaRisultato;
     const battleSeed = partita?.battagliaCorrente?.battleSeed;
-    if (!arenaRisultato || !battleSeed) return;
-    // RECEIVER: salva il seed ricevuto dall'attaccante
-    if (!pvpBattleSeed) setPvpBattleSeed(battleSeed);
-    const t = arenaTurnoRef.current;
-    const risultato = arenaRisultato?.[`t${t}`];
-    if (!risultato) return;
-    // Guardia: se pvpTurnResult è già impostato per questo turno, non ri-applicare.
-    // Evita il re-trigger causato da snapshot multipli dello stesso documento Firestore.
-    if (pvpTurnResult !== null) return;
-    // Il RESOLVER ha scritto il risultato: il RECEIVER può animare.
-    // Il RESOLVER ha già aspettato 400ms — il risultato su Firestore arriva dopo,
-    // quindi la ricezione qui avviene circa allo stesso momento in cui il RESOLVER
-    // inizia l'animazione → entrambi i client animano quasi in simultanea.
-    setPvpTurnResult(risultato);
-    setPvpOpponentMove(risultato.pMoveIdx); // mossa dell'avversario (attaccante) vista dal difensore
-    setPvpWaiting(false);
-  }, [partita?.battagliaCorrente?.arenaRisultato, partita?.battagliaCorrente?.battleSeed, arenaAttiva, sonoAttaccante, pvpTurnResult]); // eslint-disable-line
+    if (!battleSeed || pvpBattleSeed) return;
+    setPvpBattleSeed(battleSeed);
+  }, [partita?.battagliaCorrente?.battleSeed, arenaAttiva, sonoAttaccante, pvpBattleSeed]); // eslint-disable-line
 
   const handlePvPMoveSubmit = async (moveIdx) => {
     const t = arenaTurnoRef.current;
-    // Reset pvpOpponentMove PRIMA di scrivere su Firestore: questo assicura che il
-    // listener RESOLVER (che controlla `pvpOpponentMove !== null`) non riutilizzi
-    // il valore del turno precedente mentre aspettiamo la mossa avversaria.
+    // Reset pvpOpponentMove PRIMA di scrivere su Firestore per evitare che il listener
+    // simmetrico riutilizzi il valore del turno precedente.
     setPvpOpponentMove(null);
-    setPvpTurnResult(null); // RECEIVER: reset anche il risultato del turno precedente
     setPvpWaiting(true);
     try {
       await salvaArenaMove(codice, myUid, t, { moveIndex: moveIdx });
@@ -1276,23 +1257,12 @@ function BattagliaMultiplayer({
     }
   };
 
-  // RESOLVER: chiamato da WaifuBattleArena dopo aver risolto il turno localmente
-  // Scrive il risultato su Firestore e avanza il contatore turni
-  const handlePvPTurnResolved = useCallback(async (turno, risultato) => {
-    try {
-      await salvaArenaRisultato(codice, turno, risultato);
-      arenaTurnoRef.current = turno + 1;
-    } catch (e) {
-      mostraNotif('Errore sincronizzazione turno', '#ff3d3d');
-    }
-  }, [codice, mostraNotif]); // eslint-disable-line
-
-  // RECEIVER: chiamato da WaifuBattleArena dopo aver applicato il risultato esterno
-  // Avanza il contatore turni e resetta i flag del turno corrente
-  const handlePvPTurnConsumed = useCallback(() => {
+  // Avanza il contatore turno su questo device dopo che il turno è stato risolto.
+  // Chiamato da WaifuBattleArena al termine di ogni turno PvP.
+  const handlePvPTurnAdvance = useCallback(() => {
     arenaTurnoRef.current += 1;
-    setPvpTurnResult(null);
-    setPvpOpponentMove(null); // pronto per il prossimo turno
+    setPvpOpponentMove(null); // reset per il prossimo turno
+    setPvpWaiting(false);     // reset attesa
   }, []);
 
   // Risolve il round (solo l'attaccante) e scrive il risultato su Firestore
@@ -1767,10 +1737,9 @@ function BattagliaMultiplayer({
     arenaVincitoreRef.current = null;
     setPvpOpponentMove(null);
     setPvpWaiting(false);
-    setPvpTurnResult(null);
     // arenaPlayerTeam è già stato impostato in handlePickConfirm
     setArenaEnemyTeam(eTeam);
-    // RESOLVER: l'attaccante genera e pubblica il seed RNG per la battaglia
+    // L'attaccante genera e pubblica il seed RNG per la battaglia (entrambi i device usano lo stesso seed)
     if (sonoAttaccante) {
       const newSeed = Math.floor(Math.random() * 0x7FFFFFFF);
       setPvpBattleSeed(newSeed);
@@ -1880,9 +1849,8 @@ function BattagliaMultiplayer({
         arenaVincitoreRef.current = null;
         setPvpOpponentMove(null);
         setPvpWaiting(false);
-        setPvpTurnResult(null);
         setArenaEnemyTeam(eTeam);
-        // RESOLVER: l'attaccante genera e pubblica il seed RNG per la battaglia
+        // L'attaccante genera e pubblica il seed RNG per la battaglia (entrambi i device usano lo stesso seed)
         if (sonoAttaccante) {
           const newSeed = Math.floor(Math.random() * 0x7FFFFFFF);
           setPvpBattleSeed(newSeed);
@@ -2021,10 +1989,7 @@ function BattagliaMultiplayer({
         pvpOpponentMove={pvpOpponentMove}
         pvpWaiting={pvpWaiting}
         onPvPMoveSubmit={!isCpu ? handlePvPMoveSubmit : undefined}
-        pvpIsResolver={!isCpu && sonoAttaccante}
-        pvpTurnResult={!isCpu && !sonoAttaccante ? pvpTurnResult : null}
-        onPvPTurnResolved={!isCpu && sonoAttaccante ? handlePvPTurnResolved : undefined}
-        onPvPTurnConsumed={!isCpu && !sonoAttaccante ? handlePvPTurnConsumed : undefined}
+        onPvPTurnAdvance={!isCpu ? handlePvPTurnAdvance : undefined}
         pvpBattleSeed={pvpBattleSeed}
       />
     );

@@ -4,13 +4,12 @@
  * @module WaifuBattleArena
  * @description Arena di battaglia turno per turno per modalità PvCPU e PvP online.
  *
- * Il componente supporta 3 ruoli distinti:
+ * Il componente supporta 2 modalità distinte:
  *   1. PvCPU  — La CPU sceglie la mossa casualmente e il danno è calcolato
  *      localmente. Nessuna sincronizzazione Firebase.
- *   2. PvP RESOLVER (attaccante, `pvpIsResolver=true`) — Calcola il turno
- *      localmente e scrive il risultato su Firestore via `onPvPTurnResolved`.
- *   3. PvP RECEIVER (difensore, `pvpIsResolver=false`) — Riceve il risultato
- *      pre-calcolato via `pvpTurnResult` e non ricalcola nulla localmente.
+ *   2. PvP deterministico simmetrico — Entrambi i device calcolano il risultato
+ *      in modo identico (stesso seed RNG + stesse mosse da Firestore). Il turno
+ *      parte solo quando entrambe le mosse sono in Firestore. Nessun RESOLVER/RECEIVER.
  *
  * Layout visivo (top → bottom, `position:fixed`):
  *   ┌──────────────────────────────────────┐
@@ -28,7 +27,7 @@
  * Principi SOLID applicati:
  *   SRP — ogni sub-componente ha una e una sola responsabilità.
  *   OCP — nuovi tipi di mossa o HUD possono essere aggiunti senza toccare il core.
- *   DIP — il RESOLVER dipende dall'astrazione `onPvPTurnResolved`, non da Firestore.
+ *   DIP — il calcolo PvP dipende dall'astrazione `pvpBattleSeed`, non da Math.random().
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -37,6 +36,7 @@ import {
   calculateDamage, getEffectiveness,
   isMoveBlocked, applyDamage, cpuChooseMove, cpuDecideSwap, initBattleTeam, generateCPUTeam,
 } from '@/lib/battleEngine';
+import { seededRand, getTurnRNG, calculateDamageSeeded } from '@/lib/pvpArenaEngine';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COSTANTI DI TIMING ANIMAZIONI
@@ -791,14 +791,11 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
  * @param {Function}    [props.onBattleResult]      — Callback (isVictory) al termine della battaglia.
  * @param {Function}    [props.onExit]              — Callback quando il popup viene chiuso.
  * @param {boolean}     [props.isPvP=false]         — true = modalità PvP online.
- * @param {boolean}     [props.pvpIsResolver=false] — true = questo client è il RESOLVER (attaccante).
- * @param {Object|null} [props.pvpTurnResult]       — Risultato turno pre-calcolato ricevuto da Firestore (solo RECEIVER).
- * @param {Function}    [props.onPvPTurnResolved]   — Callback RESOLVER: invia il risultato a Firestore.
- * @param {Function}    [props.onPvPTurnConsumed]   — Callback RECEIVER: notifica che il turno è stato applicato.
- * @param {number|null} [props.pvpOpponentMove]     — Indice mossa avversario (RESOLVER, da Firestore).
+ * @param {number|null} [props.pvpOpponentMove]     — Indice mossa avversario ricevuta da Firestore.
  * @param {boolean}     [props.pvpWaiting=false]    — true = in attesa della mossa avversaria.
  * @param {Function}    [props.onPvPMoveSubmit]     — Callback per inviare la mossa scelta a Firestore.
- * @param {number|null} [props.pvpBattleSeed]       — Seed RNG condiviso (per audit del determinismo).
+ * @param {Function}    [props.onPvPTurnAdvance]    — Callback chiamato da entrambi i device dopo la risoluzione.
+ * @param {number|null} [props.pvpBattleSeed]       — Seed RNG condiviso (deterministico, stesso su entrambi i device).
  * @param {Object}      [props.waifuCat]            — Catalogo waifu (usato per generare il team CPU).
  * @returns {JSX.Element}
  */
@@ -806,12 +803,9 @@ export default function WaifuBattleArena({
   playerTeam, enemyTeam, onExit, onBattleResult,
   battleCtx, waifuCat=[],
   isPvP=false, pvpOpponentMove=null, onPvPMoveSubmit, pvpWaiting=false,
-  // PvP Arena — Attacker-as-resolver sync
-  pvpIsResolver=false,       // true = RESOLVER (attaccante): calcola e scrive su Firestore
-  pvpTurnResult=null,        // RECEIVER (difensore): risultato pre-calcolato da Firestore
-  onPvPTurnResolved=null,    // RESOLVER chiama questo dopo aver risolto (scrive su Firestore)
-  onPvPTurnConsumed=null,    // RECEIVER chiama questo dopo aver applicato il risultato
-  pvpBattleSeed=null,        // seed RNG condiviso (usato dal RESOLVER per audit)
+  // PvP Arena — approccio deterministico simmetrico
+  onPvPTurnAdvance=null,     // chiamato da entrambi i device dopo la risoluzione del turno
+  pvpBattleSeed=null,        // seed RNG condiviso (stesso su entrambi i device)
 }) {
 
   useEffect(()=>{
@@ -1044,29 +1038,12 @@ export default function WaifuBattleArena({
   const pvpOpMoveRef    = useRef(null);
   useEffect(()=>{ pvpOpMoveRef.current=pvpOpponentMove; },[pvpOpponentMove]);
 
-  // ─── RECEIVER (difensore) ────────────────────────────────────────────────────
-  // Usa il danno pre-calcolato da Firestore (externalResult) — NON chiama calculateDamage().
-  // Quando arriva il risultato pre-calcolato da Firestore, applica il turno senza ricalcolare.
+  // PvP: quando arriva la mossa dell'avversario da Firestore, risolvi il turno.
+  // Questo useEffect scatta su ENTRAMBI i device indipendentemente da chi ha scelto prima.
   useEffect(()=>{
-    if(!isPvP||pvpIsResolver) return; // solo RECEIVER
-    if(pvpTurnResult===null) return;
+    if(!isPvP||pvpOpponentMove==null||pendingPMoveRef.current==null) return;
     if(resolveRef.current) return;
-    // Usa la mossa pendente locale oppure quella riportata nel result (eMoveIdx = receiver's move da RESOLVER perspective)
-    const myMoveIdx = pendingPMoveRef.current ?? pvpTurnResult.eMoveIdx;
-    if(myMoveIdx === undefined || myMoveIdx === null) return;
-    // L'azione dell'avversario (RESOLVER) è pMoveIdx nel result
-    resolveTurn(myMoveIdx, pvpTurnResult.pMoveIdx, pvpTurnResult);
-    pendingPMoveRef.current=null;
-  },[pvpTurnResult]); // eslint-disable-line
-
-  // ─── RESOLVER (attaccante) ───────────────────────────────────────────────────
-  // Calcola il danno localmente con calculateDamage(), poi lo scrive su Firestore.
-  // Quando arriva la mossa dell'avversario da Firestore, calcola il turno e chiama onPvPTurnResolved.
-  useEffect(()=>{
-    if(!isPvP||!pvpIsResolver) return; // solo RESOLVER
-    if(pvpOpponentMove==null||pendingPMoveRef.current==null) return;
-    if(resolveRef.current) return;
-    resolveTurn(pendingPMoveRef.current, pvpOpponentMove, null); // null = calcola localmente (RESOLVER)
+    resolveTurn(pendingPMoveRef.current, pvpOpponentMove, null);
     pendingPMoveRef.current=null;
   },[pvpOpponentMove]); // eslint-disable-line
 
@@ -1174,7 +1151,7 @@ export default function WaifuBattleArena({
       setShowBench(false);
       setPhase('playerChoose');
       setMsg('Cambio inviato! Attendo la mossa avversaria…');
-      return; // aspetta il risultato da Firestore (pvpTurnResult o pvpOpponentMove)
+      return; // aspetta la mossa avversaria da Firestore (pvpOpponentMove)
     }
 
     setTurn(t=>t+1);
@@ -1200,10 +1177,9 @@ export default function WaifuBattleArena({
       pendingPMoveRef.current=moveIdx;
       onPvPMoveSubmit?.(moveIdx);
       setMsg('Mossa inviata! Attendo la mossa avversaria…');
-      // Early-fire solo per RESOLVER: se la mossa avversaria era già arrivata via ref
-      // RECEIVER non fa early-fire — aspetta pvpTurnResult via useEffect
-      if(pvpIsResolver&&pvpOpMoveRef.current!=null&&!resolveRef.current){
-        resolveTurn(moveIdx, pvpOpMoveRef.current, null); // null = calcola localmente (RESOLVER)
+      // Se l'avversario aveva già inviato la mossa, risolvi subito senza aspettare il listener
+      if(pvpOpMoveRef.current!=null&&!resolveRef.current){
+        resolveTurn(moveIdx, pvpOpMoveRef.current, null);
         pendingPMoveRef.current=null;
       }
     } else {
@@ -1222,14 +1198,13 @@ export default function WaifuBattleArena({
    * Risolve un intero turno di battaglia: determina l'ordine di attacco,
    * esegue le animazioni, applica i danni e gestisce i KO.
    *
-   * @param {number}      pMi            — Indice mossa del giocatore (0–3).
-   * @param {number}      eMi            — Indice mossa del nemico (0–3).
-   * @param {Object|null} [externalResult=null] — Risultato pre-calcolato da Firestore
-   *   (solo RECEIVER). Se `null`, i danni vengono calcolati localmente.
+   * In PvP: usa seeded RNG (pvpBattleSeed + turn) per garantire stesso risultato su entrambi i device.
+   * In PvCPU: usa Math.random() locale.
+   *
+   * @param {number} pMi — Indice mossa del giocatore (0–3, o negativo per swap).
+   * @param {number} eMi — Indice mossa del nemico (0–3, o negativo per swap).
+   * @param {null}   [externalResult=null] — Mantenuto per compatibilità interna (non usato in PvP).
    */
-  // externalResult: se non null, è il risultato pre-calcolato dal RESOLVER (attaccante)
-  //   → usato solo dal RECEIVER (difensore) per animare senza ricalcolare danni
-  //   → se null: calcola localmente (vs CPU o se RESOLVER PvP)
   const resolveTurn = useCallback(async(pMi, eMi, externalResult=null)=>{
     if(resolveRef.current) return;
     resolveRef.current=true;
@@ -1240,8 +1215,15 @@ export default function WaifuBattleArena({
     let cPA=pActive; let cEA=eActive;
     let dmgAcc=0;
 
-    // Variabili per tracking danni (usate da RESOLVER per onPvPTurnResolved)
+    // Variabili per tracking danni
     let pDmgDealt=0, eDmgDealt=0, pAttackCrit=false, eAttackCrit=false;
+
+    // RNG tracker per PvP seeded (ogni chiamata usa un indice diverso)
+    let pvpRngCall = 0;
+    const pvpRng = (callIdx) => {
+      if(!isPvP || pvpBattleSeed == null) return Math.random();
+      return seededRand(getTurnRNG(pvpBattleSeed, turn - 1, callIdx)).val;
+    };
 
     // ── Decodifica azioni swap ───────────────────────────────────────────────────
     // Se pMi < 0 il player ha scelto di swappare invece di attaccare.
@@ -1257,7 +1239,7 @@ export default function WaifuBattleArena({
 
     // Swap del player
     if(isPlayerSwap){
-      const swapTargetP = externalResult?.pActiveAfter ?? playerSwapIdx;
+      const swapTargetP = playerSwapIdx;
       setPActive(swapTargetP); cPA = swapTargetP;
       setPAnim('wba-sL');
       setMsg(`${curP[swapTargetP]?.name} entra in campo!`);
@@ -1268,7 +1250,7 @@ export default function WaifuBattleArena({
 
     // Swap dell'avversario
     if(isEnemySwap){
-      const swapTargetE = externalResult?.eActiveAfter ?? enemySwapIdx;
+      const swapTargetE = enemySwapIdx;
       setEActive(swapTargetE); cEA = swapTargetE;
       setEAnim('wba-sR');
       setMsg(`${curE[swapTargetE]?.name} entra in campo!`);
@@ -1283,11 +1265,8 @@ export default function WaifuBattleArena({
       await wait(ANIM_RESULT_DELAY_MS);
       setLastPMove(pMi); setLastEMove(eMi);
       setTotalDmg(d=>d+dmgAcc); setTurn(t=>t+1);
-      // Notifiche PvP
-      if(isPvP&&pvpIsResolver&&onPvPTurnResolved&&!externalResult){
-        onPvPTurnResolved(turn - 1, { pMoveIdx:pMi, eMoveIdx:eMi, firstMover:'none', pDmg:0, eDmg:0, pCrit:false, eCrit:false, pHPFinal:curP[cPA]?.hp??0, eHPFinal:curE[cEA]?.hp??0, pIsKO:false, eIsKO:false, pActiveAfter:cPA, eActiveAfter:cEA });
-      }
-      if(isPvP&&!pvpIsResolver&&externalResult){ onPvPTurnConsumed?.(); }
+      // PvP deterministico: entrambi i device avanzano il turno indipendentemente
+      if(isPvP){ onPvPTurnAdvance?.(); }
       setIsAnim(false); resolveRef.current=false;
       setPhase('playerChoose'); setMsg('Scegli la tua mossa!'); setTimer(30);
       return; // esce da resolveTurn — nessun attacco da eseguire
@@ -1296,36 +1275,31 @@ export default function WaifuBattleArena({
     // ── Ordine attacchi (solo per chi NON ha swappato) ──────────────────────────
     // Se player ha swappato → solo enemy attacca
     // Se enemy ha swappato → solo player attacca
-    // Se nessuno ha swappato → ordine per velocità come prima
+    // Se nessuno ha swappato → ordine per velocità (seeded per PvP, random per CPU)
 
     let first;
-    if(isPlayerSwap){
+    if(isPlayerSwap && isEnemySwap){
+      first = 'none'; // entrambi swappano — gestito sopra, non si raggiunge mai qui
+    } else if(isPlayerSwap){
       first = 'enemy'; // solo enemy attacca
     } else if(isEnemySwap){
       first = 'player'; // solo player attacca
     } else {
-      // Nessuno ha swappato: determina ordine per velocità
-      if(externalResult){
-        first = externalResult.firstMover === 'player' ? 'enemy' : 'player';
-      } else {
-        const pSpd=(curP[cPA].speed??50)+(Math.random()*10-5);
-        const eSpd=(curE[cEA].speed??50)+(Math.random()*10-5);
-        first=pSpd>=eSpd?'player':'enemy';
-      }
+      // Ordine per velocità con RNG (seeded per PvP, random per CPU)
+      const pSpd=(curP[cPA].speed??50)+(pvpRng(pvpRngCall++)*10-5);
+      const eSpd=(curE[cEA].speed??50)+(pvpRng(pvpRngCall++)*10-5);
+      first=pSpd>=eSpd?'player':'enemy';
     }
 
     /**
      * Esegue l'animazione e applica il danno di un singolo attacco.
      *
-     * @param {'player'|'enemy'} side         — Chi attacca.
-     * @param {number}           mi           — Indice mossa dell'attaccante.
-     * @param {number|null}      [overrideDamage=null]  — Danno da Firestore (RECEIVER); se `null` calcola localmente.
-     * @param {boolean|null}     [overrideCrit=null]    — Flag critico da Firestore (RECEIVER).
+     * @param {'player'|'enemy'} side — Chi attacca.
+     * @param {number}           mi  — Indice mossa dell'attaccante.
      * @returns {Promise<boolean>} `true` se il difensore è andato KO.
      */
-    // execAttack: esegue animazione e applica danno
-    // overrideDamage/overrideCrit: usati dal RECEIVER per applicare valori da Firestore
-    const execAttack=async(side, mi, overrideDamage=null, overrideCrit=null)=>{
+    // execAttack: esegue animazione e applica danno con RNG seeded per PvP
+    const execAttack=async(side, mi)=>{
       const att=side==='player'?curP[cPA]:curE[cEA];
       const def=side==='player'?curE[cEA]:curP[cPA];
       if(!att||!def||att.isKO) return false;
@@ -1333,20 +1307,18 @@ export default function WaifuBattleArena({
       if(!move) return false;
 
       let damage, isCrit, effectiveness;
-      if(overrideDamage!==null){
-        // ─── RECEIVER (difensore) ────────────────────────────────────────────────────
-        // Usa il danno pre-calcolato da Firestore (externalResult) — NON chiama calculateDamage().
-        damage=overrideDamage;
-        isCrit=overrideCrit??false;
-        effectiveness='Normal';
+      if(isPvP && pvpBattleSeed != null){
+        // PvP deterministico: usa seeded RNG per garantire stesso risultato su entrambi i device
+        const rngSeed = getTurnRNG(pvpBattleSeed, turn - 1, pvpRngCall++);
+        const result = calculateDamageSeeded(att, move, def, rngSeed);
+        damage=result.damage; isCrit=result.isCrit; effectiveness=result.effectiveness;
       } else {
-        // ─── RESOLVER (attaccante) / VS CPU ──────────────────────────────────────────
-        // Calcola il danno localmente con calculateDamage().
+        // VS CPU: calcola localmente con Math.random()
         const result=calculateDamage(att,move,def);
         damage=result.damage; isCrit=result.isCrit; effectiveness=result.effectiveness;
       }
 
-      // Tracking danni per onPvPTurnResolved (RESOLVER)
+      // Tracking danni
       if(side==='player'){ pDmgDealt=damage; pAttackCrit=isCrit; }
       else { eDmgDealt=damage; eAttackCrit=isCrit; }
 
@@ -1416,15 +1388,9 @@ export default function WaifuBattleArena({
       return newDef.isKO;
     };
 
-    // Esegue gli attacchi nell'ordine corretto.
-    // Se RECEIVER con externalResult: passa danno/crit da Firestore.
-    // NOTA prospettive: RESOLVER p=attaccante, RECEIVER p=difensore (invertite).
-    // firstMover già flippato sopra → first==='player' = difensore, first==='enemy' = attaccante
-    // → danni: 'player' (difensore) = externalResult.eDmg; 'enemy' (attaccante) = externalResult.pDmg
+    // Esegue gli attacchi nell'ordine corretto (seeded per PvP, random per CPU).
     const firstMi = first==='player' ? pMi : eMi;
-    const firstDmg  = externalResult ? (first==='player' ? externalResult.eDmg : externalResult.pDmg) : null;
-    const firstCrit = externalResult ? (first==='player' ? externalResult.eCrit : externalResult.pCrit) : null;
-    const firstKO=await execAttack(first,firstMi,firstDmg,firstCrit);
+    const firstKO=await execAttack(first,firstMi);
     await wait(ANIM_BETWEEN_ATTACKS_MS);
 
     if(firstKO){
@@ -1435,15 +1401,11 @@ export default function WaifuBattleArena({
       if(first==='player'){setEAnim('');}else{setPAnim('');}
     } else {
       // Il secondo attacco avviene SOLO se nessuno dei due ha swappato
-      // (chi swappa non attacca — se uno swappa, lui è first con side corretto
-      // ma second non dovrebbe esistere)
       const canSecondAttack = !isPlayerSwap && !isEnemySwap;
       if(canSecondAttack){
         const second=first==='player'?'enemy':'player';
         const secondMi=second==='player'?pMi:eMi;
-        const secondDmg  = externalResult ? (second==='player' ? externalResult.eDmg : externalResult.pDmg) : null;
-        const secondCrit = externalResult ? (second==='player' ? externalResult.eCrit : externalResult.pCrit) : null;
-        const secondKO=await execAttack(second,secondMi,secondDmg,secondCrit);
+        const secondKO=await execAttack(second,secondMi);
         await wait(ANIM_BETWEEN_ATTACKS_MS);
         if(secondKO){
           const koName2=second==='player'?curE[cEA]?.name:curP[cPA]?.name;
@@ -1458,36 +1420,9 @@ export default function WaifuBattleArena({
     setLastPMove(pMi); setLastEMove(eMi);
     setTotalDmg(d=>d+dmgAcc); setTurn(t=>t+1);
 
-    // ─── RESOLVER (attaccante) ───────────────────────────────────────────────────
-    // Dopo aver animato il turno, scrive il risultato su Firestore tramite onPvPTurnResolved.
-    if(isPvP&&pvpIsResolver&&onPvPTurnResolved&&!externalResult){
-      // Il numero turno corrente è quello che era prima di setTurn(t=>t+1)
-      // Lo usiamo dal ref di MappaMultiplayer (arenaTurnoRef), qui usiamo turn state pre-increment
-      // Nota: turn è ancora il valore vecchio qua perché setTurn è async
-      const turnResult={
-        pMoveIdx: pMi,
-        eMoveIdx: eMi,
-        firstMover: first,
-        pDmg: pDmgDealt,
-        eDmg: eDmgDealt,
-        pCrit: pAttackCrit,
-        eCrit: eAttackCrit,
-        pHPFinal: curP[cPA]?.hp ?? 0,
-        eHPFinal: curE[cEA]?.hp ?? 0,
-        pIsKO: curP[cPA]?.isKO ?? false,
-        eIsKO: curE[cEA]?.isKO ?? false,
-        pActiveAfter: cPA, // indice waifu attiva del RESOLVER dopo il turno
-        eActiveAfter: cEA, // indice waifu attiva dell'avversario dopo il turno
-      };
-      // turn è il numero turno React state (incrementato da setTurn sopra, ma ancora il vecchio in questa chiusura)
-      onPvPTurnResolved(turn - 1, turnResult); // turn - 1 perché setTurn(t=>t+1) non ha ancora aggiornato
-    }
-
-    // ─── RECEIVER (difensore) ────────────────────────────────────────────────────
-    // Notifica MappaMultiplayer che il risultato pre-calcolato è stato applicato e animato.
-    if(isPvP&&!pvpIsResolver&&externalResult){
-      onPvPTurnConsumed?.();
-    }
+    // PvP deterministico: entrambi i device avanzano il turno indipendentemente
+    // dopo aver completato la risoluzione locale. Chiamato UNA sola volta per turno.
+    if(isPvP){ onPvPTurnAdvance?.(); }
 
     const pKO=curP[cPA]?.isKO;
     const eKO=curE[cEA]?.isKO;
@@ -1505,18 +1440,6 @@ export default function WaifuBattleArena({
       await wait(ANIM_ENTER_MS);
     }
 
-    // Sincronizza gli indici attivi con il RESOLVER per evitare desync
-    // (necessario perché swap e KO possono cambiare gli indici in modi che il RECEIVER
-    // potrebbe calcolare diversamente per effetti di latenza o state stale)
-    if(externalResult?.pActiveAfter !== undefined && externalResult.pActiveAfter !== cEA){
-      setEActive(externalResult.pActiveAfter);
-      cEA = externalResult.pActiveAfter;
-    }
-    if(externalResult?.eActiveAfter !== undefined && externalResult.eActiveAfter !== cPA){
-      setPActive(externalResult.eActiveAfter);
-      cPA = externalResult.eActiveAfter;
-    }
-
     if(pKO){
       const nextP=nextAlive(curP,cPA);
       if(nextP<0){setPhase('defeat');setIsAnim(false);resolveRef.current=false;return;}
@@ -1528,7 +1451,7 @@ export default function WaifuBattleArena({
 
     setIsAnim(false); resolveRef.current=false;
     setPhase('playerChoose'); setMsg('Scegli la tua mossa!'); setTimer(30);
-  },[pTeam,eTeam,pActive,eActive,triggerFlash,isPvP,pvpIsResolver,onPvPTurnResolved,onPvPTurnConsumed,turn]); // eslint-disable-line
+  },[pTeam,eTeam,pActive,eActive,triggerFlash,isPvP,pvpBattleSeed,onPvPTurnAdvance,turn]); // eslint-disable-line
 
   // Gestisce il cambio forzato dopo un KO del giocatore
   const handlePlayerSwap=useCallback((newIdx)=>{
