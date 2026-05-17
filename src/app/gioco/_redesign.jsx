@@ -965,3 +965,15 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
     </div>
   );
 }
+
+// =====================================================================
+// RE-EXPORT — nuove sezioni (MappaPixel, Swap)
+// Necessario perché page.jsx importa da './_redesign' che risolve
+// questo file (.jsx ha precedenza su /_redesign/index.jsx)
+// =====================================================================
+export { MappaPixelTab } from './_redesign/MappaPixel';
+export { SwapTab }       from './_redesign/Swap';
+export { AmiciTab }      from './_redesign/Amici';
+export { ClassificaTab } from './_redesign/Classifica';
+export { SbustaTab }     from './_redesign/Sbusta';
+export { CollezioneTab } from './_redesign/Collezione';
