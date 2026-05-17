@@ -1838,7 +1838,7 @@ function ClassificaTab({ user }) {
               const grad = podioGradient[idx];
               return (
                 <div key={idx} style={{
-                  flex: visualIdx === 1 ? '0 0 38%' : '0 0 28%',
+                  flex: '1 0 0',
                   background: `rgba(10,7,38,0.8)`,
                   backdropFilter: 'blur(12px)',
                   border: `1px solid ${col}${isMe ? 'aa' : '30'}`,
