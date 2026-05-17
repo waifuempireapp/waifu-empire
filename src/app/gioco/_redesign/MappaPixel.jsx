@@ -17,7 +17,6 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
   const [loading, setLoading] = useState(true);
   const [selectedPixel, setSelectedPixel] = useState(null);
 
-  // Modal states
   const [showBattle, setShowBattle] = useState(false);
   const [showRound, setShowRound] = useState(false);
   const [showPurchase, setShowPurchase] = useState(false);
@@ -26,12 +25,12 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
   const [showDefenseEditor, setShowDefenseEditor] = useState(false);
   const [activeBattle, setActiveBattle] = useState(null);
 
-  const loadChunks = useCallback(async () => {
+  const loadChunks = useCallback(async (forceRefresh = false) => {
     const cached = sessionStorage.getItem('pixel_map_chunks');
     const cachedAt = Number(sessionStorage.getItem('pixel_map_chunks_at') || 0);
-    const TTL = 30 * 1000; // 30s cache
+    const TTL = 30 * 1000;
 
-    if (cached && Date.now() - cachedAt < TTL) {
+    if (!forceRefresh && cached && Date.now() - cachedAt < TTL) {
       setChunks(JSON.parse(cached));
       setLoading(false);
       return;
@@ -58,17 +57,17 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
 
   useEffect(() => {
     loadChunks();
-    // Mostra tutorial se l'utente non ha pixel
-    if ((profilo?.pixelCount ?? 0) === 0) {
-      setShowTutorial(true);
-    }
+    if ((profilo?.pixelCount ?? 0) === 0) setShowTutorial(true);
   }, []);
 
-  const invalidateCache = () => {
+  const invalidateAndReload = useCallback(async () => {
     sessionStorage.removeItem('pixel_map_chunks');
     sessionStorage.removeItem('pixel_map_chunks_at');
-  };
+    await loadChunks(true);
+  }, [loadChunks]);
 
+  // ── ATTACCO ──────────────────────────────────────────────────────────────────
+  // L'API attack ora ritorna anche cpuDifficulty
   const handleAttack = async (attackerTeam) => {
     try {
       const token = await user.getIdToken();
@@ -79,41 +78,45 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
         body: JSON.stringify({ targetX: selectedPixel.x, targetY: selectedPixel.y, attackerTeam, isTutorial }),
       });
       const data = await res.json();
+      if (!res.ok) { console.error('Attacco fallito:', data.error); return; }
       if (data.battleId) {
-        setActiveBattle({ id: data.battleId, attackerTeam, defenderTeam: selectedPixel.defenseTeam || [], cpuDifficulty: 'easy', attackerWins: 0, defenderWins: 0, pixelX: selectedPixel.x, pixelY: selectedPixel.y });
+        setActiveBattle({
+          id: data.battleId,
+          attackerTeam,
+          defenderTeam: selectedPixel.defenseTeam || [],
+          cpuDifficulty: data.cpuDifficulty || 'easy',
+          attackerWins: 0,
+          defenderWins: 0,
+          pixelX: selectedPixel.x,
+          pixelY: selectedPixel.y,
+          defenderUid: selectedPixel.ownerId,
+        });
         setShowBattle(false);
         setShowRound(true);
       }
     } catch (e) { console.error(e); }
   };
 
-  const handleRoundEnd = async (roundWinner) => {
-    try {
-      const token = await user.getIdToken();
-      const res = await fetch(`/api/mappa/battle/${activeBattle.id}/round`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roundWinner }),
-      });
-      const data = await res.json();
-      const updatedBattle = { ...activeBattle, attackerWins: data.attackerWins, defenderWins: data.defenderWins, status: data.status };
-      setActiveBattle(updatedBattle);
+  // ── RISULTATO MATCH ──────────────────────────────────────────────────────────
+  // Chiamata da RoundViewer.onExit DOPO che l'utente ha premuto "Continua" nel popup
+  const handleMatchEnd = useCallback(async (result) => {
+    setShowRound(false);
+    setActiveBattle(null);
 
-      if (data.status !== 'in_progress') {
-        setShowRound(false);
-        invalidateCache();
-        await loadChunks();
-        if (data.matchWinner === 'attacker') {
-          setProfilo(p => ({ ...p, pixelCount: (p.pixelCount ?? 0) + 1 }));
-          setShowTutorial(false);
-        }
-        setSelectedPixel(null);
-      } else {
-        setShowRound(false); // torna alla schermata pre-round
-      }
-    } catch (e) { console.error(e); }
-  };
+    // Ricarica la mappa fresca dal server
+    await invalidateAndReload();
 
+    if (result?.status === 'attacker_wins') {
+      setProfilo(p => ({ ...p, pixelCount: (p.pixelCount ?? 0) + 1 }));
+      setShowTutorial(false);
+    } else if (result?.status === 'defender_wins' && activeBattle?.defenderUid !== 'CPU') {
+      // Il difensore ha perso un pixel: il suo pixelCount è già aggiornato server-side
+    }
+
+    setSelectedPixel(null);
+  }, [activeBattle, invalidateAndReload, setProfilo]);
+
+  // ── ACQUISTO ──────────────────────────────────────────────────────────────────
   const handlePurchase = async ({ amount }) => {
     try {
       const token = await user.getIdToken();
@@ -124,10 +127,10 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
         body: JSON.stringify({ targetX: selectedPixel.x, targetY: selectedPixel.y, offerAmount: isCPU ? undefined : amount }),
       });
       const data = await res.json();
+      if (!res.ok) { console.error('Acquisto fallito:', data.error); return; }
       if (data.success) {
         setShowPurchase(false);
-        invalidateCache();
-        await loadChunks();
+        await invalidateAndReload();
         if (data.type === 'cpu_purchase') {
           setProfilo(p => ({ ...p, kisses: (p.kisses ?? 0) - data.price, pixelCount: (p.pixelCount ?? 0) + 1 }));
           setShowTutorial(false);
@@ -150,7 +153,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
 
   return (
     <div style={{ position: 'relative', margin: '-12px -16px' }}>
-      {/* Header sezione */}
+      {/* Header */}
       <div style={{ padding: '14px 16px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ fontFamily: FF.label, fontSize: 9, letterSpacing: '0.22em', color: C.sakura, textTransform: 'uppercase' }}>◆ CONQUISTA</div>
@@ -163,9 +166,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
             borderRadius: 10, color: C.gold, fontFamily: FF.label, fontSize: 10,
             letterSpacing: '0.15em', textTransform: 'uppercase', padding: '6px 12px', cursor: 'pointer',
           }}
-        >
-          💌 Offerte
-        </button>
+        >💌 Offerte</button>
       </div>
 
       {/* Canvas mappa */}
@@ -178,7 +179,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
         />
       </div>
 
-      {/* Mini leaderboard */}
+      {/* Mini leaderboard + passive kisses */}
       <MiniLeaderboard
         chunks={chunks}
         userUid={user.uid}
@@ -201,13 +202,12 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
         />
       )}
 
-      {/* Modals */}
+      {/* Tutorial (nuovo utente senza pixel) */}
       {showTutorial && (
-        <TutorialOverlay
-          onSelectPixel={(x, y) => { setSelectedPixel({ x, y, ownerId: 'CPU', ownerColor: '#888888', ownerName: 'CPU' }); setShowTutorial(false); setShowBattle(true); }}
-          onClose={() => setShowTutorial(false)}
-        />
+        <TutorialOverlay onClose={() => setShowTutorial(false)} />
       )}
+
+      {/* Selezione team offensivo */}
       {showBattle && selectedPixel && (
         <BattleModal
           pixel={selectedPixel}
@@ -217,15 +217,21 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
           onClose={() => setShowBattle(false)}
         />
       )}
+
+      {/* Pick phase + Arena di battaglia */}
       {showRound && activeBattle && (
         <RoundViewer
           battle={activeBattle}
           waifuCat={waifuCat}
           collezione={collezione}
-          onRoundEnd={handleRoundEnd}
-          onClose={() => setShowRound(false)}
+          user={user}
+          profilo={profilo}
+          onMatchEnd={handleMatchEnd}
+          onClose={() => { setShowRound(false); setActiveBattle(null); }}
         />
       )}
+
+      {/* Acquisto pixel */}
       {showPurchase && selectedPixel && (
         <PurchaseModal
           pixel={selectedPixel}
@@ -234,9 +240,13 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
           onClose={() => setShowPurchase(false)}
         />
       )}
+
+      {/* Lista offerte */}
       {showOffers && (
         <OffersPanel user={user} onClose={() => setShowOffers(false)} />
       )}
+
+      {/* Editor team difensore */}
       {showDefenseEditor && selectedPixel && (
         <TeamDifesaEditor
           pixelKey={`${selectedPixel.x}_${selectedPixel.y}`}

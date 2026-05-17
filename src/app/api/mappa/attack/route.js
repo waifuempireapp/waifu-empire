@@ -122,7 +122,7 @@ export async function POST(request) {
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    return NextResponse.json({ success: true, battleId: battleRef.id });
+    return NextResponse.json({ success: true, battleId: battleRef.id, cpuDifficulty: cpuDifficulty(defenderLevel) });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
