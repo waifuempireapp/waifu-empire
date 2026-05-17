@@ -4,8 +4,10 @@ import React, { useEffect, useState } from 'react';
 import { getClassifica, premioPerPosizione } from '@/lib/firestoreService';
 import { Chip, PannelloOrnato } from '@/components/ui/UIKit';
 import { C, FF, ScreenTitle } from './_shared';
+import WaifuRankingList from '@/components/classifica/WaifuRankingList';
 
 export function ClassificaTab({ user }) {
+  const [subTab, setSubTab] = useState('giocatori');
   const [classifica, setClassifica] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errore, setErrore] = useState(null);
@@ -36,6 +38,23 @@ export function ClassificaTab({ user }) {
 
   return (
     <div className="fade-in" style={{ paddingTop: 14 }}>
+      {/* Tab bar Giocatori / Waifu */}
+      <div style={{ display: 'flex', gap: 0, background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 3, marginBottom: 20 }}>
+        {[{ id: 'giocatori', label: 'Giocatori' }, { id: 'waifu', label: 'Classifica Waifu' }].map(t => (
+          <button key={t.id} onClick={() => setSubTab(t.id)} style={{
+            flex: 1, padding: '9px 8px', borderRadius: 10, border: 'none', cursor: 'pointer',
+            background: subTab === t.id ? 'rgba(245,197,96,0.18)' : 'transparent',
+            color: subTab === t.id ? C.goldL : 'rgba(241,235,255,0.45)',
+            fontFamily: FF.label, fontSize: 11, letterSpacing: '0.15em', fontWeight: subTab === t.id ? 700 : 500,
+            textTransform: 'uppercase', transition: 'all 0.18s',
+            boxShadow: subTab === t.id ? '0 0 12px rgba(245,197,96,0.2)' : 'none',
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      {subTab === 'waifu' && <WaifuRankingList user={user} />}
+      {subTab === 'giocatori' && <>
+
       <div style={{ textAlign: 'center' }}>
         <ScreenTitle
           kicker={`Stagione 7 · reset in ${prossimoLunedi}`}
@@ -235,6 +254,7 @@ export function ClassificaTab({ user }) {
       }}>
         Criteri · Livello Mappa → Territori → Iscrizione
       </div>
+      </>}
     </div>
   );
 }

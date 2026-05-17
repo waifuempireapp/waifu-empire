@@ -47,7 +47,16 @@
       "Read(//mnt/c/**)",
       "Bash(node --input-type=module --eval ' *)",
       "Bash(powershell -Command \"\\(Get-Content 'C:\\\\Progetti\\\\Impero delle waifu\\\\impero-waifu\\\\src\\\\components\\\\MappaMultiplayer.jsx'\\).Count\")",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Progetti\\\\Impero delle waifu\\\\impero-waifu\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(cat /c/Progetti/Impero delle waifu/imperio-waifu/.env.local | head -30)",
+      "Read(//c/Progetti/**)",
+      "PowerShell(Get-ChildItem \"c:\\\\Progetti\\\\Impero delle waifu\\\\\" | Where-Object {$_.PSIsContainer} | Select-Object Name)",
+      "Bash(xargs head -80)",
+      "Bash(mkdir -p \"c:\\\\Progetti\\\\Impero delle waifu\\\\impero-waifu\\\\src\\\\app\\\\api\\\\mappa\\\\pixel\\\\[x]\\\\[y]\")",
+      "Bash(mkdir -p \"c:\\\\Progetti\\\\Impero delle waifu\\\\impero-waifu\\\\src\\\\app\\\\api\\\\mappa\\\\battle\\\\[battleId]\\\\round\")",
+      "Bash(mkdir -p \"c:\\\\Progetti\\\\Impero delle waifu\\\\impero-waifu\\\\src\\\\app\\\\api\\\\mappa\\\\offers\\\\[offerId]\")"
     ]
   }
 }

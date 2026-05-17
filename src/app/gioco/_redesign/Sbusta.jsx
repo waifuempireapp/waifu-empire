@@ -20,7 +20,7 @@ export function SbustaTab({
   profilo, setProfilo, collezione, setColl,
   waifuCat, outfitCat, poseCat, user, mostraNotif,
   godPackProb = GOD_PACK_PROB_DEFAULT,
-  ModaleCarta,
+  ModaleCarta, setTab,
 }) {
   const [stato, setStato] = useState('idle');
   const [carteRivelate, setCarteRivelate] = useState([]);
@@ -560,24 +560,39 @@ export function SbustaTab({
           <MangaBanner drop={dropAttivo} collezione={collezione} c1={dropColore} c2={dropColore2}/>
         )}
 
-        {/* CATALOGO TOGGLE */}
-        <div style={{ textAlign: 'center', marginBottom: 12 }}>
-          <BtnDecorato variant="secondary" size="sm" onClick={() => setMostraCatalogo(v => !v)}>
-            {mostraCatalogo ? '✕ CHIUDI CATALOGO' : '📖 VEDI CARTE DISPONIBILI'}
-          </BtnDecorato>
+        {/* SWAP CTA BANNER — sostituisce il catalogo statico */}
+        <div
+          onClick={() => setTab?.('swap')}
+          style={{
+            marginBottom: 16, borderRadius: 18, overflow: 'hidden', cursor: 'pointer',
+            background: 'linear-gradient(135deg, rgba(197,74,134,0.18), rgba(108,240,224,0.1))',
+            border: '1px solid rgba(255,133,182,0.3)',
+            boxShadow: '0 4px 24px rgba(255,133,182,0.12)',
+            padding: '18px 20px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+          }}
+        >
+          <div>
+            <div style={{ fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)", fontSize: 9, letterSpacing: '0.22em', color: 'rgba(255,133,182,0.8)', textTransform: 'uppercase', marginBottom: 4 }}>
+              💋 NOVITÀ
+            </div>
+            <div style={{ fontFamily: "var(--ff-display, 'Unbounded', sans-serif)", fontSize: 17, color: '#fff', fontWeight: 800, marginBottom: 4 }}>
+              Scopri le Waifu
+            </div>
+            <div style={{ fontFamily: "var(--ff-body, 'DM Sans', sans-serif)", fontSize: 12, color: 'rgba(241,235,255,0.55)', lineHeight: 1.4 }}>
+              Swipa, vota e guadagna Kisses!
+            </div>
+          </div>
+          <div style={{
+            flexShrink: 0, padding: '10px 16px',
+            background: 'linear-gradient(135deg, #c54a86, #ff85b6)',
+            borderRadius: 12, color: '#fff',
+            fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+            fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700,
+          }}>
+            Vai →
+          </div>
         </div>
-
-        {mostraCatalogo && (
-          <CatalogoPanel
-            dropAttivo={dropAttivo} c1={dropColore} c2={dropColore2}
-            tuttiDrop={tuttiDrop} dropWaifu={dropWaifu} dropOutfit={dropOutfit} dropPose={dropPose}
-            catTab={catTab} setCatTab={setCatTab}
-            filtroRarita={filtroRarita} setFiltroRarita={setFiltroRarita}
-            ordine={ordine} setOrdine={setOrdine}
-            catalogoFiltrato={catalogoFiltrato}
-            profilo={profilo}
-          />
-        )}
 
         {/* POPUP APERTURA */}
         {popupApertura && (

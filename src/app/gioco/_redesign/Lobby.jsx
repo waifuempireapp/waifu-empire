@@ -244,11 +244,12 @@ function ResourcePill({ color, icon, value, label, active, onClick }) {
 // =====================================================================
 const TAB_DEFS = [
   { id: 'home',       label: 'Home',       icon: '🏠' },
-  { id: 'mappa',      label: 'Mappa',      icon: '⚔'  },
+  { id: 'mappa',      label: 'Mappa',      icon: '🗺️'  },
+  { id: 'swap',       label: 'Swap',       icon: '💋' },
   { id: 'sbusta',     label: 'Sbusta',     icon: '🎁' },
-  { id: 'collezione', label: 'Collezione', icon: '💎' },
+  { id: 'collezione', label: 'Cards',      icon: '💎' },
   { id: 'amici',      label: 'Amici',      icon: '♥'  },
-  { id: 'classifica', label: 'Classifica', icon: '🏆' },
+  { id: 'classifica', label: 'Rank',       icon: '🏆' },
 ];
 
 export function NavTabs({ tab, setTab }) {

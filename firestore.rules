@@ -125,6 +125,56 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // === Mappa Pixel — chunk (lettura pubblica, scrittura solo server Admin SDK) ===
+    match /map_chunks/{chunkId} {
+      allow read: if isSignedIn();
+      allow write: if false; // solo Admin SDK lato server
+    }
+
+    // === Battaglie territoriali — solo attaccante/difensore può leggere ===
+    match /territory_battles/{battleId} {
+      allow read: if isSignedIn()
+                  && (resource.data.attackerUid == request.auth.uid
+                      || resource.data.defenderUid == request.auth.uid);
+      allow create: if isSignedIn()
+                    && request.resource.data.attackerUid == request.auth.uid;
+      allow update: if isSignedIn()
+                    && resource.data.attackerUid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // === Voti Swap — ogni utente scrive solo i propri voti ===
+    match /swap_votes/{voteId} {
+      allow read: if isAdmin();
+      allow create, update: if isSignedIn()
+                            && request.resource.data.uid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // === Configurazione Swap (reward, pausa) — lettura pubblica, scrittura admin ===
+    match /swap_config/{doc} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // === Storico classifiche settimanali waifu — lettura pubblica, scrittura server ===
+    match /waifu_weekly_results/{weekId} {
+      allow read: if isSignedIn();
+      allow write: if false; // solo Admin SDK
+    }
+
+    // === Offerte acquisto pixel — solo i due interessati ===
+    match /pixel_offers/{offerId} {
+      allow read: if isSignedIn()
+                  && (resource.data.fromUid == request.auth.uid
+                      || resource.data.toUid == request.auth.uid);
+      allow create: if isSignedIn()
+                    && request.resource.data.fromUid == request.auth.uid;
+      allow update: if isSignedIn()
+                    && resource.data.toUid == request.auth.uid;
+      allow delete: if false;
+    }
+
     // Default: nega tutto
     match /{document=**} {
       allow read, write: if false;

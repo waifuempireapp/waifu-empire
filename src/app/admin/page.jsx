@@ -134,6 +134,7 @@ export default function AdminPage() {
           { k: 'prezzi', l: '💰 Prezzi' },
           { k: 'missioni', l: '🎯 Missioni' },
           { k: 'classifica', l: '🏆 Classifica' },
+          { k: 'swap', l: '💋 Swap' },
         ].map(t => (
           <button key={t.k} onClick={() => setTab(t.k)} style={{
             padding: '6px 16px',
@@ -157,6 +158,7 @@ export default function AdminPage() {
         {tab === 'prezzi'    && <PrezziTab flash={flash} user={user} />}
         {tab === 'missioni'  && <MissioniTab flash={flash} />}
         {tab === 'classifica' && <PremioClassificaTab flash={flash} />}
+        {tab === 'swap' && <SwapAdminTab flash={flash} user={user} />}
       </div>
     </div>
   );
@@ -3321,6 +3323,90 @@ function PremioClassificaTab({ flash }) {
         ⏰ Reset automatico: ogni <strong style={{ color: 'rgba(108,240,224,0.7)' }}>lunedì alle 01:00 UTC</strong> via Vercel Cron Job.<br/>
         L'endpoint <code style={{ color: 'rgba(108,240,224,0.7)' }}>/api/cron/reset-classifica</code> assegna i premi e azzera i punteggi settimanali.<br/>
         Variabile ambiente richiesta: <code style={{ color: 'rgba(108,240,224,0.7)' }}>CRON_SECRET</code> (impostala nel dashboard Vercel).
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// SWAP ADMIN TAB
+// ═══════════════════════════════════════════════
+function SwapAdminTab({ flash, user }) {
+  const [config, setConfig] = useState({ rewardThreshold: 10, rewardKisses: 50, adInterval: 10, passiveKissesRate: 1, weeklyPrizes: [500, 300, 200, 100, 50] });
+  const [votes, setVotes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [filterPaused, setFilterPaused] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const token = await user.getIdToken();
+        const [cfgRes] = await Promise.all([
+          fetch('/api/swap/config', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        ]);
+        setConfig({ rewardThreshold: cfgRes.rewardThreshold ?? 10, rewardKisses: cfgRes.rewardKisses ?? 50, adInterval: cfgRes.adInterval ?? 10, passiveKissesRate: cfgRes.passiveKissesRate ?? 1, weeklyPrizes: cfgRes.weeklyPrizes ?? [500,300,200,100,50] });
+      } finally { setLoading(false); }
+    };
+    load();
+  }, []);
+
+  const salva = async () => {
+    setSaving(true);
+    try {
+      const token = await user.getIdToken();
+      await fetch('/api/admin/swap-config', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      });
+      flash('✅ Configurazione Swap salvata');
+    } catch { flash('❌ Errore salvataggio'); }
+    finally { setSaving(false); }
+  };
+
+  const field = (label, key, min = 1) => (
+    <div style={{ marginBottom: 16 }}>
+      <label style={{ display: 'block', fontFamily: 'Orbitron', fontSize: 10, color: 'rgba(245,158,11,0.8)', marginBottom: 6, letterSpacing: 1 }}>{label}</label>
+      <input type="number" min={min} value={config[key] ?? ''} onChange={e => setConfig(c => ({ ...c, [key]: Number(e.target.value) }))}
+        style={{ width: '100%', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(245,158,11,0.3)', color: '#f5e6d3', borderRadius: 8, padding: '8px 12px', fontFamily: 'Orbitron', fontSize: 12 }} />
+    </div>
+  );
+
+  if (loading) return <div style={{ padding: 40, color: '#f5e6d3', textAlign: 'center' }}>Caricamento…</div>;
+
+  return (
+    <div style={{ color: '#f5e6d3', maxWidth: 600 }}>
+      <h2 style={{ fontFamily: 'Cinzel', fontSize: 18, color: '#f59e0b', marginBottom: 24 }}>💋 Gestione Swap</h2>
+
+      <div style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 14, padding: '20px 24px', marginBottom: 24 }}>
+        <h3 style={{ fontFamily: 'Orbitron', fontSize: 12, color: 'rgba(245,158,11,0.7)', marginBottom: 20, letterSpacing: 2 }}>CONFIGURAZIONE REWARD</h3>
+        {field('Voti per reward (N)', 'rewardThreshold')}
+        {field('Kisses per reward (X)', 'rewardKisses')}
+        {field('Swipe tra annunci (M)', 'adInterval')}
+        {field('Kisses passivi per pixel/ora', 'passiveKissesRate')}
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', fontFamily: 'Orbitron', fontSize: 10, color: 'rgba(245,158,11,0.8)', marginBottom: 6, letterSpacing: 1 }}>Premi classifica settimanale (#1 → #5)</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {(config.weeklyPrizes || [500,300,200,100,50]).map((v, i) => (
+              <input key={i} type="number" min={0} value={v} onChange={e => setConfig(c => { const p=[...c.weeklyPrizes]; p[i]=Number(e.target.value); return { ...c, weeklyPrizes: p }; })}
+                style={{ flex: 1, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(245,158,11,0.3)', color: '#f5e6d3', borderRadius: 8, padding: '8px 6px', fontFamily: 'Orbitron', fontSize: 11, textAlign: 'center' }} />
+            ))}
+          </div>
+        </div>
+
+        <button onClick={salva} disabled={saving} style={{ padding: '10px 24px', background: saving ? 'rgba(245,158,11,0.3)' : 'linear-gradient(135deg, #f59e0b, #ec4899)', border: 'none', borderRadius: 10, color: '#000', fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>
+          {saving ? '⏳ Salvataggio…' : '💾 SALVA CONFIGURAZIONE'}
+        </button>
+      </div>
+
+      <div style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 14, padding: '20px 24px' }}>
+        <h3 style={{ fontFamily: 'Orbitron', fontSize: 12, color: 'rgba(245,158,11,0.7)', marginBottom: 16, letterSpacing: 2 }}>DASHBOARD VOTI SWAP</h3>
+        <p style={{ fontFamily: 'Orbitron', fontSize: 10, color: 'rgba(245,158,11,0.5)', lineHeight: 1.6 }}>
+          La dashboard voti in tempo reale richiede una query aggregata su /swap_votes.<br/>
+          Consulta Firestore direttamente o usa il cron settimanale per vedere la classifica corrente via <code>/api/waifu-ranking/current</code>.
+        </p>
       </div>
     </div>
   );

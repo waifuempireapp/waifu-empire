@@ -7,3 +7,5 @@ export { AmiciTab }      from './Amici';
 export { ClassificaTab } from './Classifica';
 export { SbustaTab }     from './Sbusta';
 export { CollezioneTab } from './Collezione';
+export { MappaPixelTab } from './MappaPixel';
+export { SwapTab }       from './Swap';

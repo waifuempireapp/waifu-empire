@@ -78,7 +78,7 @@ import {
   CardInfo, Divider, StelleRarita, FramePersonaggio,
 } from '@/components/ui/UIKit';
 // Removed unused: BarraRisorsa
-import { Header, NavTabs, BottomNav, HomeTab, SakuraPetals } from './_redesign';
+import { Header, NavTabs, BottomNav, HomeTab, SakuraPetals, MappaPixelTab, SwapTab } from './_redesign';
 
 // ════════════════════════════════════════════════════════════════════════════
 // COMPONENTE: GiocoPage (default export)
@@ -296,7 +296,7 @@ export default function GiocoPage() {
               TAB: SBUSTA
               Componente SbustaTab — apertura pacchetti, God Pack, drop attivi.
               ═════════════════════════════════════════════════════════════════ */}
-          {tab === 'sbusta' && <SbustaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} user={user} mostraNotif={mostraNotif} godPackProb={godPackProb}  ModaleCarta={ModaleCarta} />}
+          {tab === 'sbusta' && <SbustaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} user={user} mostraNotif={mostraNotif} godPackProb={godPackProb} ModaleCarta={ModaleCarta} setTab={setTab} />}
 
           {/* ═════════════════════════════════════════════════════════════════
               TAB: COLLEZIONE
@@ -311,7 +311,24 @@ export default function GiocoPage() {
               pick phase (draft 3-from-5), WaifuBattleArena, modalità multiplayer.
               Documentazione: src/components/mappa/MappaTab.jsx
               ═════════════════════════════════════════════════════════════════ */}
-          {tab === 'mappa' && <MappaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} user={user} mostraNotif={mostraNotif} />}
+          {tab === 'mappa' && (
+            <MappaPixelTab
+              user={user}
+              profilo={profilo}
+              setProfilo={setProfilo}
+              collezione={collezione}
+              waifuCat={waifuCat}
+            />
+          )}
+          {tab === 'swap' && (
+            <SwapTab
+              user={user}
+              profilo={profilo}
+              setProfilo={setProfilo}
+              collezione={collezione}
+              waifuCat={waifuCat}
+            />
+          )}
 
           {/* ═════════════════════════════════════════════════════════════════
               TAB: AMICI
