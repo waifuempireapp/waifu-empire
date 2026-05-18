@@ -3025,7 +3025,7 @@ function SelectionScreen({ drop, dropsAttivi, dropSelId, setDropSelId, profilo, 
  * @param {number}   [props.godPackProb]    — Probabilità god pack (default da costante).
  * @param {Function} props.ModaleCarta      — Componente modal da iniettare per detail view.
  */
-function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitCat, poseCat, user, mostraNotif, godPackProb = GOD_PACK_PROB_DEFAULT, ModaleCarta }) {
+function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitCat, poseCat, user, mostraNotif, godPackProb = GOD_PACK_PROB_DEFAULT, ModaleCarta, setTab }) {
   const [stato, setStato] = useState('selection');
   const [carteRivelate, setCarteRivelate] = useState([]);
   const [indiceRivelato, setIndiceRivelato] = useState(-1); // legacy: unused in new flow
@@ -3387,15 +3387,39 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
         />
       )}
 
-      {/* BOTTONE CATALOGO */}      {/* BOTTONE CATALOGO */}
-      <div style={{ textAlign: 'center', marginBottom: 10 }}>
-        <BtnDecorato variant="secondary" size="sm" onClick={() => setMostraCatalogo(!mostraCatalogo)}>
-          {mostraCatalogo ? '✕ CHIUDI CATALOGO' : '📖 VEDI CARTE DISPONIBILI'}
-        </BtnDecorato>
+      {/* SWAP CTA BANNER — sostituisce il bottone catalogo statico */}
+      <div
+        onClick={() => setTab?.('swap')}
+        style={{
+          marginBottom: 16, borderRadius: 18, overflow: 'hidden', cursor: 'pointer',
+          background: 'linear-gradient(135deg, rgba(197,74,134,0.18), rgba(108,240,224,0.1))',
+          border: '1px solid rgba(255,133,182,0.3)',
+          boxShadow: '0 4px 24px rgba(255,133,182,0.12)',
+          padding: '18px 20px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+        }}
+      >
+        <div>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 8, letterSpacing: '0.22em', color: 'rgba(255,133,182,0.8)', textTransform: 'uppercase', marginBottom: 4 }}>
+            🩷 NOVITÀ
+          </div>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 15, color: '#fff', fontWeight: 800, marginBottom: 4 }}>
+            Scopri le Waifu
+          </div>
+          <div style={{ fontSize: 12, color: 'rgba(241,235,255,0.55)', lineHeight: 1.4 }}>
+            Swipa, vota e guadagna Kisses!
+          </div>
+        </div>
+        <div style={{
+          flexShrink: 0, padding: '10px 16px',
+          background: 'linear-gradient(135deg, #c54a86, #ff85b6)',
+          borderRadius: 12, color: '#fff',
+          fontFamily: 'Orbitron', fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700,
+        }}>Vai →</div>
       </div>
 
-      {/* CATALOGO CON FILTRI + INFINITE SCROLL */}
-      {mostraCatalogo && (
+      {/* CATALOGO CON FILTRI + INFINITE SCROLL — mantenuto ma nascosto (non più raggiungibile via UI) */}
+      {false && (
         <PannelloOrnato glow={dropColore} variant="purple" style={{ padding: 12 }}>
           {/* Info drop nel catalogo */}
           {dropAttivo && (
