@@ -257,16 +257,20 @@ function WaifuPickCard({ waifu, slot, selectable, onTap, hideStats = false }) {
             <TypeBadge type={bs.type ?? 'Arcana'} />
           </div>
 
-          {/* Statistiche — sempre visibili */}
-          <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,.5)', marginTop: 4 }}>
-            Vita: {maxHp}
-          </div>
-          <div style={{ fontFamily: 'Orbitron', fontSize: 7, color: 'rgba(238,232,220,.55)', marginTop: 2 }}>
-            <span style={{ color: '#00C8FF' }}>⚡ {computeSpeed(waifu)}</span>
-            {'  '}
-            <span style={{ color: '#f5a623' }}>💥 {Math.round(computeCritChance(waifu) * 100)}%</span>
-          </div>
-          <MiniHpBar hp={maxHp} maxHp={maxHp} />
+          {/* Statistiche — visibili solo per il roster del giocatore (hideStats=false) */}
+          {!hideStats && (
+            <>
+              <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,.5)', marginTop: 4 }}>
+                HP: {maxHp}
+              </div>
+              <div style={{ fontFamily: 'Orbitron', fontSize: 7, color: 'rgba(238,232,220,.55)', marginTop: 2 }}>
+                <span style={{ color: '#00C8FF' }}>⚡ {computeSpeed(waifu)}</span>
+                {'  '}
+                <span style={{ color: '#f5a623' }}>💥 {Math.round(computeCritChance(waifu) * 100)}%</span>
+              </div>
+              <MiniHpBar hp={maxHp} maxHp={maxHp} />
+            </>
+          )}
         </div>
       </div>
     </button>
@@ -596,8 +600,8 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
         </div>
         {/* Sottotitolo: istruzione + contatore selezioni correnti */}
         <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: 'rgba(238,232,220,.5)', marginTop: 6 }}>
-          Scegli {PICKS_RICHIESTI} waifu strategicamente in base ai <span style={{ color: '#a78bfa' }}>tipi</span> delle tue waifu e di quelle che l'avversario potrebbe schierare. La prima scelta entra subito in campo.
-          {' '}<span style={{ color: '#00e676', fontWeight: 700 }}>{activeSlots.length}/{PICKS_RICHIESTI} selezionate</span>
+          Scegli {PICKS_RICHIESTI} waifu strategicamente in base ai <span style={{ color: '#a78bfa' }}>tipi</span> delle tue waifu e di quelle che l'avversario potrebbe schierare. La prima scelta entra subito in campo.<br/>
+          <span style={{ color: '#00e676', fontWeight: 700 }}>{activeSlots.length}/{PICKS_RICHIESTI} selezionate</span>
         </div>
       </div>
 

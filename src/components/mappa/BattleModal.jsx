@@ -1,10 +1,10 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
 import { CartaWaifu } from '@/components/CartaWaifu';
 import { RARITA } from '@/lib/constants';
 
-const PAGE_SIZE = 10; // 10 per pagina per caricamento più veloce
+const PAGE_SIZE = 9; // 9 per pagina (3×3 griglia)
 
 // Filtri disponibili
 const RARITY_ORDER = ['comune', 'raro', 'epico', 'leggendario', 'immersivo'];
@@ -44,6 +44,14 @@ export default function BattleModal({ pixel, collezione, waifuCat, onConfirm, on
   const presets = Object.entries(teams).filter(([, t]) => t.waifu?.length === 5);
   const hasTeams = presets.length > 0;
 
+  // Offset top per non andare sotto l'header
+  const [topOffset, setTopOffset] = useState(0);
+  useEffect(() => {
+    const hdr = document.querySelector('.hdr-root');
+    const ntabs = document.querySelector('.ntabs-root');
+    setTopOffset((hdr ? hdr.getBoundingClientRect().height : 0) + (ntabs ? ntabs.getBoundingClientRect().height : 0));
+  }, []);
+
   // mode: 'teams' (default se ho team) | 'manual'
   const [mode, setMode] = useState(hasTeams ? 'teams' : 'manual');
   const [selectedIds, setSelectedIds] = useState([]);
@@ -70,8 +78,9 @@ export default function BattleModal({ pixel, collezione, waifuCat, onConfirm, on
   }, [collezione, waifuCat, sortBy]);
 
   const filtered = useMemo(() => ownedWaifu.filter(w => {
-    if (filterRarity && w.rarita !== filterRarity) return false;
-    if (filterType && w.tipo !== filterType) return false;
+    // Fix: confronto case-insensitive per rarità e tipo
+    if (filterRarity && (w.rarita?.toLowerCase() !== filterRarity.toLowerCase())) return false;
+    if (filterType && (w.tipo !== filterType && w.battleStats?.type !== filterType)) return false;
     return true;
   }), [ownedWaifu, filterRarity, filterType]);
 
@@ -101,7 +110,7 @@ export default function BattleModal({ pixel, collezione, waifuCat, onConfirm, on
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 200,
+      position: 'fixed', top: topOffset, left: 0, right: 0, bottom: 0, zIndex: 200,
       background: 'rgba(3,2,12,0.96)', backdropFilter: 'blur(16px)',
       display: 'flex', flexDirection: 'column',
     }}>
@@ -132,9 +141,8 @@ export default function BattleModal({ pixel, collezione, waifuCat, onConfirm, on
       {mode === 'teams' && (
         <>
           <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px 0' }}>
-            {/* Istruzione */}
             <div style={{ fontFamily: FF.body, fontSize: 11, color: 'rgba(241,235,255,0.5)', lineHeight: 1.4, marginBottom: 12 }}>
-              💡 Scegli un team già salvato oppure crea un team personalizzato. Dopo avrai scelto 5 waifu, potrai selezionare le 3 migliori per il round.
+              💡 Scegli un team già salvato, oppure seleziona 5 waifu con cui vuoi combattere. Nella prossima schermata potrai scegliere le 3 migliori waifu per affrontare il primo round.
             </div>
             {presets.map(([id, preset]) => (
               <PresetCard
@@ -179,7 +187,7 @@ export default function BattleModal({ pixel, collezione, waifuCat, onConfirm, on
           {/* Istruzione per l'utente */}
           <div style={{ padding: '8px 16px 0', flexShrink: 0 }}>
             <div style={{ fontFamily: FF.body, fontSize: 11, color: 'rgba(241,235,255,0.5)', lineHeight: 1.4, marginBottom: 6 }}>
-              💡 Seleziona <strong style={{ color: C.gold }}>5 waifu</strong> con cui vuoi combattere. Nella prossima schermata potrai scegliere le 3 migliori per il round.
+              💡 Seleziona <strong style={{ color: C.gold }}>5 waifu</strong> con cui vuoi combattere. Nella prossima schermata potrai scegliere le 3 migliori waifu per affrontare il primo round.
             </div>
           </div>
 
@@ -201,13 +209,16 @@ export default function BattleModal({ pixel, collezione, waifuCat, onConfirm, on
               <option value="velocita">↕ Velocità</option>
               <option value="crit">↕ % Critico</option>
             </select>
-            {(filterRarity || filterType) && (
-              <button onClick={() => { setFilterRarity(''); setFilterType(''); setPage(0); }} style={{
-                background: 'rgba(255,91,108,0.1)', border: '1px solid rgba(255,91,108,0.3)',
-                borderRadius: 8, color: C.err, fontSize: 11, padding: '5px 8px', cursor: 'pointer',
-              }}>✕</button>
-            )}
           </div>
+          {(filterRarity || filterType) && (
+            <div style={{ padding: '3px 16px 0', flexShrink: 0 }}>
+              <button onClick={() => { setFilterRarity(''); setFilterType(''); setPage(0); }} style={{
+                background: 'rgba(255,91,108,0.08)', border: '1px solid rgba(255,91,108,0.25)',
+                borderRadius: 8, color: C.err, fontFamily: FF.label, fontSize: 10,
+                letterSpacing: '0.15em', textTransform: 'uppercase', padding: '4px 12px', cursor: 'pointer',
+              }}>Cancella filtri</button>
+            </div>
+          )}
           <div style={{ padding: '3px 16px', fontFamily: FF.mono, fontSize: 10, color: 'rgba(241,235,255,0.3)', flexShrink: 0 }}>
             {filtered.length} waifu · pagina {page + 1}/{Math.max(1, totalPages)} · {selectedIds.length}/5 selezionate
           </div>
@@ -224,9 +235,9 @@ export default function BattleModal({ pixel, collezione, waifuCat, onConfirm, on
                     onClick={() => toggle(w.id)}
                     style={{
                       position: 'relative', cursor: 'pointer',
-                      // -8% rispetto a CartaWaifu piccola (che è 0.65 × normale)
-                      transform: 'scale(0.92)', transformOrigin: 'top left',
-                      width: '108%', // compensa il transform per il layout
+                      // Ulteriore riduzione: -18% rispetto a CartaWaifu piccola
+                      transform: 'scale(0.82)', transformOrigin: 'top left',
+                      width: '122%', // compensa il transform per il layout
                     }}
                   >
                     <div style={{

@@ -134,9 +134,6 @@ export default function RoundViewer({ battle, waifuCat, collezione, profilo, onR
         <div style={{ fontFamily: FF.body, fontSize: 12, color: 'rgba(241,235,255,0.5)', marginBottom: 6 }}>
           Difficoltà CPU: <span style={{ color: C.aqua, textTransform: 'uppercase' }}>{battle?.cpuDifficulty ?? 'easy'}</span>
         </div>
-        <div style={{ fontFamily: FF.body, fontSize: 11, color: 'rgba(241,235,255,0.4)', textAlign: 'center', maxWidth: 280, lineHeight: 1.5, marginBottom: 20 }}>
-          Scegli le 3 waifu con cui combattere, poi gioca al meglio dei 3 round. Chi vince 2 round per primo conquista il territorio.
-        </div>
         <div style={{ display: 'flex', gap: 32, marginBottom: 40 }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontFamily: FF.label, fontSize: 9, color: C.gold, letterSpacing: '0.2em', marginBottom: 6 }}>TU</div>
@@ -179,9 +176,18 @@ export default function RoundViewer({ battle, waifuCat, collezione, profilo, onR
     );
   }
 
+  // Offset header: la schermata parte sotto l'header del gioco
+  const topOffsetRef = useRef(0);
+  if (typeof window !== 'undefined' && topOffsetRef.current === 0) {
+    const hdr = document.querySelector('.hdr-root');
+    const ntabs = document.querySelector('.ntabs-root');
+    topOffsetRef.current = (hdr ? hdr.getBoundingClientRect().height : 0) + (ntabs ? ntabs.getBoundingClientRect().height : 0);
+  }
+  const topOff = topOffsetRef.current;
+
   // ── BATTLE ────────────────────────────────────────────────────────────────
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: '#07051a' }}>
+    <div style={{ position: 'fixed', top: topOff, left: 0, right: 0, bottom: 0, zIndex: 200, background: '#07051a' }}>
       <WaifuBattleArena
         playerTeam={playerTeam}
         enemyTeam={enemyTeam}
@@ -190,6 +196,7 @@ export default function RoundViewer({ battle, waifuCat, collezione, profilo, onR
           nomeImperoAvversario: battle?.defenderUid === 'CPU' ? 'CPU' : 'Avversario',
           sonoAttaccante: true,
           nomeImpero: profilo?.nomeImpero || 'Tu',
+          territoryName: battle?.name || `(${battle?.pixelX ?? ''}, ${battle?.pixelY ?? ''})`,
           bo3: {
             attackerWins: battle?.attackerWins ?? 0,
             defenderWins: battle?.defenderWins ?? 0,

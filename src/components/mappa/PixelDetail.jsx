@@ -182,8 +182,8 @@ export default function PixelDetail({
             </div>
             <div style={{ fontFamily: FF.body, fontSize: 11, color: 'rgba(241,235,255,0.45)', lineHeight: 1.5 }}>
               {isCPU
-                ? '⚔ Attacca per conquistarlo con le tue waifu · 💋 Compra pagando Kisses per averlo subito'
-                : '⚔ Sfida il difensore in un Bo3 · 💋 Fai un\'offerta in Kisses al proprietario'}
+                ? <>⚔ Attacca per conquistarlo con le tue waifu<br/>🩷 Compra pagando Kisses per averlo subito</>
+                : <>⚔ Sfida il team difensore in una lotta alla meglio di 3<br/>🩷 Fai un'offerta in Kisses al proprietario</>}
             </div>
           </div>
         )}

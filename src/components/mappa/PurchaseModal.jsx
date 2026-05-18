@@ -35,7 +35,7 @@ export default function PurchaseModal({ pixel, profilo, onConfirm, onClose }) {
         padding: '24px 24px 40px',
       }}>
         <div style={{ fontFamily: FF.label, fontSize: 9, letterSpacing: '0.22em', color: C.gold, textTransform: 'uppercase', marginBottom: 4 }}>
-          💋 Acquisto Territorio
+          🩷 Acquisto Territorio
         </div>
         <div style={{ fontFamily: FF.display, fontSize: 20, color: '#fff', fontWeight: 800, marginBottom: 4 }}>
           Pixel ({pixel?.x}, {pixel?.y})
@@ -103,7 +103,7 @@ export default function PurchaseModal({ pixel, profilo, onConfirm, onClose }) {
               fontWeight: 700, cursor: canAfford && amount > 0 ? 'pointer' : 'not-allowed',
             }}
           >
-            {loading ? '...' : isCPU ? '💋 Acquista' : '💌 Invia Offerta'}
+            {loading ? '...' : isCPU ? '🩷 Acquista' : '💌 Invia Offerta'}
           </button>
         </div>
       </div>

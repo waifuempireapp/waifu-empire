@@ -449,16 +449,24 @@ function MoveBtn({ move, idx, locked, outPp, cooldown, enemyType, playerType, on
   return (
     <button className="wba-move-btn" onClick={()=>!dis&&onSelect(idx)} disabled={dis} style={{
       height:'100%', padding:'8px 11px', borderRadius:12, width:'100%',
-      background: dis
+      // Valid: bg chiaro tipo, testo/bordo scuro tipo
+      // PP exhausted: grigio scuro opaco
+      // Cooldown: bg chiaro tipo con opacity + lucchetto
+      background: isOutPp
         ? _DISABLED_MOVE_STYLE.bg
-        : `linear-gradient(${c.bg ?? 'rgba(255,255,255,0.08)'}, rgba(255,255,255,0.02))`,
-      border: dis
+        : cooldown
+          ? `${c.bg ?? 'rgba(255,255,255,0.12)'}99`
+          : c.bg ?? 'rgba(255,255,255,0.12)',
+      border: isOutPp
         ? _DISABLED_MOVE_STYLE.border
-        : `0.8px solid ${c.border}88`,
-      backdropFilter: dis ? 'none' : 'blur(8px)',
-      WebkitBackdropFilter: dis ? 'none' : 'blur(8px)',
-      boxShadow: dis?'none':`0 2px 12px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06)`,
-      color: dis ? _DISABLED_MOVE_STYLE.color : c.text ?? '#f1ebff',
+        : cooldown
+          ? `0.8px solid ${c.border}66`
+          : `0.8px solid ${c.border}`,
+      backdropFilter: isOutPp ? 'none' : 'blur(8px)',
+      WebkitBackdropFilter: isOutPp ? 'none' : 'blur(8px)',
+      boxShadow: isOutPp || cooldown ? 'none' : `0 2px 12px rgba(0,0,0,.35),0 0 6px ${c.border}22`,
+      color: isOutPp ? _DISABLED_MOVE_STYLE.color : cooldown ? `${c.border}99` : c.text ?? '#f1ebff',
+      opacity: cooldown ? 0.65 : 1,
       fontFamily: "'DM Sans', sans-serif",
       cursor: dis ? 'not-allowed' : 'pointer',
       display:'flex',flexDirection:'column',gap:5,alignItems:'flex-start',
@@ -467,26 +475,31 @@ function MoveBtn({ move, idx, locked, outPp, cooldown, enemyType, playerType, on
       <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',width:'100%',gap:4}}>
         <span style={{
           fontFamily:'Orbitron',fontSize:10,fontWeight:700,lineHeight:1.3,
-          color:dis?'rgba(238,232,220,.22)':bdr,
+          color: isOutPp ? _DISABLED_MOVE_STYLE.color : cooldown ? `${bdr}99` : bdr,
           flex:1,wordBreak:'break-word',
-          textDecoration:outPp?'line-through':'none',
+          textDecoration: isOutPp ? 'line-through' : 'none',
         }}>{move.name}</span>
-        <TypeBadge type={move.type} sm/>
+        {cooldown && <span style={{fontSize:11,flexShrink:0}}>🔒</span>}
+        {!cooldown && !isOutPp && <TypeBadge type={move.type} sm/>}
       </div>
-      {/* Riga inferiore: PP dots + etichetta efficacia + stati speciali */}
+      {/* Riga inferiore */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%'}}>
         <PpDots pp={move.pp??0} maxPp={move.maxPp}/>
         <div style={{display:'flex',alignItems:'center',gap:4}}>
-          {cooldown&&<span style={{fontSize:10}}>🔒</span>}
-          {outPp
-            ? <span style={{fontFamily:'Orbitron',fontSize:7,color:'#ff4d4d'}}>PP 0</span>
-            : (
-              /* Etichetta efficacia — visibile per tutte le mosse, anche "Efficace" (normale).
-                 Aiuta il giocatore a capire il matchup di tipo a colpo d'occhio. */
+          {cooldown && (
+            <span style={{fontFamily:'Orbitron',fontSize:7,color:`${c.border}88`,letterSpacing:.5}}>
+              🔒 1 turno
+            </span>
+          )}
+          {outPp && (
+            <span style={{fontFamily:'Orbitron',fontSize:7,color:'#ff4d4d',textDecoration:'line-through'}}>
+              PP {move.pp??0}
+            </span>
+          )}
+          {!cooldown && !outPp && (
               <span style={{
                 fontFamily:'Fredoka', fontSize:9, fontWeight:700,
-                color: dis ? 'rgba(238,232,220,.18)' : effInfo.col,
-                letterSpacing:.3, whiteSpace:'nowrap',
+                color: effInfo.col, letterSpacing:.3, whiteSpace:'nowrap',
               }}>
                 {effInfo.lbl}
               </span>
@@ -586,276 +599,143 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
     defenderWins: (bo3.defenderWins ?? 0) + (isVictory ? 0 : 1),
   } : null;
   const matchOver = bo3After && (bo3After.attackerWins >= 2 || bo3After.defenderWins >= 2);
-  const winnerName   = isVictory ? (nomeImpero || 'Tu') : (nomeImperoAvversario || 'CPU');
-  const loserName    = isVictory ? (nomeImperoAvversario || 'CPU') : (nomeImpero || 'Tu');
+  const hoVinto     = isVictory && !isDraw;
+  const roundNum    = bo3After ? (bo3After.attackerWins + bo3After.defenderWins) : 1;
+  const territoryName = battleCtx?.territoryName || terrSel?.nome || null;
+  const winnerName  = isVictory ? (nomeImpero || 'Tu') : (nomeImperoAvversario || 'CPU');
+  const loserName   = isVictory ? (nomeImperoAvversario || 'CPU') : (nomeImpero || 'Tu');
+  // Bottone base
+  const btnBase = {
+    padding:'11px 10px', flex:1, borderRadius:12, cursor:'pointer',
+    fontFamily:"'Saira Condensed', Saira, sans-serif",
+    fontSize:12, fontWeight:700, letterSpacing:1.4, textTransform:'uppercase',
+  };
 
-  // Outcome label: CONQUISTATO / DIFESO / PAREGGIO
-  const outcome     = isDraw ? 'PAREGGIO' : (sonoAttaccante && isVictory) ? 'CONQUISTATO' : (!sonoAttaccante && isVictory) ? 'DIFESO' : sonoAttaccante ? 'NON CONQUISTATO' : 'PERSO';
-  const outcomeCol  = isDraw ? '#f5a623' : isVictory ? '#00e676' : '#ff3d3d';
-
-  const StatRow = ({ label, value, col='#eedcd4' }) => (
-    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0',borderBottom:'1px solid rgba(255,255,255,.05)'}}>
-      <span style={{fontFamily:'Fredoka',fontSize:11,color:'rgba(238,232,220,.55)'}}>{label}</span>
-      <span style={{fontFamily:'Orbitron',fontSize:10,fontWeight:700,color:col}}>{value}</span>
-    </div>
-  );
-
-  // Biggest hit: autore ('player' → "Tu", 'enemy' → nome avversario)
-  const bhAutore = biggestHit?.side === 'player'
-    ? (nomeImpero || 'Tu')
-    : (nomeImperoAvversario || 'CPU');
-
-  const bhContent = (biggestHit?.dmg ?? 0) > 0
-    ? <>
-        <span style={{color:'rgba(238,232,220,.45)',fontSize:8,fontWeight:400}}>{bhAutore}: </span>
-        {biggestHit.dmg} ({biggestHit.waifuName} — {biggestHit.moveName})
-        {biggestHit.wasCrit && (
-          <span style={{color:'#f5a623',marginLeft:5,fontWeight:700}}>★ CRIT</span>
-        )}
-      </>
-    : <>—</>;
-
-  const hoVinto = isVictory && !isDraw;
   return (
     <div style={{position:'fixed',inset:0,zIndex:50,background:'rgba(0,0,0,.92)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto'}}>
       <div className="wba-fm" style={{
-        background:'rgba(10,7,38,0.97)',
-        backdropFilter:'blur(20px)',
-        WebkitBackdropFilter:'blur(20px)',
+        background:'rgba(10,7,38,0.97)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
         border:`1px solid ${hoVinto ? 'rgba(245,197,96,0.5)' : isDraw ? 'rgba(167,139,250,0.35)' : 'rgba(255,133,182,0.35)'}`,
-        borderRadius:20,padding:28,maxWidth:380,width:'100%',textAlign:'center',
-        boxShadow: hoVinto ? '0 0 40px rgba(245,197,96,0.15)' : isDraw ? '0 0 40px rgba(167,139,250,0.1)' : '0 0 40px rgba(255,133,182,0.1)',
+        borderRadius:20, padding:'22px 20px', maxWidth:380, width:'100%', textAlign:'center',
         margin:'auto',
       }}>
-        <div style={{fontSize:48,marginBottom:8}}>{isDraw?'🤝':isVictory?'👑':'💔'}</div>
-        <div style={{
-          fontFamily:"'Unbounded', sans-serif",
-          fontSize:22, fontWeight:700,
-          color: isDraw ? '#a78bfa' : hoVinto ? '#f5c560' : '#ff85b6',
-          letterSpacing:2, marginBottom:4,
-        }}>
+
+        {/* 1. Icona */}
+        <div style={{fontSize:44,marginBottom:6}}>{isDraw?'🤝':isVictory?'👑':'💔'}</div>
+
+        {/* 2. Punteggio lotta Bo3 — azzurro, no banner, testo "Al meglio di 3" */}
+        {bo3After && (
+          <div style={{marginBottom:8}}>
+            <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:9,letterSpacing:'0.2em',color:'rgba(108,240,224,0.5)',textTransform:'uppercase',marginBottom:4}}>
+              Al meglio di 3
+            </div>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:16}}>
+              <div>
+                <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:8,color:'rgba(108,240,224,0.5)',textTransform:'uppercase',marginBottom:2}}>{nomeImpero||'Tu'}</div>
+                <div style={{fontFamily:"'Unbounded',sans-serif",fontSize: matchOver?28:20,fontWeight:900,color:'#6cf0e0',lineHeight:1}}>{bo3After.attackerWins}</div>
+              </div>
+              <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:16,color:'rgba(241,235,255,0.2)',fontWeight:700}}>—</div>
+              <div>
+                <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:8,color:'rgba(255,133,182,0.5)',textTransform:'uppercase',marginBottom:2}}>{nomeImperoAvversario||'CPU'}</div>
+                <div style={{fontFamily:"'Unbounded',sans-serif",fontSize: matchOver?28:20,fontWeight:900,color:'#ff85b6',lineHeight:1}}>{bo3After.defenderWins}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 3. VITTORIA / SCONFITTA */}
+        <div style={{fontFamily:"'Unbounded',sans-serif",fontSize:20,fontWeight:700,color:isDraw?'#a78bfa':hoVinto?'#f5c560':'#ff85b6',letterSpacing:2,marginBottom:8}}>
           {isDraw?'PAREGGIO':isVictory?'VITTORIA!':'SCONFITTA'}
         </div>
 
-        {/* Punteggio Bo3 — sempre visibile, più grande nel popup finale */}
-        {bo3After && (
+        {/* 4. Punteggio round — banner violetto/rosa */}
+        {!isDraw && (
           <div style={{
-            display:'flex', alignItems:'center', justifyContent:'center', gap:12,
-            marginBottom:10,
-            padding: matchOver ? '10px 20px' : '6px 16px',
-            background: matchOver ? 'rgba(245,197,96,0.1)' : 'rgba(255,255,255,0.04)',
-            border: matchOver ? '1px solid rgba(245,197,96,0.3)' : '1px solid rgba(174,156,255,0.12)',
-            borderRadius:12,
+            display:'flex',alignItems:'center',justifyContent:'center',gap:14,
+            marginBottom:10, padding:'8px 16px',
+            background:'linear-gradient(135deg,rgba(167,139,250,0.12),rgba(255,133,182,0.08))',
+            border:'1px solid rgba(167,139,250,0.3)', borderRadius:12,
           }}>
             <div style={{textAlign:'center'}}>
-              <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:8,letterSpacing:'0.2em',color:'rgba(108,240,224,0.6)',textTransform:'uppercase',marginBottom:2}}>
-                {nomeImpero||'Tu'}
-              </div>
-              <div style={{fontFamily:"'Unbounded',sans-serif",fontSize: matchOver ? 32 : 20,fontWeight:900,color:'#6cf0e0',lineHeight:1}}>
-                {bo3After.attackerWins}
-              </div>
+              <div style={{fontFamily:"'Unbounded',sans-serif",fontSize:24,fontWeight:900,color:'#6cf0e0',lineHeight:1}}>{statsP?.ko??0}</div>
+              <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:8,color:'rgba(108,240,224,.6)',textTransform:'uppercase',marginTop:2,letterSpacing:1}}>{nomeImpero||'Tu'}</div>
             </div>
-            <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize: matchOver ? 16 : 12,color:'rgba(241,235,255,0.3)',fontWeight:700}}>
-              BO3
-            </div>
+            <div style={{fontFamily:'Orbitron',fontSize:14,color:'rgba(241,235,255,0.2)',fontWeight:700}}>–</div>
             <div style={{textAlign:'center'}}>
-              <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:8,letterSpacing:'0.2em',color:'rgba(255,133,182,0.6)',textTransform:'uppercase',marginBottom:2}}>
-                {nomeImperoAvversario||'CPU'}
-              </div>
-              <div style={{fontFamily:"'Unbounded',sans-serif",fontSize: matchOver ? 32 : 20,fontWeight:900,color:'#ff85b6',lineHeight:1}}>
-                {bo3After.defenderWins}
-              </div>
+              <div style={{fontFamily:"'Unbounded',sans-serif",fontSize:24,fontWeight:900,color:'#ff85b6',lineHeight:1}}>{statsE?.ko??0}</div>
+              <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:8,color:'rgba(255,133,182,.6)',textTransform:'uppercase',marginTop:2,letterSpacing:1}}>{nomeImperoAvversario||'CPU'}</div>
             </div>
           </div>
         )}
 
-        {/* KO score — in evidenza, subito sotto il titolo */}
+        {/* 5. Descrizione round */}
         {!isDraw && (
-          <div style={{
-            marginBottom:12,
-            display:'flex', alignItems:'center', justifyContent:'center', gap:16,
-            background:'rgba(255,77,158,.07)', borderRadius:10, padding:'8px 18px',
-            border:'1px solid rgba(255,77,158,.18)',
-          }}>
-            <div style={{textAlign:'center'}}>
-              <div style={{fontFamily:"'Unbounded',sans-serif",fontSize:28,fontWeight:900,color:'#6cf0e0',lineHeight:1}}>
-                {statsP?.ko??0}
-              </div>
-              <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:9,letterSpacing:1.5,color:'rgba(108,240,224,.6)',textTransform:'uppercase',marginTop:2}}>
-                {nomeImpero||'Tu'}
-              </div>
-            </div>
-            <div style={{fontFamily:'Orbitron',fontSize:16,color:'rgba(238,232,220,.25)',fontWeight:700}}>–</div>
-            <div style={{textAlign:'center'}}>
-              <div style={{fontFamily:"'Unbounded',sans-serif",fontSize:28,fontWeight:900,color:'#ff85b6',lineHeight:1}}>
-                {statsE?.ko??0}
-              </div>
-              <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:9,letterSpacing:1.5,color:'rgba(255,133,182,.6)',textTransform:'uppercase',marginTop:2}}>
-                {nomeImperoAvversario||'CPU'}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Winner / Loser names */}
-        {!isDraw && (
-          <div style={{marginBottom:8,fontSize:11,color:'rgba(238,232,220,.6)',fontFamily:'Fredoka',lineHeight:1.6}}>
-            <span style={{color:'#6cf0e0',fontWeight:700}}>{winnerName}</span>
+          <div style={{fontFamily:'Fredoka',fontSize:12,color:'rgba(238,232,220,.65)',marginBottom:10,lineHeight:1.5}}>
+            <span style={{color:isVictory?'#6cf0e0':'#ff85b6',fontWeight:700}}>{winnerName}</span>
             {' '}ha sconfitto{' '}
-            <span style={{color:'#ff85b6',fontWeight:700}}>{loserName}</span>
+            <span style={{color:isVictory?'#ff85b6':'#6cf0e0',fontWeight:700}}>{loserName}</span>
+            {bo3After && <span style={{color:'rgba(174,156,255,0.6)',fontSize:10}}>{' '}nel Round {roundNum}</span>}
           </div>
         )}
 
-        {/* Outcome label */}
-        {terrSel && (
-          <div style={{marginBottom:14}}>
-            <div style={{fontFamily:'Orbitron',fontSize:9,color:'rgba(238,232,220,.4)',letterSpacing:2,marginBottom:3}}>{terrSel.nome}</div>
-            <div style={{fontFamily:'Orbitron',fontSize:12,fontWeight:700,color:outcomeCol,letterSpacing:2,
-              background:`rgba(${outcomeCol==='#00e676'?'0,230,118':outcomeCol==='#ff3d3d'?'255,61,61':'245,166,35'},.1)`,
-              border:`1px solid ${outcomeCol}44`,borderRadius:6,padding:'4px 12px',display:'inline-block'}}>
-              {outcome}
+        {/* 6. Info partita */}
+        <div style={{textAlign:'left',padding:'6px 4px',marginBottom:10,borderTop:'1px solid rgba(255,255,255,.05)',borderBottom:'1px solid rgba(255,255,255,.05)'}}>
+          {[
+            {l:'Turni',v:turns,c:'#f5a623'},
+            {l:'Danno tuoi',v:statsP?.dmg??totalDmg,c:'#6cf0e0'},
+            {l:'Danno avv.',v:statsE?.dmg??0,c:'#ff85b6'},
+          ].map(({l,v,c})=>(
+            <div key={l} style={{display:'flex',justifyContent:'space-between',padding:'3px 0'}}>
+              <span style={{fontFamily:'Fredoka',fontSize:10,color:'rgba(238,232,220,.45)'}}>{l}</span>
+              <span style={{fontFamily:'Orbitron',fontSize:10,fontWeight:700,color:c}}>{v}</span>
             </div>
-          </div>
-        )}
-
-        {/* Stats table */}
-        <div style={{textAlign:'left',padding:'0 4px',marginBottom:14}}>
-          <StatRow label="Turni totali" value={turns} col='#f5a623'/>
-          <StatRow label="Danno totale (Tu)" value={statsP?.dmg??totalDmg} col='#00C8FF'/>
-          <StatRow label="Danno totale (Avv.)" value={statsE?.dmg??0} col='#FF3355'/>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'5px 0'}}>
-            <span style={{fontFamily:'Fredoka',fontSize:11,color:'rgba(238,232,220,.55)',flexShrink:0,marginRight:8}}>Colpo più forte</span>
-            <span style={{fontFamily:'Orbitron',fontSize:9,fontWeight:700,color:'#ffd666',textAlign:'right',wordBreak:'break-word'}}>{bhContent}</span>
-          </div>
+          ))}
         </div>
 
-        {/* ── Waifu MVP ─────────────────────────────────────────────────────────
-            La waifu con più danno tra entrambe le squadre.
-            Mostra immagine + corona + squad + danno (primario) + KO (secondario). */}
+        {/* 7. MVP */}
         {mvp && (
-          <div style={{
-            display:'flex', alignItems:'center', gap:12,
-            background: mvp.side==='player'
-              ? 'linear-gradient(135deg, rgba(108,240,224,0.08), rgba(245,197,96,0.06))'
-              : 'linear-gradient(135deg, rgba(255,133,182,0.08), rgba(167,139,250,0.06))',
-            border: `1px solid ${mvp.side==='player' ? 'rgba(245,197,96,0.4)' : 'rgba(255,133,182,0.35)'}`,
-            borderRadius:14, padding:'10px 14px',
-            marginBottom:14,
-          }}>
-            {/* Thumbnail MVP con corona sovrapposta */}
-            <div style={{position:'relative', flexShrink:0}}>
-              <div style={{
-                width:60, height:88, borderRadius:10, overflow:'hidden',
-                border: `2px solid ${mvp.side==='player' ? 'rgba(245,197,96,0.6)' : 'rgba(255,133,182,0.5)'}`,
-                background:'rgba(6,3,15,.8)',
-                // Senza immagine il box è comunque visibile
-                display:'flex', alignItems:'center', justifyContent:'center',
-              }}>
-                {mvp.imgUrl
-                  ? <img
-                      src={mvp.imgUrl}
-                      alt={mvp.name}
-                      style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top',display:'block'}}
-                    />
-                  : <span style={{fontSize:26,opacity:.25}}>◈</span>
-                }
+          <div style={{display:'flex',alignItems:'center',gap:10,background:mvp.side==='player'?'rgba(108,240,224,0.06)':'rgba(255,133,182,0.06)',border:`1px solid ${mvp.side==='player'?'rgba(245,197,96,0.35)':'rgba(255,133,182,0.3)'}`,borderRadius:12,padding:'8px 12px',marginBottom:12}}>
+            <div style={{position:'relative',flexShrink:0}}>
+              <div style={{width:48,height:70,borderRadius:8,overflow:'hidden',background:'rgba(6,3,15,.8)',display:'flex',alignItems:'center',justifyContent:'center',border:`1.5px solid ${mvp.side==='player'?'rgba(245,197,96,0.5)':'rgba(255,133,182,0.4)'}`}}>
+                {mvp.imgUrl?<img src={mvp.imgUrl} alt={mvp.name} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top',display:'block'}}/>:<span style={{fontSize:20,opacity:.25}}>◈</span>}
               </div>
-              {/* 👑 corona — sopra il thumbnail */}
-              <div style={{
-                position:'absolute', top:-12, left:'50%', transform:'translateX(-50%)',
-                fontSize:20, lineHeight:1,
-                filter:'drop-shadow(0 0 5px rgba(245,197,96,0.8))',
-                userSelect:'none',
-              }}>👑</div>
+              <div style={{position:'absolute',top:-10,left:'50%',transform:'translateX(-50%)',fontSize:16,lineHeight:1}}>👑</div>
             </div>
-
-            {/* Info testuale MVP */}
-            <div style={{flex:1,minWidth:0}}>
-              {/* Label squadra */}
-              <div style={{
-                fontFamily:'Orbitron', fontSize:7, letterSpacing:2, marginBottom:2,
-                color: mvp.side==='player' ? 'rgba(108,240,224,.7)' : 'rgba(255,133,182,.7)',
-              }}>
-                MVP · {mvp.side==='player' ? (nomeImpero||'TU') : (nomeImperoAvversario||'CPU')}
-              </div>
-              {/* Nome waifu */}
-              <div style={{
-                fontFamily:"'Unbounded',sans-serif", fontSize:11, fontWeight:700,
-                color:'#ffd666', overflow:'hidden', textOverflow:'ellipsis',
-                whiteSpace:'nowrap', marginBottom:6,
-              }}>
-                {mvp.name}
-              </div>
-              {/* Danno totale — elemento principale */}
-              <div style={{display:'flex',alignItems:'baseline',gap:4,marginBottom:4}}>
-                <span style={{fontFamily:'Orbitron',fontSize:20,fontWeight:900,color:'#f5c560',lineHeight:1}}>
-                  {mvp.dmg.toLocaleString()}
-                </span>
-                <span style={{fontFamily:'Orbitron',fontSize:7,color:'rgba(245,197,96,.45)',letterSpacing:1}}>
-                  DANNO
-                </span>
-              </div>
-              {/* KO — elemento secondario */}
-              <div style={{fontFamily:'Orbitron',fontSize:9,color:'rgba(255,133,182,.7)'}}>
-                {mvp.kos} {mvp.kos===1?'KO':'KO inflitti'}
-              </div>
+            <div style={{flex:1,minWidth:0,textAlign:'left'}}>
+              <div style={{fontFamily:'Orbitron',fontSize:6,color:'rgba(245,197,96,.7)',letterSpacing:1.5,marginBottom:2}}>MVP · {mvp.side==='player'?(nomeImpero||'TU'):(nomeImperoAvversario||'CPU')}</div>
+              <div style={{fontFamily:"'Unbounded',sans-serif",fontSize:10,fontWeight:700,color:'#ffd666',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginBottom:4}}>{mvp.name}</div>
+              <div style={{fontFamily:'Orbitron',fontSize:11,fontWeight:900,color:'#f5c560'}}>{mvp.dmg.toLocaleString()} <span style={{fontSize:7,color:'rgba(245,197,96,.5)'}}>DMG</span></div>
             </div>
           </div>
         )}
 
-        {/* Territory context */}
-        {terrSel&&!isDraw&&(
-          <div style={{padding:10,background:'rgba(255,255,255,.03)',borderRadius:10,marginBottom:14,border:'1px solid rgba(255,255,255,.06)',fontSize:11,color:'rgba(238,232,220,.6)',lineHeight:1.8}}>
-            {isVictory && sonoAttaccante && <><strong style={{color:'#00e676'}}>{terrSel.nome}</strong> conquistato! <span style={{color:'#ffd666'}}>+1 pacchetto sfida</span></>}
-            {isVictory && !sonoAttaccante && <>Difeso <strong style={{color:'#00e676'}}>{terrSel.nome}</strong> con successo!</>}
-            {!isVictory && sonoAttaccante && <>Non sei riuscito a conquistare <strong style={{color:'#ff3d3d'}}>{terrSel.nome}</strong>.</>}
-            {!isVictory && !sonoAttaccante && <><strong style={{color:'#ff3d3d'}}>{nomeImperoAvversario??'CPU'}</strong> ha conquistato <strong style={{color:'#ff3d3d'}}>{terrSel.nome}</strong>. <span style={{color:'#ff6666'}}>-1 energia</span></>}
-          </div>
-        )}
-
-        {/* Bottoni Bo3: 2 scelte per round intermedio, 1 solo per round finale */}
-        {(() => {
-          const bo3 = battleCtx?.bo3;
-          let matchOver = true;
-          if (bo3) {
-            const newAW = (bo3.attackerWins ?? 0) + (isVictory ? 1 : 0);
-            const newDW = (bo3.defenderWins ?? 0) + (isVictory ? 0 : 1);
-            matchOver = newAW >= 2 || newDW >= 2;
-          }
-          const btnBase = {
-            padding:'11px 10px', flex:1,
-            borderRadius:12, cursor:'pointer',
-            fontFamily:"'Saira Condensed', Saira, sans-serif",
-            fontSize:12, fontWeight:700, letterSpacing:1.4, textTransform:'uppercase',
-            backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)',
-          };
-          if (matchOver) {
-            return (
-              <button onClick={()=>onContinue(null)} style={{
-                ...btnBase, width:'100%', fontSize:13, letterSpacing:1.6,
-                background:'linear-gradient(rgba(245,197,96,0.32), rgba(245,197,96,0.1))',
-                border:'0.8px solid rgba(255,233,168,0.6)', color:'rgb(42,31,0)',
-                boxShadow:'rgba(245,197,96,0.35) 0px 6px 20px 0px',
-              }}>VAI ALLA MAPPA →</button>
-            );
-          }
-          return (
+        {/* 8a. Round intermedio: domanda squadra + 2 bottoni */}
+        {!matchOver && bo3After && (
+          <>
+            <div style={{fontFamily:'Fredoka',fontSize:12,color:'rgba(238,232,220,.6)',marginBottom:10}}>
+              Con che squadra vuoi sfidare <strong style={{color:'#a78bfa'}}>{nomeImperoAvversario||'CPU'}</strong> nel prossimo round?
+            </div>
             <div style={{display:'flex',gap:8,width:'100%'}}>
-              <button onClick={()=>onContinue('same')} style={{
-                ...btnBase,
-                background:'linear-gradient(rgba(108,240,224,0.25), rgba(108,240,224,0.08))',
-                border:'0.8px solid rgba(108,240,224,0.5)', color:'rgba(6,3,15,0.9)',
-                boxShadow:'rgba(108,240,224,0.25) 0px 4px 14px 0px',
-              }}>⚡ Stessa squadra</button>
-              <button onClick={()=>onContinue('switch')} style={{
-                ...btnBase,
-                background:'linear-gradient(rgba(167,139,250,0.25), rgba(167,139,250,0.08))',
-                border:'0.8px solid rgba(167,139,250,0.5)', color:'rgba(6,3,15,0.9)',
-                boxShadow:'rgba(167,139,250,0.25) 0px 4px 14px 0px',
-              }}>🔀 Cambia squadra</button>
+              <button onClick={()=>onContinue('same')} style={{...btnBase,background:'rgba(108,240,224,0.15)',border:'1px solid rgba(108,240,224,0.4)',color:'rgba(241,235,255,0.9)'}}>⚡ Stessa squadra</button>
+              <button onClick={()=>onContinue('switch')} style={{...btnBase,background:'rgba(167,139,250,0.15)',border:'1px solid rgba(167,139,250,0.4)',color:'rgba(241,235,255,0.9)'}}>🔀 Cambia squadra</button>
             </div>
-          );
-        })()}
+          </>
+        )}
+
+        {/* 8b. Round finale: messaggio risultato + "Vai alla mappa" */}
+        {(matchOver || !bo3After) && (
+          <>
+            {!isDraw && (
+              <div style={{fontFamily:'Fredoka',fontSize:12,color:'rgba(238,232,220,.65)',marginBottom:12,lineHeight:1.5,padding:'8px 10px',background:hoVinto?'rgba(0,230,118,0.06)':'rgba(255,61,61,0.06)',borderRadius:10,border:`1px solid ${hoVinto?'rgba(0,230,118,0.2)':'rgba(255,61,61,0.2)'}`}}>
+                {hoVinto && sonoAttaccante && <><strong style={{color:'#00e676'}}>Complimenti!</strong> Hai conquistato <strong style={{color:'#ffd666'}}>{territoryName||'il territorio'}</strong>{nomeImperoAvversario&&nomeImperoAvversario!=='Avversario'&&nomeImperoAvversario!=='CPU'?' da '+nomeImperoAvversario:''}! <span style={{color:'#ffd666'}}>+1 pacchetto sfida</span></>}
+                {hoVinto && !sonoAttaccante && <>Territorio difeso con successo! <strong style={{color:'#00e676'}}>{territoryName}</strong> è ancora tuo.</>}
+                {!isVictory && sonoAttaccante && <><strong style={{color:'#ff3d3d'}}>Sconfitta.</strong> Non sei riuscito a conquistare <strong>{territoryName||'il territorio'}</strong>. <span style={{color:'#ff8888'}}>-1 energia</span></>}
+                {!isVictory && !sonoAttaccante && <><strong style={{color:'#ff3d3d'}}>{nomeImperoAvversario||'CPU'}</strong> ha conquistato <strong>{territoryName||'il territorio'}</strong>. <span style={{color:'#ff8888'}}>-1 energia</span></>}
+              </div>
+            )}
+            <button onClick={()=>onContinue(null)} style={{...btnBase,width:'100%',fontSize:13,background:'linear-gradient(rgba(245,197,96,0.32),rgba(245,197,96,0.1))',border:'0.8px solid rgba(255,233,168,0.6)',color:'rgb(42,31,0)',boxShadow:'rgba(245,197,96,0.35) 0px 6px 20px 0px'}}>VAI ALLA MAPPA →</button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -1031,6 +911,10 @@ export default function WaifuBattleArena({
   // Refs per la logica di combattimento (non causano re-render)
   const timerRef   = useRef(null);
   const resolveRef = useRef(false);
+  // Fix #15: traccia l'ultimo turno in cui la CPU ha fatto un voluntary swap
+  // impedisce alla CPU di swappare più volte consecutive nello stesso turno
+  // e di attaccare nello stesso turno in cui ha swappato
+  const cpuLastVolSwapTurnRef = useRef(-1);
 
   /**
    * Restituisce `true` se ogni waifu del team è KO (HP <= 0 o flag isKO).
@@ -1073,7 +957,10 @@ export default function WaifuBattleArena({
     if(phase!=='playerChoose') return;
     if(isPvP) return;
     if(isAnim) return;
-    if(turn <= 1) return; // Fix #19+#20: no swap CPU al primo turno
+    if(turn <= 1) return; // No swap al primo turno
+    // Fix #15: la CPU può fare solo UN voluntary swap per turno
+    // e dopo lo swap non può attaccare nello stesso turno
+    if(cpuLastVolSwapTurnRef.current >= turn) return;
     const curEnemy = eTeam[eActive];
     const curPlayer = pTeam[pActive];
     if(!curEnemy||!curPlayer) return;
@@ -1084,6 +971,7 @@ export default function WaifuBattleArena({
     setPhase('resolving');
     (async()=>{
       await wait(ANIM_RESULT_DELAY_MS);
+      cpuLastVolSwapTurnRef.current = turn; // Fix #15: segna questo turno come "CPU ha già swappato"
       setEActive(swapToIdx);
       setEAnim('wba-sR');
       setMsg(`La CPU manda in campo ${eTeam[swapToIdx]?.name}!`);

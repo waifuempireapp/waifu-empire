@@ -101,11 +101,21 @@ export default function PixelGrid({ chunks, userUid, onPixelSelect, selectedPixe
         const isOwn = owner === userUid;
         const isAdj = adjacentSet.current.has(key);
 
-        // Pixel conquestabili: pulse golden glow
+        // Pixel conquestabili: pulse animato
+        // CPU → pulse golden (cambia colore), giocatori → pulse sottile senza cambiare colore
         if (isAdj) {
-          const alpha = 0.12 + pulse * 0.25;
-          ctx.fillStyle = `rgba(245,197,96,${alpha})`;
-          ctx.fillRect(sx - 1, sy - 1, ps + 2, ps + 2);
+          const isCpuTarget = pixelOwners.current[key] === 'CPU' || !pixelOwners.current[key];
+          if (isCpuTarget) {
+            // CPU: bagliore gold pulsante
+            const alpha = 0.12 + pulse * 0.28;
+            ctx.fillStyle = `rgba(245,197,96,${alpha})`;
+            ctx.fillRect(sx - 1, sy - 1, ps + 2, ps + 2);
+          } else {
+            // Giocatore avversario: solo outline pulsante bianca, senza colore
+            ctx.strokeStyle = `rgba(255,255,255,${0.2 + pulse * 0.4})`;
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(sx, sy, ps - 1, ps - 1);
+          }
         }
 
         // Pixel terra

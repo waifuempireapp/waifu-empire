@@ -13,6 +13,7 @@ import OffersPanel from '@/components/mappa/OffersPanel';
 import TutorialOverlay from '@/components/mappa/TutorialOverlay';
 import TeamDifesaEditor from '@/components/difesa/TeamDifesaEditor';
 import MappaInfoModal from '@/components/mappa/MappaInfoModal';
+import TerritoryConquestAnimation from '@/components/mappa/TerritoryConquestAnimation';
 
 export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat }) {
   const [chunks, setChunks] = useState(null);
@@ -23,6 +24,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
 
   const [pendingOffersCount, setPendingOffersCount] = useState(0);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [conquestAnim, setConquestAnim] = useState(null); // { pixelName, oldColor, newColor, empireName }
   const [showBattle, setShowBattle] = useState(false);
   const [showRound, setShowRound] = useState(false);
   const [showPurchase, setShowPurchase] = useState(false);
@@ -170,13 +172,15 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
         setActiveBattle({
           id: data.battleId,
           attackerTeam,
-          defenderTeam: data.defenderTeam || [], // 5 waifuId del difensore, dal server
+          defenderTeam: data.defenderTeam || [],
           cpuDifficulty: data.cpuDifficulty || 'easy',
           attackerWins: 0,
           defenderWins: 0,
           pixelX: selectedPixel.x,
           pixelY: selectedPixel.y,
           defenderUid: selectedPixel.ownerId,
+          defenderColor: selectedPixel.ownerColor,
+          name: selectedPixel.name || null, // nome territorio per l'animazione
         });
         setShowBattle(false);
         setShowRound(true);
@@ -202,18 +206,26 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
       const data = await res.json();
 
       if (data.status === 'attacker_wins' || data.status === 'defender_wins') {
+        // Fix 13: chiudi RoundViewer e selectedPixel IMMEDIATAMENTE
+        // (prima di invalidateAndReload) per evitare il flash del PixelDetail
         setShowRound(false);
+        setSelectedPixel(null);
         setActiveBattle(null);
-        await invalidateAndReload();
+
         if (data.status === 'attacker_wins') {
-          // Vittoria: +1 pixel, +1 pacchetto sfida
+          // Mostra animazione conquista (non aspetta il reload della mappa)
+          const oldColor = activeBattle?.defenderUid === 'CPU' ? '#888888' : (activeBattle?.defenderColor || '#ff85b6');
+          const newColor = profilo?.coloreImpero || '#ff85b6';
+          setConquestAnim({
+            pixelName: activeBattle?.name || `(${activeBattle?.pixelX}, ${activeBattle?.pixelY})`,
+            oldColor, newColor, empireName: profilo?.nomeImpero || 'Tu',
+          });
           setProfilo(p => ({ ...p, pixelCount: (p.pixelCount ?? 0) + 1, pacchettiSfida: (p.pacchettiSfida ?? 0) + 1 }));
           setShowTutorial(false);
         } else if (data.status === 'defender_wins') {
-          // Sconfitta: -1 energia
           setProfilo(p => ({ ...p, energia: Math.max(0, (p.energia ?? 0) - 1) }));
         }
-        setSelectedPixel(null);
+        await invalidateAndReload();
       } else {
         // Round in corso: aggiorna win counts + nextRoundChoice + team precedenti.
         // La `key` cambia → React rimonta RoundViewer con la fase giusta.
@@ -282,11 +294,6 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
           <div style={{ fontFamily: FF.label, fontSize: 9, letterSpacing: '0.22em', color: C.sakura, textTransform: 'uppercase' }}>◆ CONQUISTA</div>
           <div style={{ fontFamily: FF.display, fontSize: 20, color: '#fff', fontWeight: 800 }}>Mappa del Mondo</div>
         </div>
-        <button onClick={() => setShowInfoModal(true)} style={{
-          background: 'rgba(174,156,255,0.08)', border: '1px solid rgba(174,156,255,0.25)',
-          borderRadius: 10, color: 'rgba(174,156,255,0.8)', fontFamily: FF.label, fontSize: 11,
-          letterSpacing: '0.1em', padding: '6px 10px', cursor: 'pointer',
-        }}>?</button>
         <button
           onClick={() => { setShowOffers(true); }}
           style={{
@@ -308,6 +315,11 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
             }}>{pendingOffersCount}</span>
           )}
         </button>
+        <button onClick={() => setShowInfoModal(true)} style={{
+          background: 'rgba(174,156,255,0.08)', border: '1px solid rgba(174,156,255,0.25)',
+          borderRadius: 10, color: 'rgba(174,156,255,0.8)', fontFamily: FF.label, fontSize: 12,
+          fontWeight: 700, padding: '6px 10px', cursor: 'pointer', minWidth: 32,
+        }}>?</button>
       </div>
 
       {/* Canvas mappa */}
@@ -347,6 +359,12 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
       )}
 
       {/* Tutorial (nuovo utente senza pixel) */}
+      {conquestAnim && (
+        <TerritoryConquestAnimation
+          {...conquestAnim}
+          onDone={() => setConquestAnim(null)}
+        />
+      )}
       {showInfoModal && <MappaInfoModal onClose={() => setShowInfoModal(false)} />}
 
       {showTutorial && (
