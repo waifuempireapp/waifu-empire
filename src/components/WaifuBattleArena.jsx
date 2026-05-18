@@ -433,18 +433,19 @@ function MoveBtn({ move, idx, locked, outPp, cooldown, enemyType, playerType, on
   const { label:eff } = getEffectiveness(move.type, playerType, enemyType);
   const c = _TYPE_COLORS_UI[move.type] ?? {bg:'#111',text:'#eee',border:'#555'};
   const bdr = dis ? _DISABLED_MOVE_STYLE.color : c.border;
+
+  // Fix #1: colori etichette efficacia leggibili su qualsiasi sfondo tipo
+  const effDisplayMap = {
+    'Extremely effective': { col: '#ffffff', lbl: 'Super efficace!', bold: true  },
+    'Super effective':     { col: '#ffffff', lbl: 'Super efficace',  bold: true  },
+    'Not very effective':  { col: 'rgba(180,188,200,0.9)', lbl: 'Poco efficace', bold: true },
+    'No effect':           { col: 'rgba(180,188,200,0.9)', lbl: 'Nullo',         bold: true },
+    'Normal':              { col: c.text ?? 'rgba(238,232,220,0.7)', lbl: 'Efficace', bold: false },
+  };
+  const effDisplay = effDisplayMap[eff] ?? effDisplayMap['Normal'];
   // Mappa efficacia → etichetta italiana colorata mostrata in ogni bottone mossa.
   // "Efficace" appare anche per l'efficacia normale così il giocatore ha sempre
   // un riferimento visivo chiaro per ogni mossa.
-  const effMap = {
-    'Extremely effective': { col:'#ff8c00', lbl:'Super efficace!' },
-    'Super effective':     { col:'#00e676', lbl:'Super efficace'  },
-    'Not very effective':  { col:'#aaa',    lbl:'Poco efficace'   },
-    'No effect':           { col:'#ff4d4d', lbl:'Nullo'           },
-    'Normal':              { col:'rgba(238,232,220,.35)', lbl:'Efficace' },
-  };
-  // Fallback: se getEffectiveness restituisce null o un valore non mappato, usa "Efficace"
-  const effInfo = effMap[eff] ?? effMap['Normal'];
   const isOutPp = !!(outPp);
   return (
     <button className="wba-move-btn" onClick={()=>!dis&&onSelect(idx)} disabled={dis} style={{
@@ -498,10 +499,12 @@ function MoveBtn({ move, idx, locked, outPp, cooldown, enemyType, playerType, on
           )}
           {!cooldown && !outPp && (
               <span style={{
-                fontFamily:'Fredoka', fontSize:9, fontWeight:700,
-                color: effInfo.col, letterSpacing:.3, whiteSpace:'nowrap',
+                fontFamily:'Fredoka', fontSize:9,
+                fontWeight: effDisplay.bold ? 700 : 500,
+                color: dis ? 'rgba(238,232,220,.2)' : effDisplay.col,
+                letterSpacing:.3, whiteSpace:'nowrap',
               }}>
-                {effInfo.lbl}
+                {effDisplay.lbl}
               </span>
             )
           }
@@ -648,33 +651,37 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
           {isDraw?'PAREGGIO':isVictory?'VITTORIA!':'SCONFITTA'}
         </div>
 
-        {/* 4. Punteggio round — banner violetto/rosa */}
+        {/* 4+5. Punteggio round + descrizione — tutto nel banner violetto */}
         {!isDraw && (
           <div style={{
-            display:'flex',alignItems:'center',justifyContent:'center',gap:14,
-            marginBottom:10, padding:'8px 16px',
+            marginBottom:10, padding:'10px 16px',
             background:'linear-gradient(135deg,rgba(167,139,250,0.12),rgba(255,133,182,0.08))',
             border:'1px solid rgba(167,139,250,0.3)', borderRadius:12,
           }}>
-            <div style={{textAlign:'center'}}>
-              <div style={{fontFamily:"'Unbounded',sans-serif",fontSize:24,fontWeight:900,color:'#6cf0e0',lineHeight:1}}>{statsP?.ko??0}</div>
-              <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:8,color:'rgba(108,240,224,.6)',textTransform:'uppercase',marginTop:2,letterSpacing:1}}>{nomeImpero||'Tu'}</div>
+            {/* "Round X" centrato sopra al punteggio */}
+            {bo3After && (
+              <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:9,letterSpacing:'0.22em',color:'rgba(174,156,255,0.7)',textTransform:'uppercase',textAlign:'center',marginBottom:6}}>
+                Round {roundNum}
+              </div>
+            )}
+            {/* Punteggio */}
+            <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:14,marginBottom:8}}>
+              <div style={{textAlign:'center'}}>
+                <div style={{fontFamily:"'Unbounded',sans-serif",fontSize:24,fontWeight:900,color:'#6cf0e0',lineHeight:1}}>{statsP?.ko??0}</div>
+                <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:8,color:'rgba(108,240,224,.6)',textTransform:'uppercase',marginTop:2,letterSpacing:1}}>{nomeImpero||'Tu'}</div>
+              </div>
+              <div style={{fontFamily:'Orbitron',fontSize:14,color:'rgba(241,235,255,0.2)',fontWeight:700}}>–</div>
+              <div style={{textAlign:'center'}}>
+                <div style={{fontFamily:"'Unbounded',sans-serif",fontSize:24,fontWeight:900,color:'#ff85b6',lineHeight:1}}>{statsE?.ko??0}</div>
+                <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:8,color:'rgba(255,133,182,.6)',textTransform:'uppercase',marginTop:2,letterSpacing:1}}>{nomeImperoAvversario||'CPU'}</div>
+              </div>
             </div>
-            <div style={{fontFamily:'Orbitron',fontSize:14,color:'rgba(241,235,255,0.2)',fontWeight:700}}>–</div>
-            <div style={{textAlign:'center'}}>
-              <div style={{fontFamily:"'Unbounded',sans-serif",fontSize:24,fontWeight:900,color:'#ff85b6',lineHeight:1}}>{statsE?.ko??0}</div>
-              <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:8,color:'rgba(255,133,182,.6)',textTransform:'uppercase',marginTop:2,letterSpacing:1}}>{nomeImperoAvversario||'CPU'}</div>
+            {/* Descrizione dentro il banner */}
+            <div style={{fontFamily:'Fredoka',fontSize:11,color:'rgba(238,232,220,.75)',textAlign:'center',lineHeight:1.4}}>
+              <span style={{color:isVictory?'#6cf0e0':'#ff85b6',fontWeight:700}}>{winnerName}</span>
+              {' '}ha sconfitto{' '}
+              <span style={{color:isVictory?'#ff85b6':'#6cf0e0',fontWeight:700}}>{loserName}</span>
             </div>
-          </div>
-        )}
-
-        {/* 5. Descrizione round */}
-        {!isDraw && (
-          <div style={{fontFamily:'Fredoka',fontSize:12,color:'rgba(238,232,220,.65)',marginBottom:10,lineHeight:1.5}}>
-            <span style={{color:isVictory?'#6cf0e0':'#ff85b6',fontWeight:700}}>{winnerName}</span>
-            {' '}ha sconfitto{' '}
-            <span style={{color:isVictory?'#ff85b6':'#6cf0e0',fontWeight:700}}>{loserName}</span>
-            {bo3After && <span style={{color:'rgba(174,156,255,0.6)',fontSize:10}}>{' '}nel Round {roundNum}</span>}
           </div>
         )}
 
@@ -727,10 +734,32 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
           <>
             {!isDraw && (
               <div style={{fontFamily:'Fredoka',fontSize:12,color:'rgba(238,232,220,.65)',marginBottom:12,lineHeight:1.5,padding:'8px 10px',background:hoVinto?'rgba(0,230,118,0.06)':'rgba(255,61,61,0.06)',borderRadius:10,border:`1px solid ${hoVinto?'rgba(0,230,118,0.2)':'rgba(255,61,61,0.2)'}`}}>
-                {hoVinto && sonoAttaccante && <><strong style={{color:'#00e676'}}>Complimenti!</strong> Hai conquistato <strong style={{color:'#ffd666'}}>{territoryName||'il territorio'}</strong>{nomeImperoAvversario&&nomeImperoAvversario!=='Avversario'&&nomeImperoAvversario!=='CPU'?' da '+nomeImperoAvversario:''}! <span style={{color:'#ffd666'}}>+1 pacchetto sfida</span></>}
-                {hoVinto && !sonoAttaccante && <>Territorio difeso con successo! <strong style={{color:'#00e676'}}>{territoryName}</strong> è ancora tuo.</>}
-                {!isVictory && sonoAttaccante && <><strong style={{color:'#ff3d3d'}}>Sconfitta.</strong> Non sei riuscito a conquistare <strong>{territoryName||'il territorio'}</strong>. <span style={{color:'#ff8888'}}>-1 energia</span></>}
-                {!isVictory && !sonoAttaccante && <><strong style={{color:'#ff3d3d'}}>{nomeImperoAvversario||'CPU'}</strong> ha conquistato <strong>{territoryName||'il territorio'}</strong>. <span style={{color:'#ff8888'}}>-1 energia</span></>}
+                {hoVinto && sonoAttaccante && (
+                <>
+                  <strong style={{color:'#00e676'}}>Complimenti!</strong> Hai conquistato{' '}
+                  <strong style={{color:'#ffd666'}}>{territoryName||'il territorio'}</strong>
+                  {nomeImperoAvversario&&nomeImperoAvversario!=='Avversario'&&nomeImperoAvversario!=='CPU'?' da '+nomeImperoAvversario:''}!
+                  <br/>
+                  <span style={{color:'#ffd666',display:'block',textAlign:'center',marginTop:4}}>+1 pacchetto sfida 🎴</span>
+                </>
+              )}
+                {hoVinto && !sonoAttaccante && (
+                <>Territorio difeso con successo! <strong style={{color:'#00e676'}}>{territoryName}</strong> è ancora tuo.</>
+              )}
+                {!isVictory && sonoAttaccante && (
+                <>
+                  <strong style={{color:'#ff3d3d'}}>Sconfitta.</strong> Non sei riuscito a conquistare <strong>{territoryName||'il territorio'}</strong>.
+                  <br/>
+                  <span style={{color:'#ff8888',display:'block',textAlign:'center',marginTop:4}}>-1 energia ⚡</span>
+                </>
+              )}
+                {!isVictory && !sonoAttaccante && (
+                <>
+                  <strong style={{color:'#ff3d3d'}}>{nomeImperoAvversario||'CPU'}</strong> ha conquistato <strong>{territoryName||'il territorio'}</strong>.
+                  <br/>
+                  <span style={{color:'#ff8888',display:'block',textAlign:'center',marginTop:4}}>-1 energia ⚡</span>
+                </>
+              )}
               </div>
             )}
             <button onClick={()=>onContinue(null)} style={{...btnBase,width:'100%',fontSize:13,background:'linear-gradient(rgba(245,197,96,0.32),rgba(245,197,96,0.1))',border:'0.8px solid rgba(255,233,168,0.6)',color:'rgb(42,31,0)',boxShadow:'rgba(245,197,96,0.35) 0px 6px 20px 0px'}}>VAI ALLA MAPPA →</button>

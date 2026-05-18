@@ -23,6 +23,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
   const [myDefenseMap, setMyDefenseMap] = useState({}); // defense_config dell'utente corrente
 
   const [pendingOffersCount, setPendingOffersCount] = useState(0);
+  const [attackError, setAttackError] = useState(null);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [conquestAnim, setConquestAnim] = useState(null); // { pixelName, oldColor, newColor, empireName }
   const [showBattle, setShowBattle] = useState(false);
@@ -167,7 +168,13 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
         body: JSON.stringify({ targetX: selectedPixel.x, targetY: selectedPixel.y, attackerTeam }),
       });
       const data = await res.json();
-      if (!res.ok) { console.error('Attacco fallito:', data.error); return; }
+      if (!res.ok) {
+        console.error('Attacco fallito:', data.error);
+        // Mostra l'errore all'utente invece di fallire silenziosamente
+        setAttackError(data.error || 'Errore nel tentativo di attacco. Riprova.');
+        setShowBattle(false); // chiudi BattleModal
+        return;
+      }
       if (data.battleId) {
         setActiveBattle({
           id: data.battleId,
@@ -359,6 +366,26 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
       )}
 
       {/* Tutorial (nuovo utente senza pixel) */}
+      {attackError && (
+        <div style={{
+          position: 'fixed', top: 80, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 500, maxWidth: 320, width: '90vw',
+          background: 'rgba(255,91,108,0.95)', color: '#fff',
+          borderRadius: 14, padding: '14px 18px',
+          fontFamily: FF.body, fontSize: 13, lineHeight: 1.5, textAlign: 'center',
+          boxShadow: '0 8px 32px rgba(255,91,108,0.4)',
+          animation: 'slideDown 0.3s ease-out',
+        }}>
+          <div style={{ marginBottom: 8, fontWeight: 700 }}>⚠️ Attacco non riuscito</div>
+          <div style={{ opacity: 0.9, fontSize: 12 }}>{attackError}</div>
+          <button onClick={() => setAttackError(null)} style={{
+            marginTop: 10, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.4)',
+            borderRadius: 8, color: '#fff', fontFamily: FF.label, fontSize: 10,
+            letterSpacing: '0.15em', textTransform: 'uppercase', padding: '5px 14px', cursor: 'pointer',
+          }}>OK</button>
+        </div>
+      )}
+
       {conquestAnim && (
         <TerritoryConquestAnimation
           {...conquestAnim}

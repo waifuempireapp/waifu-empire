@@ -135,6 +135,7 @@ export default function AdminPage() {
           { k: 'missioni', l: '🎯 Missioni' },
           { k: 'classifica', l: '🏆 Classifica' },
           { k: 'swap', l: '💋 Swap' },
+          { k: 'mappa-debug', l: '🗺️ Mappa Debug' },
         ].map(t => (
           <button key={t.k} onClick={() => setTab(t.k)} style={{
             padding: '6px 16px',
@@ -159,6 +160,7 @@ export default function AdminPage() {
         {tab === 'missioni'  && <MissioniTab flash={flash} />}
         {tab === 'classifica' && <PremioClassificaTab flash={flash} />}
         {tab === 'swap' && <SwapAdminTab flash={flash} user={user} />}
+        {tab === 'mappa-debug' && <MappaDebugTab flash={flash} user={user} />}
       </div>
     </div>
   );
@@ -3407,6 +3409,76 @@ function SwapAdminTab({ flash, user }) {
           La dashboard voti in tempo reale richiede una query aggregata su /swap_votes.<br/>
           Consulta Firestore direttamente o usa il cron settimanale per vedere la classifica corrente via <code>/api/waifu-ranking/current</code>.
         </p>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// MAPPA DEBUG TAB
+// ═══════════════════════════════════════════════
+function MappaDebugTab({ flash, user }) {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [hours, setHours] = useState(0);
+
+  const cleanup = async () => {
+    setLoading(true);
+    setResult(null);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/admin/cleanup-battles', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ maxAgeHours: Number(hours) }),
+      });
+      const data = await res.json();
+      setResult(data);
+      if (data.success) flash(`✅ Pulite ${data.cleaned} battaglie stale (su ${data.total} trovate)`);
+      else flash(`❌ Errore: ${data.error}`);
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div style={{ color: '#f5e6d3', maxWidth: 500 }}>
+      <h2 style={{ fontFamily: 'Cinzel', fontSize: 18, color: '#f59e0b', marginBottom: 24 }}>🗺️ Mappa Debug</h2>
+
+      <div style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 14, padding: '20px 24px', marginBottom: 24 }}>
+        <h3 style={{ fontFamily: 'Orbitron', fontSize: 12, color: 'rgba(245,158,11,0.7)', marginBottom: 16, letterSpacing: 2 }}>
+          CLEANUP BATTAGLIE BLOCCATE
+        </h3>
+        <p style={{ fontFamily: 'Orbitron', fontSize: 10, color: 'rgba(245,158,11,0.5)', lineHeight: 1.6, marginBottom: 16 }}>
+          Risolve le battaglie rimaste in stato "in_progress" per bug precedenti,
+          permettendo di riattaccare quei territori. Le battaglie vengono marcate come "defender_wins".
+        </p>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', fontFamily: 'Orbitron', fontSize: 10, color: 'rgba(245,158,11,0.8)', marginBottom: 6, letterSpacing: 1 }}>
+            Pulisci battaglie più vecchie di (ore):
+          </label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input type="number" min={0} value={hours} onChange={e => setHours(e.target.value)}
+              style={{ width: 80, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(245,158,11,0.3)', color: '#f5e6d3', borderRadius: 8, padding: '8px 12px', fontFamily: 'Orbitron', fontSize: 12 }} />
+            <span style={{ fontFamily: 'Orbitron', fontSize: 10, color: 'rgba(245,158,11,0.5)' }}>
+              {hours == 0 ? '(TUTTE)' : `(>${hours}h fa)`}
+            </span>
+          </div>
+        </div>
+
+        <button onClick={cleanup} disabled={loading} style={{
+          padding: '10px 24px',
+          background: loading ? 'rgba(245,158,11,0.3)' : 'linear-gradient(135deg, #f59e0b, #ec4899)',
+          border: 'none', borderRadius: 10, color: '#000',
+          fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
+        }}>
+          {loading ? '⏳ Pulizia…' : '🧹 ESEGUI CLEANUP'}
+        </button>
+
+        {result && (
+          <div style={{ marginTop: 16, padding: '10px 14px', background: result.success ? 'rgba(0,200,118,0.1)' : 'rgba(255,61,61,0.1)', borderRadius: 10, fontFamily: 'Orbitron', fontSize: 10, color: result.success ? '#00e676' : '#ff4d4d' }}>
+            {result.success ? `✅ Battaglie pulite: ${result.cleaned} / ${result.total} trovate` : `❌ ${result.error}`}
+          </div>
+        )}
       </div>
     </div>
   );
