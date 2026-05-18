@@ -1792,7 +1792,8 @@ function PodioTop3({ classifica, user, podioColori, podioGradient, podioMedaglie
  * @param {Object} props
  * @param {Object} props.user — Oggetto Firebase Auth user (per evidenziare la riga dell'utente).
  */
-function ClassificaTab({ user }) {
+function ClassificaTab_LEGACY_UNUSED({ user }) {
+  // NON USATA: sostituita dall'import da _redesign/Classifica.jsx (con tab Waifu)
   const [classifica, setClassifica] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errore, setErrore] = useState(null);

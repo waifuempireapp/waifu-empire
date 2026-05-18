@@ -397,7 +397,7 @@ export function HomeTab({
         <div style={{position:'absolute',right:18,top:'50%',transform:'translateY(-50%)',fontSize:56,opacity:.18,pointerEvents:'none',userSelect:'none'}}>🩷</div>
         <div style={{position:'relative',zIndex:1}}>
           <div style={{fontFamily:"var(--ff-label,'Saira Condensed',sans-serif)",fontSize:8,letterSpacing:'0.28em',color:'rgba(255,133,182,0.75)',textTransform:'uppercase',marginBottom:6}}>✦ Scopri le Waifu ✦</div>
-          <div style={{fontFamily:"var(--ff-display,'Unbounded',sans-serif)",fontSize:22,fontWeight:900,color:'#fff',marginBottom:6,textShadow:'0 0 20px rgba(255,133,182,0.5)'}}>Il Tinder delle Waifu</div>
+          <div style={{fontFamily:"var(--ff-display,'Unbounded',sans-serif)",fontSize:22,fontWeight:900,color:'#fff',marginBottom:6,textShadow:'0 0 20px rgba(255,133,182,0.5)'}}>Waifu Swap</div>
           <div style={{fontSize:12,color:'rgba(241,235,255,0.6)',lineHeight:1.5,marginBottom:14,maxWidth:'75%'}}>Swipa, vota e guadagna Kisses ogni 10 voti. Più voti, più guadagni!</div>
           <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
             {(profilo?.totalVotes ?? 0) > 0 && (

@@ -101,7 +101,7 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
   return (
     <div style={{ position: 'relative', minHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Back button */}
           <button onClick={() => setTab?.('home')} style={{
@@ -112,12 +112,36 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
           }}>← Home</button>
           <div>
             <div style={{ fontFamily: FF.label, fontSize: 9, letterSpacing: '0.22em', color: C.sakura, textTransform: 'uppercase' }}>🩷 SWAP</div>
-            <div style={{ fontFamily: FF.display, fontSize: 20, color: '#fff', fontWeight: 800 }}>Scopri le Waifu</div>
+            <div style={{ fontFamily: FF.display, fontSize: 20, color: '#fff', fontWeight: 800 }}>Waifu Swap</div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <KissesIcon size={16} />
           <span style={{ fontFamily: FF.display, fontSize: 16, color: C.gold, fontWeight: 700 }}>{profilo?.kisses ?? 0}</span>
+        </div>
+      </div>
+
+      {/* Banner informativo come funziona lo Swap */}
+      <div style={{
+        marginBottom: 14, padding: '12px 16px',
+        background: 'linear-gradient(135deg, rgba(255,133,182,0.07), rgba(167,139,250,0.05))',
+        border: '1px solid rgba(255,133,182,0.15)', borderRadius: 14,
+      }}>
+        <div style={{ fontFamily: FF.label, fontSize: 9, letterSpacing: '0.2em', color: C.sakura, textTransform: 'uppercase', marginBottom: 8 }}>
+          Come funziona
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {[
+            { icon: '👆', text: 'Scorri le carte e vota le waifu che ti piacciono con ♥ o ✕' },
+            { icon: '🩷', text: 'Ogni 10 voti guadagni Kisses, la valuta del gioco' },
+            { icon: '🔥', text: 'Più giorni consecutivi voti, più alto è il moltiplicatore dei Kisses' },
+            { icon: '🏆', text: 'Le waifu più votate scalano la classifica settimanale: chi le possiede riceve bonus Kisses ogni domenica' },
+          ].map(({ icon, text }) => (
+            <div key={text} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <span style={{ fontSize: 14, flexShrink: 0 }}>{icon}</span>
+              <span style={{ fontFamily: FF.body, fontSize: 11, color: 'rgba(241,235,255,0.65)', lineHeight: 1.4 }}>{text}</span>
+            </div>
+          ))}
         </div>
       </div>
 

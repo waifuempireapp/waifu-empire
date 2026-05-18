@@ -1037,7 +1037,7 @@ input:focus, textarea:focus, select:focus {
 
 /* ===== MISSIONI FAB ===== */
 .missioni-fab {
-  position: fixed; bottom: 96px; right: 16px; z-index: 90;
+  position: fixed; bottom: 96px; right: 16px; z-index: 110;
   width: 60px;
   border-radius: 16px;
   background: linear-gradient(160deg, #ff85b6, #c54a86);
@@ -1064,7 +1064,7 @@ input:focus, textarea:focus, select:focus {
 .missioni-fab--alert { animation: missioniAlert 1.4s ease-in-out infinite; }
 /* Notification CTA banner above FAB */
 .missioni-cta-banner {
-  position: fixed; bottom: 166px; right: 12px; z-index: 89;
+  position: fixed; bottom: 166px; right: 12px; z-index: 109;
   background: linear-gradient(135deg, rgba(255,133,182,0.22), rgba(197,74,134,0.15));
   border: 1px solid rgba(255,133,182,0.5); border-radius: 14px;
   padding: 8px 12px 8px 10px;
@@ -2252,11 +2252,11 @@ input:focus, textarea:focus, select:focus {
 .sb-fly-delay-4 { animation-delay: 240ms; }
 
 /* ===== Performance optimizations ===== */
-/* GPU acceleration per elementi animati frequentemente */
+/* GPU acceleration: SOLO per gli elementi animati frequentemente (sakura e arena)
+   NON applicare will-change: transform a .fade-in/.fade-up perché crea un nuovo
+   stacking context che intrappola position:fixed (es. FAB Missioni) */
 .sakura-petal,
-.wba-fm,
-.fade-in,
-.fade-up {
+.wba-fm {
   will-change: transform, opacity;
 }
 

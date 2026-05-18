@@ -707,7 +707,7 @@ function SwapPromoBanner({ setTab, profilo }) {
           fontFamily: FF.display, fontSize: 22, fontWeight: 900, color: '#fff',
           letterSpacing: '-0.01em', marginBottom: 6,
           textShadow: '0 0 20px rgba(255,133,182,0.5)',
-        }}>Il Tinder delle Waifu</div>
+        }}>Waifu Swap</div>
         <div style={{
           fontFamily: FF.body, fontSize: 12, color: 'rgba(241,235,255,0.6)',
           lineHeight: 1.5, marginBottom: 14, maxWidth: '75%',
