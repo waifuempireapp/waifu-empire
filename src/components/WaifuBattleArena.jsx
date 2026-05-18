@@ -297,7 +297,7 @@ const FOIL_RARITIES = ['epico','leggendario','immersivo'];
  * @param {boolean} [props.isPlayer=false] — `true` = lato giocatore (prospettiva e glow diversi).
  * @returns {JSX.Element|null} `null` se `waifu` è falsy.
  */
-function WaifuSprite({ waifu, size=120, anim='', style={}, isPlayer=false }) {
+function WaifuSprite({ waifu, size=120, anim='', style={}, isPlayer=false, isHotBlurred=false }) {
   if (!waifu) return null;
   const tc = TYPE_COLORS[waifu.type]?.border ?? '#444';
   const cardBg = getRarityCardBg(waifu.rarità);
@@ -315,7 +315,7 @@ function WaifuSprite({ waifu, size=120, anim='', style={}, isPlayer=false }) {
       ...style,
     }}>
       {waifu.image
-        ? <img src={waifu.image} alt={waifu.name} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top'}}/>
+        ? <img src={waifu.image} alt={waifu.name} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top',filter: isHotBlurred ? 'blur(6px)' : 'none'}}/>
         : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100%',gap:6}}>
             <div style={{fontSize:28,opacity:.2}}>◈</div>
             <div style={{fontFamily:'Orbitron',fontSize:7,color:'rgba(238,232,220,.28)',textAlign:'center',padding:'0 6px',lineHeight:1.3}}>{waifu.name}</div>
@@ -332,6 +332,19 @@ function WaifuSprite({ waifu, size=120, anim='', style={}, isPlayer=false }) {
       {waifu.isKO&&(
         <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,.72)',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(2px)'}}>
           <span style={{fontFamily:'Orbitron',fontSize:20,color:'#ff4d4d',fontWeight:900,letterSpacing:2,textShadow:'0 0 16px #ff4d4d88'}}>KO</span>
+        </div>
+      )}
+      {/* Overlay Hot blurred — DENTRO il div animato, segue tutte le animazioni */}
+      {isHotBlurred && !waifu.isKO && (
+        <div style={{
+          position:'absolute', inset:0,
+          background:'rgba(3,2,12,0.55)',
+          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4,
+          pointerEvents:'none',
+        }}>
+          <span style={{fontSize:20}}>🔥</span>
+          <span style={{fontFamily:'Orbitron',fontSize:8,color:'#ff85b6',letterSpacing:1,fontWeight:700}}>HOT</span>
+          <span style={{fontFamily:'Orbitron',fontSize:6,color:'rgba(255,133,182,0.65)',letterSpacing:0.5}}>Pass Hard</span>
         </div>
       )}
     </div>
@@ -1758,22 +1771,9 @@ export default function WaifuBattleArena({
               }}/>
             ))}
           </div>
-          {/* Enemy sprite: bottom-right — oscurato se hot blurred */}
+          {/* Enemy sprite: bottom-right — isHotBlurred passa il flag DENTRO lo sprite animato */}
           <div style={{position:'absolute', right:14, bottom:0, zIndex:2}}>
-            <div style={{position:'relative', display:'inline-block'}}>
-              <WaifuSprite waifu={enemy} size={sEnemy} anim={eAnim} isPlayer={false}/>
-              {enemy?._hotBlurred && (
-                <div style={{
-                  position:'absolute', inset:0,
-                  backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)',
-                  background:'rgba(3,2,12,0.55)', borderRadius:8,
-                  display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4,
-                }}>
-                  <span style={{fontSize:20}}>🔥</span>
-                  <span style={{fontFamily:'Orbitron',fontSize:7,color:'#ff85b6',letterSpacing:1,fontWeight:700}}>HOT</span>
-                </div>
-              )}
-            </div>
+            <WaifuSprite waifu={enemy} size={sEnemy} anim={eAnim} isPlayer={false} isHotBlurred={!!(enemy?._hotBlurred)}/>
           </div>
           {/* Red vignette tint on enemy side */}
           <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 75% 30%, rgba(200,20,40,.07) 0%, transparent 70%)',pointerEvents:'none',zIndex:1}}/>
