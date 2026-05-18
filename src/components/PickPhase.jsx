@@ -252,32 +252,21 @@ function WaifuPickCard({ waifu, slot, selectable, onTap, hideStats = false }) {
             {waifu.nome ?? waifu.name ?? '—'}
           </div>
 
-          {/* Badge rarità testuale + badge tipo — sempre visibili per entrambi i roster */}
+          {/* Tipo — rarità SOLO nell'immagine (rimosso il badge testuale) */}
           <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 4, flexWrap: 'wrap' }}>
-            <span style={{
-              fontFamily: 'Orbitron', fontSize: 7, fontWeight: 800,
-              color: rs.badge, background: `${rs.badge}18`,
-              border: `1px solid ${rs.badge}55`,
-              borderRadius: 4, padding: '1px 5px', letterSpacing: 0.5,
-              whiteSpace: 'nowrap',
-            }}>{rarita}</span>
             <TypeBadge type={bs.type ?? 'Arcana'} />
           </div>
 
-          {/* Statistiche — visibili solo per il roster del giocatore (hideStats=false) */}
-          {!hideStats && (
-            <>
-              <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,.4)', marginTop: 4 }}>
-                Lv {waifu.livello ?? 1} · HP {maxHp}
-              </div>
-              <div style={{ fontFamily: 'Orbitron', fontSize: 7, color: 'rgba(238,232,220,.45)', marginTop: 2 }}>
-                <span style={{ color: '#00C8FF' }}>Spd {computeSpeed(waifu)}</span>
-                {'  '}
-                <span style={{ color: '#f5a623' }}>Crit {Math.round(computeCritChance(waifu) * 100)}%</span>
-              </div>
-              <MiniHpBar hp={maxHp} maxHp={maxHp} />
-            </>
-          )}
+          {/* Statistiche — sempre visibili */}
+          <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,.5)', marginTop: 4 }}>
+            Vita: {maxHp}
+          </div>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 7, color: 'rgba(238,232,220,.55)', marginTop: 2 }}>
+            <span style={{ color: '#00C8FF' }}>⚡ {computeSpeed(waifu)}</span>
+            {'  '}
+            <span style={{ color: '#f5a623' }}>💥 {Math.round(computeCritChance(waifu) * 100)}%</span>
+          </div>
+          <MiniHpBar hp={maxHp} maxHp={maxHp} />
         </div>
       </div>
     </button>
@@ -607,7 +596,7 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
         </div>
         {/* Sottotitolo: istruzione + contatore selezioni correnti */}
         <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: 'rgba(238,232,220,.5)', marginTop: 6 }}>
-          Scegli {PICKS_RICHIESTI} waifu in ordine — la prima entra subito in campo.
+          Scegli {PICKS_RICHIESTI} waifu strategicamente in base ai <span style={{ color: '#a78bfa' }}>tipi</span> delle tue waifu e di quelle che l'avversario potrebbe schierare. La prima scelta entra subito in campo.
           {' '}<span style={{ color: '#00e676', fontWeight: 700 }}>{activeSlots.length}/{PICKS_RICHIESTI} selezionate</span>
         </div>
       </div>

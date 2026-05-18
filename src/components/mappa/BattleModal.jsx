@@ -4,7 +4,7 @@ import { C, FF } from '@/app/gioco/_redesign/_shared';
 import { CartaWaifu } from '@/components/CartaWaifu';
 import { RARITA } from '@/lib/constants';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10; // 10 per pagina per caricamento più veloce
 
 // Filtri disponibili
 const RARITY_ORDER = ['comune', 'raro', 'epico', 'leggendario', 'immersivo'];
@@ -53,16 +53,21 @@ export default function BattleModal({ pixel, collezione, waifuCat, onConfirm, on
   const [page, setPage] = useState(0);
   const [filterRarity, setFilterRarity] = useState('');
   const [filterType, setFilterType] = useState('');
+  const [sortBy, setSortBy] = useState('rarita'); // rarita | velocita | crit
 
-  const ownedWaifu = useMemo(() => (
-    Object.entries(collezione?.waifu || {})
+  const ownedWaifu = useMemo(() => {
+    const list = Object.entries(collezione?.waifu || {})
       .map(([id, dati]) => {
         const w = waifuCat?.find(x => x.id === id);
         return w ? { ...w, ...dati, _datiColl: dati } : null;
       })
-      .filter(Boolean)
-      .sort((a, b) => RARITY_ORDER.indexOf(b.rarita) - RARITY_ORDER.indexOf(a.rarita))
-  ), [collezione, waifuCat]);
+      .filter(Boolean);
+    // Ordina in base al criterio scelto
+    if (sortBy === 'rarita') list.sort((a, b) => RARITY_ORDER.indexOf(b.rarita) - RARITY_ORDER.indexOf(a.rarita));
+    else if (sortBy === 'velocita') list.sort((a, b) => (b.battleStats?.speed ?? 0) - (a.battleStats?.speed ?? 0));
+    else if (sortBy === 'crit') list.sort((a, b) => (b.battleStats?.critChance ?? 0) - (a.battleStats?.critChance ?? 0));
+    return list;
+  }, [collezione, waifuCat, sortBy]);
 
   const filtered = useMemo(() => ownedWaifu.filter(w => {
     if (filterRarity && w.rarita !== filterRarity) return false;
@@ -127,6 +132,10 @@ export default function BattleModal({ pixel, collezione, waifuCat, onConfirm, on
       {mode === 'teams' && (
         <>
           <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px 0' }}>
+            {/* Istruzione */}
+            <div style={{ fontFamily: FF.body, fontSize: 11, color: 'rgba(241,235,255,0.5)', lineHeight: 1.4, marginBottom: 12 }}>
+              💡 Scegli un team già salvato oppure crea un team personalizzato. Dopo avrai scelto 5 waifu, potrai selezionare le 3 migliori per il round.
+            </div>
             {presets.map(([id, preset]) => (
               <PresetCard
                 key={id} preset={preset} waifuCat={waifuCat}
@@ -167,31 +176,40 @@ export default function BattleModal({ pixel, collezione, waifuCat, onConfirm, on
       {/* ── MODALITÀ MANUALE ──────────────────────────────────────── */}
       {mode === 'manual' && (
         <>
-          {/* Filtri */}
-          <div style={{ padding: '10px 16px 0', display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
-            <select
-              value={filterRarity} onChange={e => { setFilterRarity(e.target.value); setPage(0); }}
-              style={{ flex: 1, minWidth: 100, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(174,156,255,0.2)', color: filterRarity ? '#fff' : 'rgba(241,235,255,0.4)', borderRadius: 8, padding: '6px 8px', fontFamily: FF.body, fontSize: 12 }}
-            >
+          {/* Istruzione per l'utente */}
+          <div style={{ padding: '8px 16px 0', flexShrink: 0 }}>
+            <div style={{ fontFamily: FF.body, fontSize: 11, color: 'rgba(241,235,255,0.5)', lineHeight: 1.4, marginBottom: 6 }}>
+              💡 Seleziona <strong style={{ color: C.gold }}>5 waifu</strong> con cui vuoi combattere. Nella prossima schermata potrai scegliere le 3 migliori per il round.
+            </div>
+          </div>
+
+          {/* Filtri e ordinamento */}
+          <div style={{ padding: '6px 16px 0', display: 'flex', gap: 5, flexShrink: 0, flexWrap: 'wrap' }}>
+            <select value={filterRarity} onChange={e => { setFilterRarity(e.target.value); setPage(0); }}
+              style={filterSelectStyle(!!filterRarity)}>
               <option value="">Rarità</option>
               {RARITY_ORDER.map(r => <option key={r} value={r} style={{ background: '#0d0a26', color: rarColors[r] }}>{r}</option>)}
             </select>
-            <select
-              value={filterType} onChange={e => { setFilterType(e.target.value); setPage(0); }}
-              style={{ flex: 1, minWidth: 100, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(174,156,255,0.2)', color: filterType ? '#fff' : 'rgba(241,235,255,0.4)', borderRadius: 8, padding: '6px 8px', fontFamily: FF.body, fontSize: 12 }}
-            >
+            <select value={filterType} onChange={e => { setFilterType(e.target.value); setPage(0); }}
+              style={filterSelectStyle(!!filterType)}>
               <option value="">Tipo</option>
               {['Arcana','Natura','Abisso','Ferro','Fuoco'].map(t => <option key={t} value={t} style={{ background: '#0d0a26' }}>{t}</option>)}
+            </select>
+            <select value={sortBy} onChange={e => { setSortBy(e.target.value); setPage(0); }}
+              style={filterSelectStyle(sortBy !== 'rarita')}>
+              <option value="rarita">↕ Rarità</option>
+              <option value="velocita">↕ Velocità</option>
+              <option value="crit">↕ % Critico</option>
             </select>
             {(filterRarity || filterType) && (
               <button onClick={() => { setFilterRarity(''); setFilterType(''); setPage(0); }} style={{
                 background: 'rgba(255,91,108,0.1)', border: '1px solid rgba(255,91,108,0.3)',
-                borderRadius: 8, color: C.err, fontSize: 11, padding: '6px 10px', cursor: 'pointer',
+                borderRadius: 8, color: C.err, fontSize: 11, padding: '5px 8px', cursor: 'pointer',
               }}>✕</button>
             )}
           </div>
-          <div style={{ padding: '4px 16px', fontFamily: FF.mono, fontSize: 10, color: 'rgba(241,235,255,0.3)', flexShrink: 0 }}>
-            {filtered.length} waifu · pagina {page + 1}/{Math.max(1, totalPages)}
+          <div style={{ padding: '3px 16px', fontFamily: FF.mono, fontSize: 10, color: 'rgba(241,235,255,0.3)', flexShrink: 0 }}>
+            {filtered.length} waifu · pagina {page + 1}/{Math.max(1, totalPages)} · {selectedIds.length}/5 selezionate
           </div>
 
           {/* Griglia paginata: 3 colonne, CartaWaifu piccola scalata -8% */}
@@ -266,6 +284,16 @@ export default function BattleModal({ pixel, collezione, waifuCat, onConfirm, on
       )}
     </div>
   );
+}
+
+function filterSelectStyle(active = false) {
+  return {
+    flex: 1, minWidth: 90, background: 'rgba(255,255,255,0.06)',
+    border: `1px solid ${active ? 'rgba(174,156,255,0.4)' : 'rgba(174,156,255,0.2)'}`,
+    color: active ? '#fff' : 'rgba(241,235,255,0.5)',
+    borderRadius: 8, padding: '5px 6px',
+    fontFamily: "'DM Sans', sans-serif", fontSize: 11,
+  };
 }
 
 function pageBtn(disabled, active = false) {

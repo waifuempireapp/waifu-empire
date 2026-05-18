@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { LAND_SET } from '@/lib/worldMap';
 
 export const maxDuration = 30;
 
@@ -16,19 +17,32 @@ function cpuDifficulty(ownerLevel = 1) {
 }
 
 // Controlla se (tx, ty) è adiacente a qualsiasi pixel dell'utente uid
+// Carica tutti i chunk dell'utente (solo le zone dove potrebbe avere pixel)
+// Sea adjacency: salta pixel oceano in ogni direzione finché si trova terra
 async function isAdjacentToEmpire(uid, tx, ty) {
-  // 8 direzioni: sopra/sotto/sinistra/destra + 4 diagonali
+  // Leggi tutti i 25 chunk per avere la mappa completa
+  const allChunks = await adminDb.collection('map_chunks').get();
+  const chunkData = {};
+  allChunks.forEach(doc => { chunkData[doc.id] = doc.data(); });
+
   const dirs8 = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
   for (const [dx, dy] of dirs8) {
-    const nx = tx + dx;
-    const ny = ty + dy;
-    if (nx < 0 || nx >= GRID_SIZE || ny < 0 || ny >= GRID_SIZE) continue;
-    const chunkCol = Math.floor(nx / CHUNK_SIZE);
-    const chunkRow = Math.floor(ny / CHUNK_SIZE);
-    const snap = await adminDb.collection('map_chunks').doc(`chunk_${chunkCol}_${chunkRow}`).get();
-    if (snap.exists) {
-      const pixel = snap.data().pixels?.[`${nx}_${ny}`];
-      if (pixel?.ownerId === uid) return true;
+    let nx = tx + dx;
+    let ny = ty + dy;
+    while (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
+      const key = `${nx}_${ny}`;
+      if (LAND_SET.has(key)) {
+        // Pixel terra: controlla se appartiene all'utente
+        const chunkCol = Math.floor(nx / CHUNK_SIZE);
+        const chunkRow = Math.floor(ny / CHUNK_SIZE);
+        const cid = `chunk_${chunkCol}_${chunkRow}`;
+        const pData = chunkData[cid]?.pixels?.[key];
+        if (pData?.ownerId === uid) return true;
+        break; // Terra di un altro → blocca questa direzione
+      }
+      // Oceano → continua nella stessa direzione
+      nx += dx;
+      ny += dy;
     }
   }
   return false;

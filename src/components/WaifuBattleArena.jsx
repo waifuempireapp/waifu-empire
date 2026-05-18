@@ -38,6 +38,19 @@ import {
 } from '@/lib/battleEngine';
 import { seededRand, getTurnRNG, calculateDamageSeeded } from '@/lib/pvpArenaEngine';
 
+// Override UI per tipo Ferro: acciaio bluastro, distinguibile dalle mosse disabilitate
+// Non tocca battleEngine.js (logica di combattimento invariata)
+const _TYPE_COLORS_UI = {
+  ...TYPE_COLORS,
+  Ferro: { bg: 'rgba(74,90,112,0.18)', text: '#9ba8ba', border: '#4a5a70' },
+};
+// Stile esplicito per mosse disabilitate (cooldown/PP esauriti): grigio scuro opaco
+const _DISABLED_MOVE_STYLE = {
+  bg:     'rgba(40,40,40,0.5)',
+  border: '0.8px solid #383838',
+  color:  '#525252',
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // COSTANTI DI TIMING ANIMAZIONI
 // SRP: i magic number sono definiti una volta sola con nome esplicito.
@@ -348,6 +361,12 @@ function EnemyHud({ waifu }) {
       </div>
       <div style={{marginBottom:5}}><TypeBadge type={waifu.type} sm/></div>
       <HpBar hp={waifu.hp} maxHp={waifu.maxHp} h={5} isPlayer={false}/>
+      {/* Solo % vita per l'avversario, non il valore assoluto */}
+      <div style={{textAlign:'right',marginTop:2}}>
+        <span style={{fontFamily:'Orbitron',fontSize:9,fontWeight:700,color:'rgba(255,90,110,0.7)'}}>
+          {waifu.maxHp>0?Math.round((waifu.hp/waifu.maxHp)*100):0}%
+        </span>
+      </div>
     </div>
   );
 }
@@ -412,8 +431,8 @@ function MoveBtn({ move, idx, locked, outPp, cooldown, enemyType, playerType, on
   );
   const dis = locked||outPp||cooldown;
   const { label:eff } = getEffectiveness(move.type, playerType, enemyType);
-  const c = TYPE_COLORS[move.type] ?? {bg:'#111',text:'#eee',border:'#555'};
-  const bdr = c.border;
+  const c = _TYPE_COLORS_UI[move.type] ?? {bg:'#111',text:'#eee',border:'#555'};
+  const bdr = dis ? _DISABLED_MOVE_STYLE.color : c.border;
   // Mappa efficacia → etichetta italiana colorata mostrata in ogni bottone mossa.
   // "Efficace" appare anche per l'efficacia normale così il giocatore ha sempre
   // un riferimento visivo chiaro per ogni mossa.
@@ -430,20 +449,16 @@ function MoveBtn({ move, idx, locked, outPp, cooldown, enemyType, playerType, on
   return (
     <button className="wba-move-btn" onClick={()=>!dis&&onSelect(idx)} disabled={dis} style={{
       height:'100%', padding:'8px 11px', borderRadius:12, width:'100%',
-      background: isOutPp
-        ? 'rgba(255,255,255,0.03)'
-        : dis
-          ? 'rgba(255,255,255,0.03)'
-          : 'linear-gradient(rgba(255,255,255,0.08), rgba(255,255,255,0.02))',
-      border: isOutPp
-        ? '0.8px solid rgba(255,255,255,0.06)'
-        : dis
-          ? '0.8px solid rgba(255,255,255,0.06)'
-          : '0.8px solid rgba(255,255,255,0.14)',
+      background: dis
+        ? _DISABLED_MOVE_STYLE.bg
+        : `linear-gradient(${c.bg ?? 'rgba(255,255,255,0.08)'}, rgba(255,255,255,0.02))`,
+      border: dis
+        ? _DISABLED_MOVE_STYLE.border
+        : `0.8px solid ${c.border}88`,
       backdropFilter: dis ? 'none' : 'blur(8px)',
       WebkitBackdropFilter: dis ? 'none' : 'blur(8px)',
       boxShadow: dis?'none':`0 2px 12px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06)`,
-      color: isOutPp || dis ? 'rgba(241,235,255,0.2)' : '#f1ebff',
+      color: dis ? _DISABLED_MOVE_STYLE.color : c.text ?? '#f1ebff',
       fontFamily: "'DM Sans', sans-serif",
       cursor: dis ? 'not-allowed' : 'pointer',
       display:'flex',flexDirection:'column',gap:5,alignItems:'flex-start',
@@ -1058,6 +1073,7 @@ export default function WaifuBattleArena({
     if(phase!=='playerChoose') return;
     if(isPvP) return;
     if(isAnim) return;
+    if(turn <= 1) return; // Fix #19+#20: no swap CPU al primo turno
     const curEnemy = eTeam[eActive];
     const curPlayer = pTeam[pActive];
     if(!curEnemy||!curPlayer) return;
@@ -1912,8 +1928,9 @@ export default function WaifuBattleArena({
               {/* Swap button */}
               {(() => {
                 const hasBenchAlive = pTeam.some((w,i) => i !== pActive && !w.isKO);
-                const canSwitch = isChoose && !isAnim && !(isPvP && pvpWaiting) && hasBenchAlive;
-                const switchDisabled = !isChoose || isAnim || (isPvP && pvpWaiting) || !hasBenchAlive;
+                // Fix #19: no swap al primo turno (turn === 1)
+                const canSwitch = isChoose && !isAnim && !(isPvP && pvpWaiting) && hasBenchAlive && turn > 1;
+                const switchDisabled = !isChoose || isAnim || (isPvP && pvpWaiting) || !hasBenchAlive || turn <= 1;
                 return (
                   <div style={{flexShrink:0,width:52}}>
                     <button

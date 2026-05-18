@@ -18,7 +18,7 @@ const DIFFICULTY_LEVEL = { easy: 3, medium: 12, hard: 35, expert: 55 };
  *   - 'switch': salta pre, vai a pick con solo le 5 waifu dell'attackerTeam
  *   - null:     prima volta o match concluso, mostra 'pre'
  */
-export default function RoundViewer({ battle, waifuCat, collezione, profilo, onRoundComplete, onClose }) {
+export default function RoundViewer({ battle, waifuCat, collezione, profilo, onRoundComplete, onClose, hasHardPass }) {
   const difficulty = DIFFICULTY_LEVEL[battle?.cpuDifficulty ?? 'easy'];
 
   // Inizializza la fase in base a nextRoundChoice
@@ -68,16 +68,49 @@ export default function RoundViewer({ battle, waifuCat, collezione, profilo, onR
   ), [battle?.attackerTeam, waifuCat, collezione]);
 
   // roster5E: le 5 waifu del difensore (fisse per tutto il Bo3)
+  // Fix #5: se il pixel è CPU e player non ha Pass Hard, filtra le waifu hot
   const roster5E = useMemo(() => {
     if (!waifuCat?.length) return [];
-    const patchW = (w) => w ? ({ ...w, asset_statica: w.asset_statica || w.asset_immagine || null }) : null;
+    const patchW = (w) => w ? ({
+      ...w,
+      asset_statica: w.asset_statica || w.asset_immagine || null,
+    }) : null;
+    const isCPUDefender = battle?.defenderUid === 'CPU';
+
     const defIds = battle?.defenderTeam;
+    let pool = [];
     if (Array.isArray(defIds) && defIds.length === 5) {
       const resolved = defIds.map(id => patchW(waifuCat.find(c => c.id === id))).filter(Boolean);
-      if (resolved.length === 5) return resolved;
+      if (resolved.length === 5) pool = resolved;
     }
-    return [...waifuCat].sort(() => Math.random() - 0.5).slice(0, 5).map(patchW).filter(Boolean);
-  }, [battle?.defenderTeam, waifuCat]);
+    if (!pool.length) {
+      // Fallback casuale (pixel CPU senza team specificato)
+      let candidates = [...waifuCat];
+      if (isCPUDefender && !hasHardPass) {
+        candidates = candidates.filter(w => !w.hot);
+      }
+      pool = candidates.sort(() => Math.random() - 0.5).slice(0, 5).map(patchW).filter(Boolean);
+    }
+
+    // Per pixel CPU: rimuovi waifu hot se player non ha Pass Hard
+    if (isCPUDefender && !hasHardPass) {
+      pool = pool.filter(w => !w.hot);
+      // Riempi con waifu non-hot casuali se ne mancano
+      while (pool.length < 5) {
+        const extra = waifuCat.filter(w => !w.hot && !pool.some(p => p.id === w.id));
+        if (!extra.length) break;
+        const pick = extra[Math.floor(Math.random() * extra.length)];
+        pool.push(patchW(pick));
+      }
+    }
+
+    // Per pixel giocatore con waifu hot + no Pass Hard: blur l'immagine
+    if (!isCPUDefender && !hasHardPass) {
+      pool = pool.map(w => w?.hot ? { ...w, image: null, asset_statica: null, asset_immagine: null } : w);
+    }
+
+    return pool;
+  }, [battle?.defenderTeam, battle?.defenderUid, waifuCat, hasHardPass]);
 
   // ── PRE-ROUND ─────────────────────────────────────────────────────────────
   if (phase === 'pre') {
@@ -89,14 +122,20 @@ export default function RoundViewer({ battle, waifuCat, collezione, profilo, onR
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         padding: 24,
       }}>
-        <div style={{ fontFamily: FF.label, fontSize: 9, letterSpacing: '0.22em', color: C.sakura, textTransform: 'uppercase', marginBottom: 8 }}>
-          ◆ ROUND {roundNum} · BO3
+        <div style={{ fontFamily: FF.label, fontSize: 11, letterSpacing: '0.22em', color: C.sakura, textTransform: 'uppercase', marginBottom: 4 }}>
+          Round {roundNum}
         </div>
-        <div style={{ fontFamily: FF.display, fontSize: 22, color: '#fff', fontWeight: 800, marginBottom: 6 }}>
-          In battaglia!
+        <div style={{ fontFamily: FF.label, fontSize: 10, letterSpacing: '0.18em', color: 'rgba(174,156,255,0.7)', textTransform: 'uppercase', marginBottom: 8 }}>
+          Al meglio delle 3
         </div>
-        <div style={{ fontFamily: FF.body, fontSize: 13, color: 'rgba(241,235,255,0.5)', marginBottom: 32 }}>
+        <div style={{ fontFamily: FF.display, fontSize: 22, color: '#fff', fontWeight: 800, marginBottom: 4 }}>
+          Inizia battaglia!
+        </div>
+        <div style={{ fontFamily: FF.body, fontSize: 12, color: 'rgba(241,235,255,0.5)', marginBottom: 6 }}>
           Difficoltà CPU: <span style={{ color: C.aqua, textTransform: 'uppercase' }}>{battle?.cpuDifficulty ?? 'easy'}</span>
+        </div>
+        <div style={{ fontFamily: FF.body, fontSize: 11, color: 'rgba(241,235,255,0.4)', textAlign: 'center', maxWidth: 280, lineHeight: 1.5, marginBottom: 20 }}>
+          Scegli le 3 waifu con cui combattere, poi gioca al meglio dei 3 round. Chi vince 2 round per primo conquista il territorio.
         </div>
         <div style={{ display: 'flex', gap: 32, marginBottom: 40 }}>
           <div style={{ textAlign: 'center' }}>

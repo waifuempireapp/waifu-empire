@@ -12,6 +12,7 @@ import PurchaseModal from '@/components/mappa/PurchaseModal';
 import OffersPanel from '@/components/mappa/OffersPanel';
 import TutorialOverlay from '@/components/mappa/TutorialOverlay';
 import TeamDifesaEditor from '@/components/difesa/TeamDifesaEditor';
+import MappaInfoModal from '@/components/mappa/MappaInfoModal';
 
 export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat }) {
   const [chunks, setChunks] = useState(null);
@@ -21,6 +22,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
   const [myDefenseMap, setMyDefenseMap] = useState({}); // defense_config dell'utente corrente
 
   const [pendingOffersCount, setPendingOffersCount] = useState(0);
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const [showBattle, setShowBattle] = useState(false);
   const [showRound, setShowRound] = useState(false);
   const [showPurchase, setShowPurchase] = useState(false);
@@ -95,22 +97,31 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
   }, [loadChunks]);
 
   // ── CONTROLLO ADIACENZA CLIENT-SIDE ─────────────────────────────────────────
-  // FIX: pixelCount=0 CHECK PRIMA di chunks (evita stale closure con chunks=null)
-  // Adiacenza a 8 direzioni (sopra/sotto/sinistra/destra + 4 diagonali)
+  // Adiacenza via mare: in ogni direzione (8) si saltano i pixel oceano
+  // finché non si trova terra. Se il primo pixel terra trovato è dell'utente → adiacente.
   const checkAdjacentToEmpire = useCallback((tx, ty) => {
     const userPixelCount = profilo?.pixelCount ?? 0;
-    // Se 0 pixel posseduti → può attaccare qualsiasi territorio
-    if (userPixelCount === 0) return true;
+    if (userPixelCount === 0) return true; // primo pixel → sempre adiacente
     if (!chunks) return false;
     const dirs8 = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
     for (const [dx, dy] of dirs8) {
-      const nx = tx + dx;
-      const ny = ty + dy;
-      if (nx < 0 || nx >= 50 || ny < 0 || ny >= 50) continue;
-      const chunkCol = Math.floor(nx / 10);
-      const chunkRow = Math.floor(ny / 10);
-      const cid = `chunk_${chunkCol}_${chunkRow}`;
-      if (chunks[cid]?.pixels?.[`${nx}_${ny}`]?.ownerId === user.uid) return true;
+      let nx = tx + dx;
+      let ny = ty + dy;
+      while (nx >= 0 && nx < 50 && ny >= 0 && ny < 50) {
+        const key = `${nx}_${ny}`;
+        const chunkCol = Math.floor(nx / 10);
+        const chunkRow = Math.floor(ny / 10);
+        const cid = `chunk_${chunkCol}_${chunkRow}`;
+        const pData = chunks[cid]?.pixels?.[key];
+        if (pData !== undefined) {
+          // Pixel terra trovato in questa direzione
+          if (pData.ownerId === user.uid) return true;
+          break; // Terra di un altro → blocca questa direzione
+        }
+        // Pixel oceano → continua nella stessa direzione
+        nx += dx;
+        ny += dy;
+      }
     }
     return false;
   }, [chunks, user.uid, profilo?.pixelCount]);
@@ -271,6 +282,11 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
           <div style={{ fontFamily: FF.label, fontSize: 9, letterSpacing: '0.22em', color: C.sakura, textTransform: 'uppercase' }}>◆ CONQUISTA</div>
           <div style={{ fontFamily: FF.display, fontSize: 20, color: '#fff', fontWeight: 800 }}>Mappa del Mondo</div>
         </div>
+        <button onClick={() => setShowInfoModal(true)} style={{
+          background: 'rgba(174,156,255,0.08)', border: '1px solid rgba(174,156,255,0.25)',
+          borderRadius: 10, color: 'rgba(174,156,255,0.8)', fontFamily: FF.label, fontSize: 11,
+          letterSpacing: '0.1em', padding: '6px 10px', cursor: 'pointer',
+        }}>?</button>
         <button
           onClick={() => { setShowOffers(true); }}
           style={{
@@ -322,6 +338,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
           userUid={user.uid}
           waifuCat={waifuCat}
           myDefenseTeam={myDefenseMap[`${selectedPixel.x}_${selectedPixel.y}`] || []}
+          hasHardPass={profilo?.hardPass === true}
           onClose={() => setSelectedPixel(null)}
           onAttack={() => setShowBattle(true)}
           onPurchase={() => setShowPurchase(true)}
@@ -330,6 +347,8 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
       )}
 
       {/* Tutorial (nuovo utente senza pixel) */}
+      {showInfoModal && <MappaInfoModal onClose={() => setShowInfoModal(false)} />}
+
       {showTutorial && (
         <TutorialOverlay onClose={async () => {
           setShowTutorial(false);
@@ -363,6 +382,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
           waifuCat={waifuCat}
           collezione={collezione}
           profilo={profilo}
+          hasHardPass={profilo?.hardPass === true}
           onRoundComplete={handleRoundComplete}
           onClose={() => { setShowRound(false); setActiveBattle(null); }}
         />

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { LAND_SET } from '@/lib/worldMap';
 
 export const maxDuration = 30;
 
@@ -14,15 +15,25 @@ function pixelPrice(ownerLevel = 1) {
 }
 
 async function isAdjacentToEmpire(uid, tx, ty) {
-  const directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
-  for (const [dx, dy] of directions) {
-    const nx = tx + dx;
-    const ny = ty + dy;
-    if (nx < 0 || nx >= GRID_SIZE || ny < 0 || ny >= GRID_SIZE) continue;
-    const chunkCol = Math.floor(nx / CHUNK_SIZE);
-    const chunkRow = Math.floor(ny / CHUNK_SIZE);
-    const snap = await adminDb.collection('map_chunks').doc(`chunk_${chunkCol}_${chunkRow}`).get();
-    if (snap.exists && snap.data().pixels?.[`${nx}_${ny}`]?.ownerId === uid) return true;
+  const allChunks = await adminDb.collection('map_chunks').get();
+  const chunkData = {};
+  allChunks.forEach(doc => { chunkData[doc.id] = doc.data(); });
+
+  const dirs8 = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+  for (const [dx, dy] of dirs8) {
+    let nx = tx + dx;
+    let ny = ty + dy;
+    while (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
+      const key = `${nx}_${ny}`;
+      if (LAND_SET.has(key)) {
+        const chunkCol = Math.floor(nx / CHUNK_SIZE);
+        const chunkRow = Math.floor(ny / CHUNK_SIZE);
+        const cid = `chunk_${chunkCol}_${chunkRow}`;
+        if (chunkData[cid]?.pixels?.[key]?.ownerId === uid) return true;
+        break;
+      }
+      nx += dx; ny += dy;
+    }
   }
   return false;
 }
