@@ -31,10 +31,13 @@ function formatTime(seconds) {
 }
 
 export default function MiniLeaderboard({ chunks, userUid, profilo, passiveRate, user, onKissesUpdate }) {
-  const [claiming, setClaiming]   = useState(false);
+  const [claiming, setClaiming]     = useState(false);
   const [lastEarned, setLastEarned] = useState(null);
   const [accumulated, setAccumulated] = useState(0);
-  const [nextIn, setNextIn]         = useState(0); // secondi al prossimo Kisses
+  const [nextIn, setNextIn]           = useState(0);
+  // Timestamp locale dell'ultimo claim: aggiornato subito dopo il claim
+  // (profilo?.lastKissesClaimAt arriva dal server con ritardo)
+  const [localLastClaimAt, setLocalLastClaimAt] = useState(null);
 
   const leaders    = computeLeaderboard(chunks);
   const pixelCount = profilo?.pixelCount ?? 0;
@@ -55,7 +58,10 @@ export default function MiniLeaderboard({ chunks, userUid, profilo, passiveRate,
   useEffect(() => {
     if (pixelCount === 0) return;
     const tick = () => {
-      const lastClaim = profilo?.lastKissesClaimAt?.toMillis?.() ?? (Date.now() - 3600000);
+      // Usa il timestamp locale se disponibile (aggiornato subito dopo il claim)
+      // altrimenti usa quello del profilo dal server
+      const serverTs = profilo?.lastKissesClaimAt?.toMillis?.() ?? (Date.now() - 3600000);
+      const lastClaim = localLastClaimAt ? Math.max(serverTs, localLastClaimAt) : serverTs;
       const elapsed  = (Date.now() - lastClaim) / 1000; // secondi dall'ultimo claim
       // Kisses accumulati da quando si è fatto l'ultimo claim
       const acc = Math.floor(elapsed * ratePerSec);
@@ -68,7 +74,7 @@ export default function MiniLeaderboard({ chunks, userUid, profilo, passiveRate,
     tick();
     const iv = setInterval(tick, 1000);
     return () => clearInterval(iv);
-  }, [pixelCount, ratePerSec, profilo?.lastKissesClaimAt]);
+  }, [pixelCount, ratePerSec, profilo?.lastKissesClaimAt, localLastClaimAt]);
 
   const claim = async () => {
     if (claiming || pixelCount === 0 || accumulated === 0) return;
@@ -82,6 +88,9 @@ export default function MiniLeaderboard({ chunks, userUid, profilo, passiveRate,
       if (data.earned > 0) {
         setLastEarned(data.earned);
         onKissesUpdate?.(data.earned);
+        // Imposta subito il timestamp locale → il tick ricalcolerà elapsed da ora
+        // e accumulated tornerà a 0 senza aspettare il refresh del profilo dal server
+        setLocalLastClaimAt(Date.now());
         setAccumulated(0);
         setTimeout(() => setLastEarned(null), 3000);
       }
