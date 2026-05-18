@@ -196,21 +196,23 @@ function TypeBadge({ type, sm }) {
 function PpDots({ pp, maxPp, color = 'rgba(238,220,212,.78)' }) {
   const count  = Math.min(maxPp ?? 8, 8);
   const filled = Math.max(0, Math.min(count, pp ?? 0));
-  // Pallino pieno = colore passato; pallino vuoto = stesso colore ma più trasparente
+  const totalPp = maxPp ?? count;
+  // Pallino pieno = colore passato; pallino vuoto = stesso colore al 25% opacità
   return (
-    <div style={{ display:'flex', gap:2.5, alignItems:'center' }}>
+    <div style={{ display:'flex', gap:3, alignItems:'center' }}>
       {Array.from({ length: count }).map((_,i) => (
         <div key={i} style={{
           width:5, height:5, borderRadius:'50%', flexShrink:0,
-          background: i < filled ? color : `${color}28`,
-          opacity: i < filled ? 1 : 0.35,
+          background: color,
+          opacity: i < filled ? 1 : 0.22,
         }}/>
       ))}
-      {(maxPp ?? 0) > 8 && (
-        <span style={{ fontFamily:'Orbitron', fontSize:7, color, marginLeft:2, opacity:0.8 }}>
-          {filled}/{maxPp}
-        </span>
-      )}
+      {/* PP: X/Y — sempre visibile, stesso colore nome mossa */}
+      <span style={{
+        fontFamily:'Orbitron', fontSize:7, color, marginLeft:3, opacity:0.85, flexShrink:0,
+      }}>
+        {filled}/{totalPp}
+      </span>
     </div>
   );
 }
@@ -351,6 +353,7 @@ function WaifuSprite({ waifu, size=120, anim='', style={}, isPlayer=false }) {
  */
 function EnemyHud({ waifu }) {
   if (!waifu) return null;
+  const isHotBlurred = !!(waifu._hotBlurred);
   return (
     <div style={{
       background:'rgba(200,20,45,.09)', backdropFilter:'blur(12px)',
@@ -358,12 +361,16 @@ function EnemyHud({ waifu }) {
       padding:'8px 11px', maxWidth:'56%', minWidth:140,
     }}>
       <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
-        <span style={{fontFamily:'Orbitron',fontSize:11,fontWeight:700,color:'#eedcd4',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{waifu.name}</span>
+        <span style={{fontFamily:'Orbitron',fontSize:11,fontWeight:700,color:isHotBlurred?'rgba(255,133,182,0.5)':'#eedcd4',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+          {isHotBlurred ? '🔥 ???' : waifu.name}
+        </span>
         <span style={{fontFamily:'Orbitron',fontSize:8,color:'rgba(255,90,110,.5)',flexShrink:0}}>Lv{waifu.level}</span>
       </div>
-      <div style={{marginBottom:5}}><TypeBadge type={waifu.type} sm/></div>
+      {!isHotBlurred && <div style={{marginBottom:5}}><TypeBadge type={waifu.type} sm/></div>}
+      {isHotBlurred && (
+        <div style={{marginBottom:5,fontFamily:'Orbitron',fontSize:7,color:'rgba(255,133,182,0.6)',letterSpacing:0.5}}>🔥 HOT · Pass Hard</div>
+      )}
       <HpBar hp={waifu.hp} maxHp={waifu.maxHp} h={5} isPlayer={false}/>
-      {/* Solo % vita per l'avversario, non il valore assoluto */}
       <div style={{textAlign:'right',marginTop:2}}>
         <span style={{fontFamily:'Orbitron',fontSize:9,fontWeight:700,color:'rgba(255,90,110,0.7)'}}>
           {waifu.maxHp>0?Math.round((waifu.hp/waifu.maxHp)*100):0}%
@@ -1751,9 +1758,22 @@ export default function WaifuBattleArena({
               }}/>
             ))}
           </div>
-          {/* Enemy sprite: bottom-right */}
+          {/* Enemy sprite: bottom-right — oscurato se hot blurred */}
           <div style={{position:'absolute', right:14, bottom:0, zIndex:2}}>
-            <WaifuSprite waifu={enemy} size={sEnemy} anim={eAnim} isPlayer={false}/>
+            <div style={{position:'relative', display:'inline-block'}}>
+              <WaifuSprite waifu={enemy} size={sEnemy} anim={eAnim} isPlayer={false}/>
+              {enemy?._hotBlurred && (
+                <div style={{
+                  position:'absolute', inset:0,
+                  backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)',
+                  background:'rgba(3,2,12,0.55)', borderRadius:8,
+                  display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4,
+                }}>
+                  <span style={{fontSize:20}}>🔥</span>
+                  <span style={{fontFamily:'Orbitron',fontSize:7,color:'#ff85b6',letterSpacing:1,fontWeight:700}}>HOT</span>
+                </div>
+              )}
+            </div>
           </div>
           {/* Red vignette tint on enemy side */}
           <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 75% 30%, rgba(200,20,40,.07) 0%, transparent 70%)',pointerEvents:'none',zIndex:1}}/>
@@ -1774,6 +1794,20 @@ export default function WaifuBattleArena({
             display:'-webkit-box', WebkitLineClamp:1, WebkitBoxOrient:'vertical',
           }}>{message}</p>
         </div>
+
+        {/* Banner hot waifu: visibile quando la waifu avversaria attiva è oscurata */}
+        {enemy?._hotBlurred && (
+          <div style={{
+            flexShrink:0, padding:'5px 12px',
+            background:'rgba(255,133,182,0.1)', borderBottom:'1px solid rgba(255,133,182,0.2)',
+            display:'flex', alignItems:'center', gap:6,
+          }}>
+            <span style={{fontSize:12}}>🔥</span>
+            <span style={{fontFamily:'Fredoka',fontSize:10,color:'rgba(255,133,182,0.85)',flex:1}}>
+              Questa waifu è Hot e non puoi vederla. Acquista il Pass Hard per scoprirla.
+            </span>
+          </div>
+        )}
 
         {/* Player Zone (bottom 54%) */}
         <div style={{flex:1, position:'relative', overflow:'hidden', minHeight:0}}>

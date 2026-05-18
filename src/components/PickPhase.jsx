@@ -173,8 +173,8 @@ function WaifuPickCard({ waifu, slot, selectable, onTap, hideStats = false }) {
   const rs = getRarityStyle(rarita);
 
   // Immagine: prova più campi per compatibilità con diversi formati waifu
-  // (waifu del catalogo, waifu CPU generate, waifu PvP da Firestore)
   const imgUrl = waifu.asset_statica ?? waifu.img ?? waifu.imgUrl ?? waifu.image ?? null;
+  const isHotBlurred = !!(waifu._hotBlurred); // waifu hot oscurata (no Pass Hard)
 
   return (
     <button onClick={selectable ? onTap : undefined} style={{
@@ -217,11 +217,27 @@ function WaifuPickCard({ waifu, slot, selectable, onTap, hideStats = false }) {
           position: 'relative',
         }}>
           {imgUrl
-            ? <img
-                src={imgUrl}
-                alt={waifu.nome ?? waifu.name ?? ''}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
-              />
+            ? <>
+                <img
+                  src={imgUrl}
+                  alt={waifu.nome ?? waifu.name ?? ''}
+                  style={{
+                    width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top',
+                    filter: isHotBlurred ? 'blur(5px)' : 'none',
+                  }}
+                />
+                {isHotBlurred && (
+                  <div style={{
+                    position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center', gap: 4,
+                    background: 'rgba(3,2,12,0.35)',
+                  }}>
+                    <span style={{ fontSize: 14 }}>🔥</span>
+                    <span style={{ fontFamily: 'Orbitron', fontSize: 7, color: '#ff85b6', letterSpacing: 0.5, textAlign: 'center', fontWeight: 700 }}>HOT</span>
+                    <span style={{ fontFamily: 'Orbitron', fontSize: 6, color: 'rgba(255,133,182,0.7)', textAlign: 'center' }}>Pass Hard</span>
+                  </div>
+                )}
+              </>
             : <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 height: '100%', fontSize: 20, color: rs.badge, opacity: 0.3,
@@ -629,6 +645,18 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
         {/* Sezione: roster avversario (sola lettura, statistiche nascoste per mantenere la segretezza) */}
         <div style={S.section}>
           <div style={S.label}>ROSTER AVVERSARIO — {nomeImperoAvversario ?? 'CPU'}</div>
+          {/* Messaggio informativo se ci sono waifu hot oscurate */}
+          {opponentRoster.some(w => w._hotBlurred) && (
+            <div style={{
+              marginBottom: 8, padding: '8px 12px',
+              background: 'rgba(255,133,182,0.08)', border: '1px solid rgba(255,133,182,0.25)',
+              borderRadius: 10,
+              fontFamily: 'Fredoka', fontSize: 11, color: 'rgba(255,133,182,0.85)', lineHeight: 1.5,
+            }}>
+              🔥 Alcune waifu di <strong>{nomeImperoAvversario ?? 'questo impero'}</strong> sono Hot e non puoi vederle.
+              Acquista il Pass Hard per scoprirle e vederle senza censura.
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
             {opponentRoster.map((w, idx) => (
               <WaifuPickCard key={w.id ?? idx} waifu={w} slot={null} selectable={false} onTap={null} hideStats={true} />

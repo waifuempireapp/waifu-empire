@@ -113,9 +113,11 @@ export default function RoundViewer({ battle, waifuCat, collezione, profilo, onR
       }
     }
 
-    // Per pixel giocatore con waifu hot + no Pass Hard: blur l'immagine
+    // Per pixel giocatore con waifu hot + no Pass Hard:
+    // Aggiungi _hotBlurred = true (mostrata oscurata in PickPhase e in arena)
+    // Mantieni l'immagine originale così il componente può applicare il blur
     if (!isCPUDefender && !hasHardPass) {
-      pool = pool.map(w => w?.hot ? { ...w, image: null, asset_statica: null, asset_immagine: null } : w);
+      pool = pool.map(w => w?.hot ? { ...w, _hotBlurred: true } : w);
     }
 
     return pool;
@@ -178,7 +180,13 @@ export default function RoundViewer({ battle, waifuCat, collezione, profilo, onR
         onConfirm={(pTeam, eTeam) => {
           battleResultRef.current = null;
           setPlayerTeam(pTeam);
-          setEnemyTeam(eTeam);
+          // Ripristina il flag _hotBlurred dall'originale roster5E
+          // (initBattleWaifu non lo copia, quindi lo aggiungiamo di nuovo per usarlo in arena)
+          const eTeamWithFlags = eTeam.map(w => {
+            const orig = roster5E.find(r => r.id === w.id);
+            return orig?._hotBlurred ? { ...w, _hotBlurred: true } : w;
+          });
+          setEnemyTeam(eTeamWithFlags);
           setPhase('battle');
         }}
       />
@@ -197,6 +205,7 @@ export default function RoundViewer({ battle, waifuCat, collezione, profilo, onR
           sonoAttaccante: true,
           nomeImpero: profilo?.nomeImpero || 'Tu',
           territoryName: battle?.name || `(${battle?.pixelX ?? ''}, ${battle?.pixelY ?? ''})`,
+          hasHardPass: hasHardPass === true,
           bo3: {
             attackerWins: battle?.attackerWins ?? 0,
             defenderWins: battle?.defenderWins ?? 0,
