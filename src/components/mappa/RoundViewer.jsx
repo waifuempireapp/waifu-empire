@@ -55,6 +55,15 @@ export default function RoundViewer({ battle, waifuCat, collezione, profilo, onR
 
   const battleResultRef = useRef(null);
 
+  // Fix hooks-order: il ref per l'offset header DEVE stare qui
+  // prima di qualsiasi early return (Rules of Hooks)
+  const topOffsetRef = useRef(0);
+  if (typeof window !== 'undefined' && topOffsetRef.current === 0) {
+    const hdr = document.querySelector('.hdr-root');
+    const ntabs = document.querySelector('.ntabs-root');
+    topOffsetRef.current = (hdr ? hdr.getBoundingClientRect().height : 0) + (ntabs ? ntabs.getBoundingClientRect().height : 0);
+  }
+
   // roster5P: SEMPRE le 5 waifu scelte in BattleModal (attackerTeam)
   // La PickPhase mostra solo quelle 5, non tutta la collezione
   const roster5P = useMemo(() => (
@@ -176,18 +185,9 @@ export default function RoundViewer({ battle, waifuCat, collezione, profilo, onR
     );
   }
 
-  // Offset header: la schermata parte sotto l'header del gioco
-  const topOffsetRef = useRef(0);
-  if (typeof window !== 'undefined' && topOffsetRef.current === 0) {
-    const hdr = document.querySelector('.hdr-root');
-    const ntabs = document.querySelector('.ntabs-root');
-    topOffsetRef.current = (hdr ? hdr.getBoundingClientRect().height : 0) + (ntabs ? ntabs.getBoundingClientRect().height : 0);
-  }
-  const topOff = topOffsetRef.current;
-
   // ── BATTLE ────────────────────────────────────────────────────────────────
   return (
-    <div style={{ position: 'fixed', top: topOff, left: 0, right: 0, bottom: 0, zIndex: 200, background: '#07051a' }}>
+    <div style={{ position: 'fixed', top: topOffsetRef.current, left: 0, right: 0, bottom: 0, zIndex: 200, background: '#07051a' }}>
       <WaifuBattleArena
         playerTeam={playerTeam}
         enemyTeam={enemyTeam}
