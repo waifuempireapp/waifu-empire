@@ -53,9 +53,13 @@ export default function SwapCard({ waifu, onVote }) {
           userSelect: 'none',
         }}
       >
-        {/* Card image */}
-        {waifu.asset_immagine ? (
-          <img src={waifu.asset_immagine} alt={waifu.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} />
+        {/* Card image — fallback chain: asset_immagine → asset_statica → asset_immersiva */}
+        {(waifu.asset_immagine || waifu.asset_statica || waifu.asset_immersiva) ? (
+          <img
+            src={waifu.asset_immagine || waifu.asset_statica || waifu.asset_immersiva}
+            alt={waifu.nome}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }}
+          />
         ) : (
           <div style={{ width: '100%', height: '100%', background: 'linear-gradient(180deg, #1b1638, #251f48)', display: 'grid', placeItems: 'center' }}>
             <span style={{ fontSize: 64, opacity: 0.3 }}>♛</span>
