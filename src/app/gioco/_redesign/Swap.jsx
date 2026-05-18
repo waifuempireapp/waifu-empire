@@ -9,6 +9,7 @@ import KissesIcon from '@/components/KissesIcon';
 
 export function SwapTab({ user, profilo, setProfilo, setTab }) {
   const [batch, setBatch] = useState([]);
+  const [howExpanded, setHowExpanded] = useState(false); // default collassato, reset ad ogni mount
   const [currentIdx, setCurrentIdx] = useState(0);
   const [swapConfig, setSwapConfig] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -121,29 +122,53 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
         </div>
       </div>
 
-      {/* Banner informativo come funziona lo Swap */}
+      {/* Banner informativo "Come funziona" — collassabile, default chiuso (reset ad ogni mount) */}
       <div style={{
-        marginBottom: 14, padding: '12px 16px',
-        background: 'linear-gradient(135deg, rgba(255,133,182,0.07), rgba(167,139,250,0.05))',
-        border: '1px solid rgba(255,133,182,0.15)', borderRadius: 14,
-      }}>
-        <div style={{ fontFamily: FF.label, fontSize: 9, letterSpacing: '0.2em', color: C.sakura, textTransform: 'uppercase', marginBottom: 8 }}>
-          Come funziona
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {[
-            { icon: '👆', text: 'Scorri le carte e vota le waifu che ti piacciono con ♥ o ✕' },
-            { icon: '🩷', text: 'Ogni 10 voti guadagni Kisses, la valuta del gioco' },
-            { icon: '🔥', text: 'Più giorni consecutivi voti, più alto è il moltiplicatore dei Kisses' },
-            { icon: '🏆', text: 'Le waifu più votate scalano la classifica settimanale: chi le possiede riceve bonus Kisses ogni domenica' },
-          ].map(({ icon, text }) => (
-            <div key={text} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-              <span style={{ fontSize: 14, flexShrink: 0 }}>{icon}</span>
-              <span style={{ fontFamily: FF.body, fontSize: 11, color: 'rgba(241,235,255,0.65)', lineHeight: 1.4 }}>{text}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+            marginBottom: 14, borderRadius: 14, overflow: 'hidden',
+            border: '1px solid rgba(255,133,182,0.15)',
+            background: 'linear-gradient(135deg, rgba(255,133,182,0.07), rgba(167,139,250,0.05))',
+          }}>
+            {/* Header sempre visibile — click per espandere/collassare */}
+            <button
+              onClick={() => setHowExpanded(v => !v)}
+              style={{
+                width: '100%', padding: '12px 16px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                background: 'none', border: 'none', cursor: 'pointer',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 14 }}>ℹ️</span>
+                <span style={{ fontFamily: FF.label, fontSize: 10, letterSpacing: '0.2em', color: C.sakura, textTransform: 'uppercase' }}>
+                  Come funziona
+                </span>
+              </div>
+              <span style={{
+                fontFamily: FF.label, fontSize: 9, letterSpacing: '0.15em', textTransform: 'uppercase',
+                color: 'rgba(241,235,255,0.45)',
+                transition: 'transform 0.2s',
+                display: 'inline-block',
+                transform: howExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+              }}>▼</span>
+            </button>
+
+            {/* Contenuto collassabile */}
+            {howExpanded && (
+              <div style={{ padding: '0 16px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[
+                  { icon: '👆', text: 'Scorri le carte e vota le waifu che ti piacciono con ♥ o ✕' },
+                  { icon: '🩷', text: 'Ogni 10 voti guadagni Kisses, la valuta del gioco' },
+                  { icon: '🔥', text: 'Più giorni consecutivi voti, più alto è il moltiplicatore dei Kisses' },
+                  { icon: '🏆', text: 'Le waifu più votate scalano la classifica settimanale: chi le possiede riceve bonus Kisses ogni domenica' },
+                ].map(({ icon, text }) => (
+                  <div key={text} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <span style={{ fontSize: 14, flexShrink: 0 }}>{icon}</span>
+                    <span style={{ fontFamily: FF.body, fontSize: 11, color: 'rgba(241,235,255,0.65)', lineHeight: 1.4 }}>{text}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
       {/* Streak indicator */}
       {(profilo?.streakDays ?? 0) > 1 && (

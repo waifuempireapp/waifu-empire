@@ -78,7 +78,7 @@ import {
   CardInfo, Divider, StelleRarita, FramePersonaggio,
 } from '@/components/ui/UIKit';
 // Removed unused: BarraRisorsa
-import { Header, NavTabs, BottomNav, HomeTab, SakuraPetals, MappaPixelTab, SwapTab } from './_redesign';
+import { Header, NavTabs, BottomNav, HomeTab, SakuraPetals, MappaPixelTab, SwapTab, ClassificaTab } from './_redesign';
 
 // ════════════════════════════════════════════════════════════════════════════
 // COMPONENTE: GiocoPage (default export)
