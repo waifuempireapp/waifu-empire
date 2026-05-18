@@ -304,20 +304,12 @@ export function HomeTab({
   const numPose   = Object.keys(collezione.pose    || {}).length;
   const totalPack = (profilo.pacchettiOmaggio ?? 0) + (profilo.pacchettiBenvenuto ?? 0) + (profilo.pacchettiSfida ?? 0);
 
-  const [posizioneClassifica, setPosizioneClassifica] = useState(null);
   const [dropStagionale, setDropStagionale] = useState(undefined);
   const [quest, setQuest] = useState(null);
   const [attivitaAmici, setAttivitaAmici] = useState(null);
   const [missioniAperte, setMissioniAperte] = useState(false);
 
-  useEffect(() => {
-    if (!user) return;
-    getClassifica(200).then(c => {
-      const idx = c.findIndex(u => u.id === user.uid);
-      setPosizioneClassifica(idx >= 0 ? idx + 1 : null);
-    }).catch(() => {});
-  }, [user]);
-
+  // getClassifica rimossa: causava jank all'apertura della home (200 utenti fetchati)
   useEffect(() => {
     getDropStagionale().then(d => setDropStagionale(d ?? null)).catch(() => setDropStagionale(null));
   }, []);
@@ -379,13 +371,49 @@ export function HomeTab({
         }
       </div>
 
-      {/* STATISTICHE COMBATTIMENTO */}
-      <StatCombattimento
-        profilo={profilo}
-        territoriConquistati={territoriConquistati}
-        setTab={setTab}
-        posizioneClassifica={posizioneClassifica}
-      />
+      {/* SWAP PROMO BANNER — sostituisce statistiche combattimento */}
+      <div onClick={() => setTab('swap')} style={{
+        position: 'relative', marginBottom: 20, borderRadius: 20,
+        overflow: 'hidden', cursor: 'pointer',
+        background: 'linear-gradient(135deg, #1a0730 0%, #2d0a4e 40%, #1a0730 100%)',
+        border: '1px solid rgba(255,133,182,0.35)',
+        boxShadow: '0 8px 32px rgba(197,74,134,0.25), 0 0 0 1px rgba(255,255,255,0.04) inset',
+        padding: '20px 22px', minHeight: 120,
+      }}>
+        <style>{`
+          @keyframes floatPetalSwap{0%{transform:translateY(0) rotate(0deg);opacity:0}10%{opacity:.6}90%{opacity:.4}100%{transform:translateY(-80px) rotate(360deg);opacity:0}}
+          @keyframes shimmerSwap{0%{transform:translateX(-100%)}100%{transform:translateX(200%)}}
+        `}</style>
+        {[10,25,42,60,78].map((left,i)=>(
+          <div key={i} style={{position:'absolute',bottom:8,left:`${left}%`,width:8,height:8,borderRadius:'50% 0 50% 50%',
+            background:i%2===0?'rgba(255,133,182,0.5)':'rgba(196,108,240,0.45)',
+            transform:'rotate(45deg)',animation:`floatPetalSwap ${3+i*0.7}s ease-in-out ${i*0.4}s infinite`,pointerEvents:'none'}}/>
+        ))}
+        <div style={{position:'absolute',inset:0,overflow:'hidden',borderRadius:'inherit',pointerEvents:'none'}}>
+          <div style={{position:'absolute',top:0,bottom:0,width:'40%',
+            background:'linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent)',
+            animation:'shimmerSwap 3.5s ease-in-out 1s infinite'}}/>
+        </div>
+        <div style={{position:'absolute',right:18,top:'50%',transform:'translateY(-50%)',fontSize:56,opacity:.18,pointerEvents:'none',userSelect:'none'}}>🩷</div>
+        <div style={{position:'relative',zIndex:1}}>
+          <div style={{fontFamily:"var(--ff-label,'Saira Condensed',sans-serif)",fontSize:8,letterSpacing:'0.28em',color:'rgba(255,133,182,0.75)',textTransform:'uppercase',marginBottom:6}}>✦ Scopri le Waifu ✦</div>
+          <div style={{fontFamily:"var(--ff-display,'Unbounded',sans-serif)",fontSize:22,fontWeight:900,color:'#fff',marginBottom:6,textShadow:'0 0 20px rgba(255,133,182,0.5)'}}>Il Tinder delle Waifu</div>
+          <div style={{fontSize:12,color:'rgba(241,235,255,0.6)',lineHeight:1.5,marginBottom:14,maxWidth:'75%'}}>Swipa, vota e guadagna Kisses ogni 10 voti. Più voti, più guadagni!</div>
+          <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+            {(profilo?.totalVotes ?? 0) > 0 && (
+              <div style={{background:'rgba(255,133,182,0.12)',border:'1px solid rgba(255,133,182,0.25)',borderRadius:8,padding:'4px 10px',fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:'#ff85b6'}}>
+                {profilo.totalVotes} voti totali
+              </div>
+            )}
+            {(profilo?.streakDays ?? 0) > 1 && (
+              <div style={{background:'rgba(108,240,224,0.1)',border:'1px solid rgba(108,240,224,0.25)',borderRadius:8,padding:'4px 10px',fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:'#6cf0e0'}}>
+                🔥 {profilo.streakDays} giorni streak
+              </div>
+            )}
+            <div style={{background:'linear-gradient(135deg,#c54a86,#ff85b6)',borderRadius:10,padding:'7px 16px',color:'#fff',fontFamily:"var(--ff-label,'Saira Condensed',sans-serif)",fontSize:11,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:700,boxShadow:'0 4px 14px rgba(197,74,134,0.4)'}}>Inizia →</div>
+          </div>
+        </div>
+      </div>
 
       {/* BANNER ULTIME CARTE (con totale waifu) */}
       <BannerUltimeCarte
@@ -567,11 +595,20 @@ function BannerUltimeCarte({
 }) {
   const [cartaSel, setCartaSel] = useState(null);
 
-  const ultime10 = [
-    ...tutteLeWaifu.map(i  => ({ ...i,  _ts: i.dati?.acquisito?.toMillis?.() ?? Number(i.dati?.acquisito) ?? 0 })),
-    ...tuttiGliOutfit.map(i => ({ ...i, _ts: i.dati?.acquisito?.toMillis?.() ?? Number(i.dati?.acquisito) ?? 0 })),
-    ...tutteLePose.map(i   => ({ ...i,  _ts: i.dati?.acquisito?.toMillis?.() ?? Number(i.dati?.acquisito) ?? 0 })),
-  ].sort((a, b) => b._ts - a._ts).slice(0, 10);
+  // Parsing timestamp robusto: Firestore Timestamp (.toMillis), .seconds, numero grezzo
+  const ts = (dati) => {
+    const a = dati?.acquisito;
+    if (!a) return 0;
+    if (typeof a.toMillis === 'function') return a.toMillis();
+    if (a.seconds) return a.seconds * 1000;
+    const n = Number(a); return isNaN(n) ? 0 : n;
+  };
+  // 20 carte ordinate per data acquisizione desc (più recente prima)
+  const ultime20 = [
+    ...tutteLeWaifu.map(i  => ({ ...i, _ts: ts(i.dati) })),
+    ...tuttiGliOutfit.map(i => ({ ...i, _ts: ts(i.dati) })),
+    ...tutteLePose.map(i   => ({ ...i, _ts: ts(i.dati) })),
+  ].sort((a, b) => b._ts - a._ts).slice(0, 20);
 
   return (
     <PannelloOrnato glow="#a78bfa" variant="purple" noCorners>
@@ -587,15 +624,18 @@ function BannerUltimeCarte({
           <CardPacchettoOverlay profilo={profilo} totalPack={totalPack} setTab={setTab} />
         </div>
 
-        {ultime10.map((item) => {
+        {ultime20.map((item) => {
           if (item.tipo === 'waifu') {
             const { id, w, dati } = item;
+            const hotCard = w.hot === true;
+            const cens = hotCard && !profilo?.hardPass;
             return (
               <div key={`w-${id}`} className="u-shrink0">
                 <CartaWaifu waifu={w} datiCollezione={dati} dimensione="piccola" tipo="auto"
                   outfitCatalogo={outfitCat} poseCatalogo={poseCat}
                   equip={collezione.equipaggiamento?.[id]}
-                  onClick={() => setCartaSel({ tipo: 'waifu', w, dati })} />
+                  isHot={hotCard} censurata={cens}
+                  onClick={cens ? undefined : () => setCartaSel({ tipo: 'waifu', w, dati })} />
               </div>
             );
           }
@@ -620,7 +660,7 @@ function BannerUltimeCarte({
           return null;
         })}
 
-        {ultime10.length === 0 && (
+        {ultime20.length === 0 && (
           <div className="ht-banner-empty">
             <div className="ht-banner-empty__icon">🌸</div>
             <div className="ht-banner-empty__title">Collezione vuota</div>
