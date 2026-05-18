@@ -2250,3 +2250,37 @@ input:focus, textarea:focus, select:focus {
 .sb-fly-delay-2 { animation-delay: 120ms; }
 .sb-fly-delay-3 { animation-delay: 180ms; }
 .sb-fly-delay-4 { animation-delay: 240ms; }
+
+/* ===== Performance optimizations ===== */
+/* GPU acceleration per elementi animati frequentemente */
+.sakura-petal,
+.wba-fm,
+.fade-in,
+.fade-up {
+  will-change: transform, opacity;
+}
+
+/* Riduce il reflow/repaint nei tab che non sono visibili */
+.game-container > [style*="display: none"] {
+  content-visibility: auto;
+}
+
+/* Immagini: prevenire layout shift */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Smooth scroll per tutte le sezioni scrollabili */
+.game-container,
+[style*="overflow-y: auto"],
+[style*="overflowY: auto"] {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Riduce il jank del bottom nav su iOS */
+.bottom-nav-mobile {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}

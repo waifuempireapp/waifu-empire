@@ -7,7 +7,7 @@ import SwapMilestoneModal from '@/components/swap/SwapMilestoneModal';
 import AdSlot from '@/components/swap/AdSlot';
 import KissesIcon from '@/components/KissesIcon';
 
-export function SwapTab({ user, profilo, setProfilo }) {
+export function SwapTab({ user, profilo, setProfilo, setTab }) {
   const [batch, setBatch] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [swapConfig, setSwapConfig] = useState(null);
@@ -22,7 +22,12 @@ export function SwapTab({ user, profilo, setProfilo }) {
       const token = await user.getIdToken();
       const res = await fetch('/api/swap/batch', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
-      setBatch(prev => [...prev, ...(data.waifu || [])]);
+      let waifu = data.waifu || [];
+      // Se non ho il Pass Hard, escludo le waifu Hot dalla coda Swap
+      if (!profilo?.hardPass) {
+        waifu = waifu.filter(w => !w.hot);
+      }
+      setBatch(prev => [...prev, ...waifu]);
     } catch (e) { console.error(e); }
   };
 
@@ -97,9 +102,18 @@ export function SwapTab({ user, profilo, setProfilo }) {
     <div style={{ position: 'relative', minHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div>
-          <div style={{ fontFamily: FF.label, fontSize: 9, letterSpacing: '0.22em', color: C.sakura, textTransform: 'uppercase' }}>💋 SWAP</div>
-          <div style={{ fontFamily: FF.display, fontSize: 20, color: '#fff', fontWeight: 800 }}>Scopri le Waifu</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Back button */}
+          <button onClick={() => setTab?.('home')} style={{
+            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(174,156,255,0.2)',
+            borderRadius: 10, color: 'rgba(241,235,255,0.7)', padding: '7px 12px',
+            fontFamily: FF.label, fontSize: 11, letterSpacing: '0.15em',
+            textTransform: 'uppercase', cursor: 'pointer', flexShrink: 0,
+          }}>← Home</button>
+          <div>
+            <div style={{ fontFamily: FF.label, fontSize: 9, letterSpacing: '0.22em', color: C.sakura, textTransform: 'uppercase' }}>🩷 SWAP</div>
+            <div style={{ fontFamily: FF.display, fontSize: 20, color: '#fff', fontWeight: 800 }}>Scopri le Waifu</div>
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <KissesIcon size={16} />
@@ -127,7 +141,8 @@ export function SwapTab({ user, profilo, setProfilo }) {
           <div style={{ fontFamily: FF.mono, fontSize: 10, color: 'rgba(241,235,255,0.3)', marginBottom: 12 }}>
             #{currentIdx + 1} — swipa per votare
           </div>
-          <SwapCard waifu={currentWaifu} onVote={handleVote} />
+          {/* key=id forza rimount per ogni nuova waifu, elimina il flash della foto precedente */}
+          <SwapCard key={currentWaifu?.id ?? currentIdx} waifu={currentWaifu} onVote={handleVote} />
         </div>
       ) : (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>

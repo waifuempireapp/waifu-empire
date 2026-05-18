@@ -327,6 +327,7 @@ export default function GiocoPage() {
               setProfilo={setProfilo}
               collezione={collezione}
               waifuCat={waifuCat}
+              setTab={setTab}
             />
           )}
 
@@ -1083,11 +1084,20 @@ function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneCla
 function BannerUltimeCarte({ tutteLeWaifu, tuttiGliOutfit, tutteLePose, outfitCat, poseCat, collezione, profilo, setProfilo, user, totalPack, setTab }) {
   const [cartaSel, setCartaSel] = useState(null); // Fase 3: carta selezionata per modal
 
-  // Ultime 20 carte: mescola waifu+outfit+posa, ordinate per acquisito (più recente prima) e limita a 20
+  // Ultime 20 carte: ordinate per data acquisizione desc (più recente prima)
+  // Parsing robusto: Firestore Timestamp → toMillis(), seconds field, numero grezzo, Date string
+  const tsFromDati = (dati) => {
+    const a = dati?.acquisito;
+    if (!a) return 0;
+    if (typeof a.toMillis === 'function') return a.toMillis();
+    if (a.seconds) return a.seconds * 1000;
+    const n = Number(a);
+    return isNaN(n) ? 0 : n;
+  };
   const tutteOrdinatePerData = [
-    ...tutteLeWaifu.map(item => ({ ...item, _ts: item.dati?.acquisito?.toMillis ? item.dati.acquisito.toMillis() : Number(item.dati?.acquisito) || 0 })),
-    ...tuttiGliOutfit.map(item => ({ ...item, _ts: item.dati?.acquisito?.toMillis ? item.dati.acquisito.toMillis() : Number(item.dati?.acquisito) || 0 })),
-    ...tutteLePose.map(item => ({ ...item, _ts: item.dati?.acquisito?.toMillis ? item.dati.acquisito.toMillis() : Number(item.dati?.acquisito) || 0 })),
+    ...tutteLeWaifu.map(item => ({ ...item, _ts: tsFromDati(item.dati) })),
+    ...tuttiGliOutfit.map(item => ({ ...item, _ts: tsFromDati(item.dati) })),
+    ...tutteLePose.map(item => ({ ...item, _ts: tsFromDati(item.dati) })),
   ].sort((a, b) => b._ts - a._ts).slice(0, 20);
 
   const hasAnyCard = tutteOrdinatePerData.length > 0;
@@ -1112,6 +1122,8 @@ function BannerUltimeCarte({ tutteLeWaifu, tuttiGliOutfit, tutteLePose, outfitCa
         {tutteOrdinatePerData.map((item) => {
           if (item.tipo === 'waifu') {
             const { id, w, dati } = item;
+            const isHotCard = w.hot === true;
+            const isCensurata = isHotCard && !profilo?.hardPass;
             return (
               <div key={`w-${id}`} style={{ flexShrink: 0 }}>
                 <CartaWaifu
@@ -1122,7 +1134,9 @@ function BannerUltimeCarte({ tutteLeWaifu, tuttiGliOutfit, tutteLePose, outfitCa
                   outfitCatalogo={outfitCat}
                   poseCatalogo={poseCat}
                   equip={collezione.equipaggiamento?.[id]}
-                  onClick={() => setCartaSel({ tipo: 'waifu', w, dati })}
+                  isHot={isHotCard}
+                  censurata={isCensurata}
+                  onClick={isCensurata ? undefined : () => setCartaSel({ tipo: 'waifu', w, dati })}
                 />
               </div>
             );
@@ -3387,36 +3401,6 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
         />
       )}
 
-      {/* SWAP CTA BANNER — sostituisce il bottone catalogo statico */}
-      <div
-        onClick={() => setTab?.('swap')}
-        style={{
-          marginBottom: 16, borderRadius: 18, overflow: 'hidden', cursor: 'pointer',
-          background: 'linear-gradient(135deg, rgba(197,74,134,0.18), rgba(108,240,224,0.1))',
-          border: '1px solid rgba(255,133,182,0.3)',
-          boxShadow: '0 4px 24px rgba(255,133,182,0.12)',
-          padding: '18px 20px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
-        }}
-      >
-        <div>
-          <div style={{ fontFamily: 'Orbitron', fontSize: 8, letterSpacing: '0.22em', color: 'rgba(255,133,182,0.8)', textTransform: 'uppercase', marginBottom: 4 }}>
-            🩷 NOVITÀ
-          </div>
-          <div style={{ fontFamily: 'Orbitron', fontSize: 15, color: '#fff', fontWeight: 800, marginBottom: 4 }}>
-            Scopri le Waifu
-          </div>
-          <div style={{ fontSize: 12, color: 'rgba(241,235,255,0.55)', lineHeight: 1.4 }}>
-            Swipa, vota e guadagna Kisses!
-          </div>
-        </div>
-        <div style={{
-          flexShrink: 0, padding: '10px 16px',
-          background: 'linear-gradient(135deg, #c54a86, #ff85b6)',
-          borderRadius: 12, color: '#fff',
-          fontFamily: 'Orbitron', fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700,
-        }}>Vai →</div>
-      </div>
 
       {/* CATALOGO CON FILTRI + INFINITE SCROLL — mantenuto ma nascosto (non più raggiungibile via UI) */}
       {false && (
@@ -3996,7 +3980,14 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
             <div className="collection-card-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
               {visibili.map(({ id, dati, w }, idx) => (
                 <div key={id} className="card-fade-up card-clickable collection-card-item" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', animationDelay: `${idx * 45}ms` }}>
-                  <CartaWaifu waifu={w} datiCollezione={dati} dimensione="piccola" tipo="auto" onClick={() => setWaifuSel(id)} outfitCatalogo={outfitCat} poseCatalogo={poseCat} equip={collezione.equipaggiamento?.[id]} isHot={w.hot === true} censurata={w.hot === true && !profilo?.hardPass} />
+                  <CartaWaifu
+                    waifu={w} datiCollezione={dati} dimensione="piccola" tipo="auto"
+                    outfitCatalogo={outfitCat} poseCatalogo={poseCat}
+                    equip={collezione.equipaggiamento?.[id]}
+                    isHot={w.hot === true}
+                    censurata={w.hot === true && !profilo?.hardPass}
+                    onClick={(w.hot === true && !profilo?.hardPass) ? undefined : () => setWaifuSel(id)}
+                  />
                   <div style={{ textAlign: 'center', marginTop: 4 }}>
                     {dati.copie >= 3 ? (
                       <span style={{ ...stileLevelUp, fontSize: 9, color: '#00e676', display: 'block' }}>⚡ LEVEL UP!</span>

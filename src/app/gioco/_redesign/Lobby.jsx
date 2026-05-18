@@ -357,15 +357,8 @@ export function HomeTab({
   const numPose = Object.keys(collezione.pose || {}).length;
   const totalPack = (profilo.pacchettiOmaggio ?? 0) + (profilo.pacchettiBenvenuto ?? 0) + (profilo.pacchettiSfida ?? 0);
 
-  const [posizioneClassifica, setPosizioneClassifica] = useState(null);
-
-  useEffect(() => {
-    if (!user) return;
-    getClassifica(200).then(classifica => {
-      const idx = classifica.findIndex(u => u.id === user.uid);
-      setPosizioneClassifica(idx >= 0 ? idx + 1 : null);
-    }).catch(() => {});
-  }, [user]);
+  // posizioneClassifica rimossa dalla home: non serve più con il nuovo banner Swap
+  // (era la causa del jank iniziale — getClassifica(200) ritardava il render)
 
   const tutteLeWaifu = Object.entries(collezione.waifu || {}).map(([id, dati]) => {
     const w = waifuCat.find(x => x.id === id);
@@ -407,9 +400,8 @@ export function HomeTab({
           </div>
         </div>
 
-        {/* STAT COMBATTIMENTO */}
-        <StatCombattimento profilo={profilo} territoriConquistati={territoriConquistati}
-          setTab={setTab} posizioneClassifica={posizioneClassifica} />
+        {/* SWAP PROMO BANNER */}
+        <SwapPromoBanner setTab={setTab} profilo={profilo} />
 
         {/* COLLEZIONE STATS */}
         <div style={{
@@ -642,7 +634,122 @@ function BigActionButton({ icon, color, title, desc, onClick }) {
 }
 
 // =====================================================================
-// STAT COMBATTIMENTO
+// SWAP PROMO BANNER (sostituisce le statistiche combattimento)
+// =====================================================================
+function SwapPromoBanner({ setTab, profilo }) {
+  const totalVoti = profilo?.totalVotes ?? 0;
+  const streak    = profilo?.streakDays ?? 0;
+
+  return (
+    <div
+      onClick={() => setTab('swap')}
+      style={{
+        position: 'relative', marginBottom: 20, borderRadius: 20,
+        overflow: 'hidden', cursor: 'pointer',
+        background: 'linear-gradient(135deg, #1a0730 0%, #2d0a4e 40%, #1a0730 100%)',
+        border: '1px solid rgba(255,133,182,0.35)',
+        boxShadow: '0 8px 32px rgba(197,74,134,0.25), 0 0 0 1px rgba(255,255,255,0.04) inset',
+        padding: '20px 22px',
+        minHeight: 120,
+      }}
+    >
+      <style>{`
+        @keyframes floatPetal {
+          0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
+          10%  { opacity: 0.6; }
+          90%  { opacity: 0.4; }
+          100% { transform: translateY(-80px) rotate(360deg); opacity: 0; }
+        }
+        @keyframes shimmerBanner {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(200%); }
+        }
+      `}</style>
+
+      {/* Petali animati decorativi */}
+      {[10,25,42,60,78].map((left, i) => (
+        <div key={i} style={{
+          position: 'absolute', bottom: 8, left: `${left}%`,
+          width: 8, height: 8, borderRadius: '50% 0 50% 50%',
+          background: i % 2 === 0 ? 'rgba(255,133,182,0.5)' : 'rgba(196,108,240,0.45)',
+          transform: 'rotate(45deg)',
+          animation: `floatPetal ${3 + i * 0.7}s ease-in-out ${i * 0.4}s infinite`,
+          pointerEvents: 'none',
+        }} />
+      ))}
+
+      {/* Shimmer */}
+      <div style={{
+        position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none',
+        borderRadius: 'inherit',
+      }}>
+        <div style={{
+          position: 'absolute', top: 0, bottom: 0, width: '40%',
+          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)',
+          animation: 'shimmerBanner 3.5s ease-in-out 1s infinite',
+        }} />
+      </div>
+
+      {/* Emoji decorativa */}
+      <div style={{
+        position: 'absolute', right: 18, top: '50%', transform: 'translateY(-50%)',
+        fontSize: 56, opacity: 0.18, pointerEvents: 'none', userSelect: 'none',
+        filter: 'drop-shadow(0 0 12px rgba(255,133,182,0.6))',
+      }}>🩷</div>
+
+      {/* Contenuto */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <div style={{
+          fontFamily: FF.label, fontSize: 8, letterSpacing: '0.28em',
+          color: 'rgba(255,133,182,0.75)', textTransform: 'uppercase', marginBottom: 6,
+        }}>✦ Scopri le Waifu ✦</div>
+        <div style={{
+          fontFamily: FF.display, fontSize: 22, fontWeight: 900, color: '#fff',
+          letterSpacing: '-0.01em', marginBottom: 6,
+          textShadow: '0 0 20px rgba(255,133,182,0.5)',
+        }}>Il Tinder delle Waifu</div>
+        <div style={{
+          fontFamily: FF.body, fontSize: 12, color: 'rgba(241,235,255,0.6)',
+          lineHeight: 1.5, marginBottom: 14, maxWidth: '75%',
+        }}>
+          Swipa, vota e guadagna Kisses ogni 10 voti. Più voti, più guadagni!
+        </div>
+
+        {/* Stats rapide + CTA */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {totalVoti > 0 && (
+            <div style={{
+              background: 'rgba(255,133,182,0.12)', border: '1px solid rgba(255,133,182,0.25)',
+              borderRadius: 8, padding: '4px 10px',
+              fontFamily: FF.mono, fontSize: 10, color: C.sakura,
+            }}>
+              {totalVoti} voti totali
+            </div>
+          )}
+          {streak > 1 && (
+            <div style={{
+              background: 'rgba(108,240,224,0.1)', border: '1px solid rgba(108,240,224,0.25)',
+              borderRadius: 8, padding: '4px 10px',
+              fontFamily: FF.mono, fontSize: 10, color: C.aqua,
+            }}>
+              🔥 {streak} giorni streak
+            </div>
+          )}
+          <div style={{
+            background: 'linear-gradient(135deg, #c54a86, #ff85b6)',
+            borderRadius: 10, padding: '7px 16px', color: '#fff',
+            fontFamily: FF.label, fontSize: 11, letterSpacing: '0.2em',
+            textTransform: 'uppercase', fontWeight: 700,
+            boxShadow: '0 4px 14px rgba(197,74,134,0.4)',
+          }}>Inizia →</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =====================================================================
+// STAT COMBATTIMENTO (non più usata in homepage, mantenuta per retrocompatibilità)
 // =====================================================================
 function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneClassifica }) {
   const vittorie = profilo.vittorie ?? 0;

@@ -157,7 +157,8 @@ export function CartaWaifu({
   const imgSrc = usaImmersiva ? waifu.asset_immersiva : (waifu.asset_statica || null);
   const statSize = Math.round(30 * scale);
 
-  const handleClick = () => { onClick?.(); };
+  // Se censurata (waifu Hot senza Pass Hard): blocca click e zoom
+  const handleClick = censurata ? undefined : () => { onClick?.(); };
   const handleVideoEnd = () => { setVideoFinito(true); onVideoEnd?.(); };
   const showFoil = waifu.rarita === 'epico' || waifu.rarita === 'leggendario' || waifu.rarita === 'immersivo';
 
@@ -168,6 +169,7 @@ export function CartaWaifu({
       style={{
         width: W, height: H,
         position: 'relative',
+        cursor: censurata ? 'not-allowed' : (onClick ? 'pointer' : 'default'),
         borderRadius: Math.round(14 * scale),
         border: `${borderW}px solid ${evidenziato ? '#ffe9a8' : videoAttivo ? '#ff7eb6' : rb.outer}`,
         boxShadow: evidenziato
