@@ -56,12 +56,14 @@ export default function MiniLeaderboard({ chunks, userUid, profilo, passiveRate,
     if (pixelCount === 0) return;
     const tick = () => {
       const lastClaim = profilo?.lastKissesClaimAt?.toMillis?.() ?? (Date.now() - 3600000);
-      const elapsed  = (Date.now() - lastClaim) / 1000;
-      const acc      = Math.floor(elapsed * ratePerSec);
+      const elapsed  = (Date.now() - lastClaim) / 1000; // secondi dall'ultimo claim
+      // Kisses accumulati da quando si è fatto l'ultimo claim
+      const acc = Math.floor(elapsed * ratePerSec);
       setAccumulated(acc);
-      // Secondi al prossimo Kisses intero
-      const fracSec = (1 / ratePerSec) - (elapsed % (1 / ratePerSec));
-      setNextIn(Math.max(0, Math.round(fracSec)));
+      // Countdown: secondi al prossimo ciclo orario (ogni ora si accumula pixelCount*rate Kisses)
+      // Il countdown conta sempre all'ora successiva, indipendentemente dal numero di pixel
+      const nextHourSec = 3600 - (elapsed % 3600);
+      setNextIn(Math.max(0, Math.round(nextHourSec)));
     };
     tick();
     const iv = setInterval(tick, 1000);
@@ -106,7 +108,7 @@ export default function MiniLeaderboard({ chunks, userUid, profilo, passiveRate,
                 +{accumulated} {lastEarned ? <span style={{ color: C.ok }}>✓ +{lastEarned} riscossi!</span> : null}
               </div>
               <div style={{ fontFamily: FF.label, fontSize: 8, letterSpacing: '0.12em', color: 'rgba(241,235,255,0.35)', textTransform: 'uppercase', marginTop: 1 }}>
-                +{pixelCount * rate}/ora · prossimo +1 tra {formatTime(nextIn)}
+                +{pixelCount * rate}/ora · prossima ora tra {formatTime(nextIn)}
               </div>
             </div>
           </div>

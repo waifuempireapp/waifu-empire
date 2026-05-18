@@ -38,11 +38,11 @@ import {
 } from '@/lib/battleEngine';
 import { seededRand, getTurnRNG, calculateDamageSeeded } from '@/lib/pvpArenaEngine';
 
-// Override UI per tipo Ferro: acciaio bluastro, distinguibile dalle mosse disabilitate
+// Override UI per tipo Ferro: grigio chiaro (distinguibile dalle mosse disabilitate che sono grigio scuro)
 // Non tocca battleEngine.js (logica di combattimento invariata)
 const _TYPE_COLORS_UI = {
   ...TYPE_COLORS,
-  Ferro: { bg: 'rgba(74,90,112,0.18)', text: '#9ba8ba', border: '#4a5a70' },
+  Ferro: { bg: 'rgba(185,183,175,0.22)', text: '#6b6a66', border: '#9b9a94' },
 };
 // Stile esplicito per mosse disabilitate (cooldown/PP esauriti): grigio scuro opaco
 const _DISABLED_MOVE_STYLE = {
@@ -193,19 +193,21 @@ function TypeBadge({ type, sm }) {
  * @param {number} props.maxPp — PP massimi della mossa.
  * @returns {JSX.Element}
  */
-function PpDots({ pp, maxPp }) {
-  const count = Math.min(maxPp ?? 8, 8);
+function PpDots({ pp, maxPp, color = 'rgba(238,220,212,.78)' }) {
+  const count  = Math.min(maxPp ?? 8, 8);
   const filled = Math.max(0, Math.min(count, pp ?? 0));
+  // Pallino pieno = colore passato; pallino vuoto = stesso colore ma più trasparente
   return (
     <div style={{ display:'flex', gap:2.5, alignItems:'center' }}>
       {Array.from({ length: count }).map((_,i) => (
         <div key={i} style={{
           width:5, height:5, borderRadius:'50%', flexShrink:0,
-          background: i < filled ? 'rgba(238,220,212,.78)' : 'rgba(238,220,212,.14)',
+          background: i < filled ? color : `${color}28`,
+          opacity: i < filled ? 1 : 0.35,
         }}/>
       ))}
       {(maxPp ?? 0) > 8 && (
-        <span style={{ fontFamily:'Orbitron', fontSize:7, color:'rgba(238,220,212,.4)', marginLeft:2 }}>
+        <span style={{ fontFamily:'Orbitron', fontSize:7, color, marginLeft:2, opacity:0.8 }}>
           {filled}/{maxPp}
         </span>
       )}
@@ -432,21 +434,29 @@ function MoveBtn({ move, idx, locked, outPp, cooldown, enemyType, playerType, on
   const dis = locked||outPp||cooldown;
   const { label:eff } = getEffectiveness(move.type, playerType, enemyType);
   const c = _TYPE_COLORS_UI[move.type] ?? {bg:'#111',text:'#eee',border:'#555'};
-  const bdr = dis ? _DISABLED_MOVE_STYLE.color : c.border;
+  const isOutPp = !!(outPp); // dichiarato qui prima di nameColor (ordine obbligatorio)
+  // nameColor: colore del nome mossa = colore anche per PP dots e testo PP
+  const nameColor = isOutPp
+    ? _DISABLED_MOVE_STYLE.color
+    : cooldown
+      ? `${c.border}99`
+      : c.border;
+  const bdr = nameColor;
 
-  // Fix #1: colori etichette efficacia leggibili su qualsiasi sfondo tipo
+  // Fix #1: colori per tipo — evidenziatore per Super efficace, base per Efficace, grigio per Poco efficace
+  const _HIGHLIGHT_COLORS = {
+    Arcana: '#C5BFFF', Natura: '#A8E84A', Abisso: '#FF80AA', Ferro: '#D8D6D0', Fuoco: '#FF8C50',
+  };
+  const highlightColor = _HIGHLIGHT_COLORS[move.type] ?? '#ffffff';
   const effDisplayMap = {
-    'Extremely effective': { col: '#ffffff', lbl: 'Super efficace!', bold: true  },
-    'Super effective':     { col: '#ffffff', lbl: 'Super efficace',  bold: true  },
-    'Not very effective':  { col: 'rgba(180,188,200,0.9)', lbl: 'Poco efficace', bold: true },
-    'No effect':           { col: 'rgba(180,188,200,0.9)', lbl: 'Nullo',         bold: true },
-    'Normal':              { col: c.text ?? 'rgba(238,232,220,0.7)', lbl: 'Efficace', bold: false },
+    'Extremely effective': { col: highlightColor, lbl: 'Super efficace!', bold: true  },
+    'Super effective':     { col: highlightColor, lbl: 'Super efficace',  bold: true  },
+    'Not very effective':  { col: '#9ca3af', lbl: 'Poco efficace', bold: true },
+    'No effect':           { col: '#9ca3af', lbl: 'Nullo',         bold: true },
+    'Normal':              { col: c.border ?? 'rgba(238,232,220,0.7)', lbl: 'Efficace', bold: false },
   };
   const effDisplay = effDisplayMap[eff] ?? effDisplayMap['Normal'];
   // Mappa efficacia → etichetta italiana colorata mostrata in ogni bottone mossa.
-  // "Efficace" appare anche per l'efficacia normale così il giocatore ha sempre
-  // un riferimento visivo chiaro per ogni mossa.
-  const isOutPp = !!(outPp);
   return (
     <button className="wba-move-btn" onClick={()=>!dis&&onSelect(idx)} disabled={dis} style={{
       height:'100%', padding:'8px 11px', borderRadius:12, width:'100%',
@@ -485,7 +495,7 @@ function MoveBtn({ move, idx, locked, outPp, cooldown, enemyType, playerType, on
       </div>
       {/* Riga inferiore */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%'}}>
-        <PpDots pp={move.pp??0} maxPp={move.maxPp}/>
+        <PpDots pp={move.pp??0} maxPp={move.maxPp} color={nameColor}/>
         <div style={{display:'flex',alignItems:'center',gap:4}}>
           {cooldown && (
             <span style={{fontFamily:'Orbitron',fontSize:7,color:`${c.border}88`,letterSpacing:.5}}>
@@ -493,8 +503,8 @@ function MoveBtn({ move, idx, locked, outPp, cooldown, enemyType, playerType, on
             </span>
           )}
           {outPp && (
-            <span style={{fontFamily:'Orbitron',fontSize:7,color:'#ff4d4d',textDecoration:'line-through'}}>
-              PP {move.pp??0}
+            <span style={{fontFamily:'Orbitron',fontSize:7,color:nameColor,textDecoration:'line-through'}}>
+              PP 0
             </span>
           )}
           {!cooldown && !outPp && (
@@ -1229,8 +1239,12 @@ export default function WaifuBattleArena({
       }
     } else {
       // ─── VS CPU ──────────────────────────────────────────────────────────────────
-      // Calcola il danno localmente con calculateDamage(). Nessuna sincronizzazione.
-      const eMi=cpuChooseMove(enemy,player,lastEMove);
+      // Fix #4/CPU-swap: se la CPU ha già swappato volontariamente questo turno,
+      // passa _CPU_SKIP (-1000) a resolveTurn → solo il player attacca, CPU non risponde
+      // Questo rende il CPU-swap simmetrico al player-swap (chi swappa non attacca).
+      const cpuSwappedThisTurn = cpuLastVolSwapTurnRef.current + 1 === turn;
+      if(cpuSwappedThisTurn) cpuLastVolSwapTurnRef.current = -1; // reset dopo uso
+      const eMi = cpuSwappedThisTurn ? -1000 : cpuChooseMove(enemy,player,lastEMove);
       resolveTurn(moveIdx,eMi);
     }
   },[isAnim,phase,player,enemy,lastPMove,lastEMove,isPvP,onPvPMoveSubmit,eTeam,pTeam,eActive,pActive]); // eslint-disable-line
@@ -1273,10 +1287,14 @@ export default function WaifuBattleArena({
     // ── Decodifica azioni swap ───────────────────────────────────────────────────
     // Se pMi < 0 il player ha scelto di swappare invece di attaccare.
     // Se eMi < 0 l'avversario ha scelto di swappare.
+    // Fix #15/CPU-swap: eMi === -1000 → CPU ha già swappato volontariamente questo turno
+    //   → solo il player attacca (simmetria con player swap dove solo CPU attacca)
+    const _CPU_SKIP = -1000;
+    const isEnemyVolSwapSkip = eMi === _CPU_SKIP;
     const playerSwapIdx = decodeSwap(pMi); // -1 se non è uno swap
-    const enemySwapIdx  = decodeSwap(eMi); // -1 se non è uno swap
+    const enemySwapIdx  = isEnemyVolSwapSkip ? -1 : decodeSwap(eMi); // -1 se skip o non swap
     const isPlayerSwap  = playerSwapIdx >= 0;
-    const isEnemySwap   = enemySwapIdx  >= 0;
+    const isEnemySwap   = !isEnemyVolSwapSkip && enemySwapIdx >= 0;
 
     // ── Risoluzione swap (avviene PRIMA degli attacchi) ──────────────────────────
     // La regola è: prima tutti gli swap, poi tutti gli attacchi.
@@ -1326,9 +1344,9 @@ export default function WaifuBattleArena({
     if(isPlayerSwap && isEnemySwap){
       first = 'none'; // entrambi swappano — gestito sopra, non si raggiunge mai qui
     } else if(isPlayerSwap){
-      first = 'enemy'; // solo enemy attacca
-    } else if(isEnemySwap){
-      first = 'player'; // solo player attacca
+      first = 'enemy'; // solo enemy attacca (player ha swappato)
+    } else if(isEnemySwap || isEnemyVolSwapSkip){
+      first = 'player'; // solo player attacca (CPU ha swappato/già agito)
     } else {
       // Ordine per velocità con RNG (seeded per PvP, random per CPU)
       const pSpd=(curP[cPA].speed??50)+(pvpRng(pvpRngCall++)*10-5);
