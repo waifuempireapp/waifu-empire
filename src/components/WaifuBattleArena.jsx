@@ -561,11 +561,16 @@ function BenchSlot({ waifu, selectable, onSelect, size=48 }) {
 // [WAIFU CHAMPIONS REFACTOR] — extended result popup (combat-system-v2)
 function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, statsP, statsE, biggestHit, isDraw, waifuStats }) {
   // ── Calcolo MVP ─────────────────────────────────────────────────────────────
-  // La waifu MVP è quella del giocatore con più danno totale (primario),
-  // con i KO come criterio di pareggio.
   const mvp = Object.values(waifuStats ?? {})
     .sort((a, b) => b.dmg - a.dmg || b.kos - a.kos)[0] ?? null;
-  const { terrSel, nomeImperoAvversario, sonoAttaccante, nomeImpero } = battleCtx ?? {};
+  const { terrSel, nomeImperoAvversario, sonoAttaccante, nomeImpero, bo3 } = battleCtx ?? {};
+
+  // ── Punteggio Bo3 aggiornato dopo questo round ───────────────────────────────
+  const bo3After = bo3 ? {
+    attackerWins: (bo3.attackerWins ?? 0) + (isVictory ? 1 : 0),
+    defenderWins: (bo3.defenderWins ?? 0) + (isVictory ? 0 : 1),
+  } : null;
+  const matchOver = bo3After && (bo3After.attackerWins >= 2 || bo3After.defenderWins >= 2);
   const winnerName   = isVictory ? (nomeImpero || 'Tu') : (nomeImperoAvversario || 'CPU');
   const loserName    = isVictory ? (nomeImperoAvversario || 'CPU') : (nomeImpero || 'Tu');
 
@@ -616,6 +621,38 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
         }}>
           {isDraw?'PAREGGIO':isVictory?'VITTORIA!':'SCONFITTA'}
         </div>
+
+        {/* Punteggio Bo3 — sempre visibile, più grande nel popup finale */}
+        {bo3After && (
+          <div style={{
+            display:'flex', alignItems:'center', justifyContent:'center', gap:12,
+            marginBottom:10,
+            padding: matchOver ? '10px 20px' : '6px 16px',
+            background: matchOver ? 'rgba(245,197,96,0.1)' : 'rgba(255,255,255,0.04)',
+            border: matchOver ? '1px solid rgba(245,197,96,0.3)' : '1px solid rgba(174,156,255,0.12)',
+            borderRadius:12,
+          }}>
+            <div style={{textAlign:'center'}}>
+              <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:8,letterSpacing:'0.2em',color:'rgba(108,240,224,0.6)',textTransform:'uppercase',marginBottom:2}}>
+                {nomeImpero||'Tu'}
+              </div>
+              <div style={{fontFamily:"'Unbounded',sans-serif",fontSize: matchOver ? 32 : 20,fontWeight:900,color:'#6cf0e0',lineHeight:1}}>
+                {bo3After.attackerWins}
+              </div>
+            </div>
+            <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize: matchOver ? 16 : 12,color:'rgba(241,235,255,0.3)',fontWeight:700}}>
+              BO3
+            </div>
+            <div style={{textAlign:'center'}}>
+              <div style={{fontFamily:"'Saira Condensed',sans-serif",fontSize:8,letterSpacing:'0.2em',color:'rgba(255,133,182,0.6)',textTransform:'uppercase',marginBottom:2}}>
+                {nomeImperoAvversario||'CPU'}
+              </div>
+              <div style={{fontFamily:"'Unbounded',sans-serif",fontSize: matchOver ? 32 : 20,fontWeight:900,color:'#ff85b6',lineHeight:1}}>
+                {bo3After.defenderWins}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* KO score — in evidenza, subito sotto il titolo */}
         {!isDraw && (

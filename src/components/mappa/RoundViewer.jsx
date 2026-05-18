@@ -55,19 +55,17 @@ export default function RoundViewer({ battle, waifuCat, collezione, profilo, onR
 
   const battleResultRef = useRef(null);
 
-  // roster5P: per 'switch' solo le 5 waifu dell'attackerTeam; altrimenti tutte
-  const roster5P = useMemo(() => {
-    const ids = battle?.nextRoundChoice === 'switch'
-      ? (battle.attackerTeam || [])
-      : Object.keys(collezione?.waifu || {});
-    return ids
+  // roster5P: SEMPRE le 5 waifu scelte in BattleModal (attackerTeam)
+  // La PickPhase mostra solo quelle 5, non tutta la collezione
+  const roster5P = useMemo(() => (
+    (battle?.attackerTeam || [])
       .map(id => {
         const cat  = waifuCat?.find(w => w.id === id);
         const coll = collezione?.waifu?.[id] ?? {};
         return cat ? { ...cat, ...coll } : null;
       })
-      .filter(Boolean);
-  }, [battle?.nextRoundChoice, battle?.attackerTeam, waifuCat, collezione]);
+      .filter(Boolean)
+  ), [battle?.attackerTeam, waifuCat, collezione]);
 
   // roster5E: le 5 waifu del difensore (fisse per tutto il Bo3)
   const roster5E = useMemo(() => {

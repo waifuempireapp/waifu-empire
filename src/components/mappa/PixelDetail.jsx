@@ -22,9 +22,12 @@ function MiniDefenderIcon({ waifu, size = 40 }) {
       overflow: 'hidden', border: '1px solid rgba(174,156,255,0.2)',
       background: '#12102a',
     }}>
-      {waifu.asset_immagine && (
-        <img src={waifu.asset_immagine} alt={waifu.nome}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+      {(waifu.asset_immagine || waifu.asset_statica || waifu.asset_immersiva) && (
+        <img
+          src={waifu.asset_immagine || waifu.asset_statica || waifu.asset_immersiva}
+          alt={waifu.nome}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }}
+        />
       )}
     </div>
   );

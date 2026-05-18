@@ -1,34 +1,97 @@
 'use client';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
 import { CartaWaifu } from '@/components/CartaWaifu';
+import { RARITA } from '@/lib/constants';
+
+const PAGE_SIZE = 20;
+
+// Filtri disponibili
+const RARITY_ORDER = ['comune', 'raro', 'epico', 'leggendario', 'immersivo'];
+
+function PresetCard({ preset, waifuCat, isActive, onSelect }) {
+  const w5 = (preset.waifu || []).map(id => waifuCat?.find(w => w.id === id)).filter(Boolean);
+  return (
+    <div onClick={onSelect} style={{
+      padding: '10px 14px', borderRadius: 14, cursor: 'pointer',
+      background: isActive ? 'rgba(167,139,250,0.18)' : 'rgba(255,255,255,0.04)',
+      border: `1px solid ${isActive ? C.violet : 'rgba(174,156,255,0.15)'}`,
+      transition: 'all 0.15s', marginBottom: 8,
+      display: 'flex', alignItems: 'center', gap: 10,
+    }}>
+      <div style={{ fontFamily: FF.label, fontSize: 11, color: isActive ? C.violet : 'rgba(241,235,255,0.8)', textTransform: 'uppercase', minWidth: 70, flexShrink: 0 }}>
+        {preset.nome || 'Team'}
+      </div>
+      <div style={{ display: 'flex', gap: 4, flex: 1 }}>
+        {w5.map((w, i) => (
+          <div key={i} style={{ width: 28, height: 28, borderRadius: 6, overflow: 'hidden', border: `1px solid ${isActive ? C.violet + '60' : 'rgba(174,156,255,0.15)'}`, background: '#12102a', flexShrink: 0 }}>
+            {(w.asset_immagine || w.asset_statica) && (
+              <img src={w.asset_immagine || w.asset_statica} alt={w.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+            )}
+          </div>
+        ))}
+        {Array.from({ length: Math.max(0, 5 - w5.length) }).map((_, i) => (
+          <div key={`e${i}`} style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(174,156,255,0.1)', flexShrink: 0 }} />
+        ))}
+      </div>
+      <span style={{ color: isActive ? C.violet : 'rgba(174,156,255,0.3)', fontSize: 14 }}>{isActive ? '✓' : '›'}</span>
+    </div>
+  );
+}
 
 export default function BattleModal({ pixel, collezione, waifuCat, onConfirm, onClose }) {
+  const teams = collezione?.teams || {};
+  const presets = Object.entries(teams).filter(([, t]) => t.waifu?.length === 5);
+  const hasTeams = presets.length > 0;
+
+  // mode: 'teams' (default se ho team) | 'manual'
+  const [mode, setMode] = useState(hasTeams ? 'teams' : 'manual');
   const [selectedIds, setSelectedIds] = useState([]);
   const [activePresetId, setActivePresetId] = useState(null);
 
-  const teams = collezione?.teams || {};
-  const presets = Object.entries(teams).filter(([, t]) => t.waifu?.length === 5);
+  // Paginazione e filtri (solo in modalità manual)
+  const [page, setPage] = useState(0);
+  const [filterRarity, setFilterRarity] = useState('');
+  const [filterType, setFilterType] = useState('');
 
-  const ownedWaifu = Object.entries(collezione?.waifu || {})
-    .map(([id, dati]) => {
-      const w = waifuCat?.find(x => x.id === id);
-      return w ? { ...w, ...dati, _datiColl: dati } : null;
-    })
-    .filter(Boolean);
+  const ownedWaifu = useMemo(() => (
+    Object.entries(collezione?.waifu || {})
+      .map(([id, dati]) => {
+        const w = waifuCat?.find(x => x.id === id);
+        return w ? { ...w, ...dati, _datiColl: dati } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => RARITY_ORDER.indexOf(b.rarita) - RARITY_ORDER.indexOf(a.rarita))
+  ), [collezione, waifuCat]);
+
+  const filtered = useMemo(() => ownedWaifu.filter(w => {
+    if (filterRarity && w.rarita !== filterRarity) return false;
+    if (filterType && w.tipo !== filterType) return false;
+    return true;
+  }), [ownedWaifu, filterRarity, filterType]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const pageWaifu  = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const toggle = (id) => {
     setActivePresetId(null);
     setSelectedIds(prev =>
-      prev.includes(id)
-        ? prev.filter(x => x !== id)
-        : prev.length < 5 ? [...prev, id] : prev
+      prev.includes(id) ? prev.filter(x => x !== id) : prev.length < 5 ? [...prev, id] : prev
     );
   };
 
-  const selectPreset = (presetId, presetWaifu) => {
-    const valid = presetWaifu.filter(id => ownedWaifu.some(w => w.id === id));
-    if (valid.length === 5) { setSelectedIds(valid); setActivePresetId(presetId); }
+  const selectPreset = (id, presetWaifu) => {
+    const valid = presetWaifu.filter(wid => ownedWaifu.some(w => w.id === wid));
+    if (valid.length === 5) { setSelectedIds(valid); setActivePresetId(id); }
+  };
+
+  const confirm = () => {
+    if (selectedIds.length === 5) onConfirm(selectedIds);
+  };
+
+  const rarColors = {
+    comune: '#b4bcc8', raro: '#5aa9ff', epico: '#b573ff',
+    leggendario: '#ffc861', immersivo: '#ff7eb6',
   };
 
   return (
@@ -41,101 +104,177 @@ export default function BattleModal({ pixel, collezione, waifuCat, onConfirm, on
       <div style={{ padding: '18px 18px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexShrink: 0 }}>
         <div>
           <div style={{ fontFamily: FF.label, fontSize: 9, letterSpacing: '0.22em', color: C.sakura, textTransform: 'uppercase' }}>◆ CONQUISTA</div>
-          <div style={{ fontFamily: FF.display, fontSize: 17, color: '#fff', fontWeight: 800 }}>Scegli il tuo team</div>
+          <div style={{ fontFamily: FF.display, fontSize: 17, color: '#fff', fontWeight: 800 }}>
+            {mode === 'teams' ? 'Scegli il team' : 'Selezione manuale'}
+          </div>
           <div style={{ fontFamily: FF.mono, fontSize: 10, color: 'rgba(241,235,255,0.4)', marginTop: 2 }}>
-            {pixel?.name || `(${pixel?.x}, ${pixel?.y})`} · {selectedIds.length}/5
+            {pixel?.name || `(${pixel?.x}, ${pixel?.y})`} {mode === 'manual' && `· ${selectedIds.length}/5`}
           </div>
         </div>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(241,235,255,0.4)', fontSize: 22, cursor: 'pointer' }}>✕</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {mode === 'manual' && hasTeams && (
+            <button onClick={() => { setMode('teams'); setSelectedIds([]); setActivePresetId(null); }} style={{
+              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(174,156,255,0.2)',
+              borderRadius: 8, color: 'rgba(241,235,255,0.6)', fontFamily: FF.label,
+              fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', padding: '5px 10px', cursor: 'pointer',
+            }}>← Team</button>
+          )}
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(241,235,255,0.4)', fontSize: 22, cursor: 'pointer' }}>✕</button>
+        </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 14px 0' }}>
-        {/* Preset team salvati */}
-        {presets.length > 0 && (
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontFamily: FF.label, fontSize: 9, letterSpacing: '0.2em', color: 'rgba(174,156,255,0.55)', textTransform: 'uppercase', marginBottom: 8 }}>⚡ Team salvati</div>
-            {presets.map(([id, preset]) => {
-              const w5 = (preset.waifu || []).map(wid => waifuCat?.find(w => w.id === wid)).filter(Boolean);
-              const isActive = activePresetId === id;
-              return (
-                <div key={id} onClick={() => selectPreset(id, preset.waifu)} style={{
-                  padding: '8px 12px', borderRadius: 12, cursor: 'pointer', marginBottom: 6,
-                  background: isActive ? 'rgba(167,139,250,0.18)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${isActive ? C.violet : 'rgba(174,156,255,0.15)'}`,
-                  display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.15s',
-                }}>
-                  <div style={{ fontFamily: FF.label, fontSize: 10, color: isActive ? C.violet : 'rgba(241,235,255,0.7)', textTransform: 'uppercase', minWidth: 60 }}>{preset.nome}</div>
-                  <div style={{ display: 'flex', gap: 4, flex: 1 }}>
-                    {w5.map((w, i) => (
-                      <div key={i} style={{ width: 26, height: 26, borderRadius: 5, overflow: 'hidden', border: `1px solid ${isActive ? C.violet + '60' : 'rgba(174,156,255,0.15)'}` }}>
-                        {(w.asset_immagine || w.asset_statica) && <img src={w.asset_immagine || w.asset_statica} alt={w.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />}
-                      </div>
-                    ))}
+      {/* ── MODALITÀ TEAM ─────────────────────────────────────────── */}
+      {mode === 'teams' && (
+        <>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px 0' }}>
+            {presets.map(([id, preset]) => (
+              <PresetCard
+                key={id} preset={preset} waifuCat={waifuCat}
+                isActive={activePresetId === id}
+                onSelect={() => selectPreset(id, preset.waifu)}
+              />
+            ))}
+
+            {/* Bottone selezione manuale */}
+            <button
+              onClick={() => { setMode('manual'); setSelectedIds([]); setActivePresetId(null); }}
+              style={{
+                width: '100%', marginTop: 12, padding: '13px',
+                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(174,156,255,0.2)',
+                borderRadius: 14, color: 'rgba(241,235,255,0.6)', fontFamily: FF.label,
+                fontSize: 12, letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer',
+              }}
+            >MANUALE — scegli waifu</button>
+          </div>
+          <div style={{ padding: '14px 16px 30px', flexShrink: 0 }}>
+            <button
+              onClick={confirm}
+              disabled={selectedIds.length !== 5}
+              style={{
+                width: '100%', padding: '15px',
+                background: selectedIds.length === 5 ? 'linear-gradient(135deg, #c54a86, #ff85b6)' : 'rgba(255,255,255,0.06)',
+                border: 'none', borderRadius: 14,
+                cursor: selectedIds.length === 5 ? 'pointer' : 'not-allowed',
+                color: selectedIds.length === 5 ? '#fff' : 'rgba(241,235,255,0.3)',
+                fontFamily: FF.label, fontSize: 14, letterSpacing: '0.2em',
+                textTransform: 'uppercase', fontWeight: 700,
+              }}
+            >{selectedIds.length === 5 ? '⚔ Avvia Battaglia' : 'Seleziona un team'}</button>
+          </div>
+        </>
+      )}
+
+      {/* ── MODALITÀ MANUALE ──────────────────────────────────────── */}
+      {mode === 'manual' && (
+        <>
+          {/* Filtri */}
+          <div style={{ padding: '10px 16px 0', display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
+            <select
+              value={filterRarity} onChange={e => { setFilterRarity(e.target.value); setPage(0); }}
+              style={{ flex: 1, minWidth: 100, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(174,156,255,0.2)', color: filterRarity ? '#fff' : 'rgba(241,235,255,0.4)', borderRadius: 8, padding: '6px 8px', fontFamily: FF.body, fontSize: 12 }}
+            >
+              <option value="">Rarità</option>
+              {RARITY_ORDER.map(r => <option key={r} value={r} style={{ background: '#0d0a26', color: rarColors[r] }}>{r}</option>)}
+            </select>
+            <select
+              value={filterType} onChange={e => { setFilterType(e.target.value); setPage(0); }}
+              style={{ flex: 1, minWidth: 100, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(174,156,255,0.2)', color: filterType ? '#fff' : 'rgba(241,235,255,0.4)', borderRadius: 8, padding: '6px 8px', fontFamily: FF.body, fontSize: 12 }}
+            >
+              <option value="">Tipo</option>
+              {['Arcana','Natura','Abisso','Ferro','Fuoco'].map(t => <option key={t} value={t} style={{ background: '#0d0a26' }}>{t}</option>)}
+            </select>
+            {(filterRarity || filterType) && (
+              <button onClick={() => { setFilterRarity(''); setFilterType(''); setPage(0); }} style={{
+                background: 'rgba(255,91,108,0.1)', border: '1px solid rgba(255,91,108,0.3)',
+                borderRadius: 8, color: C.err, fontSize: 11, padding: '6px 10px', cursor: 'pointer',
+              }}>✕</button>
+            )}
+          </div>
+          <div style={{ padding: '4px 16px', fontFamily: FF.mono, fontSize: 10, color: 'rgba(241,235,255,0.3)', flexShrink: 0 }}>
+            {filtered.length} waifu · pagina {page + 1}/{Math.max(1, totalPages)}
+          </div>
+
+          {/* Griglia paginata: 3 colonne, CartaWaifu piccola scalata -8% */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '4px 10px 0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+              {pageWaifu.map(w => {
+                const selIdx = selectedIds.indexOf(w.id);
+                const sel = selIdx !== -1;
+                return (
+                  <div
+                    key={w.id}
+                    onClick={() => toggle(w.id)}
+                    style={{
+                      position: 'relative', cursor: 'pointer',
+                      // -8% rispetto a CartaWaifu piccola (che è 0.65 × normale)
+                      transform: 'scale(0.92)', transformOrigin: 'top left',
+                      width: '108%', // compensa il transform per il layout
+                    }}
+                  >
+                    <div style={{
+                      outline: sel ? `3px solid ${C.gold}` : '3px solid transparent',
+                      borderRadius: 14, boxShadow: sel ? `0 0 14px ${C.gold}50` : 'none',
+                      transition: 'outline 0.15s',
+                    }}>
+                      <CartaWaifu waifu={w} datiCollezione={w._datiColl} dimensione="piccola" evidenziato={false} />
+                    </div>
+                    {sel && (
+                      <div style={{
+                        position: 'absolute', top: 5, right: -3, zIndex: 2,
+                        width: 22, height: 22, borderRadius: '50%',
+                        background: C.gold, color: '#1a0024',
+                        display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 12,
+                        boxShadow: `0 2px 8px ${C.gold}80`,
+                      }}>{selIdx + 1}</div>
+                    )}
                   </div>
-                  <span style={{ color: isActive ? C.violet : 'rgba(174,156,255,0.3)', fontSize: 14 }}>{isActive ? '✓' : '›'}</span>
-                </div>
-              );
-            })}
-            <div style={{ height: 1, background: 'rgba(174,156,255,0.1)', margin: '10px 0 10px' }} />
-            <div style={{ fontFamily: FF.label, fontSize: 9, letterSpacing: '0.2em', color: 'rgba(174,156,255,0.4)', textTransform: 'uppercase', marginBottom: 8 }}>o seleziona manualmente</div>
+                );
+              })}
+            </div>
           </div>
-        )}
 
-        {/* Griglia CartaWaifu piccola (identica alla Collezione) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-          {ownedWaifu.map(w => {
-            const selIdx = selectedIds.indexOf(w.id);
-            const sel = selIdx !== -1;
-            return (
-              <div key={w.id} style={{ position: 'relative', cursor: 'pointer' }} onClick={() => toggle(w.id)}>
-                <div style={{
-                  outline: sel ? `3px solid ${C.gold}` : '3px solid transparent',
-                  borderRadius: 14, transition: 'outline 0.15s',
-                  boxShadow: sel ? `0 0 16px ${C.gold}50` : 'none',
-                }}>
-                  <CartaWaifu
-                    waifu={w}
-                    datiCollezione={w._datiColl}
-                    dimensione="piccola"
-                    evidenziato={false}
-                  />
-                </div>
-                {sel && (
-                  <div style={{
-                    position: 'absolute', top: 6, right: 6, zIndex: 2,
-                    width: 22, height: 22, borderRadius: '50%',
-                    background: C.gold, color: '#1a0024',
-                    display: 'grid', placeItems: 'center',
-                    fontWeight: 900, fontSize: 12,
-                    boxShadow: `0 2px 8px ${C.gold}80`,
-                  }}>{selIdx + 1}</div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+          {/* Paginazione */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '8px 16px 0', flexShrink: 0 }}>
+              <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} style={pageBtn(page === 0)}>←</button>
+              {Array.from({ length: totalPages }, (_, i) => (
+                <button key={i} onClick={() => setPage(i)} style={pageBtn(false, i === page)}>
+                  {i + 1}
+                </button>
+              )).slice(Math.max(0, page - 2), Math.min(totalPages, page + 3))}
+              <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1} style={pageBtn(page === totalPages - 1)}>→</button>
+            </div>
+          )}
 
-      {/* Bottone conferma */}
-      <div style={{ padding: '14px 16px 30px', flexShrink: 0 }}>
-        <button
-          onClick={() => selectedIds.length === 5 && onConfirm(selectedIds)}
-          disabled={selectedIds.length !== 5}
-          style={{
-            width: '100%', padding: '15px',
-            background: selectedIds.length === 5
-              ? 'linear-gradient(135deg, #c54a86, #ff85b6)'
-              : 'rgba(255,255,255,0.06)',
-            border: 'none', borderRadius: 14,
-            cursor: selectedIds.length === 5 ? 'pointer' : 'not-allowed',
-            color: selectedIds.length === 5 ? '#fff' : 'rgba(241,235,255,0.3)',
-            fontFamily: FF.label, fontSize: 14, letterSpacing: '0.2em',
-            textTransform: 'uppercase', fontWeight: 700, transition: 'all 0.2s',
-          }}
-        >
-          {selectedIds.length === 5 ? '⚔ Avvia Battaglia' : `Seleziona ancora ${5 - selectedIds.length}`}
-        </button>
-      </div>
+          {/* Bottone conferma */}
+          <div style={{ padding: '10px 16px 28px', flexShrink: 0 }}>
+            <button
+              onClick={confirm}
+              disabled={selectedIds.length !== 5}
+              style={{
+                width: '100%', padding: '14px',
+                background: selectedIds.length === 5 ? 'linear-gradient(135deg, #c54a86, #ff85b6)' : 'rgba(255,255,255,0.06)',
+                border: 'none', borderRadius: 14,
+                cursor: selectedIds.length === 5 ? 'pointer' : 'not-allowed',
+                color: selectedIds.length === 5 ? '#fff' : 'rgba(241,235,255,0.3)',
+                fontFamily: FF.label, fontSize: 14, letterSpacing: '0.2em',
+                textTransform: 'uppercase', fontWeight: 700,
+              }}
+            >{selectedIds.length === 5 ? '⚔ Avvia Battaglia' : `Seleziona ancora ${5 - selectedIds.length}`}</button>
+          </div>
+        </>
+      )}
     </div>
   );
+}
+
+function pageBtn(disabled, active = false) {
+  return {
+    width: 32, height: 32, borderRadius: 8,
+    background: active ? 'rgba(167,139,250,0.2)' : 'rgba(255,255,255,0.04)',
+    border: `1px solid ${active ? 'rgba(167,139,250,0.4)' : 'rgba(174,156,255,0.15)'}`,
+    color: disabled ? 'rgba(241,235,255,0.2)' : active ? '#a78bfa' : 'rgba(241,235,255,0.6)',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700,
+  };
 }
