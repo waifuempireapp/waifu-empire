@@ -42,7 +42,7 @@ export async function GET(request) {
         if (resetAt && (data.timestamp?.toMillis?.() ?? 0) < resetAt) continue;
         counts[data.waifuId] = (counts[data.waifuId] ?? 0) + 1;
       }
-      const top5Ids = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id, likes]) => ({ waifuId: id, likeCount: likes, nome: id }));
+      const top5Ids = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, likes]) => ({ waifuId: id, likeCount: likes, nome: id }));
       if (top5Ids.length > 0) {
         const waifuSnaps = await adminDb.getAll(...top5Ids.map(e => adminDb.doc(`catalogo_waifu/${e.waifuId}`)));
         rankingData = {

@@ -110,14 +110,15 @@ export default function WaifuRankingList({ user }) {
                   {isLive && <span style={{ marginLeft: 8, background: 'rgba(6,214,160,0.2)', border: '1px solid rgba(6,214,160,0.5)', borderRadius: 999, padding: '1px 6px', fontSize: 8, color: '#06d6a0' }}>● LIVE</span>}
                 </div>
                 <div style={{ fontFamily: FF.body, fontSize: 11, color: 'rgba(241,235,255,0.5)' }}>
-                  Chi possiede le Top 5 riceve Kisses bonus ogni domenica
+                  Top 10 classifica · le Top 5 ricevono Kisses bonus ogni settimana
                 </div>
               </div>
 
-              {/* Cards Top 5 — Clash Royale style */}
+              {/* Top 10 — Top 5 con premio, 6-10 senza */}
               {(ranking.top5 || []).map((item, i) => {
                 const isOwned = owns(item.waifuId);
-                const prizeColor = PRIZE_COLORS[i] ?? PRIZE_COLORS[4];
+                const isPrize = i < 5; // Solo top 5 ricevono il premio
+                const prizeColor = isPrize ? (PRIZE_COLORS[i] ?? PRIZE_COLORS[4]) : 'rgba(174,156,255,0.3)';
                 const isTop3 = i < 3;
                 const isHotObscured = item.hot && !hasHardPass;
 
@@ -127,10 +128,11 @@ export default function WaifuRankingList({ user }) {
                     background: isTop3
                       ? `linear-gradient(135deg, ${prizeColor}15, rgba(10,7,38,0.95))`
                       : 'rgba(255,255,255,0.03)',
-                    border: `1.5px solid ${prizeColor}${isTop3 ? '40' : '20'}`,
+                    border: `1.5px solid ${prizeColor}${isTop3 ? '40' : isPrize ? '25' : '12'}`,
                     boxShadow: isTop3 ? `0 4px 20px ${prizeColor}20` : 'none',
                     padding: '14px 16px',
                     transition: 'all 0.2s',
+                    opacity: isPrize ? 1 : 0.7,
                   }}>
                     {/* Shine per top 3 */}
                     {isTop3 && (
@@ -139,6 +141,12 @@ export default function WaifuRankingList({ user }) {
                         background: `linear-gradient(90deg, transparent, ${prizeColor}60, transparent)`,
                         pointerEvents: 'none',
                       }} />
+                    )}
+                    {/* Separatore tra top 5 e 6-10 */}
+                    {i === 5 && (
+                      <div style={{ position: 'absolute', top: -8, left: 16, right: 16, textAlign: 'center' }}>
+                        <span style={{ fontFamily: FF.label, fontSize: 7, color: 'rgba(174,156,255,0.4)', letterSpacing: '0.2em', background: 'rgba(10,7,38,0.9)', padding: '0 6px' }}>SENZA PREMIO</span>
+                      </div>
                     )}
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -180,17 +188,25 @@ export default function WaifuRankingList({ user }) {
                         </div>
                       </div>
 
-                      {/* Premio */}
+                      {/* Premio (solo top 5) */}
                       <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end' }}>
-                          <KissesIcon size={14} />
-                          <span style={{ fontFamily: FF.display, fontSize: 16, fontWeight: 800, color: prizeColor }}>
-                            {item.prize}
-                          </span>
-                        </div>
-                        <div style={{ fontFamily: FF.label, fontSize: 7, color: 'rgba(241,235,255,0.35)', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 2 }}>
-                          premio
-                        </div>
+                        {isPrize ? (
+                          <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end' }}>
+                              <KissesIcon size={14} />
+                              <span style={{ fontFamily: FF.display, fontSize: 16, fontWeight: 800, color: prizeColor }}>
+                                {item.prize}
+                              </span>
+                            </div>
+                            <div style={{ fontFamily: FF.label, fontSize: 7, color: 'rgba(241,235,255,0.35)', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 2 }}>
+                              premio
+                            </div>
+                          </>
+                        ) : (
+                          <div style={{ fontFamily: FF.label, fontSize: 8, color: 'rgba(174,156,255,0.3)', letterSpacing: '0.1em' }}>
+                            —
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

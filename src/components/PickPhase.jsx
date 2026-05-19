@@ -449,6 +449,8 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
     picks.map(idx => {
       const w = roster[idx];
       if (!w) return null;
+      // Se la waifu ha già i campi battle-ready (speed, moves, hp da buildBattleReadyWaifu), usarla direttamente
+      if (w.speed !== undefined && w.moves?.length) return { ...w };
       return initBattleWaifu(w, { livello: w.livello ?? 1 });
     }).filter(Boolean);
 

@@ -4096,7 +4096,9 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
               <SelezioneWaifuTeam
                 waifuDisponibili={Object.entries(collezione.waifu || {}).map(([id, dati]) => {
                   const w = waifuCat.find(x => x.id === id);
-                  return w ? { ...w, copie: dati.copie, livello: dati.livello, stat_bonus: dati.stat_bonus } : null;
+                  if (!w) return null;
+                  const mosseOk = Object.values(dati.mosse_slot ?? {}).filter(Boolean).length === 4;
+                  return mosseOk ? { ...w, copie: dati.copie, livello: dati.livello, stat_bonus: dati.stat_bonus, mosse_ok: true } : null;
                 }).filter(Boolean)}
                 waifuSelezionate={teamWaifu}
                 onToggle={(id) => {
@@ -6304,7 +6306,9 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   const mappaCompleta = numConquistati === totaleTerritori;
   const waifuDisponibili = Object.entries(collezione.waifu || {}).map(([id, dati]) => {
     const w = waifuCat.find(x => x.id === id);
-    return w ? { ...w, ...dati } : null;
+    if (!w) return null;
+    const mosseAssegnate = Object.values(dati.mosse_slot ?? {}).filter(Boolean).length;
+    return mosseAssegnate === 4 ? { ...w, ...dati } : null; // solo waifu con 4 mosse assegnate
   }).filter(Boolean);
   const teams = collezione.teams || {};
 

@@ -26,8 +26,7 @@ const TIPO_COLORS = {
 function StatCircle({ value, label, icon, color, size }) {
   const r = (size - 4) / 2;
   const circ = 2 * Math.PI * r;
-  // Per i valori mossa: PP max ~30, danno max ~200, crit max 100
-  const maxMap = { pp: 30, danno: 200, crit: 100 };
+  const maxMap = { pp: 30, danno: 200, danno_crit: 600 };
   const maxVal = maxMap[label] ?? 100;
   const pct = Math.min(1, value / maxVal);
 
@@ -77,7 +76,7 @@ export function CartaMossa({ mossa, datiUtente, dimensione = 'normale', onClick,
 
   const livello = datiUtente?.livello ?? mossa.livello ?? 1;
   const dannoEff = datiUtente?.danno ?? mossa.danno ?? 0;
-  const critEff  = Math.round((datiUtente?.danno_critico ?? mossa.danno_critico ?? 0.05) * 100);
+  const critEff  = datiUtente?.danno_critico ?? mossa.danno_critico ?? 0; // valore assoluto danno critico
   const ppVal    = mossa.pp ?? 0;
 
   const scale = dimensione === 'piccola' ? 0.65 : dimensione === 'media' ? 0.82 : dimensione === 'grande' ? 1.15 : 1;
@@ -240,9 +239,9 @@ export function CartaMossa({ mossa, datiUtente, dimensione = 'normale', onClick,
           boxShadow: `0 0 6px ${rb.glow}`,
         }} />
         <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
-          <StatCircle value={ppVal}    label="pp"    icon="⚡" color="#6cf0e0" size={statSize} />
-          <StatCircle value={dannoEff} label="danno" icon="⚔" color="#ff9ec6" size={statSize} />
-          <StatCircle value={critEff}  label="crit"  icon="✦" color="#ffc861" size={statSize} />
+          <StatCircle value={ppVal}    label="pp"         icon="⚡" color="#6cf0e0" size={statSize} />
+          <StatCircle value={dannoEff} label="danno"      icon="⚔" color="#ff9ec6" size={statSize} />
+          <StatCircle value={critEff}  label="danno_crit" icon="💥" color="#ffc861" size={statSize} />
         </div>
       </div>
 
