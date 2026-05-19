@@ -25,3 +25,6 @@ export class ModuleCache {
     else { this._store = {}; }
   }
 }
+
+// Singleton condiviso per i pool del catalogo (feed pesca + rebuild-pack-pools)
+export const catalogCache = new ModuleCache(10 * 60 * 1000);

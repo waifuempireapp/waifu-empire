@@ -3781,7 +3781,7 @@ const stileLevelUp = {
  * @param {Object}   [props.statConfig]         — Config stat/upgrade (ranges e steps).
  * @param {Function} props.ModaPersonalizzazione — Componente overlay personalizzazione outfit.
  */
-function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, profilo, setProfilo, user, mostraNotif, initialSubTab = 'waifu', statConfig = { ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT }, ModaPersonalizzazione }) {
+function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat = [], poseCat = [], profilo, setProfilo, user, mostraNotif, initialSubTab = 'waifu', statConfig = { ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT }, ModaPersonalizzazione }) {
   const [tabSub, setTabSub] = useState(initialSubTab);
   const [waifuSel, setWaifuSel] = useState(null);
   const [teamInEdit, setTeamInEdit] = useState(null);
@@ -3914,10 +3914,9 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
   };
 
   const subTabs = [
-    { k: 'waifu', l: 'Waifu', icon: '👑', n: Object.keys(collezione.waifu || {}).length, c: '#f5a623' },
-    { k: 'outfit', l: 'Outfit', icon: '✦', n: Object.keys(collezione.outfit || {}).length, c: '#9b59ff' },
-    { k: 'pose', l: 'Pose', icon: 'âšœ', n: Object.keys(collezione.pose || {}).length, c: '#ff2d78' },
-    { k: 'team', l: 'Team', icon: '⚔', n: Object.keys(teams).length, c: '#00e676' },
+    { k: 'waifu',  l: 'Waifu',  icon: '👑', n: Object.keys(collezione.waifu || {}).length,  c: '#f5a623' },
+    { k: 'mosse',  l: 'Mosse',  icon: '⚔', n: Object.keys(collezione.mosse || {}).length,  c: '#9b59ff' },
+    { k: 'team',   l: 'Team',   icon: '🛡', n: Object.keys(teams).length,                   c: '#00e676' },
   ];
 
   return (
@@ -4039,121 +4038,55 @@ function CollezioneTab({ collezione, setColl, waifuCat, outfitCat, poseCat, prof
         );
       })()}
 
-      {tabSub === 'outfit' && (() => {
-        let outfitEntries = Object.entries(collezione.outfit || {}).map(([id, dati]) => {
-          const o = outfitCat.find(x => x.id === id);
-          return o ? { id, dati, o } : null;
-        }).filter(Boolean);
-        if (filtroRaritaOutfit !== 'tutte') outfitEntries = outfitEntries.filter(({ o }) => o.rarita === filtroRaritaOutfit);
-        if (dropOutfitIds) outfitEntries = outfitEntries.filter(({ o }) => dropOutfitIds.has(o.id));
-        const visibili = outfitEntries.slice(0, visibiliOutfit);
-        return (
-          <div style={{ marginTop: 12 }}>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
-              <div className="iw-tooltip-wrap">
-                <select value={filtroRaritaOutfit} onChange={e => { setFiltroRaritaOutfit(e.target.value); setVisibiliOutfit(12); }} style={{ background: 'rgba(155,89,255,0.06)', border: '1px solid rgba(155,89,255,0.25)', color: '#9b59ff', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
-                  <option value="tutte">Tutte le rarità</option>
-                  {['comune','raro','epico','leggendario','immersivo'].map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
-                </select>
-                <span className="iw-tooltip">Filtra per rarità</span>
-              </div>
-              {drops.length > 0 && (
-                <div className="iw-tooltip-wrap">
-                  <select value={filtroDropId} onChange={e => { setFiltroDropId(e.target.value); setVisibiliOutfit(12); }} style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
-                    <option value="tutti">Tutti i drop</option>
-                    {drops.map(d => <option key={d.id} value={d.id}>{d.nome || d.id}</option>)}
-                  </select>
-                  <span className="iw-tooltip">Filtra per drop</span>
-                </div>
-              )}
-              <span style={{ fontSize: 9, color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron' }}>{outfitEntries.length} outfit</span>
-            </div>
-            <div className="collection-card-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
-              {visibili.map(({ id, dati, o }, idx) => (
-                <div key={id} className="card-fade-up card-clickable collection-card-item" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, animationDelay: `${idx * 45}ms` }}>
-                  <CartaOutfit outfit={o} quantita={dati.quantita} dimensione="piccola" />
+      {tabSub === 'mosse' && (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
+            {Object.entries(collezione.mosse || {}).map(([moveId, dati], idx) => {
+              const catalog = mosseCat.find(m => m.id === moveId);
+              if (!catalog) return null;
+              const livello = dati.livello ?? 1;
+              const prossimeLup = livello < 10 && dati.copie % 5 === 0 && dati.copie > 0;
+              const tipoColors = { Arcana: '#7F77DD', Natura: '#639922', Abisso: '#4463DD', Ferro: '#5F5E5A', Fuoco: '#D85A30' };
+              const tipoCol = tipoColors[catalog.tipologia] ?? '#7F77DD';
+              return (
+                <div key={moveId} className="card-fade-up collection-card-item"
+                  style={{ width: 120, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, animationDelay: `${idx * 40}ms` }}>
+                  <div style={{
+                    width: 110, height: 155, background: `linear-gradient(160deg, rgba(0,0,0,0.8) 0%, rgba(10,7,38,0.95) 100%)`,
+                    border: `1.5px solid ${tipoCol}44`, borderRadius: 12,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    gap: 4, padding: 8, position: 'relative',
+                    boxShadow: `0 4px 16px ${tipoCol}30`,
+                  }}>
+                    {prossimeLup && (
+                      <div style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(6,214,160,0.2)', border: '1px solid rgba(6,214,160,0.6)', borderRadius: 5, padding: '1px 5px', fontFamily: 'Orbitron', fontSize: 7, color: '#06d6a0', fontWeight: 700 }}>⬆ LVL</div>
+                    )}
+                    <div style={{ fontSize: 28, lineHeight: 1 }}>⚔</div>
+                    <div style={{ fontFamily: 'Cinzel, serif', fontSize: 9, color: '#f5e6d3', textAlign: 'center', lineHeight: 1.3 }}>{catalog.nome}</div>
+                    <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: tipoCol }}>{catalog.tipologia} · Lv{livello}</div>
+                    <div style={{ fontFamily: 'Orbitron', fontSize: 7, color: 'rgba(245,230,211,0.7)', textAlign: 'center' }}>
+                      PP:{catalog.pp} · ⚔{dati.danno ?? catalog.danno} · {Math.round((dati.danno_critico ?? catalog.danno_critico) * 100)}%
+                    </div>
+                    {catalog.abilita && (
+                      <div style={{ fontFamily: 'Orbitron', fontSize: 7, color: 'rgba(174,156,255,0.8)', textAlign: 'center', overflow: 'hidden', maxWidth: '95%', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>🔮 {catalog.abilita}</div>
+                    )}
+                  </div>
                   <span style={{ fontFamily: 'Orbitron', fontSize: 8, color: '#9b59ff' }}>
-                    x<strong style={{ color: '#ffd666' }}>{dati.quantita}</strong> copie
+                    x<strong style={{ color: '#ffd666' }}>{dati.copie}</strong> copie
                   </span>
-                  {dati.quantita > 0 && <BtnDecorato variant="success" size="sm" onClick={() => handleScarta('outfit', id, o.rarita)}>â†» +{calcolaEnergiaScarto(o.rarita)}</BtnDecorato>}
                 </div>
-              ))}
-              {outfitEntries.length === 0 && (
-                <PannelloOrnato style={{ width: '100%', textAlign: 'center', padding: 40 }}>
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>✦</div>
-                  <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#9b59ff', letterSpacing: 2, marginBottom: 6 }}>NESSUN OUTFIT TROVATO</div>
-                  <div style={{ opacity: 0.4, fontSize: 10, lineHeight: 1.6 }}>Cambia i filtri<br/>o sbusta nuovi pacchetti!</div>
-                </PannelloOrnato>
-              )}
-            </div>
-            {visibiliOutfit < outfitEntries.length && (
-              <div style={{ textAlign: 'center', marginTop: 14 }}>
-                <BtnDecorato variant="secondary" size="sm" onClick={() => setVisibiliOutfit(v => v + 12)}>
-                  Carica altri ({outfitEntries.length - visibiliOutfit} rimanenti)
-                </BtnDecorato>
-              </div>
+              );
+            })}
+            {Object.keys(collezione.mosse || {}).length === 0 && (
+              <PannelloOrnato style={{ width: '100%', textAlign: 'center', padding: 40 }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>⚔</div>
+                <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#9b59ff', letterSpacing: 2, marginBottom: 6 }}>NESSUNA MOSSA TROVATA</div>
+                <div style={{ opacity: 0.4, fontSize: 10, lineHeight: 1.6 }}>Apri bustine per trovare<br/>mosse attacco!</div>
+              </PannelloOrnato>
             )}
           </div>
-        );
-      })()}
-
-      {tabSub === 'pose' && (() => {
-        let poseEntries = Object.entries(collezione.pose || {}).map(([id, dati]) => {
-          const p = poseCat.find(x => x.id === id);
-          return p ? { id, dati, p } : null;
-        }).filter(Boolean);
-        if (filtroRaritaPose !== 'tutte') poseEntries = poseEntries.filter(({ p }) => p.rarita === filtroRaritaPose);
-        if (dropPoseIds) poseEntries = poseEntries.filter(({ p }) => dropPoseIds.has(p.id));
-        const visibili = poseEntries.slice(0, visibiliPose);
-        return (
-          <div style={{ marginTop: 12 }}>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
-              <div className="iw-tooltip-wrap">
-                <select value={filtroRaritaPose} onChange={e => { setFiltroRaritaPose(e.target.value); setVisibiliPose(12); }} style={{ background: 'rgba(255,45,120,0.06)', border: '1px solid rgba(255,45,120,0.25)', color: '#ff2d78', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
-                  <option value="tutte">Tutte le rarità</option>
-                  {['comune','raro','epico','leggendario','immersivo'].map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
-                </select>
-                <span className="iw-tooltip">Filtra per rarità</span>
-              </div>
-              {drops.length > 0 && (
-                <div className="iw-tooltip-wrap">
-                  <select value={filtroDropId} onChange={e => { setFiltroDropId(e.target.value); setVisibiliPose(12); }} style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676', borderRadius: 8, padding: '4px 8px', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>
-                    <option value="tutti">Tutti i drop</option>
-                    {drops.map(d => <option key={d.id} value={d.id}>{d.nome || d.id}</option>)}
-                  </select>
-                  <span className="iw-tooltip">Filtra per drop</span>
-                </div>
-              )}
-              <span style={{ fontSize: 9, color: 'rgba(238,232,220,0.35)', fontFamily: 'Orbitron' }}>{poseEntries.length} pose</span>
-            </div>
-            <div className="collection-card-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
-              {visibili.map(({ id, dati, p }, idx) => (
-                <div key={id} className="card-fade-up card-clickable collection-card-item" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, animationDelay: `${idx * 45}ms` }}>
-                  <CartaPosa posa={p} quantita={dati.quantita} dimensione="piccola" />
-                  <span style={{ fontFamily: 'Orbitron', fontSize: 8, color: '#ff2d78' }}>
-                    x<strong style={{ color: '#ffd666' }}>{dati.quantita}</strong> copie
-                  </span>
-                  {dati.quantita > 0 && <BtnDecorato variant="success" size="sm" onClick={() => handleScarta('pose', id, p.rarita)}>â†» +{calcolaEnergiaScarto(p.rarita)}</BtnDecorato>}
-                </div>
-              ))}
-              {poseEntries.length === 0 && (
-                <PannelloOrnato style={{ width: '100%', textAlign: 'center', padding: 40 }}>
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>âšœ</div>
-                  <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#ff2d78', letterSpacing: 2, marginBottom: 6 }}>NESSUNA POSA TROVATA</div>
-                  <div style={{ opacity: 0.4, fontSize: 10, lineHeight: 1.6 }}>Cambia i filtri<br/>o sbusta nuovi pacchetti!</div>
-                </PannelloOrnato>
-              )}
-            </div>
-            {visibiliPose < poseEntries.length && (
-              <div style={{ textAlign: 'center', marginTop: 14 }}>
-                <BtnDecorato variant="secondary" size="sm" onClick={() => setVisibiliPose(v => v + 12)}>
-                  Carica altre ({poseEntries.length - visibiliPose} rimanenti)
-                </BtnDecorato>
-              </div>
-            )}
-          </div>
-        );
-      })()}
+        </div>
+      )}
 
       {tabSub === 'team' && (
         <div style={{ marginTop: 12, position: 'relative' }}>

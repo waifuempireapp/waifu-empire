@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
-import { catalogCache } from '@/app/api/pesca/feed/route'; // riusa la stessa cache
-import { ModuleCache } from '@/lib/serverCache';
+import { catalogCache } from '@/lib/serverCache'; // singleton condiviso
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase());
 

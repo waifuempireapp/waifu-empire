@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
-import { ModuleCache } from '@/lib/serverCache';
+import { ModuleCache, catalogCache } from '@/lib/serverCache';
 import { getCachedUserName, getCachedFriendUids } from '@/lib/adminHelpers';
 
 // Cache in-memory per fishing_attempts — TTL 30s (set di snapshotId già pescati)
@@ -12,9 +12,7 @@ const MAX_ACTIVE = 10;  // packs attivi massimi
 const GHOST_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24h
 const GOD_PACK_CHANCE = 0.05; // 5% → tutte waifu
 
-// Cache per config/pack_pools: 1 documento invece di 666.
-// TTL 10 min — l'admin invalida esplicitamente dopo rebuild.
-export const catalogCache = new ModuleCache(10 * 60 * 1000);
+// catalogCache importato da @/lib/serverCache (singleton condiviso con rebuild-pack-pools)
 
 const GHOST_NAMES = [
   'Serafina', 'Lunara', 'Isolde', 'Morgana', 'Arianna',
@@ -62,25 +60,19 @@ async function buildCatalogPools() {
     const data = poolDoc.data();
     return catalogCache.set('pools', {
       waifuPool:  data.waifuPool  || [],
-      outfitPool: data.outfitPool || [],
-      posePool:   data.posePool   || [],
       activeDrop: data.activeDrop || null,
     });
   }
 
-  // Fallback: lettura catalogo completa (comportamento legacy)
+  // Fallback: lettura catalogo (senza outfit/pose rimossi)
   console.warn('[feed] config/pack_pools non trovato — esegui rebuild-pack-pools.js');
   const now = new Date();
-  const [waifuSnap, outfitSnap, poseSnap, dropSnap] = await Promise.all([
+  const [waifuSnap, dropSnap] = await Promise.all([
     adminDb.collection('catalogo_waifu').get(),
-    adminDb.collection('catalogo_outfit').get(),
-    adminDb.collection('catalogo_pose').get(),
     adminDb.collection('drops').where('attivo', '==', true).get(),
   ]);
-  const allWaifu  = waifuSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-  const allOutfit = outfitSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-  const allPose   = poseSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-  let waifuPool = allWaifu, outfitPool = allOutfit, posePool = allPose;
+  const allWaifu = waifuSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  let waifuPool = allWaifu;
   const activeDrops = dropSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(d => {
     if (d.inizio && new Date(d.inizio) > now) return false;
     if (d.fine) { const fine = new Date(d.fine); fine.setHours(23, 59, 59, 999); if (fine < now) return false; }
@@ -88,37 +80,20 @@ async function buildCatalogPools() {
   });
   if (activeDrops.length > 0) {
     const drop = activeDrops[0];
-    if (drop.waifuIds?.length  > 0) waifuPool  = allWaifu.filter(w  => drop.waifuIds.includes(w.id));
-    if (drop.outfitIds?.length > 0) outfitPool = allOutfit.filter(o => drop.outfitIds.includes(o.id));
-    if (drop.poseIds?.length   > 0) posePool   = allPose.filter(p   => drop.poseIds.includes(p.id));
+    if (drop.waifuIds?.length > 0) waifuPool = allWaifu.filter(w => drop.waifuIds.includes(w.id));
   }
-  if (waifuPool.length  === 0) waifuPool  = allWaifu;
-  if (outfitPool.length === 0) outfitPool = allOutfit;
-  if (posePool.length   === 0) posePool   = allPose;
+  if (waifuPool.length === 0) waifuPool = allWaifu;
   const activeDrop = activeDrops[0] || null;
-  return catalogCache.set('pools', { waifuPool, outfitPool, posePool, activeDrop });
+  return catalogCache.set('pools', { waifuPool, activeDrop });
 }
 
-// Costruisce le 5 carte di un ghost pack:
-// 5% God Pack (5 waifu), 95% standard (2 waifu + 2 outfit + 1 posa)
-function buildGhostCards(waifuPool, outfitPool, posePool) {
+// Costruisce le carte di un ghost pack: 5% God Pack (5 waifu), 95% standard (3 waifu)
+function buildGhostCards(waifuPool) {
   const cards = [];
-  if (Math.random() < GOD_PACK_CHANCE) {
-    for (let i = 0; i < 5; i++) {
-      const w = randPick(waifuPool);
-      if (w) cards.push({ tipo: 'waifu', id: w.id, rarita: w.rarita || 'comune', nome: w.nome || '', immagine: cardUrl(w, 'waifu'), hot: w.hot === true });
-    }
-  } else {
-    for (let i = 0; i < 2; i++) {
-      const w = randPick(waifuPool);
-      if (w) cards.push({ tipo: 'waifu', id: w.id, rarita: w.rarita || 'comune', nome: w.nome || '', immagine: cardUrl(w, 'waifu'), hot: w.hot === true });
-    }
-    for (let i = 0; i < 2; i++) {
-      const o = randPick(outfitPool);
-      if (o) cards.push({ tipo: 'outfit', id: o.id, rarita: o.rarita || 'comune', nome: o.nome || '', immagine: cardUrl(o, 'outfit'), hot: false });
-    }
-    const p = randPick(posePool);
-    if (p) cards.push({ tipo: 'posa', id: p.id, rarita: p.rarita || 'comune', nome: p.nome || '', immagine: cardUrl(p, 'posa'), hot: false });
+  const count = Math.random() < GOD_PACK_CHANCE ? 5 : 3;
+  for (let i = 0; i < count; i++) {
+    const w = randPick(waifuPool);
+    if (w) cards.push({ tipo: 'waifu', id: w.id, rarita: w.rarita || 'comune', nome: w.nome || '', immagine: cardUrl(w, 'waifu'), hot: w.hot === true });
   }
   return shuffle(cards);
 }
@@ -268,7 +243,7 @@ export async function GET(request) {
       const availableNames = GHOST_NAMES.filter(n => !usedActiveGhostNames.has(n));
 
       if (neededNew > 0 && availableNames.length > 0) {
-        const { waifuPool: rawWaifuPool, outfitPool, posePool, activeDrop } = await buildCatalogPools();
+        const { waifuPool: rawWaifuPool, activeDrop } = await buildCatalogPools();
         // Filtra waifu Hot se l'utente non ha Pass Hard
         const waifuPool = hasHardPass ? rawWaifuPool : rawWaifuPool.filter(w => !w.hot);
         const dropId   = activeDrop?.id   || null;
@@ -277,7 +252,7 @@ export async function GET(request) {
         const newBatch = adminDb.batch();
         for (let i = 0; i < Math.min(neededNew, availableNames.length); i++) {
           const ghostName = availableNames[i];
-          const cards     = buildGhostCards(waifuPool, outfitPool, posePool);
+          const cards     = buildGhostCards(waifuPool);
           const expiresAt = new Date(now.getTime() + GHOST_EXPIRY_MS);
 
           const docRef = adminDb.collection('pack_snapshots').doc();
