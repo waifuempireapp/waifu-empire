@@ -6,6 +6,21 @@ import { Chip, PannelloOrnato } from '@/components/ui/UIKit';
 import { C, FF, ScreenTitle } from './_shared';
 import WaifuRankingList from '@/components/classifica/WaifuRankingList';
 
+// Card premio riutilizzabile per le due righe
+function PremioBox({ p }) {
+  return (
+    <div style={{
+      flex: 1,
+      background: `${p.col}10`, border: `1px solid ${p.col}45`,
+      borderRadius: 11, padding: '8px 10px', textAlign: 'center',
+    }}>
+      <div style={{ fontSize: 11, color: p.col, fontWeight: 700, fontFamily: FF.label, letterSpacing: '0.12em' }}>{p.label}</div>
+      <div style={{ fontSize: 18, color: '#fff', fontFamily: FF.mono, fontWeight: 800, marginTop: 2, textShadow: `0 0 8px ${p.col}55` }}>{p.pack}</div>
+      <div style={{ fontSize: 8, color: 'rgba(241,235,255,0.45)', fontFamily: FF.label, letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: 2 }}>🎴 PREMIO</div>
+    </div>
+  );
+}
+
 export function ClassificaTab({ user }) {
   const [subTab, setSubTab] = useState('giocatori');
   const [classifica, setClassifica] = useState([]);
@@ -76,34 +91,23 @@ export function ClassificaTab({ user }) {
           letterSpacing: '0.28em', marginBottom: 10, fontWeight: 700,
           textTransform: 'uppercase',
         }}>🎁 Premi settimanali</div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {/* Riga 1: podi (1°, 2°, 3°) */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
           {[
-            { label: '🥇 1°',     pack: 10, col: C.gold     },
-            { label: '🥈 2°',     pack: 5,  col: '#cfd8e3'  },
-            { label: '🥉 3°',     pack: 3,  col: '#ff9b6b'  },
-            { label: '🏅 Top 100', pack: 2,  col: C.violet   },
-            { label: '✦ Tutti',  pack: 1,  col: '#5aa9ff'  },
+            { label: '🥇 1°', pack: 10, col: C.gold    },
+            { label: '🥈 2°', pack: 5,  col: '#cfd8e3' },
+            { label: '🥉 3°', pack: 3,  col: '#ff9b6b' },
           ].map(p => (
-            <div key={p.label} style={{
-              flex: '1 0 auto', minWidth: 78,
-              background: `${p.col}10`, border: `1px solid ${p.col}45`,
-              borderRadius: 11, padding: '8px 10px', textAlign: 'center',
-            }}>
-              <div style={{
-                fontSize: 11, color: p.col, fontWeight: 700,
-                fontFamily: FF.label, letterSpacing: '0.12em',
-              }}>{p.label}</div>
-              <div style={{
-                fontSize: 18, color: '#fff',
-                fontFamily: FF.mono, fontWeight: 800, marginTop: 2,
-                textShadow: `0 0 8px ${p.col}55`,
-              }}>{p.pack}</div>
-              <div style={{
-                fontSize: 8, color: 'rgba(241,235,255,0.45)',
-                fontFamily: FF.label, letterSpacing: '0.18em',
-                textTransform: 'uppercase', marginTop: 2,
-              }}>🎴 PREMIO</div>
-            </div>
+            <PremioBox key={p.label} p={p} />
+          ))}
+        </div>
+        {/* Riga 2: categorie più ampie */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[
+            { label: '🏅 Top 100', pack: 2, col: C.violet  },
+            { label: '✦ Tutti',   pack: 1, col: '#5aa9ff' },
+          ].map(p => (
+            <PremioBox key={p.label} p={p} />
           ))}
         </div>
       </div>
@@ -140,7 +144,7 @@ export function ClassificaTab({ user }) {
               fontFamily: FF.mono, fontSize: 10, color: 'rgba(241,235,255,0.55)',
               marginTop: 2, letterSpacing: '-0.01em',
             }}>
-              Lv.{classifica[mioIndice]._livelloMappa} · {classifica[mioIndice]._territori} territori
+              {classifica[mioIndice]._territori} territori · Lv.{classifica[mioIndice]._livelloMappa}
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
@@ -252,7 +256,7 @@ export function ClassificaTab({ user }) {
         fontFamily: FF.label, letterSpacing: '0.22em',
         textTransform: 'uppercase', fontWeight: 600,
       }}>
-        Criteri · Livello Mappa → Territori → Iscrizione
+        Criteri · Pixel Conquistati (nuova mappa) → Livello Mappa → Iscrizione
       </div>
       </>}
     </div>

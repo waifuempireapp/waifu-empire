@@ -91,55 +91,32 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Questo pixel è già tuo' }, { status: 400 });
     }
 
-    // Controlla battle già in corso sullo stesso pixel
-    // Gestisce anche battaglie "stale" (in_progress da > 24h) rimaste per bug precedenti
+    // Controlla battle già in corso sullo stesso pixel (LIMIT 1 = 1 sola lettura)
+    // Il cleanup delle battaglie stale avviene nell'API admin/cleanup-battles separata,
+    // non ad ogni attacco (evita la query LIMIT 5 che triplicava le letture)
+    const STALE_MS = 24 * 60 * 60 * 1000;
     let existingBattleSnap = null;
     try {
       const snap = await adminDb.collection('territory_battles')
         .where('pixelX', '==', targetX)
         .where('pixelY', '==', targetY)
         .where('status', '==', 'in_progress')
-        .limit(5).get();
+        .limit(1).get();
 
       if (!snap.empty) {
-        const STALE_MS = 24 * 60 * 60 * 1000; // 24 ore
-        const now = Date.now();
-        const freshBattles = [];
-        const staleBattles = [];
-
-        snap.docs.forEach(doc => {
-          const d = doc.data();
-          const createdMs = d.createdAt?.toMillis?.() ?? 0;
-          if (now - createdMs > STALE_MS) {
-            staleBattles.push(doc.ref);
-          } else {
-            freshBattles.push(doc);
-          }
-        });
-
-        // Auto-cleanup delle battaglie stale (risolte come "defender_wins")
-        for (const ref of staleBattles) {
-          await ref.update({ status: 'defender_wins', updatedAt: new Date() });
-        }
-
-        if (freshBattles.length > 0) {
-          existingBattleSnap = freshBattles[0];
+        const doc = snap.docs[0];
+        const createdMs = doc.data().createdAt?.toMillis?.() ?? 0;
+        if (Date.now() - createdMs > STALE_MS) {
+          // Battle stale: risolvila in background (non-blocking) e permetti il nuovo attacco
+          doc.ref.update({ status: 'defender_wins', updatedAt: new Date() }).catch(() => {});
+        } else {
+          existingBattleSnap = doc;
         }
       }
-    } catch (e) {
-      // Fallback se l'indice composito non esiste: query semplice
-      try {
-        const snap = await adminDb.collection('territory_battles')
-          .where('pixelX', '==', targetX)
-          .where('pixelY', '==', targetY)
-          .get();
-        const freshBattle = snap.docs.find(d => d.data().status === 'in_progress' && (Date.now() - (d.data().createdAt?.toMillis?.() ?? 0)) < 24 * 60 * 60 * 1000);
-        existingBattleSnap = freshBattle || null;
-      } catch { /* ignora */ }
-    }
+    } catch { /* indice composito non esiste: procedi senza check */ }
 
     if (existingBattleSnap) {
-      return NextResponse.json({ error: 'Questo territorio è già sotto attacco. Riprova tra qualche momento o completa la battaglia in corso.' }, { status: 409 });
+      return NextResponse.json({ error: 'Questo territorio è già sotto attacco. Completa la battaglia in corso o riprova tra qualche ora.' }, { status: 409 });
     }
 
     // Recupera team difensore del proprietario

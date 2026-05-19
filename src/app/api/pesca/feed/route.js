@@ -3,6 +3,10 @@ import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { ModuleCache } from '@/lib/serverCache';
 import { getCachedUserName, getCachedFriendUids } from '@/lib/adminHelpers';
 
+// Cache in-memory per fishing_attempts — TTL 30s (set di snapshotId già pescati)
+const _fishCache = new Map(); // uid → { fishedSet, ts }
+const FISH_CACHE_TTL = 30 * 1000;
+
 const MIN_ACTIVE = 7;   // packs attivi (non pescati) minimi
 const MAX_ACTIVE = 10;  // packs attivi massimi
 const GHOST_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24h
@@ -131,10 +135,17 @@ export async function GET(request) {
     const cleanupBatch = adminDb.batch();
     let   needsCleanup = false;
 
-    // ── 1. Fishing attempts (singola query, riusata per tutto) ──
-    const fishSnap = await adminDb.collection('fishing_attempts')
-      .where('fisherUid', '==', uid).get();
-    const fishedSet = new Set(fishSnap.docs.map(d => d.data().snapshotId));
+    // ── 1. Fishing attempts — con cache 30s per ridurre letture ripetute ──
+    let fishedSet;
+    const fishCached = _fishCache.get(uid);
+    if (fishCached && Date.now() - fishCached.ts < FISH_CACHE_TTL) {
+      fishedSet = fishCached.fishedSet;
+    } else {
+      const fishSnap = await adminDb.collection('fishing_attempts')
+        .where('fisherUid', '==', uid).get();
+      fishedSet = new Set(fishSnap.docs.map(d => d.data().snapshotId));
+      _fishCache.set(uid, { fishedSet, ts: Date.now() });
+    }
 
     // ── Leggi hardPass dall'utente (già letto per Kisses in fish route, qui serve per filtrare Hot) ──
     const userSnap = await adminDb.collection('users').doc(uid).get();
@@ -146,8 +157,12 @@ export async function GET(request) {
 
     if (friendUids.length > 0) {
       const batchUids = friendUids.slice(0, MAX_ACTIVE);
+      // Filtra solo i pack non scaduti (riduce le letture degli snapshot storici)
+      const nowFirestore = new (require('firebase-admin/firestore').Timestamp).fromDate(new Date());
       const snap = await adminDb.collection('pack_snapshots')
         .where('ownerUid', 'in', batchUids)
+        .where('expiresAt', '>', nowFirestore)
+        .limit(batchUids.length * 3) // max 3 pack per amico, evita letture eccessive
         .get();
 
       // Raccogli per ownerUid: il più recente per ogni amico
@@ -197,9 +212,11 @@ export async function GET(request) {
         .filter(p => hasHardPass || !p.hasHot);
     }
 
-    // ── 3. Ghost pack dal DB per questo utente ──
+    // ── 3. Ghost pack dal DB per questo utente (solo non scaduti) ──
     const ghostSnap = await adminDb.collection('pack_snapshots')
       .where('forUid', '==', uid)
+      .where('expiresAt', '>', nowFirestore)
+      .limit(10)
       .get();
 
     const latestByGhostName = new Map();

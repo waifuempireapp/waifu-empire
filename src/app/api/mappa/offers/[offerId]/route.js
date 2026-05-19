@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { invalidateOffersCache } from '@/lib/offersCache';
 
 export const maxDuration = 30;
 
@@ -31,6 +32,9 @@ export async function PATCH(request, { params }) {
 
     if (action === 'reject') {
       await offerRef.update({ status: 'rejected', updatedAt: FieldValue.serverTimestamp() });
+      // Invalida cache offerte per entrambi gli utenti
+      invalidateOffersCache(uid);
+      invalidateOffersCache(offer.fromUid);
       return NextResponse.json({ success: true, action: 'rejected' });
     }
 
@@ -70,6 +74,9 @@ export async function PATCH(request, { params }) {
       tx.update(offerRef, { status: 'accepted', updatedAt: FieldValue.serverTimestamp() });
     });
 
+    // Invalida cache offerte per entrambi gli utenti
+    invalidateOffersCache(uid);
+    invalidateOffersCache(offer.fromUid);
     return NextResponse.json({ success: true, action: 'accepted' });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: e.message.includes('insufficienti') ? 402 : 500 });

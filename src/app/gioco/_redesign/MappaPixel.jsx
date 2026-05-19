@@ -37,7 +37,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
   const loadChunks = useCallback(async (forceRefresh = false) => {
     const cached = sessionStorage.getItem('pixel_map_chunks');
     const cachedAt = Number(sessionStorage.getItem('pixel_map_chunks_at') || 0);
-    const TTL = 30 * 1000;
+    const TTL = 2 * 60 * 1000; // 2 minuti (era 30s) — la mappa cambia solo dopo battaglie/acquisti
 
     if (!forceRefresh && cached && Date.now() - cachedAt < TTL) {
       setChunks(JSON.parse(cached));

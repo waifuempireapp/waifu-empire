@@ -445,22 +445,34 @@ export async function getConfig(docId) {
  * @returns {Promise<Array<Object>>} Array di profili con campi di score aggiuntivi.
  */
 export async function getClassifica(limitN = 100) {
-  // Legge i profili utenti ordinati per livelloMappa desc, poi altri criteri applicati lato client
+  // Legge i profili utenti — ordinamento primario per pixelCount (mappa pixel) applicato lato client
   const q = query(collection(db, 'users'), limit(200));
   const snap = await getDocs(q);
   const utenti = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
   // Calcola score per ordinamento
   const conScore = utenti.map(u => {
+    // Criterio primario: pixelCount (territori nuova mappa pixel)
+    const pixelCount = u.pixelCount ?? 0;
+    // Criterio secondario legacy: livelloMappa (tiebreaker)
     const livelloMappa = u.livelloMappa ?? 1;
-    const territori = Object.values(u.territoriUtente || {}).filter(t => t?.conquistato).length;
+    // Criterio terziario legacy: territori Risiko (tiebreaker estremo)
+    const territoriLegacy = Object.values(u.territoriUtente || {}).filter(t => t?.conquistato).length;
     const creatoTs = u.creato?.toMillis ? u.creato.toMillis() : Number(u.creato) || 0;
-    return { ...u, _livelloMappa: livelloMappa, _territori: territori, _creatoTs: creatoTs, _nomeDisplay: u.nomeImpero || u.nome || (u.email?.split("@")[0]) || "Giocatore" };
+    return {
+      ...u,
+      _pixelCount: pixelCount,
+      _livelloMappa: livelloMappa,
+      _territori: pixelCount,        // usato nella UI: mostra pixelCount come "territori"
+      _nomeDisplay: u.nomeImpero || u.nome || (u.email?.split('@')[0]) || 'Giocatore',
+      _creatoTs: creatoTs,
+    };
   });
 
+  // Ordina: pixelCount desc → livelloMappa desc → data iscrizione asc
   conScore.sort((a, b) => {
+    if (b._pixelCount !== a._pixelCount) return b._pixelCount - a._pixelCount;
     if (b._livelloMappa !== a._livelloMappa) return b._livelloMappa - a._livelloMappa;
-    if (b._territori !== a._territori) return b._territori - a._territori;
     return a._creatoTs - b._creatoTs;
   });
 
