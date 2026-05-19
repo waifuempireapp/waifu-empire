@@ -47,6 +47,10 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
+    match /catalogo_mosse/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
     match /drops/{id} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
@@ -173,6 +177,12 @@ service cloud.firestore {
       allow update: if isSignedIn()
                     && resource.data.toUid == request.auth.uid;
       allow delete: if false;
+    }
+
+    // === Log operazioni admin (chiusura classifica ecc.) ===
+    match /admin_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false; // solo Admin SDK lato server
     }
 
     // Default: nega tutto
