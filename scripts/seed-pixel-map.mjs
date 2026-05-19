@@ -84,9 +84,20 @@ async function seedSwapConfig() {
   console.log('✅ swap_config/main aggiornato');
 }
 
+async function seedCatalogIndex() {
+  console.log('📑 Creazione catalog_ids index per Swap...');
+  const snap = await db.collection('catalogo_waifu').get();
+  const ids = snap.docs.map(d => d.id);
+  await db.collection('swap_config').doc('catalog_ids').set({
+    ids, updatedAt: new Date(), count: ids.length,
+  });
+  console.log(`✅ catalog_ids aggiornato: ${ids.length} waifu indicizzate`);
+}
+
 async function main() {
   await seedMapChunks();
   await seedSwapConfig();
+  await seedCatalogIndex();
   console.log('\n🎉 Seed mappa mondo completato!');
   process.exit(0);
 }
