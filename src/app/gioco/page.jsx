@@ -51,6 +51,7 @@ import { calcolaLivelloOutfit, getArchetipiCompatibili, puoEquipaggiare, applica
 // BabyDoll import removed — Baby-doll tab removed in collection-detail-rework
 // PaperDoll import removed — unused after collection-detail-rework
 import { CartaWaifu, CartaOutfit, CartaPosa } from '@/components/CartaWaifu';
+import { CartaMossa } from '@/components/CartaMossa';
 import KissesIcon from '@/components/KissesIcon';
 import PescaMisteriosaFeed from '@/components/PescaMisteriosaFeed';
 import NegozioOverlay from '@/components/NegozioOverlay';
@@ -2183,6 +2184,7 @@ function EdgeSpoilerOverlay({ carteShuffled, currentIdx, onClose }) {
   const currentCard = carteShuffled[currentIdx];
   const isWaifu  = currentCard?.tipo === 'waifu';
   const isOutfit = currentCard?.tipo === 'outfit';
+  const isMossa  = currentCard?.tipo === 'mossa';
 
   // Strip constants
   const STRIP_W   = 12;  // px visible per card edge (tight physical stack)
@@ -2206,7 +2208,8 @@ function EdgeSpoilerOverlay({ carteShuffled, currentIdx, onClose }) {
           <div className="sb-card-3d">
             {isWaifu  && <CartaWaifu waifu={currentCard.data}  dimensione="normale" tipo="auto" />}
             {isOutfit && <CartaOutfit outfit={currentCard.data} dimensione="normale" />}
-            {!isWaifu && !isOutfit && <CartaPosa posa={currentCard.data} dimensione="normale" />}
+            {isMossa  && <CartaMossa mossa={currentCard.data} dimensione="media" />}
+            {!isWaifu && !isOutfit && !isMossa && <CartaPosa posa={currentCard.data} dimensione="normale" />}
           </div>
         </div>
 
@@ -2460,6 +2463,7 @@ function CardRevealScreen({
   const isLast   = currentIdx === carteShuffled.length - 1;
   const isWaifu  = card?.tipo === 'waifu';
   const isOutfit = card?.tipo === 'outfit';
+  const isMossa  = card?.tipo === 'mossa';
   const isImm    = isWaifu && card?.data?.rarita === 'immersivo';
   const isHot    = isWaifu && card?.data?.hot === true && !!profilo?.hardPass;
   const isNew    = card?.isNuova;
@@ -2579,7 +2583,8 @@ function CardRevealScreen({
           }}>
             {isWaifu  && <CartaWaifu waifu={card.data}  dimensione="normale" tipo="auto" />}
             {isOutfit && <CartaOutfit outfit={card.data} dimensione="normale" />}
-            {!isWaifu && !isOutfit && card.tipo === 'posa' && <CartaPosa posa={card.data} dimensione="normale" />}
+            {isMossa  && <CartaMossa mossa={card.data} dimensione="media" />}
+            {!isWaifu && !isOutfit && !isMossa && card.tipo === 'posa' && <CartaPosa posa={card.data} dimensione="normale" />}
           </div>
         </div>
 
@@ -2756,6 +2761,7 @@ function ResultsScreen({
               <CartaWaifu waifu={card.data} dimensione="piccola" tipo="auto"
                 onClick={() => setCartaDettaglioSbus({ tipo: 'waifu', w: card.data, dati: collezione.waifu?.[card.data.id] || { copie: 1, livello: 1, stat_bonus: {} } })} />
             )}
+            {card.tipo === 'mossa'  && <CartaMossa mossa={card.data} dimensione="piccola" />}
             {card.tipo === 'outfit' && <CartaOutfit outfit={card.data} dimensione="piccola" onClick={() => setCartaDettaglioSbus({ tipo: 'outfit', o: card.data })} />}
             {card.tipo === 'posa'   && <CartaPosa   posa={card.data}   dimensione="piccola" onClick={() => setCartaDettaglioSbus({ tipo: 'posa',   p: card.data })} />}
             {isNew && <div className="sb-badge-new">NEW ✦</div>}

@@ -127,13 +127,14 @@ export async function GET(request) {
     const hasHardPass = userSnap.exists ? (userSnap.data().hardPass === true) : false;
 
     // ── 2. Pack degli amici (1 attivo per amico, pescati → bottom) ──
+    const { Timestamp: FSTimestamp } = require('firebase-admin/firestore');
+    const nowFirestore = FSTimestamp.fromDate(new Date());
+
     const friendUids = await getCachedFriendUids(uid);
     let friendPacks = [];
 
     if (friendUids.length > 0) {
       const batchUids = friendUids.slice(0, MAX_ACTIVE);
-      // Filtra solo i pack non scaduti (riduce le letture degli snapshot storici)
-      const nowFirestore = new (require('firebase-admin/firestore').Timestamp).fromDate(new Date());
       const snap = await adminDb.collection('pack_snapshots')
         .where('ownerUid', 'in', batchUids)
         .where('expiresAt', '>', nowFirestore)
