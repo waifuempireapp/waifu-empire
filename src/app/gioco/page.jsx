@@ -43,7 +43,7 @@ import { getUserProfile, updateUserProfile, getCollezione, setCollezione as save
 // Removed unused: getDropAttivo, isDropCompleto, progressioneDrop
 import { calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, GOD_PACK_PROB_DEFAULT, checkMoveLevelUp } from '@/lib/gameLogic';
 // Removed unused: calcolaRicaricaPacchetti, clampStat, clampWaifuStats
-import { TIMER, RARITA, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, OUTFIT_CONFIG_DEFAULT } from '@/lib/constants';
+import { TIMER, RARITA, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT } from '@/lib/constants';
 // Removed unused: COLORI_CAPELLI, CATEGORIE_TETTE, ABILITA_TIPI
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -5324,8 +5324,7 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
                           const _tuttiAIds = [...new Set(outfitCat.flatMap(x => x.archetipi_compatibili || (x.archetipo_compatibile ? [x.archetipo_compatibile] : [])))];
                           const _archComp = getArchetipiCompatibili(
                             o.archetipi_compatibili || (o.archetipo_compatibile ? [o.archetipo_compatibile] : []),
-                            _livO, o.rarita, _tuttiAIds, OUTFIT_CONFIG_DEFAULT
-                          );
+                            _livO, o.rarita, _tuttiAIds                          );
                           // Se la lista archetipi compatibili include l'archetipo della waifu (o è universale), mostra l'outfit
                           if (_archComp.length > 0 && _archComp.length < _tuttiAIds.length && !_archComp.includes(w.archetipo)) return null;
                           return { ...o, _copie: datiO.quantita || 1 };
@@ -7088,12 +7087,12 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
 function WaifuMosseSlotsPanel({ waifuId, waifu, mosseSlot, mosseCat, userMosse, mosseAssegnate, user, onSlotUpdated }) {
   const [showPicker, setShowPicker] = useState(null); // slot number 1-4 o null
   const [assignBusy, setAssignBusy] = useState(false);
-  const [assignErr, setAssignErr] = useState(‘’);
+  const [assignErr, setAssignErr] = useState('');
   const [assignableData, setAssignableData] = useState(null); // { compatibili, incompatibili }
 
   const openPicker = async (slot) => {
     setShowPicker(slot);
-    setAssignErr(‘’);
+    setAssignErr('');
     setAssignableData(null);
     try {
       const token = await user.getIdToken();
@@ -7102,16 +7101,16 @@ function WaifuMosseSlotsPanel({ waifuId, waifu, mosseSlot, mosseCat, userMosse, 
       });
       const data = await res.json();
       setAssignableData(data);
-    } catch (e) { setAssignErr(‘Errore caricamento mosse: ‘ + e.message); }
+    } catch (e) { setAssignErr('Errore caricamento mosse: ' + e.message); }
   };
 
   const assignMove = async (moveId, slot) => {
-    setAssignBusy(true); setAssignErr(‘’);
+    setAssignBusy(true); setAssignErr('');
     try {
       const token = await user.getIdToken();
       const res = await fetch(`/api/attack-moves/${moveId}/assign/${waifuId}`, {
-        method: ‘POST’,
-        headers: { Authorization: `Bearer ${token}`, ‘Content-Type’: ‘application/json’ },
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ slot }),
       });
       const data = await res.json();
@@ -7130,7 +7129,7 @@ function WaifuMosseSlotsPanel({ waifuId, waifu, mosseSlot, mosseCat, userMosse, 
     try {
       const token = await user.getIdToken();
       await fetch(`/api/attack-moves/${moveId}/assign/${waifuId}?slot=${slot}`, {
-        method: ‘DELETE’, headers: { Authorization: `Bearer ${token}` },
+        method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
       });
       const newSlot = { ...mosseSlot, [slot]: null };
       onSlotUpdated(newSlot);
@@ -7138,50 +7137,50 @@ function WaifuMosseSlotsPanel({ waifuId, waifu, mosseSlot, mosseCat, userMosse, 
     finally { setAssignBusy(false); }
   };
 
-  const TIPO_COL = { Arcana: ‘#7F77DD’, Natura: ‘#639922’, Abisso: ‘#4463DD’, Ferro: ‘#5F5E5A’, Fuoco: ‘#D85A30’ };
+  const TIPO_COL = { Arcana: '#7F77DD', Natura: '#639922', Abisso: '#4463DD', Ferro: '#5F5E5A', Fuoco: '#D85A30' };
 
   return (
     <div>
-      <div style={{ fontFamily: ‘Orbitron’, fontSize: 9, letterSpacing: 2, color: ‘rgba(238,232,220,0.4)’, marginBottom: 10 }}>
+      <div style={{ fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 2, color: 'rgba(238,232,220,0.4)', marginBottom: 10 }}>
         MOSSE ({mosseAssegnate}/4 ASSEGNATE)
       </div>
       {mosseAssegnate < 4 && (
-        <div style={{ fontFamily: ‘Fredoka’, fontSize: 11, color: ‘#f5a623’, marginBottom: 10, background: ‘rgba(245,166,35,0.08)’, border: ‘1px solid rgba(245,166,35,0.2)’, borderRadius: 8, padding: ‘6px 10px’ }}>
+        <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: '#f5a623', marginBottom: 10, background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: 8, padding: '6px 10px' }}>
           ⚠ Equipaggia 4 mosse per usare questa waifu in combattimento
         </div>
       )}
-      {assignErr && <div style={{ fontFamily: ‘Fredoka’, fontSize: 11, color: ‘#ff6b6b’, marginBottom: 8 }}>{assignErr}</div>}
-      <div style={{ display: ‘flex’, flexDirection: ‘column’, gap: 8 }}>
+      {assignErr && <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: '#ff6b6b', marginBottom: 8 }}>{assignErr}</div>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {[1, 2, 3, 4].map(slot => {
           const moveId = mosseSlot[slot];
           const mossaCatalog = moveId ? mosseCat.find(m => m.id === moveId) : null;
           const userMossaData = moveId ? userMosse[moveId] : null;
           if (mossaCatalog) {
-            const tipoColor = TIPO_COL[mossaCatalog.tipologia] ?? ‘#7F77DD’;
+            const tipoColor = TIPO_COL[mossaCatalog.tipologia] ?? '#7F77DD';
             return (
-              <div key={slot} style={{ border: `1px solid ${tipoColor}44`, borderRadius: 10, padding: ‘10px 12px’, background: `${tipoColor}08`, display: ‘flex’, justifyContent: ‘space-between’, alignItems: ‘center’ }}>
+              <div key={slot} style={{ border: `1px solid ${tipoColor}44`, borderRadius: 10, padding: '10px 12px', background: `${tipoColor}08`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontFamily: ‘Orbitron’, fontSize: 11, fontWeight: 700, color: ‘#eedcd4’, marginBottom: 4 }}>
+                  <div style={{ fontFamily: 'Orbitron', fontSize: 11, fontWeight: 700, color: '#eedcd4', marginBottom: 4 }}>
                     <span style={{ color: tipoColor, marginRight: 6 }}>Slot {slot}</span>{mossaCatalog.nome}
                   </div>
-                  <div style={{ fontFamily: ‘Fredoka’, fontSize: 11, color: ‘rgba(238,232,220,0.6)’ }}>
+                  <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: 'rgba(238,232,220,0.6)' }}>
                     {mossaCatalog.tipologia} · {mossaCatalog.rarita} · Lv{userMossaData?.livello ?? 1} · PP:{mossaCatalog.pp} · ⚔{userMossaData?.danno ?? mossaCatalog.danno} · {Math.round((userMossaData?.danno_critico ?? mossaCatalog.danno_critico) * 100)}%✦
-                    {mossaCatalog.abilita && <span style={{ color: ‘rgba(174,156,255,0.8)’, marginLeft: 6 }}>🔮 {mossaCatalog.abilita}</span>}
+                    {mossaCatalog.abilita && <span style={{ color: 'rgba(174,156,255,0.8)', marginLeft: 6 }}>🔮 {mossaCatalog.abilita}</span>}
                   </div>
                 </div>
-                <div style={{ display: ‘flex’, gap: 6 }}>
+                <div style={{ display: 'flex', gap: 6 }}>
                   <button onClick={() => openPicker(slot)} disabled={assignBusy}
-                    style={{ background: ‘rgba(0,200,255,0.1)’, border: ‘1px solid rgba(0,200,255,0.3)’, color: ‘#00C8FF’, borderRadius: 6, padding: ‘4px 8px’, cursor: ‘pointer’, fontSize: 11, fontFamily: ‘Orbitron’ }}>✎</button>
+                    style={{ background: 'rgba(0,200,255,0.1)', border: '1px solid rgba(0,200,255,0.3)', color: '#00C8FF', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontFamily: 'Orbitron' }}>✎</button>
                   <button onClick={() => removeMove(slot)} disabled={assignBusy}
-                    style={{ background: ‘rgba(255,107,107,0.1)’, border: ‘1px solid rgba(255,107,107,0.3)’, color: ‘#ff6b6b’, borderRadius: 6, padding: ‘4px 8px’, cursor: ‘pointer’, fontSize: 11 }}>✕</button>
+                    style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)', color: '#ff6b6b', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 11 }}>✕</button>
                 </div>
               </div>
             );
           }
           return (
-            <div key={slot} style={{ border: ‘1px dashed rgba(155,89,255,0.25)’, borderRadius: 10, padding: ‘10px 12px’, textAlign: ‘center’ }}>
+            <div key={slot} style={{ border: '1px dashed rgba(155,89,255,0.25)', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
               <button onClick={() => openPicker(slot)} disabled={assignBusy}
-                style={{ fontFamily: ‘Orbitron’, fontSize: 10, color: ‘#9b59ff’, background: ‘rgba(155,89,255,0.08)’, border: ‘1px solid rgba(155,89,255,0.35)’, borderRadius: 8, padding: ‘6px 16px’, cursor: ‘pointer’, letterSpacing: 1 }}>
+                style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#9b59ff', background: 'rgba(155,89,255,0.08)', border: '1px solid rgba(155,89,255,0.35)', borderRadius: 8, padding: '6px 16px', cursor: 'pointer', letterSpacing: 1 }}>
                 + ASSEGNA MOSSA (SLOT {slot})
               </button>
             </div>
@@ -7191,38 +7190,38 @@ function WaifuMosseSlotsPanel({ waifuId, waifu, mosseSlot, mosseCat, userMosse, 
 
       {/* Picker mosse */}
       {showPicker !== null && (
-        <div style={{ position: ‘fixed’, inset: 0, background: ‘rgba(0,0,0,0.85)’, zIndex: 110, display: ‘flex’, alignItems: ‘flex-end’, justifyContent: ‘center’ }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 110, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
           onClick={e => e.target === e.currentTarget && setShowPicker(null)}>
-          <div style={{ background: ‘rgba(10,7,38,0.98)’, border: ‘1px solid rgba(174,156,255,0.3)’, borderRadius: ‘20px 20px 0 0’, padding: 20, maxWidth: 480, width: ‘100%’, maxHeight: ‘70vh’, overflowY: ‘auto’ }}>
-            <div style={{ fontFamily: ‘Orbitron’, fontSize: 12, color: ‘#c5a4ff’, marginBottom: 16 }}>SLOT {showPicker} — Scegli mossa</div>
-            {!assignableData && !assignErr && <div style={{ color: ‘rgba(238,232,220,0.5)’, fontSize: 12 }}>Caricamento…</div>}
-            {assignErr && <div style={{ color: ‘#ff6b6b’, fontSize: 11 }}>{assignErr}</div>}
+          <div style={{ background: 'rgba(10,7,38,0.98)', border: '1px solid rgba(174,156,255,0.3)', borderRadius: '20px 20px 0 0', padding: 20, maxWidth: 480, width: '100%', maxHeight: '70vh', overflowY: 'auto' }}>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 12, color: '#c5a4ff', marginBottom: 16 }}>SLOT {showPicker} — Scegli mossa</div>
+            {!assignableData && !assignErr && <div style={{ color: 'rgba(238,232,220,0.5)', fontSize: 12 }}>Caricamento…</div>}
+            {assignErr && <div style={{ color: '#ff6b6b', fontSize: 11 }}>{assignErr}</div>}
             {assignableData && (
               <>
-                <div style={{ fontFamily: ‘Orbitron’, fontSize: 9, color: ‘rgba(6,214,160,0.7)’, marginBottom: 8, letterSpacing: 1 }}>✓ COMPATIBILI ({assignableData.compatibili?.length ?? 0})</div>
+                <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(6,214,160,0.7)', marginBottom: 8, letterSpacing: 1 }}>✓ COMPATIBILI ({assignableData.compatibili?.length ?? 0})</div>
                 {(assignableData.compatibili ?? []).map(m => (
                   <div key={m.id} onClick={() => assignMove(m.id, showPicker)}
-                    style={{ display: ‘flex’, justifyContent: ‘space-between’, alignItems: ‘center’, padding: ‘8px 12px’, marginBottom: 6, background: ‘rgba(6,214,160,0.05)’, border: ‘1px solid rgba(6,214,160,0.2)’, borderRadius: 10, cursor: assignBusy ? ‘not-allowed’ : ‘pointer’ }}>
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', marginBottom: 6, background: 'rgba(6,214,160,0.05)', border: '1px solid rgba(6,214,160,0.2)', borderRadius: 10, cursor: assignBusy ? 'not-allowed' : 'pointer' }}>
                     <div>
-                      <div style={{ fontFamily: ‘Orbitron’, fontSize: 11, color: ‘#eedcd4’ }}>{m.nome}</div>
-                      <div style={{ fontFamily: ‘Fredoka’, fontSize: 10, color: ‘rgba(238,232,220,0.5)’ }}>{m.tipologia} · {m.rarita} · ⚔{m.danno}</div>
+                      <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#eedcd4' }}>{m.nome}</div>
+                      <div style={{ fontFamily: 'Fredoka', fontSize: 10, color: 'rgba(238,232,220,0.5)' }}>{m.tipologia} · {m.rarita} · ⚔{m.danno}</div>
                     </div>
-                    <div style={{ fontFamily: ‘Orbitron’, fontSize: 9, color: ‘#06d6a0’ }}>+ Slot {showPicker}</div>
+                    <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: '#06d6a0' }}>+ Slot {showPicker}</div>
                   </div>
                 ))}
                 {(assignableData.compatibili ?? []).length === 0 && (
-                  <div style={{ color: ‘rgba(238,232,220,0.4)’, fontSize: 11, fontFamily: ‘Fredoka’, marginBottom: 12 }}>Nessuna mossa compatibile in collezione. Sbusta nuovi pacchetti!</div>
+                  <div style={{ color: 'rgba(238,232,220,0.4)', fontSize: 11, fontFamily: 'Fredoka', marginBottom: 12 }}>Nessuna mossa compatibile in collezione. Sbusta nuovi pacchetti!</div>
                 )}
                 {(assignableData.incompatibili ?? []).length > 0 && (
                   <>
-                    <div style={{ fontFamily: ‘Orbitron’, fontSize: 9, color: ‘rgba(255,107,107,0.6)’, margin: ‘12px 0 8px’, letterSpacing: 1 }}>✗ NON COMPATIBILI ({assignableData.incompatibili.length})</div>
+                    <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(255,107,107,0.6)', margin: '12px 0 8px', letterSpacing: 1 }}>✗ NON COMPATIBILI ({assignableData.incompatibili.length})</div>
                     {assignableData.incompatibili.map(m => (
                       <div key={m.id}
-                        style={{ display: ‘flex’, justifyContent: ‘space-between’, alignItems: ‘center’, padding: ‘8px 12px’, marginBottom: 6, background: ‘rgba(255,107,107,0.04)’, border: ‘1px solid rgba(255,107,107,0.15)’, borderRadius: 10, opacity: 0.6 }}
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', marginBottom: 6, background: 'rgba(255,107,107,0.04)', border: '1px solid rgba(255,107,107,0.15)', borderRadius: 10, opacity: 0.6 }}
                         title={m.motivo_blocco}>
                         <div>
-                          <div style={{ fontFamily: ‘Orbitron’, fontSize: 11, color: ‘rgba(238,232,220,0.6)’ }}>{m.nome}</div>
-                          <div style={{ fontFamily: ‘Fredoka’, fontSize: 10, color: ‘#ff6b6b’ }}>{m.motivo_blocco}</div>
+                          <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: 'rgba(238,232,220,0.6)' }}>{m.nome}</div>
+                          <div style={{ fontFamily: 'Fredoka', fontSize: 10, color: '#ff6b6b' }}>{m.motivo_blocco}</div>
                         </div>
                       </div>
                     ))}
@@ -7230,7 +7229,7 @@ function WaifuMosseSlotsPanel({ waifuId, waifu, mosseSlot, mosseCat, userMosse, 
                 )}
               </>
             )}
-            <button onClick={() => setShowPicker(null)} style={{ width: ‘100%’, marginTop: 12, padding: ‘10px’, background: ‘rgba(255,255,255,0.06)’, border: ‘1px solid rgba(255,255,255,0.15)’, borderRadius: 10, color: ‘#f5e6d3’, fontFamily: ‘Orbitron’, fontSize: 10, cursor: ‘pointer’ }}>Annulla</button>
+            <button onClick={() => setShowPicker(null)} style={{ width: '100%', marginTop: 12, padding: '10px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: '#f5e6d3', fontFamily: 'Orbitron', fontSize: 10, cursor: 'pointer' }}>Annulla</button>
           </div>
         </div>
       )}
@@ -7242,5 +7241,5 @@ function WaifuMosseSlotsPanel({ waifuId, waifu, mosseSlot, mosseCat, userMosse, 
 // MAPPA SCROLLABILE CON ZOOM
 // Estratto in src/components/mappa/MappaScrollabile.jsx
 // Importato in cima a questo file tramite:
-//   import MappaScrollabile from ‘@/components/mappa/MappaScrollabile’;
+//   import MappaScrollabile from '@/components/mappa/MappaScrollabile';
 // ═════════════════════════════════════════════════════════════════════════════
