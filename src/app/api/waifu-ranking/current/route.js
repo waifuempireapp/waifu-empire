@@ -25,15 +25,39 @@ export async function GET(request) {
       adminDb.collection('users').doc(uid).get(),
     ]);
 
-    const ranking = rankingSnap.exists ? rankingSnap.data() : null;
+    let rankingData = rankingSnap.exists ? rankingSnap.data() : null;
     const config = configSnap.exists ? configSnap.data() : {};
     const pausedUntil = config.pausedUntil ?? {};
+    const resetAt = config.classifica_reset_at?.toMillis?.() ?? 0;
     const now = Date.now();
     const hasHardPass = !!(userSnap.exists ? userSnap.data()?.hardPass : false);
 
+    // Se non ci sono risultati pre-computati, calcola live dai voti
+    if (!rankingData) {
+      const votesSnap = await adminDb.collection('swap_votes').get();
+      const counts = {};
+      for (const d of votesSnap.docs) {
+        const data = d.data();
+        if (data.vote !== 'like') continue;
+        if (resetAt && (data.timestamp?.toMillis?.() ?? 0) < resetAt) continue;
+        counts[data.waifuId] = (counts[data.waifuId] ?? 0) + 1;
+      }
+      const top5Ids = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id, likes]) => ({ waifuId: id, likeCount: likes, nome: id }));
+      if (top5Ids.length > 0) {
+        const waifuSnaps = await adminDb.getAll(...top5Ids.map(e => adminDb.doc(`catalogo_waifu/${e.waifuId}`)));
+        rankingData = {
+          top5: top5Ids.map((e, i) => {
+            const s = waifuSnaps[i];
+            return { ...e, nome: s?.exists ? s.data().nome : e.waifuId };
+          }),
+          isLive: true,
+        };
+      }
+    }
+
     // Arricchisci i dati top5 con info catalogo (hot, rarita, asset_video_hard)
-    let enrichedRanking = ranking;
-    if (ranking?.top5?.length > 0) {
+    let enrichedRanking = rankingData;
+    if (rankingData?.top5?.length > 0) {
       const waifuIds = ranking.top5.map(w => w.waifuId).filter(Boolean);
       const waifuSnaps = await adminDb.getAll(...waifuIds.map(id => adminDb.doc(`catalogo_waifu/${id}`)));
       const waifuMap = {};
@@ -67,7 +91,7 @@ export async function GET(request) {
       }
     }
 
-    return NextResponse.json({ ranking: enrichedRanking, paused, weekId, hasHardPass });
+    return NextResponse.json({ ranking: enrichedRanking, paused, weekId, hasHardPass, isLive: !!(rankingData?.isLive) });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

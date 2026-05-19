@@ -29,6 +29,7 @@ export default function WaifuRankingList({ user }) {
   const [subTab, setSubTab]       = useState('top5');
   const [collezione, setCollezione] = useState(null);
   const [hasHardPass, setHasHardPass] = useState(false);
+  const [isLive, setIsLive] = useState(false);
   const [loading, setLoading]     = useState(true);
   const now = Date.now();
 
@@ -44,6 +45,7 @@ export default function WaifuRankingList({ user }) {
         setPaused(rankRes.paused || []);
         setCollezione(collData);
         setHasHardPass(!!rankRes.hasHardPass);
+        setIsLive(!!rankRes.isLive);
       } finally { setLoading(false); }
     };
     load();
@@ -105,6 +107,7 @@ export default function WaifuRankingList({ user }) {
               }}>
                 <div style={{ fontFamily: FF.label, fontSize: 9, letterSpacing: '0.22em', color: C.sakura, textTransform: 'uppercase', marginBottom: 4 }}>
                   ✦ Classifica Settimanale Waifu ✦
+                  {isLive && <span style={{ marginLeft: 8, background: 'rgba(6,214,160,0.2)', border: '1px solid rgba(6,214,160,0.5)', borderRadius: 999, padding: '1px 6px', fontSize: 8, color: '#06d6a0' }}>● LIVE</span>}
                 </div>
                 <div style={{ fontFamily: FF.body, fontSize: 11, color: 'rgba(241,235,255,0.5)' }}>
                   Chi possiede le Top 5 riceve Kisses bonus ogni domenica

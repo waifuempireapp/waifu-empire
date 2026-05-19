@@ -253,7 +253,7 @@ export async function addMossaToCollezione(uid, moveId, catalogMossa, levelupCon
  * @param {Object} [rarityConfig] - Config da Firestore config/rarity_multipliers
  */
 export async function lazyMigrateStats(uid, collezioneData, waifuCatalog, rarityConfig = null) {
-  if ((collezioneData.stats_version ?? 0) >= STATS_VERSION) return;
+  if ((collezioneData.stats_version ?? 0) >= STATS_VERSION) return false;
   const collRef = doc(db, 'users', uid, 'collezione', 'main');
   const patch = {};
   const waifuMap = collezioneData.waifu ?? {};
@@ -269,7 +269,9 @@ export async function lazyMigrateStats(uid, collezioneData, waifuCatalog, rarity
   patch.stats_version = STATS_VERSION;
   if (Object.keys(patch).length > 1) {
     await updateDoc(collRef, patch);
+    return true; // indica che la collezione è stata aggiornata
   }
+  return false;
 }
 
 /**

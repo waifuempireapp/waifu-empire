@@ -39,7 +39,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listMosse, listDropsAttivi, getClassifica, premioPerPosizione, deleteTeamFromCollezione, createPackSnapshot, getFriendsList, getFriendRequests, getClassificaSettimanale, getPremiClassificaConfig } from '@/lib/firestoreService';
+import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listMosse, listDropsAttivi, getClassifica, premioPerPosizione, deleteTeamFromCollezione, createPackSnapshot, getFriendsList, getFriendRequests, getClassificaSettimanale, getPremiClassificaConfig, lazyMigrateStats } from '@/lib/firestoreService';
 // Removed unused: getDropAttivo, isDropCompleto, progressioneDrop
 import { calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, GOD_PACK_PROB_DEFAULT, checkMoveLevelUp } from '@/lib/gameLogic';
 // Removed unused: calcolaRicaricaPacchetti, clampStat, clampWaifuStats
@@ -176,6 +176,11 @@ export default function GiocoPage() {
     setProfilo(updatedProfile);
     setColl(c);
     setWaifuCat(ws); setMosseCat(ms ?? []);
+    // Migrazione lazy stats (velocita/crit_chance per-utente con moltiplicatore rarità)
+    const waifuCatalogMap = Object.fromEntries((ws || []).map(w => [w.id, w]));
+    lazyMigrateStats(user.uid, c, waifuCatalogMap).then(updated => {
+      if (updated) getCollezione(user.uid).then(nuova => setColl(nuova)).catch(() => {});
+    }).catch(() => {});
     // Carica configurazioni stat_ranges e upgrade_steps da Firestore
     try {
       const [rDoc, sDoc, gDoc] = await Promise.all([
@@ -2208,7 +2213,7 @@ function EdgeSpoilerOverlay({ carteShuffled, currentIdx, onClose }) {
           <div className="sb-card-3d">
             {isWaifu  && <CartaWaifu waifu={currentCard.data}  dimensione="normale" tipo="auto" />}
             {isOutfit && <CartaOutfit outfit={currentCard.data} dimensione="normale" />}
-            {isMossa  && <CartaMossa mossa={currentCard.data} dimensione="media" />}
+            {isMossa  && <CartaMossa mossa={currentCard.data} dimensione="normale" />}
             {!isWaifu && !isOutfit && !isMossa && <CartaPosa posa={currentCard.data} dimensione="normale" />}
           </div>
         </div>
@@ -2583,7 +2588,7 @@ function CardRevealScreen({
           }}>
             {isWaifu  && <CartaWaifu waifu={card.data}  dimensione="normale" tipo="auto" />}
             {isOutfit && <CartaOutfit outfit={card.data} dimensione="normale" />}
-            {isMossa  && <CartaMossa mossa={card.data} dimensione="media" />}
+            {isMossa  && <CartaMossa mossa={card.data} dimensione="normale" />}
             {!isWaifu && !isOutfit && !isMossa && card.tipo === 'posa' && <CartaPosa posa={card.data} dimensione="normale" />}
           </div>
         </div>
@@ -3790,6 +3795,7 @@ const stileLevelUp = {
 function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat = [], poseCat = [], profilo, setProfilo, user, mostraNotif, initialSubTab = 'waifu', statConfig = { ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT }, ModaPersonalizzazione }) {
   const [tabSub, setTabSub] = useState(initialSubTab);
   const [waifuSel, setWaifuSel] = useState(null);
+  const [mossaSel, setMossaSel] = useState(null); // { catalog, dati }
   const [teamInEdit, setTeamInEdit] = useState(null);
   // Filtri e ordinamento waifu (unificato con toggle direzione)
   const [filtroRarita, setFiltroRarita] = useState('tutte');
@@ -4054,7 +4060,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
               return (
                 <div key={moveId} className="card-fade-up card-clickable collection-card-item"
                   style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, animationDelay: `${idx * 40}ms`, position: 'relative' }}>
-                  <CartaMossa mossa={catalog} datiUtente={dati} dimensione="piccola" />
+                  <CartaMossa mossa={catalog} datiUtente={dati} dimensione="piccola" onClick={() => setMossaSel({ catalog, dati })} />
                   {prossimeLup && (
                     <div style={{
                       position: 'absolute', top: 4, right: 4,
@@ -4147,7 +4153,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
       {waifuSel && (
         <ModaPersonalizzazione
           waifuId={waifuSel} collezione={collezione}
-          waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat}
+          waifuCat={waifuCat} mosseCat={mosseCat} outfitCat={outfitCat} poseCat={poseCat}
           onChiudi={() => setWaifuSel(null)}
           onEquipaggia={handleEquipaggia}
           onLevelUp={handleLevelUp}
@@ -4155,7 +4161,35 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
           profilo={profilo}
           setProfilo={setProfilo}
           user={user}
+          setColl={setColl}
         />
+      )}
+
+      {/* DETTAGLIO CARTA MOSSA */}
+      {mossaSel && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={e => e.target === e.currentTarget && setMossaSel(null)}>
+          <div style={{ background: 'rgba(10,7,38,0.97)', border: '1px solid rgba(174,156,255,0.3)', borderRadius: 20, padding: 24, maxWidth: 380, width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+              <CartaMossa mossa={mossaSel.catalog} datiUtente={mossaSel.dati} dimensione="normale" />
+            </div>
+            {mossaSel.catalog.abilita && (
+              <div style={{ background: 'rgba(174,156,255,0.08)', border: '1px solid rgba(174,156,255,0.2)', borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
+                <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(174,156,255,0.7)', marginBottom: 4, letterSpacing: 1 }}>ABILITÀ</div>
+                <div style={{ fontFamily: 'Fredoka One', fontSize: 13, color: '#f5e6d3', lineHeight: 1.5 }}>{mossaSel.catalog.abilita}</div>
+              </div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
+              {[['Copie', mossaSel.dati.copie ?? 0], ['Prossimo LvUp', `${5 - ((mossaSel.dati.copie ?? 0) % 5) || 5}/${5}`], ['Livello Max', 10]].map(([l, v]) => (
+                <div key={l} style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 8, padding: '8px 6px', textAlign: 'center' }}>
+                  <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(245,158,11,0.6)', marginBottom: 4 }}>{l}</div>
+                  <div style={{ fontFamily: 'Orbitron', fontSize: 13, color: '#f5e6d3', fontWeight: 700 }}>{v}</div>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setMossaSel(null)} style={{ width: '100%', padding: '10px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: '#f5e6d3', fontFamily: 'Orbitron', fontSize: 10, cursor: 'pointer' }}>Chiudi</button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -5110,8 +5144,9 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
 
             {/* ── TAB BATTAGLIA ── */}
             {tabDettaglio === 'battaglia' && (() => {
-              const speed   = dati.velocita   ?? computeSpeed(w);
-              const critPct = Math.round((dati.crit_chance ?? computeCritChance(w)) * 100);
+              // Usa velocita/crit_chance salvati; fallback al valore base del catalogo (con moltiplicatore già applicato)
+              const speed   = dati.velocita   ?? w.velocita_base   ?? Math.min(300, Math.max(1, Math.round(computeSpeed(w) * 0.50)));
+              const critPct = Math.round((dati.crit_chance ?? w.crit_chance_base ?? Math.min(0.20, Math.max(0.05, computeCritChance(w) * 0.50))) * 100);
               const mosseSlot = dati.mosse_slot ?? { 1: null, 2: null, 3: null, 4: null };
               const mosseAssegnate = Object.values(mosseSlot).filter(Boolean).length;
 
@@ -7070,8 +7105,8 @@ function WaifuMosseSlotsPanel({ waifuId, waifu, mosseSlot, mosseCat, userMosse, 
         MOSSE ({mosseAssegnate}/4 ASSEGNATE)
       </div>
       {mosseAssegnate < 4 && (
-        <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: '#f5a623', marginBottom: 10, background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: 8, padding: '6px 10px' }}>
-          ⚠ Equipaggia 4 mosse per usare questa waifu in combattimento
+        <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: '#6cf0e0', marginBottom: 10, background: 'rgba(108,240,224,0.06)', border: '1px solid rgba(108,240,224,0.2)', borderRadius: 8, padding: '6px 10px' }}>
+          ℹ {mosseAssegnate}/4 mosse assegnate — clicca uno slot libero per assegnare una mossa
         </div>
       )}
       {assignErr && <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: '#ff6b6b', marginBottom: 8 }}>{assignErr}</div>}
