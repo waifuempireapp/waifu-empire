@@ -6746,7 +6746,63 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
     const selectedIds = (teamSelezionato && teamSelezionato !== 'manuale' && teams[teamSelezionato])
       ? teams[teamSelezionato].waifu
       : waifuSelezionate;
-    const myRoster5 = selectedIds.map(id => waifuDisponibili.find(w => w.id === id)).filter(Boolean);
+
+    // Converti ogni waifu nel formato battle-ready (speed/critChance/moves corretti)
+    const RARITY_MULT_MAP = { comune: 0.50, raro: 0.75, epico: 1.00, leggendario: 1.25, immersivo: 1.50 };
+    const myRoster5 = selectedIds.map(id => {
+      const catalogW = waifuCat.find(w => w.id === id);
+      if (!catalogW) return null;
+      const dati = collezione.waifu[id] ?? {};
+      const mult = RARITY_MULT_MAP[catalogW.rarita ?? 'comune'] ?? 0.50;
+      const RARITY_RANGE = { comune:[1,300,0.05,0.20], raro:[150,500,0.08,0.30], epico:[300,700,0.12,0.40], leggendario:[500,850,0.18,0.52], immersivo:[650,1000,0.25,0.60] };
+      const [vMin, vMax, cMin, cMax] = RARITY_RANGE[catalogW.rarita ?? 'comune'] ?? RARITY_RANGE.comune;
+
+      const speed = dati.velocita ?? catalogW.velocita_base ??
+        Math.min(vMax, Math.max(vMin, Math.round(computeSpeed(catalogW) * mult)));
+      const critChance = dati.crit_chance ?? catalogW.crit_chance_base ??
+        Math.min(cMax, Math.max(cMin, computeCritChance(catalogW) * mult));
+
+      // Mosse da mosse_slot + mosseCat (con valori aggiornati dal level-up)
+      const mosseSlot = dati.mosse_slot ?? {};
+      const userMosseMap = collezione.mosse ?? {};
+      const assignedMoves = [1, 2, 3, 4].map(slot => {
+        const moveId = mosseSlot[slot];
+        if (!moveId) return null;
+        const cm = mosseCat.find(m => m.id === moveId);
+        if (!cm) return null;
+        const um = userMosseMap[moveId] ?? {};
+        return {
+          name: cm.nome, type: cm.tipologia, rarity: cm.rarita,
+          power: um.danno ?? cm.danno,
+          damage_crit: um.danno_critico ?? cm.danno_critico,
+          pp: cm.pp, maxPp: cm.pp,
+          ability: cm.abilita ?? null,
+        };
+      }).filter(Boolean);
+      const finalMoves = assignedMoves.length === 4 ? assignedMoves
+        : (catalogW.battleStats?.moves?.length ? catalogW.battleStats.moves : generateBattleStats(catalogW).moves);
+
+      const level = dati.livello ?? 1;
+      const maxHpBase = catalogW.battleStats?.maxHp ?? generateBattleStats(catalogW).maxHp;
+      const maxHp = Math.round(maxHpBase * (0.75 + (Math.min(level, 10) / 10) * 0.25));
+
+      return {
+        ...catalogW,
+        ...dati,
+        id: catalogW.id,
+        name: catalogW.nome ?? 'Waifu',
+        speed,
+        critChance,
+        hp: maxHp,
+        maxHp,
+        level,
+        isKO: false,
+        type: catalogW.tipo ?? catalogW.type ?? 'Arcana',
+        rarita: catalogW.rarita ?? 'comune',
+        image: catalogW.asset_statica ?? catalogW.asset_immersiva ?? null,
+        moves: finalMoves.map(m => ({ ...m, pp: m.maxPp ?? m.pp ?? 5 })),
+      };
+    }).filter(Boolean);
     return (
       <PickPhase
         roster5P={myRoster5}

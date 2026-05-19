@@ -280,9 +280,9 @@ function WaifuPickCard({ waifu, slot, selectable, onTap, hideStats = false }) {
                 HP: {maxHp}
               </div>
               <div style={{ fontFamily: 'Orbitron', fontSize: 7, color: 'rgba(238,232,220,.55)', marginTop: 2 }}>
-                <span style={{ color: '#00C8FF' }}>⚡ {computeSpeed(waifu)}</span>
+                <span style={{ color: '#00C8FF' }}>⚡ {waifu.speed ?? waifu.velocita ?? waifu.velocita_base ?? computeSpeed(waifu)}</span>
                 {'  '}
-                <span style={{ color: '#f5a623' }}>💥 {Math.round(computeCritChance(waifu) * 100)}%</span>
+                <span style={{ color: '#f5a623' }}>💥 {Math.round((waifu.critChance ?? waifu.crit_chance ?? waifu.crit_chance_base ?? computeCritChance(waifu)) * 100)}%</span>
               </div>
               <MiniHpBar hp={maxHp} maxHp={maxHp} />
             </>
