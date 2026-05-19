@@ -4046,37 +4046,23 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
 
       {tabSub === 'mosse' && (
         <div style={{ marginTop: 12 }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
+          <div className="collection-card-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
             {Object.entries(collezione.mosse || {}).map(([moveId, dati], idx) => {
               const catalog = mosseCat.find(m => m.id === moveId);
               if (!catalog) return null;
-              const livello = dati.livello ?? 1;
-              const prossimeLup = livello < 10 && dati.copie % 5 === 0 && dati.copie > 0;
-              const tipoColors = { Arcana: '#7F77DD', Natura: '#639922', Abisso: '#4463DD', Ferro: '#5F5E5A', Fuoco: '#D85A30' };
-              const tipoCol = tipoColors[catalog.tipologia] ?? '#7F77DD';
+              const prossimeLup = (dati.livello ?? 1) < 10 && dati.copie % 5 === 0 && dati.copie > 0;
               return (
-                <div key={moveId} className="card-fade-up collection-card-item"
-                  style={{ width: 120, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, animationDelay: `${idx * 40}ms` }}>
-                  <div style={{
-                    width: 110, height: 155, background: `linear-gradient(160deg, rgba(0,0,0,0.8) 0%, rgba(10,7,38,0.95) 100%)`,
-                    border: `1.5px solid ${tipoCol}44`, borderRadius: 12,
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    gap: 4, padding: 8, position: 'relative',
-                    boxShadow: `0 4px 16px ${tipoCol}30`,
-                  }}>
-                    {prossimeLup && (
-                      <div style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(6,214,160,0.2)', border: '1px solid rgba(6,214,160,0.6)', borderRadius: 5, padding: '1px 5px', fontFamily: 'Orbitron', fontSize: 7, color: '#06d6a0', fontWeight: 700 }}>⬆ LVL</div>
-                    )}
-                    <div style={{ fontSize: 28, lineHeight: 1 }}>⚔</div>
-                    <div style={{ fontFamily: 'Cinzel, serif', fontSize: 9, color: '#f5e6d3', textAlign: 'center', lineHeight: 1.3 }}>{catalog.nome}</div>
-                    <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: tipoCol }}>{catalog.tipologia} · Lv{livello}</div>
-                    <div style={{ fontFamily: 'Orbitron', fontSize: 7, color: 'rgba(245,230,211,0.7)', textAlign: 'center' }}>
-                      PP:{catalog.pp} · ⚔{dati.danno ?? catalog.danno} · {Math.round((dati.danno_critico ?? catalog.danno_critico) * 100)}%
-                    </div>
-                    {catalog.abilita && (
-                      <div style={{ fontFamily: 'Orbitron', fontSize: 7, color: 'rgba(174,156,255,0.8)', textAlign: 'center', overflow: 'hidden', maxWidth: '95%', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>🔮 {catalog.abilita}</div>
-                    )}
-                  </div>
+                <div key={moveId} className="card-fade-up card-clickable collection-card-item"
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, animationDelay: `${idx * 40}ms`, position: 'relative' }}>
+                  <CartaMossa mossa={catalog} datiUtente={dati} dimensione="piccola" />
+                  {prossimeLup && (
+                    <div style={{
+                      position: 'absolute', top: 4, right: 4,
+                      background: 'rgba(6,214,160,0.2)', border: '1px solid rgba(6,214,160,0.7)',
+                      borderRadius: 5, padding: '2px 6px',
+                      fontFamily: 'Orbitron', fontSize: 7, color: '#06d6a0', fontWeight: 700,
+                    }}>⬆ LVL UP</div>
+                  )}
                   <span style={{ fontFamily: 'Orbitron', fontSize: 8, color: '#9b59ff' }}>
                     x<strong style={{ color: '#ffd666' }}>{dati.copie}</strong> copie
                   </span>
