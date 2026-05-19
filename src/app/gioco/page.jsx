@@ -39,9 +39,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listOutfit, listPose, listDropsAttivi, getClassifica, premioPerPosizione, deleteTeamFromCollezione, createPackSnapshot, getFriendsList, getFriendRequests, getClassificaSettimanale, getPremiClassificaConfig } from '@/lib/firestoreService';
+import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listMosse, listDropsAttivi, getClassifica, premioPerPosizione, deleteTeamFromCollezione, createPackSnapshot, getFriendsList, getFriendRequests, getClassificaSettimanale, getPremiClassificaConfig } from '@/lib/firestoreService';
 // Removed unused: getDropAttivo, isDropCompleto, progressioneDrop
-import { calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, INCREMENTI_LEVELUP, GOD_PACK_PROB_DEFAULT } from '@/lib/gameLogic';
+import { calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, GOD_PACK_PROB_DEFAULT, checkMoveLevelUp } from '@/lib/gameLogic';
 // Removed unused: calcolaRicaricaPacchetti, clampStat, clampWaifuStats
 import { TIMER, RARITA, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, OUTFIT_CONFIG_DEFAULT } from '@/lib/constants';
 // Removed unused: COLORI_CAPELLI, CATEGORIE_TETTE, ABILITA_TIPI
@@ -104,8 +104,7 @@ export default function GiocoPage() {
   const [profilo, setProfilo] = useState(null);
   const [collezione, setColl] = useState(null);
   const [waifuCat, setWaifuCat] = useState([]);
-  const [outfitCat, setOutfitCat] = useState([]);
-  const [poseCat, setPoseCat] = useState([]);
+  const [mosseCat, setMosseCat] = useState([]);
   const [tab, setTab] = useState('home');
   const [negozioAperto, setNegozioAperto] = useState(false);
   const [pescaAperta, setPescaAperta] = useState(false);
@@ -146,14 +145,14 @@ export default function GiocoPage() {
     // Carica catalogo una sola volta per sessione (seconda linea di difesa dopo localStorage)
     const catalogPromise = catalogRef.current
       ? Promise.resolve(catalogRef.current)
-      : Promise.all([listWaifu(), listOutfit(), listPose()]).then(([ws, os, ps]) => {
-          catalogRef.current = { ws, os, ps };
+      : Promise.all([listWaifu(), listMosse()]).then(([ws, ms]) => {
+          catalogRef.current = { ws, ms };
           return catalogRef.current;
         });
     // Prefetch drops so Sbusta loads instantly (uses 5min cache)
     listDropsAttivi().catch(() => {});
 
-    const [p, c, { ws, os, ps }] = await Promise.all([
+    const [p, c, { ws, ms }] = await Promise.all([
       getUserProfile(user.uid), getCollezione(user.uid),
       catalogPromise,
     ]);
@@ -175,7 +174,7 @@ export default function GiocoPage() {
     }
     setProfilo(updatedProfile);
     setColl(c);
-    setWaifuCat(ws); setOutfitCat(os); setPoseCat(ps);
+    setWaifuCat(ws); setMosseCat(ms ?? []);
     // Carica configurazioni stat_ranges e upgrade_steps da Firestore
     try {
       const [rDoc, sDoc, gDoc] = await Promise.all([
@@ -260,7 +259,7 @@ export default function GiocoPage() {
               Componente HomeTab — dashboard utente, statistiche, pacchetti omaggio.
               Quando pescaAperta=true renderizza PescaMisteriosaFeed al posto di HomeTab.
               ═════════════════════════════════════════════════════════════════ */}
-          {tab === 'home' && !pescaAperta && <HomeTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} setTab={setTab} setColezSubTab={setColezSubTab} user={user} onApriPesca={() => setPescaAperta(true)} />}
+          {tab === 'home' && !pescaAperta && <HomeTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={[]} poseCat={[]} setTab={setTab} setColezSubTab={setColezSubTab} user={user} onApriPesca={() => setPescaAperta(true)} />}
           {tab === 'home' && pescaAperta && (
             <div className="fade-in" style={{ maxWidth: 480, margin: '0 auto', width: '100%' }}>
               {/* Header sotto-sezione pesca */}
@@ -296,14 +295,14 @@ export default function GiocoPage() {
               TAB: SBUSTA
               Componente SbustaTab — apertura pacchetti, God Pack, drop attivi.
               ═════════════════════════════════════════════════════════════════ */}
-          {tab === 'sbusta' && <SbustaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} user={user} mostraNotif={mostraNotif} godPackProb={godPackProb} ModaleCarta={ModaleCarta} setTab={setTab} />}
+          {tab === 'sbusta' && <SbustaTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} setColl={setColl} waifuCat={waifuCat} mosseCat={mosseCat} outfitCat={[]} poseCat={[]} user={user} mostraNotif={mostraNotif} godPackProb={godPackProb} ModaleCarta={ModaleCarta} setTab={setTab} />}
 
           {/* ═════════════════════════════════════════════════════════════════
               TAB: COLLEZIONE
               Componente CollezioneTab — visualizzazione waifu, outfit, upgrade,
               personalizzazione e gestione team salvati.
               ═════════════════════════════════════════════════════════════════ */}
-          {tab === 'collezione' && <CollezioneTab collezione={collezione} setColl={setColl} waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat} profilo={profilo} setProfilo={setProfilo} user={user} mostraNotif={mostraNotif} initialSubTab={colezSubTab} statConfig={statConfig}  ModaPersonalizzazione={ModaPersonalizzazione} />}
+          {tab === 'collezione' && <CollezioneTab collezione={collezione} setColl={setColl} waifuCat={waifuCat} mosseCat={mosseCat} outfitCat={[]} poseCat={[]} profilo={profilo} setProfilo={setProfilo} user={user} mostraNotif={mostraNotif} initialSubTab={colezSubTab} statConfig={statConfig} ModaPersonalizzazione={ModaPersonalizzazione} />}
 
           {/* ═════════════════════════════════════════════════════════════════
               TAB: MAPPA
@@ -3040,7 +3039,7 @@ function SelectionScreen({ drop, dropsAttivi, dropSelId, setDropSelId, profilo, 
  * @param {number}   [props.godPackProb]    — Probabilità god pack (default da costante).
  * @param {Function} props.ModaleCarta      — Componente modal da iniettare per detail view.
  */
-function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitCat, poseCat, user, mostraNotif, godPackProb = GOD_PACK_PROB_DEFAULT, ModaleCarta, setTab }) {
+function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, mosseCat = [], outfitCat, poseCat, user, mostraNotif, godPackProb = GOD_PACK_PROB_DEFAULT, ModaleCarta, setTab }) {
   const [stato, setStato] = useState('selection');
   const [carteRivelate, setCarteRivelate] = useState([]);
   const [indiceRivelato, setIndiceRivelato] = useState(-1); // legacy: unused in new flow
@@ -3110,11 +3109,13 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
   const dropAttivo = dropsAttivi.find(d => d.id === dropSelId) || dropsAttivi[0] || null;
 
   const dropWaifu = dropAttivo?.waifuIds ? waifuCat.filter(w => dropAttivo.waifuIds.includes(w.id)) : waifuCat;
-  const dropOutfit = dropAttivo?.outfitIds ? outfitCat.filter(o => dropAttivo.outfitIds.includes(o.id)) : outfitCat;
-  const dropPose = dropAttivo?.poseIds ? poseCat.filter(p => dropAttivo.poseIds.includes(p.id)) : poseCat;
+  const dropMosse = dropAttivo?.attackMoveIds?.length > 0 ? mosseCat.filter(m => dropAttivo.attackMoveIds.includes(m.id)) : mosseCat;
 
-  // Catalogo filtrato
-  const tuttiDrop = [...dropWaifu.map(w => ({ ...w, _tipo: 'waifu' })), ...dropOutfit.map(o => ({ ...o, _tipo: 'outfit' })), ...dropPose.map(p => ({ ...p, _tipo: 'posa' }))];
+  // Catalogo filtrato (solo waifu + mosse nel nuovo sistema)
+  const tuttiDrop = [
+    ...dropWaifu.map(w => ({ ...w, _tipo: 'waifu' })),
+    ...dropMosse.map(m => ({ ...m, _tipo: 'mossa' })),
+  ];
   const catalogoFiltrato = tuttiDrop
     .filter(c => catTab === 'tutte' || c._tipo === catTab)
     .filter(c => filtroRarita === 'tutte' || c.rarita === filtroRarita)
@@ -3134,25 +3135,44 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, outfitC
   const _generaEAggiorna = async (tipoPacchetto, nuovaCollezione) => {
     const drop = dropAttivo;
     const hasHardPass = profilo?.hardPass === true;
-    // Escludi waifu Hot se l'utente non ha il Pass Hard
     const filteredWaifuCat = hasHardPass ? waifuCat : waifuCat.filter(w => !w.hot);
     const wp = drop?.waifuIds ? filteredWaifuCat.filter(w => drop.waifuIds.includes(w.id)) : filteredWaifuCat;
-    const op = drop?.outfitIds ? outfitCat.filter(o => drop.outfitIds.includes(o.id)) : outfitCat;
-    const pp = drop?.poseIds ? poseCat.filter(p => drop.poseIds.includes(p.id)) : poseCat;
+    // Mosse attacco dal drop (nuovo sistema v2)
+    const allMosse = mosseCat || [];
+    const mp = drop?.attackMoveIds?.length > 0 ? allMosse.filter(m => drop.attackMoveIds.includes(m.id)) : allMosse;
     if (wp.length === 0) { mostraNotif('Nessuna waifu nel drop attivo.', '#ff3d3d'); return null; }
     const escludiDoppioni = tipoPacchetto === 'benvenuto';
     const waifuPossedute = escludiDoppioni ? Object.keys(nuovaCollezione.waifu || {}) : [];
-    const carte = generaPacchetto({ waifuPool: wp, outfitPool: op, posePool: pp, escludiDoppioniWaifu: escludiDoppioni, waifuPossedute, godPackProb });
+    const carte = generaPacchetto({ waifuPool: wp, mossePool: mp, escludiDoppioniWaifu: escludiDoppioni, waifuPossedute, godPackProb });
     // segna isNuova prima di aggiornare la collezione
     carte.forEach(c => {
-      if (c.tipo === 'waifu') { c.isNuova = !nuovaCollezione.waifu[c.data.id]; }
-      else if (c.tipo === 'outfit') { c.isNuova = !(nuovaCollezione.outfit[c.data.id]?.quantita > 0); }
-      else if (c.tipo === 'posa') { c.isNuova = !(nuovaCollezione.pose[c.data.id]?.quantita > 0); }
+      if (c.tipo === 'waifu') c.isNuova = !nuovaCollezione.waifu[c.data.id];
+      else if (c.tipo === 'mossa') c.isNuova = !(nuovaCollezione.mosse?.[c.data.id]?.copie > 0);
     });
     carte.forEach(c => {
-      if (c.tipo === 'waifu') { if (nuovaCollezione.waifu[c.data.id]) nuovaCollezione.waifu[c.data.id].copie++; else nuovaCollezione.waifu[c.data.id] = { copie: 1, livello: 1, stat_bonus: {} }; }
-      else if (c.tipo === 'outfit') { nuovaCollezione.outfit[c.data.id] = { quantita: (nuovaCollezione.outfit[c.data.id]?.quantita || 0) + 1 }; }
-      else if (c.tipo === 'posa') { nuovaCollezione.pose[c.data.id] = { quantita: (nuovaCollezione.pose[c.data.id]?.quantita || 0) + 1 }; }
+      if (c.tipo === 'waifu') {
+        if (nuovaCollezione.waifu[c.data.id]) {
+          nuovaCollezione.waifu[c.data.id].copie++;
+        } else {
+          nuovaCollezione.waifu[c.data.id] = {
+            copie: 1, livello: 1,
+            velocita: c.data.velocita_base ?? null,
+            crit_chance: c.data.crit_chance_base ?? null,
+            mosse_slot: { 1: null, 2: null, 3: null, 4: null },
+          };
+        }
+        // Imposta levelup_pending quando copie è multiplo di 3 e livello < 10
+        const uw = nuovaCollezione.waifu[c.data.id];
+        if (uw.copie % 3 === 0 && (uw.livello ?? 1) < 10) uw.levelup_pending = true;
+      } else if (c.tipo === 'mossa') {
+        if (!nuovaCollezione.mosse) nuovaCollezione.mosse = {};
+        const curr = nuovaCollezione.mosse[c.data.id] ?? { copie: 0, livello: 1 };
+        const newCopie = curr.copie + 1;
+        const levelupResult = checkMoveLevelUp({ ...curr, copie: newCopie }, c.data);
+        nuovaCollezione.mosse[c.data.id] = levelupResult
+          ? { ...curr, copie: newCopie, ...levelupResult }
+          : { ...curr, copie: newCopie };
+      }
     });
     return carte;
   };
@@ -4732,7 +4752,7 @@ function ZoomCartaOverlay({ w, dati, outfitCat, poseCat, equip, onClose, profilo
 // Tab Carta: carta con livello/copie, statistiche, descrizione, zoom
 // Tab Baby-doll: outfit per zona + abilità, pose
 // ============================================================
-function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseCat, onChiudi, onEquipaggia, onLevelUp, statConfig = { ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT }, profilo, setProfilo, user }) {
+function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], outfitCat, poseCat, onChiudi, onEquipaggia, onLevelUp, statConfig = { ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT }, profilo, setProfilo, user, setColl }) {
   const w = waifuCat.find(x => x.id === waifuId);
   const dati = collezione.waifu[waifuId];
   const equip = collezione.equipaggiamento[waifuId] || { faccia: null, petto: null, gambe: null, piedi: null, posa: null };
@@ -5163,18 +5183,12 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
               </div>
             )}
 
-            {/* ── TAB BATTAGLIA (WAIFU CHAMPIONS REFACTOR — COLLECTION) ── */}
+            {/* ── TAB BATTAGLIA ── */}
             {tabDettaglio === 'battaglia' && (() => {
-              // Effective waifu stats (base + bonus) for Speed/Crit computation
-              const wEff = {
-                tette:          (w.tette          ?? 4)  + (dati.stat_bonus?.tette          || 0),
-                eta:            (w.eta            ?? 25) + (dati.stat_bonus?.eta            || 0),
-                esperienza:     (w.esperienza     ?? 0)  + (dati.stat_bonus?.esperienza     || 0),
-                colore_capelli: (w.colore_capelli ?? 5)  + (dati.stat_bonus?.colore_capelli || 0),
-                taglia_piedi:   (w.taglia_piedi   ?? 39) + (dati.stat_bonus?.taglia_piedi   || 0),
-              };
-              const speed    = computeSpeed(wEff);
-              const critPct  = Math.round(computeCritChance(wEff) * 100);
+              const speed   = dati.velocita   ?? computeSpeed(w);
+              const critPct = Math.round((dati.crit_chance ?? computeCritChance(w)) * 100);
+              const mosseSlot = dati.mosse_slot ?? { 1: null, 2: null, 3: null, 4: null };
+              const mosseAssegnate = Object.values(mosseSlot).filter(Boolean).length;
 
               const saveMove = async (slotIdx, moveData) => {
                 setMoveSaving(true); setMoveErr('');
@@ -5230,87 +5244,25 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, outfitCat, poseC
                     </div>
                   </PannelloOrnato>
 
-                  {/* Move slots */}
-                  <div>
-                    <div style={{ fontFamily: 'Orbitron', fontSize: 9, letterSpacing: 2, color: 'rgba(238,232,220,0.4)', marginBottom: 10 }}>KIT MOSSE (4 SLOT)</div>
-                    {moveErr && <div style={{ fontFamily: 'Fredoka', fontSize: 12, color: '#ff6b6b', marginBottom: 8, textAlign: 'center' }}>{moveErr}</div>}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {slotMoves.map((move, i) => {
-                        if (editSlot === i) {
-                          // Add/Edit form — uses editFormData state (lifted to component level)
-                          const isNew   = move === null;
-                          const eName   = editFormData.name;
-                          const eDmg    = editFormData.damage;
-                          const eCrit   = editFormData.damage_crit;
-                          const dmgNum  = parseInt(eDmg,  10);
-                          const critNum = parseInt(eCrit, 10);
-                          const critErr = eCrit !== '' && eDmg !== '' && !isNaN(critNum) && !isNaN(dmgNum) && critNum <= dmgNum;
-                          const canSave = eName.trim() && !isNaN(dmgNum) && dmgNum >= 1 && !isNaN(critNum) && critNum > dmgNum && !moveSaving;
-                          return (
-                            <div key={i} style={{ background: 'rgba(155,89,255,0.06)', border: '1px solid rgba(155,89,255,0.3)', borderRadius: 10, padding: '12px 14px' }}>
-                              <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: '#9b59ff', letterSpacing: 1.5, marginBottom: 8 }}>
-                                {isNew ? `+ AGGIUNGI MOSSA — SLOT ${i+1}` : `âœŽ MODIFICA MOSSA — SLOT ${i+1}`}
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                <div>
-                                  <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,0.5)', marginBottom: 4 }}>NOME (max 32)</div>
-                                  <input value={eName} onChange={e => setEditFormData(d => ({ ...d, name: e.target.value }))} maxLength={32} placeholder="Nome mossa..."
-                                    style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(155,89,255,0.3)', borderRadius: 6, color: '#eedcd4', fontFamily: 'Fredoka', fontSize: 13, padding: '7px 10px', outline: 'none', boxSizing: 'border-box' }} />
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                                  <div>
-                                    <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,0.5)', marginBottom: 4 }}>DANNO (min 1)</div>
-                                    <input type="number" min={1} value={eDmg} onChange={e => setEditFormData(d => ({ ...d, damage: e.target.value }))}
-                                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(155,89,255,0.3)', borderRadius: 6, color: '#eedcd4', fontFamily: 'Orbitron', fontSize: 13, padding: '7px 10px', outline: 'none', boxSizing: 'border-box' }} />
-                                  </div>
-                                  <div>
-                                    <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(238,232,220,0.5)', marginBottom: 4 }}>DANNO CRITICO</div>
-                                    <input type="number" min={2} value={eCrit} onChange={e => setEditFormData(d => ({ ...d, damage_crit: e.target.value }))}
-                                      style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: `1px solid ${critErr ? '#ff6b6b' : 'rgba(155,89,255,0.3)'}`, borderRadius: 6, color: '#eedcd4', fontFamily: 'Orbitron', fontSize: 13, padding: '7px 10px', outline: 'none', boxSizing: 'border-box' }} />
-                                  </div>
-                                </div>
-                                {critErr && <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: '#ff6b6b' }}>Crit damage must be greater than normal damage.</div>}
-                              </div>
-                              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                                <BtnDecorato variant="secondary" size="sm" onClick={() => { setEditSlot(null); setMoveErr(''); }}>ANNULLA</BtnDecorato>
-                                <BtnDecorato variant="primary" size="sm" disabled={!canSave}
-                                  onClick={() => canSave && saveMove(i, { name: eName.trim(), damage: dmgNum, damage_crit: critNum })}>
-                                  {moveSaving ? 'SALVO…' : 'SALVA'}
-                                </BtnDecorato>
-                              </div>
-                            </div>
-                          );
-                        }
-                        if (move === null) {
-                          return (
-                            <div key={i} style={{ border: '1px dashed rgba(155,89,255,0.25)', borderRadius: 10, padding: '12px 14px', textAlign: 'center' }}>
-                              <button onClick={() => { setEditSlot(i); setMoveErr(''); setEditFormData({ name: '', damage: '', damage_crit: '' }); }}
-                                style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#9b59ff', background: 'rgba(155,89,255,0.08)', border: '1px solid rgba(155,89,255,0.35)', borderRadius: 8, padding: '8px 20px', cursor: 'pointer', letterSpacing: 1 }}>
-                                + AGGIUNGI MOSSA (SLOT {i+1})
-                              </button>
-                            </div>
-                          );
-                        }
-                        return (
-                          <PannelloOrnato key={i} glow="#7F77DD" style={{ padding: '12px 14px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                              <div style={{ fontFamily: 'Orbitron', fontSize: 12, fontWeight: 700, color: '#eedcd4' }}>{move.name}</div>
-                              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                                <button onClick={() => { setEditSlot(i); setMoveErr(''); setEditFormData({ name: move.name ?? '', damage: String(move.damage ?? ''), damage_crit: String(move.damage_crit ?? '') }); }}
-                                  style={{ background: 'rgba(0,200,255,0.1)', border: '1px solid rgba(0,200,255,0.3)', color: '#00C8FF', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 12 }}>âœŽ</button>
-                                <button onClick={() => deleteMove(i)}
-                                  style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)', color: '#ff6b6b', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontSize: 12 }}>🗑</button>
-                              </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontFamily: 'Fredoka', fontSize: 12, color: 'rgba(238,232,220,0.6)' }}>
-                              <span>Danno <strong style={{ color: '#f5a623' }}>{move.damage}</strong></span>
-                              <span>Danno Critico <strong style={{ color: '#ffd666' }}>{move.damage_crit}</strong></span>
-                            </div>
-                          </PannelloOrnato>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  {/* Move slots v2 — mosse dal catalogo */}
+                  <WaifuMosseSlotsPanel
+                    waifuId={waifuId} waifu={w}
+                    mosseSlot={mosseSlot}
+                    mosseCat={mosseCat}
+                    userMosse={collezione.mosse ?? {}}
+                    mosseAssegnate={mosseAssegnate}
+                    user={user}
+                    onSlotUpdated={(newSlot) => {
+                      if (setColl) {
+                        setColl(prev => {
+                          const nuova = JSON.parse(JSON.stringify(prev));
+                          if (!nuova.waifu[waifuId]) nuova.waifu[waifuId] = {};
+                          nuova.waifu[waifuId].mosse_slot = newSlot;
+                          return nuova;
+                        });
+                      }
+                    }}
+                  />
                 </div>
               );
             })()}
@@ -7125,6 +7077,162 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
         </PannelloOrnato>
       )}
       </div>
+      )}
+    </div>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// WAIFU MOSSE SLOTS PANEL (v2 — mosse da catalogo)
+// ═════════════════════════════════════════════════════════════════════════════
+function WaifuMosseSlotsPanel({ waifuId, waifu, mosseSlot, mosseCat, userMosse, mosseAssegnate, user, onSlotUpdated }) {
+  const [showPicker, setShowPicker] = useState(null); // slot number 1-4 o null
+  const [assignBusy, setAssignBusy] = useState(false);
+  const [assignErr, setAssignErr] = useState(‘’);
+  const [assignableData, setAssignableData] = useState(null); // { compatibili, incompatibili }
+
+  const openPicker = async (slot) => {
+    setShowPicker(slot);
+    setAssignErr(‘’);
+    setAssignableData(null);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/attack-moves?assignable_to=${waifuId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setAssignableData(data);
+    } catch (e) { setAssignErr(‘Errore caricamento mosse: ‘ + e.message); }
+  };
+
+  const assignMove = async (moveId, slot) => {
+    setAssignBusy(true); setAssignErr(‘’);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/attack-moves/${moveId}/assign/${waifuId}`, {
+        method: ‘POST’,
+        headers: { Authorization: `Bearer ${token}`, ‘Content-Type’: ‘application/json’ },
+        body: JSON.stringify({ slot }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const newSlot = { ...mosseSlot, [slot]: moveId };
+      onSlotUpdated(newSlot);
+      setShowPicker(null);
+    } catch (e) { setAssignErr(e.message); }
+    finally { setAssignBusy(false); }
+  };
+
+  const removeMove = async (slot) => {
+    const moveId = mosseSlot[slot];
+    if (!moveId) return;
+    setAssignBusy(true);
+    try {
+      const token = await user.getIdToken();
+      await fetch(`/api/attack-moves/${moveId}/assign/${waifuId}?slot=${slot}`, {
+        method: ‘DELETE’, headers: { Authorization: `Bearer ${token}` },
+      });
+      const newSlot = { ...mosseSlot, [slot]: null };
+      onSlotUpdated(newSlot);
+    } catch (e) { setAssignErr(e.message); }
+    finally { setAssignBusy(false); }
+  };
+
+  const TIPO_COL = { Arcana: ‘#7F77DD’, Natura: ‘#639922’, Abisso: ‘#4463DD’, Ferro: ‘#5F5E5A’, Fuoco: ‘#D85A30’ };
+
+  return (
+    <div>
+      <div style={{ fontFamily: ‘Orbitron’, fontSize: 9, letterSpacing: 2, color: ‘rgba(238,232,220,0.4)’, marginBottom: 10 }}>
+        MOSSE ({mosseAssegnate}/4 ASSEGNATE)
+      </div>
+      {mosseAssegnate < 4 && (
+        <div style={{ fontFamily: ‘Fredoka’, fontSize: 11, color: ‘#f5a623’, marginBottom: 10, background: ‘rgba(245,166,35,0.08)’, border: ‘1px solid rgba(245,166,35,0.2)’, borderRadius: 8, padding: ‘6px 10px’ }}>
+          ⚠ Equipaggia 4 mosse per usare questa waifu in combattimento
+        </div>
+      )}
+      {assignErr && <div style={{ fontFamily: ‘Fredoka’, fontSize: 11, color: ‘#ff6b6b’, marginBottom: 8 }}>{assignErr}</div>}
+      <div style={{ display: ‘flex’, flexDirection: ‘column’, gap: 8 }}>
+        {[1, 2, 3, 4].map(slot => {
+          const moveId = mosseSlot[slot];
+          const mossaCatalog = moveId ? mosseCat.find(m => m.id === moveId) : null;
+          const userMossaData = moveId ? userMosse[moveId] : null;
+          if (mossaCatalog) {
+            const tipoColor = TIPO_COL[mossaCatalog.tipologia] ?? ‘#7F77DD’;
+            return (
+              <div key={slot} style={{ border: `1px solid ${tipoColor}44`, borderRadius: 10, padding: ‘10px 12px’, background: `${tipoColor}08`, display: ‘flex’, justifyContent: ‘space-between’, alignItems: ‘center’ }}>
+                <div>
+                  <div style={{ fontFamily: ‘Orbitron’, fontSize: 11, fontWeight: 700, color: ‘#eedcd4’, marginBottom: 4 }}>
+                    <span style={{ color: tipoColor, marginRight: 6 }}>Slot {slot}</span>{mossaCatalog.nome}
+                  </div>
+                  <div style={{ fontFamily: ‘Fredoka’, fontSize: 11, color: ‘rgba(238,232,220,0.6)’ }}>
+                    {mossaCatalog.tipologia} · {mossaCatalog.rarita} · Lv{userMossaData?.livello ?? 1} · PP:{mossaCatalog.pp} · ⚔{userMossaData?.danno ?? mossaCatalog.danno} · {Math.round((userMossaData?.danno_critico ?? mossaCatalog.danno_critico) * 100)}%✦
+                    {mossaCatalog.abilita && <span style={{ color: ‘rgba(174,156,255,0.8)’, marginLeft: 6 }}>🔮 {mossaCatalog.abilita}</span>}
+                  </div>
+                </div>
+                <div style={{ display: ‘flex’, gap: 6 }}>
+                  <button onClick={() => openPicker(slot)} disabled={assignBusy}
+                    style={{ background: ‘rgba(0,200,255,0.1)’, border: ‘1px solid rgba(0,200,255,0.3)’, color: ‘#00C8FF’, borderRadius: 6, padding: ‘4px 8px’, cursor: ‘pointer’, fontSize: 11, fontFamily: ‘Orbitron’ }}>✎</button>
+                  <button onClick={() => removeMove(slot)} disabled={assignBusy}
+                    style={{ background: ‘rgba(255,107,107,0.1)’, border: ‘1px solid rgba(255,107,107,0.3)’, color: ‘#ff6b6b’, borderRadius: 6, padding: ‘4px 8px’, cursor: ‘pointer’, fontSize: 11 }}>✕</button>
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div key={slot} style={{ border: ‘1px dashed rgba(155,89,255,0.25)’, borderRadius: 10, padding: ‘10px 12px’, textAlign: ‘center’ }}>
+              <button onClick={() => openPicker(slot)} disabled={assignBusy}
+                style={{ fontFamily: ‘Orbitron’, fontSize: 10, color: ‘#9b59ff’, background: ‘rgba(155,89,255,0.08)’, border: ‘1px solid rgba(155,89,255,0.35)’, borderRadius: 8, padding: ‘6px 16px’, cursor: ‘pointer’, letterSpacing: 1 }}>
+                + ASSEGNA MOSSA (SLOT {slot})
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Picker mosse */}
+      {showPicker !== null && (
+        <div style={{ position: ‘fixed’, inset: 0, background: ‘rgba(0,0,0,0.85)’, zIndex: 110, display: ‘flex’, alignItems: ‘flex-end’, justifyContent: ‘center’ }}
+          onClick={e => e.target === e.currentTarget && setShowPicker(null)}>
+          <div style={{ background: ‘rgba(10,7,38,0.98)’, border: ‘1px solid rgba(174,156,255,0.3)’, borderRadius: ‘20px 20px 0 0’, padding: 20, maxWidth: 480, width: ‘100%’, maxHeight: ‘70vh’, overflowY: ‘auto’ }}>
+            <div style={{ fontFamily: ‘Orbitron’, fontSize: 12, color: ‘#c5a4ff’, marginBottom: 16 }}>SLOT {showPicker} — Scegli mossa</div>
+            {!assignableData && !assignErr && <div style={{ color: ‘rgba(238,232,220,0.5)’, fontSize: 12 }}>Caricamento…</div>}
+            {assignErr && <div style={{ color: ‘#ff6b6b’, fontSize: 11 }}>{assignErr}</div>}
+            {assignableData && (
+              <>
+                <div style={{ fontFamily: ‘Orbitron’, fontSize: 9, color: ‘rgba(6,214,160,0.7)’, marginBottom: 8, letterSpacing: 1 }}>✓ COMPATIBILI ({assignableData.compatibili?.length ?? 0})</div>
+                {(assignableData.compatibili ?? []).map(m => (
+                  <div key={m.id} onClick={() => assignMove(m.id, showPicker)}
+                    style={{ display: ‘flex’, justifyContent: ‘space-between’, alignItems: ‘center’, padding: ‘8px 12px’, marginBottom: 6, background: ‘rgba(6,214,160,0.05)’, border: ‘1px solid rgba(6,214,160,0.2)’, borderRadius: 10, cursor: assignBusy ? ‘not-allowed’ : ‘pointer’ }}>
+                    <div>
+                      <div style={{ fontFamily: ‘Orbitron’, fontSize: 11, color: ‘#eedcd4’ }}>{m.nome}</div>
+                      <div style={{ fontFamily: ‘Fredoka’, fontSize: 10, color: ‘rgba(238,232,220,0.5)’ }}>{m.tipologia} · {m.rarita} · ⚔{m.danno}</div>
+                    </div>
+                    <div style={{ fontFamily: ‘Orbitron’, fontSize: 9, color: ‘#06d6a0’ }}>+ Slot {showPicker}</div>
+                  </div>
+                ))}
+                {(assignableData.compatibili ?? []).length === 0 && (
+                  <div style={{ color: ‘rgba(238,232,220,0.4)’, fontSize: 11, fontFamily: ‘Fredoka’, marginBottom: 12 }}>Nessuna mossa compatibile in collezione. Sbusta nuovi pacchetti!</div>
+                )}
+                {(assignableData.incompatibili ?? []).length > 0 && (
+                  <>
+                    <div style={{ fontFamily: ‘Orbitron’, fontSize: 9, color: ‘rgba(255,107,107,0.6)’, margin: ‘12px 0 8px’, letterSpacing: 1 }}>✗ NON COMPATIBILI ({assignableData.incompatibili.length})</div>
+                    {assignableData.incompatibili.map(m => (
+                      <div key={m.id}
+                        style={{ display: ‘flex’, justifyContent: ‘space-between’, alignItems: ‘center’, padding: ‘8px 12px’, marginBottom: 6, background: ‘rgba(255,107,107,0.04)’, border: ‘1px solid rgba(255,107,107,0.15)’, borderRadius: 10, opacity: 0.6 }}
+                        title={m.motivo_blocco}>
+                        <div>
+                          <div style={{ fontFamily: ‘Orbitron’, fontSize: 11, color: ‘rgba(238,232,220,0.6)’ }}>{m.nome}</div>
+                          <div style={{ fontFamily: ‘Fredoka’, fontSize: 10, color: ‘#ff6b6b’ }}>{m.motivo_blocco}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </>
+            )}
+            <button onClick={() => setShowPicker(null)} style={{ width: ‘100%’, marginTop: 12, padding: ‘10px’, background: ‘rgba(255,255,255,0.06)’, border: ‘1px solid rgba(255,255,255,0.15)’, borderRadius: 10, color: ‘#f5e6d3’, fontFamily: ‘Orbitron’, fontSize: 10, cursor: ‘pointer’ }}>Annulla</button>
+          </div>
+        </div>
       )}
     </div>
   );

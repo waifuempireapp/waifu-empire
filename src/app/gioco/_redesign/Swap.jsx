@@ -95,6 +95,13 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ waifuId: waifu.id, vote: direction === 'like' ? 'like' : 'dislike' }),
       });
+      if (res.status === 429) {
+        const data = await res.json();
+        const resetTime = data.resetAt ? new Date(data.resetAt) : null;
+        const resetHH = resetTime ? `${String(resetTime.getHours()).padStart(2,'0')}:${String(resetTime.getMinutes()).padStart(2,'0')}` : '00:00';
+        setToast({ type: 'limit', message: `Limite giornaliero raggiunto (${data.dailyLimit} voti). Riprova alle ${resetHH}.` });
+        return;
+      }
       const data = await res.json();
 
       if (data.kissesEarned > 0) {
@@ -105,6 +112,8 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
         setMilestone({ milestone: data.milestoneHit, amount: data.milestoneEarned });
         setProfilo(p => ({ ...p, kisses: (p.kisses ?? 0) + data.milestoneEarned }));
       }
+      // Mostra pubblicità se segnalato dal server (override client-side per utenti senza pass)
+      if (data.showAd) setShowAd(true);
     } catch (e) { console.error(e); }
   };
 

@@ -284,6 +284,14 @@ export default function NegozioPage() {
           />
         </div>
 
+        {/* Swap Pass */}
+        <div>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 11, letterSpacing: 3, color: 'rgba(238,232,220,0.4)', marginBottom: 12 }}>
+            ABBONAMENTI
+          </div>
+          <SwapPassCard profilo={profilo} user={user} />
+        </div>
+
         {/* Divisore */}
         <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,77,158,0.3), transparent)' }} />
 
@@ -302,6 +310,68 @@ export default function NegozioPage() {
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+function SwapPassCard({ profilo, user }) {
+  const [busy, setBusy] = useState(false);
+  const [notif, setNotif] = useState(null);
+  const [prezzoSwapPass, setPrezzoSwapPass] = useState(2.99);
+
+  useEffect(() => {
+    import('@/lib/firebase').then(({ db }) => {
+      import('firebase/firestore').then(({ doc, getDoc }) => {
+        getDoc(doc(db, 'config', 'prezzi')).then(s => {
+          if (s.exists()) setPrezzoSwapPass(s.data()?.swap_pass ?? 2.99);
+        }).catch(() => {});
+      });
+    });
+  }, []);
+
+  const hasSwapPass = !!(profilo?.swap_pass) && (!profilo?.swap_pass_expires_at || new Date(profilo.swap_pass_expires_at?.seconds * 1000) > new Date());
+  const expiry = profilo?.swap_pass_expires_at ? new Date(profilo.swap_pass_expires_at?.seconds * 1000).toLocaleDateString('it-IT') : null;
+
+  const acquista = async () => {
+    setBusy(true);
+    try {
+      // Attivazione manuale tramite Admin — per ora mostra messaggio informativo
+      setNotif({ testo: 'Per attivare lo Swap Pass, contatta l\'admin del gioco o completa l\'acquisto su PayPal.', colore: '#f5a623' });
+    } finally { setBusy(false); }
+    setTimeout(() => setNotif(null), 5000);
+  };
+
+  return (
+    <div style={{ background: 'linear-gradient(135deg, rgba(236,72,153,0.1), rgba(6,3,15,0.9))', border: '1px solid rgba(236,72,153,0.35)', borderRadius: 16, padding: '18px 20px' }}>
+      {notif && <div style={{ marginBottom: 12, padding: '8px 12px', background: `${notif.colore}15`, border: `1px solid ${notif.colore}40`, borderRadius: 8, fontFamily: 'Fredoka', fontSize: 12, color: notif.colore }}>{notif.testo}</div>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+        <div>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 13, color: '#ec4899', fontWeight: 700 }}>💋 Swap Pass</div>
+          <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: 'rgba(238,232,220,0.6)', marginTop: 4 }}>
+            Abbonamento mensile · €{prezzoSwapPass.toFixed(2)}/mese
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 16, color: '#ec4899', fontWeight: 900 }}>€{prezzoSwapPass.toFixed(2)}</div>
+          <div style={{ fontFamily: 'Fredoka', fontSize: 10, color: 'rgba(238,232,220,0.4)' }}>/mese</div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+        {['✅ Voti illimitati nel Waifu Swap', '✅ Zero pubblicità durante il voto', '✅ Reward Kisses ogni 10 voti'].map(b => (
+          <div key={b} style={{ fontFamily: 'Fredoka', fontSize: 12, color: 'rgba(238,232,220,0.8)' }}>{b}</div>
+        ))}
+      </div>
+      {hasSwapPass ? (
+        <div style={{ background: 'rgba(6,214,160,0.1)', border: '1px solid rgba(6,214,160,0.3)', borderRadius: 10, padding: '10px 14px', textAlign: 'center' }}>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#06d6a0' }}>✓ SWAP PASS ATTIVO</div>
+          {expiry && <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: 'rgba(238,232,220,0.5)', marginTop: 4 }}>Scade il {expiry}</div>}
+        </div>
+      ) : (
+        <button onClick={acquista} disabled={busy}
+          style={{ width: '100%', padding: '12px', background: busy ? 'rgba(236,72,153,0.3)' : 'linear-gradient(135deg,#ec4899,#a855f7)', border: 'none', borderRadius: 12, color: '#fff', fontFamily: 'Orbitron', fontSize: 11, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', letterSpacing: '0.1em' }}>
+          {busy ? '⏳' : '💳 ACQUISTA SWAP PASS'}
+        </button>
+      )}
     </div>
   );
 }

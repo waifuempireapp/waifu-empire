@@ -4,17 +4,18 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
-  TIMER, RARITA, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, OUTFIT_CONFIG_DEFAULT,
+  TIMER, RARITA, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT,
 } from '@/lib/constants';
 import {
   listDropsAttivi, setCollezione as saveCollezione,
   deleteTeamFromCollezione, updateUserProfile,
 } from '@/lib/firestoreService';
+import { RARITY_MULTIPLIERS_DEFAULT } from '@/lib/constants';
+import { computeAndSaveStats } from '@/lib/gameLogic';
 import {
-  calcolaLivelloOutfit, puoEquipaggiare,
-  calcolaEnergiaScarto, INCREMENTI_LEVELUP,
+  calcolaEnergiaScarto,
 } from '@/lib/gameLogic';
-import { CartaWaifu, CartaOutfit, CartaPosa } from '@/components/CartaWaifu';
+import { CartaWaifu } from '@/components/CartaWaifu';
 import { BtnDecorato, PannelloOrnato, TitoloOrnato } from '@/components/ui/UIKit';
 import { C, FF, ScreenTitle, Sakura } from './_shared';
 
@@ -30,7 +31,7 @@ const stileLevelUp = {
 };
 
 export function CollezioneTab({
-  collezione, setColl, waifuCat, outfitCat, poseCat,
+  collezione, setColl, waifuCat, mosseCat = [], outfitCat = [], poseCat = [],
   profilo, setProfilo, user, mostraNotif,
   initialSubTab = 'waifu',
   statConfig = { ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT },
@@ -149,9 +150,8 @@ export function CollezioneTab({
 
   const subTabs = [
     { k: 'waifu',  l: 'Waifu',  icon: '♛', n: Object.keys(collezione.waifu || {}).length,  c: C.gold   },
-    { k: 'outfit', l: 'Outfit', icon: '✦', n: Object.keys(collezione.outfit || {}).length, c: C.violet },
-    { k: 'pose',   l: 'Pose',   icon: '⚜', n: Object.keys(collezione.pose || {}).length,   c: C.sakura },
-    { k: 'team',   l: 'Team',   icon: '⚔', n: Object.keys(teams).length,                   c: C.ok     },
+    { k: 'mosse',  l: 'Mosse',  icon: '⚔', n: Object.keys(collezione.mosse || {}).length,  c: C.violet },
+    { k: 'team',   l: 'Team',   icon: '🛡', n: Object.keys(teams).length,                   c: C.ok     },
   ];
 
   // ─── Waifu logic ─────────────────────────────────────────
@@ -317,14 +317,14 @@ export function CollezioneTab({
                     isHot={w.hot === true}
                     censurata={w.hot === true && !profilo?.hardPass}/>
                   <div style={{ textAlign: 'center', marginTop: 6 }}>
-                    {dati.copie >= 3 ? (
+                    {dati.levelup_pending ? (
                       <span style={{ ...stileLevelUp, fontSize: 8, color: C.ok }}>⚡ Level Up!</span>
                     ) : (
                       <span style={{
                         color: C.violet, fontFamily: FF.label, fontSize: 8,
                         letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600,
                       }}>
-                        {dati.copie}/3 copie · LV<strong style={{ color: C.goldL, marginLeft: 3 }}>{dati.livello}</strong>
+                        {dati.copie} copie · LV<strong style={{ color: C.goldL, marginLeft: 3 }}>{dati.livello}</strong>
                       </span>
                     )}
                   </div>
@@ -342,87 +342,42 @@ export function CollezioneTab({
           </div>
         )}
 
-        {/* OUTFIT TAB */}
-        {tabSub === 'outfit' && (
+        {/* MOSSE TAB */}
+        {tabSub === 'mosse' && (
           <div>
-            <FiltroCompatto
-              color={C.violet}
-              valoreRarita={filtroRaritaOutfit}
-              onChangeRarita={v => { setFiltroRaritaOutfit(v); setVisibiliOutfit(12); }}
-              drops={drops} valoreDrop={filtroDropId}
-              onChangeDrop={v => { setFiltroDropId(v); setVisibiliOutfit(12); }}
-              count={outfitEntries.length} label="outfit"
-            />
-            <div className="collection-card-grid" style={{
-              display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center',
-            }}>
-              {outfitEntries.slice(0, visibiliOutfit).map(({ id, dati, o }, idx) => (
-                <div key={id} className="card-fade-up card-clickable collection-card-item"
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                    animationDelay: `${idx * 40}ms` }}>
-                  <CartaOutfit outfit={o} quantita={dati.quantita} dimensione="piccola"/>
-                  <span style={{
-                    fontFamily: FF.label, fontSize: 8, color: C.violet,
-                    letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 600,
-                  }}>×<strong style={{ color: C.goldL, marginLeft: 3 }}>{dati.quantita}</strong> copie</span>
-                  {dati.quantita > 0 && (
-                    <BtnDecorato variant="success" size="sm" onClick={() => handleScarta('outfit', id, o.rarita)}>
-                      ↻ +{calcolaEnergiaScarto(o.rarita)} ⚡
-                    </BtnDecorato>
-                  )}
-                </div>
-              ))}
-              {outfitEntries.length === 0 && <EmptyState icon="✦" color={C.violet} title="Nessun outfit trovato" sub="Cambia filtri o sbusta nuovi pacchetti!"/>}
+            <div className="collection-card-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
+              {Object.entries(collezione.mosse || {}).map(([moveId, dati], idx) => {
+                const catalog = mosseCat.find(m => m.id === moveId);
+                if (!catalog) return null;
+                const livello = dati.livello ?? 1;
+                const prossimeLup = livello < 10 ? (5 - ((dati.copie ?? 0) % 5)) % 5 || 5 : null;
+                return (
+                  <div key={moveId} className="card-fade-up collection-card-item"
+                    style={{ width: 130, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, animationDelay: `${idx * 40}ms` }}>
+                    <div style={{ width: 120, height: 160, background: 'rgba(0,0,0,0.6)', border: `1px solid ${C.violet}44`, borderRadius: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, position: 'relative', padding: 8 }}>
+                      {catalog.immagine_url && catalog.immagine_url !== '/images/mosse/placeholder.png' && (
+                        <img src={catalog.immagine_url} alt={catalog.nome} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8 }} />
+                      )}
+                      {(!catalog.immagine_url || catalog.immagine_url === '/images/mosse/placeholder.png') && (
+                        <div style={{ fontSize: 28, marginBottom: 4 }}>⚔</div>
+                      )}
+                      <div style={{ fontFamily: FF.label, fontSize: 9, color: C.goldL, textAlign: 'center', lineHeight: 1.3 }}>{catalog.nome}</div>
+                      <div style={{ fontFamily: FF.label, fontSize: 8, color: C.violet, opacity: 0.8 }}>{catalog.tipologia} · Lv{livello}</div>
+                      <div style={{ fontFamily: FF.label, fontSize: 8, color: '#f5e6d3' }}>PP:{catalog.pp} · Danno:{dati.danno ?? catalog.danno}</div>
+                      {prossimeLup !== null && (
+                        <div style={{ position: 'absolute', top: 4, right: 4, background: `${C.ok}22`, border: `1px solid ${C.ok}66`, borderRadius: 6, padding: '2px 5px', fontFamily: FF.label, fontSize: 7, color: C.ok }}>
+                          {dati.copie % 5 === 0 && livello < 10 ? '⬆ LVL UP' : `${prossimeLup} al lv`}
+                        </div>
+                      )}
+                    </div>
+                    <span style={{ fontFamily: FF.label, fontSize: 8, color: C.violet }}>×<strong style={{ color: C.goldL }}>{dati.copie ?? 0}</strong> copie</span>
+                  </div>
+                );
+              })}
+              {Object.keys(collezione.mosse || {}).length === 0 && (
+                <EmptyState icon="⚔" color={C.violet} title="Nessuna mossa trovata" sub="Apri bustine per trovare mosse attacco!" />
+              )}
             </div>
-            {visibiliOutfit < outfitEntries.length && (
-              <div style={{ textAlign: 'center', marginTop: 16 }}>
-                <BtnDecorato variant="secondary" size="sm" onClick={() => setVisibiliOutfit(v => v + 12)}>
-                  Carica altri ({outfitEntries.length - visibiliOutfit} rimanenti)
-                </BtnDecorato>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* POSE TAB */}
-        {tabSub === 'pose' && (
-          <div>
-            <FiltroCompatto
-              color={C.sakura}
-              valoreRarita={filtroRaritaPose}
-              onChangeRarita={v => { setFiltroRaritaPose(v); setVisibiliPose(12); }}
-              drops={drops} valoreDrop={filtroDropId}
-              onChangeDrop={v => { setFiltroDropId(v); setVisibiliPose(12); }}
-              count={poseEntries.length} label="pose"
-            />
-            <div className="collection-card-grid" style={{
-              display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center',
-            }}>
-              {poseEntries.slice(0, visibiliPose).map(({ id, dati, p }, idx) => (
-                <div key={id} className="card-fade-up card-clickable collection-card-item"
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                    animationDelay: `${idx * 40}ms` }}>
-                  <CartaPosa posa={p} quantita={dati.quantita} dimensione="piccola"/>
-                  <span style={{
-                    fontFamily: FF.label, fontSize: 8, color: C.sakura,
-                    letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 600,
-                  }}>×<strong style={{ color: C.goldL, marginLeft: 3 }}>{dati.quantita}</strong> copie</span>
-                  {dati.quantita > 0 && (
-                    <BtnDecorato variant="success" size="sm" onClick={() => handleScarta('pose', id, p.rarita)}>
-                      ↻ +{calcolaEnergiaScarto(p.rarita)} ⚡
-                    </BtnDecorato>
-                  )}
-                </div>
-              ))}
-              {poseEntries.length === 0 && <EmptyState icon="⚜" color={C.sakura} title="Nessuna posa trovata" sub="Cambia filtri o sbusta nuovi pacchetti!"/>}
-            </div>
-            {visibiliPose < poseEntries.length && (
-              <div style={{ textAlign: 'center', marginTop: 16 }}>
-                <BtnDecorato variant="secondary" size="sm" onClick={() => setVisibiliPose(v => v + 12)}>
-                  Carica altre ({poseEntries.length - visibiliPose} rimanenti)
-                </BtnDecorato>
-              </div>
-            )}
           </div>
         )}
 
@@ -440,11 +395,18 @@ export function CollezioneTab({
                 <SelezioneWaifuTeam
                   waifuDisponibili={Object.entries(collezione.waifu || {}).map(([id, dati]) => {
                     const w = waifuCat.find(x => x.id === id);
-                    return w ? { ...w, copie: dati.copie, livello: dati.livello, stat_bonus: dati.stat_bonus } : null;
+                    const mosseAssegnate = Object.values(dati.mosse_slot ?? {}).filter(Boolean).length;
+                    return w ? { ...w, copie: dati.copie, livello: dati.livello, stat_bonus: dati.stat_bonus, mosse_ok: mosseAssegnate === 4 } : null;
                   }).filter(Boolean)}
                   waifuSelezionate={teamWaifu}
                   onToggle={(id) => {
                     if (teamWaifu.includes(id)) { setTeamWaifu(teamWaifu.filter(x => x !== id)); return; }
+                    const waifuEntry = Object.entries(collezione.waifu || {}).find(([wid]) => wid === id);
+                    if (waifuEntry) {
+                      const dati = waifuEntry[1];
+                      const mosseOk = Object.values(dati.mosse_slot ?? {}).filter(Boolean).length === 4;
+                      if (!mosseOk) { mostraNotif('Equipaggia 4 mosse per usare questa waifu in combattimento', '#f5a623'); return; }
+                    }
                     if (teamWaifu.length >= 5) { mostraNotif('Massimo 5 waifu per team', '#f5a623'); return; }
                     setTeamWaifu([...teamWaifu, id]);
                   }}
@@ -498,17 +460,164 @@ export function CollezioneTab({
       </div>
 
       {/* Modale dettaglio waifu */}
-      {waifuSel && ModaPersonalizzazione && (
-        <ModaPersonalizzazione
-          waifuId={waifuSel} collezione={collezione}
-          waifuCat={waifuCat} outfitCat={outfitCat} poseCat={poseCat}
-          onChiudi={() => setWaifuSel(null)}
-          onEquipaggia={handleEquipaggia}
-          onLevelUp={handleLevelUp}
-          statConfig={statConfig}
-          profilo={profilo} setProfilo={setProfilo} user={user}
-        />
-      )}
+      {waifuSel && ModaPersonalizzazione && (() => {
+        const datiSel = collezione.waifu?.[waifuSel];
+        const wSel = waifuCat.find(w => w.id === waifuSel);
+        if (datiSel?.levelup_pending && wSel) {
+          return (
+            <LevelUpPanel
+              waifu={wSel}
+              datiUtente={datiSel}
+              user={user}
+              onChiudi={() => setWaifuSel(null)}
+              onCompleted={(patch) => {
+                const nuova = JSON.parse(JSON.stringify(collezione));
+                nuova.waifu[waifuSel] = { ...datiSel, ...patch };
+                setColl(nuova);
+                saveCollezione(user.uid, nuova);
+                setWaifuSel(null);
+                mostraNotif('Level Up applicato!', '#06d6a0');
+              }}
+            />
+          );
+        }
+        return (
+          <ModaPersonalizzazione
+            waifuId={waifuSel} collezione={collezione}
+            waifuCat={waifuCat} mosseCat={mosseCat} outfitCat={outfitCat} poseCat={poseCat}
+            onChiudi={() => setWaifuSel(null)}
+            onEquipaggia={handleEquipaggia}
+            onLevelUp={handleLevelUp}
+            statConfig={statConfig}
+            profilo={profilo} setProfilo={setProfilo} user={user}
+            setColl={setColl}
+          />
+        );
+      })()}
+    </div>
+  );
+}
+
+// =====================================================================
+// LEVEL UP PANEL (modale scelta stat per level-up waifu)
+// =====================================================================
+const STAT_DEFS = [
+  { key: 'tette',          label: 'Tette',         min: 1,  max: 7    },
+  { key: 'taglia_piedi',   label: 'Taglia Piedi',  min: 34, max: 45   },
+  { key: 'eta',            label: 'Età',           min: 16, max: 5000 },
+  { key: 'colore_capelli', label: 'Capelli',       min: 1,  max: 10   },
+  { key: 'esperienza',     label: 'Esperienza',    min: 0,  max: 5000 },
+];
+
+function LevelUpPanel({ waifu, datiUtente, user, onChiudi, onCompleted }) {
+  const statBase = { ...waifu, ...(datiUtente.stat_personali ?? {}) };
+  const [preview, setPreview] = useState(null); // { stat, delta }
+  const [busy, setBusy] = useState(false);
+
+  const calcPreview = (stat, delta) => {
+    const newStats = { ...statBase, [stat]: (statBase[stat] ?? 0) + delta };
+    const rarita = waifu.rarita ?? 'comune';
+    const cfg = RARITY_MULTIPLIERS_DEFAULT[rarita] ?? RARITY_MULTIPLIERS_DEFAULT.comune;
+    const { velocita, crit_chance } = computeAndSaveStats(waifu, rarita, { [stat]: newStats[stat] });
+    return { velocita, crit_chance: Math.round(crit_chance * 100) };
+  };
+
+  const apply = async () => {
+    if (!preview) return;
+    setBusy(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/waifu/${waifu.id}/level-up`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stat: preview.stat, delta: preview.delta }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const newStatPersonali = { ...(datiUtente.stat_personali ?? {}), [preview.stat]: (statBase[preview.stat] ?? 0) + preview.delta };
+      onCompleted({
+        livello: data.livello,
+        velocita: data.velocita,
+        crit_chance: data.crit_chance,
+        stat_personali: newStatPersonali,
+        levelup_pending: false,
+      });
+    } catch (e) { alert('Errore: ' + e.message); }
+    finally { setBusy(false); }
+  };
+
+  const currentVel = Math.round(datiUtente.velocita ?? computeAndSaveStats(waifu, waifu.rarita ?? 'comune', datiUtente.stat_personali ?? {}).velocita);
+  const currentCrit = Math.round((datiUtente.crit_chance ?? computeAndSaveStats(waifu, waifu.rarita ?? 'comune', datiUtente.stat_personali ?? {}).crit_chance) * 100);
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+    }} onClick={e => e.target === e.currentTarget && onChiudi()}>
+      <div style={{
+        background: 'rgba(10,7,38,0.97)', border: '1px solid rgba(245,158,11,0.4)',
+        borderRadius: 20, padding: 24, maxWidth: 420, width: '100%',
+        boxShadow: '0 0 60px rgba(245,158,11,0.15)',
+      }}>
+        <div style={{ fontFamily: FF.display, fontSize: 18, color: C.gold, marginBottom: 4, textAlign: 'center' }}>
+          ⬆ Level Up — {waifu.nome}
+        </div>
+        <div style={{ fontFamily: FF.label, fontSize: 9, color: 'rgba(245,158,11,0.6)', textAlign: 'center', marginBottom: 20, letterSpacing: '0.2em' }}>
+          SCEGLI UNA STAT DA MODIFICARE
+        </div>
+
+        {/* Preview corrente */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 20, justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center', padding: '8px 16px', background: 'rgba(174,156,255,0.08)', borderRadius: 10, border: '1px solid rgba(174,156,255,0.2)' }}>
+            <div style={{ fontFamily: FF.label, fontSize: 8, color: 'rgba(174,156,255,0.6)', marginBottom: 4 }}>VELOCITÀ</div>
+            <div style={{ fontFamily: FF.mono, fontSize: 16, color: preview ? '#aef0d8' : '#f5e6d3' }}>
+              {preview ? calcPreview(preview.stat, preview.delta).velocita : currentVel}
+            </div>
+            {preview && <div style={{ fontFamily: FF.label, fontSize: 8, color: 'rgba(245,158,11,0.5)' }}>era {currentVel}</div>}
+          </div>
+          <div style={{ textAlign: 'center', padding: '8px 16px', background: 'rgba(255,126,182,0.08)', borderRadius: 10, border: '1px solid rgba(255,126,182,0.2)' }}>
+            <div style={{ fontFamily: FF.label, fontSize: 8, color: 'rgba(255,126,182,0.6)', marginBottom: 4 }}>CRITICO</div>
+            <div style={{ fontFamily: FF.mono, fontSize: 16, color: preview ? '#aef0d8' : '#f5e6d3' }}>
+              {preview ? calcPreview(preview.stat, preview.delta).crit_chance : currentCrit}%
+            </div>
+            {preview && <div style={{ fontFamily: FF.label, fontSize: 8, color: 'rgba(245,158,11,0.5)' }}>era {currentCrit}%</div>}
+          </div>
+        </div>
+
+        {/* Stat picker */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+          {STAT_DEFS.map(({ key, label, min, max }) => {
+            const current = statBase[key] ?? 0;
+            return (
+              <div key={key} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '8px 12px', borderRadius: 10,
+                background: preview?.stat === key ? 'rgba(245,158,11,0.08)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${preview?.stat === key ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.06)'}`,
+              }}>
+                <div style={{ flex: 1, fontFamily: FF.label, fontSize: 10, color: '#f5e6d3' }}>{label}</div>
+                <div style={{ fontFamily: FF.mono, fontSize: 12, color: 'rgba(174,156,255,0.7)', minWidth: 40, textAlign: 'center' }}>{current}</div>
+                <button onClick={() => setPreview({ stat: key, delta: -1 })} disabled={current <= min}
+                  style={{ width: 28, height: 28, background: preview?.stat === key && preview.delta === -1 ? 'rgba(236,72,153,0.3)' : 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: '#f5e6d3', cursor: current <= min ? 'not-allowed' : 'pointer', fontSize: 14 }}>−</button>
+                <button onClick={() => setPreview({ stat: key, delta: +1 })} disabled={current >= max}
+                  style={{ width: 28, height: 28, background: preview?.stat === key && preview.delta === +1 ? 'rgba(6,214,160,0.3)' : 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: '#f5e6d3', cursor: current >= max ? 'not-allowed' : 'pointer', fontSize: 14 }}>+</button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Buttons */}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={apply} disabled={!preview || busy}
+            style={{ flex: 1, padding: '12px', background: preview && !busy ? 'linear-gradient(135deg,#f59e0b,#ec4899)' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 12, color: preview && !busy ? '#000' : 'rgba(255,255,255,0.4)', fontFamily: FF.label, fontSize: 11, fontWeight: 700, cursor: preview && !busy ? 'pointer' : 'not-allowed', letterSpacing: '0.1em' }}>
+            {busy ? '⏳ Applicando…' : '✅ CONFERMA'}
+          </button>
+          <button onClick={onChiudi}
+            style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 12, color: '#f5e6d3', fontFamily: FF.label, fontSize: 11, cursor: 'pointer' }}>
+            Annulla
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -825,16 +934,25 @@ function SelezioneWaifuTeam({
       }}>
         {slice.map(w => {
           const sel = waifuSelezionate.includes(w.id);
+          const noMosse = w.mosse_ok === false;
           return (
             <div key={w.id} onClick={() => onToggle(w.id)}
               style={{
                 cursor: 'pointer',
-                opacity: sel ? 1 : 0.6,
+                opacity: sel ? 1 : noMosse ? 0.4 : 0.6,
                 transition: 'all 0.15s',
                 transform: sel ? 'scale(1.02)' : 'scale(1)',
                 filter: sel ? `drop-shadow(0 0 12px ${accentColor})` : 'none',
+                position: 'relative',
               }}>
               <CartaWaifu waifu={w} dimensione="piccola" evidenziato={sel}/>
+              {noMosse && !sel && (
+                <div style={{
+                  position: 'absolute', bottom: 4, left: 0, right: 0, textAlign: 'center',
+                  background: 'rgba(0,0,0,0.8)', padding: '3px 4px',
+                  fontFamily: FF.label, fontSize: 7, color: '#f5a623', letterSpacing: '0.1em',
+                }}>⚔ 0/4 mosse</div>
+              )}
             </div>
           );
         })}

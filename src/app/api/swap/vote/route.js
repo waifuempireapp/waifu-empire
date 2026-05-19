@@ -33,8 +33,24 @@ export async function POST(request) {
     const rewardThreshold = config.rewardThreshold ?? 10;
     const rewardKisses = config.rewardKisses ?? 50;
     const milestoneRewards = config.milestones ?? { 100: 200, 500: 500, 1000: 1000, 5000: 3000 };
+    const dailyLimit = config.dailyVoteLimit ?? 50;
+    const adInterval = config.adInterval ?? 5;
 
     const userData = userSnap.exists ? userSnap.data() : {};
+
+    // Limite giornaliero per utenti senza Swap Pass
+    const hasSwapPass = !!(userData.swap_pass) && (!userData.swap_pass_expires_at || userData.swap_pass_expires_at.toMillis?.() > Date.now());
+    if (!hasSwapPass) {
+      const todayKeyCheck = dayKey();
+      const dailyVotesDate = userData.daily_swap_date ?? '';
+      const dailyVotes = dailyVotesDate === todayKeyCheck ? (userData.daily_swap_votes ?? 0) : 0;
+      if (dailyVotes >= dailyLimit) {
+        const resetAt = new Date();
+        resetAt.setUTCHours(24, 0, 0, 0);
+        return NextResponse.json({ error: 'Limite giornaliero raggiunto', resetAt: resetAt.toISOString(), dailyLimit }, { status: 429 });
+      }
+    }
+
     const swipeCount = (userData.swipeCount ?? 0) + 1;
     const totalVotes = (userData.totalVotes ?? 0) + 1;
 
@@ -74,6 +90,11 @@ export async function POST(request) {
       lastSwipeDate: todayKey,
     };
     if (totalKisses > 0) userUpdate.kisses = FieldValue.increment(totalKisses);
+    // Aggiorna contatore giornaliero (solo per utenti senza Swap Pass)
+    if (!hasSwapPass) {
+      userUpdate.daily_swap_date = todayKey;
+      userUpdate.daily_swap_votes = FieldValue.increment(1);
+    }
 
     const voteRef = adminDb.collection('swap_votes').doc(`${uid}_${waifuId}`);
     const batch = adminDb.batch();
@@ -94,6 +115,8 @@ export async function POST(request) {
       milestoneEarned,
       milestoneHit,
       rewardHit,
+      hasSwapPass,
+      showAd: !hasSwapPass && swipeCount % adInterval === 0,
     });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });

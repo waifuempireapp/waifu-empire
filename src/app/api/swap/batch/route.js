@@ -61,7 +61,8 @@ export async function GET(request) {
   try {
     const token = request.headers.get('Authorization')?.replace('Bearer ', '');
     if (!token) return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
-    await adminAuth.verifyIdToken(token);
+    const decoded = await adminAuth.verifyIdToken(token);
+    const uid = decoded.uid;
 
     // Legge gli ID esclusi dalla query string (waifu già viste in questa sessione)
     const url = new URL(request.url);
@@ -92,12 +93,28 @@ export async function GET(request) {
     const shuffled = [...available].sort(() => Math.random() - 0.5);
     const selectedIds = shuffled.slice(0, BATCH_SIZE);
 
-    // Leggi solo i 10 documenti selezionati (10 reads invece di 800+)
+    // Leggi solo i 10 documenti selezionati + profilo utente in parallelo
     const refs = selectedIds.map(id => adminDb.collection('catalogo_waifu').doc(id));
-    const docs = await adminDb.getAll(...refs);
-    const waifu = docs.filter(d => d.exists).map(d => ({ id: d.id, ...d.data() }));
+    const [docs, userSnap] = await Promise.all([
+      adminDb.getAll(...refs),
+      adminDb.collection('users').doc(uid).get(),
+    ]);
+    const userData = userSnap.exists ? userSnap.data() : {};
+    const hasHardPass = !!(userData.hardPass);
+    const hasSwapPass = !!(userData.swap_pass) && (!userData.swap_pass_expires_at || (userData.swap_pass_expires_at.toMillis?.() ?? 0) > Date.now());
 
-    return NextResponse.json({ waifu, total: available.length });
+    const waifu = docs
+      .filter(d => d.exists)
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(w => {
+        // Escludi Immersive Hard dalla Swap (non partecipano alla classifica)
+        if (w.rarita === 'immersivo' && w.asset_video_hard) return false;
+        // Escludi Hot se utente non ha Hard Pass
+        if (w.hot && !hasHardPass) return false;
+        return true;
+      });
+
+    return NextResponse.json({ waifu, total: available.length, hasSwapPass });
   } catch (e) {
     console.error('[swap/batch]', e.message);
     return NextResponse.json({ waifu: [], error: e.message });

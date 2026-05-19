@@ -7,6 +7,36 @@
 // configurazione UI, geografia, outfit. In futuro ogni sezione può essere spostata
 // nel proprio file senza impattare le altre.
 
+// ── VERSIONE STATS (incrementare ad ogni migrazione stats waifu) ─────────────
+/** Versione corrente del sistema di stats. Al login, se profilo.stats_version < STATS_VERSION
+ *  il sistema ricalcola e salva velocita/crit_chance per ogni waifu in collezione. */
+export const STATS_VERSION = 1;
+
+// ── MOLTIPLICATORI RARITÀ (fallback hardcoded se Firestore non disponibile) ──
+/** Valori di default per config/rarity_multipliers. Modificabili da Admin senza deploy. */
+export const RARITY_MULTIPLIERS_DEFAULT = {
+  comune:      { multiplier: 0.50, vel_min: 1,   vel_max: 300,  crit_min: 0.05, crit_max: 0.20 },
+  raro:        { multiplier: 0.75, vel_min: 150,  vel_max: 500,  crit_min: 0.08, crit_max: 0.30 },
+  epico:       { multiplier: 1.00, vel_min: 300,  vel_max: 700,  crit_min: 0.12, crit_max: 0.40 },
+  leggendario: { multiplier: 1.25, vel_min: 500,  vel_max: 850,  crit_min: 0.18, crit_max: 0.52 },
+  immersivo:   { multiplier: 1.50, vel_min: 650,  vel_max: 1000, crit_min: 0.25, crit_max: 0.60 },
+};
+
+/** Range default mosse attacco per rarità (fallback se Firestore non disponibile). */
+export const MOVE_RANGES_DEFAULT = {
+  comune:      { pp_min: 15, pp_max: 25, danno_min: 20, danno_max: 45,  crit_min: 0.05, crit_max: 0.12 },
+  raro:        { pp_min: 12, pp_max: 20, danno_min: 40, danno_max: 75,  crit_min: 0.08, crit_max: 0.18 },
+  epico:       { pp_min: 10, pp_max: 16, danno_min: 70, danno_max: 110, crit_min: 0.12, crit_max: 0.25 },
+  leggendario: { pp_min: 8,  pp_max: 12, danno_min: 100,danno_max: 150, crit_min: 0.18, crit_max: 0.35 },
+  immersivo:   { pp_min: 5,  pp_max: 8,  danno_min: 140,danno_max: 200, crit_min: 0.25, crit_max: 0.50 },
+};
+
+/** Incrementi default per level-up mosse attacco. */
+export const MOVE_LEVELUP_DEFAULT = {
+  incremento_danno: 5,
+  incremento_danno_critico: 0.02,
+};
+
 // ── RARITÀ ─────────────────────────────────────────────────────────────────
 /**
  * Configurazione delle rarità waifu.
@@ -298,67 +328,4 @@ export function getTerritori_ForLivello(livello) {
   return territori;
 }
 
-// ── CONFIGURAZIONE OUTFIT ────────────────────────────────────────────────────
-/**
- * Configurazione outfit di default (modificabile da admin via Firestore /config/outfit_config).
- *
- * Struttura per rarità:
- *   - maxLivello:        quanti livelli può raggiungere l'outfit
- *   - archetipiStart:    archetipi compatibili al livello 1
- *   - archetipiMax:      archetipi al livello massimo (-1 = tutti gli archetipi)
- *   - archetipiPerLivello: incremento archetipi per livello (salvo eccezioni leggendario)
- *
- * Logica speciale leggendario/immersivo:
- *   - Lv 8→9: archetipi → 10
- *   - Lv 9→10: archetipi → 15
- *   - Lv 10: archetipi → tutti (-1)
- *
- * copiePerLivello: numero di copie duplicate necessarie per passare al livello successivo.
- */
-export const OUTFIT_CONFIG_DEFAULT = {
-  copiePerLivello: 15, // copie necessarie per passare al livello successivo
-
-  rarità: {
-    comune:      { maxLivello: 5,  archetipiStart: 1, archetipiMax: 5,  archetipiPerLivello: 1 },
-    raro:        { maxLivello: 6,  archetipiStart: 2, archetipiMax: 7,  archetipiPerLivello: 1 },
-    epico:       { maxLivello: 9,  archetipiStart: 2, archetipiMax: 10, archetipiPerLivello: 1 },
-    leggendario: {
-      maxLivello: 10, archetipiStart: 3,
-      // speciale: liv 1-7: +1/liv, liv 7-8: →10, liv 8-9: →15, liv 9-10: →ALL
-      archetipiPerLivello: 1, archetipiMax: -1, // -1 = tutti
-    },
-    immersivo:   {
-      maxLivello: 10, archetipiStart: 3,
-      archetipiPerLivello: 1, archetipiMax: -1,
-    },
-  },
-};
-
-// ── ABILITÀ OUTFIT ───────────────────────────────────────────────────────────
-/**
- * Tipi di abilità outfit — usati sia in admin (creazione outfit) che in battaglia (applicazione).
- * `target`: a chi si applica l'effetto ('self' | 'opp' | 'dual')
- * `direzione`: +1 = boost, -1 = penalità, 0 = doppio (usato per abilità tipo 'doppia')
- * @type {Record<string, { label: string, target: string, direzione: number }>}
- */
-export const ABILITA_TIPI = {
-  stat_up_self:   { label: '↑ Boost stat propria',       target: 'self',  direzione: +1 },
-  stat_down_self: { label: '↓ Abbassa stat propria',      target: 'self',  direzione: -1 },
-  stat_up_opp:    { label: '⬆ Boost stat avversaria',    target: 'opp',   direzione: +1 },
-  stat_down_opp:  { label: '⬇ Abbassa stat avversaria',  target: 'opp',   direzione: -1 },
-  // doppia (solo leggendario/immersivo): agisce su 2 stat contemporaneamente
-  doppia:         { label: '✦ Doppia (2 stat)',           target: 'dual',  direzione: 0  },
-};
-
-/**
- * Range dei valori di modifica stat per abilità outfit, divisi per rarità.
- * Il valore assoluto della modifica viene scelto casualmente in [min, max]
- * al momento della creazione dell'outfit (dal seeder admin).
- * @type {Record<string, { min: number, max: number }>}
- */
-export const ABILITA_VALORI = {
-  raro:        { min: 1, max: 2 },
-  epico:       { min: 2, max: 4 },
-  leggendario: { min: 3, max: 6 },
-  immersivo:   { min: 4, max: 8 },
-};
+// OUTFIT_CONFIG_DEFAULT, ABILITA_TIPI, ABILITA_VALORI rimossi (outfit/pose rimossi dal gioco)

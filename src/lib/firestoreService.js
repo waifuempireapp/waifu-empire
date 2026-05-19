@@ -7,6 +7,8 @@ import {
   serverTimestamp, Timestamp, orderBy, limit,
   deleteField, runTransaction,
 } from 'firebase/firestore';
+import { computeAndSaveStats } from './gameLogic';
+import { STATS_VERSION } from './constants';
 
 /**
  * @module firestoreService
@@ -201,8 +203,73 @@ function _cacheSet(key, data) {
  */
 export function clearCatalogCache() {
   if (typeof window === 'undefined') return;
-  ['iw_catalog_waifu', 'iw_catalog_outfit', 'iw_catalog_pose', 'iw_catalog_drops']
+  ['iw_catalog_waifu', 'iw_catalog_outfit', 'iw_catalog_pose', 'iw_catalog_drops', 'iw_catalog_mosse']
     .forEach(k => localStorage.removeItem(k));
+}
+
+/**
+ * Restituisce l'elenco delle mosse attacco del catalogo, ordinate per nome.
+ * @returns {Promise<Array<Object>>}
+ */
+export async function listMosse() {
+  const cached = _cacheGet('iw_catalog_mosse', _CATALOG_TTL());
+  if (cached) return cached;
+  const q = query(collection(db, 'catalogo_mosse'), orderBy('nome'));
+  const snap = await getDocs(q);
+  const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  _cacheSet('iw_catalog_mosse', data);
+  return data;
+}
+
+/**
+ * Aggiunge una mossa alla collezione utente e applica il level-up automatico se necessario.
+ * @param {string} uid
+ * @param {string} moveId
+ * @param {Object} catalogMossa - Dati mossa dal catalogo
+ * @param {Object} [levelupConfig] - Config da Firestore config/move_levelup
+ */
+export async function addMossaToCollezione(uid, moveId, catalogMossa, levelupConfig = null) {
+  const { checkMoveLevelUp } = await import('./gameLogic');
+  const collRef = doc(db, 'users', uid, 'collezione', 'main');
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(collRef);
+    const data = snap.exists() ? snap.data() : {};
+    const mosse = data.mosse ?? {};
+    const current = mosse[moveId] ?? { copie: 0, livello: 1 };
+    const newCopie = current.copie + 1;
+    const updatedMossa = { ...current, copie: newCopie };
+    const levelUpResult = checkMoveLevelUp(updatedMossa, catalogMossa, levelupConfig);
+    const finalMossa = levelUpResult ? { ...updatedMossa, ...levelUpResult } : updatedMossa;
+    tx.update(collRef, { [`mosse.${moveId}`]: finalMossa });
+  });
+}
+
+/**
+ * Migrazione lazy stats waifu: aggiorna velocita/crit_chance nella collezione
+ * dell'utente se la versione stats è obsoleta.
+ * @param {string} uid
+ * @param {Object} collezioneData - Dati collezione correnti
+ * @param {Object} waifuCatalog - Mappa waifuId → dati catalogo
+ * @param {Object} [rarityConfig] - Config da Firestore config/rarity_multipliers
+ */
+export async function lazyMigrateStats(uid, collezioneData, waifuCatalog, rarityConfig = null) {
+  if ((collezioneData.stats_version ?? 0) >= STATS_VERSION) return;
+  const collRef = doc(db, 'users', uid, 'collezione', 'main');
+  const patch = {};
+  const waifuMap = collezioneData.waifu ?? {};
+  for (const [waifuId, userWaifu] of Object.entries(waifuMap)) {
+    const catalog = waifuCatalog[waifuId];
+    if (!catalog) continue;
+    const statPersonali = userWaifu.stat_personali ?? {};
+    const rarita = catalog.rarita ?? 'comune';
+    const { velocita, crit_chance } = computeAndSaveStats(catalog, rarita, statPersonali, rarityConfig);
+    patch[`waifu.${waifuId}.velocita`]    = velocita;
+    patch[`waifu.${waifuId}.crit_chance`] = crit_chance;
+  }
+  patch.stats_version = STATS_VERSION;
+  if (Object.keys(patch).length > 1) {
+    await updateDoc(collRef, patch);
+  }
 }
 
 /**
@@ -360,7 +427,20 @@ export async function getDropAttivo() {
  */
 export async function upsertWaifu(id, data) {
   const ref = id ? doc(db, 'catalogo_waifu', id) : doc(collection(db, 'catalogo_waifu'));
-  await setDoc(ref, { ...data, aggiornato: serverTimestamp() }, { merge: true });
+  const rarita = data.rarita ?? 'comune';
+  let rarityConfig = null;
+  try {
+    const cfgSnap = await getDoc(doc(db, 'config', 'rarity_multipliers'));
+    if (cfgSnap.exists()) rarityConfig = cfgSnap.data();
+  } catch (_) {}
+  const { velocita, crit_chance } = computeAndSaveStats(data, rarita, {}, rarityConfig);
+  await setDoc(ref, {
+    ...data,
+    rarita,
+    velocita_base: velocita,
+    crit_chance_base: crit_chance,
+    aggiornato: serverTimestamp(),
+  }, { merge: true });
   return ref.id;
 }
 

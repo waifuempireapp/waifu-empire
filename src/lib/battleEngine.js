@@ -347,7 +347,7 @@ function _generateMovesForRarity(rarita) {
  * @param {Object} waifu - Documento waifu (da Firestore o WaifuBattleStat)
  * @returns {number} Intero 1–1000
  */
-export function calculateSpeed(waifu) {
+export function calculateSpeed(waifu, rarityMultiplier = 1.0, rarityRange = null) {
   // Defaults centrati/neutrali per waifu senza stat completi (es. generate in-memory)
   const tette        = waifu?.tette        ?? 4;
   const eta          = waifu?.eta          ?? 20;
@@ -365,8 +365,11 @@ export function calculateSpeed(waifu) {
   // Peso ponderato: componenti invertite danno speed a stat "bassi"
   // es (esperienza) è l'unica diretta — più esperienza = più veloce
   const speed_raw = (1 - t) * 0.20 + (1 - e) * 0.20 + es * 0.25 + (1 - c) * 0.15 + (1 - p) * 0.20;
-  // Scala a intero 1–1000 (× 999 + 1 garantisce range inclusivo)
-  return Math.round(speed_raw * 999) + 1;
+  const base = Math.round(speed_raw * 999) + 1;
+  if (rarityMultiplier === 1.0 && !rarityRange) return base;
+  const scaled = Math.round(base * rarityMultiplier);
+  if (!rarityRange) return scaled;
+  return Math.min(rarityRange.vel_max, Math.max(rarityRange.vel_min, scaled));
 }
 
 /**
@@ -403,7 +406,7 @@ export function computeSpeed(w) {
  * @param {Object} w - Documento waifu Firestore (catalogo_waifu)
  * @returns {number} Float 0.05–0.60 (probabilità critico)
  */
-export function computeCritChance(w) {
+export function computeCritChance(w, rarityMultiplier = 1.0, rarityRange = null) {
   const t  = ((w.tette          ?? 4)  - 1)  / 6;
   const e  = ((w.eta            ?? 25) - 18) / 4982;
   const es = (w.esperienza      ?? 0)        / 5000;
@@ -411,8 +414,11 @@ export function computeCritChance(w) {
   const p  = ((w.taglia_piedi   ?? 39) - 34) / 11;
   // (1-es): tradeoff speculare a calculateSpeed dove es è diretta
   const raw = t*0.20 + e*0.20 + (1-es)*0.25 + c*0.15 + p*0.20;
-  // Clamp: minimo 5% garantito (anche le waifu veloci possono critare), massimo 60%
-  return Math.min(0.60, Math.max(0.05, raw));
+  const base = Math.min(0.60, Math.max(0.05, raw));
+  if (rarityMultiplier === 1.0 && !rarityRange) return base;
+  const scaled = parseFloat((base * rarityMultiplier).toFixed(4));
+  if (!rarityRange) return Math.min(0.60, Math.max(0.05, scaled));
+  return Math.min(rarityRange.crit_max, Math.max(rarityRange.crit_min, scaled));
 }
 
 /**
@@ -494,20 +500,38 @@ export function initBattleWaifu(waifuFirestore, collectionData = null) {
   const hpScale     = 0.75 + (Math.min(level, 10) / 10) * 0.25;
   const scaledMaxHp = Math.round(maxHp * hpScale);
 
+  // Usa velocita/crit_chance salvati se disponibili (v2), altrimenti ricalcola (backward compat)
+  const savedSpeed = collectionData?.velocita ?? null;
+  const savedCrit  = collectionData?.crit_chance ?? null;
+
+  // Legge mosse dagli slot assegnati se disponibili, altrimenti usa le mosse nei battleStats
+  let finalMoves = bs.moves;
+  const mosseSlot = collectionData?.mosse_slot;
+  if (mosseSlot) {
+    const slotMoves = [mosseSlot[1], mosseSlot[2], mosseSlot[3], mosseSlot[4]].filter(Boolean);
+    if (slotMoves.length === 4 && collectionData._mosseData) {
+      finalMoves = slotMoves.map(mid => {
+        const m = collectionData._mosseData[mid];
+        if (!m) return null;
+        return { name: m.nome, type: m.tipologia, rarity: m.rarita, power: m.danno, damage_crit: m.danno_critico, pp: m.pp, maxPp: m.pp, ability: m.abilita ?? null };
+      }).filter(Boolean);
+    }
+  }
+  if (!finalMoves?.length) finalMoves = bs.moves;
+
   return {
     id:     waifuFirestore.id,
     name:   waifuFirestore.nome ?? 'Waifu',
     level,
-    hp:     scaledMaxHp,   // inizia a maxHp scalato
+    hp:     scaledMaxHp,
     maxHp:  scaledMaxHp,
     type:      bs.type ?? _pick(TYPE_NAMES),
-    speed:     computeSpeed(waifuFirestore),          // calcolato runtime — non usa bs.speed
-    critChance: computeCritChance(waifuFirestore),    // [WAIFU CHAMPIONS REFACTOR — CRIT]
+    speed:     savedSpeed ?? computeSpeed(waifuFirestore),
+    critChance: savedCrit  ?? computeCritChance(waifuFirestore),
     image:  waifuFirestore.asset_statica ?? waifuFirestore.asset_immersiva ?? null,
-    moves:  bs.moves.map(m => ({ ...m, pp: m.maxPp ?? m.pp ?? 5 })), // reset PP a maxPp
+    moves:  finalMoves.map(m => ({ ...m, pp: m.maxPp ?? m.pp ?? 5 })),
     isKO:   false,
     rarita: waifuFirestore.rarita ?? 'comune',
-    // Conserva i battleStats originali per mostrarli nel dettaglio carta
     _battleStats: bs,
   };
 }

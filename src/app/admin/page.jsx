@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import {
-  listWaifu, listOutfit, listPose, listDrops,
-  upsertWaifu, upsertOutfit, upsertPosa, upsertDrop,
+  listWaifu, listMosse, listDrops,
+  upsertWaifu, upsertDrop,
   deleteCatalogo, clearCatalogCache,
   getPrezziConfig, setPrezziConfig,
   getMissioniSezioni, upsertMissioneSezione, upsertMissione,
@@ -18,8 +18,7 @@ import {
   buildPromptOutfit, buildPromptPosa, buildPromptBustina,
   ARCHETIPI, PALETTE, MOTORI_AI, suggerisciDiversificazione,
 } from '@/lib/promptGenerator';
-import { RARITA, COLORI_CAPELLI, SLOT_OUTFIT, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, OUTFIT_CONFIG_DEFAULT, ABILITA_TIPI, ABILITA_VALORI } from '@/lib/constants';
-import { calcolaLivelloOutfit, calcolaNumArchetipi, autoGeneraAbilita } from '@/lib/gameLogic';
+import { RARITA, COLORI_CAPELLI, STAT_RANGES_DEFAULT, RARITY_MULTIPLIERS_DEFAULT, MOVE_RANGES_DEFAULT, MOVE_LEVELUP_DEFAULT } from '@/lib/constants';
 import { CartaWaifu } from '@/components/CartaWaifu';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -30,8 +29,7 @@ export default function AdminPage() {
   const [authorized, setAuthorized] = useState(null);
   const [tab, setTab] = useState('drops');
   const [waifu, setWaifu] = useState([]);
-  const [outfit, setOutfit] = useState([]);
-  const [pose, setPose] = useState([]);
+  const [mosse, setMosse] = useState([]);
   const [drops, setDrops] = useState([]);
   const [notif, setNotif] = useState(null);
 
@@ -45,8 +43,8 @@ export default function AdminPage() {
   }, [user, loading]);
 
   const carica = async () => {
-    const [w, o, p, d] = await Promise.all([listWaifu(), listOutfit(), listPose(), listDrops()]);
-    setWaifu(w); setOutfit(o); setPose(p); setDrops(d);
+    const [w, m, d] = await Promise.all([listWaifu(), listMosse(), listDrops()]);
+    setWaifu(w); setMosse(m); setDrops(d);
   };
 
   const flash = (testo, colore = '#06d6a0') => {
@@ -126,8 +124,10 @@ export default function AdminPage() {
           { k: 'drops', l: '📦 Drops' },
           { k: 'waifu', l: '👑 Waifu' },
           { k: 'bulk', l: '🚀 Caricamento Massivo' },
-          { k: 'outfit', l: '✦ Outfit' },
-          { k: 'pose', l: '⚜ Pose' },
+          { k: 'waifu-types', l: '🌀 Tipi Waifu' },
+          { k: 'mosse', l: '⚔ Mosse Attacco' },
+          { k: 'rarity-mult', l: '⚡ Moltiplicatori' },
+          { k: 'config-mosse', l: '⚙ Config Mosse' },
           { k: 'distrib', l: '📊 Distribuzione' },
           { k: 'motori', l: '🤖 Motori AI' },
           { k: 'config', l: '⚙ Config' },
@@ -148,18 +148,20 @@ export default function AdminPage() {
       </div>
 
       <div style={{ padding: '16px', maxWidth: 1400, margin: '0 auto' }}>
-        {tab === 'drops' && <DropsTab drops={drops} waifu={waifu} outfit={outfit} pose={pose} ricarica={carica} flash={flash} />}
+        {tab === 'drops' && <DropsTab drops={drops} waifu={waifu} mosse={mosse} ricarica={carica} flash={flash} />}
         {tab === 'waifu' && <WaifuTab waifu={waifu} drops={drops} ricarica={carica} flash={flash} />}
         {tab === 'bulk' && <BulkUploadTab waifu={waifu} ricarica={carica} flash={flash} />}
-        {tab === 'outfit' && <OutfitTab outfit={outfit} ricarica={carica} flash={flash} />}
-        {tab === 'pose' && <PoseTab pose={pose} waifu={waifu} ricarica={carica} flash={flash} />}
-        {tab === 'distrib' && <DistribTab waifu={waifu} outfit={outfit} pose={pose} />}
+        {tab === 'waifu-types' && <TipiWaifuTab flash={flash} />}
+        {tab === 'mosse' && <MosseTab mosse={mosse} waifu={waifu} ricarica={carica} flash={flash} user={user} />}
+        {tab === 'rarity-mult' && <RarityMultTab flash={flash} />}
+        {tab === 'config-mosse' && <ConfigMosseTab flash={flash} />}
+        {tab === 'distrib' && <DistribTab waifu={waifu} />}
         {tab === 'motori' && <MotoriTab />}
         {tab === 'config' && <ConfigTab waifu={waifu} ricarica={carica} flash={flash} />}
         {tab === 'prezzi'    && <PrezziTab flash={flash} user={user} />}
         {tab === 'missioni'  && <MissioniTab flash={flash} />}
         {tab === 'classifica' && <PremioClassificaTab flash={flash} />}
-        {tab === 'swap' && <SwapAdminTab flash={flash} user={user} />}
+        {tab === 'swap' && <SwapAdminTab flash={flash} user={user} waifu={waifu} />}
         {tab === 'mappa-debug' && <MappaDebugTab flash={flash} user={user} />}
       </div>
     </div>
@@ -2856,7 +2858,7 @@ function PrezziTab({ flash, user }) {
 
       {/* Pass */}
       <div style={sectionStyle}>
-        <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#f5a623', marginBottom: 12, fontWeight: 700 }}>Pass (una tantum)</div>
+        <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#f5a623', marginBottom: 12, fontWeight: 700 }}>Pass (una tantum + abbonamenti)</div>
         {[
           { id: 'pass_hard', label: '🔞 Hard Pass' },
           { id: 'pass_scambi', label: '🔓 Trade Pass' },
@@ -2873,6 +2875,15 @@ function PrezziTab({ flash, user }) {
             </div>
           </div>
         ))}
+        {/* Swap Pass mensile */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10, marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(236,72,153,0.2)' }}>
+          <span style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#ec4899', width: 110 }}>💋 Swap Pass /mese</span>
+          <div>
+            <div style={labelStyle}>€ EUR/mese</div>
+            <input type="number" step="0.01" value={prezzi.swap_pass ?? 2.99}
+              onChange={e => aggiorna('swap_pass', parseFloat(e.target.value))} style={inputStyle} />
+          </div>
+        </div>
       </div>
 
       {/* Beni Kisses */}
@@ -3333,7 +3344,7 @@ function PremioClassificaTab({ flash }) {
 // ═══════════════════════════════════════════════
 // SWAP ADMIN TAB
 // ═══════════════════════════════════════════════
-function SwapAdminTab({ flash, user }) {
+function SwapAdminTab({ flash, user, waifu = [] }) {
   const [config, setConfig] = useState({ rewardThreshold: 10, rewardKisses: 50, adInterval: 10, passiveKissesRate: 1, weeklyPrizes: [500, 300, 200, 100, 50] });
   const [votes, setVotes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -3403,13 +3414,71 @@ function SwapAdminTab({ flash, user }) {
         </button>
       </div>
 
-      <div style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 14, padding: '20px 24px' }}>
+      <div style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 14, padding: '20px 24px', marginBottom: 24 }}>
         <h3 style={{ fontFamily: 'Orbitron', fontSize: 12, color: 'rgba(245,158,11,0.7)', marginBottom: 16, letterSpacing: 2 }}>DASHBOARD VOTI SWAP</h3>
         <p style={{ fontFamily: 'Orbitron', fontSize: 10, color: 'rgba(245,158,11,0.5)', lineHeight: 1.6 }}>
           La dashboard voti in tempo reale richiede una query aggregata su /swap_votes.<br/>
           Consulta Firestore direttamente o usa il cron settimanale per vedere la classifica corrente via <code>/api/waifu-ranking/current</code>.
         </p>
       </div>
+
+      <ChiudiClassificaPanel flash={flash} user={user} />
+    </div>
+  );
+}
+
+function ChiudiClassificaPanel({ flash, user }) {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const esegui = async () => {
+    setBusy(true); setShowConfirm(false); setResult(null);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/admin/close-swap-ranking', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setResult(data);
+      if (data.success) flash(`✅ Classifica chiusa! ${data.totalUsersUpdated} utenti aggiornati`);
+      else flash(`❌ ${data.message || data.error}`);
+    } catch (e) { flash(`❌ Errore: ${e.message}`); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div style={{ background: 'rgba(236,72,153,0.05)', border: '1px solid rgba(236,72,153,0.3)', borderRadius: 14, padding: '20px 24px' }}>
+      <h3 style={{ fontFamily: 'Orbitron', fontSize: 12, color: '#ec4899', marginBottom: 12, letterSpacing: 2 }}>🏆 CHIUDI CLASSIFICA & UPGRADE RARITÀ</h3>
+      <p style={{ fontFamily: 'Orbitron', fontSize: 10, color: 'rgba(245,158,11,0.6)', lineHeight: 1.6, marginBottom: 16 }}>
+        Le top 5 waifu per voti salgono di rarità. I voti vengono azzerati. Operazione irreversibile.
+      </p>
+      {!showConfirm && (
+        <button onClick={() => setShowConfirm(true)} disabled={busy}
+          style={{ padding: '10px 24px', background: 'linear-gradient(135deg, #ec4899, #f59e0b)', border: 'none', borderRadius: 10, color: '#000', fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer' }}>
+          {busy ? '⏳ Operazione in corso…' : '⚡ CHIUDI CLASSIFICA'}
+        </button>
+      )}
+      {showConfirm && (
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <span style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#ec4899' }}>Sei sicuro? Quest'azione è irreversibile.</span>
+          <button onClick={esegui} style={{ padding: '8px 18px', background: '#ec4899', border: 'none', borderRadius: 8, color: '#000', fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>✅ CONFERMA</button>
+          <button onClick={() => setShowConfirm(false)} style={{ padding: '8px 14px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8, color: '#f5e6d3', fontFamily: 'Orbitron', fontSize: 10, cursor: 'pointer' }}>Annulla</button>
+        </div>
+      )}
+      {result && (
+        <div style={{ marginTop: 16, padding: '10px 14px', background: result.success ? 'rgba(0,200,118,0.1)' : 'rgba(255,61,61,0.1)', borderRadius: 10 }}>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: result.success ? '#00e676' : '#ff4d4d', marginBottom: 8 }}>
+            {result.success ? `✅ Completato — ${result.totalUsersUpdated} utenti aggiornati` : `❌ ${result.message || result.error}`}
+          </div>
+          {result.top5?.map((e, i) => (
+            <div key={e.waifuId} style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(245,158,11,0.8)', marginBottom: 4 }}>
+              #{i+1} {e.nome} — {e.oldRarita} → {e.newRarita} {e.skipped ? '(saltata)' : `(${e.likes} like)`}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -3480,6 +3549,348 @@ function MappaDebugTab({ flash, user }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// TAB: MOLTIPLICATORI RARITÀ (v2)
+// ═══════════════════════════════════════════════
+function RarityMultTab({ flash }) {
+  const RARITIES = ['comune', 'raro', 'epico', 'leggendario', 'immersivo'];
+  const [cfg, setCfg] = useState(RARITY_MULTIPLIERS_DEFAULT);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    import('@/lib/firebase').then(({ db }) => {
+      import('firebase/firestore').then(({ doc, getDoc }) => {
+        getDoc(doc(db, 'config', 'rarity_multipliers')).then(s => {
+          if (s.exists()) setCfg({ ...RARITY_MULTIPLIERS_DEFAULT, ...s.data() });
+        });
+      });
+    });
+  }, []);
+
+  const salva = async () => {
+    setBusy(true);
+    try {
+      const { db } = await import('@/lib/firebase');
+      const { doc, setDoc } = await import('firebase/firestore');
+      await setDoc(doc(db, 'config', 'rarity_multipliers'), cfg);
+      flash('✅ Moltiplicatori rarità salvati');
+    } catch { flash('❌ Errore salvataggio'); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div style={{ color: '#f5e6d3', maxWidth: 700 }}>
+      <h2 style={{ fontFamily: 'Cinzel', fontSize: 18, color: '#f59e0b', marginBottom: 24 }}>⚡ Moltiplicatori Rarità</h2>
+      <p style={{ fontFamily: 'Orbitron', fontSize: 10, color: 'rgba(245,158,11,0.6)', marginBottom: 16, lineHeight: 1.6 }}>
+        Multiplier applicato a velocita e crit_chance dopo il calcolo base. Range = limiti min/max del valore finale.
+      </p>
+      {RARITIES.map(r => (
+        <div key={r} style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 12, padding: '16px 20px', marginBottom: 14 }}>
+          <div style={{ fontFamily: 'Cinzel', fontSize: 14, color: '#f59e0b', marginBottom: 12, textTransform: 'capitalize' }}>{r}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+            {[['multiplier','Mult',0.1,3,0.05],['vel_min','Vel Min',1,1000,1],['vel_max','Vel Max',1,1000,1],['crit_min','Crit Min',0,1,0.01],['crit_max','Crit Max',0,1,0.01]].map(([k, lbl, mn, mx, step]) => (
+              <div key={k}>
+                <label style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(245,158,11,0.7)', display: 'block', marginBottom: 4 }}>{lbl}</label>
+                <input type="number" min={mn} max={mx} step={step} value={cfg[r]?.[k] ?? ''} onChange={e => setCfg(c => ({ ...c, [r]: { ...c[r], [k]: parseFloat(e.target.value) } }))}
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(245,158,11,0.3)', color: '#f5e6d3', borderRadius: 6, padding: '6px 8px', fontFamily: 'Orbitron', fontSize: 10 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+      <button onClick={salva} disabled={busy}
+        style={{ padding: '10px 24px', background: busy ? 'rgba(245,158,11,0.3)' : 'linear-gradient(135deg, #f59e0b, #ec4899)', border: 'none', borderRadius: 10, color: '#000', fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer' }}>
+        {busy ? '⏳ Salvataggio…' : '💾 SALVA MOLTIPLICATORI'}
+      </button>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// TAB: MOSSE ATTACCO (v2)
+// ═══════════════════════════════════════════════
+function MosseTab({ mosse, waifu, ricarica, flash, user }) {
+  const TIPI = ['Arcana', 'Natura', 'Abisso', 'Ferro', 'Fuoco'];
+  const RARITA_LIST = ['comune', 'raro', 'epico', 'leggendario', 'immersivo'];
+  const empty = { nome: '', tipologia: 'Arcana', rarita: 'comune', pp: 20, danno: 30, danno_critico: 0.08, abilita: '', nome_waifu: '', immagine_url: '/images/mosse/placeholder.png', espansione_id: 'esp_genesi' };
+  const [ed, setEd] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const salva = async (m) => {
+    setBusy(true);
+    try {
+      const { db } = await import('@/lib/firebase');
+      const { doc, setDoc, collection } = await import('firebase/firestore');
+      const ref = m.id ? doc(db, 'catalogo_mosse', m.id) : doc(collection(db, 'catalogo_mosse'));
+      const { id: _id, ...rest } = m;
+      await setDoc(ref, { ...rest, aggiornato: new Date() }, { merge: true });
+      flash('✅ Mossa salvata');
+      setEd(null);
+      ricarica();
+    } catch (e) { flash('❌ ' + e.message); }
+    finally { setBusy(false); }
+  };
+
+  const elimina = async (id) => {
+    if (!confirm('Eliminare la mossa?')) return;
+    const { db } = await import('@/lib/firebase');
+    const { doc, deleteDoc } = await import('firebase/firestore');
+    await deleteDoc(doc(db, 'catalogo_mosse', id));
+    flash('Mossa eliminata'); ricarica();
+  };
+
+  const inp = (label, key, type = 'text', opts = {}) => (
+    <div style={{ marginBottom: 12 }}>
+      <label style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(245,158,11,0.7)', display: 'block', marginBottom: 4 }}>{label}</label>
+      {type === 'select' ? (
+        <select value={ed[key] ?? ''} onChange={e => setEd(x => ({ ...x, [key]: e.target.value }))}
+          style={{ width: '100%', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(245,158,11,0.3)', color: '#f5e6d3', borderRadius: 8, padding: '8px 12px', fontFamily: 'Orbitron', fontSize: 11 }}>
+          {opts.options?.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+      ) : (
+        <input type={type} value={ed[key] ?? ''} onChange={e => setEd(x => ({ ...x, [key]: type === 'number' ? parseFloat(e.target.value) : e.target.value }))} {...opts}
+          style={{ width: '100%', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(245,158,11,0.3)', color: '#f5e6d3', borderRadius: 8, padding: '8px 12px', fontFamily: 'Orbitron', fontSize: 11 }} />
+      )}
+    </div>
+  );
+
+  if (ed) return (
+    <div style={{ color: '#f5e6d3', maxWidth: 600 }}>
+      <h3 style={{ fontFamily: 'Cinzel', fontSize: 16, color: '#f59e0b', marginBottom: 20 }}>{ed.id ? 'Modifica Mossa' : 'Nuova Mossa'}</h3>
+      {inp('Nome', 'nome')}
+      {inp('Tipologia', 'tipologia', 'select', { options: TIPI })}
+      {inp('Rarità', 'rarita', 'select', { options: RARITA_LIST })}
+      {inp('PP', 'pp', 'number', { min: 1, max: 30 })}
+      {inp('Danno', 'danno', 'number', { min: 1, max: 300 })}
+      {inp('Danno Critico (%)', 'danno_critico', 'number', { min: 0.01, max: 0.99, step: 0.01 })}
+      {inp('Abilità (testo, solo epica+)', 'abilita')}
+      {inp('Nome Waifu (solo immersiva)', 'nome_waifu')}
+      {inp('Immagine URL', 'immagine_url')}
+      {inp('Espansione ID', 'espansione_id')}
+      <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+        <button onClick={() => salva(ed)} disabled={busy}
+          style={{ padding: '10px 20px', background: 'linear-gradient(135deg, #f59e0b, #ec4899)', border: 'none', borderRadius: 10, color: '#000', fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer' }}>
+          {busy ? '⏳' : '💾 SALVA'}
+        </button>
+        <button onClick={() => setEd(null)} style={{ padding: '10px 16px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 10, color: '#f5e6d3', fontFamily: 'Orbitron', fontSize: 10, cursor: 'pointer' }}>Annulla</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ color: '#f5e6d3', maxWidth: 900 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <h2 style={{ fontFamily: 'Cinzel', fontSize: 18, color: '#f59e0b' }}>⚔ Mosse Attacco</h2>
+        <button onClick={() => setEd({ ...empty })} style={{ padding: '8px 16px', background: 'linear-gradient(135deg, #f59e0b, #ec4899)', border: 'none', borderRadius: 8, color: '#000', fontFamily: 'Orbitron', fontSize: 9, fontWeight: 700, cursor: 'pointer' }}>+ NUOVA MOSSA</button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+        {mosse.map(m => (
+          <div key={m.id} style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 12, padding: '14px 16px' }}>
+            <div style={{ fontFamily: 'Cinzel', fontSize: 13, color: '#f59e0b', marginBottom: 6 }}>{m.nome}</div>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(245,158,11,0.6)', marginBottom: 8 }}>{m.tipologia} · {m.rarita} · Lv{m.livello ?? 1}</div>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: '#f5e6d3', marginBottom: 10 }}>PP: {m.pp} | Danno: {m.danno} | Crit: {Math.round((m.danno_critico??0)*100)}%{m.abilita ? ' | 🔮' : ''}</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setEd({ ...m })} style={{ flex: 1, padding: '6px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 6, color: '#f59e0b', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>✎ Modifica</button>
+              <button onClick={() => elimina(m.id)} style={{ padding: '6px 10px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 6, color: '#ef4444', fontFamily: 'Orbitron', fontSize: 9, cursor: 'pointer' }}>✕</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// TIPI WAIFU (task 9.1)
+// ═══════════════════════════════════════════════
+function TipiWaifuTab({ flash }) {
+  const TIPI_DEFAULT = [
+    { nome: 'Arcana', colore: '#9C27B0', batte: 'Natura' },
+    { nome: 'Natura', colore: '#4CAF50', batte: 'Abisso' },
+    { nome: 'Abisso', colore: '#1A237E', batte: 'Ferro'  },
+    { nome: 'Ferro',  colore: '#607D8B', batte: 'Fuoco'  },
+    { nome: 'Fuoco',  colore: '#F44336', batte: 'Arcana' },
+  ];
+  const [tipi, setTipi] = useState(TIPI_DEFAULT);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    import('@/lib/firebase').then(({ db }) => {
+      import('firebase/firestore').then(({ doc, getDoc }) => {
+        getDoc(doc(db, 'config', 'waifu_types')).then(s => {
+          if (s.exists()) {
+            const data = s.data();
+            const arr = Object.entries(data).map(([nome, val]) => ({ nome, ...val }));
+            if (arr.length > 0) setTipi(arr);
+          }
+        }).catch(() => {});
+      });
+    });
+  }, []);
+
+  const salva = async () => {
+    setBusy(true);
+    try {
+      const { db } = await import('@/lib/firebase');
+      const { doc, setDoc } = await import('firebase/firestore');
+      const data = {};
+      tipi.forEach(t => { data[t.nome] = { colore: t.colore, batte: t.batte }; });
+      await setDoc(doc(db, 'config', 'waifu_types'), data);
+      flash('✅ Tipi Waifu salvati');
+    } catch (e) { flash('❌ ' + e.message); }
+    finally { setBusy(false); }
+  };
+
+  const inp = { background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(245,158,11,0.3)', color: '#f5e6d3', borderRadius: 8, padding: '7px 10px', fontFamily: 'Orbitron', fontSize: 10 };
+
+  return (
+    <div style={{ color: '#f5e6d3', maxWidth: 600 }}>
+      <h2 style={{ fontFamily: 'Cinzel', fontSize: 18, color: '#f59e0b', marginBottom: 8 }}>🌀 Tipi Waifu</h2>
+      <p style={{ fontFamily: 'Orbitron', fontSize: 10, color: 'rgba(245,158,11,0.5)', marginBottom: 20, lineHeight: 1.6 }}>
+        Ciclo pentagonale. Ogni tipo batte il tipo indicato nel campo "Batte".
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+        {tipi.map((t, i) => (
+          <div key={t.nome} style={{ display: 'grid', gridTemplateColumns: '90px 50px 1fr', gap: 12, alignItems: 'center', padding: '12px 16px', background: 'rgba(0,0,0,0.4)', border: `1px solid ${t.colore}44`, borderRadius: 12 }}>
+            <div style={{ fontFamily: 'Cinzel', fontSize: 14, color: t.colore, fontWeight: 700 }}>{t.nome}</div>
+            <input type="color" value={t.colore} onChange={e => setTipi(list => list.map((x, j) => j === i ? { ...x, colore: e.target.value } : x))}
+              style={{ width: 40, height: 32, borderRadius: 6, border: 'none', cursor: 'pointer', padding: 2 }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(245,158,11,0.6)', whiteSpace: 'nowrap' }}>BATTE →</span>
+              <select value={t.batte} onChange={e => setTipi(list => list.map((x, j) => j === i ? { ...x, batte: e.target.value } : x))}
+                style={{ ...inp, flex: 1 }}>
+                {tipi.map(tx => <option key={tx.nome} value={tx.nome}>{tx.nome}</option>)}
+              </select>
+            </div>
+          </div>
+        ))}
+      </div>
+      <button onClick={salva} disabled={busy}
+        style={{ padding: '10px 24px', background: busy ? 'rgba(245,158,11,0.3)' : 'linear-gradient(135deg,#f59e0b,#ec4899)', border: 'none', borderRadius: 10, color: '#000', fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer' }}>
+        {busy ? '⏳ Salvataggio…' : '💾 SALVA TIPI WAIFU'}
+      </button>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// CONFIG MOSSE + LOG CLASSIFICA (task 9.4 + 9.7)
+// ═══════════════════════════════════════════════
+function ConfigMosseTab({ flash }) {
+  const [ranges, setRanges] = useState(MOVE_RANGES_DEFAULT);
+  const [levelup, setLevelup] = useState(MOVE_LEVELUP_DEFAULT);
+  const [logs, setLogs] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
+  useEffect(() => {
+    import('@/lib/firebase').then(({ db }) => {
+      import('firebase/firestore').then(({ doc, getDoc }) => {
+        Promise.all([
+          getDoc(doc(db, 'config', 'move_ranges')),
+          getDoc(doc(db, 'config', 'move_levelup')),
+        ]).then(([rS, lS]) => {
+          if (rS.exists()) setRanges(prev => ({ ...prev, ...rS.data() }));
+          if (lS.exists()) setLevelup(prev => ({ ...prev, ...lS.data() }));
+        }).catch(() => {});
+      });
+    });
+  }, []);
+
+  const salvaConfig = async () => {
+    setBusy(true);
+    try {
+      const { db } = await import('@/lib/firebase');
+      const { doc, setDoc } = await import('firebase/firestore');
+      await Promise.all([
+        setDoc(doc(db, 'config', 'move_ranges'), ranges),
+        setDoc(doc(db, 'config', 'move_levelup'), levelup),
+      ]);
+      flash('✅ Config mosse salvata');
+    } catch (e) { flash('❌ ' + e.message); }
+    finally { setBusy(false); }
+  };
+
+  const caricaLogs = async () => {
+    setLoadingLogs(true);
+    try {
+      const { db } = await import('@/lib/firebase');
+      const { collection, query, orderBy, limit, getDocs } = await import('firebase/firestore');
+      const q = query(collection(db, 'admin_logs'), orderBy('timestamp', 'desc'), limit(10));
+      const snap = await getDocs(q);
+      setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.tipo === 'swap_closure'));
+    } catch (e) { flash('❌ ' + e.message); }
+    finally { setLoadingLogs(false); }
+  };
+
+  const RARITIES = ['comune', 'raro', 'epico', 'leggendario', 'immersivo'];
+  const inp = { background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(245,158,11,0.3)', color: '#f5e6d3', borderRadius: 6, padding: '5px 6px', fontFamily: 'Orbitron', fontSize: 9, width: '100%' };
+
+  return (
+    <div style={{ color: '#f5e6d3', maxWidth: 800 }}>
+      <h2 style={{ fontFamily: 'Cinzel', fontSize: 18, color: '#f59e0b', marginBottom: 8 }}>⚙ Config Mosse & Log</h2>
+
+      {/* Range statistiche */}
+      <h3 style={{ fontFamily: 'Orbitron', fontSize: 11, color: 'rgba(245,158,11,0.7)', marginBottom: 12, letterSpacing: 2 }}>RANGE STATISTICHE PER RARITÀ</h3>
+      {RARITIES.map(r => (
+        <div key={r} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
+          <div style={{ fontFamily: 'Cinzel', fontSize: 12, color: '#f59e0b', marginBottom: 8, textTransform: 'capitalize' }}>{r}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 8 }}>
+            {[['pp_min','PP min'],['pp_max','PP max'],['danno_min','Dan min'],['danno_max','Dan max'],['crit_min','Crit min'],['crit_max','Crit max']].map(([k, lbl]) => (
+              <div key={k}>
+                <label style={{ fontFamily: 'Orbitron', fontSize: 7, color: 'rgba(245,158,11,0.5)', display: 'block', marginBottom: 3 }}>{lbl}</label>
+                <input type="number" step="0.01" value={ranges[r]?.[k] ?? ''} onChange={e => setRanges(c => ({ ...c, [r]: { ...c[r], [k]: parseFloat(e.target.value) } }))} style={inp} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {/* Incrementi level up */}
+      <h3 style={{ fontFamily: 'Orbitron', fontSize: 11, color: 'rgba(245,158,11,0.7)', marginBottom: 12, letterSpacing: 2, marginTop: 20 }}>INCREMENTI LEVEL UP MOSSE</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+        {[['incremento_danno','Danno (livelli dispari)'],['incremento_danno_critico','Danno Critico (livelli pari)']].map(([k, lbl]) => (
+          <div key={k}>
+            <label style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(245,158,11,0.6)', display: 'block', marginBottom: 4 }}>{lbl}</label>
+            <input type="number" step="0.01" value={levelup[k] ?? ''} onChange={e => setLevelup(c => ({ ...c, [k]: parseFloat(e.target.value) }))}
+              style={{ ...inp, fontSize: 11, padding: '8px 12px', borderRadius: 8 }} />
+          </div>
+        ))}
+      </div>
+      <button onClick={salvaConfig} disabled={busy}
+        style={{ padding: '10px 24px', background: busy ? 'rgba(245,158,11,0.3)' : 'linear-gradient(135deg,#f59e0b,#ec4899)', border: 'none', borderRadius: 10, color: '#000', fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', marginBottom: 32 }}>
+        {busy ? '⏳' : '💾 SALVA CONFIG MOSSE'}
+      </button>
+
+      {/* Log chiusure classifica */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h3 style={{ fontFamily: 'Orbitron', fontSize: 11, color: 'rgba(245,158,11,0.7)', letterSpacing: 2 }}>CRONOLOGIA CHIUSURE CLASSIFICA</h3>
+        <button onClick={caricaLogs} disabled={loadingLogs}
+          style={{ padding: '6px 12px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, color: '#f59e0b', fontFamily: 'Orbitron', fontSize: 9, cursor: loadingLogs ? 'not-allowed' : 'pointer' }}>
+          {loadingLogs ? '⏳' : '🔄 Carica Log'}
+        </button>
+      </div>
+      {logs.length === 0 && !loadingLogs && (
+        <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: 'rgba(245,158,11,0.3)', textAlign: 'center', padding: 20 }}>Premi "Carica Log" per vedere la cronologia</div>
+      )}
+      {logs.map(log => (
+        <div key={log.id} style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: 10, padding: '12px 16px', marginBottom: 8 }}>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#f59e0b', marginBottom: 8 }}>
+            {log.timestamp?.seconds ? new Date(log.timestamp.seconds * 1000).toLocaleString('it-IT') : log.id}
+            {' · '}{log.totalUsersUpdated ?? 0} utenti aggiornati
+          </div>
+          {(log.top5 ?? []).map((e, i) => (
+            <div key={e.waifuId} style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(245,158,11,0.7)', marginBottom: 4 }}>
+              #{i+1} <strong>{e.nome}</strong> — {e.oldRarita} → <strong style={{ color: '#ec4899' }}>{e.newRarita}</strong>
+              {e.skipped ? ' (saltata)' : ` · ${e.likes ?? 0} like`}
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }

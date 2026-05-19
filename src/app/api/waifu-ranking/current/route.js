@@ -15,18 +15,48 @@ export async function GET(request) {
   try {
     const token = request.headers.get('Authorization')?.replace('Bearer ', '');
     if (!token) return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
-    await adminAuth.verifyIdToken(token);
+    const decoded = await adminAuth.verifyIdToken(token);
+    const uid = decoded.uid;
 
     const weekId = getWeekId();
-    const [rankingSnap, configSnap] = await Promise.all([
+    const [rankingSnap, configSnap, userSnap] = await Promise.all([
       adminDb.collection('waifu_weekly_results').doc(weekId).get(),
       adminDb.collection('swap_config').doc('main').get(),
+      adminDb.collection('users').doc(uid).get(),
     ]);
 
     const ranking = rankingSnap.exists ? rankingSnap.data() : null;
     const config = configSnap.exists ? configSnap.data() : {};
     const pausedUntil = config.pausedUntil ?? {};
     const now = Date.now();
+    const hasHardPass = !!(userSnap.exists ? userSnap.data()?.hardPass : false);
+
+    // Arricchisci i dati top5 con info catalogo (hot, rarita, asset_video_hard)
+    let enrichedRanking = ranking;
+    if (ranking?.top5?.length > 0) {
+      const waifuIds = ranking.top5.map(w => w.waifuId).filter(Boolean);
+      const waifuSnaps = await adminDb.getAll(...waifuIds.map(id => adminDb.doc(`catalogo_waifu/${id}`)));
+      const waifuMap = {};
+      for (const s of waifuSnaps) {
+        if (s.exists) waifuMap[s.id] = s.data();
+      }
+      enrichedRanking = {
+        ...ranking,
+        top5: ranking.top5
+          .map(item => {
+            const catalog = waifuMap[item.waifuId] ?? {};
+            const isImmHard = catalog.rarita === 'immersivo' && catalog.asset_video_hard;
+            return {
+              ...item,
+              hot: catalog.hot ?? false,
+              rarita: catalog.rarita ?? 'comune',
+              isImmersiveHard: !!isImmHard,
+            };
+          })
+          // Escludi Immersive Hard dalla classifica pubblica
+          .filter(item => !item.isImmersiveHard),
+      };
+    }
 
     // Converti timestamp in ms e filtra solo quelli ancora in pausa
     const paused = [];
@@ -37,7 +67,7 @@ export async function GET(request) {
       }
     }
 
-    return NextResponse.json({ ranking, paused, weekId });
+    return NextResponse.json({ ranking: enrichedRanking, paused, weekId, hasHardPass });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

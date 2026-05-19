@@ -28,6 +28,7 @@ export default function WaifuRankingList({ user }) {
   const [paused, setPaused]       = useState([]);
   const [subTab, setSubTab]       = useState('top5');
   const [collezione, setCollezione] = useState(null);
+  const [hasHardPass, setHasHardPass] = useState(false);
   const [loading, setLoading]     = useState(true);
   const now = Date.now();
 
@@ -42,6 +43,7 @@ export default function WaifuRankingList({ user }) {
         setRanking(rankRes.ranking);
         setPaused(rankRes.paused || []);
         setCollezione(collData);
+        setHasHardPass(!!rankRes.hasHardPass);
       } finally { setLoading(false); }
     };
     load();
@@ -114,6 +116,7 @@ export default function WaifuRankingList({ user }) {
                 const isOwned = owns(item.waifuId);
                 const prizeColor = PRIZE_COLORS[i] ?? PRIZE_COLORS[4];
                 const isTop3 = i < 3;
+                const isHotObscured = item.hot && !hasHardPass;
 
                 return (
                   <div key={item.waifuId} style={{
@@ -152,13 +155,13 @@ export default function WaifuRankingList({ user }) {
                       </div>
 
                       {/* Info waifu */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ flex: 1, minWidth: 0, filter: isHotObscured ? 'blur(4px)' : 'none', userSelect: isHotObscured ? 'none' : 'auto' }}>
                         <div style={{
                           fontFamily: FF.display, fontSize: 14, fontWeight: 800,
                           color: isTop3 ? '#fff' : 'rgba(241,235,255,0.8)',
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                           marginBottom: 4,
-                        }}>{item.nome}</div>
+                        }}>{isHotObscured ? '🔞 Solo Hard Pass' : item.nome}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{
                             fontFamily: FF.mono, fontSize: 11, color: 'rgba(174,156,255,0.6)',
