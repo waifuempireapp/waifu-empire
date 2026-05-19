@@ -58,15 +58,15 @@ export async function GET(request) {
     // Arricchisci i dati top5 con info catalogo (hot, rarita, asset_video_hard)
     let enrichedRanking = rankingData;
     if (rankingData?.top5?.length > 0) {
-      const waifuIds = ranking.top5.map(w => w.waifuId).filter(Boolean);
+      const waifuIds = rankingData.top5.map(w => w.waifuId).filter(Boolean);
       const waifuSnaps = await adminDb.getAll(...waifuIds.map(id => adminDb.doc(`catalogo_waifu/${id}`)));
       const waifuMap = {};
       for (const s of waifuSnaps) {
         if (s.exists) waifuMap[s.id] = s.data();
       }
       enrichedRanking = {
-        ...ranking,
-        top5: ranking.top5
+        ...rankingData,
+        top5: rankingData.top5
           .map(item => {
             const catalog = waifuMap[item.waifuId] ?? {};
             const isImmHard = catalog.rarita === 'immersivo' && catalog.asset_video_hard;

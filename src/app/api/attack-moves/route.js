@@ -28,9 +28,16 @@ export async function GET(request) {
   if (!waifuSnap.exists) return NextResponse.json({ error: 'Waifu non trovata' }, { status: 404 });
   const waifu = { id: waifuSnap.id, ...waifuSnap.data() };
 
-  const userMosse = collSnap.exists ? (collSnap.data()?.mosse ?? {}) : {};
+  const collData = collSnap.exists ? collSnap.data() : {};
+  const userMosse = collData?.mosse ?? {};
   const moveIds = Object.keys(userMosse);
   if (moveIds.length === 0) return NextResponse.json({ compatibili: [], incompatibili: [] });
+
+  // Mosse già assegnate a questa waifu (per slot 1-4)
+  const waifuUserData = collData?.waifu?.[waifuId] ?? {};
+  const assignedToThisWaifu = new Set(
+    Object.values(waifuUserData.mosse_slot ?? {}).filter(Boolean)
+  );
 
   // Carica dati catalogo per le mosse in possesso
   const moveSnaps = await Promise.all(moveIds.map(id => adminDb.doc(`catalogo_mosse/${id}`).get()));
@@ -40,6 +47,13 @@ export async function GET(request) {
   for (const snap of moveSnaps) {
     if (!snap.exists) continue;
     const mossa = { id: snap.id, ...snap.data(), ...userMosse[snap.id] };
+
+    // Controllo: mossa già assegnata a questa waifu
+    if (assignedToThisWaifu.has(snap.id)) {
+      incompatibili.push({ ...mossa, motivo_blocco: 'Già assegnata a questa waifu' });
+      continue;
+    }
+
     const check = isMoveCompatible(mossa, waifu);
     if (check.compatibile) {
       compatibili.push(mossa);
