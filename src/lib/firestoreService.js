@@ -452,27 +452,26 @@ export async function getClassifica(limitN = 100) {
 
   // Calcola score per ordinamento
   const conScore = utenti.map(u => {
-    // Criterio primario: pixelCount (territori nuova mappa pixel)
+    // Criterio 1: pixelCount (territori nuova mappa pixel) — principale
     const pixelCount = u.pixelCount ?? 0;
-    // Criterio secondario legacy: livelloMappa (tiebreaker)
-    const livelloMappa = u.livelloMappa ?? 1;
-    // Criterio terziario legacy: territori Risiko (tiebreaker estremo)
-    const territoriLegacy = Object.values(u.territoriUtente || {}).filter(t => t?.conquistato).length;
+    // Criterio 2: Pass Hard come vantaggio in caso di spareggio
+    const hasHardPass = u.hardPass === true ? 1 : 0;
+    // Criterio 3: data iscrizione (account più vecchio vince lo spareggio finale)
     const creatoTs = u.creato?.toMillis ? u.creato.toMillis() : Number(u.creato) || 0;
     return {
       ...u,
       _pixelCount: pixelCount,
-      _livelloMappa: livelloMappa,
-      _territori: pixelCount,        // usato nella UI: mostra pixelCount come "territori"
+      _territori: pixelCount,        // alias usato nella UI
+      _hasHardPass: hasHardPass,
       _nomeDisplay: u.nomeImpero || u.nome || (u.email?.split('@')[0]) || 'Giocatore',
       _creatoTs: creatoTs,
     };
   });
 
-  // Ordina: pixelCount desc → livelloMappa desc → data iscrizione asc
+  // Ordina: territori desc → Pass Hard (chi ce l'ha è avvantaggiato) → data iscrizione asc
   conScore.sort((a, b) => {
     if (b._pixelCount !== a._pixelCount) return b._pixelCount - a._pixelCount;
-    if (b._livelloMappa !== a._livelloMappa) return b._livelloMappa - a._livelloMappa;
+    if (b._hasHardPass !== a._hasHardPass) return b._hasHardPass - a._hasHardPass;
     return a._creatoTs - b._creatoTs;
   });
 

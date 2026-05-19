@@ -144,7 +144,7 @@ export function ClassificaTab({ user }) {
               fontFamily: FF.mono, fontSize: 10, color: 'rgba(241,235,255,0.55)',
               marginTop: 2, letterSpacing: '-0.01em',
             }}>
-              {classifica[mioIndice]._territori} territori · Lv.{classifica[mioIndice]._livelloMappa}
+              {classifica[mioIndice]._territori} {classifica[mioIndice]._territori === 1 ? "territorio" : "territori"}
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
@@ -170,8 +170,7 @@ export function ClassificaTab({ user }) {
           }}>
             <div style={{ minWidth: 30 }}>#</div>
             <div style={{ flex: 1 }}>Giocatore</div>
-            <div style={{ minWidth: 50, textAlign: 'center' }}>Mappa</div>
-            <div style={{ minWidth: 36, textAlign: 'center' }}>🏴</div>
+            <div style={{ minWidth: 60, textAlign: 'center' }}>Territori</div>
             <div style={{ minWidth: 38, textAlign: 'right' }}>Premio</div>
           </div>
           <div style={{ maxHeight: 440, overflowY: 'auto' }}>
@@ -214,15 +213,10 @@ export function ClassificaTab({ user }) {
                     </div>
                   </div>
                   <div style={{
-                    minWidth: 50, textAlign: 'center',
+                    minWidth: 60, textAlign: 'center',
                     fontFamily: FF.mono, fontSize: 11,
                     color: col || 'rgba(241,235,255,0.55)', fontWeight: 600,
-                  }}>Lv.{u._livelloMappa}</div>
-                  <div style={{
-                    minWidth: 36, textAlign: 'center',
-                    fontFamily: FF.mono, fontSize: 11,
-                    color: col || 'rgba(241,235,255,0.55)', fontWeight: 600,
-                  }}>{u._territori}</div>
+                  }}>🗺️ {u._territori}</div>
                   <div style={{
                     minWidth: 38, textAlign: 'right',
                     fontFamily: FF.mono, fontSize: 10,
@@ -256,7 +250,7 @@ export function ClassificaTab({ user }) {
         fontFamily: FF.label, letterSpacing: '0.22em',
         textTransform: 'uppercase', fontWeight: 600,
       }}>
-        Criteri · Pixel Conquistati (nuova mappa) → Livello Mappa → Iscrizione
+        Criteri · Territori conquistati → Pass Hard (spareggio) → Data iscrizione
       </div>
       </>}
     </div>
@@ -327,12 +321,9 @@ function Podio({ classifica, user, podiumColors }) {
                 padding: '0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{(u._nomeDisplay || u.nomeImpero || u.nome || u.email?.split('@')[0] || '—').slice(0, 14)}</div>
               <div style={{
-                fontFamily: FF.mono, fontSize: 10, color: col, marginTop: 4, fontWeight: 700,
-              }}>Lv.{u._livelloMappa}</div>
-              <div style={{
                 fontFamily: FF.label, fontSize: 8, color: 'rgba(241,235,255,0.55)',
                 letterSpacing: '0.22em', marginTop: 4, textTransform: 'uppercase', fontWeight: 600,
-              }}>🏴 {u._territori} territori</div>
+              }}>🗺️ {u._territori} {u._territori === 1 ? 'territorio' : 'territori'}</div>
             </div>
           </div>
         );
