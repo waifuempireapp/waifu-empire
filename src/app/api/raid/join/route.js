@@ -37,6 +37,12 @@ export async function POST(request) {
   const participantId = `${eventId}_${uid}`;
   const participantRef = adminDb.doc(`raid_participants/${participantId}`);
 
+  // Carica nome e colore dell'utente per la classifica
+  const userSnap = await adminDb.doc(`users/${uid}`).get();
+  const userData = userSnap.exists ? userSnap.data() : {};
+  const nomeImpero = userData.nomeImpero ?? 'Ignoto';
+  const coloreImpero = userData.coloreImpero ?? '#ff85b6';
+
   await adminDb.runTransaction(async (tx) => {
     const eventRef = adminDb.doc(`raid_events/${eventId}`);
     const [freshEvent, partSnap] = await Promise.all([tx.get(eventRef), tx.get(participantRef)]);
@@ -55,9 +61,11 @@ export async function POST(request) {
     const existing = partSnap.exists ? partSnap.data() : null;
     tx.set(participantRef, {
       uid, eventId,
+      nomeImpero,
+      coloreImpero,
       damageDealt: (existing?.damageDealt ?? 0) + dmgDealt,
-      claimed: false,
-      rewardClaimed: null,
+      claimed: existing?.claimed ?? false,
+      rewardClaimed: existing?.rewardClaimed ?? null,
     }, { merge: true });
   });
 

@@ -1,4 +1,5 @@
 'use client';
+import { useState, useEffect } from 'react';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
 import { PIXEL_NAMES } from '@/lib/worldMap';
 import KissesIcon from '@/components/KissesIcon';
@@ -56,10 +57,48 @@ function DefenderCard({ waifu, size = 72, isCpuSlot = false, blurred = false }) 
   );
 }
 
+function MissionCountdown({ endsAt }) {
+  const [label, setLabel] = useState('');
+  useEffect(() => {
+    const tick = () => {
+      const diff = Math.max(0, endsAt - Date.now());
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setLabel(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
+    };
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [endsAt]);
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8,
+      margin: '0 0 14px',
+      padding: '8px 12px',
+      background: 'rgba(232,121,249,0.08)',
+      border: '1px solid rgba(232,121,249,0.3)',
+      borderRadius: 8,
+    }}>
+      <span style={{ fontSize: 14 }}>🎯</span>
+      <div>
+        <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 11, color: '#e879f9', fontWeight: 700, letterSpacing: '0.06em' }}>
+          Territorio Missione Mappa
+        </div>
+        <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 10, color: 'rgba(232,121,249,0.65)', fontVariantNumeric: 'tabular-nums' }}>
+          Possiederlo vale +100 💋 · scade tra {label}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PixelDetail({
   pixel, userUid, waifuCat,
   myDefenseTeam,
   hasHardPass,       // profilo?.hardPass — per blur waifu hot
+  missionEndsAt,     // ms timestamp se questo pixel è nella missione mappa corrente
   onAttack, onPurchase, onEditDefense, onClose,
 }) {
   if (!pixel) return null;
@@ -144,6 +183,9 @@ export default function PixelDetail({
             <div style={{ fontFamily: FF.mono, fontSize: 10, color: 'rgba(241,235,255,0.4)', marginTop: 2 }}>{pixelName}</div>
           </div>
         </div>
+
+        {/* Badge missione mappa */}
+        {missionEndsAt && <MissionCountdown endsAt={missionEndsAt} />}
 
         {/* Team difensore — layout 3+2 card */}
         <div style={{ marginBottom: 16 }}>

@@ -388,7 +388,7 @@ const S = {
  *   Callback `(playerTeam: WaifuBattleStat[], enemyTeam: WaifuBattleStat[]) => void`
  *   invocata quando entrambi i team sono pronti per cominciare la battaglia.
  */
-export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, isOnlinePvP = false, battleCtx = {}, onConfirm }) {
+export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, isOnlinePvP = false, battleCtx = {}, onConfirm, forcedEnemyIndices = [] }) {
   // pvpStep: usato per la reveal screen interna (CPU).
   // Valori possibili: 'picking' | 'cpuReveal'
   // La reveal interna (pvpStep === 'reveal') non è più raggiungibile.
@@ -417,11 +417,13 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
     return () => window.removeEventListener('resize', calcOffset);
   }, []);
 
-  // CPU pesca silenziosamente PICKS_RICHIESTI waifu casuali al mount (lazy initializer).
-  // L'utente non vedrà mai queste scelte fino all'inizio della battaglia.
+  // CPU pesca silenziosamente PICKS_RICHIESTI waifu al mount.
+  // forcedEnemyIndices: indici di roster5E sempre inclusi (es. [0] per la Waifu Raid).
   const [cpuPicks] = useState(() => {
-    const shuffled = [...roster5E].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, PICKS_RICHIESTI);
+    const forced = forcedEnemyIndices.filter(i => i >= 0 && i < roster5E.length);
+    const others = roster5E.map((_, i) => i).filter(i => !forced.includes(i));
+    const shuffled = [...others].sort(() => Math.random() - 0.5);
+    return [...forced, ...shuffled].slice(0, PICKS_RICHIESTI).map(i => roster5E[i]).filter(Boolean);
   });
 
   // Selezioni del giocatore 1: array di indici nel roster (in ordine di selezione → slot order).

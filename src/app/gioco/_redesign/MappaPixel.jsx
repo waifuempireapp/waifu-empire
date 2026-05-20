@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { C, FF } from './_shared';
 import { LAND_SET, PIXEL_NAMES } from '@/lib/worldMap';
 import { updateUserProfile } from '@/lib/firestoreService';
@@ -36,6 +36,18 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat,
   const [activeBattle, setActiveBattle] = useState(null);
   const [showRaidPanel, setShowRaidPanel] = useState(false);
   const [raidInfo, setRaidInfo] = useState(null);
+  const [activeMission, setActiveMission] = useState(null);
+  const [showMissionDetail, setShowMissionDetail] = useState(false);
+  const [missionFocusPixel, setMissionFocusPixel] = useState(null);
+
+  // Set di chiavi x_y dei pixel della missione corrente (fuchsia overlay)
+  const missionPixelSet = useMemo(() => {
+    if (!activeMission?.pixels) return new Set();
+    const now = Date.now();
+    const endsMs = activeMission.endsAt ? new Date(activeMission.endsAt).getTime() : 0;
+    if (endsMs < now) return new Set();
+    return new Set(activeMission.pixels.map(p => `${p.x}_${p.y}`));
+  }, [activeMission]);
 
   // Quando raidBattleCtx arriva da GiocoPage, apri BattleModal per la selezione waifu
   useEffect(() => {
@@ -92,10 +104,20 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat,
     } catch { /* ignora */ }
   }, [user]);
 
+  const loadActiveMission = useCallback(async () => {
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/map-missions/current', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      setActiveMission(data.mission ?? null);
+    } catch { /* ignora */ }
+  }, [user]);
+
   useEffect(() => {
     loadChunks();
     loadMyDefenseConfig();
     loadPendingOffers();
+    loadActiveMission();
     // Mostra tutorial se pixelCount è 0 o non inizializzato
     const hasNoPixels = (profilo?.pixelCount ?? 0) === 0;
     if (hasNoPixels) setShowTutorial(true);
@@ -264,18 +286,22 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat,
         setSelectedPixel(null);
 
         if (activeBattle.isRaid) {
-          // Fine combattimento raid: aggiorna HP e torna al pannello raid
+          // Transizione fluida: chiudi battle e apri pannello raid in un unico render
+          // (tutti questi setState sono prima dell'await → React 18 li batcha insieme)
+          const savedRaidEventId = activeBattle.raidEventId;
+          const won = data.status === 'attacker_wins';
+          setActiveBattle(null);
+          onRaidBattleEnd?.();
+          setShowRaidPanel(true); // apre immediatamente senza flash della mappa
+          // Poi aggiorna HP raid in background
           try {
             const raidToken = await user.getIdToken();
             await fetch('/api/raid/join', {
               method: 'POST',
               headers: { Authorization: `Bearer ${raidToken}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ eventId: activeBattle.raidEventId, won: data.status === 'attacker_wins' }),
+              body: JSON.stringify({ eventId: savedRaidEventId, won }),
             });
           } catch (e) { console.error('[raid/join]', e); }
-          setActiveBattle(null);
-          onRaidBattleEnd?.();
-          setShowRaidPanel(true);
           return;
         }
 
@@ -418,8 +444,31 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat,
           selectedPixel={selectedPixel}
           onPixelSelect={handlePixelSelect}
           landSet={LAND_SET}
+          missionPixelSet={missionPixelSet}
+          focusPixel={missionFocusPixel}
         />
       </div>
+
+      {/* Badge Missioni Mappa — sotto la mappa, non invasivo */}
+      {activeMission && missionPixelSet.size > 0 && (
+        <MissionMapBadge
+          mission={activeMission}
+          onClick={() => setShowMissionDetail(true)}
+        />
+      )}
+
+      {/* Dettaglio Missioni Mappa */}
+      {showMissionDetail && activeMission && (
+        <MissionDetailModal
+          mission={activeMission}
+          pixelNames={PIXEL_NAMES}
+          onClose={() => setShowMissionDetail(false)}
+          onFocusPixel={(px) => {
+            setShowMissionDetail(false);
+            setMissionFocusPixel(px);
+          }}
+        />
+      )}
 
       {/* Raid Island full panel */}
       {showRaidPanel && (
@@ -452,6 +501,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat,
           waifuCat={waifuCat}
           myDefenseTeam={myDefenseMap[`${selectedPixel.x}_${selectedPixel.y}`] || []}
           hasHardPass={profilo?.hardPass === true}
+          missionEndsAt={missionPixelSet.has(`${selectedPixel.x}_${selectedPixel.y}`) && activeMission?.endsAt ? new Date(activeMission.endsAt).getTime() : null}
           onClose={() => setSelectedPixel(null)}
           onAttack={() => setShowBattle(true)}
           onPurchase={() => setShowPurchase(true)}
@@ -579,5 +629,126 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat,
       )}
 
     </div>
+  );
+}
+
+// ── Badge missioni mappa sotto la mappa ────────────────────────────────────────
+function MissionMapBadge({ mission, onClick }) {
+  const [countdown, setCountdown] = useState('');
+  useEffect(() => {
+    const endsMs = new Date(mission.endsAt).getTime();
+    const tick = () => {
+      const diff = Math.max(0, endsMs - Date.now());
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setCountdown(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
+    };
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [mission.endsAt]);
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        margin: '8px 16px 4px',
+        padding: '8px 14px',
+        background: 'rgba(232,121,249,0.08)',
+        border: '1px solid rgba(232,121,249,0.3)',
+        borderRadius: 10, cursor: 'pointer',
+        display: 'flex', alignItems: 'center', gap: 10,
+      }}
+    >
+      <span style={{ fontSize: 14 }}>🎯</span>
+      <div style={{ flex: 1 }}>
+        <span style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 11, color: '#e879f9', fontWeight: 700, letterSpacing: '0.08em' }}>
+          Missioni Mappa in corso
+        </span>
+        {countdown && (
+          <span style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 10, color: 'rgba(232,121,249,0.65)', marginLeft: 8, fontVariantNumeric: 'tabular-nums' }}>
+            · ancora {countdown}
+          </span>
+        )}
+      </div>
+      <span style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 10, color: 'rgba(232,121,249,0.5)' }}>→</span>
+    </div>
+  );
+}
+
+// ── Dettaglio missioni mappa ────────────────────────────────────────────────────
+function MissionDetailModal({ mission, pixelNames, onClose, onFocusPixel }) {
+  const [countdown, setCountdown] = useState('');
+  useEffect(() => {
+    const endsMs = new Date(mission.endsAt).getTime();
+    const tick = () => {
+      const diff = Math.max(0, endsMs - Date.now());
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setCountdown(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
+    };
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [mission.endsAt]);
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 130, background: 'rgba(3,2,12,0.6)', backdropFilter: 'blur(4px)' }} />
+      <div style={{
+        position: 'fixed', left: '50%', top: '50%',
+        transform: 'translate(-50%,-50%)', zIndex: 140,
+        width: 'min(92vw, 360px)',
+        background: 'rgba(13,10,38,0.99)', backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(232,121,249,0.35)', borderRadius: 18,
+        padding: '22px 20px', boxShadow: '0 20px 60px rgba(3,2,12,0.9)',
+      }}>
+        <button onClick={onClose} style={{ position: 'absolute', top: 14, right: 16, background: 'none', border: 'none', color: 'rgba(241,235,255,0.35)', fontSize: 20, cursor: 'pointer', padding: 0 }}>✕</button>
+
+        <div style={{ fontFamily: "'Unbounded',sans-serif", fontSize: 13, color: '#e879f9', fontWeight: 800, marginBottom: 4 }}>
+          🎯 Missioni Mappa
+        </div>
+        {countdown && (
+          <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 11, color: 'rgba(232,121,249,0.6)', marginBottom: 16, fontVariantNumeric: 'tabular-nums' }}>
+            Scade tra <strong style={{ color: '#e879f9' }}>{countdown}</strong>
+          </div>
+        )}
+
+        <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 11, color: 'rgba(241,235,255,0.5)', marginBottom: 12, lineHeight: 1.5 }}>
+          Possiedi questi territori alla scadenza per guadagnare <strong style={{ color: '#f5c560' }}>+{mission.rewardPerPixel ?? 100} 💋</strong> a territorio.
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {(mission.pixels || []).map((px, i) => {
+            const name = pixelNames[`${px.x}_${px.y}`] || px.name || `(${px.x}, ${px.y})`;
+            return (
+              <div
+                key={i}
+                onClick={() => onFocusPixel({ x: px.x, y: px.y })}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '10px 14px',
+                  background: 'rgba(232,121,249,0.07)',
+                  border: '1px solid rgba(232,121,249,0.2)',
+                  borderRadius: 10, cursor: 'pointer',
+                  transition: 'background 0.15s',
+                }}
+              >
+                <span style={{ fontSize: 16 }}>♛</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 13, color: '#fff', fontWeight: 700 }}>{name}</div>
+                  <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 10, color: 'rgba(241,235,255,0.4)' }}>
+                    +{mission.rewardPerPixel ?? 100} 💋 se in tuo possesso
+                  </div>
+                </div>
+                <span style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 10, color: 'rgba(232,121,249,0.5)' }}>→</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
   );
 }

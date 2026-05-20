@@ -814,34 +814,62 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
   const [claiming, setClaiming]     = useState(null);
   const [timerGiorn, setTimerGiorn] = useState('');
   const [mapMission, setMapMission] = useState(null);   // missione mappa corrente
-  const [mapNextMs, setMapNextMs]   = useState(null);   // ms alla prossima missione
+  const [mapNextAt, setMapNextAt]   = useState(null);   // timestamp assoluto prossima missione
+  const [mapLoading, setMapLoading] = useState(true);   // loading iniziale
   const [mapClaimed, setMapClaimed] = useState(false);
+  const [mapCountdown, setMapCountdown] = useState('');
 
   // Carica sezioni admin-defined
   useEffect(() => {
     getMissioniSezioni().then(s => {
       setSezioni(s);
-      // preload missioni per ogni sezione
       s.forEach(sec => {
         if (sec.missioni) setMissioniMap(m => ({ ...m, [sec.id]: sec.missioni }));
       });
     }).catch(() => {});
   }, []);
 
-  // Carica missione mappa corrente quando il tab è attivo
+  // Carica missione mappa al mount (non solo quando il tab è attivo)
   useEffect(() => {
-    if (tabAttiva !== 'mappa' || !user) return;
+    if (!user) return;
     const load = async () => {
+      setMapLoading(true);
       try {
         const token = await user.getIdToken();
         const res = await fetch('/api/map-missions/current', { headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
-        setMapMission(data.mission);
-        setMapNextMs(data.nextMissionIn);
+        setMapMission(data.mission ?? null);
+        setMapNextAt(data.nextMissionIn ? Date.now() + data.nextMissionIn : null);
       } catch (_) {}
+      setMapLoading(false);
     };
     load();
-  }, [tabAttiva, user]);
+  }, [user]);
+
+  // Countdown live HH:MM:SS — aggiorna ogni secondo
+  useEffect(() => {
+    const fmt = (ms) => {
+      const total = Math.max(0, ms);
+      const h = Math.floor(total / 3600000);
+      const m = Math.floor((total % 3600000) / 60000);
+      const s = Math.floor((total % 60000) / 1000);
+      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    };
+    const tick = () => {
+      const now = Date.now();
+      if (mapMission) {
+        const endsMs = new Date(mapMission.endsAt).getTime();
+        setMapCountdown(fmt(endsMs - now));
+      } else if (mapNextAt) {
+        setMapCountdown(fmt(mapNextAt - now));
+      } else {
+        setMapCountdown('');
+      }
+    };
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [mapMission, mapNextAt]);
 
   // Timer reset giornaliero
   useEffect(() => {
@@ -993,23 +1021,40 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
 
           {/* TAB MISSIONI MAPPA */}
           {tabAttiva === 'mappa' && (() => {
+            if (mapLoading) {
+              return (
+                <div className="missione-item" style={{ textAlign: 'center', flexDirection: 'column', gap: 8, padding: '24px 16px' }}>
+                  <div style={{ fontSize: 28, opacity: 0.5 }}>🗺</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, color: 'rgba(245,158,11,0.5)' }}>Caricamento…</div>
+                </div>
+              );
+            }
             if (!mapMission) {
-              const nextMin = mapNextMs ? Math.ceil(mapNextMs / 60000) : null;
               return (
                 <div className="missione-item" style={{ textAlign: 'center', flexDirection: 'column', gap: 8, padding: '24px 16px' }}>
                   <div style={{ fontSize: 32 }}>🗺</div>
                   <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, color: 'rgba(245,158,11,0.7)' }}>NESSUNA MISSIONE ATTIVA</div>
-                  {nextMin && <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, color: 'rgba(245,158,11,0.5)' }}>Prossima missione tra {nextMin} min</div>}
+                  {mapCountdown && (
+                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, color: 'rgba(245,158,11,0.5)' }}>
+                      Prossima missione tra <strong style={{ color: 'rgba(245,158,11,0.8)' }}>{mapCountdown}</strong>
+                    </div>
+                  )}
                 </div>
               );
             }
             const endsMs = new Date(mapMission.endsAt).getTime();
             const isExpired = endsMs < Date.now();
-            const userPixels = Object.entries(profilo.pixelCount !== undefined ? {} : {}).length; // proxy
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: 'rgba(245,158,11,0.6)', letterSpacing: 1 }}>
-                  MISSIONE ATTIVA · {isExpired ? 'SCADUTA - Riscuoti!' : `Scade: ${new Date(mapMission.endsAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`}
+                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: 'rgba(245,158,11,0.6)', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {isExpired ? (
+                    <span style={{ color: 'rgba(255,133,182,0.8)' }}>SCADUTA — Riscuoti!</span>
+                  ) : (
+                    <>
+                      <span>MISSIONE ATTIVA · scade tra</span>
+                      <strong style={{ color: '#f59e0b', fontVariantNumeric: 'tabular-nums' }}>{mapCountdown}</strong>
+                    </>
+                  )}
                 </div>
                 {(mapMission.pixels || []).map((px, i) => (
                   <div key={i} className="missione-item">

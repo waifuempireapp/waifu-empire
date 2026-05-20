@@ -15,7 +15,9 @@ function isMobile() {
   return typeof window !== 'undefined' && window.innerWidth < 768;
 }
 
-export default function PixelGrid({ chunks, userUid, onPixelSelect, selectedPixel, landSet }) {
+const MISSION_COLOR = '#e879f9'; // fuchsia — non selezionabile come colore impero
+
+export default function PixelGrid({ chunks, userUid, onPixelSelect, selectedPixel, landSet, missionPixelSet, focusPixel }) {
   const canvasRef = useRef(null);
   const stateRef  = useRef({ panX: 0, panY: 0, scale: 1 });
   const dragRef   = useRef({ active: false, startX: 0, startY: 0, panX: 0, panY: 0 });
@@ -192,7 +194,41 @@ export default function PixelGrid({ chunks, userUid, onPixelSelect, selectedPixe
         ctx.strokeRect(sx + 0.5, sy + 0.5, ps - 2, ps - 2);
       }
     }
-  }, [selectedPixel, effectiveLandSet, userUid, basePS]);
+
+    // Overlay missione mappa: bordo fuchsia + corona ♛ (quando abbastanza grande)
+    if (missionPixelSet?.size > 0) {
+      for (const key of missionPixelSet) {
+        const [gx, gy] = key.split('_').map(Number);
+        if (!effectiveLandSet?.has(key)) continue;
+        const sx = gx * ps + panX;
+        const sy = gy * ps + panY;
+        if (sx + ps < 0 || sx > canvas.width || sy + ps < 0 || sy > canvas.height) continue;
+
+        // Overlay semi-trasparente fuchsia
+        ctx.fillStyle = 'rgba(232,121,249,0.22)';
+        ctx.fillRect(sx, sy, ps - 1, ps - 1);
+
+        // Bordo fuchsia
+        ctx.strokeStyle = MISSION_COLOR;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(sx + 0.5, sy + 0.5, ps - 2, ps - 2);
+
+        // Corona piccola al centro quando la scala permette
+        if (ps >= 14) {
+          const fontSize = Math.min(Math.floor(ps * 0.55), 11);
+          ctx.fillStyle = MISSION_COLOR;
+          ctx.globalAlpha = 0.9;
+          ctx.font = `${fontSize}px serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('♛', sx + ps / 2 - 0.5, sy + ps / 2 - 0.5);
+          ctx.globalAlpha = 1;
+        }
+      }
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+    }
+  }, [selectedPixel, effectiveLandSet, userUid, basePS, missionPixelSet]);
 
   // Animazione pulse per pixel adiacenti
   useEffect(() => {
@@ -206,6 +242,18 @@ export default function PixelGrid({ chunks, userUid, onPixelSelect, selectedPixe
     rafRef.current = requestAnimationFrame(animate);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [drawCanvas]);
+
+  // Centra la mappa su focusPixel quando cambia
+  useEffect(() => {
+    if (!focusPixel) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const { scale } = stateRef.current;
+    const ps = basePS * scale;
+    stateRef.current.panX = canvas.width / 2 - focusPixel.x * ps - ps / 2;
+    stateRef.current.panY = canvas.height / 2 - focusPixel.y * ps - ps / 2;
+    drawCanvas(pulseRef.current);
+  }, [focusPixel, basePS, drawCanvas]);
 
   // ── PAN ──────────────────────────────────────────────────────────────────────
   const onPointerDown = useCallback((e) => {

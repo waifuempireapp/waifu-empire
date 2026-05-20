@@ -172,8 +172,9 @@ export default function RoundViewer({ battle, waifuCat, collezione, profilo, onR
         roster5E={roster5E}
         isCpu={true}
         isPvP={false}
+        forcedEnemyIndices={battle?.isRaid ? [0] : []}
         battleCtx={{
-          nomeImperoAvversario: battle?.defenderUid === 'CPU' ? 'CPU' : 'Avversario',
+          nomeImperoAvversario: battle?.isRaid ? (battle?.name ?? 'Waifu Raid') : (battle?.defenderUid === 'CPU' ? 'CPU' : 'Avversario'),
           sonoAttaccante: true,
           nomeImpero: profilo?.nomeImpero || 'Tu',
         }}
