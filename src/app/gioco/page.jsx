@@ -325,11 +325,9 @@ export default function GiocoPage() {
               collezione={collezione}
               waifuCat={waifuCat}
               mosseCat={mosseCat}
-              onRaidBattle={(raid) => {
-                // Avvia il combattimento raid: usa stessa infrastruttura del territorio
-                setRaidBattleCtx(raid);
-                setModoBattaglia(true);
-              }}
+              onRaidBattle={(raid) => setRaidBattleCtx(raid)}
+              raidBattleCtx={raidBattleCtx}
+              onRaidBattleEnd={() => setRaidBattleCtx(null)}
             />
           )}
           {tab === 'swap' && (
@@ -6471,27 +6469,6 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
    * @param {boolean} vittoria — true se il giocatore ha vinto la battaglia.
    */
   const fineBattaglia = async (vittoria, { usaNuovoSistema = false } = {}) => {
-    // Se siamo in raid battle mode, chiama /api/raid/join invece di aggiornare territorio
-    if (raidBattleCtx) {
-      try {
-        const token = await user.getIdToken();
-        await fetch('/api/raid/join', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ eventId: raidBattleCtx.id, won: vittoria }),
-        });
-        mostraNotif(vittoria ? '⚔ +100 danni alla Waifu Raid!' : '💔 La Waifu Raid recupera HP!', vittoria ? '#06d6a0' : '#f59e0b');
-      } catch (e) { console.error('[raid/join]', e); }
-      setRaidBattleCtx(null);
-      setModoBattaglia(false);
-      setPickPhaseActive(false);
-      setWaifuBattleActive(false);
-      setWaifuBattlePlayerTeam([]);
-      setWaifuBattleEnemyTeam([]);
-      setTab('mappa'); // torna alla mappa per vedere il pannello raid aggiornato
-      return;
-    }
-
     // Nel nuovo sistema (WaifuBattleArena) il popup risultato è gestito internamente
     // dal componente stesso — non mostrare il vecchio popup legacy (gameEnd).
     if (!usaNuovoSistema) setFase('gameEnd');
@@ -6562,19 +6539,6 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
       ids = waifuSelezionate;
     }
     if (ids.length < 5) { mostraNotif('Seleziona esattamente 5 waifu!', '#ff3d3d'); return; }
-
-    // Se siamo in raid battle mode, usa il deck del raid come CPU
-    if (raidBattleCtx) {
-      const raidDeck = (raidBattleCtx.deck || []).map(wid => {
-        const w = waifuCat.find(x => x.id === wid);
-        return w ? { ...w, id: `raid_${w.id}` } : null;
-      }).filter(Boolean);
-      const cpuRaidResult = { roster5: raidDeck, picks3: raidDeck.slice(0, 3) };
-      setCpuPickResult(cpuRaidResult);
-      setModoBattaglia(false);
-      setPickPhaseActive(true);
-      return;
-    }
 
     // Genera il roster CPU di 5 (con picks silenziosi)
     const cpuResult = generateCPUTeamOf5(waifuCat || [], livelloCPU);

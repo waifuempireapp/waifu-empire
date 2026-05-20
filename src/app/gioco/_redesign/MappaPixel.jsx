@@ -7,6 +7,7 @@ import PixelGrid from '@/components/mappa/PixelGrid';
 import PixelDetail from '@/components/mappa/PixelDetail';
 import MiniLeaderboard from '@/components/mappa/MiniLeaderboard';
 import RaidIslandPanel from '@/components/mappa/RaidIslandPanel';
+import WaifuBattleArena from '@/components/WaifuBattleArena';
 import BattleModal from '@/components/mappa/BattleModal';
 import RoundViewer from '@/components/mappa/RoundViewer';
 import PurchaseModal from '@/components/mappa/PurchaseModal';
@@ -16,7 +17,7 @@ import TeamDifesaEditor from '@/components/difesa/TeamDifesaEditor';
 import MappaInfoModal from '@/components/mappa/MappaInfoModal';
 import TerritoryConquestAnimation from '@/components/mappa/TerritoryConquestAnimation';
 
-export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat, mosseCat = [], onRaidBattle }) {
+export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat, mosseCat = [], onRaidBattle, raidBattleCtx, onRaidBattleEnd }) {
   const [chunks, setChunks] = useState(null);
   const [swapConfig, setSwapConfig] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -35,7 +36,17 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat,
   const [showDefenseEditor, setShowDefenseEditor] = useState(false);
   const [activeBattle, setActiveBattle] = useState(null);
   const [showRaidPanel, setShowRaidPanel] = useState(false);
-  const [raidInfo, setRaidInfo] = useState(null); // { currentHp, totalHp, endsAt, waifuNome, waifuImage }
+  const [raidInfo, setRaidInfo] = useState(null);
+  // Raid battle states
+  const [showRaidWaifuPick, setShowRaidWaifuPick] = useState(false);
+  const [raidArenaActive, setRaidArenaActive] = useState(false);
+  const [raidPlayerTeam, setRaidPlayerTeam] = useState([]);
+  const [raidEnemyTeam, setRaidEnemyTeam] = useState([]);
+
+  // Quando raidBattleCtx arriva da GiocoPage, apri la selezione waifu
+  useEffect(() => {
+    if (raidBattleCtx) setShowRaidWaifuPick(true);
+  }, [raidBattleCtx]);
 
   const loadChunks = useCallback(async (forceRefresh = false) => {
     const cached = sessionStorage.getItem('pixel_map_chunks');
@@ -505,6 +516,70 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat,
           currentTeam={myDefenseMap[`${selectedPixel.x}_${selectedPixel.y}`] || []}
           onClose={() => setShowDefenseEditor(false)}
           onSaved={() => { loadMyDefenseConfig(); setShowDefenseEditor(false); }}
+        />
+      )}
+
+      {/* ── RAID BATTLE FLOW ── */}
+      {/* Step 1: selezione 5 waifu (riusa BattleModal con un "pixel raid" fittizio) */}
+      {showRaidWaifuPick && raidBattleCtx && (
+        <BattleModal
+          pixel={{ ownerId: 'CPU', ownerName: 'Raid', name: `Waifu Raid — ${raidBattleCtx.waifuNome ?? ''}`, defenderTeam: (raidBattleCtx.deck || []).slice(0, 5) }}
+          collezione={collezione}
+          waifuCat={waifuCat}
+          onConfirm={(attackerTeam) => {
+            // Build battle-ready player team
+            const playerTeam = attackerTeam.slice(0, 5).map(wid => {
+              const w = waifuCat.find(x => x.id === wid);
+              const dati = collezione.waifu?.[wid] ?? {};
+              if (!w) return null;
+              const speed = dati.velocita ?? w.velocita_base ?? 150;
+              const critChance = dati.crit_chance ?? w.crit_chance_base ?? 0.10;
+              const bs = w.battleStats || {};
+              return { ...w, ...dati, id: w.id, name: w.nome, speed, critChance, hp: bs.maxHp ?? 300, maxHp: bs.maxHp ?? 300, moves: bs.moves ?? [], isKO: false, rarita: w.rarita ?? 'comune', level: dati.livello ?? 1, image: w.asset_statica ?? null };
+            }).filter(Boolean);
+            // Build CPU team from raid deck
+            const enemyTeam = (raidBattleCtx.deck || []).slice(0, 5).map((wid, i) => {
+              const cleanId = wid.startsWith('raid_') ? wid.slice(5) : wid;
+              const w = waifuCat.find(x => x.id === cleanId) ?? waifuCat[i] ?? waifuCat[0];
+              if (!w) return null;
+              const bs = w.battleStats || {};
+              return { ...w, id: `raid_${w.id ?? i}`, name: w.nome ?? `Raid ${i}`, speed: 200, critChance: 0.15, hp: bs.maxHp ?? 400, maxHp: bs.maxHp ?? 400, moves: bs.moves ?? [], isKO: false, rarita: w.rarita ?? 'comune', level: 5, image: w.asset_statica ?? null };
+            }).filter(Boolean);
+            setRaidPlayerTeam(playerTeam);
+            setRaidEnemyTeam(enemyTeam);
+            setShowRaidWaifuPick(false);
+            setRaidArenaActive(true);
+          }}
+          onClose={() => { setShowRaidWaifuPick(false); onRaidBattleEnd?.(); }}
+        />
+      )}
+
+      {/* Step 2: WaifuBattleArena contro il deck del raid */}
+      {raidArenaActive && raidBattleCtx && (
+        <WaifuBattleArena
+          playerTeam={raidPlayerTeam}
+          enemyTeam={raidEnemyTeam}
+          waifuCat={waifuCat}
+          battleCtx={{ nomeImpero: profilo?.nomeImpero ?? 'Tu', nomeImperoAvversario: `Raid — ${raidBattleCtx.waifuNome ?? ''}`, sonoAttaccante: true }}
+          onBattleResult={async (isVictory) => {
+            try {
+              const token = await user.getIdToken();
+              await fetch('/api/raid/join', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ eventId: raidBattleCtx.id, won: isVictory }),
+              });
+            } catch (e) { console.error('[raid/join]', e); }
+            setRaidArenaActive(false);
+            setRaidPlayerTeam([]);
+            setRaidEnemyTeam([]);
+            onRaidBattleEnd?.();
+            setShowRaidPanel(true); // riapri il pannello raid per vedere HP aggiornati
+          }}
+          onExit={() => {
+            setRaidArenaActive(false);
+            onRaidBattleEnd?.();
+          }}
         />
       )}
     </div>
