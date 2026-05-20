@@ -107,6 +107,7 @@ export default function GiocoPage() {
   const [waifuCat, setWaifuCat] = useState([]);
   const [mosseCat, setMosseCat] = useState([]);
   const [tab, setTab] = useState('home');
+  const [raidBattleCtx, setRaidBattleCtx] = useState(null); // raid data se combat avviato da Raid Island
   const [negozioAperto, setNegozioAperto] = useState(false);
   const [pescaAperta, setPescaAperta] = useState(false);
   const [pescaPacksInitial, setPescaPacksInitial] = useState(null); // null = non ancora caricato
@@ -323,6 +324,12 @@ export default function GiocoPage() {
               setProfilo={setProfilo}
               collezione={collezione}
               waifuCat={waifuCat}
+              mosseCat={mosseCat}
+              onRaidBattle={(raid) => {
+                // Avvia il combattimento raid: usa stessa infrastruttura del territorio
+                setRaidBattleCtx(raid);
+                setModoBattaglia(true);
+              }}
             />
           )}
           {tab === 'swap' && (
@@ -4173,6 +4180,8 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
         user={user}
         collezione={collezione}
         setColl={setColl}
+        waifuCat={waifuCat}
+        mosseCat={mosseCat}
         mostraNotif={mostraNotif}
         onClose={() => setMossaSel(null)}
         onUpdate={(newDati) => setMossaSel(prev => ({ ...prev, dati: newDati }))}
@@ -4254,14 +4263,43 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
 }
 
 // ── MossaDetailModal — componente separato per evitare hooks-in-IIFE ────────
-function MossaDetailModal({ catalog, dati, user, collezione, setColl, mostraNotif, onClose, onUpdate }) {
+function MossaDetailModal({ catalog, dati, user, collezione, setColl, waifuCat = [], mosseCat = [], mostraNotif, onClose, onUpdate }) {
   const [lupBusy, setLupBusy] = useState(false);
+  const [tab, setTab] = useState('dettaglio'); // 'dettaglio' | 'compatibilita' | 'waifu'
+  const [assignBusy, setAssignBusy] = useState(false);
+
   const copie = dati.copie ?? 0;
   const livello = dati.livello ?? 1;
   const copieInLup = copie % 5;
   const lupReady = copieInLup === 0 && copie > 0 && livello < 10;
   const nextLevel = livello + 1;
   const prossimaStat = nextLevel % 2 === 0 ? 'Danno Critico' : 'Danno';
+
+  // Waifu associate (hanno questa mossa in mosse_slot)
+  const waifuAssociate = Object.entries(collezione.waifu || {}).filter(([wid, datiW]) => {
+    const slots = datiW.mosse_slot ?? {};
+    return Object.values(slots).includes(catalog.id);
+  }).map(([wid, datiW]) => {
+    const w = waifuCat.find(x => x.id === wid);
+    const slotNum = Object.entries(datiW.mosse_slot ?? {}).find(([, mid]) => mid === catalog.id)?.[0];
+    return w ? { ...w, _dati: datiW, _slot: slotNum } : null;
+  }).filter(Boolean);
+
+  // Waifu compatibili non ancora associate
+  const TYPES = ['Arcana', 'Natura', 'Abisso', 'Ferro', 'Fuoco'];
+  const moveIdx = TYPES.indexOf(catalog.tipologia);
+  const waifuCompatibili = Object.entries(collezione.waifu || {}).filter(([wid, datiW]) => {
+    const w = waifuCat.find(x => x.id === wid);
+    if (!w) return false;
+    if (w.rarita !== catalog.rarita) return false;
+    if (catalog.rarita === 'immersivo' && catalog.nome_waifu && catalog.nome_waifu !== w.nome) return false;
+    const waifuIdx = TYPES.indexOf(w.tipo ?? w.tipologia);
+    if (moveIdx !== -1 && waifuIdx !== -1 && (moveIdx + 1) % 5 === waifuIdx) return false;
+    const slots = datiW.mosse_slot ?? {};
+    if (Object.values(slots).includes(catalog.id)) return false; // già associata
+    const freeSlot = [1,2,3,4].find(s => !slots[s]);
+    return !!freeSlot;
+  }).map(([wid, datiW]) => ({ ...waifuCat.find(x => x.id === wid), _dati: datiW })).filter(Boolean);
 
   const eseguiLevelUp = async () => {
     if (!lupReady || lupBusy) return;
@@ -4285,40 +4323,196 @@ function MossaDetailModal({ catalog, dati, user, collezione, setColl, mostraNoti
     finally { setLupBusy(false); }
   };
 
+  const rimuoviDaWaifu = async (waifuId, slot) => {
+    setAssignBusy(true);
+    try {
+      const token = await user.getIdToken();
+      await fetch(`/api/attack-moves/${catalog.id}/assign/${waifuId}?slot=${slot}`, {
+        method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+      });
+      const nuova = JSON.parse(JSON.stringify(collezione));
+      if (nuova.waifu[waifuId]?.mosse_slot) nuova.waifu[waifuId].mosse_slot[slot] = null;
+      setColl(nuova);
+      if (typeof saveCollezione !== 'undefined') saveCollezione(user.uid, nuova);
+      mostraNotif('Mossa rimossa', '#f59e0b');
+    } catch (e) { mostraNotif(e.message, '#ff3d3d'); }
+    finally { setAssignBusy(false); }
+  };
+
+  const aggiungiAWaifu = async (waifuId) => {
+    const datiW = collezione.waifu[waifuId];
+    const slots = datiW?.mosse_slot ?? {};
+    const freeSlot = [1,2,3,4].find(s => !slots[s]);
+    if (!freeSlot) { mostraNotif('Nessuno slot libero per questa waifu', '#ff3d3d'); return; }
+    setAssignBusy(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/attack-moves/${catalog.id}/assign/${waifuId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slot: freeSlot }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const nuova = JSON.parse(JSON.stringify(collezione));
+      if (!nuova.waifu[waifuId].mosse_slot) nuova.waifu[waifuId].mosse_slot = {};
+      nuova.waifu[waifuId].mosse_slot[freeSlot] = catalog.id;
+      setColl(nuova);
+      if (typeof saveCollezione !== 'undefined') saveCollezione(user.uid, nuova);
+      mostraNotif(`Mossa assegnata a slot ${freeSlot}!`, '#06d6a0');
+    } catch (e) { mostraNotif(e.message, '#ff3d3d'); }
+    finally { setAssignBusy(false); }
+  };
+
+  const ORB = 'Orbitron, sans-serif';
+  const CINZEL = 'Cinzel, serif';
+  const TIPO_COLORS = { Arcana:'#7F77DD', Natura:'#639922', Abisso:'#4463DD', Ferro:'#5F5E5A', Fuoco:'#D85A30' };
+  const tipoCol = TIPO_COLORS[catalog.tipologia] ?? '#7F77DD';
+
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.87)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: 'rgba(10,7,38,0.97)', border: '1px solid rgba(174,156,255,0.3)', borderRadius: 20, padding: 24, maxWidth: 380, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-          <CartaMossa mossa={catalog} datiUtente={dati} dimensione="normale" />
+      <div style={{ background: 'rgba(10,7,38,0.98)', border: `1px solid ${tipoCol}44`, borderRadius: 20, maxWidth: 420, width: '100%', maxHeight: '92vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: `0 0 40px ${tipoCol}20` }}>
+
+        {/* Header */}
+        <div style={{ padding: '16px 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <div style={{ fontFamily: CINZEL, fontSize: 17, color: '#f5e6d3', fontWeight: 700 }}>{catalog.nome}</div>
+            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+              <span style={{ fontFamily: ORB, fontSize: 9, color: tipoCol, background: `${tipoCol}18`, border: `1px solid ${tipoCol}44`, borderRadius: 4, padding: '2px 7px' }}>{catalog.tipologia}</span>
+              <span style={{ fontFamily: ORB, fontSize: 9, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 4, padding: '2px 7px' }}>{catalog.rarita}</span>
+              <span style={{ fontFamily: ORB, fontSize: 9, color: '#a78bfa', padding: '2px 7px' }}>Lv.{livello}</span>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 20, cursor: 'pointer', padding: 4 }}>✕</button>
         </div>
-        {catalog.abilita && (
-          <div style={{ background: 'rgba(174,156,255,0.08)', border: '1px solid rgba(174,156,255,0.2)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
-            <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(174,156,255,0.7)', marginBottom: 4, letterSpacing: 1 }}>ABILITÀ</div>
-            <div style={{ fontSize: 12, color: '#f5e6d3', lineHeight: 1.5 }}>{catalog.abilita}</div>
-          </div>
-        )}
-        <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(245,158,11,0.7)' }}>COPIE {copie}</span>
-            {livello < 10
-              ? <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: lupReady ? '#06d6a0' : 'rgba(245,158,11,0.5)' }}>{lupReady ? '⬆ LEVEL UP PRONTO!' : `${copieInLup}/5 al prossimo Lv`}</span>
-              : <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: '#ffc861' }}>LIVELLO MASSIMO</span>
-            }
-          </div>
-          {livello < 10 && (
-            <div style={{ height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3 }}>
-              <div style={{ height: '100%', width: `${lupReady ? 100 : (copieInLup / 5) * 100}%`, background: lupReady ? '#06d6a0' : '#f59e0b', borderRadius: 3, transition: 'width 0.3s' }} />
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 0, margin: '12px 16px 0', background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 3 }}>
+          {[['dettaglio','📊 Dettaglio'],['compatibilita','⚔ Compatibilità'],['waifu',`🌸 Waifu (${waifuAssociate.length})`]].map(([k,l]) => (
+            <button key={k} onClick={() => setTab(k)} style={{ flex: 1, padding: '7px 4px', borderRadius: 8, border: 'none', cursor: 'pointer', background: tab === k ? `${tipoCol}22` : 'transparent', color: tab === k ? tipoCol : 'rgba(241,235,255,0.4)', fontFamily: ORB, fontSize: 8, fontWeight: tab === k ? 700 : 500, letterSpacing: '0.08em', transition: 'all 0.15s' }}>
+              {l}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div style={{ overflowY: 'auto', flex: 1, padding: '14px 20px 20px' }}>
+
+          {/* TAB DETTAGLIO */}
+          {tab === 'dettaglio' && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+                <CartaMossa mossa={catalog} datiUtente={dati} dimensione="normale" />
+              </div>
+              {catalog.abilita && (
+                <div style={{ background: `${tipoCol}10`, border: `1px solid ${tipoCol}30`, borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+                  <div style={{ fontFamily: ORB, fontSize: 9, color: `${tipoCol}cc`, marginBottom: 4, letterSpacing: 1 }}>ABILITÀ SPECIALE</div>
+                  <div style={{ fontSize: 12, color: '#f5e6d3', lineHeight: 1.5 }}>{catalog.abilita}</div>
+                </div>
+              )}
+              <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontFamily: ORB, fontSize: 9, color: 'rgba(245,158,11,0.7)' }}>COPIE {copie}</span>
+                  {livello < 10
+                    ? <span style={{ fontFamily: ORB, fontSize: 9, color: lupReady ? '#06d6a0' : 'rgba(245,158,11,0.5)' }}>{lupReady ? '⬆ LEVEL UP PRONTO!' : `${copieInLup}/5 al prossimo Lv`}</span>
+                    : <span style={{ fontFamily: ORB, fontSize: 9, color: '#ffc861' }}>MAX</span>
+                  }
+                </div>
+                {livello < 10 && <div style={{ height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3 }}><div style={{ height: '100%', width: `${lupReady ? 100 : (copieInLup / 5) * 100}%`, background: lupReady ? '#06d6a0' : '#f59e0b', borderRadius: 3 }} /></div>}
+              </div>
+              {lupReady && (
+                <button onClick={eseguiLevelUp} disabled={lupBusy}
+                  style={{ width: '100%', padding: '11px', background: lupBusy ? 'rgba(6,214,160,0.3)' : 'linear-gradient(135deg,#06d6a0,#0ea5e9)', border: 'none', borderRadius: 12, color: '#000', fontFamily: ORB, fontSize: 10, fontWeight: 700, cursor: lupBusy ? 'not-allowed' : 'pointer', marginBottom: 8 }}>
+                  {lupBusy ? '⏳' : `⬆ LEVEL UP — Migliora: ${prossimaStat}`}
+                </button>
+              )}
+            </>
+          )}
+
+          {/* TAB COMPATIBILITÀ */}
+          {tab === 'compatibilita' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: 14 }}>
+                <div style={{ fontFamily: ORB, fontSize: 9, color: 'rgba(245,158,11,0.7)', marginBottom: 10, letterSpacing: 1 }}>REGOLE ASSEGNAZIONE</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7, fontSize: 11, color: 'rgba(241,235,255,0.8)', lineHeight: 1.5 }}>
+                  <div>⭐ <strong style={{ color: '#f59e0b' }}>Rarità:</strong> Solo waifu di rarità <strong>{catalog.rarita}</strong></div>
+                  <div>⚔ <strong style={{ color: tipoCol }}>Tipo:</strong> La waifu non deve avere tipo che batte <strong>{catalog.tipologia}</strong></div>
+                  {catalog.rarita === 'immersivo' && catalog.nome_waifu && (
+                    <div>🌸 <strong style={{ color: '#ec4899' }}>Esclusiva:</strong> Solo per <strong>{catalog.nome_waifu}</strong></div>
+                  )}
+                  <div>🔢 <strong>Slot:</strong> Ogni waifu ha 4 slot mossa (assegna in uno slot libero)</div>
+                </div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: 14 }}>
+                <div style={{ fontFamily: ORB, fontSize: 9, color: 'rgba(245,158,11,0.7)', marginBottom: 10, letterSpacing: 1 }}>TIPI WAIFU COMPATIBILI</div>
+                {(['Arcana','Natura','Abisso','Ferro','Fuoco']).map(tipo => {
+                  const waifuIdx2 = TYPES.indexOf(tipo);
+                  const incomp = moveIdx !== -1 && waifuIdx2 !== -1 && (moveIdx + 1) % 5 === waifuIdx2;
+                  const col = TIPO_COLORS[tipo] ?? '#888';
+                  return (
+                    <div key={tipo} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <span style={{ fontFamily: ORB, fontSize: 10, color: col }}>{tipo}</span>
+                      <span style={{ fontFamily: ORB, fontSize: 9, color: incomp ? '#ef4444' : '#06d6a0' }}>{incomp ? '✗ Incompatibile' : '✓ OK'}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* TAB WAIFU */}
+          {tab === 'waifu' && (
+            <div>
+              {waifuAssociate.length > 0 && (
+                <>
+                  <div style={{ fontFamily: ORB, fontSize: 9, color: '#06d6a0', marginBottom: 8, letterSpacing: 1 }}>WAIFU CHE USANO QUESTA MOSSA</div>
+                  {waifuAssociate.map(w => (
+                    <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'rgba(6,214,160,0.06)', border: '1px solid rgba(6,214,160,0.2)', borderRadius: 10, marginBottom: 8 }}>
+                      {w.asset_statica && <img src={w.asset_statica} alt={w.nome} style={{ width: 40, height: 55, objectFit: 'cover', borderRadius: 6, border: '1px solid rgba(6,214,160,0.3)' }} />}
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontFamily: CINZEL, fontSize: 13, color: '#f5e6d3' }}>{w.nome}</div>
+                        <div style={{ fontFamily: ORB, fontSize: 8, color: 'rgba(6,214,160,0.7)' }}>Slot {w._slot}</div>
+                      </div>
+                      <button onClick={() => rimuoviDaWaifu(w.id, w._slot)} disabled={assignBusy}
+                        style={{ padding: '5px 10px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 7, color: '#ef4444', fontFamily: ORB, fontSize: 8, cursor: assignBusy ? 'not-allowed' : 'pointer' }}>
+                        Rimuovi
+                      </button>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {waifuCompatibili.length > 0 && (
+                <>
+                  <div style={{ fontFamily: ORB, fontSize: 9, color: 'rgba(174,156,255,0.7)', margin: '12px 0 8px', letterSpacing: 1 }}>WAIFU COMPATIBILI (slot libero)</div>
+                  {waifuCompatibili.slice(0, 8).map(w => (
+                    <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'rgba(174,156,255,0.06)', border: '1px solid rgba(174,156,255,0.15)', borderRadius: 10, marginBottom: 8 }}>
+                      {w.asset_statica && <img src={w.asset_statica} alt={w.nome} style={{ width: 40, height: 55, objectFit: 'cover', borderRadius: 6, opacity: 0.7 }} />}
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontFamily: CINZEL, fontSize: 13, color: '#f5e6d3' }}>{w.nome}</div>
+                        <div style={{ fontFamily: ORB, fontSize: 8, color: 'rgba(174,156,255,0.5)' }}>{w.tipo}</div>
+                      </div>
+                      <button onClick={() => aggiungiAWaifu(w.id)} disabled={assignBusy}
+                        style={{ padding: '5px 10px', background: 'rgba(174,156,255,0.12)', border: '1px solid rgba(174,156,255,0.3)', borderRadius: 7, color: '#a78bfa', fontFamily: ORB, fontSize: 8, cursor: assignBusy ? 'not-allowed' : 'pointer' }}>
+                        Assegna
+                      </button>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {waifuAssociate.length === 0 && waifuCompatibili.length === 0 && (
+                <div style={{ textAlign: 'center', padding: 30, color: 'rgba(241,235,255,0.3)', fontFamily: ORB, fontSize: 10 }}>
+                  Nessuna waifu compatibile in collezione.<br/>Sbusta pacchetti per trovare waifu di rarità <strong>{catalog.rarita}</strong>!
+                </div>
+              )}
             </div>
           )}
         </div>
-        {lupReady && (
-          <button onClick={eseguiLevelUp} disabled={lupBusy}
-            style={{ width: '100%', padding: '12px', background: lupBusy ? 'rgba(6,214,160,0.3)' : 'linear-gradient(135deg,#06d6a0,#0ea5e9)', border: 'none', borderRadius: 12, color: '#000', fontFamily: 'Orbitron', fontSize: 11, fontWeight: 700, cursor: lupBusy ? 'not-allowed' : 'pointer', marginBottom: 10, letterSpacing: '0.1em' }}>
-            {lupBusy ? '⏳' : `⬆ LEVEL UP — Migliora: ${prossimaStat}`}
-          </button>
-        )}
-        <button onClick={onClose} style={{ width: '100%', padding: '10px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: '#f5e6d3', fontFamily: 'Orbitron', fontSize: 10, cursor: 'pointer' }}>Chiudi</button>
+
+        <div style={{ padding: '0 20px 16px' }}>
+          <button onClick={onClose} style={{ width: '100%', padding: '10px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#f5e6d3', fontFamily: ORB, fontSize: 9, cursor: 'pointer', letterSpacing: '0.1em' }}>CHIUDI</button>
+        </div>
       </div>
     </div>
   );
@@ -6277,6 +6471,27 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
    * @param {boolean} vittoria — true se il giocatore ha vinto la battaglia.
    */
   const fineBattaglia = async (vittoria, { usaNuovoSistema = false } = {}) => {
+    // Se siamo in raid battle mode, chiama /api/raid/join invece di aggiornare territorio
+    if (raidBattleCtx) {
+      try {
+        const token = await user.getIdToken();
+        await fetch('/api/raid/join', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId: raidBattleCtx.id, won: vittoria }),
+        });
+        mostraNotif(vittoria ? '⚔ +100 danni alla Waifu Raid!' : '💔 La Waifu Raid recupera HP!', vittoria ? '#06d6a0' : '#f59e0b');
+      } catch (e) { console.error('[raid/join]', e); }
+      setRaidBattleCtx(null);
+      setModoBattaglia(false);
+      setPickPhaseActive(false);
+      setWaifuBattleActive(false);
+      setWaifuBattlePlayerTeam([]);
+      setWaifuBattleEnemyTeam([]);
+      setTab('mappa'); // torna alla mappa per vedere il pannello raid aggiornato
+      return;
+    }
+
     // Nel nuovo sistema (WaifuBattleArena) il popup risultato è gestito internamente
     // dal componente stesso — non mostrare il vecchio popup legacy (gameEnd).
     if (!usaNuovoSistema) setFase('gameEnd');
@@ -6347,6 +6562,19 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
       ids = waifuSelezionate;
     }
     if (ids.length < 5) { mostraNotif('Seleziona esattamente 5 waifu!', '#ff3d3d'); return; }
+
+    // Se siamo in raid battle mode, usa il deck del raid come CPU
+    if (raidBattleCtx) {
+      const raidDeck = (raidBattleCtx.deck || []).map(wid => {
+        const w = waifuCat.find(x => x.id === wid);
+        return w ? { ...w, id: `raid_${w.id}` } : null;
+      }).filter(Boolean);
+      const cpuRaidResult = { roster5: raidDeck, picks3: raidDeck.slice(0, 3) };
+      setCpuPickResult(cpuRaidResult);
+      setModoBattaglia(false);
+      setPickPhaseActive(true);
+      return;
+    }
 
     // Genera il roster CPU di 5 (con picks silenziosi)
     const cpuResult = generateCPUTeamOf5(waifuCat || [], livelloCPU);

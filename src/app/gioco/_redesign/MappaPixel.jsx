@@ -16,7 +16,7 @@ import TeamDifesaEditor from '@/components/difesa/TeamDifesaEditor';
 import MappaInfoModal from '@/components/mappa/MappaInfoModal';
 import TerritoryConquestAnimation from '@/components/mappa/TerritoryConquestAnimation';
 
-export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat }) {
+export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat, mosseCat = [], onRaidBattle }) {
   const [chunks, setChunks] = useState(null);
   const [swapConfig, setSwapConfig] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -375,8 +375,8 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
           profilo={profilo}
           onClose={() => setShowRaidPanel(false)}
           onBattle={(raid) => {
-            // TODO: avvia combattimento raid
             setShowRaidPanel(false);
+            onRaidBattle?.(raid); // passa il raid context a page.jsx
           }}
         />
       )}

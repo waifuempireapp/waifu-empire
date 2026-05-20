@@ -57,7 +57,43 @@ Puoi anche fare offerte in Kisses ai giocatori avversari per comprare i loro ter
 
 ? nei quadratini del team → il team della CPU è nascosto: sfidala per scoprirlo!
 
-🔥 Badge HOT → waifu visibile solo con il Pass Hard.`,
+🔥 Badge HOT → waifu visibile solo con il Pass Hard.
+
+🎯 Difficoltà territorio → Easy (60%), Medium (30%), Hard (7%), Extreme (3%). Visibile nel popup del territorio.`,
+  },
+  {
+    title: '🗺 Missioni Mappa',
+    emoji: '🎯',
+    body: `Ogni 2 ore appaiono le Missioni Mappa: 4 territori adiacenti vengono selezionati come obiettivo.
+
+Se possiedi uno o più di quei territori al termine dei 30 minuti, ricevi 100 Kisses per ogni territorio posseduto.
+
+Esempio: possiedi 2 dei 4 territori → +200 Kisses.
+
+Per riscuotere vai su: Home → Missioni → tab "🗺 Mappa" → premi "Riscuoti" quando la missione è scaduta.
+
+Quando non c'è una missione attiva vedrai il countdown alla prossima.`,
+  },
+  {
+    title: '⚔ Raid Island',
+    emoji: '⚔',
+    body: `La Raid Island è un'isola speciale nell'oceano, sempre accessibile da tutti i giocatori.
+
+Ogni ora parte un Evento Raid: una Waifu Raid con 5000 HP difende l'isola con un mazzo di 5 waifu.
+
+📋 Come funziona:
+• Tocca "⚔ Raid Island" sopra la mappa
+• Premi "Combatti" e seleziona le tue 5 waifu
+• In Pick Phase vedi il mazzo della Waifu Raid
+• Combatti: vittoria -100 HP, sconfitta +150 HP
+
+🏆 Classifica e Premi:
+• Tutti i partecipanti: 100 Kisses
+• 3° posto: 250 Kisses
+• 2° posto: 400 Kisses
+• 1° posto: 1000 Kisses + carta waifu raid
+
+I HP sono condivisi in real-time: tutti i giocatori vedono lo stesso contatore!`,
   },
 ];
 
