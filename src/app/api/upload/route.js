@@ -1,23 +1,12 @@
 // src/app/api/upload/route.js
+// Upload piccoli file (immagini < ~4MB) tramite server → ImageKit
 import { NextResponse } from 'next/server';
-import { v2 as cloudinary } from 'cloudinary';
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+import { uploadBuffer } from '@/lib/imagekitService';
 
 export async function POST(request) {
-  // Verifica configurazione Cloudinary
-  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-    console.error('Cloudinary env vars mancanti:', {
-      cloud_name: !!process.env.CLOUDINARY_CLOUD_NAME,
-      api_key: !!process.env.CLOUDINARY_API_KEY,
-      api_secret: !!process.env.CLOUDINARY_API_SECRET,
-    });
+  if (!process.env.IMAGEKIT_PRIVATE_KEY || !process.env.IMAGEKIT_URL_ENDPOINT) {
     return NextResponse.json(
-      { error: 'Configurazione Cloudinary mancante sul server' },
+      { error: 'Configurazione ImageKit mancante (IMAGEKIT_PRIVATE_KEY / IMAGEKIT_URL_ENDPOINT)' },
       { status: 500 }
     );
   }
@@ -28,41 +17,19 @@ export async function POST(request) {
     const folder = formData.get('folder') || 'waifu';
     const publicId = formData.get('publicId') || null;
 
-    if (!file) {
-      return NextResponse.json({ error: 'Nessun file fornito' }, { status: 400 });
-    }
+    if (!file) return NextResponse.json({ error: 'Nessun file fornito' }, { status: 400 });
 
-    // Converti File in Buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Upload su Cloudinary
-    const url = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          // public_id include già folder/nome, es: "impero-waifu/waifu/w1_statica_1234"
-          public_id: `impero-waifu/${folder}/${publicId || Date.now()}`,
-          resource_type: 'auto',
-          overwrite: true,
-        },
-        (error, result) => {
-          if (error) {
-            console.error('Cloudinary upload error:', error);
-            reject(new Error(error.message));
-          } else {
-            resolve(result.secure_url);
-          }
-        }
-      );
-      uploadStream.end(buffer);
-    });
+    // Genera un nome file deterministico dal publicId o da timestamp
+    const ext = file.name?.split('.').pop() || 'jpg';
+    const fileName = publicId ? `${publicId}.${ext}` : `${folder}_${Date.now()}.${ext}`;
 
+    const url = await uploadBuffer(buffer, fileName, `/impero-waifu/${folder}`);
     return NextResponse.json({ url }, { status: 200 });
   } catch (error) {
-    console.error('Upload API error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Errore durante upload' },
-      { status: 500 }
-    );
+    console.error('[api/upload] error:', error.message);
+    return NextResponse.json({ error: error.message || 'Errore durante upload' }, { status: 500 });
   }
 }

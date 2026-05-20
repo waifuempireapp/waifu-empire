@@ -1,37 +1,19 @@
 // src/app/api/upload-sign/route.js
-// Genera una firma Cloudinary per upload diretto dal browser (bypassa il limite 4.5MB di Vercel)
+// Genera token autenticazione ImageKit per upload diretto browser → ImageKit
+// Usato da storageService.uploadLargeAsset (video grandi che superano 4.5MB Vercel)
 import { NextResponse } from 'next/server';
-import { v2 as cloudinary } from 'cloudinary';
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+import { getUploadAuthParams } from '@/lib/imagekitService';
 
 export async function POST(request) {
-  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-    return NextResponse.json({ error: 'Configurazione Cloudinary mancante' }, { status: 500 });
+  if (!process.env.IMAGEKIT_PRIVATE_KEY || !process.env.IMAGEKIT_URL_ENDPOINT) {
+    return NextResponse.json({ error: 'Configurazione ImageKit mancante' }, { status: 500 });
   }
-
   try {
-    const { folder, publicId } = await request.json();
-
-    const timestamp = Math.round(Date.now() / 1000);
-    const paramsToSign = {
-      timestamp,
-      folder: `impero-waifu/${folder || 'misc'}`,
-      ...(publicId ? { public_id: publicId } : {}),
-    };
-
-    const signature = cloudinary.utils.api_sign_request(paramsToSign, process.env.CLOUDINARY_API_SECRET);
-
+    const { folder, publicId } = await request.json().catch(() => ({}));
+    const auth = getUploadAuthParams();
     return NextResponse.json({
-      signature,
-      timestamp,
-      apiKey: process.env.CLOUDINARY_API_KEY,
-      cloudName: process.env.CLOUDINARY_CLOUD_NAME,
-      folder: paramsToSign.folder,
+      ...auth,
+      folder: `/impero-waifu/${folder || 'misc'}`,
       publicId: publicId || null,
     });
   } catch (error) {

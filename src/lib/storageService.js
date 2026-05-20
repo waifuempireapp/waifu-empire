@@ -1,18 +1,16 @@
 // src/lib/storageService.js
-// Upload immagini tramite Cloudinary (via API route /api/upload)
-// Sostituisce Firebase Storage che richiede piano a pagamento
+// Upload asset su ImageKit — CLIENT-SIDE
+// File piccoli (<4.5MB): tramite server /api/upload
+// File grandi (video): upload diretto browser → ImageKit con auth dal server
 
+// ── Piccoli file (immagini) via server ───────────────────────────────────────
 /**
- * Carica un file su Cloudinary tramite la route API server-side.
- * Mantiene la stessa firma di prima: uploadAsset(path, file)
- * dove path è usato come public_id su Cloudinary.
- *
- * @param {string} path - Path/ID logico dell'asset (es: 'waifu/w1_statica_1234')
- * @param {File} file - File da caricare (browser File object)
- * @returns {Promise<string>} URL pubblico dell'immagine caricata
+ * Carica un file su ImageKit tramite la route API server-side.
+ * @param {string} path - Path logico (es: 'waifu/w1_statica_1234')
+ * @param {File} file   - File da caricare
+ * @returns {Promise<string>} URL pubblico ImageKit
  */
 export async function uploadAsset(path, file) {
-  // Determina la cartella dal path (primo segmento)
   const [folder, ...rest] = path.split('/');
   const publicId = rest.join('/') || path;
 
@@ -21,51 +19,30 @@ export async function uploadAsset(path, file) {
   formData.append('folder', folder);
   formData.append('publicId', publicId);
 
-  const response = await fetch('/api/upload', {
-    method: 'POST',
-    body: formData,
-  });
-
+  const response = await fetch('/api/upload', { method: 'POST', body: formData });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
     throw new Error(err.error || `Upload fallito (status ${response.status})`);
   }
-
   const { url } = await response.json();
   return url;
 }
 
-// Path standard per gli asset (compatibili con la struttura Cloudinary)
-export function pathWaifu(waifuId, variante) {
-  // variante: 'paperdoll' | 'statica' | 'immersiva' | 'thumbnail'
-  return `waifu/${waifuId}_${variante}`;
-}
-
-export function pathOutfit(outfitId) {
-  return `outfit/${outfitId}`;
-}
-
-export function pathPosa(posaId) {
-  return `pose/${posaId}`;
-}
-
+// ── Grandi file (video) — upload diretto browser → ImageKit ─────────────────
 /**
- * Carica un file GRANDE (PDF, video) direttamente su Cloudinary dal browser,
- * senza passare per la route Vercel (limite 4.5MB).
- * Ottiene prima una firma dal server, poi fa l'upload diretto.
+ * Carica un file GRANDE (video) direttamente su ImageKit dal browser,
+ * senza passare per Vercel (limite 4.5MB).
+ * 1. Ottieni auth params dal server (/api/upload-sign)
+ * 2. POST diretto su ImageKit Upload API
  *
- * @param {string} folder - Cartella su Cloudinary (es: 'manga')
- * @param {string} publicId - ID pubblico del file (opzionale)
- * @param {File} file - File da caricare
- * @param {function} onProgress - Callback (0-100) per la barra di progresso
- * @returns {Promise<string>} URL pubblico del file caricato
+ * @param {string} folder      - Cartella (es: 'waifu')
+ * @param {string} publicId    - Nome file senza estensione
+ * @param {File} file          - File da caricare
+ * @param {function} onProgress - Callback (0-100)
+ * @returns {Promise<string>} URL pubblico
  */
 export async function uploadLargeAsset(folder, publicId, file, onProgress) {
-  // Determina il tipo di risorsa: i PDF vanno su /raw/upload, le immagini su /auto/upload
-  const isPdf = file.type === 'application/pdf' || file.name?.endsWith('.pdf');
-  const resourceType = isPdf ? 'raw' : 'auto';
-
-  // 1. Ottieni firma dal server
+  // 1. Auth params dal server
   const signRes = await fetch('/api/upload-sign', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -73,22 +50,28 @@ export async function uploadLargeAsset(folder, publicId, file, onProgress) {
   });
   if (!signRes.ok) {
     const err = await signRes.json().catch(() => ({}));
-    throw new Error(err.error || 'Errore generazione firma Cloudinary');
+    throw new Error(err.error || 'Errore ottenimento auth ImageKit');
   }
-  const { signature, timestamp, apiKey, cloudName, folder: signedFolder, publicId: signedPublicId } = await signRes.json();
+  const { token, expire, signature, publicKey, urlEndpoint, folder: signedFolder, publicId: signedPublicId } = await signRes.json();
 
-  // 2. Upload diretto browser → Cloudinary (bypassa limite 4.5MB Vercel)
+  // 2. Upload diretto su ImageKit
+  const ext = file.name?.split('.').pop() || 'mp4';
+  const fileName = signedPublicId ? `${signedPublicId}.${ext}` : `${folder}_${Date.now()}.${ext}`;
+
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('api_key', apiKey);
-  formData.append('timestamp', timestamp);
+  formData.append('fileName', fileName);
+  formData.append('publicKey', publicKey);
   formData.append('signature', signature);
-  formData.append('folder', signedFolder);
-  if (signedPublicId) formData.append('public_id', signedPublicId);
+  formData.append('expire', String(expire));
+  formData.append('token', token);
+  if (signedFolder) formData.append('folder', signedFolder);
+  formData.append('useUniqueFileName', 'false');
+  formData.append('overwriteFile', 'true');
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`);
+    xhr.open('POST', 'https://upload.imagekit.io/api/v1/files/upload');
     if (onProgress) {
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
@@ -97,10 +80,10 @@ export async function uploadLargeAsset(folder, publicId, file, onProgress) {
     xhr.onload = () => {
       if (xhr.status === 200) {
         const data = JSON.parse(xhr.responseText);
-        resolve(data.secure_url);
+        resolve(data.url);
       } else {
-        let msg = `Upload Cloudinary fallito (${xhr.status})`;
-        try { msg = JSON.parse(xhr.responseText)?.error?.message || msg; } catch {}
+        let msg = `Upload ImageKit fallito (${xhr.status})`;
+        try { msg = JSON.parse(xhr.responseText)?.message || msg; } catch {}
         reject(new Error(msg));
       }
     };
@@ -109,13 +92,14 @@ export async function uploadLargeAsset(folder, publicId, file, onProgress) {
   });
 }
 
-/**
- * Elimina un asset. Per ora logga un warning:
- * implementa una route /api/delete se vuoi cancellazione da Cloudinary.
- *
- * @param {string} path - Path logico (mantenuto per compatibilità)
- */
+// ── Path helpers ─────────────────────────────────────────────────────────────
+export function pathWaifu(waifuId, variante) {
+  return `waifu/${waifuId}_${variante}`;
+}
+export function pathOutfit(outfitId) { return `outfit/${outfitId}`; }
+export function pathPosa(posaId)    { return `pose/${posaId}`; }
+
+/** Stub: eliminazione non necessaria per ImageKit (media non sensibili) */
 export async function deleteAsset(path) {
-  // TODO: implementare route /api/delete se necessario
-  console.warn('deleteAsset: cancellazione da Cloudinary non ancora implementata per il path:', path);
+  console.warn('deleteAsset: rimosso senza azione (gestire da ImageKit dashboard se necessario):', path);
 }

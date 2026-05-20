@@ -10,6 +10,7 @@
 import React, { useState } from 'react';
 import { RARITA } from '@/lib/constants';
 import { ARCHETIPI } from '@/lib/promptGenerator';
+import { ikUrl } from '@/lib/imagekitUrl';
 
 // Lookup id → archetipo
 const ARCHETIPI_MAP = {};
@@ -154,7 +155,8 @@ export function CartaWaifu({
   const capelliEff = Math.min(10, (waifu.colore_capelli ?? 1) + (statBonus.colore_capelli || 0));
   const expEff = (waifu.esperienza ?? 0) + (statBonus.esperienza || 0);
 
-  const imgSrc = usaImmersiva ? waifu.asset_immersiva : (waifu.asset_statica || null);
+  const preset = dimensione === 'piccola' ? 'thumbnail' : dimensione === 'grande' ? 'full' : 'card';
+  const imgSrc = ikUrl(usaImmersiva ? waifu.asset_immersiva : (waifu.asset_statica || null), preset);
   const statSize = Math.round(30 * scale);
 
   // Se censurata (waifu Hot senza Pass Hard): blocca click e zoom
