@@ -31,6 +31,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { ikUrl } from '@/lib/imagekitUrl';
 import {
   TYPE_COLORS, TYPE_NAMES,
   calculateDamage, getEffectiveness,
@@ -315,7 +316,7 @@ function WaifuSprite({ waifu, size=120, anim='', style={}, isPlayer=false, isHot
       ...style,
     }}>
       {waifu.image
-        ? <img src={waifu.image} alt={waifu.name} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top',filter: isHotBlurred ? 'blur(6px)' : 'none'}}/>
+        ? <img src={ikUrl(waifu.image, 'normal')} alt={waifu.name} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top',filter: isHotBlurred ? 'blur(6px)' : 'none'}}/>
         : <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100%',gap:6}}>
             <div style={{fontSize:28,opacity:.2}}>◈</div>
             <div style={{fontFamily:'Orbitron',fontSize:7,color:'rgba(238,232,220,.28)',textAlign:'center',padding:'0 6px',lineHeight:1.3}}>{waifu.name}</div>
@@ -579,7 +580,7 @@ function BenchSlot({ waifu, selectable, onSelect, size=48 }) {
       animation:selectable&&!isKO?'benchPop .22s ease-out':'none',
     }}>
       {waifu.image
-        ? <img src={waifu.image} alt={waifu.name} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top'}}/>
+        ? <img src={ikUrl(waifu.image, 'thumbnail')} alt={waifu.name} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top'}}/>
         : <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:13,opacity:.22}}>◈</div>
       }
       {!isKO&&(
@@ -734,7 +735,7 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
           <div style={{display:'flex',alignItems:'center',gap:10,background:mvp.side==='player'?'rgba(108,240,224,0.06)':'rgba(255,133,182,0.06)',border:`1px solid ${mvp.side==='player'?'rgba(245,197,96,0.35)':'rgba(255,133,182,0.3)'}`,borderRadius:12,padding:'8px 12px',marginBottom:12}}>
             <div style={{position:'relative',flexShrink:0}}>
               <div style={{width:48,height:70,borderRadius:8,overflow:'hidden',background:'rgba(6,3,15,.8)',display:'flex',alignItems:'center',justifyContent:'center',border:`1.5px solid ${mvp.side==='player'?'rgba(245,197,96,0.5)':'rgba(255,133,182,0.4)'}`}}>
-                {mvp.imgUrl?<img src={mvp.imgUrl} alt={mvp.name} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top',display:'block'}}/>:<span style={{fontSize:20,opacity:.25}}>◈</span>}
+                {mvp.imgUrl?<img src={ikUrl(mvp.imgUrl, 'thumbnail')} alt={mvp.name} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top',display:'block'}}/>:<span style={{fontSize:20,opacity:.25}}>◈</span>}
               </div>
               <div style={{position:'absolute',top:-10,left:'50%',transform:'translateX(-50%)',fontSize:16,lineHeight:1}}>👑</div>
             </div>

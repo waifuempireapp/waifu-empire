@@ -31,6 +31,7 @@
 // Named exports: RevealScreen (standalone reveal used when both picks are known)
 import { useState, useEffect, useRef } from 'react';
 import { TYPE_COLORS, initBattleWaifu, computeSpeed, computeCritChance } from '@/lib/battleEngine';
+import { ikUrl } from '@/lib/imagekitUrl';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COSTANTI DI LOGICA
@@ -173,7 +174,7 @@ function WaifuPickCard({ waifu, slot, selectable, onTap, hideStats = false }) {
   const rs = getRarityStyle(rarita);
 
   // Immagine: prova più campi per compatibilità con diversi formati waifu
-  const imgUrl = waifu.asset_statica ?? waifu.img ?? waifu.imgUrl ?? waifu.image ?? null;
+  const imgUrl = ikUrl(waifu.asset_statica ?? waifu.img ?? waifu.imgUrl ?? waifu.image ?? null, 'card');
   const isHotBlurred = !!(waifu._hotBlurred); // waifu hot oscurata (no Pass Hard)
 
   return (
@@ -541,7 +542,7 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
             <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: '#00C8FF', letterSpacing: 2, marginBottom: 6 }}>TU</div>
             <div style={{ width: 90, height: 135, borderRadius: 10, overflow: 'hidden', border: '2px solid rgba(0,200,255,.4)', background: 'rgba(6,3,15,.8)' }}>
               {p1Active?.asset_statica
-                ? <img src={p1Active.asset_statica} alt={p1Active.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
+                ? <img src={ikUrl(p1Active.asset_statica, 'normal')} alt={p1Active.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
                 : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 28, opacity: 0.2 }}>◈</div>
               }
             </div>
@@ -558,7 +559,7 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
             </div>
             <div style={{ width: 90, height: 135, borderRadius: 10, overflow: 'hidden', border: '2px solid rgba(255,50,80,.4)', background: 'rgba(6,3,15,.8)' }}>
               {p2Active?.asset_statica
-                ? <img src={p2Active.asset_statica} alt={p2Active.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
+                ? <img src={ikUrl(p2Active.asset_statica, 'normal')} alt={p2Active.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
                 : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 28, opacity: 0.2 }}>◈</div>
               }
             </div>
@@ -761,7 +762,7 @@ export function RevealScreen({ myStarter, opponentStarter, myName = 'Tu', oppone
           </div>
           <div style={{ width: 100, height: 148, borderRadius: 10, overflow: 'hidden', border: '2px solid rgba(0,200,255,.4)', background: 'rgba(6,3,15,.8)' }}>
             {myStarter?.asset_statica
-              ? <img src={myStarter.asset_statica} alt={myStarter.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
+              ? <img src={ikUrl(myStarter.asset_statica, 'normal')} alt={myStarter.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
               : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 32, opacity: 0.2 }}>◈</div>
             }
           </div>
@@ -780,7 +781,7 @@ export function RevealScreen({ myStarter, opponentStarter, myName = 'Tu', oppone
           </div>
           <div style={{ width: 100, height: 148, borderRadius: 10, overflow: 'hidden', border: '2px solid rgba(255,50,80,.4)', background: 'rgba(6,3,15,.8)' }}>
             {opponentStarter?.asset_statica
-              ? <img src={opponentStarter.asset_statica} alt={opponentStarter.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
+              ? <img src={ikUrl(opponentStarter.asset_statica, 'normal')} alt={opponentStarter.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
               : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 32, opacity: 0.2 }}>◈</div>
             }
           </div>

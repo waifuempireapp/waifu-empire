@@ -1,6 +1,7 @@
 'use client';
 import { useRef, useState } from 'react';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
+import { ikUrl } from '@/lib/imagekitUrl';
 
 const SWIPE_THRESHOLD = 80;
 
@@ -53,10 +54,10 @@ export default function SwapCard({ waifu, onVote }) {
           userSelect: 'none',
         }}
       >
-        {/* Card image — fallback chain: asset_immagine → asset_statica → asset_immersiva */}
+        {/* Card image — ottimizzata con ikUrl (preset 'normal' per Swap: ~600px) */}
         {(waifu.asset_immagine || waifu.asset_statica || waifu.asset_immersiva) ? (
           <img
-            src={waifu.asset_immagine || waifu.asset_statica || waifu.asset_immersiva}
+            src={ikUrl(waifu.asset_immagine || waifu.asset_statica || waifu.asset_immersiva, 'normal')}
             alt={waifu.nome}
             style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }}
           />
