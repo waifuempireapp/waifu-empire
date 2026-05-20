@@ -136,12 +136,18 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
   const handlePixelSelect = useCallback(async (pixel) => {
     const isAdj = checkAdjacentToEmpire(pixel.x, pixel.y);
     const price  = 200 + ((pixel.ownerLevel ?? 1) * 50);
+    // Leggi difficoltà dal chunk
+    const chunkCol = Math.floor(pixel.x / 10);
+    const chunkRow = Math.floor(pixel.y / 10);
+    const chunkId = `chunk_${chunkCol}_${chunkRow}`;
+    const chunkDifficulty = chunks?.[chunkId]?.difficulty ?? 'easy';
     const pixelWithName = {
       ...pixel,
       name: PIXEL_NAMES[`${pixel.x}_${pixel.y}`] || null,
       isAdjacentToEmpire: isAdj,
       canAffordBuy: (profilo?.kisses ?? 0) >= price,
       buyPrice: price,
+      difficulty: chunkDifficulty,
     };
     setSelectedPixel(pixelWithName);
     if (pixel.ownerId !== 'CPU' && pixel.ownerId !== user.uid) {
@@ -332,6 +338,25 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
         }}>?</button>
       </div>
 
+      {/* Raid Island widget — SOPRA la mappa */}
+      <div
+        onClick={() => setShowRaidPanel(true)}
+        style={{
+          margin: '0 16px 10px', padding: '10px 16px',
+          background: 'linear-gradient(135deg, rgba(236,72,153,0.12), rgba(10,7,38,0.9))',
+          border: '1px solid rgba(236,72,153,0.35)', borderRadius: 12, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+        <div style={{ fontSize: 24 }}>⚔</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: "'Unbounded',sans-serif", fontSize: 12, color: '#ec4899', fontWeight: 800 }}>Raid Island</div>
+          <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 9, color: 'rgba(241,235,255,0.5)', letterSpacing: '0.12em' }}>
+            Tocca per il Raid orario cooperativo ⚔
+          </div>
+        </div>
+        <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 10, color: 'rgba(236,72,153,0.7)' }}>→</div>
+      </div>
+
       {/* Canvas mappa */}
       <div style={{ height: 380 }}>
         <PixelGrid
@@ -341,25 +366,6 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
           onPixelSelect={handlePixelSelect}
           landSet={LAND_SET}
         />
-      </div>
-
-      {/* Raid Island widget */}
-      <div
-        onClick={() => setShowRaidPanel(true)}
-        style={{
-          margin: '10px 16px 0', padding: '12px 16px',
-          background: 'linear-gradient(135deg, rgba(236,72,153,0.12), rgba(10,7,38,0.9))',
-          border: '1px solid rgba(236,72,153,0.35)', borderRadius: 14, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 12,
-        }}>
-        <div style={{ fontSize: 28 }}>⚔</div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: FF.display, fontSize: 13, color: '#ec4899', fontWeight: 800 }}>Raid Island</div>
-          <div style={{ fontFamily: FF.label, fontSize: 9, color: 'rgba(241,235,255,0.5)', letterSpacing: '0.12em' }}>
-            {raidInfo ? `⚔ ${raidInfo.waifuNome} — ${raidInfo.currentHp?.toLocaleString()}/${raidInfo.totalHp?.toLocaleString()} HP` : 'Tocca per partecipare al Raid orario'}
-          </div>
-        </div>
-        <div style={{ fontFamily: FF.label, fontSize: 10, color: 'rgba(236,72,153,0.7)' }}>→</div>
       </div>
 
       {/* Raid Island full panel */}

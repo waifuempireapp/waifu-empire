@@ -48,7 +48,8 @@ export async function GET(request) {
         rankingData = {
           top5: top5Ids.map((e, i) => {
             const s = waifuSnaps[i];
-            return { ...e, nome: s?.exists ? s.data().nome : e.waifuId };
+            const d = s?.exists ? s.data() : null;
+            return { ...e, nome: d?.nome ?? e.waifuId, rarita: d?.rarita ?? 'comune', image: d?.asset_statica ?? d?.asset_immersiva ?? null };
           }),
           isLive: true,
         };
@@ -74,6 +75,7 @@ export async function GET(request) {
               ...item,
               hot: catalog.hot ?? false,
               rarita: catalog.rarita ?? 'comune',
+              image: catalog.asset_statica ?? catalog.asset_immersiva ?? null,
               isImmersiveHard: !!isImmHard,
             };
           })

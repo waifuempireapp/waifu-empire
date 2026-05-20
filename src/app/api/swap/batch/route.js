@@ -68,6 +68,7 @@ export async function GET(request) {
     const url = new URL(request.url);
     const excludeParam = url.searchParams.get('exclude') ?? '';
     const excluded = new Set(excludeParam ? excludeParam.split(',').filter(Boolean) : []);
+    const espansioneFilter = url.searchParams.get('espansione_id') ?? null;
 
     // Leggi config (1 read, in cache) e lista ID (1 read, in cache o index)
     const [config, allIds] = await Promise.all([
@@ -78,12 +79,24 @@ export async function GET(request) {
     const pausedUntil = config.pausedUntil ?? {};
     const now = Date.now();
 
-    // Filtra: escludi già viste, pausate, e hot se no pass hard (gestito lato client)
-    const available = allIds.filter(id => {
+    // Filtra: escludi già viste, pausate
+    let available = allIds.filter(id => {
       if (excluded.has(id)) return false;
       const paused = pausedUntil[id];
       return !paused || (paused.toMillis ? paused.toMillis() : Number(paused)) <= now;
     });
+
+    // Filtro espansione: applica PRIMA della selezione random
+    if (espansioneFilter && espansioneFilter !== 'null') {
+      // Devo caricare i dati waifu per filtrare per espansione
+      // Uso l'index in swap_config/catalog_ids che contiene tutti gli ID
+      // Invece faccio una query diretta sul catalogo per l'espansione
+      const espSnap = await adminDb.collection('catalogo_waifu')
+        .where('espansione_id', '==', espansioneFilter)
+        .get();
+      const espIds = new Set(espSnap.docs.map(d => d.id));
+      available = available.filter(id => espIds.has(id));
+    }
 
     if (available.length === 0) {
       return NextResponse.json({ waifu: [], exhausted: true });

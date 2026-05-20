@@ -126,10 +126,20 @@ export default function PixelDetail({
         {/* Proprietario */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
           <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, background: pixel.ownerColor || '#888888', border: '2px solid rgba(255,255,255,0.15)' }} />
-          <div>
-            <div style={{ fontFamily: FF.label, fontSize: 13, letterSpacing: '0.15em', color: '#fff', textTransform: 'uppercase', fontWeight: 700 }}>
-              {pixel.ownerName || 'CPU'}
-              {isOwn && <span style={{ color: C.aqua, marginLeft: 8, fontSize: 10 }}>· tuo</span>}
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ fontFamily: FF.label, fontSize: 13, letterSpacing: '0.15em', color: '#fff', textTransform: 'uppercase', fontWeight: 700 }}>
+                {pixel.ownerName || 'CPU'}
+                {isOwn && <span style={{ color: C.aqua, marginLeft: 8, fontSize: 10 }}>· tuo</span>}
+              </div>
+              {pixel.difficulty && (() => {
+                const diffStyle = { easy: ['#06d6a0','Easy'], medium: ['#f59e0b','Medium'], hard: ['#ef4444','Hard'], extreme: ['#a855f7','Extreme'] }[pixel.difficulty] ?? ['#9b59ff','?'];
+                return (
+                  <div style={{ background: `${diffStyle[0]}20`, border: `1px solid ${diffStyle[0]}60`, borderRadius: 6, padding: '2px 8px', fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: diffStyle[0], fontWeight: 700 }}>
+                    {diffStyle[1]}
+                  </div>
+                );
+              })()}
             </div>
             <div style={{ fontFamily: FF.mono, fontSize: 10, color: 'rgba(241,235,255,0.4)', marginTop: 2 }}>{pixelName}</div>
           </div>

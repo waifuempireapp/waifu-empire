@@ -17,7 +17,9 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
   const [showAd, setShowAd]     = useState(false);
   const [exhausted, setExhausted] = useState(false);
   const [howExpanded, setHowExpanded] = useState(false);
-  const [swapStatus, setSwapStatus] = useState(null); // { hasSwapPass, dailyVotes, dailyLimit, votesRemaining }
+  const [swapStatus, setSwapStatus] = useState(null);
+  const [filtroEspansione, setFiltroEspansione] = useState(null); // null = tutte
+  const [dropsAttivi, setDropsAttivi] = useState([]);
 
   const swipeCountRef = useRef(0);
   // Tiene traccia di tutti gli ID già visti in questa sessione
@@ -31,7 +33,10 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
     try {
       const token = await user.getIdToken();
       const exclude = Array.from(seenIdsRef.current).join(',');
-      const params = exclude ? `?exclude=${encodeURIComponent(exclude)}` : '';
+      const searchParams = new URLSearchParams();
+      if (exclude) searchParams.set('exclude', exclude);
+      if (filtroEspansione) searchParams.set('espansione_id', filtroEspansione);
+      const params = searchParams.toString() ? `?${searchParams.toString()}` : '';
       const res = await fetch(`/api/swap/batch${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -57,6 +62,20 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
       setSwapConfig(data);
     } catch { /* usa defaults */ }
   }, [user]);
+
+  // Carica drop attivi per il filtro espansione
+  useEffect(() => {
+    import('@/lib/firestoreService').then(({ listDropsAttivi }) => {
+      listDropsAttivi().then(drops => setDropsAttivi(drops || [])).catch(() => {});
+    });
+  }, []);
+
+  // Ricarica quando cambia il filtro espansione
+  useEffect(() => {
+    if (!user) return;
+    setQueue([]); setCurrentIdx(0); seenIdsRef.current = new Set(); setExhausted(false);
+    loadBatch();
+  }, [filtroEspansione]); // eslint-disable-line
 
   useEffect(() => {
     // Carica batch, config e stato voti giornalieri in parallelo
@@ -104,6 +123,9 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
         return;
       }
       const data = await res.json();
+
+      // Aggiorna contatore voti in real-time
+      setSwapStatus(prev => prev ? { ...prev, dailyVotes: (prev.dailyVotes ?? 0) + 1, votesRemaining: prev.votesRemaining != null ? Math.max(0, prev.votesRemaining - 1) : null } : prev);
 
       if (data.kissesEarned > 0) {
         setToast({ amount: data.kissesEarned, streakDays: data.streakDays, multiplier: data.multiplier });
@@ -255,7 +277,7 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
       {/* Streak indicator */}
       {(profilo?.streakDays ?? 0) > 1 && (
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16,
+          display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8,
           background: 'rgba(108,240,224,0.08)', border: '1px solid rgba(108,240,224,0.2)',
           borderRadius: 10, padding: '6px 12px', alignSelf: 'flex-start',
         }}>
@@ -263,6 +285,24 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
           <span style={{ fontFamily: FF.label, fontSize: 10, letterSpacing: '0.15em', color: C.aqua, textTransform: 'uppercase' }}>
             {profilo.streakDays} giorni di streak · ×{Math.min(1 + (profilo.streakDays - 1) * 0.1, 3).toFixed(1)}
           </span>
+        </div>
+      )}
+
+      {/* Filtro espansione */}
+      {dropsAttivi.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+          <button
+            onClick={() => setFiltroEspansione(null)}
+            style={{ padding: '4px 12px', borderRadius: 999, border: `1px solid ${!filtroEspansione ? C.sakura : 'rgba(255,133,182,0.3)'}`, background: !filtroEspansione ? 'rgba(255,133,182,0.15)' : 'transparent', color: !filtroEspansione ? C.sakura : 'rgba(241,235,255,0.5)', fontFamily: FF.label, fontSize: 9, cursor: 'pointer', letterSpacing: '0.1em' }}>
+            Tutte
+          </button>
+          {dropsAttivi.map(d => (
+            <button key={d.id}
+              onClick={() => setFiltroEspansione(d.id === filtroEspansione ? null : d.id)}
+              style={{ padding: '4px 12px', borderRadius: 999, border: `1px solid ${filtroEspansione === d.id ? C.gold : 'rgba(245,197,96,0.25)'}`, background: filtroEspansione === d.id ? 'rgba(245,197,96,0.12)' : 'transparent', color: filtroEspansione === d.id ? C.gold : 'rgba(241,235,255,0.4)', fontFamily: FF.label, fontSize: 9, cursor: 'pointer', letterSpacing: '0.1em' }}>
+              {d.nome || d.id}
+            </button>
+          ))}
         </div>
       )}
 
@@ -275,9 +315,9 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
               <span style={{ color: 'rgba(108,240,224,0.5)', marginLeft: 8 }}>⟳ caricamento…</span>
             )}
           </div>
-          {/* Badge stato waifu sopra la carta */}
-          {ownershipBadge && BADGE_STYLE[ownershipBadge] && (
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+              {/* Badge stato + espansione sopra la carta */}
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+            {ownershipBadge && BADGE_STYLE[ownershipBadge] && (
               <div style={{
                 background: BADGE_STYLE[ownershipBadge].bg,
                 border: `1px solid ${BADGE_STYLE[ownershipBadge].border}`,
@@ -285,8 +325,15 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
                 borderRadius: 999, padding: '4px 14px',
                 fontFamily: FF.label, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
               }}>{BADGE_STYLE[ownershipBadge].label}</div>
-            </div>
-          )}
+            )}
+            {currentWaifu?.espansione_nome && (
+              <div style={{
+                background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)',
+                color: '#f59e0b', borderRadius: 999, padding: '4px 12px',
+                fontFamily: FF.label, fontSize: 10, letterSpacing: '0.1em',
+              }}>📦 {currentWaifu.espansione_nome}</div>
+            )}
+          </div>
           <SwapCard
             key={currentWaifu?.id ?? currentIdx}
             waifu={currentWaifu}

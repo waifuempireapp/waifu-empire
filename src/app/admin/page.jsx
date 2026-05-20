@@ -158,7 +158,7 @@ export default function AdminPage() {
         {tab === 'mosse' && <MosseTab mosse={mosse} waifu={waifu} ricarica={carica} flash={flash} user={user} />}
         {tab === 'rarity-mult' && <RarityMultTab flash={flash} />}
         {tab === 'config-mosse' && <ConfigMosseTab flash={flash} />}
-        {tab === 'distrib' && <DistribTab waifu={waifu} />}
+        {tab === 'distrib' && <DistribTab waifu={waifu} mosse={mosse} />}
         {tab === 'motori' && <MotoriTab />}
         {tab === 'config' && <ConfigTab waifu={waifu} ricarica={carica} flash={flash} />}
         {tab === 'prezzi'    && <PrezziTab flash={flash} user={user} />}
@@ -1685,27 +1685,23 @@ function PoseEditor({ pose, setPose, waifu, onSalva, onAnnulla, flash }) {
 // ============================================================
 // TAB: DISTRIBUZIONE
 // ============================================================
-function DistribTab({ waifu, outfit, pose }) {
+function DistribTab({ waifu, mosse = [] }) {
   const sugg = suggerisciDiversificazione(waifu);
 
   // Waifu stats distributions
   const raritaCount = {};
   Object.keys(RARITA).forEach(k => { raritaCount[k] = 0; });
-  waifu.forEach(w => { raritaCount[w.rarita] = (raritaCount[w.rarita] || 0) + 1; });
+  (waifu || []).forEach(w => { raritaCount[w.rarita] = (raritaCount[w.rarita] || 0) + 1; });
 
   const assetCount = { conImmagine: 0, senzaImmagine: 0 };
-  waifu.forEach(w => { if (w.asset_statica || w.asset_immersiva) assetCount.conImmagine++; else assetCount.senzaImmagine++; });
+  (waifu || []).forEach(w => { if (w.asset_statica || w.asset_immersiva) assetCount.conImmagine++; else assetCount.senzaImmagine++; });
 
-  // Outfit distributions
-  const outfitRarita = {}; Object.keys(RARITA).forEach(k => { outfitRarita[k] = 0; });
-  const outfitSlot = {}; Object.keys(SLOT_OUTFIT).forEach(k => { outfitSlot[k] = 0; });
-  const outfitAsset = { con: 0, senza: 0 };
-  outfit.forEach(o => { outfitRarita[o.rarita] = (outfitRarita[o.rarita] || 0) + 1; outfitSlot[o.slot] = (outfitSlot[o.slot] || 0) + 1; if (o.asset) outfitAsset.con++; else outfitAsset.senza++; });
-
-  // Pose distributions
-  const poseRarita = {}; Object.keys(RARITA).forEach(k => { poseRarita[k] = 0; });
-  const poseAsset = { con: 0, senza: 0 };
-  pose.forEach(p => { poseRarita[p.rarita] = (poseRarita[p.rarita] || 0) + 1; if (p.asset) poseAsset.con++; else poseAsset.senza++; });
+  // Mosse distributions (sostituisce outfit/pose)
+  const mosseRarita = {};
+  Object.keys(RARITA).forEach(k => { mosseRarita[k] = 0; });
+  (mosse || []).forEach(m => { mosseRarita[m.rarita] = (mosseRarita[m.rarita] || 0) + 1; });
+  const mosseAsset = { con: 0, senza: 0 };
+  (mosse || []).forEach(m => { if (m.immagine_url && m.immagine_url !== '/images/mosse/placeholder.png') mosseAsset.con++; else mosseAsset.senza++; });
 
   // Bar chart helper
   const BarChart = ({ data, title, icon }) => {
@@ -1747,24 +1743,13 @@ function DistribTab({ waifu, outfit, pose }) {
         <BarChart title="PALETTE" icon="🎨" data={sugg.distribuzionePalette.map(p => ({ label: p.nome.substring(0, 14), value: p.conta, color: p.conta === 0 ? '#06d6a0' : p.conta > 2 ? '#ef4444' : '#3b82f6' }))} />
       </div>
 
-      {/* SEZIONE OUTFIT */}
-      <div style={{ fontFamily: 'Cinzel, serif', color: '#a855f7', letterSpacing: 3, fontSize: 14, marginBottom: 8 }}>✦ OUTFIT ({outfit.length})</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12, marginBottom: 20 }}>
-        <BarChart title="PER RARITÀ" icon="★" data={Object.entries(RARITA).map(([k, v]) => ({ label: v.nome, value: outfitRarita[k] || 0, color: v.colore }))} />
-        <BarChart title="PER SLOT" icon="👔" data={Object.entries(SLOT_OUTFIT).map(([k, v]) => ({ label: v.nome, value: outfitSlot[k] || 0, color: '#ec4899' }))} />
-        <BarChart title="ASSET" icon="🖼" data={[
-          { label: 'Con asset', value: outfitAsset.con, color: '#06d6a0' },
-          { label: 'Senza', value: outfitAsset.senza, color: '#ef4444' },
-        ]} />
-      </div>
-
-      {/* SEZIONE POSE */}
-      <div style={{ fontFamily: 'Cinzel, serif', color: '#ec4899', letterSpacing: 3, fontSize: 14, marginBottom: 8 }}>⚜ POSE ({pose.length})</div>
+      {/* SEZIONE MOSSE ATTACCO */}
+      <div style={{ fontFamily: 'Cinzel, serif', color: '#a855f7', letterSpacing: 3, fontSize: 14, marginBottom: 8 }}>⚔ MOSSE ATTACCO ({mosse.length})</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
-        <BarChart title="PER RARITÀ" icon="★" data={Object.entries(RARITA).map(([k, v]) => ({ label: v.nome, value: poseRarita[k] || 0, color: v.colore }))} />
-        <BarChart title="ASSET" icon="🖼" data={[
-          { label: 'Con asset', value: poseAsset.con, color: '#06d6a0' },
-          { label: 'Senza', value: poseAsset.senza, color: '#ef4444' },
+        <BarChart title="PER RARITÀ" icon="★" data={Object.entries(RARITA).map(([k, v]) => ({ label: v.nome, value: mosseRarita[k] || 0, color: v.colore }))} />
+        <BarChart title="IMMAGINI" icon="🖼" data={[
+          { label: 'Con immagine', value: mosseAsset.con, color: '#06d6a0' },
+          { label: 'Placeholder', value: mosseAsset.senza, color: '#f59e0b' },
         ]} />
       </div>
     </div>
@@ -2522,7 +2507,7 @@ function ConfigTab({ waifu, ricarica, flash }) {
 
   const [ranges, setRanges] = useState({ ...STAT_RANGES_DEFAULT });
   const [steps, setSteps] = useState({ ...UPGRADE_STEPS_DEFAULT });
-  const [outfitConf, setOutfitConf] = useState({ ...OUTFIT_CONFIG_DEFAULT });
+  // outfitConf rimosso — outfit non più nel gioco
   const [godPackProb, setGodPackProb] = useState(0.005); // default 0.5%
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -2535,8 +2520,7 @@ function ConfigTab({ waifu, ricarica, flash }) {
         if (rDoc.exists()) setRanges({ ...STAT_RANGES_DEFAULT, ...rDoc.data() });
         const sDoc = await getDoc(doc(db, 'config', 'upgrade_steps'));
         if (sDoc.exists()) setSteps({ ...UPGRADE_STEPS_DEFAULT, ...sDoc.data() });
-        const oDoc = await getDoc(doc(db, 'config', 'outfit_config'));
-        if (oDoc.exists()) setOutfitConf({ ...OUTFIT_CONFIG_DEFAULT, ...oDoc.data() });
+        // outfit_config non più usato
         const gDoc = await getDoc(doc(db, 'config', 'pack_config'));
         if (gDoc.exists() && gDoc.data().god_pack_prob !== undefined) {
           setGodPackProb(Number(gDoc.data().god_pack_prob));
@@ -2551,7 +2535,7 @@ function ConfigTab({ waifu, ricarica, flash }) {
     try {
       await setDoc(doc(db, 'config', 'stat_ranges'), ranges);
       await setDoc(doc(db, 'config', 'upgrade_steps'), steps);
-      await setDoc(doc(db, 'config', 'outfit_config'), outfitConf);
+      // outfit_config non più usato
       await setDoc(doc(db, 'config', 'pack_config'), { god_pack_prob: Number(godPackProb) });
       flash('Configurazione salvata!', '#06d6a0');
     } catch (e) { flash('Errore salvataggio: ' + e.message, '#ef4444'); }
@@ -2595,7 +2579,7 @@ function ConfigTab({ waifu, ricarica, flash }) {
   const resetDefaults = () => {
     setRanges({ ...STAT_RANGES_DEFAULT });
     setSteps({ ...UPGRADE_STEPS_DEFAULT });
-    setOutfitConf({ ...OUTFIT_CONFIG_DEFAULT });
+    // reset outfit rimosso
     flash('Valori resettati ai default (non ancora salvati)', '#f59e0b');
   };
 
@@ -2647,12 +2631,8 @@ function ConfigTab({ waifu, ricarica, flash }) {
         </div>
       </div>
 
-      {/* ── CONFIGURAZIONE OUTFIT ── */}
-      <div style={{ background: 'rgba(155,89,255,0.06)', border: '1px solid rgba(155,89,255,0.2)', borderRadius: 10, padding: 20, marginBottom: 24 }}>
-        <h3 style={{ fontFamily: 'Cinzel, serif', color: '#9b59ff', fontSize: 13, letterSpacing: 2, marginBottom: 6 }}>✦ CONFIGURAZIONE OUTFIT</h3>
-        <p style={{ fontSize: 10, color: 'rgba(245,230,211,0.4)', marginBottom: 16, fontFamily: 'Orbitron' }}>
-          Modifica le soglie di livello e archetipi degli outfit. Le modifiche si applicano al nuovo calcolo live.
-        </p>
+      {/* CONFIGURAZIONE OUTFIT — rimossa (outfit non più nel gioco) */}
+      {false && <div style={{ display: 'none' }}>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}>
           <Field label="Copie per salire di livello">
@@ -2714,10 +2694,8 @@ function ConfigTab({ waifu, ricarica, flash }) {
             </tbody>
           </table>
         </div>
-        <div style={{ fontSize: 9, color: 'rgba(245,230,211,0.3)', marginTop: 10, fontFamily: 'Orbitron', lineHeight: 1.6 }}>
-          ℹ Leggendario/Immersivo: logica speciale — Lv.8→9: 10→15 archetipi, Lv.9→10: 15→TUTTI
-        </div>
-      </div>
+        <div style={{ fontSize: 9 }}>rimosso</div>
+      </div>}
 
       {/* God Pack / Waifu Pack */}
       <div style={{ ...cardStat, marginBottom: 20 }}>

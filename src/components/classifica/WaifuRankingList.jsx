@@ -165,6 +165,13 @@ export default function WaifuRankingList({ user }) {
                         )}
                       </div>
 
+                      {/* Immagine waifu */}
+                      {!isHotObscured && item.image && (
+                        <div style={{ width: 44, height: 60, borderRadius: 8, overflow: 'hidden', flexShrink: 0, border: `1px solid ${prizeColor}40` }}>
+                          <img src={item.image} alt={item.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 10%' }} />
+                        </div>
+                      )}
+
                       {/* Info waifu */}
                       <div style={{ flex: 1, minWidth: 0, filter: isHotObscured ? 'blur(4px)' : 'none', userSelect: isHotObscured ? 'none' : 'auto' }}>
                         <div style={{
@@ -186,6 +193,30 @@ export default function WaifuRankingList({ user }) {
                             }}>✓ Tua</span>
                           )}
                         </div>
+                        {/* Rarità attuale + prossima */}
+                        {item.rarita && (() => {
+                          const RARITY_CHAIN = ['comune','raro','epico','leggendario','immersivo'];
+                          const RARITY_COLORS = { comune:'#9ca3af', raro:'#3b82f6', epico:'#a855f7', leggendario:'#f59e0b', immersivo:'#ec4899' };
+                          const RARITY_NAMES = { comune:'Comune', raro:'Raro', epico:'Epico', leggendario:'Leggendario', immersivo:'Immersivo' };
+                          const currIdx = RARITY_CHAIN.indexOf(item.rarita);
+                          const nextRarity = RARITY_CHAIN[currIdx + 1];
+                          return (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                              <span style={{ fontFamily: FF.label, fontSize: 8, color: RARITY_COLORS[item.rarita] ?? '#888', background: `${RARITY_COLORS[item.rarita] ?? '#888'}18`, border: `1px solid ${RARITY_COLORS[item.rarita] ?? '#888'}40`, borderRadius: 4, padding: '1px 6px' }}>
+                                {RARITY_NAMES[item.rarita] ?? item.rarita}
+                              </span>
+                              {nextRarity && isPrize && (
+                                <>
+                                  <span style={{ color: 'rgba(241,235,255,0.3)', fontSize: 8 }}>→</span>
+                                  <span style={{ fontFamily: FF.label, fontSize: 8, color: RARITY_COLORS[nextRarity], background: `${RARITY_COLORS[nextRarity]}18`, border: `1px solid ${RARITY_COLORS[nextRarity]}40`, borderRadius: 4, padding: '1px 6px' }}>
+                                    {RARITY_NAMES[nextRarity]}
+                                  </span>
+                                  <span style={{ fontFamily: FF.label, fontSize: 7, color: 'rgba(241,235,255,0.3)' }}>se vince</span>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Premio (solo top 5) */}
