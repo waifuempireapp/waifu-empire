@@ -128,7 +128,7 @@ export function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
             className="hdr-empire-name impero-nome"
             onClick={() => setPopupImpero(v => !v)}
             style={{ textShadow: `0 0 10px ${colore}88`, color: colore }}
-          >Lv.{profilo.livelloMappa ?? 1} · {nomeImperoDisplay}</div>
+          >{nomeImperoDisplay}</div>
 
           {popupImpero && (
             <div
@@ -353,7 +353,7 @@ export function HomeTab({
         <div className="ht-hero__label">◆ Bentornato · Stagione 7</div>
         <h1 className="shimmer-text ht-hero__title">{profilo.nomeImpero || 'Il Tuo Impero'}</h1>
         <div className="ht-hero__chips">
-          <Chip colore={profilo.coloreImpero} icon="⚜" size="md">Impero Lv.{profilo.livelloMappa ?? 1}</Chip>
+          <Chip colore={profilo.coloreImpero} icon="⚜" size="md">Impero · {Object.values(profilo.territoriUtente || {}).filter(t => t?.conquistato).length} terr.</Chip>
         </div>
       </div>
 
@@ -362,7 +362,7 @@ export function HomeTab({
 
       {/* QUICK TILES */}
       <div className="ht-quick-grid">
-        <QuickTile icon="⚔" label="Mappa"   color="#6cf0e0" sub={`Lv.${profilo.livelloMappa ?? 1}`} onClick={() => setTab('mappa')} />
+        <QuickTile icon="⚔" label="Mappa"   color="#6cf0e0" sub={`${Object.values(profilo.territoriUtente || {}).filter(t => t?.conquistato).length} terr.`} onClick={() => setTab('mappa')} />
         <QuickTile icon="🎁" label="Sbusta"  color="#f5c560" sub={`×${totalPack}`} highlight={totalPack > 0} onClick={() => setTab('sbusta')} />
         <QuickTile icon="🛒" label="Negozio" color="#a78bfa" sub="Novità" onClick={() => window.dispatchEvent(new CustomEvent('impero:apri-negozio'))} />
         {process.env.NEXT_PUBLIC_PESCA_ENABLED !== 'false'
@@ -546,8 +546,8 @@ function QuickTile({ icon, label, color, sub, highlight, onClick }) {
 // =====================================================================
 function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneClassifica }) {
   const row1 = [
-    { icon: '🗺', val: `Lv.${profilo.livelloMappa ?? 1}`, label: 'LIV. MAPPA', col: '#a78bfa' },
     { icon: '🏴', val: territoriConquistati, label: 'TERRITORI', col: '#ffc861' },
+    { icon: '🏆', val: posizioneClassifica != null ? `#${posizioneClassifica}` : '—', label: 'CLASSIFICA', col: '#a78bfa' },
   ];
   const row2 = [
     { icon: '✓', val: profilo.vittorie  ?? 0, label: 'VITTORIE',  col: '#58e0a3' },
@@ -810,9 +810,12 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
 
   const [tabAttiva, setTabAttiva]   = useState('giornaliere');
   const [sezioni, setSezioni]       = useState([]);
-  const [missioniMap, setMissioniMap] = useState({});   // sectionId -> missioni[]
+  const [missioniMap, setMissioniMap] = useState({});
   const [claiming, setClaiming]     = useState(null);
   const [timerGiorn, setTimerGiorn] = useState('');
+  const [mapMission, setMapMission] = useState(null);   // missione mappa corrente
+  const [mapNextMs, setMapNextMs]   = useState(null);   // ms alla prossima missione
+  const [mapClaimed, setMapClaimed] = useState(false);
 
   // Carica sezioni admin-defined
   useEffect(() => {
@@ -824,6 +827,21 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
       });
     }).catch(() => {});
   }, []);
+
+  // Carica missione mappa corrente quando il tab è attivo
+  useEffect(() => {
+    if (tabAttiva !== 'mappa' || !user) return;
+    const load = async () => {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch('/api/map-missions/current', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        setMapMission(data.mission);
+        setMapNextMs(data.nextMissionIn);
+      } catch (_) {}
+    };
+    load();
+  }, [tabAttiva, user]);
 
   // Timer reset giornaliero
   useEffect(() => {
@@ -925,6 +943,12 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
               <span className="missioni-tab__badge">{giornCompletate}</span>
             )}
           </button>
+          <button
+            className={`missioni-tab${tabAttiva === 'mappa' ? ' missioni-tab--active' : ''}`}
+            onClick={() => setTabAttiva('mappa')}
+          >
+            🗺 Mappa
+          </button>
           {sezioni.map(sec => (
             <button key={sec.id}
               className={`missioni-tab${tabAttiva === sec.id ? ' missioni-tab--active' : ''}`}
@@ -967,7 +991,61 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
             );
           })}
 
-          {tabAttiva !== 'giornaliere' && sezioni.filter(s => s.id === tabAttiva).map(sec => {
+          {/* TAB MISSIONI MAPPA */}
+          {tabAttiva === 'mappa' && (() => {
+            if (!mapMission) {
+              const nextMin = mapNextMs ? Math.ceil(mapNextMs / 60000) : null;
+              return (
+                <div className="missione-item" style={{ textAlign: 'center', flexDirection: 'column', gap: 8, padding: '24px 16px' }}>
+                  <div style={{ fontSize: 32 }}>🗺</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, color: 'rgba(245,158,11,0.7)' }}>NESSUNA MISSIONE ATTIVA</div>
+                  {nextMin && <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, color: 'rgba(245,158,11,0.5)' }}>Prossima missione tra {nextMin} min</div>}
+                </div>
+              );
+            }
+            const endsMs = new Date(mapMission.endsAt).getTime();
+            const isExpired = endsMs < Date.now();
+            const userPixels = Object.entries(profilo.pixelCount !== undefined ? {} : {}).length; // proxy
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: 'rgba(245,158,11,0.6)', letterSpacing: 1 }}>
+                  MISSIONE ATTIVA · {isExpired ? 'SCADUTA - Riscuoti!' : `Scade: ${new Date(mapMission.endsAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`}
+                </div>
+                {(mapMission.pixels || []).map((px, i) => (
+                  <div key={i} className="missione-item">
+                    <div className="missione-item__icon">🏴</div>
+                    <div className="missione-item__body">
+                      <div className="missione-item__title">{px.name || `Pixel ${px.x},${px.y}`}</div>
+                      <div className="missione-item__reward">+{mapMission.rewardPerPixel ?? 100} 💋 se in tuo possesso</div>
+                    </div>
+                  </div>
+                ))}
+                {isExpired && !mapClaimed && (
+                  <button className="missione-item__claim"
+                    onClick={async () => {
+                      try {
+                        const token = await user.getIdToken();
+                        const res = await fetch('/api/map-missions/claim', {
+                          method: 'POST',
+                          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ missionId: mapMission.missionId || mapMission.id }),
+                        });
+                        const data = await res.json();
+                        if (data.success || data.alreadyClaimed) {
+                          setMapClaimed(true);
+                          if (data.kisses > 0) alert(`✅ +${data.kisses} Kisses! (${data.pixelsOwned} pixel posseduti)`);
+                        } else alert(data.error);
+                      } catch (e) { alert(e.message); }
+                    }}>
+                    Riscuoti ({mapMission.pixels?.length ?? 4} × {mapMission.rewardPerPixel ?? 100} 💋 max)
+                  </button>
+                )}
+                {mapClaimed && <span className="missione-item__claimed">✓ Riscosso</span>}
+              </div>
+            );
+          })()}
+
+          {tabAttiva !== 'giornaliere' && tabAttiva !== 'mappa' && sezioni.filter(s => s.id === tabAttiva).map(sec => {
             const ms = missioniMap[sec.id] || [];
             return ms.map(m => {
               const key  = `${sec.id}__${m.id}`;

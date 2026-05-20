@@ -107,7 +107,7 @@ export function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
             fontSize: 8, opacity: 0.6,
             letterSpacing: '0.22em', textTransform: 'uppercase',
             fontFamily: FF.label, color: profilo.coloreImpero, marginTop: 1, fontWeight: 700,
-          }}>Lv.{profilo.livelloMappa ?? 1} · Impero</div>
+          }}>{Object.values(profilo.territoriUtente || {}).filter(t => t?.conquistato).length} Territori</div>
 
           {popupImpero && (
             <div ref={popupImperoRef} className="fade-up impero-nome-popup" style={{
@@ -390,7 +390,7 @@ export function HomeTab({
         {/* QUICK ACTIONS */}
         <div style={{ marginBottom: 20 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-            <QuickTile icon="⚔" label="Mappa" color={C.aqua} sub={`Lv.${profilo.livelloMappa ?? 1}`} onClick={() => setTab('mappa')} />
+            <QuickTile icon="⚔" label="Mappa" color={C.aqua} sub={`${Object.values(profilo.territoriUtente || {}).filter(t => t?.conquistato).length} terr.`} onClick={() => setTab('mappa')} />
             <QuickTile icon="🎁" label="Sbusta" color={C.gold} sub={`×${totalPack}`} highlight={totalPack > 0} onClick={() => setTab('sbusta')} />
             <QuickTile icon="🛒" label="Negozio" color={C.violet} sub="Hot" onClick={() => window.dispatchEvent(new CustomEvent('impero:apri-negozio'))} />
             {process.env.NEXT_PUBLIC_PESCA_ENABLED !== 'false'
@@ -754,11 +754,10 @@ function SwapPromoBanner({ setTab, profilo }) {
 function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneClassifica }) {
   const vittorie = profilo.vittorie ?? 0;
   const sconfitte = profilo.sconfitte ?? 0;
-  const livelloMappa = profilo.livelloMappa ?? 1;
 
   const row1 = [
-    { icon: '🗺', val: `Lv.${livelloMappa}`, label: 'LIV. MAPPA',  col: C.violet },
     { icon: '🏴', val: territoriConquistati, label: 'TERRITORI',   col: C.gold   },
+    { icon: '🏆', val: posizioneClassifica != null ? `#${posizioneClassifica}` : '—', label: 'CLASSIFICA', col: C.violet },
   ];
   const row2 = [
     { icon: '✓', val: vittorie,  label: 'VITTORIE',  col: C.ok  },

@@ -236,28 +236,10 @@ export const NOMI_CONTINENTI = {
   AF: 'Africa', AS: 'Asia', OC: 'Oceania',
 };
 
-// ── MAPPA PROGRESSIVA ────────────────────────────────────────────────────────
-/**
- * Territori della mappa progressiva, organizzati per livello di gioco.
- * Al livello 1 la mappa mostra solo i 6 continenti; ogni livello aggiunge
- * stati dettagliati progressivamente (fino al livello 7 = Oceania).
- *
- * Struttura di ogni territorio:
- *   - id:    identificatore univoco
- *   - nome:  nome visualizzato
- *   - tipo:  'continente' | 'stato'
- *   - cx/cy: coordinate centro per il marker
- *   - conf:  array id confinanti (solo per tipo 'stato')
- *
- * Livello 1: continenti (6 macro-aree)
- * Livello 2: Europa (10 stati)
- * Livello 3: Nord America (5 stati)
- * Livello 4: Sud America (5 stati)
- * Livello 5: Africa (5 stati)
- * Livello 6: Asia (5 stati)
- * Livello 7: Oceania (2 stati)
- */
-export const TERRITORI_PER_LIVELLO = {
+// ── MAPPA PROGRESSIVA — RIMOSSA (dead code, non usata dalla mappa pixel) ─────
+// TERRITORI_PER_LIVELLO e getTerritori_ForLivello erano usati dalla vecchia mappa
+// Risiko-style. La mappa pixel non li usa. Rimossi per pulizia codice.
+const _TERRITORI_PER_LIVELLO_DEPRECATED = {
   1: [ // Solo continenti (6 territori)
     { id: 'cont_NA', nome: 'Nord America', tipo: 'continente', cx: 250, cy: 250, path: 'M100,100 L400,100 L400,400 L100,400 Z' },
     { id: 'cont_SA', nome: 'Sud America', tipo: 'continente', cx: 350, cy: 500, path: 'M250,420 L450,420 L450,620 L250,620 Z' },
@@ -312,20 +294,6 @@ export const TERRITORI_PER_LIVELLO = {
   ],
 };
 
-/**
- * Restituisce i territori cumulativi per un dato livello di mappa.
- * Il risultato include tutti i territori dei livelli da 1 a `livello` (inclusivo).
- * Clamped a 7 (livello massimo definito in TERRITORI_PER_LIVELLO).
- *
- * @param {number} livello - Livello corrente del giocatore
- * @returns {Array<Object>} Array piatto di territori (continenti + stati sbloccati)
- */
-export function getTerritori_ForLivello(livello) {
-  let territori = [];
-  for (let i = 1; i <= Math.min(livello, 7); i++) {
-    territori = [...territori, ...TERRITORI_PER_LIVELLO[i]];
-  }
-  return territori;
-}
+// getTerritori_ForLivello rimossa (dead code)
 
 // OUTFIT_CONFIG_DEFAULT, ABILITA_TIPI, ABILITA_VALORI rimossi (outfit/pose rimossi dal gioco)

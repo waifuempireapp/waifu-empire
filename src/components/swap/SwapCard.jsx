@@ -5,7 +5,7 @@ import { ikUrl } from '@/lib/imagekitUrl';
 
 const SWIPE_THRESHOLD = 80;
 
-export default function SwapCard({ waifu, onVote }) {
+export default function SwapCard({ waifu, onVote, expansionName, ownershipBadge }) {
   const cardRef = useRef(null);
   const startRef = useRef(null);
   const [offsetX, setOffsetX] = useState(0);
@@ -70,11 +70,12 @@ export default function SwapCard({ waifu, onVote }) {
         {/* Gradient bottom */}
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%', background: 'linear-gradient(transparent, rgba(3,2,12,0.95))' }} />
 
-        {/* Name */}
+        {/* Name + Espansione */}
         <div style={{ position: 'absolute', bottom: 20, left: 18, right: 18 }}>
           <div style={{ fontFamily: FF.display, fontSize: 22, color: '#fff', fontWeight: 800 }}>{waifu.nome}</div>
           <div style={{ fontFamily: FF.label, fontSize: 10, letterSpacing: '0.2em', color: 'rgba(241,235,255,0.5)', textTransform: 'uppercase', marginTop: 3 }}>
             {waifu.rarita} · {waifu.tipo}
+            {expansionName && <span style={{ color: 'rgba(174,156,255,0.6)', marginLeft: 6 }}>· {expansionName}</span>}
           </div>
         </div>
 

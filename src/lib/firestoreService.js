@@ -1282,13 +1282,12 @@ export async function getClassificaSettimanale(limitN = 200) {
       _nomeDisplay: data.nomeImpero || data.nome || (data.email?.split('@')[0]) || 'Giocatore',
       _punteggi: data.punteggiSettimana ?? 0,
       _territori: Object.values(data.territoriUtente || {}).filter(t => t?.conquistato).length,
-      _livelloMappa: data.livelloMappa ?? 1,
     };
   });
 
+  // Sort: punteggi settimanali desc → territori (mappa pixel) desc → data iscrizione asc
   utenti.sort((a, b) => {
     if (b._punteggi !== a._punteggi) return b._punteggi - a._punteggi;
-    if (b._livelloMappa !== a._livelloMappa) return b._livelloMappa - a._livelloMappa;
     if (b._territori !== a._territori) return b._territori - a._territori;
     return (a.creato?.toMillis?.() ?? 0) - (b.creato?.toMillis?.() ?? 0);
   });

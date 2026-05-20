@@ -60,16 +60,19 @@ export async function POST(request) {
       // Scala Kisses
       tx.update(userRef, { kisses: FieldValue.increment(-KISSES_COST) });
 
-      // Aggiungi carta alla collezione
+      // Aggiungi carta alla collezione (trovata_il per banner ultime 20 carte)
       const tipo   = chosenCard.tipo;
       const cardId = chosenCard.id;
+      const nowMs  = Date.now();
       if (tipo === 'waifu') {
         const ex = coll.waifu?.[cardId];
-        tx.set(collRef, { waifu: { [cardId]: ex ? { ...ex, copie: (ex.copie || 0) + 1 } : { copie: 1, livello: 1, stat_bonus: {} } } }, { merge: true });
+        tx.set(collRef, { waifu: { [cardId]: ex
+          ? { ...ex, copie: (ex.copie || 0) + 1, trovata_il: nowMs }
+          : { copie: 1, livello: 1, stat_bonus: {}, trovata_il: nowMs } } }, { merge: true });
       } else if (tipo === 'outfit') {
-        tx.set(collRef, { outfit: { [cardId]: { quantita: (coll.outfit?.[cardId]?.quantita || 0) + 1 } } }, { merge: true });
+        tx.set(collRef, { outfit: { [cardId]: { quantita: (coll.outfit?.[cardId]?.quantita || 0) + 1, trovata_il: nowMs } } }, { merge: true });
       } else if (tipo === 'posa') {
-        tx.set(collRef, { pose: { [cardId]: { quantita: (coll.pose?.[cardId]?.quantita || 0) + 1 } } }, { merge: true });
+        tx.set(collRef, { pose: { [cardId]: { quantita: (coll.pose?.[cardId]?.quantita || 0) + 1, trovata_il: nowMs } } }, { merge: true });
       }
 
       // Salva fishing attempt — per tutti i pack (ghost e reali)

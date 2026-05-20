@@ -863,10 +863,9 @@ function _HomeTab_UNUSED({ profilo, setProfilo, collezione, waifuCat, outfitCat,
       {/* ── BANNER ULTIME CARTE ── */}
       <BannerUltimeCarte
         tutteLeWaifu={tutteLeWaifu}
-        tuttiGliOutfit={tuttiGliOutfit}
-        tutteLePose={tutteLePose}
         outfitCat={outfitCat}
         poseCat={poseCat}
+        mosseCat={mosseCat}
         collezione={collezione}
         profilo={profilo}
         setProfilo={setProfilo}
@@ -966,11 +965,10 @@ function _HomeTab_UNUSED({ profilo, setProfilo, collezione, waifuCat, outfitCat,
 function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneClassifica }) {
   const vittorie = profilo.vittorie ?? 0;
   const sconfitte = profilo.sconfitte ?? 0;
-  const livelloMappa = profilo.livelloMappa ?? 1;
 
   const row1 = [
-    { icon: '🗺', val: `Lv.${livelloMappa}`, label: 'LIV. MAPPA',  col: '#9b59ff' },
     { icon: '🏴', val: territoriConquistati, label: 'TERRITORI',   col: '#ffd666' },
+    { icon: '🏆', val: posizioneClassifica != null ? `#${posizioneClassifica}` : '—', label: 'CLASSIFICA', col: '#9b59ff' },
   ];
 
   const row2 = [
@@ -1086,24 +1084,28 @@ function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneCla
  * @param {number}   props.totalPack       — Numero totale pacchetti disponibili.
  * @param {Function} props.setTab          — Callback navigazione tab.
  */
-function BannerUltimeCarte({ tutteLeWaifu, tuttiGliOutfit, tutteLePose, outfitCat, poseCat, collezione, profilo, setProfilo, user, totalPack, setTab }) {
-  const [cartaSel, setCartaSel] = useState(null); // Fase 3: carta selezionata per modal
+function BannerUltimeCarte({ tutteLeWaifu, outfitCat, poseCat, mosseCat = [], collezione, profilo, setProfilo, user, totalPack, setTab }) {
+  const [cartaSel, setCartaSel] = useState(null);
 
-  // Ultime 20 carte: ordinate per data acquisizione desc (più recente prima)
-  // Parsing robusto: Firestore Timestamp → toMillis(), seconds field, numero grezzo, Date string
+  // Ultime 20 carte: ordinate per trovata_il desc (con fallback su acquisito per retrocompat)
   const tsFromDati = (dati) => {
-    const a = dati?.acquisito;
-    if (!a) return 0;
-    if (typeof a.toMillis === 'function') return a.toMillis();
-    if (a.seconds) return a.seconds * 1000;
-    const n = Number(a);
+    const t = dati?.trovata_il ?? dati?.acquisito;
+    if (!t) return 0;
+    if (typeof t.toMillis === 'function') return t.toMillis();
+    if (t.seconds) return t.seconds * 1000;
+    const n = Number(t);
     return isNaN(n) ? 0 : n;
   };
-  const tutteOrdinatePerData = [
-    ...tutteLeWaifu.map(item => ({ ...item, _ts: tsFromDati(item.dati) })),
-    ...tuttiGliOutfit.map(item => ({ ...item, _ts: tsFromDati(item.dati) })),
-    ...tutteLePose.map(item => ({ ...item, _ts: tsFromDati(item.dati) })),
-  ].sort((a, b) => b._ts - a._ts).slice(0, 20);
+  // Waifu
+  const waifuItems = tutteLeWaifu.map(item => ({ ...item, _ts: tsFromDati(item.dati) }));
+  // Mosse attacco
+  const mosseItems = Object.entries(collezione.mosse || {}).map(([id, dati]) => {
+    const catalog = mosseCat.find(m => m.id === id);
+    return catalog ? { tipo: 'mossa', id, catalog, dati, _ts: tsFromDati(dati) } : null;
+  }).filter(Boolean);
+
+  const tutteOrdinatePerData = [...waifuItems, ...mosseItems]
+    .sort((a, b) => b._ts - a._ts).slice(0, 20);
 
   const hasAnyCard = tutteOrdinatePerData.length > 0;
 
@@ -1146,19 +1148,11 @@ function BannerUltimeCarte({ tutteLeWaifu, tuttiGliOutfit, tutteLePose, outfitCa
               </div>
             );
           }
-          if (item.tipo === 'outfit') {
-            const { id, o } = item;
+          if (item.tipo === 'mossa') {
+            const { id, catalog, dati } = item;
             return (
-              <div key={`o-${id}`} style={{ flexShrink: 0 }}>
-                <CartaOutfit outfit={o} dimensione="piccola" onClick={() => setCartaSel({ tipo: 'outfit', o })} />
-              </div>
-            );
-          }
-          if (item.tipo === 'posa') {
-            const { id, p } = item;
-            return (
-              <div key={`p-${id}`} style={{ flexShrink: 0 }}>
-                <CartaPosa posa={p} dimensione="piccola" onClick={() => setCartaSel({ tipo: 'posa', p })} />
+              <div key={`m-${id}`} style={{ flexShrink: 0 }}>
+                <CartaMossa mossa={catalog} datiUtente={dati} dimensione="piccola" />
               </div>
             );
           }
@@ -2057,7 +2051,7 @@ function ClassificaTab_LEGACY_UNUSED({ user }) {
                     {isMe && isTop3 && <span style={{ fontSize: 9, color: `${r3.nome}99`, marginLeft: 6 }}>· Tu</span>}
                   </div>
                   <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontSize: 8, color: 'rgba(167,139,250,0.4)', letterSpacing: 1 }}>
-                    Lv.{u._livelloMappa} · {fasciaLabel(pos)}
+                    {u._territori ?? 0} terr. · {fasciaLabel(pos)}
                   </div>
                 </div>
                 {/* Punteggio */}
@@ -3160,16 +3154,19 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, mosseCa
       if (c.tipo === 'waifu') c.isNuova = !nuovaCollezione.waifu[c.data.id];
       else if (c.tipo === 'mossa') c.isNuova = !(nuovaCollezione.mosse?.[c.data.id]?.copie > 0);
     });
+    const nowTs = Date.now(); // timestamp trovata_il (usato per banner ultime 20 carte)
     carte.forEach(c => {
       if (c.tipo === 'waifu') {
         if (nuovaCollezione.waifu[c.data.id]) {
           nuovaCollezione.waifu[c.data.id].copie++;
+          nuovaCollezione.waifu[c.data.id].trovata_il = nowTs;
         } else {
           nuovaCollezione.waifu[c.data.id] = {
             copie: 1, livello: 1,
             velocita: c.data.velocita_base ?? null,
             crit_chance: c.data.crit_chance_base ?? null,
             mosse_slot: { 1: null, 2: null, 3: null, 4: null },
+            trovata_il: nowTs,
           };
         }
         // Imposta levelup_pending quando copie è multiplo di 3 e livello < 10
@@ -3181,8 +3178,8 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, mosseCa
         const newCopie = curr.copie + 1;
         const levelupResult = checkMoveLevelUp({ ...curr, copie: newCopie }, c.data);
         nuovaCollezione.mosse[c.data.id] = levelupResult
-          ? { ...curr, copie: newCopie, ...levelupResult }
-          : { ...curr, copie: newCopie };
+          ? { ...curr, copie: newCopie, trovata_il: nowTs, ...levelupResult }
+          : { ...curr, copie: newCopie, trovata_il: nowTs };
       }
     });
     return carte;
@@ -4097,8 +4094,10 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
                 waifuDisponibili={Object.entries(collezione.waifu || {}).map(([id, dati]) => {
                   const w = waifuCat.find(x => x.id === id);
                   if (!w) return null;
-                  const mosseOk = Object.values(dati.mosse_slot ?? {}).filter(Boolean).length === 4;
-                  return mosseOk ? { ...w, copie: dati.copie, livello: dati.livello, stat_bonus: dati.stat_bonus, mosse_ok: true } : null;
+                  // Nel team editor mostro tutte le waifu in possesso
+                  // La restrizione 4 mosse si applica solo nel combattimento
+                  const mosseAssegnate = Object.values(dati.mosse_slot ?? {}).filter(Boolean).length;
+                  return w ? { ...w, copie: dati.copie, livello: dati.livello, stat_bonus: dati.stat_bonus, mosse_ok: mosseAssegnate === 4 } : null;
                 }).filter(Boolean)}
                 waifuSelezionate={teamWaifu}
                 onToggle={(id) => {
@@ -4168,31 +4167,79 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
       )}
 
       {/* DETTAGLIO CARTA MOSSA */}
-      {mossaSel && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-          onClick={e => e.target === e.currentTarget && setMossaSel(null)}>
-          <div style={{ background: 'rgba(10,7,38,0.97)', border: '1px solid rgba(174,156,255,0.3)', borderRadius: 20, padding: 24, maxWidth: 380, width: '100%' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-              <CartaMossa mossa={mossaSel.catalog} datiUtente={mossaSel.dati} dimensione="normale" />
-            </div>
-            {mossaSel.catalog.abilita && (
-              <div style={{ background: 'rgba(174,156,255,0.08)', border: '1px solid rgba(174,156,255,0.2)', borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
-                <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(174,156,255,0.7)', marginBottom: 4, letterSpacing: 1 }}>ABILITÀ</div>
-                <div style={{ fontFamily: 'Fredoka One', fontSize: 13, color: '#f5e6d3', lineHeight: 1.5 }}>{mossaSel.catalog.abilita}</div>
+      {mossaSel && (() => {
+        const { catalog, dati } = mossaSel;
+        const copie = dati.copie ?? 0;
+        const livello = dati.livello ?? 1;
+        const copieInLup = copie % 5;
+        const lupReady = copieInLup === 0 && copie > 0 && livello < 10;
+        // Indica quale stat migliora al prossimo level-up
+        const nextLevel = livello + 1;
+        const prossimaStat = nextLevel % 2 === 0 ? 'Danno Critico' : 'Danno';
+        const [lupBusy, setLupBusy] = useState(false);
+
+        const eseguiLevelUp = async () => {
+          if (!lupReady || lupBusy) return;
+          setLupBusy(true);
+          try {
+            const token = await user.getIdToken();
+            const res = await fetch(`/api/mosse/${catalog.id}/level-up`, {
+              method: 'PATCH',
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) throw new Error((await res.json()).error);
+            const data = await res.json();
+            const nuova = JSON.parse(JSON.stringify(collezione));
+            if (!nuova.mosse) nuova.mosse = {};
+            nuova.mosse[catalog.id] = { ...dati, ...data };
+            setColl(nuova);
+            saveCollezione(user.uid, nuova);
+            setMossaSel({ catalog, dati: { ...dati, ...data } });
+            mostraNotif(`Level Up! +${nextLevel % 2 === 0 ? 'Danno Critico' : 'Danno'}`, '#06d6a0');
+          } catch (e) { mostraNotif(e.message, '#ff3d3d'); }
+          finally { setLupBusy(false); }
+        };
+
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+            onClick={e => e.target === e.currentTarget && setMossaSel(null)}>
+            <div style={{ background: 'rgba(10,7,38,0.97)', border: '1px solid rgba(174,156,255,0.3)', borderRadius: 20, padding: 24, maxWidth: 380, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+                <CartaMossa mossa={catalog} datiUtente={dati} dimensione="normale" />
               </div>
-            )}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
-              {[['Copie', mossaSel.dati.copie ?? 0], ['Prossimo LvUp', `${5 - ((mossaSel.dati.copie ?? 0) % 5) || 5}/${5}`], ['Livello Max', 10]].map(([l, v]) => (
-                <div key={l} style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 8, padding: '8px 6px', textAlign: 'center' }}>
-                  <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(245,158,11,0.6)', marginBottom: 4 }}>{l}</div>
-                  <div style={{ fontFamily: 'Orbitron', fontSize: 13, color: '#f5e6d3', fontWeight: 700 }}>{v}</div>
+              {catalog.abilita && (
+                <div style={{ background: 'rgba(174,156,255,0.08)', border: '1px solid rgba(174,156,255,0.2)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+                  <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(174,156,255,0.7)', marginBottom: 4, letterSpacing: 1 }}>ABILITÀ</div>
+                  <div style={{ fontSize: 12, color: '#f5e6d3', lineHeight: 1.5 }}>{catalog.abilita}</div>
                 </div>
-              ))}
+              )}
+              {/* Progress copie verso level-up */}
+              <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(245,158,11,0.7)' }}>COPIE {copie}</span>
+                  {livello < 10
+                    ? <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: lupReady ? '#06d6a0' : 'rgba(245,158,11,0.5)' }}>{lupReady ? '⬆ LEVEL UP PRONTO!' : `${copieInLup}/5 al prossimo Lv`}</span>
+                    : <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: '#ffc861' }}>LIVELLO MASSIMO</span>
+                  }
+                </div>
+                {livello < 10 && (
+                  <div style={{ height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3 }}>
+                    <div style={{ height: '100%', width: `${lupReady ? 100 : (copieInLup / 5) * 100}%`, background: lupReady ? '#06d6a0' : '#f59e0b', borderRadius: 3, transition: 'width 0.3s' }} />
+                  </div>
+                )}
+              </div>
+              {/* Bottone Level Up */}
+              {lupReady && (
+                <button onClick={eseguiLevelUp} disabled={lupBusy}
+                  style={{ width: '100%', padding: '12px', background: lupBusy ? 'rgba(6,214,160,0.3)' : 'linear-gradient(135deg,#06d6a0,#0ea5e9)', border: 'none', borderRadius: 12, color: '#000', fontFamily: 'Orbitron', fontSize: 11, fontWeight: 700, cursor: lupBusy ? 'not-allowed' : 'pointer', marginBottom: 10, letterSpacing: '0.1em' }}>
+                  {lupBusy ? '⏳' : `⬆ LEVEL UP — Migliora: ${prossimaStat}`}
+                </button>
+              )}
+              <button onClick={() => setMossaSel(null)} style={{ width: '100%', padding: '10px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: '#f5e6d3', fontFamily: 'Orbitron', fontSize: 10, cursor: 'pointer' }}>Chiudi</button>
             </div>
-            <button onClick={() => setMossaSel(null)} style={{ width: '100%', padding: '10px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: '#f5e6d3', fontFamily: 'Orbitron', fontSize: 10, cursor: 'pointer' }}>Chiudi</button>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
@@ -5809,7 +5856,6 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   const [territoriUtente, setTerritoriUtente] = useState({});
   const [terrSel, setTerrSel] = useState(null);
   const [livelloCPU, setLivelloCPU] = useState(1);
-  const [livelloMappa, setLivelloMappa] = useState(1);
 
   // ── STATO SELEZIONE TEAM ───────────────────────────────────
   const [modoBattaglia, setModoBattaglia] = useState(false);
@@ -5899,7 +5945,6 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   useEffect(() => {
     if (!profilo) return;
     let terr = profilo.territoriUtente || {};
-    setLivelloMappa(profilo.livelloMappa || 1);
     setLivelloCPU(profilo.livelloCPU || 1);
     const terrKeys = Object.keys(terr);
     const haImperiAssegnati = terrKeys.length > 0 && terrKeys.some(k => terr[k]?.impero);
@@ -6155,19 +6200,19 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
       const nps = (profilo.pacchettiSfida ?? 0) + 1;
       const nv = (profilo.vittorie ?? 0) + 1;
       setProfilo({ ...profilo, pacchettiSfida: nps, territoriUtente: nt, vittorie: nv });
-      await updateUserProfile(user.uid, { territoriUtente: nt, pacchettiSfida: nps, livelloMappa, livelloCPU, vittorie: nv });
+      await updateUserProfile(user.uid, { territoriUtente: nt, pacchettiSfida: nps, livelloCPU, vittorie: nv });
       const numConq = Object.values(nt).filter(t => t?.conquistato).length;
       if (numConq >= TERRITORI.length) {
         setTimeout(async () => {
-          mostraNotif('ðŸŽ‰ LIVELLO COMPLETATO!', '#f5a623');
-          const nlm = livelloMappa + 1; const nlc = livelloCPU + 1;
+          mostraNotif('🎉 MAPPA COMPLETATA!', '#f5a623');
+          const nlc = livelloCPU + 1;
           const nuoviTerr = {};
           TERRITORI.forEach((t, idx) => {
             if (Math.random() < 0.15) nuoviTerr[t.id] = { conquistato: false, impero: 'Terra di Nessuno', coloreImpero: '#444444' };
             else { const i = idx % NOMI_IMPERI.length; nuoviTerr[t.id] = { conquistato: false, impero: NOMI_IMPERI[i], coloreImpero: COLORI_IMPERI[i] }; }
           });
-          setTerritoriUtente(nuoviTerr); setLivelloMappa(nlm); setLivelloCPU(nlc);
-          await updateUserProfile(user.uid, { territoriUtente: nuoviTerr, livelloMappa: nlm, livelloCPU: nlc });
+          setTerritoriUtente(nuoviTerr); setLivelloCPU(nlc);
+          await updateUserProfile(user.uid, { territoriUtente: nuoviTerr, livelloCPU: nlc });
         }, 2500);
       }
     } else {
@@ -6256,23 +6301,27 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
     }
     if (mazzoUtente.length < 5) { mostraNotif('Team insufficiente!', '#ff3d3d'); return; }
 
-    // FIX: CPU mazzo da carte reali del DB, scalato per livello CPU
+    // CPU mazzo da carte reali del DB, scalato per livello e difficoltà territorio
+    // Difficoltà: easy(base), medium(+25%HP/+15%spd), hard(+60%/+30%), extreme(+100%/+50%)
+    const terrDifficulty = terrSel?._difficulty || 'easy';
+    const diffMult = { easy: 1.0, medium: 1.25, hard: 1.60, extreme: 2.0 }[terrDifficulty] ?? 1.0;
     const bonus = (livelloCPU - 1) * 0.5;
-    // Pesca 5 waifu reali dal catalogo (esclude quelle del player per varietà)
+    const totalMult = 1 + bonus * 0.5; // livello CPU contribuisce
+    const cpuHpMult = totalMult * diffMult;
     const playerIds = new Set(mazzoUtente.map(w => w.id));
     const cpuPool = waifuCat.filter(w => !playerIds.has(w.id));
     const cpuSource = cpuPool.length >= 5 ? cpuPool : waifuCat;
-    // Shuffle e prendi 5
     const cpuShuffled = [...cpuSource].sort(() => Math.random() - 0.5).slice(0, 5);
-    const mazzoCPU = cpuShuffled.map((w, i) => ({
+    const mazzoCPU = cpuShuffled.map((w) => ({
       ...w,
       id: `cpu_${w.id}`,
-      // Applica bonus livello CPU sulle stat
       tette:          Math.min(7,    Math.round((w.tette          || 3) * (1 + bonus * 0.3))),
       taglia_piedi:   Math.min(45,   Math.round((w.taglia_piedi   || 36) * (1 + bonus * 0.05))),
       eta:            Math.min(5000, Math.round((w.eta             || 20) * (1 + bonus * 0.1))),
       colore_capelli: Math.min(10,   w.colore_capelli || 1),
       esperienza:     Math.min(5000, Math.round((w.esperienza      || 30) * (1 + bonus * 0.4))),
+      _cpuHpMult: cpuHpMult, // usato da WaifuBattleArena per scalare HP
+      _difficulty: terrDifficulty,
     }));
 
     const nomiImperi = ["Drago Nero", "Rosa d'Oro", "Ombra Viola", "Fenice Rossa", "Luna d'Argento", "Serpente Verde"];
@@ -6978,7 +7027,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
               color: '#a78bfa',
               letterSpacing: 1.5,
               textTransform: 'uppercase',
-            }}>MAPPA LV.{livelloMappa}</span>
+            }}>{numConquistati} TERRITORI</span>
           </div>
           {/* Contatore conquistati */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

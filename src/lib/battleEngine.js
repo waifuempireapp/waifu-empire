@@ -713,30 +713,35 @@ export function incrementTurn(tracker) {
  * @returns {number} Indice della mossa scelta (0–3)
  */
 export function cpuChooseMove(cpuWaifu, playerWaifu, lastMoveIndex) {
-  // Filtra mosse disponibili: PP > 0 E non in cooldown implicito
-  const available = cpuWaifu.moves
+  // Filtra mosse con PP > 0 E non in cooldown
+  const allAvail = cpuWaifu.moves
     .map((m, i) => ({ move: m, index: i }))
     .filter(({ move, index }) =>
       (move.pp ?? 0) > 0 && !isMoveBlocked(lastMoveIndex, index, move)
     );
 
-  if (available.length === 0) {
-    // Fallback: tutte esaurite o in cooldown — ignora cooldown, prende la prima con PP > 0
+  if (allAvail.length === 0) {
     const fallback = cpuWaifu.moves.findIndex(m => (m.pp ?? 0) > 0);
-    return fallback >= 0 ? fallback : 0; // 0 come ultima risorsa (anche se PP = 0)
+    return fallback >= 0 ? fallback : 0;
   }
 
-  // Valuta efficacia di ogni mossa disponibile: score = power × multiplier tipo
-  const scored = available.map(({ move, index }) => {
+  // Strategia variabile: escludi l'ultima mossa usata se ci sono alternative
+  const available = allAvail.length > 1 && lastMoveIndex != null
+    ? allAvail.filter(({ index }) => index !== lastMoveIndex)
+    : allAvail;
+  const pool = available.length > 0 ? available : allAvail;
+
+  // Valuta efficacia: score = power × type multiplier
+  const scored = pool.map(({ move, index }) => {
     const { multiplier } = getEffectiveness(move.type, cpuWaifu.type, playerWaifu.type);
     return { index, score: (move.power ?? 0) * multiplier };
   });
 
   scored.sort((a, b) => b.score - a.score);
 
-  // Tra le mosse con score entro ±5 dal massimo, scegli casualmente
-  // Questo evita che la CPU usi sempre la stessa mossa in caso di tie
-  const top = scored.filter(s => Math.abs(s.score - scored[0].score) < 5);
+  // Tra le mosse con score simile (±20%), scegli casualmente per varietà
+  const topScore = scored[0].score;
+  const top = scored.filter(s => s.score >= topScore * 0.80);
   return top[Math.floor(Math.random() * top.length)].index;
 }
 

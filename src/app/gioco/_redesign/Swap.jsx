@@ -15,8 +15,9 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
   const [toast, setToast]       = useState(null);
   const [milestone, setMilestone] = useState(null);
   const [showAd, setShowAd]     = useState(false);
-  const [exhausted, setExhausted] = useState(false); // nessuna waifu rimasta
+  const [exhausted, setExhausted] = useState(false);
   const [howExpanded, setHowExpanded] = useState(false);
+  const [swapStatus, setSwapStatus] = useState(null); // { hasSwapPass, dailyVotes, dailyLimit, votesRemaining }
 
   const swipeCountRef = useRef(0);
   // Tiene traccia di tutti gli ID già visti in questa sessione
@@ -58,7 +59,15 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
   }, [user]);
 
   useEffect(() => {
-    Promise.all([loadBatch(), loadConfig()]).finally(() => setLoading(false));
+    // Carica batch, config e stato voti giornalieri in parallelo
+    const loadStatus = async () => {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch('/api/swap/status', { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) setSwapStatus(await res.json());
+      } catch (_) {}
+    };
+    Promise.all([loadBatch(), loadConfig(), loadStatus()]).finally(() => setLoading(false));
   }, []);
 
   // Carica il prossimo batch quando restano < 3 waifu in coda E non sta già caricando
@@ -77,14 +86,6 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
     seenIdsRef.current.add(waifu.id);
 
     swipeCountRef.current += 1;
-    const adInterval = swapConfig?.adInterval ?? 10;
-
-    // Mostra pubblicità ogni adInterval swipe → carica anche il prossimo batch
-    if (swipeCountRef.current % adInterval === 0) {
-      setShowAd(true);
-      // Carica il prossimo batch durante la pubblicità (non disturba l'utente)
-      loadBatch();
-    }
 
     setCurrentIdx(i => i + 1);
 
@@ -112,19 +113,72 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
         setMilestone({ milestone: data.milestoneHit, amount: data.milestoneEarned });
         setProfilo(p => ({ ...p, kisses: (p.kisses ?? 0) + data.milestoneEarned }));
       }
-      // Mostra pubblicità se segnalato dal server (override client-side per utenti senza pass)
-      if (data.showAd) setShowAd(true);
+      // Pubblicità ogni 5 voti (solo senza Swap Pass) — una volta sola dopo il voto
+      if (data.showAd) {
+        setShowAd(true);
+        loadBatch(); // precarica il prossimo batch durante la pubblicità
+      }
     } catch (e) { console.error(e); }
   };
 
   const currentWaifu = queue[currentIdx];
   const remaining = queue.length - currentIdx;
 
+  // Badge stato waifu: 'owned' | 'seen' | 'new'
+  // 'owned' = in collezione | 'seen' = ha un voto in swap_votes | 'new' = mai vista
+  const getOwnershipBadge = (w) => {
+    if (!w) return null;
+    if (profilo && swapStatus) {
+      // Controlliamo se la waifu è in collezione (passiamo collezione come prop)
+      // Fallback: usiamo il campo _owned iniettato nel batch dalla API swap/batch
+      if (w._owned) return 'owned';
+      if (w._seen)  return 'seen';
+    }
+    return 'new';
+  };
+  const ownershipBadge = getOwnershipBadge(currentWaifu);
+  const BADGE_STYLE = {
+    owned: { bg: 'rgba(6,214,160,0.2)', border: 'rgba(6,214,160,0.5)', color: '#06d6a0', label: '✓ Già tua' },
+    seen:  { bg: 'rgba(245,158,11,0.15)', border: 'rgba(245,158,11,0.4)', color: '#f59e0b', label: '👁 Già vista' },
+    new:   { bg: 'rgba(174,156,255,0.12)', border: 'rgba(174,156,255,0.3)', color: '#a78bfa', label: '✨ Nuova!' },
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '70vh', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ fontFamily: FF.display, fontSize: 40, color: C.sakura, animation: 'pulse 1.2s ease-in-out infinite' }}>🩷</div>
         <div style={{ fontFamily: FF.label, fontSize: 10, letterSpacing: '0.22em', color: 'rgba(174,156,255,0.5)', marginTop: 12, textTransform: 'uppercase' }}>Caricamento…</div>
+      </div>
+    );
+  }
+
+  // Schermata limite voti raggiunto
+  const isLimitReached = swapStatus && !swapStatus.hasSwapPass && (swapStatus.votesRemaining === 0);
+  if (isLimitReached) {
+    const msToMidnight = (() => {
+      const now = new Date();
+      const midnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+      return midnight - now;
+    })();
+    const h = Math.floor(msToMidnight / 3600000);
+    const m = Math.floor((msToMidnight % 3600000) / 60000);
+    const s = Math.floor((msToMidnight % 60000) / 1000);
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '80vh', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center', gap: 20 }}>
+        <div style={{ fontSize: 56 }}>🚫</div>
+        <div style={{ fontFamily: FF.display, fontSize: 20, color: C.sakura, fontWeight: 800 }}>Limite voti raggiunto</div>
+        <div style={{ fontFamily: FF.body, fontSize: 13, color: 'rgba(241,235,255,0.6)', lineHeight: 1.6, maxWidth: 320 }}>
+          Hai usato tutti i 50 voti giornalieri. Il contatore si azzera a mezzanotte (UTC).
+        </div>
+        <div style={{ fontFamily: FF.mono, fontSize: 28, color: C.gold, fontWeight: 700 }}>
+          {String(h).padStart(2,'0')}:{String(m).padStart(2,'0')}:{String(s).padStart(2,'0')}
+        </div>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('impero:apri-negozio'))}
+          style={{ padding: '14px 28px', background: 'linear-gradient(135deg, #ec4899, #a855f7)', border: 'none', borderRadius: 14, color: '#fff', fontFamily: FF.label, fontSize: 12, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.1em' }}>
+          💋 Acquista Swap Pass — Voti illimitati
+        </button>
+        <button onClick={() => setTab?.('home')} style={{ background: 'transparent', border: 'none', color: 'rgba(241,235,255,0.4)', fontFamily: FF.label, fontSize: 10, cursor: 'pointer' }}>← Torna alla Home</button>
       </div>
     );
   }
@@ -145,9 +199,16 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
             <div style={{ fontFamily: FF.display, fontSize: 20, color: '#fff', fontWeight: 800 }}>Waifu Swap</div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <KissesIcon size={16} />
-          <span style={{ fontFamily: FF.display, fontSize: 16, color: C.gold, fontWeight: 700 }}>{profilo?.kisses ?? 0}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <KissesIcon size={16} />
+            <span style={{ fontFamily: FF.display, fontSize: 16, color: C.gold, fontWeight: 700 }}>{profilo?.kisses ?? 0}</span>
+          </div>
+          {swapStatus && (
+            <div style={{ fontFamily: FF.label, fontSize: 9, color: swapStatus.hasSwapPass ? 'rgba(6,214,160,0.8)' : 'rgba(241,235,255,0.4)', letterSpacing: '0.1em' }}>
+              {swapStatus.hasSwapPass ? '∞ voti illimitati' : `${swapStatus.dailyVotes}/${swapStatus.dailyLimit} voti oggi`}
+            </div>
+          )}
         </div>
       </div>
 
@@ -212,7 +273,24 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
               <span style={{ color: 'rgba(108,240,224,0.5)', marginLeft: 8 }}>⟳ caricamento…</span>
             )}
           </div>
-          <SwapCard key={currentWaifu?.id ?? currentIdx} waifu={currentWaifu} onVote={handleVote} />
+          {/* Badge stato waifu sopra la carta */}
+          {ownershipBadge && BADGE_STYLE[ownershipBadge] && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+              <div style={{
+                background: BADGE_STYLE[ownershipBadge].bg,
+                border: `1px solid ${BADGE_STYLE[ownershipBadge].border}`,
+                color: BADGE_STYLE[ownershipBadge].color,
+                borderRadius: 999, padding: '4px 14px',
+                fontFamily: FF.label, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
+              }}>{BADGE_STYLE[ownershipBadge].label}</div>
+            </div>
+          )}
+          <SwapCard
+            key={currentWaifu?.id ?? currentIdx}
+            waifu={currentWaifu}
+            onVote={handleVote}
+            expansionName={currentWaifu?.espansione_nome ?? null}
+          />
         </div>
       ) : exhausted ? (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>

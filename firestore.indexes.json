@@ -15,6 +15,30 @@
         { "fieldPath": "forUid",    "order": "ASCENDING" },
         { "fieldPath": "expiresAt", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "raid_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status",    "order": "ASCENDING" },
+        { "fieldPath": "startedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "raid_participants",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "eventId",     "order": "ASCENDING" },
+        { "fieldPath": "damageDealt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "map_missions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status",    "order": "ASCENDING" },
+        { "fieldPath": "startedAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

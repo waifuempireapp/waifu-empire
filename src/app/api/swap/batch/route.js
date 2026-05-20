@@ -93,23 +93,33 @@ export async function GET(request) {
     const shuffled = [...available].sort(() => Math.random() - 0.5);
     const selectedIds = shuffled.slice(0, BATCH_SIZE);
 
-    // Leggi solo i 10 documenti selezionati + profilo utente in parallelo
+    // Leggi documenti waifu + profilo utente in parallelo
     const refs = selectedIds.map(id => adminDb.collection('catalogo_waifu').doc(id));
-    const [docs, userSnap] = await Promise.all([
+    const [docs, userSnap, collSnap] = await Promise.all([
       adminDb.getAll(...refs),
       adminDb.collection('users').doc(uid).get(),
+      adminDb.collection('users').doc(uid).collection('collezione').doc('main').get(),
     ]);
     const userData = userSnap.exists ? userSnap.data() : {};
     const hasHardPass = !!(userData.hardPass);
     const hasSwapPass = !!(userData.swap_pass) && (!userData.swap_pass_expires_at || (userData.swap_pass_expires_at.toMillis?.() ?? 0) > Date.now());
+    const userWaifu = collSnap.exists ? (collSnap.data()?.waifu ?? {}) : {};
+
+    // Recupera i voti per le waifu del batch (per badge "già vista")
+    const waifuIds = docs.filter(d => d.exists).map(d => d.id);
+    const voteRefs = waifuIds.map(id => adminDb.collection('swap_votes').doc(`${uid}_${id}`));
+    const voteSnaps = voteRefs.length > 0 ? await adminDb.getAll(...voteRefs) : [];
+    const seenSet = new Set(voteSnaps.filter(s => s.exists).map(s => s.id.replace(`${uid}_`, '')));
 
     const waifu = docs
       .filter(d => d.exists)
-      .map(d => ({ id: d.id, ...d.data() }))
+      .map(d => ({
+        id: d.id, ...d.data(),
+        _owned: !!userWaifu[d.id],        // già in collezione
+        _seen: seenSet.has(d.id),         // già votata (like o dislike)
+      }))
       .filter(w => {
-        // Escludi Immersive Hard dalla Swap (non partecipano alla classifica)
         if (w.rarita === 'immersivo' && w.asset_video_hard) return false;
-        // Escludi Hot se utente non ha Hard Pass
         if (w.hot && !hasHardPass) return false;
         return true;
       });
