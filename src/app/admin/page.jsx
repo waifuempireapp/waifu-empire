@@ -1925,26 +1925,25 @@ function generaNomeUnico(usati) {
 }
 
 // === DISTRIBUZIONE RARITÀ BILANCIATA ===
-function assegnaRaritaDistribuita(indice, totale) {
-  // Distribuzione: ~55% comune, ~27% raro, ~12% epico, ~5% legg, ~1% immersivo
-  const pct = indice / totale;
-  if (pct < 0.55) return 'comune';
-  if (pct < 0.82) return 'raro';
-  if (pct < 0.94) return 'epico';
-  if (pct < 0.99) return 'leggendario';
-  return 'immersivo';
+// Tutte le nuove waifu partono con rarità comune (salgono via Waifu Swap)
+function assegnaRaritaDistribuita() {
+  return 'comune';
 }
 
-// === GENERAZIONE STATS RANDOM CON DISTRIBUZIONE ===
-function generaStatsRandom(indice, totale) {
-  // Distribuzione variata per evitare clustering
-  const seed = indice * 7919 + 1013; // numeri primi per distribuzione
+// === GENERAZIONE STATS RANDOM NEI RANGE CONFIGURATI ===
+// ranges: oggetto { tette:{min,max}, eta:{min,max}, ... } da config/stat_ranges
+function generaStatsRandom(indice, totale, ranges = STAT_RANGES_DEFAULT) {
+  const seed = indice * 7919 + 1013;
+  const rnd = (r, shift) => {
+    const span = r.max - r.min + 1;
+    return r.min + Math.abs((seed >> shift) % span);
+  };
   return {
-    tette:          Math.max(1,  Math.min(7,    1  + ((seed)      % 7))),   // 1-7
-    taglia_piedi:   Math.max(34, Math.min(45,   34 + ((seed >> 3) % 12))),  // 34-45
-    eta:            Math.max(1,  Math.min(5000, 1  + ((seed >> 5) % 100))), // 1-5000 (inizialmente valori ragionevoli 1-100)
-    colore_capelli: Math.max(1,  Math.min(10,   1  + ((seed >> 8) % 10))),  // 1-10
-    esperienza:     Math.max(0,  Math.min(5000, 0  + ((seed >> 10) % 201))),// 0-5000 (inizialmente 0-200)
+    tette:          Math.max(ranges.tette.min,          Math.min(ranges.tette.max,          rnd(ranges.tette, 0))),
+    taglia_piedi:   Math.max(ranges.taglia_piedi.min,   Math.min(ranges.taglia_piedi.max,   rnd(ranges.taglia_piedi, 3))),
+    eta:            Math.max(ranges.eta.min,             Math.min(ranges.eta.max,             rnd(ranges.eta, 5))),
+    colore_capelli: Math.max(ranges.colore_capelli.min,  Math.min(ranges.colore_capelli.max,  rnd(ranges.colore_capelli, 8))),
+    esperienza:     Math.max(ranges.esperienza.min,      Math.min(ranges.esperienza.max,      rnd(ranges.esperienza, 10))),
   };
 }
 
@@ -1960,13 +1959,25 @@ Il JSON deve avere questi campi:
 Esempio di risposta: {"tette":4,"eta":22,"colore_capelli":3,"hot":false}`;
 
 function BulkUploadTab({ waifu, ricarica, flash }) {
-  const [files, setFiles] = useState([]);          // File[] delle immagini selezionate
-  const [previews, setPreviews] = useState([]);     // {file, url, nome, stats, rarita, status}[]
-  const [fase, setFase] = useState('select');       // 'select' | 'preview' | 'uploading' | 'done'
+  const [files, setFiles] = useState([]);
+  const [previews, setPreviews] = useState([]);
+  const [fase, setFase] = useState('select');
   const [progresso, setProgresso] = useState({ fatto: 0, totale: 0, errori: 0 });
   const [usaAI, setUsaAI] = useState(true);
-  const [aiAnalisi, setAiAnalisi] = useState(false); // sta analizzando con AI?
-  const [risultati, setRisultati] = useState([]);    // waifu create con successo
+  const [aiAnalisi, setAiAnalisi] = useState(false);
+  const [risultati, setRisultati] = useState([]);
+  const [statRanges, setStatRanges] = useState(STAT_RANGES_DEFAULT);
+
+  // Carica i range configurati da Admin al montaggio
+  useEffect(() => {
+    import('@/lib/firebase').then(({ db }) => {
+      import('firebase/firestore').then(({ doc, getDoc }) => {
+        getDoc(doc(db, 'config', 'stat_ranges'))
+          .then(s => { if (s.exists()) setStatRanges({ ...STAT_RANGES_DEFAULT, ...s.data() }); })
+          .catch(() => {});
+      });
+    });
+  }, []);
 
   const nomiUsati = new Set(waifu.map(w => w.nome));
 
@@ -1987,8 +1998,8 @@ function BulkUploadTab({ waifu, ricarica, flash }) {
     const prev = selected.map((file, i) => {
       const nome = generaNomeUnico(nomiLocali);
       nomiLocali.add(nome);
-      const stats = generaStatsRandom(shuffled[i], selected.length);
-      const rarita = assegnaRaritaDistribuita(shuffled[i], selected.length);
+      const stats = generaStatsRandom(shuffled[i], selected.length, statRanges);
+      const rarita = assegnaRaritaDistribuita();
       return {
         file,
         url: URL.createObjectURL(file),
@@ -2103,9 +2114,11 @@ function BulkUploadTab({ waifu, ricarica, flash }) {
         const { url } = await uploadRes.json();
 
         // 2) Crea waifu in Firestore
+        // Nota: upsertWaifu calcola automaticamente velocita_base e crit_chance_base
+        // applicando il moltiplicatore rarità da config/rarity_multipliers
         const waifuData = {
           nome: p.nome,
-          rarita: p.rarita,
+          rarita: 'comune', // tutte le nuove waifu partono da comune
           tette: p.stats.tette,
           taglia_piedi: p.stats.taglia_piedi,
           eta: p.stats.eta,
@@ -2115,12 +2128,13 @@ function BulkUploadTab({ waifu, ricarica, flash }) {
           palette: p.palette,
           asset_statica: url,
           asset_paperdoll: '',
-          asset_immersiva: p.rarita === 'leggendario' || p.rarita === 'immersivo' ? url : '',
+          asset_immersiva: '',
           fillers: { outfit: '', fanservice: '', posa: '' },
-          hot: p.hot === true, // rilevato da AI o impostato manualmente
+          hot: p.hot === true,
         };
 
         const newId = await upsertWaifu(null, waifuData);
+        // velocita_base e crit_chance_base sono stati salvati da upsertWaifu
         riusciti.push({ ...waifuData, id: newId, imageUrl: url });
 
         // Aggiorna preview
@@ -2177,8 +2191,8 @@ function BulkUploadTab({ waifu, ricarica, flash }) {
     const shuffled = [...Array(previews.length).keys()].sort(() => Math.random() - 0.5);
     const nuovo = previews.map((p, i) => ({
       ...p,
-      stats: generaStatsRandom(shuffled[i] + Date.now(), previews.length),
-      rarita: assegnaRaritaDistribuita(shuffled[i], previews.length),
+      stats: generaStatsRandom(shuffled[i] + Date.now(), previews.length, statRanges),
+      rarita: assegnaRaritaDistribuita(),
     }));
     setPreviews(nuovo);
     flash('Stats rigenerate!');
@@ -2370,6 +2384,29 @@ function BulkUploadTab({ waifu, ricarica, flash }) {
                       style={{ ...inputStyle, padding: 2, fontSize: 9, width: '100%' }} />
                   </div>
                 </div>
+
+                {/* Preview velocità e crit% calcolati con moltiplicatore comune 0.50 */}
+                {(() => {
+                  const s = p.stats;
+                  const t=(s.tette-1)/6, e=(s.eta-18)/4982, es=s.esperienza/5000;
+                  const c=(s.colore_capelli-1)/8, pi=(s.taglia_piedi-34)/11;
+                  const vRaw = ((1-t)*0.20+(1-e)*0.20+es*0.25+(1-c)*0.15+(1-pi)*0.20)*999+1;
+                  const cRaw = t*0.20+e*0.20+(1-es)*0.25+c*0.15+pi*0.20;
+                  const vel = Math.min(300, Math.max(1, Math.round(vRaw*0.50)));
+                  const crit = Math.min(20, Math.max(5, Math.round(Math.min(0.60,Math.max(0.05,cRaw))*0.50*100)));
+                  return (
+                    <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                      <div style={{ flex: 1, background: 'rgba(0,200,255,0.08)', border: '1px solid rgba(0,200,255,0.2)', borderRadius: 4, padding: '2px 4px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 7, color: 'rgba(0,200,255,0.6)' }}>VEL</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#00C8FF' }}>{vel}</div>
+                      </div>
+                      <div style={{ flex: 1, background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: 4, padding: '2px 4px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 7, color: 'rgba(245,166,35,0.6)' }}>CRIT%</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#f5a623' }}>{crit}%</div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Bottone rimuovi */}
                 <button onClick={() => rimuoviPreview(i)} style={{ ...btnSecondario, width: '100%', marginTop: 4, padding: '3px 0', fontSize: 9, borderColor: '#ef444440', color: '#ef4444' }}>✕ RIMUOVI</button>
