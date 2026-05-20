@@ -1,4 +1,4 @@
-// src/app/admin/page.jsx
+﻿// src/app/admin/page.jsx
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -124,6 +124,7 @@ export default function AdminPage() {
           { k: 'drops', l: '📦 Drops' },
           { k: 'waifu', l: '👑 Waifu' },
           { k: 'bulk', l: '🚀 Caricamento Massivo' },
+          { k: 'associa', l: '🖼 Associa Immagini' },
           { k: 'waifu-types', l: '🌀 Tipi Waifu' },
           { k: 'mosse', l: '⚔ Mosse Attacco' },
           { k: 'rarity-mult', l: '⚡ Moltiplicatori' },
@@ -151,6 +152,7 @@ export default function AdminPage() {
         {tab === 'drops' && <DropsTab drops={drops} waifu={waifu} mosse={mosse} ricarica={carica} flash={flash} />}
         {tab === 'waifu' && <WaifuTab waifu={waifu} drops={drops} ricarica={carica} flash={flash} />}
         {tab === 'bulk' && <BulkUploadTab waifu={waifu} ricarica={carica} flash={flash} />}
+        {tab === 'associa' && <AssociaImmaginiTab waifu={waifu} ricarica={carica} flash={flash} user={user} />}
         {tab === 'waifu-types' && <TipiWaifuTab flash={flash} />}
         {tab === 'mosse' && <MosseTab mosse={mosse} waifu={waifu} ricarica={carica} flash={flash} user={user} />}
         {tab === 'rarity-mult' && <RarityMultTab flash={flash} />}
@@ -3891,6 +3893,123 @@ function ConfigMosseTab({ flash }) {
           ))}
         </div>
       ))}
+    </div>
+  );
+}
+
+// AssociaImmaginiTab — carica immagini per waifu esistenti (post migrazione Cloudinary→ImageKit)
+function AssociaImmaginiTab({ waifu, ricarica, flash, user }) {
+  const TIPI = ['asset_statica','asset_immersiva','asset_video','asset_video_hard'];
+  const TIPI_LABEL = { asset_statica: '📷 Statica', asset_immersiva: '🖼 Immersiva', asset_video: '🎬 Video Soft', asset_video_hard: '🔞 Video Hard' };
+  const [filtro, setFiltro] = useState('mancanti');
+  const [ricerca, setRicerca] = useState('');
+  const [tipoSel, setTipoSel] = useState('asset_statica');
+  const [pending, setPending] = useState({});
+  const [uploading, setUploading] = useState(false);
+  const [progresso, setProgresso] = useState({ fatto: 0, totale: 0, errori: 0 });
+
+  const lista = waifu
+    .filter(w => filtro === 'tutte' || !w[tipoSel])
+    .filter(w => !ricerca || w.nome.toLowerCase().includes(ricerca.toLowerCase()))
+    .sort((a, b) => a.nome.localeCompare(b.nome));
+
+  const handleFileSelect = (waifuId, file) => {
+    if (!file) return;
+    setPending(prev => ({ ...prev, [waifuId]: { file, previewUrl: URL.createObjectURL(file) } }));
+  };
+
+  const rimuoviPending = (waifuId) => {
+    setPending(prev => { const next = { ...prev }; delete next[waifuId]; return next; });
+  };
+
+  const caricaTutto = async () => {
+    const entries = Object.entries(pending);
+    if (entries.length === 0) { flash('Nessuna immagine selezionata', '#f59e0b'); return; }
+    setUploading(true);
+    setProgresso({ fatto: 0, totale: entries.length, errori: 0 });
+    let errori = 0;
+    for (let i = 0; i < entries.length; i++) {
+      const [waifuId, { file }] = entries[i];
+      try {
+        const isVideo = file.type.startsWith('video/');
+        let url;
+        if (isVideo) {
+          const signRes = await fetch('/api/upload-sign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: 'waifu', publicId: `${waifuId}_${tipoSel}` }) });
+          const auth = await signRes.json();
+          const ext = file.name.split('.').pop() || 'mp4';
+          const fd = new FormData();
+          fd.append('file', file); fd.append('fileName', `${waifuId}_${tipoSel}.${ext}`);
+          fd.append('publicKey', auth.publicKey); fd.append('signature', auth.signature);
+          fd.append('expire', String(auth.expire)); fd.append('token', auth.token);
+          fd.append('folder', auth.folder); fd.append('useUniqueFileName', 'false'); fd.append('overwriteFile', 'true');
+          const upRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', { method: 'POST', body: fd });
+          const data = await upRes.json(); url = data.url;
+        } else {
+          const formData = new FormData();
+          formData.append('file', file); formData.append('folder', 'waifu'); formData.append('publicId', `${waifuId}_${tipoSel}`);
+          const upRes = await fetch('/api/upload', { method: 'POST', body: formData });
+          const data = await upRes.json(); url = data.url;
+        }
+        const { db: fsdb } = await import('@/lib/firebase');
+        const { doc, setDoc } = await import('firebase/firestore');
+        await setDoc(doc(fsdb, 'catalogo_waifu', waifuId), { [tipoSel]: url }, { merge: true });
+        rimuoviPending(waifuId);
+      } catch (err) { console.error(err); errori++; }
+      setProgresso(p => ({ ...p, fatto: i + 1, errori }));
+    }
+    setUploading(false); ricarica();
+    flash(`${entries.length - errori} immagini caricate${errori ? `, ${errori} errori` : ''}`, errori ? '#f59e0b' : '#06d6a0');
+  };
+
+  const pendingCount = Object.keys(pending).length;
+  const st = { fontFamily: 'Orbitron, sans-serif', fontSize: 9 };
+  return (
+    <div style={{ color: '#f5e6d3' }}>
+      <h2 style={{ fontFamily: 'Cinzel', fontSize: 18, color: '#f59e0b', marginBottom: 8 }}>🖼 Associa Immagini a Waifu Esistenti</h2>
+      <p style={{ fontFamily: 'Orbitron', fontSize: 10, color: 'rgba(245,158,11,0.5)', marginBottom: 16, lineHeight: 1.6 }}>
+        Seleziona il tipo di asset, poi clicca "Seleziona" su ogni waifu per associare il file. Alla fine "Carica Tutto".
+      </p>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+        <select value={tipoSel} onChange={e => setTipoSel(e.target.value)} style={{ ...st, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(245,158,11,0.3)', color: '#f5e6d3', borderRadius: 8, padding: '7px 10px' }}>
+          {TIPI.map(t => <option key={t} value={t}>{TIPI_LABEL[t]}</option>)}
+        </select>
+        <select value={filtro} onChange={e => setFiltro(e.target.value)} style={{ ...st, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(245,158,11,0.3)', color: '#f5e6d3', borderRadius: 8, padding: '7px 10px' }}>
+          <option value="mancanti">Solo mancanti ({waifu.filter(w => !w[tipoSel]).length})</option>
+          <option value="tutte">Tutte ({waifu.length})</option>
+        </select>
+        <input placeholder="Cerca..." value={ricerca} onChange={e => setRicerca(e.target.value)} style={{ ...st, flex: 1, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(245,158,11,0.3)', color: '#f5e6d3', borderRadius: 8, padding: '7px 12px' }} />
+        {pendingCount > 0 && !uploading && (
+          <button onClick={caricaTutto} style={{ ...st, padding: '7px 18px', background: 'linear-gradient(135deg,#f59e0b,#ec4899)', border: 'none', borderRadius: 8, color: '#000', fontWeight: 700, cursor: 'pointer' }}>
+            ⬆ Carica Tutto ({pendingCount})
+          </button>
+        )}
+        {uploading && <div style={{ ...st, padding: '7px 12px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, color: '#f59e0b' }}>⏳ {progresso.fatto}/{progresso.totale}</div>}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
+        {lista.map(w => {
+          const p = pending[w.id];
+          return (
+            <div key={w.id} style={{ background: p ? 'rgba(6,214,160,0.08)' : 'rgba(0,0,0,0.4)', border: `1px solid ${p ? 'rgba(6,214,160,0.4)' : 'rgba(245,158,11,0.15)'}`, borderRadius: 10, padding: '10px 12px' }}>
+              <div style={{ width: '100%', height: 80, background: 'rgba(0,0,0,0.5)', borderRadius: 6, marginBottom: 8, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {(p?.previewUrl || w[tipoSel]) ? (
+                  tipoSel.includes('video') && !p ? <div style={{ fontSize: 24 }}>🎬</div> :
+                  <img src={p?.previewUrl || w[tipoSel]} alt={w.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : <div style={{ fontSize: 24, opacity: 0.3 }}>📷</div>}
+              </div>
+              <div style={{ ...st, color: '#f59e0b', marginBottom: 4, fontSize: 10, fontFamily: 'Cinzel', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.nome}</div>
+              <div style={{ ...st, color: 'rgba(245,158,11,0.4)', marginBottom: 8, fontSize: 7 }}>{w.rarita}</div>
+              <div style={{ display: 'flex', gap: 5 }}>
+                <label style={{ flex: 1, ...st, padding: '5px 6px', background: p ? 'rgba(6,214,160,0.15)' : 'rgba(245,158,11,0.1)', border: `1px solid ${p ? 'rgba(6,214,160,0.4)' : 'rgba(245,158,11,0.3)'}`, borderRadius: 6, color: p ? '#06d6a0' : '#f59e0b', cursor: 'pointer', textAlign: 'center' }}>
+                  {p ? '✓ Pronta' : 'Seleziona'}
+                  <input type="file" accept={tipoSel.includes('video') ? 'video/*' : 'image/*'} style={{ display: 'none' }} disabled={uploading} onChange={e => { if (e.target.files[0]) handleFileSelect(w.id, e.target.files[0]); e.target.value = ''; }} />
+                </label>
+                {p && <button onClick={() => rimuoviPending(w.id)} disabled={uploading} style={{ ...st, padding: '5px 8px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, color: '#ef4444', cursor: 'pointer' }}>✕</button>}
+              </div>
+            </div>
+          );
+        })}
+        {lista.length === 0 && <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 40, color: 'rgba(245,158,11,0.3)', fontFamily: 'Orbitron', fontSize: 11 }}>Nessuna waifu trovata</div>}
+      </div>
     </div>
   );
 }
