@@ -111,12 +111,23 @@ export async function GET(request) {
     const voteSnaps = voteRefs.length > 0 ? await adminDb.getAll(...voteRefs) : [];
     const seenSet = new Set(voteSnaps.filter(s => s.exists).map(s => s.id.replace(`${uid}_`, '')));
 
+    // Recupera nomi espansioni per il badge
+    const espansioneIds = [...new Set(
+      docs.filter(d => d.exists).map(d => d.data().espansione_id).filter(Boolean)
+    )];
+    const espansioneMap = {};
+    if (espansioneIds.length > 0) {
+      const dropSnaps = await adminDb.getAll(...espansioneIds.map(id => adminDb.doc(`drops/${id}`)));
+      dropSnaps.forEach(s => { if (s.exists) espansioneMap[s.id] = s.data().nome || s.id; });
+    }
+
     const waifu = docs
       .filter(d => d.exists)
       .map(d => ({
         id: d.id, ...d.data(),
-        _owned: !!userWaifu[d.id],        // già in collezione
-        _seen: seenSet.has(d.id),         // già votata (like o dislike)
+        _owned: !!userWaifu[d.id],
+        _seen: seenSet.has(d.id),
+        espansione_nome: espansioneMap[d.data().espansione_id] ?? null,
       }))
       .filter(w => {
         if (w.rarita === 'immersivo' && w.asset_video_hard) return false;

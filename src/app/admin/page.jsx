@@ -18,7 +18,7 @@ import {
   buildPromptOutfit, buildPromptPosa, buildPromptBustina,
   ARCHETIPI, PALETTE, MOTORI_AI, suggerisciDiversificazione,
 } from '@/lib/promptGenerator';
-import { RARITA, COLORI_CAPELLI, STAT_RANGES_DEFAULT, RARITY_MULTIPLIERS_DEFAULT, MOVE_RANGES_DEFAULT, MOVE_LEVELUP_DEFAULT } from '@/lib/constants';
+import { RARITA, COLORI_CAPELLI, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, SLOT_OUTFIT, RARITY_MULTIPLIERS_DEFAULT, MOVE_RANGES_DEFAULT, MOVE_LEVELUP_DEFAULT } from '@/lib/constants';
 import { CartaWaifu } from '@/components/CartaWaifu';
 import { ikUrl } from '@/lib/imagekitUrl';
 import { db } from '@/lib/firebase';

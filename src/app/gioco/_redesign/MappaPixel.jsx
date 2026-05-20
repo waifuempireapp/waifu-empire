@@ -6,6 +6,7 @@ import { updateUserProfile } from '@/lib/firestoreService';
 import PixelGrid from '@/components/mappa/PixelGrid';
 import PixelDetail from '@/components/mappa/PixelDetail';
 import MiniLeaderboard from '@/components/mappa/MiniLeaderboard';
+import RaidIslandPanel from '@/components/mappa/RaidIslandPanel';
 import BattleModal from '@/components/mappa/BattleModal';
 import RoundViewer from '@/components/mappa/RoundViewer';
 import PurchaseModal from '@/components/mappa/PurchaseModal';
@@ -33,6 +34,8 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
   const [showTutorial, setShowTutorial] = useState(false);
   const [showDefenseEditor, setShowDefenseEditor] = useState(false);
   const [activeBattle, setActiveBattle] = useState(null);
+  const [showRaidPanel, setShowRaidPanel] = useState(false);
+  const [raidInfo, setRaidInfo] = useState(null); // { currentHp, totalHp, endsAt, waifuNome, waifuImage }
 
   const loadChunks = useCallback(async (forceRefresh = false) => {
     const cached = sessionStorage.getItem('pixel_map_chunks');
@@ -339,6 +342,38 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat 
           landSet={LAND_SET}
         />
       </div>
+
+      {/* Raid Island widget */}
+      <div
+        onClick={() => setShowRaidPanel(true)}
+        style={{
+          margin: '10px 16px 0', padding: '12px 16px',
+          background: 'linear-gradient(135deg, rgba(236,72,153,0.12), rgba(10,7,38,0.9))',
+          border: '1px solid rgba(236,72,153,0.35)', borderRadius: 14, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+        <div style={{ fontSize: 28 }}>⚔</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: FF.display, fontSize: 13, color: '#ec4899', fontWeight: 800 }}>Raid Island</div>
+          <div style={{ fontFamily: FF.label, fontSize: 9, color: 'rgba(241,235,255,0.5)', letterSpacing: '0.12em' }}>
+            {raidInfo ? `⚔ ${raidInfo.waifuNome} — ${raidInfo.currentHp?.toLocaleString()}/${raidInfo.totalHp?.toLocaleString()} HP` : 'Tocca per partecipare al Raid orario'}
+          </div>
+        </div>
+        <div style={{ fontFamily: FF.label, fontSize: 10, color: 'rgba(236,72,153,0.7)' }}>→</div>
+      </div>
+
+      {/* Raid Island full panel */}
+      {showRaidPanel && (
+        <RaidIslandPanel
+          user={user}
+          profilo={profilo}
+          onClose={() => setShowRaidPanel(false)}
+          onBattle={(raid) => {
+            // TODO: avvia combattimento raid
+            setShowRaidPanel(false);
+          }}
+        />
+      )}
 
       {/* Mini leaderboard + passive kisses */}
       <MiniLeaderboard

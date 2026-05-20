@@ -4167,13 +4167,22 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
       )}
 
       {/* DETTAGLIO CARTA MOSSA */}
-      {mossaSel && (() => {
+      {mossaSel && <MossaDetailModal
+        catalog={mossaSel.catalog}
+        dati={mossaSel.dati}
+        user={user}
+        collezione={collezione}
+        setColl={setColl}
+        mostraNotif={mostraNotif}
+        onClose={() => setMossaSel(null)}
+        onUpdate={(newDati) => setMossaSel(prev => ({ ...prev, dati: newDati }))}
+      />}
+      {mossaSel && false && (() => {
         const { catalog, dati } = mossaSel;
         const copie = dati.copie ?? 0;
         const livello = dati.livello ?? 1;
         const copieInLup = copie % 5;
         const lupReady = copieInLup === 0 && copie > 0 && livello < 10;
-        // Indica quale stat migliora al prossimo level-up
         const nextLevel = livello + 1;
         const prossimaStat = nextLevel % 2 === 0 ? 'Danno Critico' : 'Danno';
         const [lupBusy, setLupBusy] = useState(false);
@@ -4240,6 +4249,77 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
           </div>
         );
       })()}
+    </div>
+  );
+}
+
+// ── MossaDetailModal — componente separato per evitare hooks-in-IIFE ────────
+function MossaDetailModal({ catalog, dati, user, collezione, setColl, mostraNotif, onClose, onUpdate }) {
+  const [lupBusy, setLupBusy] = useState(false);
+  const copie = dati.copie ?? 0;
+  const livello = dati.livello ?? 1;
+  const copieInLup = copie % 5;
+  const lupReady = copieInLup === 0 && copie > 0 && livello < 10;
+  const nextLevel = livello + 1;
+  const prossimaStat = nextLevel % 2 === 0 ? 'Danno Critico' : 'Danno';
+
+  const eseguiLevelUp = async () => {
+    if (!lupReady || lupBusy) return;
+    setLupBusy(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/mosse/${catalog.id}/level-up`, {
+        method: 'PATCH', headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const data = await res.json();
+      const nuova = JSON.parse(JSON.stringify(collezione));
+      if (!nuova.mosse) nuova.mosse = {};
+      const newDati = { ...dati, ...data };
+      nuova.mosse[catalog.id] = newDati;
+      setColl(nuova);
+      if (typeof saveCollezione !== 'undefined') saveCollezione(user.uid, nuova);
+      onUpdate(newDati);
+      mostraNotif(`Level Up! +${nextLevel % 2 === 0 ? 'Danno Critico' : 'Danno'}`, '#06d6a0');
+    } catch (e) { mostraNotif(e.message, '#ff3d3d'); }
+    finally { setLupBusy(false); }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: 'rgba(10,7,38,0.97)', border: '1px solid rgba(174,156,255,0.3)', borderRadius: 20, padding: 24, maxWidth: 380, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+          <CartaMossa mossa={catalog} datiUtente={dati} dimensione="normale" />
+        </div>
+        {catalog.abilita && (
+          <div style={{ background: 'rgba(174,156,255,0.08)', border: '1px solid rgba(174,156,255,0.2)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(174,156,255,0.7)', marginBottom: 4, letterSpacing: 1 }}>ABILITÀ</div>
+            <div style={{ fontSize: 12, color: '#f5e6d3', lineHeight: 1.5 }}>{catalog.abilita}</div>
+          </div>
+        )}
+        <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(245,158,11,0.7)' }}>COPIE {copie}</span>
+            {livello < 10
+              ? <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: lupReady ? '#06d6a0' : 'rgba(245,158,11,0.5)' }}>{lupReady ? '⬆ LEVEL UP PRONTO!' : `${copieInLup}/5 al prossimo Lv`}</span>
+              : <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: '#ffc861' }}>LIVELLO MASSIMO</span>
+            }
+          </div>
+          {livello < 10 && (
+            <div style={{ height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3 }}>
+              <div style={{ height: '100%', width: `${lupReady ? 100 : (copieInLup / 5) * 100}%`, background: lupReady ? '#06d6a0' : '#f59e0b', borderRadius: 3, transition: 'width 0.3s' }} />
+            </div>
+          )}
+        </div>
+        {lupReady && (
+          <button onClick={eseguiLevelUp} disabled={lupBusy}
+            style={{ width: '100%', padding: '12px', background: lupBusy ? 'rgba(6,214,160,0.3)' : 'linear-gradient(135deg,#06d6a0,#0ea5e9)', border: 'none', borderRadius: 12, color: '#000', fontFamily: 'Orbitron', fontSize: 11, fontWeight: 700, cursor: lupBusy ? 'not-allowed' : 'pointer', marginBottom: 10, letterSpacing: '0.1em' }}>
+            {lupBusy ? '⏳' : `⬆ LEVEL UP — Migliora: ${prossimaStat}`}
+          </button>
+        )}
+        <button onClick={onClose} style={{ width: '100%', padding: '10px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: '#f5e6d3', fontFamily: 'Orbitron', fontSize: 10, cursor: 'pointer' }}>Chiudi</button>
+      </div>
     </div>
   );
 }
@@ -5733,6 +5813,14 @@ function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxS
     return sortDir === 'desc' ? vb - va : va - vb;
   });
 
+  // Le waifu già nel team appaiono sempre per prime
+  const selSet = new Set(waifuSelezionate);
+  lista.sort((a, b) => {
+    const aSelected = selSet.has(a.id) ? 0 : 1;
+    const bSelected = selSet.has(b.id) ? 0 : 1;
+    return aSelected - bSelected;
+  });
+
   const slice = lista.slice(0, visibili);
   const haAltri = visibili < lista.length;
   const selCount = waifuSelezionate.length;
@@ -5770,7 +5858,7 @@ function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxS
       )}
 
       {/* Griglia carte + padding per bottoni fissi */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', paddingBottom: (onConferma || onAnnulla) ? 90 : 0 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
         {slice.map(w => {
           const sel = waifuSelezionate.includes(w.id);
           return (
@@ -5800,13 +5888,11 @@ function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxS
         </div>
       )}
 
-      {/* Bottoni SALVA/ANNULLA fissi in basso (sopra BottomNav) */}
+      {/* Bottoni SALVA/ANNULLA — sotto "Carica altre" nel flusso normale */}
       {(onConferma || onAnnulla) && (
-        <div style={{ position: 'fixed', bottom: 84, left: 0, right: 0, zIndex: 200, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
-          <div style={{ display: 'flex', gap: 10, pointerEvents: 'auto', background: 'rgba(6,3,15,0.95)', backdropFilter: 'blur(14px)', borderRadius: 14, padding: '10px 20px', border: `1px solid ${accentColor}40`, boxShadow: '0 4px 28px rgba(0,0,0,0.7)' }}>
-            {onAnnulla && <BtnDecorato variant="secondary" onClick={onAnnulla}>ANNULLA</BtnDecorato>}
-            {onConferma && <BtnDecorato variant="primary" onClick={onConferma} disabled={disabledConferma}>{labelConferma}</BtnDecorato>}
-          </div>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 16, paddingBottom: 16 }}>
+          {onAnnulla && <BtnDecorato variant="secondary" onClick={onAnnulla}>ANNULLA</BtnDecorato>}
+          {onConferma && <BtnDecorato variant="primary" onClick={onConferma} disabled={disabledConferma}>{labelConferma}</BtnDecorato>}
         </div>
       )}
     </div>
@@ -7088,7 +7174,17 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
               boxShadow: `0 0 30px rgba(167,139,250,0.15)`,
             }}>
               <button onClick={() => setTerrSel(null)} style={{ position: 'absolute', top: 8, right: 12, background: 'none', border: 'none', color: 'rgba(238,232,220,0.5)', fontSize: 18, cursor: 'pointer' }}>✕</button>
-              <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 15, color: '#f1ebff', fontWeight: 700, marginBottom: 6 }}>{terrSel.nome}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 15, color: '#f1ebff', fontWeight: 700 }}>{terrSel.nome}</div>
+                {terrSel._difficulty && (() => {
+                  const diffStyle = { easy: ['#06d6a0','Easy'], medium: ['#f59e0b','Medium'], hard: ['#ef4444','Hard'], extreme: ['#a855f7','Extreme'] }[terrSel._difficulty] ?? ['#9b59ff','?'];
+                  return (
+                    <div style={{ background: `${diffStyle[0]}20`, border: `1px solid ${diffStyle[0]}60`, borderRadius: 6, padding: '2px 8px', fontFamily: 'Orbitron', fontSize: 9, color: diffStyle[0], fontWeight: 700 }}>
+                      {diffStyle[1]}
+                    </div>
+                  );
+                })()}
+              </div>
               <div style={{ fontFamily: "'DM Sans', sans-serif", color: '#b6aed6', opacity: 1, fontSize: 10, marginBottom: 3 }}>Continente: <span style={{ color: '#9b59ff' }}>{NOMI_CONTINENTI[terrSel.cont] || terrSel.cont}</span></div>
               <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: '#b6aed6', marginBottom: 3 }}>Impero: <strong style={{ color: terrData.coloreImpero || '#666' }}>{terrData.impero || 'Libero'}</strong>{eMio && <span style={{ color: '#6cf0e0', marginLeft: 6, textShadow: '0 0 8px rgba(108,240,224,0.6)' }}>★ TUO</span>}</div>
               <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 9, color: 'rgba(167,139,250,0.4)', opacity: 1, marginBottom: 12 }}>Confini: {terrSel.conf?.length ? terrSel.conf.map(c => { const t = TERRITORI?.find(x => x.id === c); return t?.nome; }).filter(Boolean).join(', ') : '—'}</div>

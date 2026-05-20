@@ -206,7 +206,9 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
           </div>
           {swapStatus && (
             <div style={{ fontFamily: FF.label, fontSize: 9, color: swapStatus.hasSwapPass ? 'rgba(6,214,160,0.8)' : 'rgba(241,235,255,0.4)', letterSpacing: '0.1em' }}>
-              {swapStatus.hasSwapPass ? '∞ voti illimitati' : `${swapStatus.dailyVotes}/${swapStatus.dailyLimit} voti oggi`}
+              {swapStatus.hasSwapPass
+                ? `${swapStatus.dailyVotes} voti`
+                : `${swapStatus.dailyVotes}/${swapStatus.dailyLimit}`}
             </div>
           )}
         </div>
