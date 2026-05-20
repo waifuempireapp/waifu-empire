@@ -20,6 +20,7 @@ import {
 } from '@/lib/promptGenerator';
 import { RARITA, COLORI_CAPELLI, STAT_RANGES_DEFAULT, RARITY_MULTIPLIERS_DEFAULT, MOVE_RANGES_DEFAULT, MOVE_LEVELUP_DEFAULT } from '@/lib/constants';
 import { CartaWaifu } from '@/components/CartaWaifu';
+import { ikUrl } from '@/lib/imagekitUrl';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -604,7 +605,7 @@ function DropEditor({ drop, setDrop, waifu, outfit, pose, drops, onSalva, onAnnu
                 {/* Miniatura immagine */}
                 {item.asset_statica || item.asset_paperdoll ? (
                   <img
-                    src={item.asset_statica || item.asset_paperdoll}
+                    src={ikUrl(item.asset_statica || item.asset_paperdoll, 'thumbnail')}
                     alt={item.nome}
                     style={{ width: 40, height: 56, objectFit: 'cover', borderRadius: 4, border: `1px solid ${rar.colore}60`, flexShrink: 0 }}
                   />
@@ -808,7 +809,7 @@ function WaifuTab({ waifu, drops, ricarica, flash }) {
                   position: 'relative',
                 }}>
                   {w.asset_statica || w.asset_immersiva ? (
-                    <img src={w.asset_statica || w.asset_immersiva} alt={w.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%' }} />
+                    <img src={ikUrl(w.asset_statica || w.asset_immersiva, 'thumbnail')} alt={w.nome} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%' }} />
                   ) : (
                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: rar.colore, opacity: 0.15 }}>♛</div>
                   )}
@@ -1164,7 +1165,7 @@ function PromptPanel({ titolo, note, prompt, negative, parametri, assetUrl, onAs
         {assetUrl && (
           <div style={{ marginTop: 10 }}>
             <div style={{ fontSize: 10, opacity: 0.7, marginBottom: 6 }}>Asset corrente:</div>
-            <img src={assetUrl} alt="asset" style={{ maxWidth: 200, maxHeight: 200, borderRadius: 6, border: '1px solid rgba(245,158,11,0.4)' }} />
+            <img src={ikUrl(assetUrl, 'normal')} alt="asset" style={{ maxWidth: 200, maxHeight: 200, borderRadius: 6, border: '1px solid rgba(245,158,11,0.4)' }} />
             <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
               <a href={assetUrl} target="_blank" rel="noopener" style={btnSecondario}>⬇ DOWNLOAD ORIGINALE</a>
               <button onClick={() => onAssetChange('')} style={{ ...btnSecondario, color: '#ef4444', borderColor: '#ef444480' }}>✕ RIMUOVI</button>
@@ -2325,7 +2326,7 @@ function BulkUploadTab({ waifu, ricarica, flash }) {
                 {nomeDuplicato && <div style={{ position: 'absolute', top: 4, right: 4, background: '#ef4444', color: '#fff', padding: '2px 6px', borderRadius: 8, fontSize: 8, letterSpacing: 1 }}>⚠ DUPLICATO</div>}
 
                 {/* Preview immagine */}
-                <img src={p.url} alt={p.nome} style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 6, marginBottom: 6 }} />
+                <img src={ikUrl(p.url, 'normal')} alt={p.nome} style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 6, marginBottom: 6 }} />
 
                 {/* Nome (editabile) */}
                 <input value={p.nome} onChange={e => aggiornaPreview(i, 'nome', e.target.value)}
@@ -2426,7 +2427,7 @@ function BulkUploadTab({ waifu, ricarica, flash }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 6, maxHeight: 400, overflowY: 'auto' }}>
               {risultati.slice(-20).map((w, i) => (
                 <div key={i} style={{ padding: 6, background: 'rgba(0,0,0,0.3)', borderRadius: 6, border: `1px solid ${RARITA[w.rarita]?.colore || '#666'}40` }}>
-                  <img src={w.imageUrl} alt={w.nome} style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 4, marginBottom: 4 }} />
+                  <img src={ikUrl(w.imageUrl, 'thumbnail')} alt={w.nome} style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 4, marginBottom: 4 }} />
                   <div style={{ fontSize: 10, fontWeight: 600, color: RARITA[w.rarita]?.colore }}>{w.nome}</div>
                   <div style={{ fontSize: 9, opacity: 0.6 }}>{'★'.repeat(RARITA[w.rarita]?.stelle || 1)} {RARITA[w.rarita]?.nome}</div>
                 </div>
@@ -3993,7 +3994,7 @@ function AssociaImmaginiTab({ waifu, ricarica, flash, user }) {
               <div style={{ width: '100%', height: 80, background: 'rgba(0,0,0,0.5)', borderRadius: 6, marginBottom: 8, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {(p?.previewUrl || w[tipoSel]) ? (
                   tipoSel.includes('video') && !p ? <div style={{ fontSize: 24 }}>🎬</div> :
-                  <img src={p?.previewUrl || w[tipoSel]} alt={w.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={p?.previewUrl || ikUrl(w[tipoSel], 'thumbnail')} alt={w.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : <div style={{ fontSize: 24, opacity: 0.3 }}>📷</div>}
               </div>
               <div style={{ ...st, color: '#f59e0b', marginBottom: 4, fontSize: 10, fontFamily: 'Cinzel', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.nome}</div>
