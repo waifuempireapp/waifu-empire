@@ -1985,8 +1985,8 @@ function BulkUploadTab({ waifu, ricarica, flash }) {
   const handleFileSelect = (e) => {
     const selected = Array.from(e.target.files || []);
     if (selected.length === 0) return;
-    if (selected.length > 200) {
-      flash('Massimo 200 immagini alla volta!', '#ef4444');
+    if (selected.length > 500) {
+      flash('Massimo 500 immagini alla volta!', '#ef4444');
       return;
     }
     setFiles(selected);
