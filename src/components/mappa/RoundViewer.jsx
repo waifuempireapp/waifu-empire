@@ -201,11 +201,12 @@ export default function RoundViewer({ battle, waifuCat, collezione, profilo, onR
         enemyTeam={enemyTeam}
         waifuCat={waifuCat}
         battleCtx={{
-          nomeImperoAvversario: battle?.defenderUid === 'CPU' ? 'CPU' : 'Avversario',
+          nomeImperoAvversario: battle?.isRaid ? (battle?.name ?? 'Waifu Raid') : (battle?.defenderUid === 'CPU' ? 'CPU' : 'Avversario'),
           sonoAttaccante: true,
           nomeImpero: profilo?.nomeImpero || 'Tu',
           territoryName: battle?.name || `(${battle?.pixelX ?? ''}, ${battle?.pixelY ?? ''})`,
           hasHardPass: hasHardPass === true,
+          isRaid: battle?.isRaid ?? false,
           bo3: {
             attackerWins: battle?.attackerWins ?? 0,
             defenderWins: battle?.defenderWins ?? 0,

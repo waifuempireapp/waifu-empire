@@ -66,47 +66,50 @@ export async function POST(request, { params }) {
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    // Se l'attaccante ha vinto: trasferisci pixel e aggiorna defense_config
-    if (matchWinner === 'attacker') {
-      const attackerSnap = await adminDb.collection('users').doc(uid).get();
-      const attacker = attackerSnap.data();
+    // Per i raid non trasferire pixel né modificare pixelCount/energia
+    if (!battle.isRaid) {
+      // Se l'attaccante ha vinto: trasferisci pixel e aggiorna defense_config
+      if (matchWinner === 'attacker') {
+        const attackerSnap = await adminDb.collection('users').doc(uid).get();
+        const attacker = attackerSnap.data();
 
-      await transferPixel(
-        battle.pixelX, battle.pixelY,
-        uid,
-        attacker.coloreImpero || '#ff85b6',
-        attacker.nomeImpero || 'Ignoto',
-      );
+        await transferPixel(
+          battle.pixelX, battle.pixelY,
+          uid,
+          attacker.coloreImpero || '#ff85b6',
+          attacker.nomeImpero || 'Ignoto',
+        );
 
-      // Imposta team difensore = team usato per la conquista
-      const defenseRef = adminDb.collection('users').doc(uid).collection('defense_config').doc('main');
-      await defenseRef.set(
-        { [`${battle.pixelX}_${battle.pixelY}`]: battle.attackerTeam },
-        { merge: true }
-      );
+        // Imposta team difensore = team usato per la conquista
+        const defenseRef = adminDb.collection('users').doc(uid).collection('defense_config').doc('main');
+        await defenseRef.set(
+          { [`${battle.pixelX}_${battle.pixelY}`]: battle.attackerTeam },
+          { merge: true }
+        );
 
-      // Incrementa pixelCount + aggiungi 1 pacchetto sfida (vittoria territorio)
-      await adminDb.collection('users').doc(uid).update({
-        pixelCount: FieldValue.increment(1),
-        pacchettiSfida: FieldValue.increment(1),
-      });
-
-      // Decrementa pixelCount difensore (se non CPU)
-      if (battle.defenderUid && battle.defenderUid !== 'CPU') {
-        await adminDb.collection('users').doc(battle.defenderUid).update({
-          pixelCount: FieldValue.increment(-1),
-        });
-      }
-    }
-
-    // Se il difensore ha vinto il match: l'attaccante perde 1 energia
-    if (matchWinner === 'defender') {
-      const attackerEnergySnap = await adminDb.collection('users').doc(uid).get();
-      const currentEnergia = attackerEnergySnap.exists ? (attackerEnergySnap.data().energia ?? 0) : 0;
-      if (currentEnergia > 0) {
+        // Incrementa pixelCount + aggiungi 1 pacchetto sfida (vittoria territorio)
         await adminDb.collection('users').doc(uid).update({
-          energia: FieldValue.increment(-1),
+          pixelCount: FieldValue.increment(1),
+          pacchettiSfida: FieldValue.increment(1),
         });
+
+        // Decrementa pixelCount difensore (se non CPU)
+        if (battle.defenderUid && battle.defenderUid !== 'CPU') {
+          await adminDb.collection('users').doc(battle.defenderUid).update({
+            pixelCount: FieldValue.increment(-1),
+          });
+        }
+      }
+
+      // Se il difensore ha vinto il match: l'attaccante perde 1 energia
+      if (matchWinner === 'defender') {
+        const attackerEnergySnap = await adminDb.collection('users').doc(uid).get();
+        const currentEnergia = attackerEnergySnap.exists ? (attackerEnergySnap.data().energia ?? 0) : 0;
+        if (currentEnergia > 0) {
+          await adminDb.collection('users').doc(uid).update({
+            energia: FieldValue.increment(-1),
+          });
+        }
       }
     }
 

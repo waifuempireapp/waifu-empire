@@ -625,7 +625,7 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
   // ── Calcolo MVP ─────────────────────────────────────────────────────────────
   const mvp = Object.values(waifuStats ?? {})
     .sort((a, b) => b.dmg - a.dmg || b.kos - a.kos)[0] ?? null;
-  const { terrSel, nomeImperoAvversario, sonoAttaccante, nomeImpero, bo3 } = battleCtx ?? {};
+  const { terrSel, nomeImperoAvversario, sonoAttaccante, nomeImpero, bo3, isRaid } = battleCtx ?? {};
 
   // ── Punteggio Bo3 aggiornato dopo questo round ───────────────────────────────
   const bo3After = bo3 ? {
@@ -765,7 +765,21 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
           <>
             {!isDraw && (
               <div style={{fontFamily:'Fredoka',fontSize:12,color:'rgba(238,232,220,.65)',marginBottom:12,lineHeight:1.5,padding:'8px 10px',background:hoVinto?'rgba(0,230,118,0.06)':'rgba(255,61,61,0.06)',borderRadius:10,border:`1px solid ${hoVinto?'rgba(0,230,118,0.2)':'rgba(255,61,61,0.2)'}`}}>
-                {hoVinto && sonoAttaccante && (
+                {isRaid && hoVinto && (
+                <>
+                  <strong style={{color:'#00e676'}}>Ottimo lavoro!</strong> Hai inflitto danni alla Waifu Raid!
+                  <br/>
+                  <span style={{color:'#ffd666',display:'block',textAlign:'center',marginTop:4}}>-100 HP alla Waifu Raid ⚔</span>
+                </>
+              )}
+                {isRaid && !hoVinto && (
+                <>
+                  <strong style={{color:'#ff3d3d'}}>Sconfitta.</strong> La Waifu Raid si è ripresa!
+                  <br/>
+                  <span style={{color:'#ff8888',display:'block',textAlign:'center',marginTop:4}}>+150 HP alla Waifu Raid 💀</span>
+                </>
+              )}
+                {!isRaid && hoVinto && sonoAttaccante && (
                 <>
                   <strong style={{color:'#00e676'}}>Complimenti!</strong> Hai conquistato{' '}
                   <strong style={{color:'#ffd666'}}>{territoryName||'il territorio'}</strong>
@@ -774,17 +788,17 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
                   <span style={{color:'#ffd666',display:'block',textAlign:'center',marginTop:4}}>+1 pacchetto sfida 🎴</span>
                 </>
               )}
-                {hoVinto && !sonoAttaccante && (
+                {!isRaid && hoVinto && !sonoAttaccante && (
                 <>Territorio difeso con successo! <strong style={{color:'#00e676'}}>{territoryName}</strong> è ancora tuo.</>
               )}
-                {!isVictory && sonoAttaccante && (
+                {!isRaid && !isVictory && sonoAttaccante && (
                 <>
                   <strong style={{color:'#ff3d3d'}}>Sconfitta.</strong> Non sei riuscito a conquistare <strong>{territoryName||'il territorio'}</strong>.
                   <br/>
                   <span style={{color:'#ff8888',display:'block',textAlign:'center',marginTop:4}}>-1 energia ⚡</span>
                 </>
               )}
-                {!isVictory && !sonoAttaccante && (
+                {!isRaid && !isVictory && !sonoAttaccante && (
                 <>
                   <strong style={{color:'#ff3d3d'}}>{nomeImperoAvversario||'CPU'}</strong> ha conquistato <strong>{territoryName||'il territorio'}</strong>.
                   <br/>
@@ -793,7 +807,7 @@ function TerritoryResult({ isVictory, turns, totalDmg, battleCtx, onContinue, st
               )}
               </div>
             )}
-            <button onClick={()=>onContinue(null)} style={{...btnBase,width:'100%',fontSize:13,background:'linear-gradient(rgba(245,197,96,0.32),rgba(245,197,96,0.1))',border:'0.8px solid rgba(255,233,168,0.6)',color:'rgb(42,31,0)',boxShadow:'rgba(245,197,96,0.35) 0px 6px 20px 0px'}}>VAI ALLA MAPPA →</button>
+            <button onClick={()=>onContinue(null)} style={{...btnBase,width:'100%',fontSize:13,background:'linear-gradient(rgba(245,197,96,0.32),rgba(245,197,96,0.1))',border:'0.8px solid rgba(255,233,168,0.6)',color:'rgb(42,31,0)',boxShadow:'rgba(245,197,96,0.35) 0px 6px 20px 0px'}}>{isRaid ? 'VAI AL RAID →' : 'VAI ALLA MAPPA →'}</button>
           </>
         )}
       </div>
