@@ -34,7 +34,8 @@ export const MOVE_RANGES_DEFAULT = {
 /** Incrementi default per level-up mosse attacco. */
 export const MOVE_LEVELUP_DEFAULT = {
   incremento_danno: 5,
-  incremento_danno_critico: 0.02,
+  // danno_critico = round(danno * 1.25) ad ogni level-up (ricalcolato, non incremento fisso)
+  incremento_danno_critico: 0, // legacy: non usato nel nuovo sistema
 };
 
 // ── RARITÀ ─────────────────────────────────────────────────────────────────

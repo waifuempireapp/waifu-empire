@@ -157,16 +157,18 @@ export function checkMoveLevelUp(userMoveData, catalogMossa, levelupConfig = nul
   if (copie < livello * 5) return null;
 
   const newLivello = livello + 1;
-  const currentDanno      = userMoveData.danno      ?? catalogMossa.danno;
-  const currentCrit       = userMoveData.danno_critico ?? catalogMossa.danno_critico;
+  const currentDanno = Math.round(userMoveData.danno ?? catalogMossa.danno ?? 0);
+  const incDanno = Math.round(cfg.incremento_danno ?? 5);
   const updatedFields = { livello: newLivello };
 
   if (newLivello % 2 === 0) {
-    // Livello pari â†’ aumenta danno_critico
-    updatedFields.danno_critico = parseFloat((currentCrit + cfg.incremento_danno_critico).toFixed(4));
+    // Livello pari → danno_critico = round(danno corrente × 1.25) — intero assoluto
+    updatedFields.danno_critico = Math.round(currentDanno * 1.25);
   } else {
-    // Livello dispari â†’ aumenta danno
-    updatedFields.danno = currentDanno + cfg.incremento_danno;
+    // Livello dispari → aumenta danno E ricalcola danno_critico
+    const newDanno = currentDanno + incDanno;
+    updatedFields.danno = newDanno;
+    updatedFields.danno_critico = Math.round(newDanno * 1.25);
   }
   return updatedFields;
 }

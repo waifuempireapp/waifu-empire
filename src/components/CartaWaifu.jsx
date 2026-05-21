@@ -401,18 +401,35 @@ export function CartaWaifu({
         opacity: videoAttivo ? 0 : 1,
         transition: 'opacity 0.3s ease',
       }}>
-        {/* Riga HP / Velocità / Crit% sopra la linea ornamento */}
+        {/* Riga HP / Velocità / Crit — sopra la linea ornamento */}
         {(() => {
-          const hp  = datiCollezione?.hp ?? waifu.hp ?? null;
-          const vel = datiCollezione?.velocita ?? waifu.velocita_base ?? null;
+          const hp   = datiCollezione?.hp   ?? waifu.hp   ?? null;
+          const vel  = datiCollezione?.velocita ?? waifu.velocita_base ?? null;
           const crit = datiCollezione?.crit_chance ?? waifu.crit_chance_base ?? null;
           if (hp == null && vel == null && crit == null) return null;
-          const fs = Math.round(6.5 * scale);
+          const fs  = Math.round(7 * scale);
+          const fs2 = Math.round(8.5 * scale);
+          // Layout: ⚡ vel — 💚 HP (centro) — 💥 crit
           return (
-            <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', marginBottom: Math.round(4 * scale) }}>
-              {hp   != null && <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: fs, color: '#06d6a0', textAlign: 'center', lineHeight: 1.2 }}><div>💚</div><div>{Math.round(hp)}</div></div>}
-              {vel  != null && <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: fs, color: '#6cf0e0', textAlign: 'center', lineHeight: 1.2 }}><div>⚡</div><div>{Math.round(vel)}</div></div>}
-              {crit != null && <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: fs, color: '#fbbf24', textAlign: 'center', lineHeight: 1.2 }}><div>💥</div><div>{Math.round(crit * 100)}%</div></div>}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: Math.round(5 * scale), padding: `0 ${Math.round(4 * scale)}px` }}>
+              {vel != null ? (
+                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: fs, color: '#6cf0e0', textAlign: 'center' }}>
+                  <div style={{ fontSize: Math.round(9 * scale) }}>⚡</div>
+                  <div style={{ fontWeight: 700 }}>{Math.round(vel)}</div>
+                </div>
+              ) : <div />}
+              {hp != null && (
+                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: fs2, color: '#06d6a0', textAlign: 'center', background: 'rgba(6,214,160,0.12)', borderRadius: Math.round(5 * scale), padding: `${Math.round(1 * scale)}px ${Math.round(5 * scale)}px` }}>
+                  <div style={{ fontSize: Math.round(10 * scale) }}>💚</div>
+                  <div style={{ fontWeight: 800 }}>{Math.round(hp)}</div>
+                </div>
+              )}
+              {crit != null ? (
+                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: fs, color: '#fbbf24', textAlign: 'center' }}>
+                  <div style={{ fontSize: Math.round(9 * scale) }}>💥</div>
+                  <div style={{ fontWeight: 700 }}>{Math.round(crit * 100)}</div>
+                </div>
+              ) : <div />}
             </div>
           );
         })()}

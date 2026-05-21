@@ -88,9 +88,11 @@ export async function POST(request, { params }) {
         );
 
         // Incrementa pixelCount + aggiungi 1 pacchetto sfida (vittoria territorio)
+        // + aggiorna progresso quest giornaliera 'territori'
         await adminDb.collection('users').doc(uid).update({
           pixelCount: FieldValue.increment(1),
           pacchettiSfida: FieldValue.increment(1),
+          'questGiornaliere.territori.progresso': FieldValue.increment(1),
         });
 
         // Decrementa pixelCount difensore (se non CPU)

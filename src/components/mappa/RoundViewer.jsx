@@ -2,7 +2,7 @@
 import { useState, useRef, useMemo } from 'react';
 import WaifuBattleArena from '@/components/WaifuBattleArena';
 import PickPhase from '@/components/PickPhase';
-import { generateCPUTeamOf5, initBattleTeam, generateCPUMovesFromCatalog } from '@/lib/battleEngine';
+import { generateCPUTeamOf5, initBattleTeam, initBattleWaifu, generateCPUMovesFromCatalog } from '@/lib/battleEngine';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
 
 const DIFFICULTY_LEVEL = { easy: 3, medium: 12, hard: 35, expert: 55 };
@@ -65,15 +65,25 @@ export default function RoundViewer({ battle, waifuCat, mosseCat = [], collezion
   const [phase, setPhase]           = useState(initialPhase);
   const [playerTeam, setPlayerTeam] = useState(() => {
     if (battle?.nextRoundChoice === 'same' && battle.prevPlayerTeamIds?.length === 3) {
-      // Ricrea il team dal catalogo con HP resettato (initBattleTeam)
+      // Ricrea il team con _mosseData (mosse dal DB) per tutti i round successivi al primo
       const waifu = battle.prevPlayerTeamIds
         .map(id => {
           const cat  = waifuCat?.find(w => w.id === id);
           const coll = collezione?.waifu?.[id] ?? {};
-          return cat ? { ...cat, ...coll } : null;
+          const mosseData = {};
+          for (const mid of Object.values(coll.mosse_slot ?? {}).filter(Boolean)) {
+            const userMossa = collezione?.mosse?.[mid];
+            const catMossa  = mosseCat?.find(m => m.id === mid);
+            if (catMossa) mosseData[mid] = { ...catMossa, ...(userMossa || {}) };
+          }
+          return cat ? { ...cat, ...coll, _mosseData: mosseData } : null;
         })
         .filter(Boolean);
-      return waifu.length === 3 ? initBattleTeam(waifu, collezione?.waifu || {}) : null;
+      if (waifu.length !== 3) return null;
+      return waifu.map(w => initBattleWaifu(w, {
+        livello: w.livello ?? 1, velocita: w.velocita ?? null, crit_chance: w.crit_chance ?? null,
+        hp: w.hp ?? null, mosse_slot: w.mosse_slot ?? null, _mosseData: w._mosseData ?? null,
+      }));
     }
     return null;
   });

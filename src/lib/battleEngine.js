@@ -529,30 +529,35 @@ export function initBattleWaifu(waifuFirestore, collectionData = null) {
   const savedCrit  = collectionData?.crit_chance ?? null;
 
   // Legge mosse dagli slot assegnati se disponibili, altrimenti usa le mosse nei battleStats
-  let finalMoves = bs.moves;
+  let finalMoves = null;
   const mosseSlot = collectionData?.mosse_slot;
-  if (mosseSlot) {
-    const slotMoves = [mosseSlot[1], mosseSlot[2], mosseSlot[3], mosseSlot[4]].filter(Boolean);
-    if (slotMoves.length === 4 && collectionData._mosseData) {
-      finalMoves = slotMoves.map(mid => {
-        const m = collectionData._mosseData[mid];
+  const mosseData = collectionData?._mosseData;
+  if (mosseSlot && mosseData) {
+    // Usa chiavi stringa ('1','2','3','4') per compatibilità con Firestore
+    const slotMoves = ['1','2','3','4'].map(k => mosseSlot[k] ?? mosseSlot[Number(k)]).filter(Boolean);
+    if (slotMoves.length === 4) {
+      const resolved = slotMoves.map(mid => {
+        const m = mosseData[mid];
         if (!m) return null;
-        const danno = m.danno ?? 0;
-        // Bonifica danno_critico: se < 5 è nel vecchio formato float → ricalcola
+        const danno = Math.round(m.danno ?? 0);
+        // Bonifica danno_critico: se < 5 è nel vecchio formato float → ricalcola come danno × 1.25
         const damageCrit = (m.danno_critico != null && m.danno_critico < 5)
           ? Math.round(danno * 1.25)
           : Math.round(m.danno_critico ?? danno * 1.25);
         return {
           name: m.nome, type: m.tipologia, rarity: m.rarita,
-          power: Math.round(danno),
+          power: danno,
           damage_crit: damageCrit,
+          // PP: usa il valore del catalogo (m.pp), garantisce che ogni mossa abbia i propri PP
           pp: Math.round(m.pp ?? 5), maxPp: Math.round(m.pp ?? 5),
           ability: m.abilita ?? null,
         };
       }).filter(Boolean);
+      // Solo se tutte e 4 le mosse sono risolte usiamo questo path
+      if (resolved.length === 4) finalMoves = resolved;
     }
   }
-  if (!finalMoves?.length) finalMoves = bs.moves;
+  if (!finalMoves?.length) finalMoves = (bs.moves?.length ? bs.moves : null) ?? _generateMovesForRarity(waifuFirestore.rarita ?? 'comune');
 
   return {
     id:     waifuFirestore.id,

@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { TIMER } from '@/lib/constants';
 import {
   getClassifica, getDropStagionale,
-  initQuestGiornaliere, claimQuestReward,
+  initQuestGiornaliere, claimQuestReward, incrementaQuestProgress,
   getAttivitaAmici,
   getMissioniSezioni, claimMissioneReward,
 } from '@/lib/firestoreService';
@@ -356,7 +356,7 @@ export function HomeTab({
 
   const territoriConquistati = profilo.pixelCount ?? Object.values(profilo.territoriUtente || {}).filter(t => t?.conquistato).length;
 
-  // Badge missioni (giornaliere pronte)
+  // Badge missioni: giornaliere completate non riscusse
   const missioniBadge = quest ? quest.defs.filter(d => {
     const s = quest.stato[d.tipo];
     return s && s.progresso >= s.target && !s.claimed;
@@ -1084,7 +1084,7 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
         </div>
 
         {/* Tab principali: Giornaliere | Raid Waifu | Missioni Mappa */}
-        <div className="missioni-tabs">
+        <div className="missioni-tabs" style={{ marginBottom: 4 }}>
           <button className={`missioni-tab${tabAttiva==='giornaliere'?' missioni-tab--active':''}`} onClick={()=>{setTabAttiva('giornaliere');setSubTab('incorso');}}>
             Giornaliere
             {giornCompletate > 0 && !quest?.defs.every(d => quest.stato[d.tipo]?.claimed) && <span className="missioni-tab__badge">{giornCompletate}</span>}
@@ -1097,8 +1097,8 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
           </button>
         </div>
 
-        {/* Subtab: In Corso | Completate + Riscuoti tutto */}
-        <div style={{ display: 'flex', gap: 4, padding: '0 16px 8px', alignItems: 'center' }}>
+        {/* Subtab: In Corso | Completate */}
+        <div style={{ display: 'flex', gap: 4, padding: '8px 16px 8px', alignItems: 'center' }}>
           {['incorso','completate'].map(s => (
             <button key={s} onClick={() => setSubTab(s)} style={{
               flex: 1, padding: '6px 0', borderRadius: 8, border: 'none', cursor: 'pointer',

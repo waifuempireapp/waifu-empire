@@ -32,16 +32,29 @@ export async function POST(request) {
   const endsMs = mission.endsAt?.toMillis?.() ?? 0;
   if (endsMs > Date.now()) return NextResponse.json({ error: 'La missione non è ancora scaduta' }, { status: 422 });
 
-  // Verifica quanti pixel possiede l'utente
+  // Verifica quanti pixel possedeva l'utente al momento della scadenza (snapshot)
+  // Fallback: controlla i pixel attuali se lo snapshot non esiste
   const pixels = mission.pixels || [];
   let pixelsOwned = 0;
-  for (const pixel of pixels) {
-    const chunkSnap = await adminDb.doc(`map_chunks/${pixel.chunkId}`).get();
-    if (chunkSnap.exists) {
-      const chunkData = chunkSnap.data();
+
+  const snapshotSnap = await adminDb.doc(`map_mission_snapshots/${missionId}_snapshot`).get();
+  if (snapshotSnap.exists) {
+    // Usa lo snapshot: chi possedeva i pixel alla scadenza
+    const snapshotData = snapshotSnap.data();
+    for (const pixel of pixels) {
       const pixelKey = `${pixel.x}_${pixel.y}`;
-      const pixelData = chunkData.pixels?.[pixelKey];
-      if (pixelData?.ownerId === uid) pixelsOwned++;
+      if (snapshotData.ownersByPixel?.[pixelKey] === uid) pixelsOwned++;
+    }
+  } else {
+    // Fallback: verifica i pixel attuali
+    for (const pixel of pixels) {
+      const chunkSnap = await adminDb.doc(`map_chunks/${pixel.chunkId}`).get();
+      if (chunkSnap.exists) {
+        const chunkData = chunkSnap.data();
+        const pixelKey = `${pixel.x}_${pixel.y}`;
+        const pixelData = chunkData.pixels?.[pixelKey];
+        if (pixelData?.ownerId === uid) pixelsOwned++;
+      }
     }
   }
 

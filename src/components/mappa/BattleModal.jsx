@@ -306,6 +306,11 @@ export default function BattleModal({ pixel, collezione, waifuCat, onConfirm, on
                 textTransform: 'uppercase', fontWeight: 700,
               }}
             >{selectedIds.length === 5 ? '⚔ Avvia Battaglia' : `Seleziona ancora ${5 - selectedIds.length}`}</button>
+            {ownedWaifu.length > 0 && (
+              <div style={{ marginTop: 8, padding: '8px 12px', background: 'rgba(155,89,255,0.06)', border: '1px solid rgba(155,89,255,0.2)', borderRadius: 10, fontFamily: FF.body, fontSize: 11, color: 'rgba(241,235,255,0.45)', lineHeight: 1.5, textAlign: 'center' }}>
+                Le altre waifu non sono visibili perché non hai ancora assegnato le 4 mosse attacco. Assegnale dalla sezione <strong style={{color:'#9b59ff'}}>Collezione → Mosse</strong>.
+              </div>
+            )}
           </div>
         </>
       )}

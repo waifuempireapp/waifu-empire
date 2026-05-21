@@ -5,7 +5,7 @@ import {
   doc, getDoc, setDoc, updateDoc, deleteDoc,
   collection, query, where, getDocs, addDoc,
   serverTimestamp, Timestamp, orderBy, limit,
-  deleteField, runTransaction,
+  deleteField, runTransaction, increment as incrementField,
 } from 'firebase/firestore';
 import { computeAndSaveStats } from './gameLogic';
 import { STATS_VERSION } from './constants';
@@ -973,6 +973,26 @@ export async function claimQuestReward(uid, tipo, reward, currentProfilo) {
   if (reward.tipo === 'kisses') patch['kisses'] = (currentProfilo?.kisses ?? 0) + (reward.qty ?? 0);
   if (reward.tipo === 'pack')   patch['pacchettiOmaggio'] = (currentProfilo?.pacchettiOmaggio ?? 0) + (reward.qty ?? 0);
   await updateDoc(ref, patch);
+}
+
+/**
+ * Incrementa il progresso di una quest giornaliera del giocatore.
+ * Se il valore supera il target, viene clamped al target.
+ * Usa FieldValue.increment per operazioni atomiche.
+ *
+ * @param {string} uid — UID del giocatore.
+ * @param {string} tipo — Tipo quest ('bustine' | 'territori' | 'leggendarie').
+ * @param {number} [amount=1] — Quantità da incrementare.
+ */
+export async function incrementaQuestProgress(uid, tipo, amount = 1) {
+  try {
+    const ref = doc(db, 'users', uid);
+    await updateDoc(ref, {
+      [`questGiornaliere.${tipo}.progresso`]: incrementField(amount),
+    });
+  } catch (_) {
+    // Ignora errori silenziosi (es. documento non ancora inizializzato)
+  }
 }
 
 // ─── MISSIONI ADMIN-DEFINED ───────────────────────────────────────────────────

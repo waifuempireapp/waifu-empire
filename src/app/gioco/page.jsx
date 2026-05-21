@@ -41,7 +41,7 @@ import { useScrollLock } from '@/lib/useScrollLock';
 import { ikUrl } from '@/lib/imagekitUrl';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listMosse, listDropsAttivi, getClassifica, premioPerPosizione, deleteTeamFromCollezione, createPackSnapshot, getFriendsList, getFriendRequests, getClassificaSettimanale, getPremiClassificaConfig, lazyMigrateStats } from '@/lib/firestoreService';
+import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listMosse, listDropsAttivi, getClassifica, premioPerPosizione, deleteTeamFromCollezione, createPackSnapshot, getFriendsList, getFriendRequests, getClassificaSettimanale, getPremiClassificaConfig, lazyMigrateStats, incrementaQuestProgress } from '@/lib/firestoreService';
 // Removed unused: getDropAttivo, isDropCompleto, progressioneDrop
 import { calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, GOD_PACK_PROB_DEFAULT, checkMoveLevelUp } from '@/lib/gameLogic';
 // Removed unused: calcolaRicaricaPacchetti, clampStat, clampWaifuStats
@@ -74,7 +74,7 @@ import MappaScrollabile from '@/components/mappa/MappaScrollabile';
 import WaifuBattleArena from '@/components/WaifuBattleArena';
 import PickPhase from '@/components/PickPhase';
 // RevealScreen removed — unused named re-export from PickPhase
-import { generateCPUTeamOf5, generateBattleStats, computeSpeed, computeCritChance } from '@/lib/battleEngine';
+import { generateCPUTeamOf5, generateBattleStats, computeSpeed, computeCritChance, computeHp } from '@/lib/battleEngine';
 // Removed unused: initBattleWaifu, generateCPUTeam
 import {
   PannelloOrnato, TitoloOrnato, BtnDecorato, Chip,
@@ -3204,6 +3204,11 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, mosseCa
     else if (tipoPacchetto === 'omaggio') { const n = (profilo.pacchettiOmaggio ?? 0) - 1; setProfilo(p => ({ ...p, pacchettiOmaggio: n })); await updateUserProfile(user.uid, { pacchettiOmaggio: n }); }
     else { const n = (profilo.pacchettiSfida ?? 0) - 1; setProfilo(p => ({ ...p, pacchettiSfida: n })); await updateUserProfile(user.uid, { pacchettiSfida: n }); }
     createPackSnapshot(user.uid, carte, { dropId: dropAttivo?.id || null, dropName: dropAttivo?.nome || null }).catch(e => console.error('createPackSnapshot failed:', e));
+    // Quest progress: apertura bustina
+    incrementaQuestProgress(user.uid, 'bustine', 1).catch(() => {});
+    // Quest progress: waifu leggendaria o immersiva trovata
+    const legFound = carte.filter(c => c.tipo === 'waifu' && (c.data?.rarita === 'leggendario' || c.data?.rarita === 'immersivo')).length;
+    if (legFound > 0) incrementaQuestProgress(user.uid, 'leggendarie', legFound).catch(() => {});
     setStato('pack_closed'); // user taps to open → card_reveal
   };
 
@@ -5775,9 +5780,10 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
 
             {/* ── TAB BATTAGLIA ── */}
             {tabDettaglio === 'battaglia' && (() => {
-              // Usa velocita/crit_chance salvati; fallback al valore base del catalogo (con moltiplicatore già applicato)
-              const speed   = dati.velocita   ?? w.velocita_base   ?? Math.min(300, Math.max(1, Math.round(computeSpeed(w) * 0.50)));
-              const critPct = Math.round((dati.crit_chance ?? w.crit_chance_base ?? Math.min(0.20, Math.max(0.05, computeCritChance(w) * 0.50))) * 100);
+              // Usa velocita/crit_chance/hp salvati dal DB; fallback al valore calcolato
+              const speed   = Math.round(dati.velocita   ?? w.velocita_base   ?? computeSpeed(w));
+              const critPct = Math.round((dati.crit_chance ?? w.crit_chance_base ?? computeCritChance(w)) * 100);
+              const hpVal   = Math.round(dati.hp ?? w.hp_base ?? computeHp(w));
               const mosseSlot = dati.mosse_slot ?? { 1: null, 2: null, 3: null, 4: null };
               const mosseAssegnate = Object.values(mosseSlot).filter(Boolean).length;
 
@@ -5823,14 +5829,18 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
                   {/* Combat stats */}
                   <PannelloOrnato glow="#7F77DD" style={{ padding: '14px 16px' }}>
                     <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.4)', letterSpacing: 2, marginBottom: 10 }}>STATISTICHE COMBATTIMENTO</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                      <div style={{ textAlign: 'center', padding: '10px 8px', background: 'rgba(0,200,255,0.06)', borderRadius: 8, border: '1px solid rgba(0,200,255,0.2)' }}>
-                        <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(0,200,255,0.6)', letterSpacing: 1, marginBottom: 4 }}>VELOCITÀ (CALCOLATA)</div>
-                        <div style={{ fontFamily: 'Orbitron', fontSize: 22, fontWeight: 900, color: '#00C8FF' }}>{speed}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                      <div style={{ textAlign: 'center', padding: '10px 6px', background: 'rgba(6,214,160,0.06)', borderRadius: 8, border: '1px solid rgba(6,214,160,0.2)' }}>
+                        <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(6,214,160,0.6)', letterSpacing: 1, marginBottom: 4 }}>💚 HP</div>
+                        <div style={{ fontFamily: 'Orbitron', fontSize: 18, fontWeight: 900, color: '#06d6a0' }}>{hpVal}</div>
                       </div>
-                      <div style={{ textAlign: 'center', padding: '10px 8px', background: 'rgba(245,166,35,0.06)', borderRadius: 8, border: '1px solid rgba(245,166,35,0.2)' }}>
-                        <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(245,166,35,0.6)', letterSpacing: 1, marginBottom: 4 }}>PROB. CRITICO</div>
-                        <div style={{ fontFamily: 'Orbitron', fontSize: 22, fontWeight: 900, color: '#f5a623' }}>{critPct}%</div>
+                      <div style={{ textAlign: 'center', padding: '10px 6px', background: 'rgba(0,200,255,0.06)', borderRadius: 8, border: '1px solid rgba(0,200,255,0.2)' }}>
+                        <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(0,200,255,0.6)', letterSpacing: 1, marginBottom: 4 }}>⚡ VEL.</div>
+                        <div style={{ fontFamily: 'Orbitron', fontSize: 18, fontWeight: 900, color: '#00C8FF' }}>{speed}</div>
+                      </div>
+                      <div style={{ textAlign: 'center', padding: '10px 6px', background: 'rgba(245,166,35,0.06)', borderRadius: 8, border: '1px solid rgba(245,166,35,0.2)' }}>
+                        <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(245,166,35,0.6)', letterSpacing: 1, marginBottom: 4 }}>💥 CRIT</div>
+                        <div style={{ fontFamily: 'Orbitron', fontSize: 18, fontWeight: 900, color: '#f5a623' }}>{critPct}%</div>
                       </div>
                     </div>
                   </PannelloOrnato>

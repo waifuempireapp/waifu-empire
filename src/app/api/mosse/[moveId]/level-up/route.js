@@ -1,6 +1,6 @@
 // PATCH /api/mosse/[moveId]/level-up
-// Applica il level-up automatico a una mossa nella collezione utente.
-// Livelli dispari → aumenta danno, livelli pari → aumenta danno_critico.
+// Level-up di una mossa: ogni livello pari aumenta danno (+5), ogni livello dispari
+// ricalcola danno_critico = round(danno * 1.25) — SEMPRE valore intero assoluto.
 import { NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebaseAdmin';
 
@@ -37,25 +37,31 @@ export async function PATCH(request, { params }) {
   if (copie < livello * 5) return NextResponse.json({ error: 'Level up non disponibile (servono ' + (livello * 5) + ' copie)' }, { status: 422 });
 
   const cfg = cfgSnap.exists ? cfgSnap.data() : {};
-  const incDanno = cfg.incremento_danno ?? 5;
-  const incCrit  = cfg.incremento_danno_critico ?? 0.02;
+  const incDanno = Math.round(cfg.incremento_danno ?? 5);
   const newLivello = livello + 1;
 
-  const currentDanno = userMossa.danno ?? catalog.danno ?? 0;
-  const currentCrit  = userMossa.danno_critico ?? catalog.danno_critico ?? 0;
+  // Danno base corrente (intero)
+  const currentDanno = Math.round(userMossa.danno ?? catalog.danno ?? 0);
 
   const patch = { livello: newLivello };
+
   if (newLivello % 2 === 0) {
-    patch.danno_critico = parseFloat((currentCrit + incCrit).toFixed(4));
+    // Livello pari → aumenta danno_critico: ricalcola come round(danno × 1.25)
+    // Il danno_critico è SEMPRE un intero assoluto (non percentuale)
+    patch.danno_critico = Math.round(currentDanno * 1.25);
   } else {
-    patch.danno = currentDanno + incDanno;
+    // Livello dispari → aumenta danno
+    const newDanno = currentDanno + incDanno;
+    patch.danno = newDanno;
+    // Aggiorna anche danno_critico in base al nuovo danno
+    patch.danno_critico = Math.round(newDanno * 1.25);
   }
 
   await adminDb.doc(`users/${uid}/collezione/main`).update({
     [`mosse.${moveId}.livello`]: newLivello,
-    ...(patch.danno !== undefined ? { [`mosse.${moveId}.danno`]: patch.danno } : {}),
-    ...(patch.danno_critico !== undefined ? { [`mosse.${moveId}.danno_critico`]: patch.danno_critico } : {}),
+    [`mosse.${moveId}.danno`]: patch.danno ?? currentDanno,
+    [`mosse.${moveId}.danno_critico`]: patch.danno_critico,
   });
 
-  return NextResponse.json({ livello: newLivello, ...patch });
+  return NextResponse.json({ livello: newLivello, danno: patch.danno ?? currentDanno, danno_critico: patch.danno_critico });
 }
