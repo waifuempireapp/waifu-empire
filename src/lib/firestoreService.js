@@ -262,9 +262,10 @@ export async function lazyMigrateStats(uid, collezioneData, waifuCatalog, rarity
     if (!catalog) continue;
     const statPersonali = userWaifu.stat_personali ?? {};
     const rarita = catalog.rarita ?? 'comune';
-    const { velocita, crit_chance } = computeAndSaveStats(catalog, rarita, statPersonali, rarityConfig);
+    const { velocita, crit_chance, hp } = computeAndSaveStats(catalog, rarita, statPersonali, rarityConfig);
     patch[`waifu.${waifuId}.velocita`]    = velocita;
     patch[`waifu.${waifuId}.crit_chance`] = crit_chance;
+    patch[`waifu.${waifuId}.hp`]          = hp;
   }
   patch.stats_version = STATS_VERSION;
   if (Object.keys(patch).length > 1) {
@@ -435,12 +436,13 @@ export async function upsertWaifu(id, data) {
     const cfgSnap = await getDoc(doc(db, 'config', 'rarity_multipliers'));
     if (cfgSnap.exists()) rarityConfig = cfgSnap.data();
   } catch (_) {}
-  const { velocita, crit_chance } = computeAndSaveStats(data, rarita, {}, rarityConfig);
+  const { velocita, crit_chance, hp } = computeAndSaveStats(data, rarita, {}, rarityConfig);
   await setDoc(ref, {
     ...data,
     rarita,
     velocita_base: velocita,
     crit_chance_base: crit_chance,
+    hp_base: hp,
     aggiornato: serverTimestamp(),
   }, { merge: true });
   return ref.id;

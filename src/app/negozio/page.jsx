@@ -290,6 +290,9 @@ export default function NegozioPage() {
             ABBONAMENTI
           </div>
           <SwapPassCard profilo={profilo} user={user} />
+          <div style={{ marginTop: 10 }}>
+            <SwapPassKissesCard profilo={profilo} user={user} />
+          </div>
         </div>
 
         {/* Divisore */}
@@ -424,6 +427,89 @@ function SwapPassCard({ profilo, user }) {
             Rinnovo automatico mensile · Cancella in qualsiasi momento
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+function SwapPassKissesCard({ profilo, user }) {
+  const [busy, setBusy]       = useState(false);
+  const [notif, setNotif]     = useState(null);
+  const [cost, setCost]       = useState(500);
+
+  useEffect(() => {
+    import('@/lib/firebase').then(({ db }) => {
+      import('firebase/firestore').then(({ doc, getDoc }) => {
+        getDoc(doc(db, 'config', 'prezzi')).then(s => {
+          if (s.exists()) setCost(s.data()?.swap_pass_kisses ?? 500);
+        }).catch(() => {});
+      });
+    });
+  }, []);
+
+  const hasPassKisses = !!(profilo?.swapPassKissesSubscription);
+  const hasPass = !!(profilo?.hasSwapPass || profilo?.swap_pass);
+  const expiry = profilo?.swapPassExpiresAt
+    ? new Date(profilo.swapPassExpiresAt?.seconds * 1000 || profilo.swapPassExpiresAt).toLocaleDateString('it-IT')
+    : null;
+
+  const doAction = async (action) => {
+    setBusy(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/swap/subscribe-kisses', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (action === 'subscribe') setNotif({ testo: `✅ Swap Pass attivato con Kisses! Scade il ${new Date(data.expiresAt).toLocaleDateString('it-IT')}`, colore: '#06d6a0' });
+        else setNotif({ testo: 'Auto-rinnovo disabilitato. Il pass scade alla data indicata.', colore: '#f59e0b' });
+      } else {
+        setNotif({ testo: data.error || 'Errore', colore: '#ff3d3d' });
+      }
+    } catch (e) {
+      setNotif({ testo: e.message, colore: '#ff3d3d' });
+    }
+    setBusy(false);
+    setTimeout(() => setNotif(null), 5000);
+  };
+
+  return (
+    <div style={{ background: 'linear-gradient(135deg, rgba(245,197,96,0.08), rgba(6,3,15,0.9))', border: '1px solid rgba(245,197,96,0.25)', borderRadius: 14, padding: '14px 18px' }}>
+      {notif && <div style={{ marginBottom: 10, padding: '7px 10px', background: `${notif.colore}15`, border: `1px solid ${notif.colore}40`, borderRadius: 8, fontFamily: 'Fredoka', fontSize: 11, color: notif.colore }}>{notif.testo}</div>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+        <div>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 12, color: '#f5c560', fontWeight: 700 }}>Swap Pass — Kisses</div>
+          <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: 'rgba(238,232,220,0.6)', marginTop: 3 }}>Rinnovo mensile automatico</div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 15, color: '#f5c560', fontWeight: 900, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <KissesIcon size={14} /> {cost.toLocaleString()}
+          </div>
+          <div style={{ fontFamily: 'Fredoka', fontSize: 10, color: 'rgba(238,232,220,0.4)' }}>/mese</div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+        {['✅ Voti illimitati nel Waifu Swap', '✅ Zero pubblicità durante il voto', '✅ Paga con Kisses in-game'].map(b => (
+          <div key={b} style={{ fontFamily: 'Fredoka', fontSize: 11, color: 'rgba(238,232,220,0.75)' }}>{b}</div>
+        ))}
+      </div>
+      {hasPass && hasPassKisses ? (
+        <>
+          <div style={{ background: 'rgba(6,214,160,0.1)', border: '1px solid rgba(6,214,160,0.3)', borderRadius: 10, padding: '9px 12px', textAlign: 'center', marginBottom: 8 }}>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#06d6a0' }}>✓ SWAP PASS KISSES ATTIVO</div>
+            {expiry && <div style={{ fontFamily: 'Fredoka', fontSize: 10, color: 'rgba(238,232,220,0.5)', marginTop: 2 }}>Scade il {expiry}</div>}
+          </div>
+          <button onClick={() => doAction('cancel')} disabled={busy} style={{ width: '100%', padding: '9px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: 'rgba(238,232,220,0.5)', fontFamily: 'Orbitron', fontSize: 9, cursor: busy ? 'not-allowed' : 'pointer' }}>
+            {busy ? '⏳' : 'Annulla auto-rinnovo'}
+          </button>
+        </>
+      ) : (
+        <button onClick={() => doAction('subscribe')} disabled={busy} style={{ width: '100%', padding: '11px', background: busy ? 'rgba(245,197,96,0.3)' : 'linear-gradient(135deg,#f5c560,#f59e0b)', border: 'none', borderRadius: 11, color: '#000', fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', letterSpacing: '0.1em' }}>
+          {busy ? '⏳' : `ABBONATI CON KISSES`}
+        </button>
       )}
     </div>
   );

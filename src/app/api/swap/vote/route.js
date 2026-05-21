@@ -6,9 +6,24 @@ export const maxDuration = 20;
 
 const MILESTONES = [100, 500, 1000, 5000];
 
+// Restituisce la data in formato YYYY-MM-DD per il fuso orario italiano (Europe/Rome)
 function dayKey(ts = Date.now()) {
-  const d = new Date(ts);
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+  return new Date(ts).toLocaleDateString('fr-CA', { timeZone: 'Europe/Rome' });
+}
+
+// Restituisce il timestamp UTC corrispondente alla mezzanotte italiana del giorno successivo
+function nextMidnightRome() {
+  const now = new Date();
+  const todayStr = now.toLocaleDateString('fr-CA', { timeZone: 'Europe/Rome' });
+  // Scansiona le ore UTC da 21:00 in poi per trovare quando cambia il giorno in Italia
+  const [y, m, d] = todayStr.split('-').map(Number);
+  const base = Date.UTC(y, m - 1, d, 21, 0, 0); // 21:00 UTC = 22:00 o 23:00 ore italiane
+  for (let h = 0; h < 4; h++) {
+    const t = base + h * 3600000;
+    const romeStr = new Date(t).toLocaleDateString('fr-CA', { timeZone: 'Europe/Rome' });
+    if (romeStr > todayStr) return new Date(t);
+  }
+  return new Date(Date.UTC(y, m - 1, d + 1)); // fallback
 }
 
 // POST /api/swap/vote — registra voto like/dislike, gestisce reward e streak
@@ -45,8 +60,7 @@ export async function POST(request) {
       const dailyVotesDate = userData.daily_swap_date ?? '';
       const dailyVotes = dailyVotesDate === todayKeyCheck ? (userData.daily_swap_votes ?? 0) : 0;
       if (dailyVotes >= dailyLimit) {
-        const resetAt = new Date();
-        resetAt.setUTCHours(24, 0, 0, 0);
+        const resetAt = nextMidnightRome();
         return NextResponse.json({ error: 'Limite giornaliero raggiunto', resetAt: resetAt.toISOString(), dailyLimit }, { status: 429 });
       }
     }

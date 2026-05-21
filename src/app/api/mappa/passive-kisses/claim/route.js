@@ -28,7 +28,9 @@ export async function POST(request) {
     const now = Date.now();
     const lastClaim = userData.lastKissesClaimAt?.toMillis?.() ?? (now - 3600000);
     const hoursElapsed = Math.min((now - lastClaim) / 3600000, MAX_CLAIM_HOURS);
-    const earned = Math.floor(pixelCount * passiveRate * hoursElapsed);
+    // Rate: 1 Kisses ogni 2 territori per ora (floor division)
+    const effectiveRate = Math.floor(pixelCount / 2) * passiveRate;
+    const earned = Math.floor(effectiveRate * hoursElapsed);
 
     if (earned <= 0) return NextResponse.json({ earned: 0, message: 'Nulla da raccogliere' });
 

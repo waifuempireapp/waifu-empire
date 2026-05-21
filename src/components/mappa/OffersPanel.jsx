@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useScrollLock } from '@/lib/useScrollLock';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
 import KissesIcon from '@/components/KissesIcon';
+import { PIXEL_NAMES } from '@/lib/worldMap';
 
 export default function OffersPanel({ user, onClose, onKissesUpdate, onMapUpdate }) {
   useScrollLock();
@@ -110,7 +111,7 @@ function OfferCard({ offer, type, onAction, acting }) {
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <div style={{ fontFamily: FF.mono, fontSize: 12, color: 'rgba(241,235,255,0.7)' }}>
-          Pixel ({offer.pixelX}, {offer.pixelY})
+          {PIXEL_NAMES[`${offer.pixelX}_${offer.pixelY}`] ?? `(${offer.pixelX}, ${offer.pixelY})`}
         </div>
         <span style={{ fontFamily: FF.label, fontSize: 9, letterSpacing: '0.15em', textTransform: 'uppercase', color: statusColor[offer.status] || '#ffe9a8' }}>
           {offer.status}

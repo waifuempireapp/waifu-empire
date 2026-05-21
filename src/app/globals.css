@@ -1098,6 +1098,7 @@ input:focus, textarea:focus, select:focus {
 }
 .missioni-modal {
   position: absolute; bottom: 0; left: 0; right: 0;
+  height: 82vh; /* altezza fissa: il contenuto non cambia la dimensione del popup */
   max-height: 92vh;
   background: linear-gradient(180deg, var(--ink-elev-1) 0%, var(--ink-night) 100%);
   border-top: 1px solid rgba(174,156,255,0.22);

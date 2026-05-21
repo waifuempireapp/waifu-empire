@@ -8,6 +8,8 @@ import {
   getAttivitaAmici,
   getMissioniSezioni, claimMissioneReward,
 } from '@/lib/firestoreService';
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 import KissesIcon from '@/components/KissesIcon';
 import { CartaWaifu, CartaOutfit, CartaPosa } from '@/components/CartaWaifu';
 import { CartaMossa } from '@/components/CartaMossa';
@@ -315,9 +317,19 @@ export function HomeTab({
     getDropStagionale().then(d => setDropStagionale(d ?? null)).catch(() => setDropStagionale(null));
   }, []);
 
+  // Quest giornaliere: init + listener real-time per aggiornamento automatico del progresso
   useEffect(() => {
     if (!user) return;
+    // Prima init (resetta se nuovo giorno)
     initQuestGiornaliere(user.uid).then(q => setQuest(q)).catch(() => {});
+    // onSnapshot: aggiorna quest.stato in real-time quando questGiornaliere cambia in Firestore
+    const unsub = onSnapshot(doc(db, 'users', user.uid), (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      const saved = data.questGiornaliere;
+      if (saved) setQuest(prev => prev ? { ...prev, stato: saved } : null);
+    });
+    return () => unsub();
   }, [user]);
 
   useEffect(() => {
@@ -998,6 +1010,69 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
 
   const pctGiorn = quest ? Math.round((giornCompletate / quest.defs.length) * 100) : 0;
 
+  // Riscuoti tutto: rivendica tutte le missioni completate nel tab attivo
+  const [riscuotiTuttobusy, setRiscuotiTuttoBusy] = useState(false);
+  const riscuotiTutto = async () => {
+    if (riscuotiTuttobusy) return;
+    setRiscuotiTuttoBusy(true);
+    try {
+      if (tabAttiva === 'giornaliere' && quest) {
+        for (const def of QUEST_GIORNALIERE_DEFS) {
+          const s = quest.stato[def.tipo] || {};
+          if ((s.progresso ?? 0) >= (s.target ?? def.target) && !s.claimed) {
+            try {
+              await claimQuestReward(user.uid, def.tipo, def.reward, profilo);
+              setQuest(prev => prev ? { ...prev, stato: { ...prev.stato, [def.tipo]: { ...prev.stato[def.tipo], claimed: true } } } : prev);
+              if (def.reward.tipo === 'kisses') setProfilo(p => ({ ...p, kisses: (p.kisses ?? 0) + def.reward.qty }));
+              if (def.reward.tipo === 'pack') setProfilo(p => ({ ...p, pacchettiOmaggio: (p.pacchettiOmaggio ?? 0) + def.reward.qty }));
+            } catch (_) {}
+          }
+        }
+      }
+      if (tabAttiva === 'raid') {
+        // Claim raid corrente se claimable
+        if (raidInfo && raidInfo.status !== 'active' && (raidPart?.damageDealt ?? 0) > 0 && !raidPart?.claimed && !raidClaimed) {
+          const token = await user.getIdToken();
+          const res = await fetch('/api/raid/claim', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ eventId: raidInfo.id }) });
+          const data = await res.json();
+          if (data.success || data.alreadyClaimed) setRaidClaimed(true);
+        }
+        // Claim raid passati
+        for (const u of unclaimedRaids) {
+          if (!claimedRaidIds.has(u.raidInfo.id)) {
+            const token = await user.getIdToken();
+            const res = await fetch('/api/raid/claim', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ eventId: u.raidInfo.id }) });
+            const data = await res.json();
+            if (data.success || data.alreadyClaimed) setClaimedRaidIds(prev => new Set([...prev, u.raidInfo.id]));
+          }
+        }
+      }
+      if (tabAttiva === 'mappa') {
+        // Claim missione mappa corrente
+        const endsMs = mapMission ? new Date(mapMission.endsAt).getTime() : 0;
+        const isExpired = endsMs > 0 && endsMs < Date.now();
+        const mId = mapMission?.missionId || mapMission?.id;
+        if (isExpired && mId && !mapClaimed && !claimedMapIds.has(mId)) {
+          const token = await user.getIdToken();
+          const res = await fetch('/api/map-missions/claim', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ missionId: mId }) });
+          const data = await res.json();
+          if (data.success || data.alreadyClaimed) { setMapClaimed(true); setClaimedMapIds(prev => new Set([...prev, mId])); }
+        }
+        // Claim missioni mappa passate
+        for (const { missionId, mission } of unclaimedMaps) {
+          const mid = mapMission?.missionId || mapMission?.id;
+          if (missionId !== mid && !claimedMapIds.has(missionId)) {
+            const token = await user.getIdToken();
+            const res = await fetch('/api/map-missions/claim', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ missionId }) });
+            const data = await res.json();
+            if (data.success || data.alreadyClaimed) setClaimedMapIds(prev => new Set([...prev, missionId]));
+          }
+        }
+      }
+    } catch (_) {}
+    setRiscuotiTuttoBusy(false);
+  };
+
   return (
     <div className="missioni-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="missioni-modal">
@@ -1022,8 +1097,8 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
           </button>
         </div>
 
-        {/* Subtab: In Corso | Completate */}
-        <div style={{ display: 'flex', gap: 4, padding: '0 16px 8px' }}>
+        {/* Subtab: In Corso | Completate + Riscuoti tutto */}
+        <div style={{ display: 'flex', gap: 4, padding: '0 16px 8px', alignItems: 'center' }}>
           {['incorso','completate'].map(s => (
             <button key={s} onClick={() => setSubTab(s)} style={{
               flex: 1, padding: '6px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -1033,6 +1108,17 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
               borderBottom: subTab === s ? '2px solid #f59e0b' : '2px solid transparent',
             }}>{s === 'incorso' ? '📋 In Corso' : '✅ Completate'}</button>
           ))}
+          {subTab === 'completate' && (
+            <button disabled={riscuotiTuttobusy} onClick={riscuotiTutto} style={{
+              flexShrink: 0, padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(6,214,160,0.4)',
+              background: riscuotiTuttobusy ? 'rgba(6,214,160,0.1)' : 'rgba(6,214,160,0.15)',
+              color: '#06d6a0', fontFamily: "'Saira Condensed',sans-serif", fontSize: 10,
+              fontWeight: 700, cursor: riscuotiTuttobusy ? 'default' : 'pointer', letterSpacing: '0.08em',
+              whiteSpace: 'nowrap',
+            }}>
+              {riscuotiTuttobusy ? '⏳' : '🎁 Riscuoti tutto'}
+            </button>
+          )}
         </div>
 
         {/* Contenuto per tab + subtab */}

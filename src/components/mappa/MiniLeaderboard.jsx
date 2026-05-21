@@ -42,7 +42,8 @@ export default function MiniLeaderboard({ chunks, userUid, profilo, passiveRate,
   const leaders    = computeLeaderboard(chunks);
   const pixelCount = profilo?.pixelCount ?? 0;
   const rate       = passiveRate ?? 1;
-  const ratePerSec = (pixelCount * rate) / 3600;
+  const effectivePixels = Math.floor(pixelCount / 2); // 1 Kisses ogni 2 territori
+  const ratePerSec = (effectivePixels * rate) / 3600;
 
   const cpuCount = (() => {
     if (!chunks) return 0;

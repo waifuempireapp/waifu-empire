@@ -65,15 +65,16 @@ export async function PATCH(request, { params }) {
 
   const newStatPersonali = { ...statPersonali, [stat]: newValue };
   const rarityConfig = cfgSnap.exists ? cfgSnap.data() : null;
-  const { velocita, crit_chance } = computeAndSaveStats(catalog, catalog.rarita ?? 'comune', newStatPersonali, rarityConfig);
+  const { velocita, crit_chance, hp } = computeAndSaveStats(catalog, catalog.rarita ?? 'comune', newStatPersonali, rarityConfig);
 
   await adminDb.doc(`users/${uid}/collezione/main`).update({
     [`waifu.${waifuId}.stat_personali`]:  newStatPersonali,
     [`waifu.${waifuId}.velocita`]:        velocita,
     [`waifu.${waifuId}.crit_chance`]:     crit_chance,
+    [`waifu.${waifuId}.hp`]:              hp,
     [`waifu.${waifuId}.livello`]:         currentLevel + 1,
     [`waifu.${waifuId}.levelup_pending`]: false,
   });
 
-  return NextResponse.json({ success: true, livello: currentLevel + 1, velocita, crit_chance, [stat]: newValue });
+  return NextResponse.json({ success: true, livello: currentLevel + 1, velocita, crit_chance, hp, [stat]: newValue });
 }

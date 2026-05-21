@@ -665,6 +665,9 @@ function RaidWidget({ raid, onClick }) {
         <div style={{ fontSize: 22, flexShrink: 0 }}>⚔</div>
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 8, color: 'rgba(236,72,153,0.6)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 1 }}>
+          ⚔ Raid Waifu
+        </div>
         <div style={{ fontFamily: "'Unbounded',sans-serif", fontSize: 11, color: '#ec4899', fontWeight: 800, marginBottom: 2 }}>
           {raid?.waifuNome ?? 'Raid Island'}
         </div>

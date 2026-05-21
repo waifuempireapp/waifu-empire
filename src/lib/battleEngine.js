@@ -422,6 +422,40 @@ export function computeCritChance(w, rarityMultiplier = 1.0, rarityRange = null)
 }
 
 /**
+ * Calcola gli HP di una waifu in base alle 5 stat fisiche + rarità.
+ *
+ * Formula (hp_raw → intero 50–750):
+ *   t  = (tette - 1) / 6              — diretta (più tette → più HP)
+ *   e  = (eta - 18) / 4982            — diretta (più età → più HP, minor peso)
+ *   es = esperienza / 5000            — diretta (più exp → molto più HP)
+ *   c  = (colore_capelli - 1) / 8     — diretta (minor peso)
+ *   p  = (taglia_piedi - 34) / 11     — diretta (più robusto)
+ *
+ *   hp_raw = t×0.30 + es×0.30 + p×0.20 + e×0.10 + c×0.10
+ *   base_hp = round(hp_raw × 400) + 100     — range [100, 500] con moltiplicatore ×1.0
+ *   hp_final = round(base_hp × rarityMultiplier)
+ *
+ * Range con rarità:
+ *   comune×0.50 → [50, 250]   raro×0.75 → [75, 375]
+ *   epico×1.00 → [100, 500]   leggendario×1.25 → [125, 625]
+ *   immersivo×1.50 → [150, 750]
+ *
+ * @param {Object} w - Documento waifu (stats fisiche)
+ * @param {number} rarityMultiplier - Moltiplicatore rarità (default 1.0 = epico)
+ * @returns {number} HP intero
+ */
+export function computeHp(w, rarityMultiplier = 1.0) {
+  const t  = ((w.tette          ?? 4)  - 1)  / 6;
+  const e  = ((w.eta            ?? 25) - 18) / 4982;
+  const es = (w.esperienza      ?? 0)        / 5000;
+  const c  = ((w.colore_capelli ?? 5)  - 1)  / 8;
+  const p  = ((w.taglia_piedi   ?? 39) - 34) / 11;
+  const raw = t * 0.30 + es * 0.30 + p * 0.20 + e * 0.10 + c * 0.10;
+  const base = Math.round(raw * 400) + 100; // [100, 500]
+  return Math.max(50, Math.round(base * rarityMultiplier));
+}
+
+/**
  * Genera battleStats completi per una waifu in-memory (usato come fallback quando
  * la waifu non ha battleStats in Firestore).
  * SRP: separato da initBattleWaifu per coesione delle responsabilità.

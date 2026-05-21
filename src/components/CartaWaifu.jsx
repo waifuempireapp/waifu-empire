@@ -401,18 +401,34 @@ export function CartaWaifu({
         opacity: videoAttivo ? 0 : 1,
         transition: 'opacity 0.3s ease',
       }}>
+        {/* Riga HP / Velocità / Crit% sopra la linea ornamento */}
+        {(() => {
+          const hp  = datiCollezione?.hp ?? waifu.hp ?? null;
+          const vel = datiCollezione?.velocita ?? waifu.velocita_base ?? null;
+          const crit = datiCollezione?.crit_chance ?? waifu.crit_chance_base ?? null;
+          if (hp == null && vel == null && crit == null) return null;
+          const fs = Math.round(6.5 * scale);
+          return (
+            <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', marginBottom: Math.round(4 * scale) }}>
+              {hp   != null && <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: fs, color: '#06d6a0', textAlign: 'center', lineHeight: 1.2 }}><div>💚</div><div>{Math.round(hp)}</div></div>}
+              {vel  != null && <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: fs, color: '#6cf0e0', textAlign: 'center', lineHeight: 1.2 }}><div>⚡</div><div>{Math.round(vel)}</div></div>}
+              {crit != null && <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: fs, color: '#fbbf24', textAlign: 'center', lineHeight: 1.2 }}><div>💥</div><div>{Math.round(crit * 100)}%</div></div>}
+            </div>
+          );
+        })()}
         {/* Linea ornamento */}
         <div style={{
           width: '70%', height: 1, margin: `0 auto ${Math.round(7 * scale)}px`,
           background: `linear-gradient(90deg, transparent, ${rb.inner}cc, transparent)`,
           boxShadow: `0 0 6px ${rb.glow}`,
         }} />
+        {/* Stats principali con nuove emoji */}
         <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
-          <StatCircle value={tetteEff}    statKey="tette"   icon="✦" color="#ff9ec6" size={statSize} />
-          <StatCircle value={piediEff}    statKey="piedi"   icon="⚘" color="#b573ff" size={statSize} />
-          <StatCircle value={etaEff}      statKey="eta"     icon="⌛" color="#6cf0e0" size={statSize} />
-          <StatCircle value={capelliEff}  statKey="capelli" icon="✿" color="#ffc861" size={statSize} />
-          <StatCircle value={expEff}      statKey="exp"     icon="★" color="#a78bfa" size={statSize} />
+          <StatCircle value={tetteEff}    statKey="tette"   icon="🍑" color="#ff9ec6" size={statSize} />
+          <StatCircle value={piediEff}    statKey="piedi"   icon="🦶" color="#b573ff" size={statSize} />
+          <StatCircle value={etaEff}      statKey="eta"     icon="⏳" color="#6cf0e0" size={statSize} />
+          <StatCircle value={capelliEff}  statKey="capelli" icon="💇" color="#ffc861" size={statSize} />
+          <StatCircle value={expEff}      statKey="exp"     icon="⭐" color="#a78bfa" size={statSize} />
         </div>
       </div>
 

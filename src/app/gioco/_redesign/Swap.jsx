@@ -350,12 +350,20 @@ function SwapLimitScreen({ setTab }) {
   useEffect(() => {
     const tick = () => {
       const now = new Date();
-      const midnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
-      const diff = Math.max(0, midnight - now);
-      const h = Math.floor(diff / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      setCountdown(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
+      // Calcola mezzanotte ora italiana (Europe/Rome)
+      const todayStr = now.toLocaleDateString('fr-CA', { timeZone: 'Europe/Rome' });
+      const [yr, mo, dy] = todayStr.split('-').map(Number);
+      const base = Date.UTC(yr, mo - 1, dy, 21, 0, 0);
+      let midnightRome = new Date(base + 3 * 3600000); // fallback
+      for (let i = 0; i < 4; i++) {
+        const t = base + i * 3600000;
+        if (new Date(t).toLocaleDateString('fr-CA', { timeZone: 'Europe/Rome' }) > todayStr) { midnightRome = new Date(t); break; }
+      }
+      const diff = Math.max(0, midnightRome - now);
+      const hh = Math.floor(diff / 3600000);
+      const mm = Math.floor((diff % 3600000) / 60000);
+      const ss = Math.floor((diff % 60000) / 1000);
+      setCountdown(`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`);
     };
     tick();
     const iv = setInterval(tick, 1000);

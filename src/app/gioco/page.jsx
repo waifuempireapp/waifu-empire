@@ -3823,6 +3823,9 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
   // Filtro drop (condiviso tra waifu/outfit/pose)
   const [drops, setDrops] = useState([]);
   const [filtroDropId, setFiltroDropId] = useState('tutti');
+  // Filtri preferiti
+  const [filtroPreferiti, setFiltroPreferiti] = useState(false);
+  const [filtroMossaPreferiti, setFiltroMossaPreferiti] = useState(false);
   // Filtri mosse
   const [filtroMossaNome, setFiltroMossaNome] = useState('');
   const [filtroMossaRarita, setFiltroMossaRarita] = useState('tutte');
@@ -3981,6 +3984,8 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
         if (filtroHot === 'non-hot')   waifuEntries = waifuEntries.filter(({ w }) => !w.hot);
         if (filtroLevelUp === 'si')    waifuEntries = waifuEntries.filter(({ dati }) => (dati.copie ?? 0) >= 3);
         if (filtroLevelUp === 'no')    waifuEntries = waifuEntries.filter(({ dati }) => (dati.copie ?? 0) < 3);
+        const prefWaifu = new Set(collezione.preferiti_waifu || []);
+        if (filtroPreferiti) waifuEntries = waifuEntries.filter(({ id }) => prefWaifu.has(id));
 
         // Conta scambiabili globali (senza altri filtri) per messaggio trades esaurite
         const totScambiabili = filtroScambiabile ? Object.values(collezione.waifu || {}).filter(d => (d.copie ?? 0) >= 2).length : 0;
@@ -3988,6 +3993,9 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
         if (sortKey === 'rarita') waifuEntries.sort((a, b) => sortDir === 'desc' ? rarOrder.indexOf(b.w.rarita) - rarOrder.indexOf(a.w.rarita) : rarOrder.indexOf(a.w.rarita) - rarOrder.indexOf(b.w.rarita));
         else if (sortKey === 'livello') waifuEntries.sort((a, b) => sortDir === 'desc' ? b.dati.livello - a.dati.livello : a.dati.livello - b.dati.livello);
         else if (sortKey === 'copie') waifuEntries.sort((a, b) => sortDir === 'desc' ? b.dati.copie - a.dati.copie : a.dati.copie - b.dati.copie);
+        else if (sortKey === 'velocita') waifuEntries.sort((a, b) => { const va = a.dati.velocita ?? a.w.velocita_base ?? 0; const vb = b.dati.velocita ?? b.w.velocita_base ?? 0; return sortDir === 'desc' ? vb - va : va - vb; });
+        else if (sortKey === 'hp') waifuEntries.sort((a, b) => { const va = a.dati.hp ?? a.w.hp_base ?? 0; const vb = b.dati.hp ?? b.w.hp_base ?? 0; return sortDir === 'desc' ? vb - va : va - vb; });
+        else if (sortKey === 'crit_chance') waifuEntries.sort((a, b) => { const va = a.dati.crit_chance ?? a.w.crit_chance_base ?? 0; const vb = b.dati.crit_chance ?? b.w.crit_chance_base ?? 0; return sortDir === 'desc' ? vb - va : va - vb; });
         else if (STAT_KEYS.includes(sortKey)) {
           waifuEntries.sort((a, b) => {
             const va = (a.w[sortKey] || 0) + (a.dati.stat_bonus?.[sortKey] || 0);
@@ -3995,6 +4003,8 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
             return sortDir === 'desc' ? vb - va : va - vb;
           });
         }
+        // Preferiti in cima
+        waifuEntries.sort((a, b) => (prefWaifu.has(b.id) ? 1 : 0) - (prefWaifu.has(a.id) ? 1 : 0));
         const visibili = waifuEntries.slice(0, visibiliWaifu);
         return (
           <div style={{ marginTop: 12 }}>
@@ -4010,6 +4020,8 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
               filtroLevelUp={filtroLevelUp}
               setFiltroLevelUp={v => { setFiltroLevelUp(v); setVisibiliWaifu(12); }}
               sortKey={sortKey} sortDir={sortDir} onToggleSort={onToggleSort}
+              filtroPreferiti={filtroPreferiti}
+              setFiltroPreferiti={v => { setFiltroPreferiti(v); setVisibiliWaifu(12); }}
               count={waifuEntries.length}
             />
             {/* Messaggio trades esaurite + scambiabili disponibili */}
@@ -4025,14 +4037,19 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
             <div className="collection-card-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
               {visibili.map(({ id, dati, w }, idx) => (
                 <div key={id} className="card-fade-up card-clickable collection-card-item" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', animationDelay: `${idx * 45}ms` }}>
-                  <CartaWaifu
-                    waifu={w} datiCollezione={dati} dimensione="piccola" tipo="auto"
-                    outfitCatalogo={outfitCat} poseCatalogo={poseCat}
-                    equip={collezione.equipaggiamento?.[id]}
-                    isHot={w.hot === true}
-                    censurata={w.hot === true && !profilo?.hardPass}
-                    onClick={(w.hot === true && !profilo?.hardPass) ? undefined : () => setWaifuSel(id)}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <CartaWaifu
+                      waifu={w} datiCollezione={dati} dimensione="piccola" tipo="auto"
+                      outfitCatalogo={outfitCat} poseCatalogo={poseCat}
+                      equip={collezione.equipaggiamento?.[id]}
+                      isHot={w.hot === true}
+                      censurata={w.hot === true && !profilo?.hardPass}
+                      onClick={(w.hot === true && !profilo?.hardPass) ? undefined : () => setWaifuSel(id)}
+                    />
+                    {prefWaifu.has(id) && (
+                      <span style={{ position: 'absolute', top: 4, right: 4, fontSize: 10, zIndex: 10, background: 'rgba(0,0,0,0.5)', borderRadius: '50%', padding: '1px 3px', pointerEvents: 'none' }}>❤️</span>
+                    )}
+                  </div>
                   <div style={{ textAlign: 'center', marginTop: 4 }}>
                     {dati.copie >= 3 ? (
                       <span style={{ ...stileLevelUp, fontSize: 9, color: '#00e676', display: 'block' }}>⚡ LEVEL UP!</span>
@@ -4077,6 +4094,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
           return catalog ? { moveId, dati, catalog } : null;
         }).filter(Boolean);
 
+        const prefMosse = new Set(collezione.preferiti_mosse || []);
         if (filtroMossaNome) mosseList = mosseList.filter(e => e.catalog.nome.toLowerCase().includes(filtroMossaNome.toLowerCase()));
         if (filtroMossaRarita !== 'tutte') mosseList = mosseList.filter(e => e.catalog.rarita === filtroMossaRarita);
         if (filtroMossaTipo !== 'tutti') mosseList = mosseList.filter(e => e.catalog.tipologia === filtroMossaTipo);
@@ -4086,6 +4104,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
           return filtroMossaLevelUp === 'si' ? ready : !ready;
         });
         if (filtroMossaAbilita !== 'tutti') mosseList = mosseList.filter(e => filtroMossaAbilita === 'si' ? !!e.catalog.abilita : !e.catalog.abilita);
+        if (filtroMossaPreferiti) mosseList = mosseList.filter(e => prefMosse.has(e.moveId));
         if (sortMossaKey) {
           mosseList.sort((a, b) => {
             let va, vb;
@@ -4098,6 +4117,8 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
             return sortMossaDir==='desc' ? vb-va : va-vb;
           });
         }
+        // Preferiti in cima
+        mosseList.sort((a, b) => (prefMosse.has(b.moveId) ? 1 : 0) - (prefMosse.has(a.moveId) ? 1 : 0));
 
         return (
           <div style={{ marginTop: 12 }}>
@@ -4118,6 +4139,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
               </select>}
               <button style={filterPill(filtroMossaLevelUp!=='tutti')} onClick={()=>setFiltroMossaLevelUp(p=>p==='tutti'?'si':p==='si'?'no':'tutti')}>⬆ LvUp: {filtroMossaLevelUp==='tutti'?'tutti':filtroMossaLevelUp}</button>
               <button style={filterPill(filtroMossaAbilita!=='tutti')} onClick={()=>setFiltroMossaAbilita(p=>p==='tutti'?'si':p==='si'?'no':'tutti')}>⚡ Abilità: {filtroMossaAbilita==='tutti'?'tutti':filtroMossaAbilita}</button>
+              <button style={{ ...filterPill(filtroMossaPreferiti), color: filtroMossaPreferiti ? '#ff4d9e' : 'rgba(241,235,255,0.4)', border: `1px solid ${filtroMossaPreferiti ? 'rgba(255,77,158,0.5)' : 'rgba(255,255,255,0.08)'}`, background: filtroMossaPreferiti ? 'rgba(255,77,158,0.12)' : 'rgba(255,255,255,0.05)' }} onClick={()=>setFiltroMossaPreferiti(p=>!p)}>❤️ Preferiti</button>
             </div>
             {/* Ordinamenti */}
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -4135,6 +4157,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
                     style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, animationDelay: `${idx * 40}ms`, position: 'relative', cursor: 'pointer' }}>
                     <CartaMossa mossa={catalog} datiUtente={dati} dimensione="piccola" />
                     {prossimeLup && <div style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(6,214,160,0.2)', border: '1px solid rgba(6,214,160,0.7)', borderRadius: 5, padding: '2px 6px', fontFamily: ORB_M, fontSize: 7, color: '#06d6a0', fontWeight: 700 }}>⬆ LVL UP</div>}
+                    {prefMosse.has(moveId) && <span style={{ position: 'absolute', top: 4, left: 4, fontSize: 10, zIndex: 10, background: 'rgba(0,0,0,0.5)', borderRadius: '50%', padding: '1px 3px', pointerEvents: 'none' }}>❤️</span>}
                     <span style={{ fontFamily: ORB_M, fontSize: 8, color: '#9b59ff' }}>x<strong style={{ color: '#ffd666' }}>{dati.copie}</strong> copie</span>
                   </div>
                 );
@@ -4517,6 +4540,13 @@ function MossaDetailModal({ catalog, dati, user, collezione, setColl, waifuCat =
             <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 18, fontWeight: 800, color: '#fff', lineHeight: 1.2, flex: 1, marginRight: 8 }}>
               {catalog.nome}
             </div>
+            <button onClick={async () => {
+              const isFav = (collezione.preferiti_mosse || []).includes(catalog.id);
+              setColl(prev => { const n = JSON.parse(JSON.stringify(prev)); n.preferiti_mosse = isFav ? (n.preferiti_mosse || []).filter(x => x !== catalog.id) : [...(n.preferiti_mosse || []), catalog.id]; return n; });
+              try { const token = await user.getIdToken(); await fetch('/api/preferiti/toggle', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ tipo: 'mossa', itemId: catalog.id }) }); } catch {}
+            }} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', padding: 4, lineHeight: 1, flexShrink: 0, color: (collezione.preferiti_mosse || []).includes(catalog.id) ? '#ff4d9e' : 'rgba(255,255,255,0.4)' }}>
+              {(collezione.preferiti_mosse || []).includes(catalog.id) ? '❤️' : '🤍'}
+            </button>
             <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 22, cursor: 'pointer', padding: 4, lineHeight: 1, flexShrink: 0 }}>✕</button>
           </div>
 
@@ -5434,7 +5464,16 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
                 <h2 style={{ fontFamily: 'Orbitron', color: rar.colore, letterSpacing: 3, margin: 0, fontSize: 18, textShadow: `0 0 12px ${rar.glow}` }}>{w.nome}</h2>
                 <StelleRarita stelle={rar.stelle} colore={rar.colore} dimensione={14} />
               </div>
-              <BtnDecorato variant="secondary" size="sm" onClick={onChiudi}>✕ CHIUDI</BtnDecorato>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button onClick={async () => {
+                  const isFav = (collezione.preferiti_waifu || []).includes(waifuId);
+                  setColl(prev => { const n = JSON.parse(JSON.stringify(prev)); n.preferiti_waifu = isFav ? (n.preferiti_waifu || []).filter(x => x !== waifuId) : [...(n.preferiti_waifu || []), waifuId]; return n; });
+                  try { const token = await user.getIdToken(); await fetch('/api/preferiti/toggle', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ tipo: 'waifu', itemId: waifuId }) }); } catch {}
+                }} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1, color: (collezione.preferiti_waifu || []).includes(waifuId) ? '#ff4d9e' : 'rgba(255,255,255,0.4)' }}>
+                  {(collezione.preferiti_waifu || []).includes(waifuId) ? '❤️' : '🤍'}
+                </button>
+                <BtnDecorato variant="secondary" size="sm" onClick={onChiudi}>✕ CHIUDI</BtnDecorato>
+              </div>
             </div>
 
             {/* Tab selector: Carta | Baby-doll | Battaglia */}
@@ -6140,10 +6179,11 @@ function SortChip({ label, skey, activeSkey, activeDir, onToggle }) {
   );
 }
 
-function BarraFiltriWaifu({ filtroNome, setFiltroNome, filtroRarita, setFiltroRarita, filtroDropId, setFiltroDropId, drops = [], filtroScambiabile, setFiltroScambiabile, filtroHot, setFiltroHot, filtroLevelUp, setFiltroLevelUp, sortKey, sortDir, onToggleSort, count }) {
+function BarraFiltriWaifu({ filtroNome, setFiltroNome, filtroRarita, setFiltroRarita, filtroDropId, setFiltroDropId, drops = [], filtroScambiabile, setFiltroScambiabile, filtroHot, setFiltroHot, filtroLevelUp, setFiltroLevelUp, sortKey, sortDir, onToggleSort, filtroPreferiti, setFiltroPreferiti, count }) {
   const STAT_SORT = [
-    { k: 'tette', l: '✦ Tette' }, { k: 'taglia_piedi', l: 'âš˜ Piedi' },
-    { k: 'eta', l: 'âŒ› Età' }, { k: 'colore_capelli', l: 'âœ¿ Cap.' }, { k: 'esperienza', l: '★ Esp.' },
+    { k: 'tette', l: '🍑' }, { k: 'taglia_piedi', l: '🦶' },
+    { k: 'eta', l: '⏳' }, { k: 'colore_capelli', l: '💇' }, { k: 'esperienza', l: '⭐' },
+    { k: 'velocita', l: '⚡ Vel.' }, { k: 'hp', l: '💚 HP' }, { k: 'crit_chance', l: '💥 Crit' },
   ];
   return (
     <div style={{ marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -6173,6 +6213,14 @@ function BarraFiltriWaifu({ filtroNome, setFiltroNome, filtroRarita, setFiltroRa
           border: `1px solid ${filtroScambiabile ? 'rgba(255,77,158,0.6)' : 'rgba(255,255,255,0.1)'}`,
           color: filtroScambiabile ? '#ff4d9e' : 'rgba(238,232,220,0.45)', fontFamily: 'Orbitron', fontSize: 8, flex: '0 0 auto',
         }}>â†” Scamb.</button>
+        {setFiltroPreferiti && (
+          <button onClick={() => setFiltroPreferiti(!filtroPreferiti)} style={{
+            padding: '5px 10px', borderRadius: 7, cursor: 'pointer',
+            background: filtroPreferiti ? 'rgba(255,77,158,0.18)' : 'rgba(255,255,255,0.03)',
+            border: `1px solid ${filtroPreferiti ? 'rgba(255,77,158,0.6)' : 'rgba(255,255,255,0.1)'}`,
+            color: filtroPreferiti ? '#ff4d9e' : 'rgba(238,232,220,0.45)', fontFamily: 'Orbitron', fontSize: 8, flex: '0 0 auto',
+          }}>❤️ Preferiti</button>
+        )}
         {filtroHot !== null && setFiltroHot && (
           <select value={filtroHot} onChange={e => setFiltroHot(e.target.value)} style={{ background: 'rgba(255,69,0,0.08)', border: '1px solid rgba(255,69,0,0.35)', color: filtroHot !== 'tutti' ? '#ff6030' : 'rgba(238,232,220,0.45)', borderRadius: 7, padding: '5px 8px', fontFamily: 'Orbitron', fontSize: 8, cursor: 'pointer', flex: '0 0 auto' }}>
             <option value="tutti">🔥 Tutte</option>

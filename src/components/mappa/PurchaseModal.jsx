@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useScrollLock } from '@/lib/useScrollLock';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
 import KissesIcon from '@/components/KissesIcon';
+import { PIXEL_NAMES } from '@/lib/worldMap';
 
 export default function PurchaseModal({ pixel, profilo, onConfirm, onClose }) {
   useScrollLock();
@@ -40,7 +41,7 @@ export default function PurchaseModal({ pixel, profilo, onConfirm, onClose }) {
           🩷 Acquisto Territorio
         </div>
         <div style={{ fontFamily: FF.display, fontSize: 20, color: '#fff', fontWeight: 800, marginBottom: 4 }}>
-          Pixel ({pixel?.x}, {pixel?.y})
+          {PIXEL_NAMES[`${pixel?.x}_${pixel?.y}`] ?? `(${pixel?.x}, ${pixel?.y})`}
         </div>
         <div style={{ fontFamily: FF.body, fontSize: 13, color: 'rgba(241,235,255,0.5)', marginBottom: 24 }}>
           {isCPU ? 'Territorio libero — prezzo fisso' : `Proprietario: ${pixel?.ownerName}`}

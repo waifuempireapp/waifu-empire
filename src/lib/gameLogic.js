@@ -1,7 +1,7 @@
 ﻿// src/lib/gameLogic.js
 // Logica di gioco condivisa
 import { RARITA, TIMER, ENERGIA_SCARTO, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, RARITY_MULTIPLIERS_DEFAULT, MOVE_LEVELUP_DEFAULT } from './constants.js';
-import { calculateSpeed, computeCritChance } from './battleEngine.js';
+import { calculateSpeed, computeCritChance, computeHp } from './battleEngine.js';
 
 /**
  * @module gameLogic
@@ -93,7 +93,8 @@ export function computeAndSaveStats(waifuCatalogData, rarita, statPersonali = {}
   const effettive = { ...waifuCatalogData, ...statPersonali };
   const velocita    = calculateSpeed(effettive, cfg.multiplier, cfg);
   const crit_chance = computeCritChance(effettive, cfg.multiplier, cfg);
-  return { velocita, crit_chance };
+  const hp          = computeHp(effettive, cfg.multiplier);
+  return { velocita, crit_chance, hp };
 }
 
 /**
