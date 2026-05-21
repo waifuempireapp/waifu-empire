@@ -33,6 +33,14 @@
       ]
     },
     {
+      "collectionGroup": "raid_participants",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid",     "order": "ASCENDING" },
+        { "fieldPath": "claimed", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "map_missions",
       "queryScope": "COLLECTION",
       "fields": [

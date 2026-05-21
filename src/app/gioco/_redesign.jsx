@@ -832,11 +832,17 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
   const [claiming, setClaiming]     = useState(null);
   // Raid tab
   const [raidInfo, setRaidInfo]       = useState(null);
-  const [raidPart, setRaidPart]       = useState(null); // mia partecipazione
-  const [raidRank, setRaidRank]       = useState([]); // classifica
+  const [raidPart, setRaidPart]       = useState(null); // mia partecipazione al raid corrente
+  const [raidRank, setRaidRank]       = useState([]); // classifica raid corrente
   const [raidLoading, setRaidLoading] = useState(true);
   const [raidClaiming, setRaidClaiming] = useState(false);
   const [raidClaimed, setRaidClaimed]   = useState(false);
+  const [unclaimedRaids, setUnclaimedRaids] = useState([]); // raid passati non riscossi
+  const [unclaimedMaps, setUnclaimedMaps]   = useState([]); // missioni mappa scadute non riscusse
+  const [claimingRaid, setClaimingRaid] = useState(null);   // eventId del raid in claim
+  const [claimingMap, setClaimingMap]   = useState(null);   // missionId in claim
+  const [claimedRaidIds, setClaimedRaidIds] = useState(new Set());
+  const [claimedMapIds, setClaimedMapIds]   = useState(new Set());
   const [timerGiorn, setTimerGiorn] = useState('');
   const [mapMission, setMapMission] = useState(null);   // missione mappa corrente
   const [mapNextAt, setMapNextAt]   = useState(null);   // timestamp assoluto prossima missione
@@ -896,26 +902,34 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
     return () => clearInterval(iv);
   }, [mapMission, mapNextAt]);
 
-  // Carica dati raid al mount
+  // Carica dati raid al mount (raid corrente + raid passati non riscossi + map missions non riscusse)
   useEffect(() => {
     if (!user) return;
     const load = async () => {
       setRaidLoading(true);
       try {
         const token = await user.getIdToken();
+        // Raid corrente
         const res = await fetch('/api/raid/current', { headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
         if (data.raid) {
           setRaidInfo(data.raid);
-          // Carica partecipazione utente
           const { db } = await import('@/lib/firebase');
           const { doc, getDoc, collection, query, where, orderBy, getDocs } = await import('firebase/firestore');
-          const partSnap = await getDoc(doc(db, 'raid_participants', `${data.raid.id}_${(await user.getIdToken()) ? user.uid : ''}`));
+          const partSnap = await getDoc(doc(db, 'raid_participants', `${data.raid.id}_${user.uid}`));
           if (partSnap.exists()) { setRaidPart(partSnap.data()); if (partSnap.data().claimed) setRaidClaimed(true); }
           const q = query(collection(db, 'raid_participants'), where('eventId', '==', data.raid.id), orderBy('damageDealt', 'desc'));
           const qSnap = await getDocs(q);
           setRaidRank(qSnap.docs.map((d, i) => ({ ...d.data(), pos: i + 1 })));
         }
+        // Raid passati non riscossi (da API server-side per evitare index client-side)
+        const unclRes = await fetch('/api/raid/unclaimed-participations', { headers: { Authorization: `Bearer ${token}` } });
+        const unclData = await unclRes.json();
+        setUnclaimedRaids(unclData.participations ?? []);
+        // Missioni mappa scadute non riscusse
+        const mapUnclRes = await fetch('/api/map-missions/unclaimed', { headers: { Authorization: `Bearer ${token}` } });
+        const mapUnclData = await mapUnclRes.json();
+        setUnclaimedMaps(mapUnclData.unclaimed ?? []);
       } catch (_) {}
       setRaidLoading(false);
     };
@@ -1068,77 +1082,131 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
 
           {/* ── RAID WAIFU ── */}
           {tabAttiva === 'raid' && (() => {
+            // ── helpers per render raid ──────────────────────────────────────
+            const raidCard = (ri, part, pos, isClaimed, isClaimedSet, eventId) => {
+              const cfg = ri?.raidConfig ?? {};
+              const dmg = part?.damageDealt ?? 0;
+              const completed = ri?.status === 'completed';
+              const MISSIONS = [
+                { id: 'partecipa', icon: '⚡', nome: 'Partecipa al Raid', reward: `+${cfg.participationEnergia ?? 3} ⚡`, done: dmg > 0 },
+                { id: 'vinci',     icon: '🏆', nome: 'Vinci il Raid',     reward: `+${cfg.kissesBase ?? 100} 💋`,       done: completed && dmg > 0 },
+                { id: 'pos3',      icon: '🥉', nome: '3° posto',          reward: `+${cfg.kisses3rd ?? 250} 💋 + 🎴`,   done: completed && pos === 3 },
+                { id: 'pos2',      icon: '🥈', nome: '2° posto',          reward: `+${cfg.kisses2nd ?? 400} 💋 + 🎴`,   done: completed && pos === 2 },
+                { id: 'pos1',      icon: '👑', nome: '1° posto',          reward: `+${cfg.kisses1st ?? 1000} 💋 + 🎴`,  done: completed && pos === 1 },
+              ];
+              const inCorso = MISSIONS.filter(m => !m.done);
+              const completateMissions = MISSIONS.filter(m => m.done);
+              const lista = subTab === 'incorso' ? inCorso : completateMissions;
+              const alreadyClaimed = isClaimed || part?.claimed || claimedRaidIds.has(eventId);
+              return (
+                <div key={eventId} style={{ marginBottom: 16, padding: '12px', background: 'rgba(236,72,153,0.05)', border: '1px solid rgba(236,72,153,0.15)', borderRadius: 12 }}>
+                  {/* Header raid */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    {ri?.waifuImage && <img src={ri.waifuImage} alt="" style={{ width: 30, height: 42, objectFit: 'cover', borderRadius: 5, border: '1px solid rgba(236,72,153,0.3)', flexShrink: 0 }} />}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: "'Unbounded',sans-serif", fontSize: 10, color: '#ec4899', fontWeight: 700 }}>{ri?.waifuNome ?? 'Waifu Raid'}</div>
+                      {dmg > 0 && <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 9, color: 'rgba(6,214,160,0.7)' }}>-{dmg.toLocaleString()} HP inflitti {pos > 0 ? `· #${pos}` : ''}</div>}
+                    </div>
+                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: completed ? '#06d6a0' : '#f59e0b', background: completed ? 'rgba(6,214,160,0.1)' : 'rgba(245,158,11,0.1)', border: `1px solid ${completed ? 'rgba(6,214,160,0.3)' : 'rgba(245,158,11,0.3)'}`, borderRadius: 5, padding: '2px 6px' }}>
+                      {completed ? '✅' : '⏰ SCADUTO'}
+                    </div>
+                  </div>
+                  {/* Lista missioni per questo raid */}
+                  {lista.map(m => (
+                    <div key={m.id} className={`missione-item${m.done?' missione-item--done':''}`} style={{ minHeight: 'unset', padding: '6px 10px', marginBottom: 4 }}>
+                      <div className="missione-item__icon" style={{ fontSize: 14 }}>{m.icon}</div>
+                      <div className="missione-item__body">
+                        <div className="missione-item__title">{m.nome}</div>
+                        <div className="missione-item__reward">{m.reward}</div>
+                      </div>
+                    </div>
+                  ))}
+                  {lista.length === 0 && <div style={{ textAlign: 'center', padding: 8, color: 'rgba(241,235,255,0.3)', fontFamily: "'Orbitron',sans-serif", fontSize: 9 }}>
+                    {subTab === 'incorso' ? 'Tutte le missioni completate!' : 'Nessuna missione completata'}
+                  </div>}
+                  {/* Claim — visibile in Completate SENZA filtri extra (solo !alreadyClaimed) */}
+                  {subTab === 'completate' && completateMissions.length > 0 && !alreadyClaimed && (
+                    <button className="missione-item__claim" disabled={claimingRaid === eventId} style={{ width: '100%', marginTop: 8 }}
+                      onClick={async () => {
+                        setClaimingRaid(eventId);
+                        try {
+                          const token = await user.getIdToken();
+                          const res = await fetch('/api/raid/claim', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ eventId }) });
+                          const data = await res.json();
+                          if (data.success) {
+                            setClaimedRaidIds(prev => new Set([...prev, eventId]));
+                            if (eventId === raidInfo?.id) setRaidClaimed(true);
+                            alert(`✅ +${data.kisses} 💋, +${data.energia} ⚡! Pos. #${pos}`);
+                          } else if (data.alreadyClaimed) {
+                            setClaimedRaidIds(prev => new Set([...prev, eventId]));
+                          } else alert(data.error);
+                        } catch (e) { alert(e.message); }
+                        setClaimingRaid(null);
+                      }}>
+                      {claimingRaid === eventId ? '⏳…' : '🎁 RISCUOTI'}
+                    </button>
+                  )}
+                  {alreadyClaimed && subTab === 'completate' && <div style={{ textAlign: 'center', color: '#06d6a0', fontFamily: "'Orbitron',sans-serif", fontSize: 9, marginTop: 6 }}>✓ Riscosso</div>}
+                </div>
+              );
+            };
+
+            if (raidLoading) return <div style={{ textAlign: 'center', padding: 32, color: 'rgba(255,255,255,0.3)', fontFamily: "'Orbitron',sans-serif", fontSize: 10 }}>Caricamento raid…</div>;
+
             const isCompleted = raidInfo?.status === 'completed';
             const myPos = raidRank.findIndex(r => r.uid === user?.uid) + 1;
             const myDmg = raidPart?.damageDealt ?? 0;
-            const raidCfg = raidInfo?.raidConfig ?? {};
-            const MISSIONS = [
-              { id: 'partecipa', icon: '⚡', nome: 'Partecipa al Raid', desc: 'Infliggi almeno 1 punto danno', reward: `+${raidCfg.participationEnergia ?? 3} ⚡ Energia`, done: myDmg > 0 },
-              { id: 'vinci', icon: '🏆', nome: 'Vinci il Raid', desc: 'Porta la Waifu Raid a 0 HP con gli altri giocatori', reward: `+${raidCfg.kissesBase ?? 100} 💋`, done: isCompleted && myDmg > 0 },
-              { id: 'pos3', icon: '🥉', nome: '3° posto in classifica', desc: 'Finisci al 3° posto e vinci il Raid', reward: `+${raidCfg.kisses3rd ?? 250} 💋 + carta`, done: isCompleted && myPos === 3 },
-              { id: 'pos2', icon: '🥈', nome: '2° posto in classifica', desc: 'Finisci al 2° posto e vinci il Raid', reward: `+${raidCfg.kisses2nd ?? 400} 💋 + carta`, done: isCompleted && myPos === 2 },
-              { id: 'pos1', icon: '👑', nome: '1° posto in classifica', desc: 'Finisci al 1° posto e vinci il Raid', reward: `+${raidCfg.kisses1st ?? 1000} 💋 + carta`, done: isCompleted && myPos === 1 },
-            ];
-            const inCorso = MISSIONS.filter(m => !m.done);
-            const completate = MISSIONS.filter(m => m.done);
-            const lista = subTab === 'incorso' ? inCorso : completate;
-            const canClaim = raidPart && myDmg > 0 && !raidPart.claimed && !isCompleted === false && !raidClaimed;
 
-            if (raidLoading) return <div style={{ textAlign: 'center', padding: 32, color: 'rgba(255,255,255,0.3)', fontFamily: "'Orbitron',sans-serif", fontSize: 10 }}>Caricamento raid…</div>;
-            if (!raidInfo) return <div style={{ textAlign: 'center', padding: 32, color: 'rgba(255,255,255,0.3)', fontFamily: "'Orbitron',sans-serif", fontSize: 10 }}>Nessun raid attivo al momento</div>;
-
-            return (
-              <>
-                {/* Info raid corrente */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0 12px', borderBottom: '1px solid rgba(236,72,153,0.15)', marginBottom: 12 }}>
-                  {raidInfo.waifuImage && <img src={raidInfo.waifuImage} alt="" style={{ width: 36, height: 50, objectFit: 'cover', borderRadius: 6, border: '1px solid rgba(236,72,153,0.3)', flexShrink: 0 }} />}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: "'Unbounded',sans-serif", fontSize: 12, color: '#ec4899', fontWeight: 700 }}>{raidInfo.waifuNome}</div>
-                    <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: isCompleted ? '#06d6a0' : '#ff5b6c' }}>
-                      {Math.max(0, raidInfo.currentHp).toLocaleString()}/{raidInfo.totalHp.toLocaleString()} HP
+            // In Corso: solo raid attivo corrente
+            if (subTab === 'incorso') {
+              if (!raidInfo) return <div style={{ textAlign: 'center', padding: 32, color: 'rgba(255,255,255,0.3)', fontFamily: "'Orbitron',sans-serif", fontSize: 10 }}>Nessun raid attivo al momento</div>;
+              const raidCfg = raidInfo?.raidConfig ?? {};
+              const MISSIONS_INCORSO = [
+                { id: 'partecipa', icon: '⚡', nome: 'Partecipa al Raid', desc: 'Infliggi almeno 1 punto danno', reward: `+${raidCfg.participationEnergia ?? 3} ⚡ Energia`, done: myDmg > 0 },
+                { id: 'vinci', icon: '🏆', nome: 'Vinci il Raid', desc: 'Porta la Waifu Raid a 0 HP', reward: `+${raidCfg.kissesBase ?? 100} 💋`, done: isCompleted && myDmg > 0 },
+                { id: 'pos3', icon: '🥉', nome: '3° posto', desc: 'Finisci al 3° posto e vinci', reward: `+${raidCfg.kisses3rd ?? 250} 💋 + carta`, done: isCompleted && myPos === 3 },
+                { id: 'pos2', icon: '🥈', nome: '2° posto', desc: 'Finisci al 2° posto e vinci', reward: `+${raidCfg.kisses2nd ?? 400} 💋 + carta`, done: isCompleted && myPos === 2 },
+                { id: 'pos1', icon: '👑', nome: '1° posto', desc: 'Finisci al 1° posto e vinci', reward: `+${raidCfg.kisses1st ?? 1000} 💋 + carta`, done: isCompleted && myPos === 1 },
+              ];
+              const inCorso = MISSIONS_INCORSO.filter(m => !m.done);
+              return (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0 12px', borderBottom: '1px solid rgba(236,72,153,0.15)', marginBottom: 12 }}>
+                    {raidInfo.waifuImage && <img src={raidInfo.waifuImage} alt="" style={{ width: 36, height: 50, objectFit: 'cover', borderRadius: 6, border: '1px solid rgba(236,72,153,0.3)', flexShrink: 0 }} />}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontFamily: "'Unbounded',sans-serif", fontSize: 11, color: '#ec4899', fontWeight: 700 }}>{raidInfo.waifuNome}</div>
+                      <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: '#ff5b6c' }}>{Math.max(0, raidInfo.currentHp).toLocaleString()}/{raidInfo.totalHp.toLocaleString()} HP</div>
+                      {myDmg > 0 && <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 9, color: 'rgba(6,214,160,0.7)' }}>Tu: -{myDmg.toLocaleString()} HP {myPos > 0 ? `· #${myPos}` : ''}</div>}
                     </div>
-                    {myDmg > 0 && <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 9, color: 'rgba(6,214,160,0.7)' }}>Tu: -{myDmg.toLocaleString()} HP {myPos > 0 ? `· #${myPos}` : ''}</div>}
                   </div>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: isCompleted ? '#06d6a0' : 'rgba(241,235,255,0.4)', background: isCompleted ? 'rgba(6,214,160,0.1)' : 'rgba(255,255,255,0.05)', border: `1px solid ${isCompleted ? 'rgba(6,214,160,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 6, padding: '3px 8px' }}>
-                    {isCompleted ? '✅ COMPLETATO' : '🟢 ATTIVO'}
-                  </div>
-                </div>
-
-                {lista.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '24px 0', color: 'rgba(241,235,255,0.3)', fontFamily: "'Orbitron',sans-serif", fontSize: 10 }}>
-                    {subTab === 'incorso' ? 'Tutte le missioni raid completate! 🎉' : 'Nessuna missione completata ancora'}
-                  </div>
-                )}
-                {lista.map(m => (
-                  <div key={m.id} className={`missione-item${m.done?' missione-item--done':''}`}>
-                    <div className="missione-item__icon">{m.icon}</div>
-                    <div className="missione-item__body">
-                      <div className="missione-item__title">{m.nome}</div>
-                      <div className="missione-item__desc">{m.desc}</div>
-                      <div className="missione-item__reward">{m.reward}</div>
+                  {inCorso.length === 0 && <div style={{ textAlign: 'center', padding: '16px 0', color: 'rgba(241,235,255,0.3)', fontFamily: "'Orbitron',sans-serif", fontSize: 10 }}>Tutte le missioni completate! 🎉</div>}
+                  {inCorso.map(m => (
+                    <div key={m.id} className="missione-item">
+                      <div className="missione-item__icon">{m.icon}</div>
+                      <div className="missione-item__body">
+                        <div className="missione-item__title">{m.nome}</div>
+                        <div className="missione-item__desc">{m.desc}</div>
+                        <div className="missione-item__reward">{m.reward}</div>
+                      </div>
                     </div>
-                    {m.done && !raidClaimed && subTab === 'completate' && <span style={{ fontSize: 9, color: '#06d6a0', fontFamily: "'Orbitron',sans-serif" }}>✓</span>}
-                  </div>
-                ))}
+                  ))}
+                </>
+              );
+            }
 
-                {/* Claim button (solo in Completate quando raid finito) */}
-                {subTab === 'completate' && completate.length > 0 && !raidClaimed && !raidPart?.claimed && (
-                  <button className="missione-item__claim" disabled={raidClaiming} onClick={async () => {
-                    setRaidClaiming(true);
-                    try {
-                      const token = await user.getIdToken();
-                      const res = await fetch('/api/raid/claim', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ eventId: raidInfo.id }) });
-                      const data = await res.json();
-                      if (data.success) { setRaidClaimed(true); alert(`✅ +${data.kisses} 💋, +${data.energia} ⚡! Pos. #${myPos}`); }
-                      else if (data.alreadyClaimed) setRaidClaimed(true);
-                      else alert(data.error);
-                    } catch (e) { alert(e.message); }
-                    setRaidClaiming(false);
-                  }} style={{ width: '100%', marginTop: 12 }}>{raidClaiming ? '⏳…' : '🎁 RISCUOTI RICOMPENSE RAID'}</button>
-                )}
-                {(raidClaimed || raidPart?.claimed) && subTab === 'completate' && <div style={{ textAlign: 'center', color: '#06d6a0', fontFamily: "'Orbitron',sans-serif", fontSize: 10, marginTop: 8 }}>✓ Ricompense già riscosso</div>}
-              </>
-            );
+            // Completate: raid corrente (se ha missioni completate) + raid passati non riscossi
+            const allCompletate = [];
+            // Raid corrente (se scaduto/completato e non ancora riscosso)
+            if (raidInfo && raidInfo.status !== 'active' && myDmg > 0) {
+              allCompletate.push({ ri: raidInfo, part: raidPart, pos: myPos, isClaimed: raidClaimed || !!raidPart?.claimed, eventId: raidInfo.id });
+            }
+            // Raid passati non riscossi
+            for (const u of unclaimedRaids) {
+              allCompletate.push({ ri: u.raidInfo, part: u.participation, pos: u.position, isClaimed: false, eventId: u.raidInfo.id });
+            }
+
+            if (allCompletate.length === 0) return <div style={{ textAlign: 'center', padding: '24px 0', color: 'rgba(241,235,255,0.3)', fontFamily: "'Orbitron',sans-serif", fontSize: 10 }}>Nessuna missione completata da riscuotere</div>;
+            return <>{allCompletate.map(c => raidCard(c.ri, c.part, c.pos, c.isClaimed, null, c.eventId))}</>;
           })()}
 
           {/* ── MISSIONI MAPPA ── */}
@@ -1179,38 +1247,63 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
               );
             }
 
-            // Completate
-            if (!isExpired || !mapMission) return <div style={{ textAlign: 'center', padding: '24px 0', color: 'rgba(241,235,255,0.3)', fontFamily: "'Orbitron',sans-serif", fontSize: 10 }}>Nessuna missione scaduta da riscuotere</div>;
-            return (
-              <>
-                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: 'rgba(255,133,182,0.7)', marginBottom: 10 }}>MISSIONE SCADUTA — Riscuoti la ricompensa!</div>
-                {(mapMission.pixels || []).map((px, i) => (
-                  <div key={i} className="missione-item">
-                    <div className="missione-item__icon">🏴</div>
-                    <div className="missione-item__body">
-                      <div className="missione-item__title">{px.name || `(${px.x}, ${px.y})`}</div>
-                      <div className="missione-item__reward">+{mapMission.rewardPerPixel ?? 100} <KissesIcon size={11} /> se in tuo possesso</div>
-                    </div>
+            // Completate — raccoglie missioni scadute non ancora riscusse (persistenti)
+            const mapClaimCard = (mId, mission) => {
+              const alreadyClmd = claimedMapIds.has(mId) || (mId === (mapMission?.missionId || mapMission?.id) && mapClaimed);
+              return (
+                <div key={mId} style={{ marginBottom: 12, padding: '12px', background: 'rgba(232,121,249,0.05)', border: '1px solid rgba(232,121,249,0.15)', borderRadius: 12 }}>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: 'rgba(232,121,249,0.6)', marginBottom: 8 }}>
+                    SCADUTA — {new Date(mission.endsAt).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                   </div>
-                ))}
-                {!mapClaimed ? (
-                  <button className="missione-item__claim" style={{ width: '100%', marginTop: 12 }}
-                    onClick={async () => {
-                      try {
-                        const token = await user.getIdToken();
-                        const res = await fetch('/api/map-missions/claim', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ missionId: mapMission.missionId || mapMission.id }) });
-                        const data = await res.json();
-                        if (data.success || data.alreadyClaimed) { setMapClaimed(true); if (data.kisses > 0) alert(`✅ +${data.kisses} Kisses! (${data.pixelsOwned} pixel posseduti)`); }
-                        else alert(data.error);
-                      } catch (e) { alert(e.message); }
-                    }}>
-                    Riscuoti ({mapMission.pixels?.length ?? 4} × {mapMission.rewardPerPixel ?? 100} <KissesIcon size={11} /> max)
-                  </button>
-                ) : (
-                  <div style={{ textAlign: 'center', color: '#06d6a0', fontFamily: "'Orbitron',sans-serif", fontSize: 10, marginTop: 8 }}>✓ Riscosso</div>
-                )}
-              </>
-            );
+                  {(mission.pixels || []).map((px, i) => (
+                    <div key={i} className="missione-item" style={{ minHeight: 'unset', padding: '6px 10px', marginBottom: 4 }}>
+                      <div className="missione-item__icon" style={{ fontSize: 14 }}>🏴</div>
+                      <div className="missione-item__body">
+                        <div className="missione-item__title">{px.name || `(${px.x}, ${px.y})`}</div>
+                        <div className="missione-item__reward">+{mission.rewardPerPixel ?? 100} <KissesIcon size={11} /> se in tuo possesso</div>
+                      </div>
+                    </div>
+                  ))}
+                  {/* Claim SENZA filtri extra — solo !alreadyClaimed */}
+                  {!alreadyClmd ? (
+                    <button className="missione-item__claim" disabled={claimingMap === mId} style={{ width: '100%', marginTop: 8 }}
+                      onClick={async () => {
+                        setClaimingMap(mId);
+                        try {
+                          const token = await user.getIdToken();
+                          const res = await fetch('/api/map-missions/claim', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ missionId: mId }) });
+                          const data = await res.json();
+                          if (data.success || data.alreadyClaimed) {
+                            setClaimedMapIds(prev => new Set([...prev, mId]));
+                            if (mId === (mapMission?.missionId || mapMission?.id)) setMapClaimed(true);
+                            if (data.success && data.kisses > 0) alert(`✅ +${data.kisses} Kisses! (${data.pixelsOwned} pixel posseduti)`);
+                          } else alert(data.error);
+                        } catch (e) { alert(e.message); }
+                        setClaimingMap(null);
+                      }}>
+                      {claimingMap === mId ? '⏳…' : `Riscuoti (max ${(mission.pixels?.length ?? 4) * (mission.rewardPerPixel ?? 100)} 💋)`}
+                    </button>
+                  ) : (
+                    <div style={{ textAlign: 'center', color: '#06d6a0', fontFamily: "'Orbitron',sans-serif", fontSize: 9, marginTop: 6 }}>✓ Riscosso</div>
+                  )}
+                </div>
+              );
+            };
+
+            // Lista: missione corrente scaduta + missioni passate non riscusse
+            const allMapCompletate = [];
+            if (isExpired && mapMission) {
+              const mid = mapMission.missionId || mapMission.id;
+              if (!claimedMapIds.has(mid) && !mapClaimed) allMapCompletate.push({ mId: mid, mission: mapMission });
+            }
+            for (const { missionId, mission } of unclaimedMaps) {
+              const mid = mapMission?.missionId || mapMission?.id;
+              if (missionId !== mid) allMapCompletate.push({ mId: missionId, mission });
+            }
+
+            if (allMapCompletate.length === 0) return <div style={{ textAlign: 'center', padding: '24px 0', color: 'rgba(241,235,255,0.3)', fontFamily: "'Orbitron',sans-serif", fontSize: 10 }}>Nessuna missione scaduta da riscuotere</div>;
+            return <>{allMapCompletate.map(({ mId, mission }) => mapClaimCard(mId, mission))}
+            </>;
           })()}
 
         </div>
