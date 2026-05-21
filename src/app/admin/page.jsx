@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
+import KissesIcon from '@/components/KissesIcon';
 import {
   listWaifu, listMosse, listDrops,
   upsertWaifu, upsertDrop,
@@ -3260,7 +3261,7 @@ function PremioClassificaTab({ flash }) {
           <div>FASCIA</div>
           <div style={{ textAlign: 'center' }}>⚡ ENERGIA</div>
           <div style={{ textAlign: 'center' }}>🎴 BUSTINE SFIDA</div>
-          <div style={{ textAlign: 'center' }}>💋 KISSES</div>
+          <div style={{ textAlign: 'center' }}><KissesIcon size={14} /> KISSES</div>
         </div>
 
         {/* Righe */}

@@ -1,10 +1,12 @@
 'use client';
 import { useState } from 'react';
+import { useScrollLock } from '@/lib/useScrollLock';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
 import { CartaWaifu } from '@/components/CartaWaifu';
 
 
 export default function TeamDifesaEditor({ pixelKey, collezione, waifuCat, user, profilo, currentTeam, onClose, onSaved }) {
+  useScrollLock();
   const [selectedIds, setSelectedIds] = useState(currentTeam?.length === 5 ? currentTeam : []);
   const [applyToAll, setApplyToAll] = useState(false);
   const [confirmBulk, setConfirmBulk] = useState(false);

@@ -1,9 +1,11 @@
 'use client';
 // RaidIslandPanel — Dettaglio Raid Island con HP real-time, classifica e premi
 import { useState, useEffect } from 'react';
+import { useScrollLock } from '@/lib/useScrollLock';
 import { db } from '@/lib/firebase';
 import { collection, query, where, orderBy, onSnapshot, doc } from 'firebase/firestore';
 import { ikUrl } from '@/lib/imagekitUrl';
+import KissesIcon from '@/components/KissesIcon';
 
 const FF = { label: "'Saira Condensed',sans-serif", mono: "'JetBrains Mono',monospace", display: "'Unbounded',sans-serif" };
 
@@ -30,6 +32,7 @@ function Countdown({ endsAt }) {
 }
 
 export default function RaidIslandPanel({ user, profilo, onClose, onBattle }) {
+  useScrollLock();
   const [tab, setTab] = useState('dettaglio');
   const [raid, setRaid] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -37,6 +40,7 @@ export default function RaidIslandPanel({ user, profilo, onClose, onBattle }) {
   const [myParticipation, setMyParticipation] = useState(null);
   const [claiming, setClaiming] = useState(false);
   const [claimed, setClaimed] = useState(false);
+  const [rankingError, setRankingError] = useState(null);
 
   // Carica raid corrente
   useEffect(() => {
@@ -80,14 +84,27 @@ export default function RaidIslandPanel({ user, profilo, onClose, onBattle }) {
   // Listener real-time classifica
   useEffect(() => {
     if (!raid?.id) return;
+    setRankingError(null);
     const q = query(
       collection(db, 'raid_participants'),
       where('eventId', '==', raid.id),
       orderBy('damageDealt', 'desc')
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setRanking(snap.docs.map((d, i) => ({ ...d.data(), pos: i + 1 })));
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setRankingError(null);
+        setRanking(snap.docs.map((d, i) => ({ ...d.data(), pos: i + 1 })));
+      },
+      (err) => {
+        if (err.code === 'failed-precondition') {
+          setRankingError('building');
+        } else {
+          setRankingError('error');
+          console.error('[raid ranking]', err);
+        }
+      }
+    );
     return () => unsub();
   }, [raid?.id]);
 
@@ -170,6 +187,7 @@ export default function RaidIslandPanel({ user, profilo, onClose, onBattle }) {
           <TabClassifica
             ranking={ranking} raidCfg={raidCfg} myUid={user.uid}
             isCompleted={isCompleted} waifuNome={raid.waifuNome}
+            error={rankingError}
           />
         )}
       </div>
@@ -233,7 +251,7 @@ function TabDettaglio({ raid, hpPct, isActive, isCompleted, myParticipation, myP
                 {isCompleted ? 'PREMIO DA RISCUOTERE' : 'PREMIO ATTESO (se il raid si completa)'}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontFamily: FF.mono, fontSize: 13, color: '#f5c560', fontWeight: 700 }}>+{myPrize.kisses.toLocaleString()} 💋</span>
+                <span style={{ fontFamily: FF.mono, fontSize: 13, color: '#f5c560', fontWeight: 700 }}>+{myPrize.kisses.toLocaleString()} <KissesIcon size={13} /></span>
                 {myPrize.waifu && (
                   <span style={{ fontFamily: FF.label, fontSize: 10, color: '#ec4899', background: 'rgba(236,72,153,0.12)', border: '1px solid rgba(236,72,153,0.3)', borderRadius: 5, padding: '2px 8px' }}>
                     🎴 +{raid.waifuNome}
@@ -265,7 +283,7 @@ function TabDettaglio({ raid, hpPct, isActive, isCompleted, myParticipation, myP
           fontFamily: FF.label, fontSize: 12, fontWeight: 700,
           cursor: claiming ? 'not-allowed' : 'pointer', letterSpacing: '0.1em',
         }}>
-          {claiming ? '⏳ Riscossione…' : `🎁 RISCUOTI PREMI${myPrize ? ` (+${myPrize.kisses.toLocaleString()} 💋)` : ''}`}
+          {claiming ? '⏳ Riscossione…' : <>{`🎁 RISCUOTI PREMI`}{myPrize && <> (+{myPrize.kisses.toLocaleString()} <KissesIcon size={12} />)</>}</>}
         </button>
       )}
       {claimed && (
@@ -278,8 +296,30 @@ function TabDettaglio({ raid, hpPct, isActive, isCompleted, myParticipation, myP
 }
 
 // ── Tab Classifica ─────────────────────────────────────────────────────────────
-function TabClassifica({ ranking, raidCfg, myUid, isCompleted, waifuNome }) {
+function TabClassifica({ ranking, raidCfg, myUid, isCompleted, waifuNome, error }) {
   const MEDAL = ['🥇', '🥈', '🥉'];
+
+  if (error === 'building') {
+    return (
+      <div style={{ textAlign: 'center', padding: '32px 16px' }}>
+        <div style={{ fontSize: 28, marginBottom: 10 }}>⏳</div>
+        <div style={{ fontFamily: FF.label, fontSize: 12, color: 'rgba(245,158,11,0.8)', marginBottom: 6 }}>
+          Classifica in preparazione
+        </div>
+        <div style={{ fontFamily: FF.label, fontSize: 10, color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>
+          L'indice del database è ancora in build.<br />Riprova tra qualche minuto.
+        </div>
+      </div>
+    );
+  }
+
+  if (error === 'error') {
+    return (
+      <div style={{ textAlign: 'center', padding: '32px 0', color: 'rgba(255,91,108,0.7)', fontFamily: FF.label, fontSize: 11 }}>
+        Errore nel caricamento della classifica
+      </div>
+    );
+  }
 
   if (ranking.length === 0) {
     return (
@@ -305,7 +345,7 @@ function TabClassifica({ ranking, raidCfg, myUid, isCompleted, waifuNome }) {
           ].map(({ pos, kisses, waifu }) => (
             <div key={pos} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontFamily: FF.label, fontSize: 11, color: 'rgba(255,255,255,0.6)', minWidth: 60 }}>{pos}</span>
-              <span style={{ fontFamily: FF.mono, fontSize: 11, color: '#f5c560' }}>+{kisses.toLocaleString()} 💋</span>
+              <span style={{ fontFamily: FF.mono, fontSize: 11, color: '#f5c560' }}>+{kisses.toLocaleString()} <KissesIcon size={11} /></span>
               {waifu && (
                 <span style={{ fontFamily: FF.label, fontSize: 9, color: '#ec4899', background: 'rgba(236,72,153,0.1)', border: '1px solid rgba(236,72,153,0.25)', borderRadius: 4, padding: '1px 6px' }}>
                   🎴 {waifuNome}
@@ -349,7 +389,7 @@ function TabClassifica({ ranking, raidCfg, myUid, isCompleted, waifuNome }) {
 
             {/* Premio */}
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontFamily: FF.mono, fontSize: 11, color: '#f5c560' }}>+{prize.kisses.toLocaleString()} 💋</div>
+              <div style={{ fontFamily: FF.mono, fontSize: 11, color: '#f5c560' }}>+{prize.kisses.toLocaleString()} <KissesIcon size={11} /></div>
               {prize.waifu && (
                 <div style={{ fontFamily: FF.label, fontSize: 8, color: '#ec4899', marginTop: 2 }}>🎴 Waifu</div>
               )}

@@ -15,6 +15,7 @@ import TutorialOverlay from '@/components/mappa/TutorialOverlay';
 import TeamDifesaEditor from '@/components/difesa/TeamDifesaEditor';
 import MappaInfoModal from '@/components/mappa/MappaInfoModal';
 import TerritoryConquestAnimation from '@/components/mappa/TerritoryConquestAnimation';
+import KissesIcon from '@/components/KissesIcon';
 
 export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat, mosseCat = [], onRaidBattle, raidBattleCtx, onRaidBattleEnd }) {
   const [chunks, setChunks] = useState(null);
@@ -717,7 +718,7 @@ function MissionDetailModal({ mission, pixelNames, onClose, onFocusPixel }) {
         )}
 
         <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 11, color: 'rgba(241,235,255,0.5)', marginBottom: 12, lineHeight: 1.5 }}>
-          Possiedi questi territori alla scadenza per guadagnare <strong style={{ color: '#f5c560' }}>+{mission.rewardPerPixel ?? 100} 💋</strong> a territorio.
+          Possiedi questi territori alla scadenza per guadagnare <strong style={{ color: '#f5c560' }}>+{mission.rewardPerPixel ?? 100} <KissesIcon size={12} /></strong> a territorio.
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -740,7 +741,7 @@ function MissionDetailModal({ mission, pixelNames, onClose, onFocusPixel }) {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 13, color: '#fff', fontWeight: 700 }}>{name}</div>
                   <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 10, color: 'rgba(241,235,255,0.4)' }}>
-                    +{mission.rewardPerPixel ?? 100} 💋 se in tuo possesso
+                    +{mission.rewardPerPixel ?? 100} <KissesIcon size={11} /> se in tuo possesso
                   </div>
                 </div>
                 <span style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 10, color: 'rgba(232,121,249,0.5)' }}>→</span>

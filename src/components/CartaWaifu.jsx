@@ -155,7 +155,7 @@ export function CartaWaifu({
   const capelliEff = Math.min(10, (waifu.colore_capelli ?? 1) + (statBonus.colore_capelli || 0));
   const expEff = (waifu.esperienza ?? 0) + (statBonus.esperienza || 0);
 
-  const preset = dimensione === 'piccola' ? 'thumbnail' : dimensione === 'grande' ? 'full' : 'card';
+  const preset = dimensione === 'piccola' ? 'card' : dimensione === 'grande' ? 'full' : 'normal';
   const imgSrc = ikUrl(usaImmersiva ? waifu.asset_immersiva : (waifu.asset_statica || null), preset);
   const statSize = Math.round(30 * scale);
 

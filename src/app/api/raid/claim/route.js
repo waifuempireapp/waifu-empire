@@ -77,7 +77,7 @@ export async function POST(request) {
     batch.set(collRef, {
       waifu: {
         [event.waifuId]: existing
-          ? { ...existing, copie: (existing.copie ?? 0) + 1 }
+          ? { ...existing, copie: (existing.copie ?? 0) + 1, trovata_il: Date.now() }
           : { copie: 1, livello: 1, trovata_il: Date.now() },
       },
     }, { merge: true });

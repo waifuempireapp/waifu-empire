@@ -58,8 +58,12 @@ async function buildCatalogPools() {
   const poolDoc = await adminDb.collection('config').doc('pack_pools').get();
   if (poolDoc.exists) {
     const data = poolDoc.data();
+    // Carica mosse pool separatamente (non in pack_pools)
+    const mosseSnap = await adminDb.collection('catalogo_mosse').get();
+    const mossePool = mosseSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     return catalogCache.set('pools', {
       waifuPool:  data.waifuPool  || [],
+      mossePool,
       activeDrop: data.activeDrop || null,
     });
   }
@@ -67,11 +71,13 @@ async function buildCatalogPools() {
   // Fallback: lettura catalogo (senza outfit/pose rimossi)
   console.warn('[feed] config/pack_pools non trovato — esegui rebuild-pack-pools.js');
   const now = new Date();
-  const [waifuSnap, dropSnap] = await Promise.all([
+  const [waifuSnap, mosseSnap, dropSnap] = await Promise.all([
     adminDb.collection('catalogo_waifu').get(),
+    adminDb.collection('catalogo_mosse').get(),
     adminDb.collection('drops').where('attivo', '==', true).get(),
   ]);
   const allWaifu = waifuSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const mossePool = mosseSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   let waifuPool = allWaifu;
   const activeDrops = dropSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(d => {
     if (d.inizio && new Date(d.inizio) > now) return false;
@@ -84,16 +90,22 @@ async function buildCatalogPools() {
   }
   if (waifuPool.length === 0) waifuPool = allWaifu;
   const activeDrop = activeDrops[0] || null;
-  return catalogCache.set('pools', { waifuPool, activeDrop });
+  return catalogCache.set('pools', { waifuPool, mossePool, activeDrop });
 }
 
-// Costruisce le carte di un ghost pack: 5% God Pack (5 waifu), 95% standard (3 waifu)
-function buildGhostCards(waifuPool) {
+// Costruisce le carte di un ghost pack: 5% God Pack (5 waifu), 95% standard (3 waifu + 2 mosse)
+function buildGhostCards(waifuPool, mossePool = []) {
   const cards = [];
-  const count = Math.random() < GOD_PACK_CHANCE ? 5 : 3;
-  for (let i = 0; i < count; i++) {
+  const isGodPack = Math.random() < GOD_PACK_CHANCE;
+  const waifuCount = isGodPack ? 5 : 3;
+  const mosseCount = isGodPack ? 0 : 2;
+  for (let i = 0; i < waifuCount; i++) {
     const w = randPick(waifuPool);
     if (w) cards.push({ tipo: 'waifu', id: w.id, rarita: w.rarita || 'comune', nome: w.nome || '', immagine: cardUrl(w, 'waifu'), hot: w.hot === true });
+  }
+  for (let i = 0; i < mosseCount; i++) {
+    const m = randPick(mossePool);
+    if (m) cards.push({ tipo: 'mossa', id: m.id, rarita: m.rarita || 'comune', nome: m.nome || '', immagine: m.immagine || null });
   }
   return shuffle(cards);
 }
@@ -244,7 +256,7 @@ export async function GET(request) {
       const availableNames = GHOST_NAMES.filter(n => !usedActiveGhostNames.has(n));
 
       if (neededNew > 0 && availableNames.length > 0) {
-        const { waifuPool: rawWaifuPool, activeDrop } = await buildCatalogPools();
+        const { waifuPool: rawWaifuPool, mossePool = [], activeDrop } = await buildCatalogPools();
         // Filtra waifu Hot se l'utente non ha Pass Hard
         const waifuPool = hasHardPass ? rawWaifuPool : rawWaifuPool.filter(w => !w.hot);
         const dropId   = activeDrop?.id   || null;
@@ -253,7 +265,7 @@ export async function GET(request) {
         const newBatch = adminDb.batch();
         for (let i = 0; i < Math.min(neededNew, availableNames.length); i++) {
           const ghostName = availableNames[i];
-          const cards     = buildGhostCards(waifuPool);
+          const cards     = buildGhostCards(waifuPool, mossePool);
           const expiresAt = new Date(now.getTime() + GHOST_EXPIRY_MS);
 
           const docRef = adminDb.collection('pack_snapshots').doc();

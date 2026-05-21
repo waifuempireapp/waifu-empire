@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useScrollLock } from '@/lib/useScrollLock';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
 
 const STEPS = [
@@ -10,6 +11,7 @@ const STEPS = [
 ];
 
 export default function TutorialOverlay({ onSelectPixel, onClose }) {
+  useScrollLock();
   const [step, setStep] = useState(0);
   const isLast = step === STEPS.length - 1;
   const current = STEPS[step];

@@ -266,7 +266,7 @@ export default function GiocoPage() {
               Componente HomeTab — dashboard utente, statistiche, pacchetti omaggio.
               Quando pescaAperta=true renderizza PescaMisteriosaFeed al posto di HomeTab.
               ═════════════════════════════════════════════════════════════════ */}
-          {tab === 'home' && !pescaAperta && <HomeTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} outfitCat={[]} poseCat={[]} setTab={setTab} setColezSubTab={setColezSubTab} user={user} onApriPesca={() => setPescaAperta(true)} />}
+          {tab === 'home' && !pescaAperta && <HomeTab profilo={profilo} setProfilo={setProfilo} collezione={collezione} waifuCat={waifuCat} mosseCat={mosseCat} outfitCat={[]} poseCat={[]} setTab={setTab} setColezSubTab={setColezSubTab} user={user} onApriPesca={() => setPescaAperta(true)} />}
           {tab === 'home' && pescaAperta && (
             <div className="fade-in" style={{ maxWidth: 480, margin: '0 auto', width: '100%' }}>
               {/* Header sotto-sezione pesca */}
@@ -1901,7 +1901,7 @@ function ClassificaTab_LEGACY_UNUSED({ user }) {
                     <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: '#e8dff5', lineHeight: 1.7 }}>
                       {p.energia > 0 && <div>⚡ {p.energia} Energia</div>}
                       {p.bustineSfida > 0 && <div>🎴 {p.bustineSfida} Bustine</div>}
-                      {p.kisses > 0 && <div>💋 {p.kisses} Kisses</div>}
+                      {p.kisses > 0 && <div><KissesIcon size={13} /> {p.kisses} Kisses</div>}
                     </div>
                   ) : (
                     <div style={{ fontSize: 9, color: 'rgba(167,139,250,0.35)' }}>—</div>
@@ -1930,7 +1930,7 @@ function ClassificaTab_LEGACY_UNUSED({ user }) {
                     <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 9, color: '#c8c0dc', lineHeight: 1.6 }}>
                       {p.energia > 0 && <div>⚡ {p.energia} Energia</div>}
                       {p.bustineSfida > 0 && <div>🎴 {p.bustineSfida} Bustine</div>}
-                      {p.kisses > 0 && <div>💋 {p.kisses} Kisses</div>}
+                      {p.kisses > 0 && <div><KissesIcon size={13} /> {p.kisses} Kisses</div>}
                     </div>
                   ) : (
                     <div style={{ fontSize: 8, color: 'rgba(167,139,250,0.3)' }}>—</div>
@@ -4188,8 +4188,9 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
         const { catalog, dati } = mossaSel;
         const copie = dati.copie ?? 0;
         const livello = dati.livello ?? 1;
-        const copieInLup = copie % 5;
-        const lupReady = copieInLup === 0 && copie > 0 && livello < 10;
+        const copieNecessarie = livello * 5;
+        const lupReady = copie >= copieNecessarie && livello < 10;
+        const copieInLup = copie % copieNecessarie; // per barra progresso (0 = pieno)
         const nextLevel = livello + 1;
         const prossimaStat = nextLevel % 2 === 0 ? 'Danno Critico' : 'Danno';
         const [lupBusy, setLupBusy] = useState(false);
@@ -4234,13 +4235,13 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                   <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(245,158,11,0.7)' }}>COPIE {copie}</span>
                   {livello < 10
-                    ? <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: lupReady ? '#06d6a0' : 'rgba(245,158,11,0.5)' }}>{lupReady ? '⬆ LEVEL UP PRONTO!' : `${copieInLup}/5 al prossimo Lv`}</span>
+                    ? <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: lupReady ? '#06d6a0' : 'rgba(245,158,11,0.5)' }}>{lupReady ? '⬆ LEVEL UP PRONTO!' : `${copie}/${copieNecessarie} al prossimo Lv`}</span>
                     : <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: '#ffc861' }}>LIVELLO MASSIMO</span>
                   }
                 </div>
                 {livello < 10 && (
                   <div style={{ height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3 }}>
-                    <div style={{ height: '100%', width: `${lupReady ? 100 : (copieInLup / 5) * 100}%`, background: lupReady ? '#06d6a0' : '#f59e0b', borderRadius: 3, transition: 'width 0.3s' }} />
+                    <div style={{ height: '100%', width: `${Math.min(100, (copie / copieNecessarie) * 100)}%`, background: lupReady ? '#06d6a0' : '#f59e0b', borderRadius: 3, transition: 'width 0.3s' }} />
                   </div>
                 )}
               </div>

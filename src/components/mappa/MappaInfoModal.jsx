@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useScrollLock } from '@/lib/useScrollLock';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
 
 const PAGES = [
@@ -98,6 +99,7 @@ I HP sono condivisi in real-time: tutti i giocatori vedono lo stesso contatore!`
 ];
 
 export default function MappaInfoModal({ onClose }) {
+  useScrollLock();
   const [page, setPage] = useState(0);
   const p = PAGES[page];
 

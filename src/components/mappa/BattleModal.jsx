@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
+import { useScrollLock } from '@/lib/useScrollLock';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
 import { CartaWaifu } from '@/components/CartaWaifu';
 import { RARITA } from '@/lib/constants';
@@ -40,6 +41,7 @@ function PresetCard({ preset, waifuCat, isActive, onSelect }) {
 }
 
 export default function BattleModal({ pixel, collezione, waifuCat, onConfirm, onClose }) {
+  useScrollLock();
   const teams = collezione?.teams || {};
   const presets = Object.entries(teams).filter(([, t]) => t.waifu?.length === 5);
   const hasTeams = presets.length > 0;

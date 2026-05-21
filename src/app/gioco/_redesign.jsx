@@ -10,6 +10,7 @@ import {
 } from '@/lib/firestoreService';
 import KissesIcon from '@/components/KissesIcon';
 import { CartaWaifu, CartaOutfit, CartaPosa } from '@/components/CartaWaifu';
+import { CartaMossa } from '@/components/CartaMossa';
 import {
   PannelloOrnato, TitoloOrnato, BtnDecorato, Chip,
   FramePersonaggio,
@@ -295,7 +296,7 @@ export function BottomNav({ tab, setTab, isAdmin }) {
 // =====================================================================
 export function HomeTab({
   profilo, setProfilo, collezione,
-  waifuCat, outfitCat, poseCat,
+  waifuCat, outfitCat, poseCat, mosseCat = [],
   setTab, setColezSubTab, user, onApriPesca,
   ModaleCarta,
 }) {
@@ -336,8 +337,12 @@ export function HomeTab({
     const p = poseCat.find(x => x.id === id);
     return p ? { tipo: 'posa', id, p, dati } : null;
   }).filter(Boolean);
+  const tutteLeMosse = Object.entries(collezione.mosse || {}).filter(([, d]) => (d.copie ?? 0) > 0).map(([id, dati]) => {
+    const m = mosseCat.find(x => x.id === id);
+    return m ? { tipo: 'mossa', id, m, dati } : null;
+  }).filter(Boolean);
 
-  const territoriConquistati = Object.values(profilo.territoriUtente || {}).filter(t => t?.conquistato).length;
+  const territoriConquistati = profilo.pixelCount ?? Object.values(profilo.territoriUtente || {}).filter(t => t?.conquistato).length;
 
   // Badge missioni (giornaliere pronte)
   const missioniBadge = quest ? quest.defs.filter(d => {
@@ -353,7 +358,7 @@ export function HomeTab({
         <div className="ht-hero__label">◆ Bentornato · Stagione 7</div>
         <h1 className="shimmer-text ht-hero__title">{profilo.nomeImpero || 'Il Tuo Impero'}</h1>
         <div className="ht-hero__chips">
-          <Chip colore={profilo.coloreImpero} icon="⚜" size="md">Impero · {Object.values(profilo.territoriUtente || {}).filter(t => t?.conquistato).length} terr.</Chip>
+          <Chip colore={profilo.coloreImpero} icon="⚜" size="md">Impero · {profilo.pixelCount ?? 0} terr.</Chip>
         </div>
       </div>
 
@@ -362,7 +367,7 @@ export function HomeTab({
 
       {/* QUICK TILES */}
       <div className="ht-quick-grid">
-        <QuickTile icon="⚔" label="Mappa"   color="#6cf0e0" sub={`${Object.values(profilo.territoriUtente || {}).filter(t => t?.conquistato).length} terr.`} onClick={() => setTab('mappa')} />
+        <QuickTile icon="⚔" label="Mappa"   color="#6cf0e0" sub={`${profilo.pixelCount ?? 0} terr.`} onClick={() => setTab('mappa')} />
         <QuickTile icon="🎁" label="Sbusta"  color="#f5c560" sub={`×${totalPack}`} highlight={totalPack > 0} onClick={() => setTab('sbusta')} />
         <QuickTile icon="🛒" label="Negozio" color="#a78bfa" sub="Novità" onClick={() => window.dispatchEvent(new CustomEvent('impero:apri-negozio'))} />
         {process.env.NEXT_PUBLIC_PESCA_ENABLED !== 'false'
@@ -420,6 +425,7 @@ export function HomeTab({
         tutteLeWaifu={tutteLeWaifu}
         tuttiGliOutfit={tuttiGliOutfit}
         tutteLePose={tutteLePose}
+        tutteLeMosse={tutteLeMosse}
         outfitCat={outfitCat} poseCat={poseCat}
         collezione={collezione}
         profilo={profilo} setProfilo={setProfilo}
@@ -588,26 +594,27 @@ function StatCombattimento({ profilo, territoriConquistati, setTab, posizioneCla
 // BANNER ULTIME CARTE — ultime 10, totale waifu in header
 // =====================================================================
 function BannerUltimeCarte({
-  tutteLeWaifu, tuttiGliOutfit, tutteLePose,
+  tutteLeWaifu, tuttiGliOutfit, tutteLePose, tutteLeMosse = [],
   outfitCat, poseCat, collezione,
   profilo, setProfilo, user, totalPack, setTab,
   numWaifu, onClickWaifu, ModaleCarta,
 }) {
   const [cartaSel, setCartaSel] = useState(null);
 
-  // Parsing timestamp robusto: Firestore Timestamp (.toMillis), .seconds, numero grezzo
+  // Parsing timestamp: usa trovata_il (nuovo) con fallback su acquisito (legacy)
   const ts = (dati) => {
-    const a = dati?.acquisito;
+    const a = dati?.trovata_il ?? dati?.acquisito;
     if (!a) return 0;
     if (typeof a.toMillis === 'function') return a.toMillis();
     if (a.seconds) return a.seconds * 1000;
     const n = Number(a); return isNaN(n) ? 0 : n;
   };
-  // 20 carte ordinate per data acquisizione desc (più recente prima)
+  // 20 carte (waifu + outfit + pose + mosse) ordinate per trovata_il desc
   const ultime20 = [
     ...tutteLeWaifu.map(i  => ({ ...i, _ts: ts(i.dati) })),
     ...tuttiGliOutfit.map(i => ({ ...i, _ts: ts(i.dati) })),
     ...tutteLePose.map(i   => ({ ...i, _ts: ts(i.dati) })),
+    ...tutteLeMosse.map(i  => ({ ...i, _ts: ts(i.dati) })),
   ].sort((a, b) => b._ts - a._ts).slice(0, 20);
 
   return (
@@ -654,6 +661,15 @@ function BannerUltimeCarte({
               <div key={`p-${id}`} className="u-shrink0">
                 <CartaPosa posa={p} dimensione="piccola"
                   onClick={() => setCartaSel({ tipo: 'posa', p })} />
+              </div>
+            );
+          }
+          if (item.tipo === 'mossa') {
+            const { id, m, dati } = item;
+            return (
+              <div key={`m-${id}`} className="u-shrink0">
+                <CartaMossa mossa={m} datiUtente={dati} dimensione="piccola"
+                  onClick={() => setCartaSel({ tipo: 'mossa', m, dati })} />
               </div>
             );
           }
@@ -1061,7 +1077,7 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
                     <div className="missione-item__icon">🏴</div>
                     <div className="missione-item__body">
                       <div className="missione-item__title">{px.name || `Pixel ${px.x},${px.y}`}</div>
-                      <div className="missione-item__reward">+{mapMission.rewardPerPixel ?? 100} 💋 se in tuo possesso</div>
+                      <div className="missione-item__reward">+{mapMission.rewardPerPixel ?? 100} <KissesIcon size={12} /> se in tuo possesso</div>
                     </div>
                   </div>
                 ))}
@@ -1082,7 +1098,7 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
                         } else alert(data.error);
                       } catch (e) { alert(e.message); }
                     }}>
-                    Riscuoti ({mapMission.pixels?.length ?? 4} × {mapMission.rewardPerPixel ?? 100} 💋 max)
+                    Riscuoti ({mapMission.pixels?.length ?? 4} × {mapMission.rewardPerPixel ?? 100} <KissesIcon size={12} /> max)
                   </button>
                 )}
                 {mapClaimed && <span className="missione-item__claimed">✓ Riscosso</span>}

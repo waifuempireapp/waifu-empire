@@ -55,21 +55,22 @@ export async function POST(request) {
       receivedByA = { ...waifuB };
       receivedByB = { ...waifuA };
 
+      const nowMs = Date.now();
       // Aggiorna A: cede fromWaifu, riceve toWaifu
       const updatesA = {};
       if ((waifuA.copie ?? 1) - 1 <= 0) updatesA[`waifu.${fromWaifuId}`] = FieldValue.delete();
       else updatesA[`waifu.${fromWaifuId}.copie`] = (waifuA.copie ?? 1) - 1;
       const existingToInA = collA.data()?.waifu?.[toWaifuId];
-      if (existingToInA) updatesA[`waifu.${toWaifuId}.copie`] = (existingToInA.copie ?? 0) + 1;
-      else updatesA[`waifu.${toWaifuId}`] = { ...waifuB, copie: 1 };
+      if (existingToInA) { updatesA[`waifu.${toWaifuId}.copie`] = (existingToInA.copie ?? 0) + 1; updatesA[`waifu.${toWaifuId}.trovata_il`] = nowMs; }
+      else updatesA[`waifu.${toWaifuId}`] = { ...waifuB, copie: 1, trovata_il: nowMs };
 
       // Aggiorna B: cede toWaifu, riceve fromWaifu
       const updatesB = {};
       if ((waifuB.copie ?? 1) - 1 <= 0) updatesB[`waifu.${toWaifuId}`] = FieldValue.delete();
       else updatesB[`waifu.${toWaifuId}.copie`] = (waifuB.copie ?? 1) - 1;
       const existingFromInB = collB.data()?.waifu?.[fromWaifuId];
-      if (existingFromInB) updatesB[`waifu.${fromWaifuId}.copie`] = (existingFromInB.copie ?? 0) + 1;
-      else updatesB[`waifu.${fromWaifuId}`] = { ...waifuA, copie: 1 };
+      if (existingFromInB) { updatesB[`waifu.${fromWaifuId}.copie`] = (existingFromInB.copie ?? 0) + 1; updatesB[`waifu.${fromWaifuId}.trovata_il`] = nowMs; }
+      else updatesB[`waifu.${fromWaifuId}`] = { ...waifuA, copie: 1, trovata_il: nowMs };
 
       const collARefTx = adminDb.collection('users').doc(fromUid).collection('collezione').doc('main');
       const collBRefTx = adminDb.collection('users').doc(toUid).collection('collezione').doc('main');

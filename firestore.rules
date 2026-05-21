@@ -191,8 +191,7 @@ service cloud.firestore {
       allow write: if false; // solo Admin SDK
     }
     match /raid_participants/{participantId} {
-      allow read: if isSignedIn()
-                  && (resource.data.uid == request.auth.uid || isAdmin());
+      allow read: if isSignedIn(); // leaderboard pubblica tra i partecipanti
       allow write: if false; // solo Admin SDK
     }
 

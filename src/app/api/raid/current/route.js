@@ -26,7 +26,7 @@ async function createNewRaid(cfg) {
   const shuffled = others.sort(() => Math.random() - 0.5).slice(0, 4);
   deck = deck.concat(shuffled.map(d => d.id));
 
-  const totalHp = cfg.totalHp ?? 5000;
+  const totalHp = cfg.totalHp ?? 500;
   const durationMin = cfg.durationMinutes ?? 60;
   const now = new Date();
   const endsAt = new Date(now.getTime() + durationMin * 60 * 1000);

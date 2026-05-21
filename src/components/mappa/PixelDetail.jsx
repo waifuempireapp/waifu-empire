@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useScrollLock } from '@/lib/useScrollLock';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
 import { PIXEL_NAMES } from '@/lib/worldMap';
 import KissesIcon from '@/components/KissesIcon';
@@ -87,7 +88,7 @@ function MissionCountdown({ endsAt }) {
           Territorio Missione Mappa
         </div>
         <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 10, color: 'rgba(232,121,249,0.65)', fontVariantNumeric: 'tabular-nums' }}>
-          Possiederlo vale +100 💋 · scade tra {label}
+          Possiederlo vale +100 <KissesIcon size={11} /> · scade tra {label}
         </div>
       </div>
     </div>
@@ -101,6 +102,7 @@ export default function PixelDetail({
   missionEndsAt,     // ms timestamp se questo pixel è nella missione mappa corrente
   onAttack, onPurchase, onEditDefense, onClose,
 }) {
+  useScrollLock();
   if (!pixel) return null;
 
   const isOwn   = pixel.ownerId === userUid;

@@ -1,9 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useScrollLock } from '@/lib/useScrollLock';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
 import KissesIcon from '@/components/KissesIcon';
 
 export default function OffersPanel({ user, onClose, onKissesUpdate, onMapUpdate }) {
+  useScrollLock();
   const [offers, setOffers] = useState({ incoming: [], outgoing: [] });
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(null);

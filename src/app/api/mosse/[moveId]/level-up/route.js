@@ -34,7 +34,7 @@ export async function PATCH(request, { params }) {
   const livello = userMossa.livello ?? 1;
 
   if (livello >= 10) return NextResponse.json({ error: 'Livello massimo raggiunto' }, { status: 422 });
-  if (copie === 0 || copie % 5 !== 0) return NextResponse.json({ error: 'Level up non disponibile' }, { status: 422 });
+  if (copie < livello * 5) return NextResponse.json({ error: 'Level up non disponibile (servono ' + (livello * 5) + ' copie)' }, { status: 422 });
 
   const cfg = cfgSnap.exists ? cfgSnap.data() : {};
   const incDanno = cfg.incremento_danno ?? 5;

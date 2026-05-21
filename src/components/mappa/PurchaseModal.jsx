@@ -1,9 +1,11 @@
 'use client';
 import { useState } from 'react';
+import { useScrollLock } from '@/lib/useScrollLock';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
 import KissesIcon from '@/components/KissesIcon';
 
 export default function PurchaseModal({ pixel, profilo, onConfirm, onClose }) {
+  useScrollLock();
   const isCPU = pixel?.ownerId === 'CPU';
   const basePrice = 200 + ((pixel?.ownerLevel ?? 1) * 50);
   const [offerAmount, setOfferAmount] = useState(String(basePrice));

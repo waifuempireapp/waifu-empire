@@ -177,32 +177,7 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
   // Schermata limite voti raggiunto
   const isLimitReached = swapStatus && !swapStatus.hasSwapPass && (swapStatus.votesRemaining === 0);
   if (isLimitReached) {
-    const msToMidnight = (() => {
-      const now = new Date();
-      const midnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
-      return midnight - now;
-    })();
-    const h = Math.floor(msToMidnight / 3600000);
-    const m = Math.floor((msToMidnight % 3600000) / 60000);
-    const s = Math.floor((msToMidnight % 60000) / 1000);
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '80vh', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center', gap: 20 }}>
-        <div style={{ fontSize: 56 }}>🚫</div>
-        <div style={{ fontFamily: FF.display, fontSize: 20, color: C.sakura, fontWeight: 800 }}>Limite voti raggiunto</div>
-        <div style={{ fontFamily: FF.body, fontSize: 13, color: 'rgba(241,235,255,0.6)', lineHeight: 1.6, maxWidth: 320 }}>
-          Hai usato tutti i 50 voti giornalieri. Il contatore si azzera a mezzanotte (UTC).
-        </div>
-        <div style={{ fontFamily: FF.mono, fontSize: 28, color: C.gold, fontWeight: 700 }}>
-          {String(h).padStart(2,'0')}:{String(m).padStart(2,'0')}:{String(s).padStart(2,'0')}
-        </div>
-        <button
-          onClick={() => window.dispatchEvent(new CustomEvent('impero:apri-negozio'))}
-          style={{ padding: '14px 28px', background: 'linear-gradient(135deg, #ec4899, #a855f7)', border: 'none', borderRadius: 14, color: '#fff', fontFamily: FF.label, fontSize: 12, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.1em' }}>
-          💋 Acquista Swap Pass — Voti illimitati
-        </button>
-        <button onClick={() => setTab?.('home')} style={{ background: 'transparent', border: 'none', color: 'rgba(241,235,255,0.4)', fontFamily: FF.label, fontSize: 10, cursor: 'pointer' }}>← Torna alla Home</button>
-      </div>
-    );
+    return <SwapLimitScreen setTab={setTab} />;
   }
 
   return (
@@ -366,6 +341,43 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
       {toast && <SwapRewardToast {...toast} onDone={() => setToast(null)} />}
       {milestone && <SwapMilestoneModal {...milestone} onClose={() => setMilestone(null)} />}
       {showAd && <AdSlot onClose={() => setShowAd(false)} />}
+    </div>
+  );
+}
+
+function SwapLimitScreen({ setTab }) {
+  const [countdown, setCountdown] = useState('');
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      const midnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+      const diff = Math.max(0, midnight - now);
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setCountdown(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
+    };
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '80vh', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center', gap: 20 }}>
+      <div style={{ fontSize: 56 }}>🚫</div>
+      <div style={{ fontFamily: FF.display, fontSize: 20, color: C.sakura, fontWeight: 800 }}>Limite voti raggiunto</div>
+      <div style={{ fontFamily: FF.body, fontSize: 13, color: 'rgba(241,235,255,0.6)', lineHeight: 1.6, maxWidth: 320 }}>
+        Hai usato tutti i 50 voti giornalieri. Il contatore si azzera a mezzanotte (UTC).
+      </div>
+      <div style={{ fontFamily: FF.mono, fontSize: 28, color: C.gold, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+        {countdown}
+      </div>
+      <button
+        onClick={() => window.dispatchEvent(new CustomEvent('impero:apri-negozio'))}
+        style={{ padding: '14px 28px', background: 'linear-gradient(135deg, #ec4899, #a855f7)', border: 'none', borderRadius: 14, color: '#fff', fontFamily: FF.label, fontSize: 12, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.1em' }}>
+        <KissesIcon size={13} /> Acquista Swap Pass — Voti illimitati
+      </button>
+      <button onClick={() => setTab?.('home')} style={{ background: 'transparent', border: 'none', color: 'rgba(241,235,255,0.4)', fontFamily: FF.label, fontSize: 10, cursor: 'pointer' }}>← Torna alla Home</button>
     </div>
   );
 }

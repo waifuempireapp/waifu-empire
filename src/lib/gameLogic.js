@@ -153,7 +153,7 @@ export function checkMoveLevelUp(userMoveData, catalogMossa, levelupConfig = nul
   const copie  = userMoveData.copie ?? 0;
   const livello = userMoveData.livello ?? 1;
   if (livello >= 10) return null;
-  if (copie === 0 || copie % 5 !== 0) return null;
+  if (copie < livello * 5) return null;
 
   const newLivello = livello + 1;
   const currentDanno      = userMoveData.danno      ?? catalogMossa.danno;
