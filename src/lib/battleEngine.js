@@ -53,14 +53,15 @@ export const TYPE_COLORS = {
  * @type {Record<string, Record<string, number>>}
  */
 // Ciclo: Arcana(0)→Natura(1)→Abisso(2)→Ferro(3)→Fuoco(4)→Arcana(0)
+// Moltiplicatori: super efficace ×1.5, normale ×1.0, poco efficace ×0.5
 export const typeChart = (() => {
   const chart = {};
   TYPE_NAMES.forEach((attacker, ai) => {
     chart[attacker] = {};
     TYPE_NAMES.forEach((defender, di) => {
-      const beats    = (ai + 1) % 5 === di; // attacker batte defender → ×2.0
-      const beaten   = (di + 1) % 5 === ai; // defender batte attacker → ×0.5
-      chart[attacker][defender] = beats ? 2.0 : beaten ? 0.5 : 1.0;
+      const beats  = (ai + 1) % 5 === di; // attacker batte defender → ×1.5
+      const beaten = (di + 1) % 5 === ai; // defender batte attacker → ×0.5
+      chart[attacker][defender] = beats ? 1.5 : beaten ? 0.5 : 1.0;
     });
   });
   return chart;
@@ -82,17 +83,12 @@ export const typeChart = (() => {
  */
 export function getEffectiveness(moveType, attackerType, defenderType) {
   // Fallback a 1.0 se il tipo non è nel type chart (es. dato malformato)
-  const base = typeChart[moveType]?.[defenderType] ?? 1.0;
-  // STAB: mossa del tipo dell'attaccante che batte il difensore → bonus ×2.5 invece di ×2.0
-  const isStab = moveType === attackerType && base === 2.0;
-  const multiplier = isStab ? 2.5 : base;
+  const multiplier = typeChart[moveType]?.[defenderType] ?? 1.0;
 
   // Etichetta testuale per l'UI (banner animato in battaglia)
-  let label = 'Normal';
-  if (multiplier >= 2.5)       label = 'Extremely effective'; // STAB + super effective
-  else if (multiplier >= 2.0)  label = 'Super effective';
-  else if (multiplier === 0.5) label = 'Not very effective';
-  else if (multiplier === 0)   label = 'No effect';
+  let label = 'Normale';
+  if (multiplier >= 1.5) label = 'Super efficace!';
+  else if (multiplier <= 0.5) label = 'Poco efficace…';
 
   return { multiplier, label };
 }
@@ -120,28 +116,18 @@ export function getEffectiveness(moveType, attackerType, defenderType) {
 export function calculateDamage(attacker, move, defender) {
   const { multiplier, label: effectiveness } = getEffectiveness(move.type, attacker.type, defender.type);
 
-  // Tipo immune → nessun danno, nessun critico
-  if (multiplier === 0) return { damage: 0, isCrit: false, effectiveness, multiplier };
+  // Critico: tira la moneta con la probabilità di critico della waifu attaccante (dal DB)
+  // critChance = attacker.critChance (es. 0.15 = 15%)
+  const isCrit = Math.random() < (attacker.critChance ?? 0.05);
 
-  // Moltiplicatore livello: scala lineare da 0.85 (Lv1) a 1.15 (Lv10)
-  // Livelli > 10 vengono clamped a 10 per evitare overflow del danno
-  const levelMod  = 0.85 + (Math.min(attacker.level, 10) / 10) * 0.30;
+  // Danno base: se critico usa danno_critico della mossa, altrimenti danno normale
+  // damage_crit = round(danno × 1.25) → calcolato durante initBattleWaifu
+  const rawPower = isCrit
+    ? (move.damage_crit ?? move.critPower ?? Math.round((move.power ?? 0) * 1.25))
+    : (move.power ?? 0);
 
-  // Jitter ±8%: introduce varianza nel danno per evitare battaglie completamente deterministiche (PvCPU)
-  // DIP: Math.random() è il dettaglio di implementazione PvCPU — pvpArenaEngine lo sostituisce con LCG
-  const randomMod = 0.92 + Math.random() * 0.16; // [0.92, 1.08)
-
-  // [WAIFU CHAMPIONS REFACTOR — CRIT] Critico: probabilità waifu-level, move.critPowerPerc ignorata
-  // critChance è calcolata runtime da computeCritChance() (range 0.05–0.60)
-  // DIP: Math.random() è il dettaglio PvCPU — pvpArenaEngine usa la stessa formula con nextSeed LCG
-  const isCrit    = Math.random() < (attacker.critChance ?? 0.05);
-
-  // Danno critico: nuovo schema damage_crit > legacy critPower > 1.5× power
-  const critDmg   = move.damage_crit ?? move.critPower ?? Math.round((move.power ?? 0) * 1.5);
-  const basePower = isCrit ? critDmg : move.power;
-
-  // Danno finale: minimo 1 per evitare round a 0 con jitter basso + NVE (×0.5)
-  const damage = Math.max(1, Math.round(basePower * multiplier * levelMod * randomMod));
+  // Danno finale = danno_base × fattore_efficacia (0.5 / 1.0 / 1.5)
+  const damage = Math.max(1, Math.round(rawPower * multiplier));
   return { damage, isCrit, effectiveness, multiplier };
 }
 
@@ -414,11 +400,12 @@ export function computeCritChance(w, rarityMultiplier = 1.0, rarityRange = null)
   const p  = ((w.taglia_piedi   ?? 39) - 34) / 11;
   // (1-es): tradeoff speculare a calculateSpeed dove es è diretta
   const raw = t*0.20 + e*0.20 + (1-es)*0.25 + c*0.15 + p*0.20;
-  const base = Math.min(0.60, Math.max(0.05, raw));
+  // Arrotonda a 2 decimali per evitare valori come 0.155 che si mostrerebbero come 15.5%
+  const base = parseFloat(Math.min(0.60, Math.max(0.05, raw)).toFixed(2));
   if (rarityMultiplier === 1.0 && !rarityRange) return base;
-  const scaled = parseFloat((base * rarityMultiplier).toFixed(4));
-  if (!rarityRange) return Math.min(0.60, Math.max(0.05, scaled));
-  return Math.min(rarityRange.crit_max, Math.max(rarityRange.crit_min, scaled));
+  const scaled = parseFloat(Math.min(0.60, Math.max(0.05, base * rarityMultiplier)).toFixed(2));
+  if (!rarityRange) return scaled;
+  return parseFloat(Math.min(rarityRange.crit_max, Math.max(rarityRange.crit_min, scaled)).toFixed(2));
 }
 
 /**
@@ -528,13 +515,16 @@ export function initBattleWaifu(waifuFirestore, collectionData = null) {
     if (!bs.moves?.length) bs.moves = _generateMovesForRarity(waifuFirestore.rarita ?? 'comune');
   }
 
-  const level       = collectionData?.livello ?? 1;
-  const maxHp       = bs.maxHp ?? 300;
-  // Scala HP per livello: Lv1 = 75% maxHp, Lv10 = 100% maxHp
-  const hpScale     = 0.75 + (Math.min(level, 10) / 10) * 0.25;
-  const scaledMaxHp = Math.round(maxHp * hpScale);
+  const level = collectionData?.livello ?? 1;
 
-  // Usa velocita/crit_chance salvati se disponibili (v2), altrimenti ricalcola (backward compat)
+  // HP: preferisce il valore calcolato e salvato nel DB (collectionData.hp),
+  // fallback su battleStats.maxHp → scalato per livello (0.775 a Lv1, 1.0 a Lv10)
+  const dbHp = collectionData?.hp ?? null;
+  const bsHp = bs.maxHp ?? 300;
+  const hpScale = 0.75 + (Math.min(level, 10) / 10) * 0.25;
+  const scaledMaxHp = Math.round((dbHp ?? bsHp) * hpScale);
+
+  // Velocità e crit_chance: usa i valori salvati nel DB se disponibili
   const savedSpeed = collectionData?.velocita ?? null;
   const savedCrit  = collectionData?.crit_chance ?? null;
 
@@ -547,7 +537,18 @@ export function initBattleWaifu(waifuFirestore, collectionData = null) {
       finalMoves = slotMoves.map(mid => {
         const m = collectionData._mosseData[mid];
         if (!m) return null;
-        return { name: m.nome, type: m.tipologia, rarity: m.rarita, power: m.danno, damage_crit: m.danno_critico, pp: m.pp, maxPp: m.pp, ability: m.abilita ?? null };
+        const danno = m.danno ?? 0;
+        // Bonifica danno_critico: se < 5 è nel vecchio formato float → ricalcola
+        const damageCrit = (m.danno_critico != null && m.danno_critico < 5)
+          ? Math.round(danno * 1.25)
+          : Math.round(m.danno_critico ?? danno * 1.25);
+        return {
+          name: m.nome, type: m.tipologia, rarity: m.rarita,
+          power: Math.round(danno),
+          damage_crit: damageCrit,
+          pp: Math.round(m.pp ?? 5), maxPp: Math.round(m.pp ?? 5),
+          ability: m.abilita ?? null,
+        };
       }).filter(Boolean);
     }
   }
@@ -559,15 +560,55 @@ export function initBattleWaifu(waifuFirestore, collectionData = null) {
     level,
     hp:     scaledMaxHp,
     maxHp:  scaledMaxHp,
-    type:      bs.type ?? _pick(TYPE_NAMES),
-    speed:     savedSpeed ?? computeSpeed(waifuFirestore),
-    critChance: savedCrit  ?? computeCritChance(waifuFirestore),
+    type:      bs.type ?? waifuFirestore.tipo ?? waifuFirestore.tipologia ?? _pick(TYPE_NAMES),
+    speed:     savedSpeed != null ? Math.round(savedSpeed) : Math.round(computeSpeed(waifuFirestore)),
+    critChance: savedCrit != null ? parseFloat(Math.min(0.60, Math.max(0.05, savedCrit)).toFixed(2)) : computeCritChance(waifuFirestore),
     image:  waifuFirestore.asset_statica ?? waifuFirestore.asset_immersiva ?? null,
-    moves:  finalMoves.map(m => ({ ...m, pp: m.maxPp ?? m.pp ?? 5 })),
+    moves:  finalMoves.map(m => {
+      const danno = Math.round(m.power ?? m.danno ?? 0);
+      const damageCrit = (m.damage_crit != null && m.damage_crit < 5)
+        ? Math.round(danno * 1.25)
+        : Math.round(m.damage_crit ?? m.critPower ?? danno * 1.25);
+      return { ...m, power: danno, damage_crit: damageCrit, pp: Math.round(m.maxPp ?? m.pp ?? 5), maxPp: Math.round(m.maxPp ?? m.pp ?? 5) };
+    }),
     isKO:   false,
     rarita: waifuFirestore.rarita ?? 'comune',
     _battleStats: bs,
   };
+}
+
+// Rarità CPU mosse: un gradino sotto la waifu
+const _CPU_MOVE_RARITY = {
+  immersivo: 'leggendario', leggendario: 'epico', epico: 'raro', raro: 'comune', comune: 'comune',
+};
+
+/**
+ * Genera 4 mosse CPU dal catalogo mosse per una waifu CPU.
+ * Rarità mosse = un gradino sotto la rarità della waifu.
+ * Ogni mossa viene bonificata: danno_critico = round(danno × 1.25).
+ *
+ * @param {string} waifuRarita - Rarità della waifu CPU
+ * @param {Object[]} mosseCat - Catalogo mosse (da catalogo_mosse)
+ * @returns {MoveInstance[]} 4 mosse pronte per la battaglia
+ */
+export function generateCPUMovesFromCatalog(waifuRarita, mosseCat = []) {
+  if (!mosseCat.length) return _generateMovesForRarity(waifuRarita);
+  const targetRarity = _CPU_MOVE_RARITY[waifuRarita] ?? 'comune';
+  const pool = mosseCat.filter(m => m.rarita === targetRarity);
+  const source = pool.length >= 4 ? pool : mosseCat;
+  const shuffled = [...source].sort(() => Math.random() - 0.5).slice(0, 4);
+  return shuffled.map(m => {
+    const danno = Math.round(m.danno ?? 0);
+    const damageCrit = (m.danno_critico != null && m.danno_critico < 5)
+      ? Math.round(danno * 1.25)
+      : Math.round(m.danno_critico ?? danno * 1.25);
+    return {
+      name: m.nome ?? 'Mossa', type: m.tipologia ?? 'Arcana', rarity: m.rarita ?? 'comune',
+      power: danno, damage_crit: damageCrit,
+      pp: Math.round(m.pp ?? 5), maxPp: Math.round(m.pp ?? 5),
+      ability: m.abilita ?? null,
+    };
+  });
 }
 
 /**

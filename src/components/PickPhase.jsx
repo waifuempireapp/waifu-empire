@@ -281,7 +281,7 @@ function WaifuPickCard({ waifu, slot, selectable, onTap, hideStats = false }) {
                 HP: {maxHp}
               </div>
               <div style={{ fontFamily: 'Orbitron', fontSize: 7, color: 'rgba(238,232,220,.55)', marginTop: 2 }}>
-                <span style={{ color: '#00C8FF' }}>⚡ {waifu.speed ?? waifu.velocita ?? waifu.velocita_base ?? computeSpeed(waifu)}</span>
+                <span style={{ color: '#00C8FF' }}>⚡ {Math.round(waifu.speed ?? waifu.velocita ?? waifu.velocita_base ?? computeSpeed(waifu))}</span>
                 {'  '}
                 <span style={{ color: '#f5a623' }}>💥 {Math.round((waifu.critChance ?? waifu.crit_chance ?? waifu.crit_chance_base ?? computeCritChance(waifu)) * 100)}%</span>
               </div>
@@ -452,9 +452,18 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
     picks.map(idx => {
       const w = roster[idx];
       if (!w) return null;
-      // Se la waifu ha già i campi battle-ready (speed, moves, hp da buildBattleReadyWaifu), usarla direttamente
+      // Se ha già speed + moves battle-ready, usarla direttamente
       if (w.speed !== undefined && w.moves?.length) return { ...w };
-      return initBattleWaifu(w, { livello: w.livello ?? 1 });
+      // Passa i dati collezione incluso _mosseData per usare le mosse del giocatore dal DB
+      const collectionData = {
+        livello: w.livello ?? 1,
+        velocita: w.velocita ?? null,
+        crit_chance: w.crit_chance ?? null,
+        hp: w.hp ?? null,
+        mosse_slot: w.mosse_slot ?? null,
+        _mosseData: w._mosseData ?? null,
+      };
+      return initBattleWaifu(w, collectionData);
     }).filter(Boolean);
 
   // ── Handler conferma giocatore ──────────────────────────────────────────
@@ -469,8 +478,15 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
       // Il team avversario è vuoto qui — arriverà tramite Firestore (gestito dal parent).
       onConfirm?.(playerTeam, []);
     } else {
-      // Modalità CPU: l'avversario ha già pescato al mount, passiamo il suo team.
-      const enemyTeam = cpuPicks.map(w => initBattleWaifu(w, { livello: w.livello ?? 1 }));
+      // Modalità CPU: l'avversario ha già pescato al mount, passiamo il suo team con mosse da catalogo.
+      const enemyTeam = cpuPicks.map(w => {
+        // Usa _cpuMoves se preassegnate (da generateCPUMovesFromCatalog in RoundViewer)
+        const cpuMoves = w._cpuMoves ?? null;
+        const waifu = initBattleWaifu(w, { livello: w.livello ?? 1 });
+        // Sostituisce le mosse con quelle CPU dal catalogo se disponibili
+        if (cpuMoves?.length) return { ...waifu, moves: cpuMoves.map(m => ({ ...m, pp: m.maxPp ?? m.pp ?? 5 })) };
+        return waifu;
+      });
       onConfirm?.(playerTeam, enemyTeam);
     }
   };

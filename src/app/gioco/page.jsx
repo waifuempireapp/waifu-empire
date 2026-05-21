@@ -4183,14 +4183,18 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
               <input value={teamNome} onChange={e => setTeamNome(e.target.value)} placeholder="Nome team..." style={{ width: '100%', marginBottom: 12 }} />
               {/* Lista waifu con filtri e infinite scroll */}
               <SelezioneWaifuTeam
-                waifuDisponibili={Object.entries(collezione.waifu || {}).map(([id, dati]) => {
-                  const w = waifuCat.find(x => x.id === id);
-                  if (!w) return null;
-                  // Nel team editor mostro tutte le waifu in possesso
-                  // La restrizione 4 mosse si applica solo nel combattimento
-                  const mosseAssegnate = Object.values(dati.mosse_slot ?? {}).filter(Boolean).length;
-                  return w ? { ...w, copie: dati.copie, livello: dati.livello, stat_bonus: dati.stat_bonus, mosse_ok: mosseAssegnate === 4 } : null;
-                }).filter(Boolean)}
+                waifuDisponibili={(() => {
+                  const lista = Object.entries(collezione.waifu || {}).map(([id, dati]) => {
+                    const w = waifuCat.find(x => x.id === id);
+                    if (!w) return null;
+                    const mosseAssegnate = Object.values(dati.mosse_slot ?? {}).filter(Boolean).length;
+                    // Solo waifu con 4 mosse assegnate sono selezionabili per il team
+                    if (mosseAssegnate < 4) return null;
+                    return { ...w, copie: dati.copie, livello: dati.livello, stat_bonus: dati.stat_bonus, mosse_ok: true };
+                  }).filter(Boolean);
+                  return lista;
+                })()}
+                emptyMessage={<div style={{ padding: '24px 0', textAlign: 'center' }}><div style={{ fontSize: 28, marginBottom: 8 }}>⚔</div><div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#ffd666', letterSpacing: 1, marginBottom: 8 }}>NESSUNA WAIFU DISPONIBILE</div><div style={{ fontSize: 11, color: 'rgba(238,232,220,0.5)', fontFamily: 'Fredoka', lineHeight: 1.6 }}>Per usare una waifu nel team deve avere 4 mosse attacco assegnate.<br/>Vai in <strong style={{color:'#9b59ff'}}>Collezione → Mosse</strong> per assegnare le mosse alle tue waifu.</div></div>}
                 waifuSelezionate={teamWaifu}
                 onToggle={(id) => {
                   if (teamWaifu.includes(id)) { setTeamWaifu(teamWaifu.filter(x => x !== id)); return; }
@@ -4467,12 +4471,14 @@ function MossaDetailModal({ catalog, dati, user, collezione, setColl, waifuCat =
 
   useScrollLock(true);
 
-  // Dettaglio tab computed stats
-  const dannoEff = dati.danno ?? catalog.danno ?? 0;
-  const critEff  = dati.danno_critico ?? catalog.danno_critico ?? 0;
-  const ppVal    = catalog.pp ?? 0;
-  const nextDanno = dannoEff + (catalog.danno_step ?? 5);
-  const nextCrit  = critEff  + (catalog.danno_crit_step ?? 10);
+  // Dettaglio tab computed stats — sempre interi
+  const dannoEff = Math.round(dati.danno ?? catalog.danno ?? 0);
+  // danno_critico: se < 5 è vecchio formato float → ricalcola come danno × 1.25
+  const rawCrit  = dati.danno_critico ?? catalog.danno_critico ?? 0;
+  const critEff  = Math.round(rawCrit < 5 ? dannoEff * 1.25 : rawCrit);
+  const ppVal    = Math.round(catalog.pp ?? 0);
+  const nextDanno = dannoEff + Math.round(catalog.danno_step ?? 5);
+  const nextCrit  = critEff  + Math.round(catalog.danno_crit_step ?? Math.round(dannoEff * 0.25));
 
   // Compatibility tab: type chain
   // Chain: Arcana beats Natura, Natura beats Abisso, Abisso beats Ferro, Ferro beats Fuoco, Fuoco beats Arcana
@@ -4768,7 +4774,7 @@ function MossaDetailModal({ catalog, dati, user, collezione, setColl, waifuCat =
                           <div style={{ padding: '8px 10px', flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
                             <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontWeight: 700, fontSize: 13, color: '#f5e6d3', lineHeight: 1.2 }}>{w.nome}</div>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                              {[['HP', w.hp??0, '#06d6a0'],['Vel.', w.velocita??0, '#7F77DD'],['D.Cr.', w.danno_critico??0, '#ffc861']].map(([label, val, col]) => (
+                              {[['HP', Math.round(w.hp??0), '#06d6a0'],['Vel.', Math.round(w.velocita??0), '#7F77DD'],['Crit', Math.round((w.crit_chance??0)*100)+'%', '#ffc861']].map(([label, val, col]) => (
                                 <span key={label} style={{ fontFamily: ORB, fontSize: 7, color: col }}>{label} <strong>{val}</strong></span>
                               ))}
                             </div>
@@ -6276,7 +6282,7 @@ function BarraFiltriWaifu({ filtroNome, setFiltroNome, filtroRarita, setFiltroRa
  */
 const TEAM_PAGE_SIZE = 12;
 
-function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxSel = 5, accentColor = '#ffd666', labelSel = 'SCEGLI 5 WAIFU', onConferma, onAnnulla, labelConferma = 'CONFERMA', disabledConferma = false, drops = [], profilo }) {
+function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxSel = 5, accentColor = '#ffd666', labelSel = 'SCEGLI 5 WAIFU', onConferma, onAnnulla, labelConferma = 'CONFERMA', disabledConferma = false, drops = [], profilo, emptyMessage }) {
   const [filtroNome, setFiltroNome] = useState('');
   const [filtroRar, setFiltroRar] = useState('tutte');
   const [filtroDropId, setFiltroDropId] = useState('tutti');
@@ -6377,7 +6383,8 @@ function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxS
             </div>
           );
         })}
-        {lista.length === 0 && (
+        {lista.length === 0 && waifuDisponibili.length === 0 && emptyMessage ? emptyMessage : null}
+        {lista.length === 0 && (waifuDisponibili.length > 0 || !emptyMessage) && (
           <div style={{ textAlign: 'center', padding: 30, opacity: 0.4, fontFamily: 'Orbitron', fontSize: 10, color: accentColor }}>
             Nessuna waifu trovata con questi filtri
           </div>

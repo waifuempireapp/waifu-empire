@@ -2,7 +2,7 @@
 import { useState, useRef, useMemo } from 'react';
 import WaifuBattleArena from '@/components/WaifuBattleArena';
 import PickPhase from '@/components/PickPhase';
-import { generateCPUTeamOf5, initBattleTeam } from '@/lib/battleEngine';
+import { generateCPUTeamOf5, initBattleTeam, generateCPUMovesFromCatalog } from '@/lib/battleEngine';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
 
 const DIFFICULTY_LEVEL = { easy: 3, medium: 12, hard: 35, expert: 55 };
@@ -54,7 +54,7 @@ function buildCPUDifficultyDeck(candidates, difficulty) {
  *   - 'switch': salta pre, vai a pick con solo le 5 waifu dell'attackerTeam
  *   - null:     prima volta o match concluso, mostra 'pre'
  */
-export default function RoundViewer({ battle, waifuCat, collezione, profilo, onRoundComplete, onClose, hasHardPass }) {
+export default function RoundViewer({ battle, waifuCat, mosseCat = [], collezione, profilo, onRoundComplete, onClose, hasHardPass }) {
   const difficulty = DIFFICULTY_LEVEL[battle?.cpuDifficulty ?? 'easy'];
 
   // Inizializza la fase in base a nextRoundChoice
@@ -101,16 +101,23 @@ export default function RoundViewer({ battle, waifuCat, collezione, profilo, onR
   }
 
   // roster5P: SEMPRE le 5 waifu scelte in BattleModal (attackerTeam)
-  // La PickPhase mostra solo quelle 5, non tutta la collezione
+  // Aggiunge _mosseData per permettere a initBattleWaifu di usare le mosse del giocatore dal DB
   const roster5P = useMemo(() => (
     (battle?.attackerTeam || [])
       .map(id => {
         const cat  = waifuCat?.find(w => w.id === id);
         const coll = collezione?.waifu?.[id] ?? {};
-        return cat ? { ...cat, ...coll } : null;
+        // Costruisce _mosseData: merge di catalogo mossa + dati utente (livello, danno modificato, ecc.)
+        const mosseData = {};
+        for (const mid of Object.values(coll.mosse_slot ?? {}).filter(Boolean)) {
+          const userMossa = collezione?.mosse?.[mid];
+          const catMossa  = mosseCat?.find(m => m.id === mid);
+          if (catMossa) mosseData[mid] = { ...catMossa, ...(userMossa || {}) };
+        }
+        return cat ? { ...cat, ...coll, _mosseData: mosseData } : null;
       })
       .filter(Boolean)
-  ), [battle?.attackerTeam, waifuCat, collezione]);
+  ), [battle?.attackerTeam, waifuCat, collezione, mosseCat]);
 
   // roster5E: le 5 waifu del difensore (fisse per tutto il Bo3)
   // Fix #5: se il pixel è CPU e player non ha Pass Hard, filtra le waifu hot
@@ -134,7 +141,12 @@ export default function RoundViewer({ battle, waifuCat, collezione, profilo, onR
       if (!hasHardPass) candidates = candidates.filter(w => !w.hot);
 
       if (isCPUDefender) {
-        pool = buildCPUDifficultyDeck(candidates, battle?.cpuDifficulty ?? 'easy').map(patchW).filter(Boolean);
+        const cpuDeck = buildCPUDifficultyDeck(candidates, battle?.cpuDifficulty ?? 'easy');
+        // Assegna 4 mosse CPU da catalogo a ogni waifu nel deck (un gradino sotto la rarità)
+        pool = cpuDeck.map(w => {
+          const cpuMoves = generateCPUMovesFromCatalog(w?.rarita ?? 'comune', mosseCat);
+          return patchW(w ? { ...w, _cpuMoves: cpuMoves } : w);
+        }).filter(Boolean);
       } else {
         pool = candidates.sort(() => Math.random() - 0.5).slice(0, 5).map(patchW).filter(Boolean);
       }

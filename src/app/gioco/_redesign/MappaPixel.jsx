@@ -583,6 +583,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat,
           key={`${activeBattle.id}-${activeBattle.attackerWins}-${activeBattle.defenderWins}-${activeBattle.nextRoundChoice ?? ''}`}
           battle={activeBattle}
           waifuCat={waifuCat}
+          mosseCat={mosseCat}
           collezione={collezione}
           profilo={profilo}
           hasHardPass={profilo?.hardPass === true}

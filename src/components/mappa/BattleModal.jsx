@@ -69,7 +69,11 @@ export default function BattleModal({ pixel, collezione, waifuCat, onConfirm, on
     const list = Object.entries(collezione?.waifu || {})
       .map(([id, dati]) => {
         const w = waifuCat?.find(x => x.id === id);
-        return w ? { ...w, ...dati, _datiColl: dati } : null;
+        if (!w) return null;
+        // Solo waifu con 4 mosse assegnate sono selezionabili per la battaglia
+        const mosseAssegnate = Object.values(dati.mosse_slot ?? {}).filter(Boolean).length;
+        if (mosseAssegnate < 4) return null;
+        return { ...w, ...dati, _datiColl: dati };
       })
       .filter(Boolean);
     // Ordina in base al criterio scelto
@@ -225,9 +229,19 @@ export default function BattleModal({ pixel, collezione, waifuCat, onConfirm, on
             {filtered.length} waifu · pagina {page + 1}/{Math.max(1, totalPages)} · {selectedIds.length}/5 selezionate
           </div>
 
-          {/* Griglia paginata: 3 colonne, CartaWaifu piccola scalata -8% */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '4px 10px 0' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+          {/* Griglia paginata: 3 colonne */}
+          {ownedWaifu.length === 0 && (
+            <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+              <div style={{ fontSize: 26, marginBottom: 8 }}>⚔</div>
+              <div style={{ fontFamily: FF.label, fontSize: 10, color: C.gold, letterSpacing: '0.15em', marginBottom: 8 }}>NESSUNA WAIFU DISPONIBILE</div>
+              <div style={{ fontFamily: FF.body, fontSize: 11, color: 'rgba(241,235,255,0.5)', lineHeight: 1.6 }}>
+                Per combattere ogni waifu deve avere 4 mosse attacco assegnate.<br/>
+                Vai in <strong style={{color:'#9b59ff'}}>Collezione → Mosse</strong> per assegnare le mosse.
+              </div>
+            </div>
+          )}
+          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '4px 8px 0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
               {pageWaifu.map(w => {
                 const selIdx = selectedIds.indexOf(w.id);
                 const sel = selIdx !== -1;
@@ -237,9 +251,9 @@ export default function BattleModal({ pixel, collezione, waifuCat, onConfirm, on
                     onClick={() => toggle(w.id)}
                     style={{
                       position: 'relative', cursor: 'pointer',
-                      // Ulteriore riduzione: -18% rispetto a CartaWaifu piccola
-                      transform: 'scale(0.82)', transformOrigin: 'top left',
-                      width: '122%', // compensa il transform per il layout
+                      // Riduzione uniforme con overflow nascosto per evitare scroll orizzontale
+                      transform: 'scale(0.78)', transformOrigin: 'top left',
+                      width: '128%', // compensa il transform per il layout
                     }}
                   >
                     <div style={{
