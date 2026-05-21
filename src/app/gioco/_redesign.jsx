@@ -819,15 +819,24 @@ const QUEST_GIORNALIERE_DEFS = [
 ];
 
 function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) {
+  // Scroll lock manuale (no useScrollLock perché già usa modal-open via CSS)
   useEffect(() => {
     document.body.classList.add('modal-open');
     return () => document.body.classList.remove('modal-open');
   }, []);
 
   const [tabAttiva, setTabAttiva]   = useState('giornaliere');
+  const [subTab, setSubTab]         = useState('incorso'); // 'incorso' | 'completate'
   const [sezioni, setSezioni]       = useState([]);
   const [missioniMap, setMissioniMap] = useState({});
   const [claiming, setClaiming]     = useState(null);
+  // Raid tab
+  const [raidInfo, setRaidInfo]       = useState(null);
+  const [raidPart, setRaidPart]       = useState(null); // mia partecipazione
+  const [raidRank, setRaidRank]       = useState([]); // classifica
+  const [raidLoading, setRaidLoading] = useState(true);
+  const [raidClaiming, setRaidClaiming] = useState(false);
+  const [raidClaimed, setRaidClaimed]   = useState(false);
   const [timerGiorn, setTimerGiorn] = useState('');
   const [mapMission, setMapMission] = useState(null);   // missione mappa corrente
   const [mapNextAt, setMapNextAt]   = useState(null);   // timestamp assoluto prossima missione
@@ -886,6 +895,32 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
     const iv = setInterval(tick, 1000);
     return () => clearInterval(iv);
   }, [mapMission, mapNextAt]);
+
+  // Carica dati raid al mount
+  useEffect(() => {
+    if (!user) return;
+    const load = async () => {
+      setRaidLoading(true);
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch('/api/raid/current', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        if (data.raid) {
+          setRaidInfo(data.raid);
+          // Carica partecipazione utente
+          const { db } = await import('@/lib/firebase');
+          const { doc, getDoc, collection, query, where, orderBy, getDocs } = await import('firebase/firestore');
+          const partSnap = await getDoc(doc(db, 'raid_participants', `${data.raid.id}_${(await user.getIdToken()) ? user.uid : ''}`));
+          if (partSnap.exists()) { setRaidPart(partSnap.data()); if (partSnap.data().claimed) setRaidClaimed(true); }
+          const q = query(collection(db, 'raid_participants'), where('eventId', '==', data.raid.id), orderBy('damageDealt', 'desc'));
+          const qSnap = await getDocs(q);
+          setRaidRank(qSnap.docs.map((d, i) => ({ ...d.data(), pos: i + 1 })));
+        }
+      } catch (_) {}
+      setRaidLoading(false);
+    };
+    load();
+  }, [user]);
 
   // Timer reset giornaliero
   useEffect(() => {
@@ -959,186 +994,225 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
           <button className="missioni-modal__close" onClick={onClose}>✕</button>
         </div>
 
-        {/* Progress giornaliero (solo su tab giornaliere) */}
-        {tabAttiva === 'giornaliere' && quest && (
-          <>
-            <div className="missioni-progress">
-              <div className="missioni-progress__bar">
-                <div className="missioni-progress__fill" style={{ width: `${pctGiorn}%` }} />
-              </div>
-              <span className="missioni-progress__label">Missioni concluse: </span>
-              <span className="missioni-progress__count">{giornCompletate}/{quest.defs.length}</span>
-            </div>
-            <div className="missioni-timer">
-              <span className="missioni-timer__icon">🕐</span>
-              <span className="missioni-timer__text">Reset tra {timerGiorn}</span>
-            </div>
-          </>
-        )}
-
-        {/* Tabs */}
+        {/* Tab principali: Giornaliere | Raid Waifu | Missioni Mappa */}
         <div className="missioni-tabs">
-          <button
-            className={`missioni-tab${tabAttiva === 'giornaliere' ? ' missioni-tab--active' : ''}`}
-            onClick={() => setTabAttiva('giornaliere')}
-          >
+          <button className={`missioni-tab${tabAttiva==='giornaliere'?' missioni-tab--active':''}`} onClick={()=>{setTabAttiva('giornaliere');setSubTab('incorso');}}>
             Giornaliere
-            {giornCompletate > 0 && !quest?.defs.every(d => quest.stato[d.tipo]?.claimed) && (
-              <span className="missioni-tab__badge">{giornCompletate}</span>
-            )}
+            {giornCompletate > 0 && !quest?.defs.every(d => quest.stato[d.tipo]?.claimed) && <span className="missioni-tab__badge">{giornCompletate}</span>}
           </button>
-          <button
-            className={`missioni-tab${tabAttiva === 'mappa' ? ' missioni-tab--active' : ''}`}
-            onClick={() => setTabAttiva('mappa')}
-          >
+          <button className={`missioni-tab${tabAttiva==='raid'?' missioni-tab--active':''}`} onClick={()=>{setTabAttiva('raid');setSubTab('incorso');}}>
+            ⚔ Raid Waifu
+          </button>
+          <button className={`missioni-tab${tabAttiva==='mappa'?' missioni-tab--active':''}`} onClick={()=>{setTabAttiva('mappa');setSubTab('incorso');}}>
             🗺 Mappa
           </button>
-          {sezioni.map(sec => (
-            <button key={sec.id}
-              className={`missioni-tab${tabAttiva === sec.id ? ' missioni-tab--active' : ''}`}
-              onClick={() => setTabAttiva(sec.id)}
-            >
-              {sec.nome}
-              {badgeSezione(sec) > 0 && <span className="missioni-tab__badge">{badgeSezione(sec)}</span>}
-            </button>
+        </div>
+
+        {/* Subtab: In Corso | Completate */}
+        <div style={{ display: 'flex', gap: 4, padding: '0 16px 8px' }}>
+          {['incorso','completate'].map(s => (
+            <button key={s} onClick={() => setSubTab(s)} style={{
+              flex: 1, padding: '6px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
+              background: subTab === s ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.04)',
+              color: subTab === s ? '#f59e0b' : 'rgba(241,235,255,0.4)',
+              fontFamily: "'Saira Condensed',sans-serif", fontSize: 11, fontWeight: subTab===s?700:400, letterSpacing: '0.1em',
+              borderBottom: subTab === s ? '2px solid #f59e0b' : '2px solid transparent',
+            }}>{s === 'incorso' ? '📋 In Corso' : '✅ Completate'}</button>
           ))}
         </div>
 
-        {/* Lista missioni */}
+        {/* Contenuto per tab + subtab */}
         <div className="missioni-list">
-          {tabAttiva === 'giornaliere' && quest && QUEST_GIORNALIERE_DEFS.map(def => {
-            const s = quest.stato[def.tipo] || { progresso: 0, target: def.target, claimed: false };
-            const done = s.progresso >= s.target;
-            const pct  = Math.min(100, Math.round((s.progresso / s.target) * 100));
-            return (
-              <div key={def.tipo} className={`missione-item${done ? ' missione-item--done' : ''}`}>
-                <div className="missione-item__icon">{TIPO_EVENTO_ICON[def.tipoEvento] ?? '✦'}</div>
-                <div className="missione-item__body">
-                  <div className="missione-item__title">{def.nome}</div>
-                  <div className="missione-item__prog-row">
-                    <div className="missione-item__prog-bar">
-                      <div className="missione-item__prog-fill" style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="missione-item__prog-text">{s.progresso}/{s.target}</span>
-                  </div>
-                  <div className="missione-item__reward">{REWARD_LABEL(def.reward)}</div>
-                </div>
-                {done && !s.claimed && (
-                  <button className="missione-item__claim"
-                    disabled={claiming === def.tipo}
-                    onClick={() => handleClaimGiornaliera(def.tipo, def.reward)}>
-                    {claiming === def.tipo ? '…' : 'Riscuoti'}
-                  </button>
-                )}
-                {s.claimed && <span className="missione-item__claimed">✓</span>}
-              </div>
-            );
-          })}
 
-          {/* TAB MISSIONI MAPPA */}
-          {tabAttiva === 'mappa' && (() => {
-            if (mapLoading) {
-              return (
-                <div className="missione-item" style={{ textAlign: 'center', flexDirection: 'column', gap: 8, padding: '24px 16px' }}>
-                  <div style={{ fontSize: 28, opacity: 0.5 }}>🗺</div>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, color: 'rgba(245,158,11,0.5)' }}>Caricamento…</div>
-                </div>
-              );
-            }
-            if (!mapMission) {
-              return (
-                <div className="missione-item" style={{ textAlign: 'center', flexDirection: 'column', gap: 8, padding: '24px 16px' }}>
-                  <div style={{ fontSize: 32 }}>🗺</div>
-                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, color: 'rgba(245,158,11,0.7)' }}>NESSUNA MISSIONE ATTIVA</div>
-                  {mapCountdown && (
-                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, color: 'rgba(245,158,11,0.5)' }}>
-                      Prossima missione tra <strong style={{ color: 'rgba(245,158,11,0.8)' }}>{mapCountdown}</strong>
-                    </div>
-                  )}
-                </div>
-              );
-            }
-            const endsMs = new Date(mapMission.endsAt).getTime();
-            const isExpired = endsMs < Date.now();
+          {/* ── GIORNALIERE ── */}
+          {tabAttiva === 'giornaliere' && (() => {
+            const giornMissioni = quest ? QUEST_GIORNALIERE_DEFS.map(def => {
+              const s = quest.stato[def.tipo] || { progresso: 0, target: def.target, claimed: false };
+              return { def, s, done: s.progresso >= s.target };
+            }) : [];
+            const inCorso = giornMissioni.filter(m => !m.done);
+            const completate = giornMissioni.filter(m => m.done);
+            const lista = subTab === 'incorso' ? inCorso : completate;
+
             return (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: 'rgba(245,158,11,0.6)', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {isExpired ? (
-                    <span style={{ color: 'rgba(255,133,182,0.8)' }}>SCADUTA — Riscuoti!</span>
-                  ) : (
-                    <>
-                      <span>MISSIONE ATTIVA · scade tra</span>
-                      <strong style={{ color: '#f59e0b', fontVariantNumeric: 'tabular-nums' }}>{mapCountdown}</strong>
-                    </>
-                  )}
+              <>
+                {subTab === 'incorso' && (
+                  <div style={{ padding: '4px 0 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: 'rgba(245,158,11,0.6)' }}>{giornCompletate}/{quest?.defs.length ?? 0} completate</div>
+                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: 'rgba(245,158,11,0.5)' }}>🕐 Reset tra {timerGiorn}</div>
+                  </div>
+                )}
+                {lista.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '32px 0', color: 'rgba(241,235,255,0.3)', fontFamily: "'Orbitron',sans-serif", fontSize: 10 }}>
+                    {subTab === 'incorso' ? 'Tutte le missioni completate! 🎉' : 'Nessuna missione completata ancora'}
+                  </div>
+                )}
+                {lista.map(({ def, s, done }) => {
+                  const pct = Math.min(100, Math.round((s.progresso / s.target) * 100));
+                  return (
+                    <div key={def.tipo} className={`missione-item${done?' missione-item--done':''}`}>
+                      <div className="missione-item__icon">{TIPO_EVENTO_ICON[def.tipoEvento] ?? '✦'}</div>
+                      <div className="missione-item__body">
+                        <div className="missione-item__title">{def.nome}</div>
+                        {!done && <div className="missione-item__prog-row"><div className="missione-item__prog-bar"><div className="missione-item__prog-fill" style={{ width: `${pct}%` }} /></div><span className="missione-item__prog-text">{s.progresso}/{s.target}</span></div>}
+                        <div className="missione-item__reward">{REWARD_LABEL(def.reward)}</div>
+                      </div>
+                      {done && !s.claimed && <button className="missione-item__claim" disabled={claiming===def.tipo} onClick={()=>handleClaimGiornaliera(def.tipo,def.reward)}>{claiming===def.tipo?'…':'Riscuoti'}</button>}
+                      {s.claimed && <span className="missione-item__claimed">✓ Riscossa</span>}
+                    </div>
+                  );
+                })}
+              </>
+            );
+          })()}
+
+          {/* ── RAID WAIFU ── */}
+          {tabAttiva === 'raid' && (() => {
+            const isCompleted = raidInfo?.status === 'completed';
+            const myPos = raidRank.findIndex(r => r.uid === user?.uid) + 1;
+            const myDmg = raidPart?.damageDealt ?? 0;
+            const raidCfg = raidInfo?.raidConfig ?? {};
+            const MISSIONS = [
+              { id: 'partecipa', icon: '⚡', nome: 'Partecipa al Raid', desc: 'Infliggi almeno 1 punto danno', reward: `+${raidCfg.participationEnergia ?? 3} ⚡ Energia`, done: myDmg > 0 },
+              { id: 'vinci', icon: '🏆', nome: 'Vinci il Raid', desc: 'Porta la Waifu Raid a 0 HP con gli altri giocatori', reward: `+${raidCfg.kissesBase ?? 100} 💋`, done: isCompleted && myDmg > 0 },
+              { id: 'pos3', icon: '🥉', nome: '3° posto in classifica', desc: 'Finisci al 3° posto e vinci il Raid', reward: `+${raidCfg.kisses3rd ?? 250} 💋 + carta`, done: isCompleted && myPos === 3 },
+              { id: 'pos2', icon: '🥈', nome: '2° posto in classifica', desc: 'Finisci al 2° posto e vinci il Raid', reward: `+${raidCfg.kisses2nd ?? 400} 💋 + carta`, done: isCompleted && myPos === 2 },
+              { id: 'pos1', icon: '👑', nome: '1° posto in classifica', desc: 'Finisci al 1° posto e vinci il Raid', reward: `+${raidCfg.kisses1st ?? 1000} 💋 + carta`, done: isCompleted && myPos === 1 },
+            ];
+            const inCorso = MISSIONS.filter(m => !m.done);
+            const completate = MISSIONS.filter(m => m.done);
+            const lista = subTab === 'incorso' ? inCorso : completate;
+            const canClaim = raidPart && myDmg > 0 && !raidPart.claimed && !isCompleted === false && !raidClaimed;
+
+            if (raidLoading) return <div style={{ textAlign: 'center', padding: 32, color: 'rgba(255,255,255,0.3)', fontFamily: "'Orbitron',sans-serif", fontSize: 10 }}>Caricamento raid…</div>;
+            if (!raidInfo) return <div style={{ textAlign: 'center', padding: 32, color: 'rgba(255,255,255,0.3)', fontFamily: "'Orbitron',sans-serif", fontSize: 10 }}>Nessun raid attivo al momento</div>;
+
+            return (
+              <>
+                {/* Info raid corrente */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0 12px', borderBottom: '1px solid rgba(236,72,153,0.15)', marginBottom: 12 }}>
+                  {raidInfo.waifuImage && <img src={raidInfo.waifuImage} alt="" style={{ width: 36, height: 50, objectFit: 'cover', borderRadius: 6, border: '1px solid rgba(236,72,153,0.3)', flexShrink: 0 }} />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: "'Unbounded',sans-serif", fontSize: 12, color: '#ec4899', fontWeight: 700 }}>{raidInfo.waifuNome}</div>
+                    <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: isCompleted ? '#06d6a0' : '#ff5b6c' }}>
+                      {Math.max(0, raidInfo.currentHp).toLocaleString()}/{raidInfo.totalHp.toLocaleString()} HP
+                    </div>
+                    {myDmg > 0 && <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 9, color: 'rgba(6,214,160,0.7)' }}>Tu: -{myDmg.toLocaleString()} HP {myPos > 0 ? `· #${myPos}` : ''}</div>}
+                  </div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 8, color: isCompleted ? '#06d6a0' : 'rgba(241,235,255,0.4)', background: isCompleted ? 'rgba(6,214,160,0.1)' : 'rgba(255,255,255,0.05)', border: `1px solid ${isCompleted ? 'rgba(6,214,160,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 6, padding: '3px 8px' }}>
+                    {isCompleted ? '✅ COMPLETATO' : '🟢 ATTIVO'}
+                  </div>
                 </div>
+
+                {lista.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '24px 0', color: 'rgba(241,235,255,0.3)', fontFamily: "'Orbitron',sans-serif", fontSize: 10 }}>
+                    {subTab === 'incorso' ? 'Tutte le missioni raid completate! 🎉' : 'Nessuna missione completata ancora'}
+                  </div>
+                )}
+                {lista.map(m => (
+                  <div key={m.id} className={`missione-item${m.done?' missione-item--done':''}`}>
+                    <div className="missione-item__icon">{m.icon}</div>
+                    <div className="missione-item__body">
+                      <div className="missione-item__title">{m.nome}</div>
+                      <div className="missione-item__desc">{m.desc}</div>
+                      <div className="missione-item__reward">{m.reward}</div>
+                    </div>
+                    {m.done && !raidClaimed && subTab === 'completate' && <span style={{ fontSize: 9, color: '#06d6a0', fontFamily: "'Orbitron',sans-serif" }}>✓</span>}
+                  </div>
+                ))}
+
+                {/* Claim button (solo in Completate quando raid finito) */}
+                {subTab === 'completate' && completate.length > 0 && !raidClaimed && !raidPart?.claimed && (
+                  <button className="missione-item__claim" disabled={raidClaiming} onClick={async () => {
+                    setRaidClaiming(true);
+                    try {
+                      const token = await user.getIdToken();
+                      const res = await fetch('/api/raid/claim', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ eventId: raidInfo.id }) });
+                      const data = await res.json();
+                      if (data.success) { setRaidClaimed(true); alert(`✅ +${data.kisses} 💋, +${data.energia} ⚡! Pos. #${myPos}`); }
+                      else if (data.alreadyClaimed) setRaidClaimed(true);
+                      else alert(data.error);
+                    } catch (e) { alert(e.message); }
+                    setRaidClaiming(false);
+                  }} style={{ width: '100%', marginTop: 12 }}>{raidClaiming ? '⏳…' : '🎁 RISCUOTI RICOMPENSE RAID'}</button>
+                )}
+                {(raidClaimed || raidPart?.claimed) && subTab === 'completate' && <div style={{ textAlign: 'center', color: '#06d6a0', fontFamily: "'Orbitron',sans-serif", fontSize: 10, marginTop: 8 }}>✓ Ricompense già riscosso</div>}
+              </>
+            );
+          })()}
+
+          {/* ── MISSIONI MAPPA ── */}
+          {tabAttiva === 'mappa' && (() => {
+            if (mapLoading) return <div style={{ textAlign: 'center', padding: 32, color: 'rgba(255,255,255,0.3)', fontFamily: "'Orbitron',sans-serif", fontSize: 10 }}>Caricamento…</div>;
+
+            const endsMs = mapMission ? new Date(mapMission.endsAt).getTime() : 0;
+            const isExpired = endsMs > 0 && endsMs < Date.now();
+            const isActive = mapMission && !isExpired;
+
+            if (subTab === 'incorso') {
+              if (!isActive) return (
+                <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>🗺</div>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 10, color: 'rgba(245,158,11,0.6)', marginBottom: 6 }}>Nessuna missione attiva</div>
+                  {mapCountdown && <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: 'rgba(245,158,11,0.4)' }}>Prossima tra <strong style={{ color: '#f59e0b' }}>{mapCountdown}</strong></div>}
+                </div>
+              );
+              return (
+                <>
+                  <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: 'rgba(245,158,11,0.6)', display: 'flex', gap: 6, alignItems: 'center', marginBottom: 10 }}>
+                    <span>MISSIONE ATTIVA · scade tra</span>
+                    <strong style={{ color: '#f59e0b', fontVariantNumeric: 'tabular-nums' }}>{mapCountdown}</strong>
+                  </div>
+                  {(mapMission.pixels || []).map((px, i) => {
+                    const owns = (profilo.pixelCount ?? 0) > 0; // approssimazione; non abbiamo coords precise
+                    return (
+                      <div key={i} className="missione-item">
+                        <div className="missione-item__icon">🏴</div>
+                        <div className="missione-item__body">
+                          <div className="missione-item__title">{px.name || `(${px.x}, ${px.y})`}</div>
+                          <div className="missione-item__reward">+{mapMission.rewardPerPixel ?? 100} <KissesIcon size={11} /> se in tuo possesso al termine</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              );
+            }
+
+            // Completate
+            if (!isExpired || !mapMission) return <div style={{ textAlign: 'center', padding: '24px 0', color: 'rgba(241,235,255,0.3)', fontFamily: "'Orbitron',sans-serif", fontSize: 10 }}>Nessuna missione scaduta da riscuotere</div>;
+            return (
+              <>
+                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 9, color: 'rgba(255,133,182,0.7)', marginBottom: 10 }}>MISSIONE SCADUTA — Riscuoti la ricompensa!</div>
                 {(mapMission.pixels || []).map((px, i) => (
                   <div key={i} className="missione-item">
                     <div className="missione-item__icon">🏴</div>
                     <div className="missione-item__body">
-                      <div className="missione-item__title">{px.name || `Pixel ${px.x},${px.y}`}</div>
-                      <div className="missione-item__reward">+{mapMission.rewardPerPixel ?? 100} <KissesIcon size={12} /> se in tuo possesso</div>
+                      <div className="missione-item__title">{px.name || `(${px.x}, ${px.y})`}</div>
+                      <div className="missione-item__reward">+{mapMission.rewardPerPixel ?? 100} <KissesIcon size={11} /> se in tuo possesso</div>
                     </div>
                   </div>
                 ))}
-                {isExpired && !mapClaimed && (
-                  <button className="missione-item__claim"
+                {!mapClaimed ? (
+                  <button className="missione-item__claim" style={{ width: '100%', marginTop: 12 }}
                     onClick={async () => {
                       try {
                         const token = await user.getIdToken();
-                        const res = await fetch('/api/map-missions/claim', {
-                          method: 'POST',
-                          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ missionId: mapMission.missionId || mapMission.id }),
-                        });
+                        const res = await fetch('/api/map-missions/claim', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ missionId: mapMission.missionId || mapMission.id }) });
                         const data = await res.json();
-                        if (data.success || data.alreadyClaimed) {
-                          setMapClaimed(true);
-                          if (data.kisses > 0) alert(`✅ +${data.kisses} Kisses! (${data.pixelsOwned} pixel posseduti)`);
-                        } else alert(data.error);
+                        if (data.success || data.alreadyClaimed) { setMapClaimed(true); if (data.kisses > 0) alert(`✅ +${data.kisses} Kisses! (${data.pixelsOwned} pixel posseduti)`); }
+                        else alert(data.error);
                       } catch (e) { alert(e.message); }
                     }}>
-                    Riscuoti ({mapMission.pixels?.length ?? 4} × {mapMission.rewardPerPixel ?? 100} <KissesIcon size={12} /> max)
+                    Riscuoti ({mapMission.pixels?.length ?? 4} × {mapMission.rewardPerPixel ?? 100} <KissesIcon size={11} /> max)
                   </button>
+                ) : (
+                  <div style={{ textAlign: 'center', color: '#06d6a0', fontFamily: "'Orbitron',sans-serif", fontSize: 10, marginTop: 8 }}>✓ Riscosso</div>
                 )}
-                {mapClaimed && <span className="missione-item__claimed">✓ Riscosso</span>}
-              </div>
+              </>
             );
           })()}
 
-          {tabAttiva !== 'giornaliere' && tabAttiva !== 'mappa' && sezioni.filter(s => s.id === tabAttiva).map(sec => {
-            const ms = missioniMap[sec.id] || [];
-            return ms.map(m => {
-              const key  = `${sec.id}__${m.id}`;
-              const prog = (profilo.missioniProgresso || {})[key] || { progresso: 0, claimed: false };
-              const done = prog.progresso >= m.target;
-              const pct  = Math.min(100, Math.round((prog.progresso / m.target) * 100));
-              return (
-                <div key={m.id} className={`missione-item${done ? ' missione-item--done' : ''}`}>
-                  <div className="missione-item__icon">{TIPO_EVENTO_ICON[m.tipoEvento] ?? '✦'}</div>
-                  <div className="missione-item__body">
-                    <div className="missione-item__title">{m.titolo}</div>
-                    {m.descrizione && <div className="missione-item__desc">{m.descrizione}</div>}
-                    <div className="missione-item__prog-row">
-                      <div className="missione-item__prog-bar">
-                        <div className="missione-item__prog-fill" style={{ width: `${pct}%` }} />
-                      </div>
-                      <span className="missione-item__prog-text">{prog.progresso}/{m.target}</span>
-                    </div>
-                    <div className="missione-item__reward">{REWARD_LABEL(m.reward)}</div>
-                  </div>
-                  {done && !prog.claimed && (
-                    <button className="missione-item__claim"
-                      disabled={claiming === key}
-                      onClick={() => handleClaimAdmin(sec, m, m.reward)}>
-                      {claiming === key ? '…' : 'Riscuoti'}
-                    </button>
-                  )}
-                  {prog.claimed && <span className="missione-item__claimed">✓</span>}
-                </div>
-              );
-            });
-          })}
         </div>
       </div>
     </div>

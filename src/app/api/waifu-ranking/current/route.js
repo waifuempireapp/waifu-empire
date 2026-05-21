@@ -42,17 +42,17 @@ export async function GET(request) {
         if (resetAt && (data.timestamp?.toMillis?.() ?? 0) < resetAt) continue;
         counts[data.waifuId] = (counts[data.waifuId] ?? 0) + 1;
       }
-      const top5Ids = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, likes]) => ({ waifuId: id, likeCount: likes, nome: id }));
-      if (top5Ids.length > 0) {
-        const waifuSnaps = await adminDb.getAll(...top5Ids.map(e => adminDb.doc(`catalogo_waifu/${e.waifuId}`)));
-        rankingData = {
-          top5: top5Ids.map((e, i) => {
-            const s = waifuSnaps[i];
-            const d = s?.exists ? s.data() : null;
-            return { ...e, nome: d?.nome ?? e.waifuId, rarita: d?.rarita ?? 'comune', image: d?.asset_statica ?? d?.asset_immersiva ?? null };
-          }),
-          isLive: true,
-        };
+      // Prendi top 100 candidati, poi filtra ImmHard, poi slice a 50
+      const top100Ids = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 100).map(([id, likes]) => ({ waifuId: id, likeCount: likes, nome: id }));
+      if (top100Ids.length > 0) {
+        const waifuSnaps = await adminDb.getAll(...top100Ids.map(e => adminDb.doc(`catalogo_waifu/${e.waifuId}`)));
+        const enriched = top100Ids.map((e, i) => {
+          const s = waifuSnaps[i];
+          const d = s?.exists ? s.data() : null;
+          const isImmHard = d?.rarita === 'immersivo' && d?.asset_video_hard;
+          return { ...e, nome: d?.nome ?? e.waifuId, rarita: d?.rarita ?? 'comune', image: d?.asset_statica ?? d?.asset_immersiva ?? null, _immHard: !!isImmHard };
+        }).filter(e => !e._immHard).slice(0, 50);
+        rankingData = { top5: enriched, isLive: true };
       }
     }
 

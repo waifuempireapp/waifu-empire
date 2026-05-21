@@ -47,20 +47,32 @@ export async function POST(request) {
 
   if (myDmg === 0) return NextResponse.json({ error: 'Non hai inflitto danno in questo raid', kisses: 0 });
 
-  // Calcola Kisses
+  // Calcola Kisses (solo se il raid è stato completato — HP <= 0)
+  const raidCompleted = event.status === 'completed' || (event.currentHp ?? 1) <= 0;
   const kissesBase = cfg.kissesBase ?? 100;
-  let totalKisses = kissesBase;
-  if (myPos === 1) totalKisses = cfg.kisses1st ?? 1000;
-  else if (myPos === 2) totalKisses = cfg.kisses2nd ?? 400;
-  else if (myPos === 3) totalKisses = cfg.kisses3rd ?? 250;
+  let totalKisses = 0;
+  const participationEnergia = cfg.participationEnergia ?? 3;
 
-  const isTop3 = myPos >= 1 && myPos <= 3;
+  if (raidCompleted) {
+    totalKisses = kissesBase;
+    if (myPos === 1) totalKisses = cfg.kisses1st ?? 1000;
+    else if (myPos === 2) totalKisses = cfg.kisses2nd ?? 400;
+    else if (myPos === 3) totalKisses = cfg.kisses3rd ?? 250;
+  } else {
+    // Raid scaduto senza essere completato: solo bonus partecipazione (kisses base ridotto)
+    totalKisses = 0;
+  }
+
+  const isTop3 = raidCompleted && myPos >= 1 && myPos <= 3;
 
   // Accredita premi
   const userRef = adminDb.doc(`users/${uid}`);
   const batch = adminDb.batch();
 
-  batch.update(userRef, { kisses: FieldValue.increment(totalKisses) });
+  const updates = {};
+  if (totalKisses > 0) updates.kisses = FieldValue.increment(totalKisses);
+  if (participationEnergia > 0) updates.energia = FieldValue.increment(participationEnergia);
+  if (Object.keys(updates).length > 0) batch.update(userRef, updates);
   batch.update(adminDb.doc(`raid_participants/${participantId}`), {
     claimed: true,
     rewardClaimed: new Date(),
@@ -88,6 +100,7 @@ export async function POST(request) {
   return NextResponse.json({
     success: true,
     kisses: totalKisses,
+    energia: participationEnergia,
     position: myPos,
     isTop3,
     waifuUnlocked: isTop3 ? event.waifuId : null,

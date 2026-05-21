@@ -46,7 +46,7 @@ async function getTop5(resetAt) {
       if (espA !== espB) return espA < espB ? -1 : 1;
       return (a.waifu.nome ?? '').localeCompare(b.waifu.nome ?? '');
     })
-    .slice(0, 5);
+    .slice(0, 10);
 }
 
 export async function POST(request) {

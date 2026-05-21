@@ -37,6 +37,8 @@
  *   DIP — le sezioni dipendono da props (profilo, collezione), non da stato globale diretto.
  */
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useScrollLock } from '@/lib/useScrollLock';
+import { ikUrl } from '@/lib/imagekitUrl';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listMosse, listDropsAttivi, getClassifica, premioPerPosizione, deleteTeamFromCollezione, createPackSnapshot, getFriendsList, getFriendRequests, getClassificaSettimanale, getPremiClassificaConfig, lazyMigrateStats } from '@/lib/firestoreService';
@@ -3821,6 +3823,15 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
   // Filtro drop (condiviso tra waifu/outfit/pose)
   const [drops, setDrops] = useState([]);
   const [filtroDropId, setFiltroDropId] = useState('tutti');
+  // Filtri mosse
+  const [filtroMossaNome, setFiltroMossaNome] = useState('');
+  const [filtroMossaRarita, setFiltroMossaRarita] = useState('tutte');
+  const [filtroMossaTipo, setFiltroMossaTipo] = useState('tutti');
+  const [filtroMossaDrop, setFiltroMossaDrop] = useState('tutti');
+  const [filtroMossaLevelUp, setFiltroMossaLevelUp] = useState('tutti');
+  const [filtroMossaAbilita, setFiltroMossaAbilita] = useState('tutti');
+  const [sortMossaKey, setSortMossaKey] = useState('');
+  const [sortMossaDir, setSortMossaDir] = useState('desc');
   // Infinite scroll
   const [visibiliWaifu, setVisibiliWaifu] = useState(12);
   const [visibiliOutfit, setVisibiliOutfit] = useState(12);
@@ -4052,41 +4063,94 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
         );
       })()}
 
-      {tabSub === 'mosse' && (
-        <div style={{ marginTop: 12 }}>
-          <div className="collection-card-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
-            {Object.entries(collezione.mosse || {}).map(([moveId, dati], idx) => {
-              const catalog = mosseCat.find(m => m.id === moveId);
-              if (!catalog) return null;
-              const prossimeLup = (dati.livello ?? 1) < 10 && dati.copie % 5 === 0 && dati.copie > 0;
-              return (
-                <div key={moveId} className="card-fade-up card-clickable collection-card-item"
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, animationDelay: `${idx * 40}ms`, position: 'relative' }}>
-                  <CartaMossa mossa={catalog} datiUtente={dati} dimensione="piccola" onClick={() => setMossaSel({ catalog, dati })} />
-                  {prossimeLup && (
-                    <div style={{
-                      position: 'absolute', top: 4, right: 4,
-                      background: 'rgba(6,214,160,0.2)', border: '1px solid rgba(6,214,160,0.7)',
-                      borderRadius: 5, padding: '2px 6px',
-                      fontFamily: 'Orbitron', fontSize: 7, color: '#06d6a0', fontWeight: 700,
-                    }}>⬆ LVL UP</div>
-                  )}
-                  <span style={{ fontFamily: 'Orbitron', fontSize: 8, color: '#9b59ff' }}>
-                    x<strong style={{ color: '#ffd666' }}>{dati.copie}</strong> copie
-                  </span>
-                </div>
-              );
-            })}
-            {Object.keys(collezione.mosse || {}).length === 0 && (
-              <PannelloOrnato style={{ width: '100%', textAlign: 'center', padding: 40 }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>⚔</div>
-                <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#9b59ff', letterSpacing: 2, marginBottom: 6 }}>NESSUNA MOSSA TROVATA</div>
-                <div style={{ opacity: 0.4, fontSize: 10, lineHeight: 1.6 }}>Apri bustine per trovare<br/>mosse attacco!</div>
-              </PannelloOrnato>
-            )}
+      {tabSub === 'mosse' && (() => {
+        const TIPO_COL_M = { Arcana:'#7F77DD', Natura:'#639922', Abisso:'#4463DD', Ferro:'#5F5E5A', Fuoco:'#D85A30' };
+        const RAR_ORD_M = ['comune','raro','epico','leggendario','immersivo'];
+        const dropMovsSet = filtroMossaDrop !== 'tutti' ? new Set(drops.find(d=>d.id===filtroMossaDrop)?.attackMoveIds||[]) : null;
+        const onSortMossa = (k) => { if (sortMossaKey===k) setSortMossaDir(d=>d==='desc'?'asc':'desc'); else { setSortMossaKey(k); setSortMossaDir('desc'); } };
+        const sortIcon = (k) => sortMossaKey!==k ? '↕' : sortMossaDir==='desc' ? '↓' : '↑';
+        const ORB_M = 'Orbitron, sans-serif';
+        const filterPill = (active) => ({ padding: '4px 10px', borderRadius: 20, cursor: 'pointer', fontFamily: ORB_M, fontSize: 8, background: active ? 'rgba(155,89,255,0.2)' : 'rgba(255,255,255,0.05)', color: active ? '#b573ff' : 'rgba(241,235,255,0.4)', border: `1px solid ${active?'rgba(155,89,255,0.4)':'rgba(255,255,255,0.08)'}` });
+
+        let mosseList = Object.entries(collezione.mosse || {}).map(([moveId, dati]) => {
+          const catalog = mosseCat.find(m => m.id === moveId);
+          return catalog ? { moveId, dati, catalog } : null;
+        }).filter(Boolean);
+
+        if (filtroMossaNome) mosseList = mosseList.filter(e => e.catalog.nome.toLowerCase().includes(filtroMossaNome.toLowerCase()));
+        if (filtroMossaRarita !== 'tutte') mosseList = mosseList.filter(e => e.catalog.rarita === filtroMossaRarita);
+        if (filtroMossaTipo !== 'tutti') mosseList = mosseList.filter(e => e.catalog.tipologia === filtroMossaTipo);
+        if (dropMovsSet) mosseList = mosseList.filter(e => dropMovsSet.has(e.moveId));
+        if (filtroMossaLevelUp !== 'tutti') mosseList = mosseList.filter(e => {
+          const ready = (e.dati.copie ?? 0) >= (e.dati.livello ?? 1) * 5 && (e.dati.livello ?? 1) < 10;
+          return filtroMossaLevelUp === 'si' ? ready : !ready;
+        });
+        if (filtroMossaAbilita !== 'tutti') mosseList = mosseList.filter(e => filtroMossaAbilita === 'si' ? !!e.catalog.abilita : !e.catalog.abilita);
+        if (sortMossaKey) {
+          mosseList.sort((a, b) => {
+            let va, vb;
+            if (sortMossaKey==='rarita') { va=RAR_ORD_M.indexOf(a.catalog.rarita); vb=RAR_ORD_M.indexOf(b.catalog.rarita); }
+            else if (sortMossaKey==='livello') { va=a.dati.livello??1; vb=b.dati.livello??1; }
+            else if (sortMossaKey==='copie') { va=a.dati.copie??0; vb=b.dati.copie??0; }
+            else if (sortMossaKey==='pp') { va=a.catalog.pp??0; vb=b.catalog.pp??0; }
+            else if (sortMossaKey==='danno') { va=a.dati.danno??a.catalog.danno??0; vb=b.dati.danno??b.catalog.danno??0; }
+            else if (sortMossaKey==='danno_critico') { va=a.dati.danno_critico??a.catalog.danno_critico??0; vb=b.dati.danno_critico??b.catalog.danno_critico??0; }
+            return sortMossaDir==='desc' ? vb-va : va-vb;
+          });
+        }
+
+        return (
+          <div style={{ marginTop: 12 }}>
+            {/* Filtri */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              <input value={filtroMossaNome} onChange={e=>setFiltroMossaNome(e.target.value)} placeholder="🔍 Cerca mossa…" style={{ padding: '5px 10px', background: 'rgba(155,89,255,0.08)', border: '1px solid rgba(155,89,255,0.2)', borderRadius: 8, color: '#f5e6d3', fontFamily: ORB_M, fontSize: 8, width: 130, outline: 'none' }} />
+              <select value={filtroMossaRarita} onChange={e=>setFiltroMossaRarita(e.target.value)} style={{ padding: '5px 8px', background: 'rgba(155,89,255,0.08)', border: '1px solid rgba(155,89,255,0.2)', borderRadius: 8, color: '#f5e6d3', fontFamily: ORB_M, fontSize: 8 }}>
+                <option value="tutte">Rarità: tutte</option>
+                {RAR_ORD_M.map(r=><option key={r} value={r}>{r}</option>)}
+              </select>
+              <select value={filtroMossaTipo} onChange={e=>setFiltroMossaTipo(e.target.value)} style={{ padding: '5px 8px', background: 'rgba(155,89,255,0.08)', border: '1px solid rgba(155,89,255,0.2)', borderRadius: 8, color: '#f5e6d3', fontFamily: ORB_M, fontSize: 8 }}>
+                <option value="tutti">Tipo: tutti</option>
+                {Object.keys(TIPO_COL_M).map(t=><option key={t} value={t}>{t}</option>)}
+              </select>
+              {drops.length > 0 && <select value={filtroMossaDrop} onChange={e=>setFiltroMossaDrop(e.target.value)} style={{ padding: '5px 8px', background: 'rgba(155,89,255,0.08)', border: '1px solid rgba(155,89,255,0.2)', borderRadius: 8, color: '#f5e6d3', fontFamily: ORB_M, fontSize: 8 }}>
+                <option value="tutti">Drop: tutti</option>
+                {drops.map(d=><option key={d.id} value={d.id}>{d.nome}</option>)}
+              </select>}
+              <button style={filterPill(filtroMossaLevelUp!=='tutti')} onClick={()=>setFiltroMossaLevelUp(p=>p==='tutti'?'si':p==='si'?'no':'tutti')}>⬆ LvUp: {filtroMossaLevelUp==='tutti'?'tutti':filtroMossaLevelUp}</button>
+              <button style={filterPill(filtroMossaAbilita!=='tutti')} onClick={()=>setFiltroMossaAbilita(p=>p==='tutti'?'si':p==='si'?'no':'tutti')}>⚡ Abilità: {filtroMossaAbilita==='tutti'?'tutti':filtroMossaAbilita}</button>
+            </div>
+            {/* Ordinamenti */}
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 12 }}>
+              {[['rarita','Rarità'],['livello','Lv'],['copie','Copie'],['pp','PP'],['danno','Danno'],['danno_critico','Crit%']].map(([k,l]) => (
+                <button key={k} onClick={()=>onSortMossa(k)} style={{ padding: '3px 8px', borderRadius: 8, cursor: 'pointer', fontFamily: ORB_M, fontSize: 7, background: sortMossaKey===k?'rgba(155,89,255,0.18)':'rgba(255,255,255,0.04)', color: sortMossaKey===k?'#b573ff':'rgba(241,235,255,0.4)', border: `1px solid ${sortMossaKey===k?'rgba(155,89,255,0.35)':'rgba(255,255,255,0.07)'}` }}>{l} {sortIcon(k)}</button>
+              ))}
+            </div>
+            {/* Griglia */}
+            <div className="collection-card-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
+              {mosseList.map(({ moveId, dati, catalog }, idx) => {
+                const prossimeLup = (dati.livello ?? 1) < 10 && (dati.copie ?? 0) >= (dati.livello ?? 1) * 5;
+                return (
+                  <div key={moveId} className="card-fade-up card-clickable collection-card-item"
+                    onClick={() => setMossaSel({ catalog, dati })}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, animationDelay: `${idx * 40}ms`, position: 'relative', cursor: 'pointer' }}>
+                    <CartaMossa mossa={catalog} datiUtente={dati} dimensione="piccola" />
+                    {prossimeLup && <div style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(6,214,160,0.2)', border: '1px solid rgba(6,214,160,0.7)', borderRadius: 5, padding: '2px 6px', fontFamily: ORB_M, fontSize: 7, color: '#06d6a0', fontWeight: 700 }}>⬆ LVL UP</div>}
+                    <span style={{ fontFamily: ORB_M, fontSize: 8, color: '#9b59ff' }}>x<strong style={{ color: '#ffd666' }}>{dati.copie}</strong> copie</span>
+                  </div>
+                );
+              })}
+              {mosseList.length === 0 && Object.keys(collezione.mosse||{}).length > 0 && <div style={{ width:'100%', textAlign:'center', padding: 32, color: 'rgba(241,235,255,0.3)', fontFamily: ORB_M, fontSize: 10 }}>Nessuna mossa corrisponde ai filtri</div>}
+              {Object.keys(collezione.mosse || {}).length === 0 && (
+                <PannelloOrnato style={{ width: '100%', textAlign: 'center', padding: 40 }}>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>⚔</div>
+                  <div style={{ fontFamily: ORB_M, fontSize: 10, color: '#9b59ff', letterSpacing: 2, marginBottom: 6 }}>NESSUNA MOSSA TROVATA</div>
+                  <div style={{ opacity: 0.4, fontSize: 10, lineHeight: 1.6 }}>Apri bustine per trovare<br/>mosse attacco!</div>
+                </PannelloOrnato>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {tabSub === 'team' && (
         <div style={{ marginTop: 12, position: 'relative' }}>
@@ -4269,8 +4333,9 @@ function MossaDetailModal({ catalog, dati, user, collezione, setColl, waifuCat =
 
   const copie = dati.copie ?? 0;
   const livello = dati.livello ?? 1;
-  const copieInLup = copie % 5;
-  const lupReady = copieInLup === 0 && copie > 0 && livello < 10;
+  const copieNecessarie = livello * 5;
+  const lupReady = copie >= copieNecessarie && livello < 10;
+  const copieInLup = copie % copieNecessarie;
   const nextLevel = livello + 1;
   const prossimaStat = nextLevel % 2 === 0 ? 'Danno Critico' : 'Danno';
 
@@ -4363,157 +4428,356 @@ function MossaDetailModal({ catalog, dati, user, collezione, setColl, waifuCat =
   };
 
   const ORB = 'Orbitron, sans-serif';
-  const CINZEL = 'Cinzel, serif';
   const TIPO_COLORS = { Arcana:'#7F77DD', Natura:'#639922', Abisso:'#4463DD', Ferro:'#5F5E5A', Fuoco:'#D85A30' };
+  const RARITY_BORDER = { comune: '#b4bcc8', raro: '#5aa9ff', epico: '#b573ff', leggendario: '#ffc861', immersivo: '#ff7eb6' };
   const tipoCol = TIPO_COLORS[catalog.tipologia] ?? '#7F77DD';
 
+  // Waifu-tab local state
+  const [wFiltroNome, setWFiltroNome] = useState('');
+  const [wFiltroTipo, setWFiltroTipo] = useState('tutti');
+  const [wFiltroHot, setWFiltroHot] = useState(false);
+  const [wSortKey, setWSortKey] = useState('');
+  const [wSortDir, setWSortDir] = useState('desc');
+  const [wPage, setWPage] = useState(0);
+  const [zoomWaifuUrl, setZoomWaifuUrl] = useState(null);
+  const W_PER_PAGE = 4;
+
+  useScrollLock(true);
+
+  // Dettaglio tab computed stats
+  const dannoEff = dati.danno ?? catalog.danno ?? 0;
+  const critEff  = dati.danno_critico ?? catalog.danno_critico ?? 0;
+  const ppVal    = catalog.pp ?? 0;
+  const nextDanno = dannoEff + (catalog.danno_step ?? 5);
+  const nextCrit  = critEff  + (catalog.danno_crit_step ?? 10);
+
+  // Compatibility tab: type chain
+  // Chain: Arcana beats Natura, Natura beats Abisso, Abisso beats Ferro, Ferro beats Fuoco, Fuoco beats Arcana
+  // "move beats the type at (moveIdx-1+5)%5" i.e. the previous type
+  const beatsIdx   = moveIdx !== -1 ? (moveIdx + 4) % 5 : -1;
+  const incompIdx  = moveIdx !== -1 ? (moveIdx + 1) % 5 : -1;
+  const beatsType  = beatsIdx  !== -1 ? TYPES[beatsIdx]  : null;
+  const incompType = incompIdx !== -1 ? TYPES[incompIdx] : null;
+
+  // Build unified waifu list for the Waifu tab
+  const assocSet = new Set(waifuAssociate.map(w => w.id));
+  const tutteWaifuTab = Object.entries(collezione.waifu || {}).map(([wid, datiW]) => {
+    const w = waifuCat.find(x => x.id === wid);
+    if (!w) return null;
+    const isAssoc = assocSet.has(wid);
+    const waifuTIdx = TYPES.indexOf(w.tipo ?? w.tipologia);
+    const isIncomp = moveIdx !== -1 && waifuTIdx !== -1 && (moveIdx + 1) % 5 === waifuTIdx;
+    const rarMatch = w.rarita === catalog.rarita;
+    const namedMatch = catalog.rarita !== 'immersivo' || !catalog.nome_waifu || catalog.nome_waifu === w.nome;
+    const slots = datiW.mosse_slot ?? {};
+    const freeSlot = [1,2,3,4].find(s => !slots[s]);
+    const slotNum = Object.entries(slots).find(([, mid]) => mid === catalog.id)?.[0];
+    const isCompat = rarMatch && namedMatch && !isIncomp && (isAssoc || !!freeSlot);
+    return { ...w, _dati: datiW, _slot: slotNum, _isAssoc: isAssoc, _compat: isCompat };
+  }).filter(Boolean);
+
+  // Filter + sort for waifu tab
+  const wFiltered = (() => {
+    let list = tutteWaifuTab;
+    if (wFiltroNome) list = list.filter(w => (w.nome||'').toLowerCase().includes(wFiltroNome.toLowerCase()));
+    if (wFiltroTipo !== 'tutti') list = list.filter(w => (w.tipo ?? w.tipologia) === wFiltroTipo);
+    if (wFiltroHot) list = list.filter(w => w.hot === true);
+    if (wSortKey === 'hp')           list = [...list].sort((a,b) => wSortDir==='desc' ? (b.hp??0)-(a.hp??0) : (a.hp??0)-(b.hp??0));
+    if (wSortKey === 'velocita')     list = [...list].sort((a,b) => wSortDir==='desc' ? (b.velocita??0)-(a.velocita??0) : (a.velocita??0)-(b.velocita??0));
+    if (wSortKey === 'danno_critico') list = [...list].sort((a,b) => wSortDir==='desc' ? (b.danno_critico??0)-(a.danno_critico??0) : (a.danno_critico??0)-(b.danno_critico??0));
+    return list;
+  })();
+  const wTotalPages  = Math.max(1, Math.ceil(wFiltered.length / W_PER_PAGE));
+  const wPageC       = Math.min(wPage, wTotalPages - 1);
+  const wVisible     = wFiltered.slice(wPageC * W_PER_PAGE, (wPageC + 1) * W_PER_PAGE);
+  const wFrom        = wFiltered.length === 0 ? 0 : wPageC * W_PER_PAGE + 1;
+  const wTo          = Math.min((wPageC + 1) * W_PER_PAGE, wFiltered.length);
+
+  const toggleWSort = (key) => {
+    setWSortKey(prev => { if (prev === key) { setWSortDir(d => d==='desc'?'asc':'desc'); return key; } setWSortDir('desc'); return key; });
+    setWPage(0);
+  };
+
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.87)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: 'rgba(10,7,38,0.98)', border: `1px solid ${tipoCol}44`, borderRadius: 20, maxWidth: 420, width: '100%', maxHeight: '92vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: `0 0 40px ${tipoCol}20` }}>
+    <>
+      {/* Waifu zoom overlay */}
+      {zoomWaifuUrl && (
+        <div onClick={() => setZoomWaifuUrl(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <img src={zoomWaifuUrl} alt="" style={{ maxHeight: '85vh', maxWidth: '100%', borderRadius: 14, objectFit: 'contain' }} onClick={e => e.stopPropagation()} />
+          <button onClick={() => setZoomWaifuUrl(null)} style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#fff', fontSize: 28, cursor: 'pointer' }}>✕</button>
+        </div>
+      )}
 
-        {/* Header */}
-        <div style={{ padding: '16px 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <div style={{ fontFamily: CINZEL, fontSize: 17, color: '#f5e6d3', fontWeight: 700 }}>{catalog.nome}</div>
-            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-              <span style={{ fontFamily: ORB, fontSize: 9, color: tipoCol, background: `${tipoCol}18`, border: `1px solid ${tipoCol}44`, borderRadius: 4, padding: '2px 7px' }}>{catalog.tipologia}</span>
-              <span style={{ fontFamily: ORB, fontSize: 9, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 4, padding: '2px 7px' }}>{catalog.rarita}</span>
-              <span style={{ fontFamily: ORB, fontSize: 9, color: '#a78bfa', padding: '2px 7px' }}>Lv.{livello}</span>
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.87)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+        onClick={e => e.target === e.currentTarget && onClose()}>
+        <div style={{ background: 'rgba(10,7,38,0.98)', border: `1px solid ${tipoCol}44`, borderRadius: 20, maxWidth: 440, width: '100%', maxHeight: '92vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: `0 0 40px ${tipoCol}20` }}>
+
+          {/* ── Shared header: name + ✕ ── */}
+          <div style={{ padding: '16px 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexShrink: 0 }}>
+            <div style={{ fontFamily: "'Unbounded', sans-serif", fontSize: 18, fontWeight: 800, color: '#fff', lineHeight: 1.2, flex: 1, marginRight: 8 }}>
+              {catalog.nome}
             </div>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 22, cursor: 'pointer', padding: 4, lineHeight: 1, flexShrink: 0 }}>✕</button>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 20, cursor: 'pointer', padding: 4 }}>✕</button>
-        </div>
 
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: 0, margin: '12px 16px 0', background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 3 }}>
-          {[['dettaglio','📊 Dettaglio'],['compatibilita','⚔ Compatibilità'],['waifu',`🌸 Waifu (${waifuAssociate.length})`]].map(([k,l]) => (
-            <button key={k} onClick={() => setTab(k)} style={{ flex: 1, padding: '7px 4px', borderRadius: 8, border: 'none', cursor: 'pointer', background: tab === k ? `${tipoCol}22` : 'transparent', color: tab === k ? tipoCol : 'rgba(241,235,255,0.4)', fontFamily: ORB, fontSize: 8, fontWeight: tab === k ? 700 : 500, letterSpacing: '0.08em', transition: 'all 0.15s' }}>
-              {l}
-            </button>
-          ))}
-        </div>
+          {/* ── Centered badges ── */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, margin: '10px 20px 0', flexWrap: 'wrap', flexShrink: 0 }}>
+            <span style={{ fontFamily: ORB, fontSize: 9, color: tipoCol, background: `${tipoCol}20`, border: `1px solid ${tipoCol}`, borderRadius: 20, padding: '3px 10px', fontWeight: 700 }}>{catalog.tipologia}</span>
+            <span style={{ fontFamily: ORB, fontSize: 9, color: '#f59e0b', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.5)', borderRadius: 20, padding: '3px 10px', fontWeight: 700 }}>{catalog.rarita}</span>
+          </div>
 
-        {/* Content */}
-        <div style={{ overflowY: 'auto', flex: 1, padding: '14px 20px 20px' }}>
+          {/* ── Pill tabs ── */}
+          <div style={{ display: 'flex', gap: 6, margin: '12px 16px 0', justifyContent: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
+            {[['dettaglio','📊 Dettaglio'],['compatibilita','⚔ Compat.'],['waifu',`🌸 Waifu (${waifuAssociate.length})`]].map(([k,l]) => (
+              <button key={k} onClick={() => setTab(k)} style={{
+                padding: '6px 12px', borderRadius: 20,
+                border: tab === k ? `1px solid ${tipoCol}` : '1px solid rgba(255,255,255,0.1)',
+                cursor: 'pointer', background: tab === k ? `${tipoCol}33` : 'transparent',
+                color: tab === k ? tipoCol : 'rgba(241,235,255,0.45)', fontFamily: ORB, fontSize: 8,
+                fontWeight: tab === k ? 700 : 500, letterSpacing: '0.06em', transition: 'all 0.15s', whiteSpace: 'nowrap',
+              }}>{l}</button>
+            ))}
+          </div>
 
-          {/* TAB DETTAGLIO */}
-          {tab === 'dettaglio' && (
-            <>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
-                <CartaMossa mossa={catalog} datiUtente={dati} dimensione="normale" />
-              </div>
-              {catalog.abilita && (
-                <div style={{ background: `${tipoCol}10`, border: `1px solid ${tipoCol}30`, borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
-                  <div style={{ fontFamily: ORB, fontSize: 9, color: `${tipoCol}cc`, marginBottom: 4, letterSpacing: 1 }}>ABILITÀ SPECIALE</div>
-                  <div style={{ fontSize: 12, color: '#f5e6d3', lineHeight: 1.5 }}>{catalog.abilita}</div>
+          {/* ── Fixed-height content area ── */}
+          <div style={{ overflowY: 'auto', padding: '14px 20px 20px', minHeight: 'min(70vh, 500px)' }}>
+
+            {/* ── TAB DETTAGLIO ── */}
+            {tab === 'dettaglio' && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+
+                {/* Card centered */}
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <CartaMossa mossa={catalog} datiUtente={dati} dimensione="normale" />
                 </div>
-              )}
-              <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontFamily: ORB, fontSize: 9, color: 'rgba(245,158,11,0.7)' }}>COPIE {copie}</span>
-                  {livello < 10
-                    ? <span style={{ fontFamily: ORB, fontSize: 9, color: lupReady ? '#06d6a0' : 'rgba(245,158,11,0.5)' }}>{lupReady ? '⬆ LEVEL UP PRONTO!' : `${copieInLup}/5 al prossimo Lv`}</span>
-                    : <span style={{ fontFamily: ORB, fontSize: 9, color: '#ffc861' }}>MAX</span>
-                  }
-                </div>
-                {livello < 10 && <div style={{ height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3 }}><div style={{ height: '100%', width: `${lupReady ? 100 : (copieInLup / 5) * 100}%`, background: lupReady ? '#06d6a0' : '#f59e0b', borderRadius: 3 }} /></div>}
-              </div>
-              {lupReady && (
-                <button onClick={eseguiLevelUp} disabled={lupBusy}
-                  style={{ width: '100%', padding: '11px', background: lupBusy ? 'rgba(6,214,160,0.3)' : 'linear-gradient(135deg,#06d6a0,#0ea5e9)', border: 'none', borderRadius: 12, color: '#000', fontFamily: ORB, fontSize: 10, fontWeight: 700, cursor: lupBusy ? 'not-allowed' : 'pointer', marginBottom: 8 }}>
-                  {lupBusy ? '⏳' : `⬆ LEVEL UP — Migliora: ${prossimaStat}`}
-                </button>
-              )}
-            </>
-          )}
 
-          {/* TAB COMPATIBILITÀ */}
-          {tab === 'compatibilita' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: 14 }}>
-                <div style={{ fontFamily: ORB, fontSize: 9, color: 'rgba(245,158,11,0.7)', marginBottom: 10, letterSpacing: 1 }}>REGOLE ASSEGNAZIONE</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 7, fontSize: 11, color: 'rgba(241,235,255,0.8)', lineHeight: 1.5 }}>
-                  <div>⭐ <strong style={{ color: '#f59e0b' }}>Rarità:</strong> Solo waifu di rarità <strong>{catalog.rarita}</strong></div>
-                  <div>⚔ <strong style={{ color: tipoCol }}>Tipo:</strong> La waifu non deve avere tipo che batte <strong>{catalog.tipologia}</strong></div>
-                  {catalog.rarita === 'immersivo' && catalog.nome_waifu && (
-                    <div>🌸 <strong style={{ color: '#ec4899' }}>Esclusiva:</strong> Solo per <strong>{catalog.nome_waifu}</strong></div>
-                  )}
-                  <div>🔢 <strong>Slot:</strong> Ogni waifu ha 4 slot mossa (assegna in uno slot libero)</div>
+                {/* Zoom CTA (ghost button, decorative) */}
+                <button style={{ padding: '4px 14px', background: 'transparent', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 20, color: 'rgba(238,232,220,0.45)', fontFamily: ORB, fontSize: 8, cursor: 'default', letterSpacing: 1 }}>🔍 Zoom</button>
+
+                {/* Level + copies row */}
+                <div style={{ display: 'flex', gap: 16, alignItems: 'baseline' }}>
+                  <span style={{ fontFamily: 'monospace', fontSize: 16, fontWeight: 700, color: '#ffc861', letterSpacing: 1 }}>Lv.{livello}</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: 14, color: 'rgba(255,255,255,0.75)' }}>{copie} copie</span>
                 </div>
-              </div>
-              <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: 14 }}>
-                <div style={{ fontFamily: ORB, fontSize: 9, color: 'rgba(245,158,11,0.7)', marginBottom: 10, letterSpacing: 1 }}>TIPI WAIFU COMPATIBILI</div>
-                {(['Arcana','Natura','Abisso','Ferro','Fuoco']).map(tipo => {
-                  const waifuIdx2 = TYPES.indexOf(tipo);
-                  const incomp = moveIdx !== -1 && waifuIdx2 !== -1 && (moveIdx + 1) % 5 === waifuIdx2;
-                  const col = TIPO_COLORS[tipo] ?? '#888';
-                  return (
-                    <div key={tipo} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <span style={{ fontFamily: ORB, fontSize: 10, color: col }}>{tipo}</span>
-                      <span style={{ fontFamily: ORB, fontSize: 9, color: incomp ? '#ef4444' : '#06d6a0' }}>{incomp ? '✗ Incompatibile' : '✓ OK'}</span>
+
+                {/* Copies progress bar */}
+                {livello < 10 && (
+                  <div style={{ width: '100%' }}>
+                    <div style={{ height: 7, background: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden', marginBottom: 5 }}>
+                      <div style={{ height: '100%', width: `${Math.min(100, Math.min(copie, copieNecessarie) / copieNecessarie * 100)}%`, background: lupReady ? '#06d6a0' : '#f59e0b', borderRadius: 4, transition: 'width 0.4s' }} />
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                    <div style={{ fontFamily: ORB, fontSize: 8, textAlign: 'center', color: lupReady ? '#06d6a0' : 'rgba(245,158,11,0.7)', letterSpacing: 1 }}>
+                      {lupReady ? '⚡ LEVEL UP PRONTO!' : `${copie}/${copieNecessarie} copie al prossimo lv`}
+                    </div>
+                  </div>
+                )}
+                {livello >= 10 && (
+                  <div style={{ fontFamily: ORB, fontSize: 9, color: '#ffc861', letterSpacing: 1 }}>✦ MAX LEVEL</div>
+                )}
 
-          {/* TAB WAIFU */}
-          {tab === 'waifu' && (
-            <div>
-              {waifuAssociate.length > 0 && (
-                <>
-                  <div style={{ fontFamily: ORB, fontSize: 9, color: '#06d6a0', marginBottom: 8, letterSpacing: 1 }}>WAIFU CHE USANO QUESTA MOSSA</div>
-                  {waifuAssociate.map(w => (
-                    <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'rgba(6,214,160,0.06)', border: '1px solid rgba(6,214,160,0.2)', borderRadius: 10, marginBottom: 8 }}>
-                      {w.asset_statica && <img src={w.asset_statica} alt={w.nome} style={{ width: 40, height: 55, objectFit: 'cover', borderRadius: 6, border: '1px solid rgba(6,214,160,0.3)' }} />}
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontFamily: CINZEL, fontSize: 13, color: '#f5e6d3' }}>{w.nome}</div>
-                        <div style={{ fontFamily: ORB, fontSize: 8, color: 'rgba(6,214,160,0.7)' }}>Slot {w._slot}</div>
+                {/* Stats banner — 3 stats in a row */}
+                <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+                  {[
+                    { label: 'PP',          value: ppVal,    color: '#6cf0e0', showNext: false },
+                    { label: 'Danno',       value: dannoEff, color: '#ff9ec6', showNext: lupReady && nextLevel % 2 !== 0, nextVal: nextDanno },
+                    { label: 'D. Critico',  value: critEff,  color: '#ffc861', showNext: lupReady && nextLevel % 2 === 0, nextVal: nextCrit  },
+                  ].map(({ label, value, color, showNext, nextVal }) => (
+                    <div key={label} style={{ flex: 1, background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '10px 6px', textAlign: 'center', border: `1px solid ${color}22` }}>
+                      <div style={{ fontFamily: ORB, fontSize: 7, color: 'rgba(255,255,255,0.4)', letterSpacing: 1, marginBottom: 4 }}>{label.toUpperCase()}</div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 3, flexWrap: 'wrap' }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 700, color }}>{value}</span>
+                        {showNext && (
+                          <span style={{ fontFamily: ORB, fontSize: 8, color: '#06d6a0', fontWeight: 700 }}>+{nextVal - value}</span>
+                        )}
                       </div>
-                      <button onClick={() => rimuoviDaWaifu(w.id, w._slot)} disabled={assignBusy}
-                        style={{ padding: '5px 10px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 7, color: '#ef4444', fontFamily: ORB, fontSize: 8, cursor: assignBusy ? 'not-allowed' : 'pointer' }}>
-                        Rimuovi
-                      </button>
                     </div>
                   ))}
-                </>
-              )}
-
-              {waifuCompatibili.length > 0 && (
-                <>
-                  <div style={{ fontFamily: ORB, fontSize: 9, color: 'rgba(174,156,255,0.7)', margin: '12px 0 8px', letterSpacing: 1 }}>WAIFU COMPATIBILI (slot libero)</div>
-                  {waifuCompatibili.slice(0, 8).map(w => (
-                    <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'rgba(174,156,255,0.06)', border: '1px solid rgba(174,156,255,0.15)', borderRadius: 10, marginBottom: 8 }}>
-                      {w.asset_statica && <img src={w.asset_statica} alt={w.nome} style={{ width: 40, height: 55, objectFit: 'cover', borderRadius: 6, opacity: 0.7 }} />}
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontFamily: CINZEL, fontSize: 13, color: '#f5e6d3' }}>{w.nome}</div>
-                        <div style={{ fontFamily: ORB, fontSize: 8, color: 'rgba(174,156,255,0.5)' }}>{w.tipo}</div>
-                      </div>
-                      <button onClick={() => aggiungiAWaifu(w.id)} disabled={assignBusy}
-                        style={{ padding: '5px 10px', background: 'rgba(174,156,255,0.12)', border: '1px solid rgba(174,156,255,0.3)', borderRadius: 7, color: '#a78bfa', fontFamily: ORB, fontSize: 8, cursor: assignBusy ? 'not-allowed' : 'pointer' }}>
-                        Assegna
-                      </button>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {waifuAssociate.length === 0 && waifuCompatibili.length === 0 && (
-                <div style={{ textAlign: 'center', padding: 30, color: 'rgba(241,235,255,0.3)', fontFamily: ORB, fontSize: 10 }}>
-                  Nessuna waifu compatibile in collezione.<br/>Sbusta pacchetti per trovare waifu di rarità <strong>{catalog.rarita}</strong>!
                 </div>
-              )}
-            </div>
-          )}
-        </div>
 
-        <div style={{ padding: '0 20px 16px' }}>
-          <button onClick={onClose} style={{ width: '100%', padding: '10px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#f5e6d3', fontFamily: ORB, fontSize: 9, cursor: 'pointer', letterSpacing: '0.1em' }}>CHIUDI</button>
+                {/* Level Up button */}
+                {livello < 10 && (
+                  lupReady ? (
+                    <button onClick={eseguiLevelUp} disabled={lupBusy} style={{
+                      width: '100%', padding: '12px', borderRadius: 12, border: 'none', cursor: lupBusy ? 'not-allowed' : 'pointer',
+                      background: lupBusy ? 'rgba(6,214,160,0.3)' : 'linear-gradient(135deg,#06d6a0,#0ea5e9)',
+                      color: lupBusy ? 'rgba(255,255,255,0.5)' : '#000', fontFamily: ORB, fontSize: 10, fontWeight: 700, letterSpacing: 1,
+                    }}>
+                      {lupBusy ? '⏳ …' : `⬆ LEVEL UP (+${prossimaStat})`}
+                    </button>
+                  ) : (
+                    <button disabled style={{
+                      width: '100%', padding: '12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)',
+                      background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.3)', fontFamily: ORB, fontSize: 9, letterSpacing: 1, cursor: 'not-allowed',
+                    }}>
+                      {copieNecessarie - copie} copie mancanti al level up
+                    </button>
+                  )
+                )}
+
+                {/* Abilità speciale */}
+                {catalog.abilita && (
+                  <div style={{ width: '100%', background: `${tipoCol}10`, border: `1px solid ${tipoCol}30`, borderRadius: 10, padding: '10px 14px' }}>
+                    <div style={{ fontFamily: ORB, fontSize: 8, color: `${tipoCol}cc`, marginBottom: 4, letterSpacing: 1 }}>ABILITÀ SPECIALE</div>
+                    <div style={{ fontSize: 12, color: '#f5e6d3', lineHeight: 1.5 }}>{catalog.abilita}</div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── TAB COMPATIBILITÀ ── */}
+            {tab === 'compatibilita' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' }}>
+
+                {/* Type pentagon — 5 nodes in a circle */}
+                <div style={{ position: 'relative', width: 220, height: 220, flexShrink: 0 }}>
+                  {TYPES.map((tipo, i) => {
+                    const angle = (i * 72 - 90) * Math.PI / 180;
+                    const r = 82;
+                    const cx = 110 + r * Math.cos(angle);
+                    const cy = 110 + r * Math.sin(angle);
+                    const col = TIPO_COLORS[tipo] ?? '#888';
+                    const isCurrent = tipo === catalog.tipologia;
+                    const isBeats   = tipo === beatsType;
+                    const isIncompat = tipo === incompType;
+                    return (
+                      <div key={tipo} style={{
+                        position: 'absolute', transform: 'translate(-50%,-50%)',
+                        left: cx, top: cy,
+                        width: 46, height: 46, borderRadius: 8,
+                        background: isCurrent ? `${col}33` : isIncompat ? 'rgba(239,68,68,0.08)' : 'rgba(0,0,0,0.3)',
+                        border: isCurrent ? `2px solid ${col}` : isIncompat ? '2px solid #ef4444' : `1px solid ${col}55`,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
+                        opacity: isIncompat ? 0.55 : 1,
+                        boxShadow: isCurrent ? `0 0 12px ${col}60` : 'none',
+                      }}>
+                        <span style={{ fontFamily: ORB, fontSize: 8, color: isCurrent ? col : isIncompat ? '#ef4444' : col, fontWeight: isCurrent ? 800 : 500, lineHeight: 1, textAlign: 'center' }}>{tipo}</span>
+                        {isCurrent   && <span style={{ fontSize: 10 }}>⚔</span>}
+                        {isBeats && !isCurrent && <span style={{ fontSize: 10, color: '#06d6a0' }}>✓</span>}
+                        {isIncompat  && <span style={{ fontSize: 10, color: '#ef4444' }}>✕</span>}
+                      </div>
+                    );
+                  })}
+                  {/* center label */}
+                  <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', pointerEvents: 'none' }}>
+                    <div style={{ fontFamily: ORB, fontSize: 7, color: 'rgba(255,255,255,0.3)', letterSpacing: 1 }}>TIPO</div>
+                    <div style={{ fontFamily: ORB, fontSize: 9, color: tipoCol, fontWeight: 700 }}>{catalog.tipologia}</div>
+                  </div>
+                </div>
+
+                {/* Rules card */}
+                <div style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: `1px solid ${tipoCol}33`, borderRadius: 12, padding: '14px 16px' }}>
+                  <div style={{ fontFamily: ORB, fontSize: 8, color: 'rgba(245,158,11,0.7)', letterSpacing: 1, marginBottom: 10 }}>REGOLE DI COMPATIBILITÀ</div>
+                  <div style={{ fontSize: 12, color: 'rgba(241,235,255,0.85)', lineHeight: 1.7 }}>
+                    La mossa <strong style={{ color: tipoCol }}>{catalog.tipologia}</strong> è efficace contro waifu{' '}
+                    <strong style={{ color: beatsType ? TIPO_COLORS[beatsType] : '#fff' }}>{beatsType ?? '—'}</strong>.{' '}
+                    Non può essere assegnata a waifu <strong style={{ color: '#ef4444' }}>{incompType ?? '—'}</strong>.
+                  </div>
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: 5, fontSize: 11, color: 'rgba(241,235,255,0.7)', lineHeight: 1.5 }}>
+                    <div>⭐ Solo waifu di rarità <strong style={{ color: '#f59e0b' }}>{catalog.rarita}</strong></div>
+                    <div>🔢 Ogni waifu ha 4 slot mossa</div>
+                    {catalog.rarita === 'immersivo' && catalog.nome_waifu && (
+                      <div>🌸 Esclusiva per <strong style={{ color: '#ec4899' }}>{catalog.nome_waifu}</strong></div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── TAB WAIFU ── */}
+            {tab === 'waifu' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+                {/* Filter bar */}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <input
+                    value={wFiltroNome} onChange={e => { setWFiltroNome(e.target.value); setWPage(0); }}
+                    placeholder="Cerca waifu…"
+                    style={{ flex: 1, minWidth: 80, padding: '5px 10px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: '#f5e6d3', fontFamily: ORB, fontSize: 9, outline: 'none' }}
+                  />
+                  <select value={wFiltroTipo} onChange={e => { setWFiltroTipo(e.target.value); setWPage(0); }}
+                    style={{ padding: '5px 8px', background: 'rgba(10,7,38,0.95)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: '#f5e6d3', fontFamily: ORB, fontSize: 9, cursor: 'pointer', outline: 'none' }}>
+                    <option value="tutti">Tutti i tipi</option>
+                    {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <button onClick={() => { setWFiltroHot(v => !v); setWPage(0); }}
+                    style={{ padding: '5px 10px', borderRadius: 8, border: `1px solid ${wFiltroHot ? '#ec4899' : 'rgba(255,255,255,0.12)'}`, background: wFiltroHot ? 'rgba(236,72,153,0.15)' : 'transparent', color: wFiltroHot ? '#ec4899' : 'rgba(255,255,255,0.4)', fontFamily: ORB, fontSize: 9, cursor: 'pointer' }}>
+                    🔥
+                  </button>
+                </div>
+
+                {/* Sort bar */}
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                  {[['hp','HP'],['velocita','Velocità'],['danno_critico','D.Critico']].map(([k,l]) => (
+                    <button key={k} onClick={() => toggleWSort(k)} style={{
+                      padding: '4px 10px', borderRadius: 8, border: `1px solid ${wSortKey===k ? tipoCol : 'rgba(255,255,255,0.1)'}`,
+                      background: wSortKey===k ? `${tipoCol}20` : 'transparent', color: wSortKey===k ? tipoCol : 'rgba(255,255,255,0.4)',
+                      fontFamily: ORB, fontSize: 8, cursor: 'pointer',
+                    }}>{l} {wSortKey===k ? (wSortDir==='desc'?'↓':'↑') : ''}</button>
+                  ))}
+                </div>
+
+                {/* Waifu grid — 2 columns, max 4 per page */}
+                {wVisible.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '30px 0', color: 'rgba(241,235,255,0.3)', fontFamily: ORB, fontSize: 9 }}>
+                    Nessuna waifu trovata.<br />Sbusta pacchetti di rarità <strong style={{ color: '#f59e0b' }}>{catalog.rarita}</strong>!
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    {wVisible.map(w => {
+                      const rarBorder = RARITY_BORDER[w.rarita] ?? '#b4bcc8';
+                      const isBlurred = w.hot === true && !w._dati?.hardPass;
+                      const imgSrc = ikUrl(w.asset_statica, 'normal');
+                      return (
+                        <div key={w.id} style={{ background: 'rgba(0,0,0,0.35)', border: `2px solid ${rarBorder}55`, borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                          {/* Image */}
+                          <div style={{ position: 'relative', cursor: isBlurred ? 'default' : 'zoom-in' }} onClick={!isBlurred ? () => setZoomWaifuUrl(imgSrc) : undefined}>
+                            <img src={imgSrc} alt={w.nome} style={{ width: '100%', aspectRatio: '2/3', objectFit: 'cover', display: 'block', filter: isBlurred ? 'blur(12px)' : 'none', borderBottom: `1px solid ${rarBorder}33` }} />
+                            {isBlurred && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🔥</div>}
+                          </div>
+                          {/* Info */}
+                          <div style={{ padding: '8px 10px', flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                            <div style={{ fontFamily: "'Saira Condensed', sans-serif", fontWeight: 700, fontSize: 13, color: '#f5e6d3', lineHeight: 1.2 }}>{w.nome}</div>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                              {[['HP', w.hp??0, '#06d6a0'],['Vel.', w.velocita??0, '#7F77DD'],['D.Cr.', w.danno_critico??0, '#ffc861']].map(([label, val, col]) => (
+                                <span key={label} style={{ fontFamily: ORB, fontSize: 7, color: col }}>{label} <strong>{val}</strong></span>
+                              ))}
+                            </div>
+                            {w._isAssoc ? (
+                              <button onClick={() => rimuoviDaWaifu(w.id, w._slot)} disabled={assignBusy}
+                                style={{ width: '100%', padding: '5px 0', borderRadius: 7, border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontFamily: ORB, fontSize: 8, cursor: assignBusy ? 'not-allowed' : 'pointer' }}>
+                                Rimuovi (slot {w._slot})
+                              </button>
+                            ) : w._compat ? (
+                              <button onClick={() => aggiungiAWaifu(w.id)} disabled={assignBusy}
+                                style={{ width: '100%', padding: '5px 0', borderRadius: 7, border: `1px solid ${tipoCol}55`, background: `${tipoCol}15`, color: tipoCol, fontFamily: ORB, fontSize: 8, cursor: assignBusy ? 'not-allowed' : 'pointer' }}>
+                                Assegna
+                              </button>
+                            ) : (
+                              <div style={{ fontFamily: ORB, fontSize: 7, color: 'rgba(255,255,255,0.25)', textAlign: 'center', padding: '4px 0' }}>Non compatibile</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Pagination */}
+                {wFiltered.length > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                    <button onClick={() => setWPage(p => Math.max(0, p-1))} disabled={wPageC === 0}
+                      style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: wPageC===0?'rgba(255,255,255,0.2)':'#f5e6d3', fontFamily: ORB, fontSize: 9, cursor: wPageC===0?'not-allowed':'pointer' }}>◀</button>
+                    <span style={{ fontFamily: ORB, fontSize: 8, color: 'rgba(255,255,255,0.4)' }}>{wFrom}–{wTo} di {wFiltered.length} waifu</span>
+                    <button onClick={() => setWPage(p => Math.min(wTotalPages-1, p+1))} disabled={wPageC >= wTotalPages-1}
+                      style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: wPageC>=wTotalPages-1?'rgba(255,255,255,0.2)':'#f5e6d3', fontFamily: ORB, fontSize: 9, cursor: wPageC>=wTotalPages-1?'not-allowed':'pointer' }}>▶</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

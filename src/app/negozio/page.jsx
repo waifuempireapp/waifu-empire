@@ -318,6 +318,7 @@ function SwapPassCard({ profilo, user }) {
   const [busy, setBusy] = useState(false);
   const [notif, setNotif] = useState(null);
   const [prezzoSwapPass, setPrezzoSwapPass] = useState(2.99);
+  const [activating, setActivating] = useState(false);
 
   useEffect(() => {
     import('@/lib/firebase').then(({ db }) => {
@@ -329,16 +330,63 @@ function SwapPassCard({ profilo, user }) {
     });
   }, []);
 
-  const hasSwapPass = !!(profilo?.swap_pass) && (!profilo?.swap_pass_expires_at || new Date(profilo.swap_pass_expires_at?.seconds * 1000) > new Date());
-  const expiry = profilo?.swap_pass_expires_at ? new Date(profilo.swap_pass_expires_at?.seconds * 1000).toLocaleDateString('it-IT') : null;
+  // Gestione ritorno da PayPal dopo approvazione abbonamento
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const subStatus = params.get('swap_sub');
+    const subscriptionId = params.get('subscription_id') || params.get('ba_token');
+    if (subStatus === 'ok' && subscriptionId && user) {
+      setActivating(true);
+      const activate = async () => {
+        try {
+          const token = await user.getIdToken();
+          const res = await fetch('/api/paypal/activate-swap-subscription', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subscriptionId }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            setNotif({ testo: '✅ Swap Pass attivato! Goditi i voti illimitati.', colore: '#06d6a0' });
+            // Pulisci URL
+            window.history.replaceState({}, '', '/negozio');
+          } else {
+            setNotif({ testo: data.error || 'Errore attivazione abbonamento', colore: '#ff3d3d' });
+          }
+        } catch (e) {
+          setNotif({ testo: e.message, colore: '#ff3d3d' });
+        }
+        setActivating(false);
+      };
+      activate();
+    } else if (subStatus === 'cancel') {
+      setNotif({ testo: 'Abbonamento annullato.', colore: '#f59e0b' });
+      window.history.replaceState({}, '', '/negozio');
+    }
+  }, [user]);
+
+  const hasSwapPass = !!(profilo?.swap_pass || profilo?.hasSwapPass);
+  const expiry = profilo?.swapPassExpiresAt ? new Date(profilo.swapPassExpiresAt?.seconds * 1000 || profilo.swapPassExpiresAt).toLocaleDateString('it-IT') : null;
 
   const acquista = async () => {
     setBusy(true);
     try {
-      // Attivazione manuale tramite Admin — per ora mostra messaggio informativo
-      setNotif({ testo: 'Per attivare lo Swap Pass, contatta l\'admin del gioco o completa l\'acquisto su PayPal.', colore: '#f5a623' });
-    } finally { setBusy(false); }
-    setTimeout(() => setNotif(null), 5000);
+      const token = await user.getIdToken();
+      const res = await fetch('/api/paypal/create-swap-subscription', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (data.approveUrl) {
+        window.location.href = data.approveUrl;
+      } else {
+        setNotif({ testo: data.error || 'Errore avvio abbonamento PayPal', colore: '#ff3d3d' });
+      }
+    } catch (e) {
+      setNotif({ testo: e.message, colore: '#ff3d3d' });
+    }
+    setBusy(false);
   };
 
   return (
@@ -367,10 +415,15 @@ function SwapPassCard({ profilo, user }) {
           {expiry && <div style={{ fontFamily: 'Fredoka', fontSize: 11, color: 'rgba(238,232,220,0.5)', marginTop: 4 }}>Scade il {expiry}</div>}
         </div>
       ) : (
-        <button onClick={acquista} disabled={busy}
-          style={{ width: '100%', padding: '12px', background: busy ? 'rgba(236,72,153,0.3)' : 'linear-gradient(135deg,#ec4899,#a855f7)', border: 'none', borderRadius: 12, color: '#fff', fontFamily: 'Orbitron', fontSize: 11, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', letterSpacing: '0.1em' }}>
-          {busy ? '⏳' : '💳 ACQUISTA SWAP PASS'}
-        </button>
+        <>
+          <button onClick={acquista} disabled={busy || activating}
+            style={{ width: '100%', padding: '12px', background: (busy || activating) ? 'rgba(236,72,153,0.3)' : 'linear-gradient(135deg,#ec4899,#a855f7)', border: 'none', borderRadius: 12, color: '#fff', fontFamily: 'Orbitron', fontSize: 11, fontWeight: 700, cursor: (busy || activating) ? 'not-allowed' : 'pointer', letterSpacing: '0.1em' }}>
+            {activating ? '⏳ Attivazione in corso…' : busy ? '⏳ Reindirizzamento PayPal…' : '💳 ABBONATI CON PAYPAL'}
+          </button>
+          <div style={{ fontFamily: 'Fredoka', fontSize: 10, color: 'rgba(238,232,220,0.4)', textAlign: 'center', marginTop: 6 }}>
+            Rinnovo automatico mensile · Cancella in qualsiasi momento
+          </div>
+        </>
       )}
     </div>
   );

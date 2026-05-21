@@ -30,7 +30,7 @@ function formatTime(seconds) {
   return `${s}s`;
 }
 
-export default function MiniLeaderboard({ chunks, userUid, profilo, passiveRate, user, onKissesUpdate }) {
+export default function MiniLeaderboard({ chunks, userUid, profilo, passiveRate, user, onKissesUpdate, onClaimAt }) {
   const [claiming, setClaiming]     = useState(false);
   const [lastEarned, setLastEarned] = useState(null);
   const [accumulated, setAccumulated] = useState(0);
@@ -86,12 +86,13 @@ export default function MiniLeaderboard({ chunks, userUid, profilo, passiveRate,
       });
       const data = await res.json();
       if (data.earned > 0) {
+        const nowMs = Date.now();
         setLastEarned(data.earned);
         onKissesUpdate?.(data.earned);
-        // Imposta subito il timestamp locale → il tick ricalcolerà elapsed da ora
-        // e accumulated tornerà a 0 senza aspettare il refresh del profilo dal server
-        setLocalLastClaimAt(Date.now());
+        setLocalLastClaimAt(nowMs);
         setAccumulated(0);
+        // Aggiorna profilo.lastKissesClaimAt nel parent per persistere dopo navigazione
+        onClaimAt?.(nowMs);
         setTimeout(() => setLastEarned(null), 3000);
       }
     } finally { setClaiming(false); }

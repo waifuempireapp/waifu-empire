@@ -21,7 +21,8 @@ function countdown(ms) {
 }
 
 const MEDAL = ['👑','🥈','🥉'];
-const PRIZE_COLORS = ['#ffc861','#b0bec5','#cd7f32','rgba(174,156,255,0.6)','rgba(174,156,255,0.4)'];
+const PRIZE_COLORS = ['#ffc861','#b0bec5','#cd7f32','#ec4899','#a855f7','#6cf0e0','#58e0a3','#f59e0b','#3b82f6','#ef4444'];
+const PAGE_SIZE = 10;
 
 export default function WaifuRankingList({ user }) {
   const [ranking, setRanking]     = useState(null);
@@ -31,6 +32,7 @@ export default function WaifuRankingList({ user }) {
   const [hasHardPass, setHasHardPass] = useState(false);
   const [isLive, setIsLive] = useState(false);
   const [loading, setLoading]     = useState(true);
+  const [page, setPage]           = useState(0); // paginazione top 50
   const now = Date.now();
 
   useEffect(() => {
@@ -67,7 +69,7 @@ export default function WaifuRankingList({ user }) {
     <div>
       {/* Sub-tab */}
       <div style={{ display: 'flex', gap: 0, background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 3, marginBottom: 16 }}>
-        {[{ id: 'top5', label: '🏆 Top 5' }, { id: 'pausa', label: '⏸ In pausa' }].map(t => (
+        {[{ id: 'top5', label: '🏆 Top 50' }, { id: 'pausa', label: '⏸ In pausa' }].map(t => (
           <button key={t.id} onClick={() => setSubTab(t.id)} style={{
             flex: 1, padding: '9px 8px', borderRadius: 10, border: 'none', cursor: 'pointer',
             background: subTab === t.id ? 'rgba(255,133,182,0.2)' : 'transparent',
@@ -110,15 +112,25 @@ export default function WaifuRankingList({ user }) {
                   {isLive && <span style={{ marginLeft: 8, background: 'rgba(6,214,160,0.2)', border: '1px solid rgba(6,214,160,0.5)', borderRadius: 999, padding: '1px 6px', fontSize: 8, color: '#06d6a0' }}>● LIVE</span>}
                 </div>
                 <div style={{ fontFamily: FF.body, fontSize: 11, color: 'rgba(241,235,255,0.5)' }}>
-                  Top 10 classifica · le Top 5 ricevono Kisses bonus ogni settimana
+                  Top 50 classifica · le Top 10 ricevono Kisses bonus ogni settimana
                 </div>
               </div>
 
-              {/* Top 10 — Top 5 con premio, 6-10 senza */}
-              {(ranking.top5 || []).map((item, i) => {
+              {/* Paginazione */}
+              {(ranking.top5 || []).length > PAGE_SIZE && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: page === 0 ? 'rgba(255,255,255,0.2)' : '#fff', padding: '6px 14px', cursor: page === 0 ? 'default' : 'pointer', fontFamily: FF.label, fontSize: 11 }}>← Prec</button>
+                  <span style={{ fontFamily: FF.label, fontSize: 10, color: 'rgba(241,235,255,0.5)' }}>{page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, (ranking.top5 || []).length)} di {(ranking.top5 || []).length}</span>
+                  <button onClick={() => setPage(p => p + 1)} disabled={(page + 1) * PAGE_SIZE >= (ranking.top5 || []).length} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: (page + 1) * PAGE_SIZE >= (ranking.top5 || []).length ? 'rgba(255,255,255,0.2)' : '#fff', padding: '6px 14px', cursor: (page + 1) * PAGE_SIZE >= (ranking.top5 || []).length ? 'default' : 'pointer', fontFamily: FF.label, fontSize: 11 }}>Succ →</button>
+                </div>
+              )}
+
+              {/* Top 50 paginati — Top 10 con premio */}
+              {(ranking.top5 || []).slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((item, j) => {
+                const i = page * PAGE_SIZE + j; // indice globale
                 const isOwned = owns(item.waifuId);
-                const isPrize = i < 5; // Solo top 5 ricevono il premio
-                const prizeColor = isPrize ? (PRIZE_COLORS[i] ?? PRIZE_COLORS[4]) : 'rgba(174,156,255,0.3)';
+                const isPrize = i < 10; // Solo top 10 ricevono il premio
+                const prizeColor = isPrize ? (PRIZE_COLORS[i] ?? PRIZE_COLORS[9]) : 'rgba(174,156,255,0.3)';
                 const isTop3 = i < 3;
                 const isHotObscured = item.hot && !hasHardPass;
 
@@ -142,8 +154,8 @@ export default function WaifuRankingList({ user }) {
                         pointerEvents: 'none',
                       }} />
                     )}
-                    {/* Separatore tra top 5 e 6-10 */}
-                    {i === 5 && (
+                    {/* Separatore tra top 10 (con premio) e 11+ */}
+                    {i === 10 && (
                       <div style={{ position: 'absolute', top: -8, left: 16, right: 16, textAlign: 'center' }}>
                         <span style={{ fontFamily: FF.label, fontSize: 7, color: 'rgba(174,156,255,0.4)', letterSpacing: '0.2em', background: 'rgba(10,7,38,0.9)', padding: '0 6px' }}>SENZA PREMIO</span>
                       </div>
@@ -205,7 +217,7 @@ export default function WaifuRankingList({ user }) {
                               <span style={{ fontFamily: FF.label, fontSize: 8, color: RARITY_COLORS[item.rarita] ?? '#888', background: `${RARITY_COLORS[item.rarita] ?? '#888'}18`, border: `1px solid ${RARITY_COLORS[item.rarita] ?? '#888'}40`, borderRadius: 4, padding: '1px 6px' }}>
                                 {RARITY_NAMES[item.rarita] ?? item.rarita}
                               </span>
-                              {nextRarity && isPrize && (
+                              {nextRarity && i < 10 && (
                                 <>
                                   <span style={{ color: 'rgba(241,235,255,0.3)', fontSize: 8 }}>→</span>
                                   <span style={{ fontFamily: FF.label, fontSize: 8, color: RARITY_COLORS[nextRarity], background: `${RARITY_COLORS[nextRarity]}18`, border: `1px solid ${RARITY_COLORS[nextRarity]}40`, borderRadius: 4, padding: '1px 6px' }}>

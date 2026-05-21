@@ -213,15 +213,15 @@ export default function PixelGrid({ chunks, userUid, onPixelSelect, selectedPixe
         ctx.lineWidth = 1.5;
         ctx.strokeRect(sx + 0.5, sy + 0.5, ps - 2, ps - 2);
 
-        // Corona piccola al centro quando la scala permette
-        if (ps >= 14) {
-          const fontSize = Math.min(Math.floor(ps * 0.55), 11);
+        // Corona al centro — visibile anche a zoom ridotto (soglia abbassata a 7px)
+        if (ps >= 7) {
+          const fontSize = Math.min(Math.floor(ps * 0.75), 14);
           ctx.fillStyle = MISSION_COLOR;
-          ctx.globalAlpha = 0.9;
-          ctx.font = `${fontSize}px serif`;
+          ctx.globalAlpha = 0.95;
+          ctx.font = `bold ${fontSize}px serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText('♛', sx + ps / 2 - 0.5, sy + ps / 2 - 0.5);
+          ctx.fillText('♛', sx + ps / 2, sy + ps / 2);
           ctx.globalAlpha = 1;
         }
       }

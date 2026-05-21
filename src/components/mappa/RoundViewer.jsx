@@ -7,6 +7,42 @@ import { C, FF } from '@/app/gioco/_redesign/_shared';
 
 const DIFFICULTY_LEVEL = { easy: 3, medium: 12, hard: 35, expert: 55 };
 
+// Schema rarità per il deck CPU basato sulla difficoltà del territorio
+// Prime 3 waifu = quelle che verranno scelte dalla pick phase (rarità alta)
+// Ultime 2 = "filler" a tema (rarità inferiore)
+const CPU_DECK_PLAN = {
+  easy:    { combat: ['comune','comune','raro'],             filler: ['raro','comune']      },
+  medium:  { combat: ['raro','raro','raro'],                 filler: ['raro','comune']      },
+  hard:    { combat: ['epico','epico','leggendario'],        filler: ['raro','epico']       },
+  extreme: { combat: ['leggendario','leggendario','immersivo'], filler: ['epico','leggendario'] },
+};
+
+function buildCPUDifficultyDeck(candidates, difficulty) {
+  const plan = CPU_DECK_PLAN[difficulty] ?? CPU_DECK_PLAN.easy;
+  const used = new Set();
+  const shuffle = a => [...a].sort(() => Math.random() - 0.5);
+
+  const pickOne = (rarity) => {
+    const avail = candidates.filter(w => w.rarita === rarity && !used.has(w.id));
+    const pool = avail.length > 0 ? avail : candidates.filter(w => !used.has(w.id));
+    const w = shuffle(pool)[0] ?? null;
+    if (w) used.add(w.id);
+    return w;
+  };
+
+  const deck = [];
+  for (const r of plan.combat) { const w = pickOne(r); if (w) deck.push(w); }
+  for (const r of plan.filler)  { const w = pickOne(r); if (w) deck.push(w); }
+  // Pad if needed (catalogo scarso)
+  while (deck.length < 5) {
+    const extra = shuffle(candidates.filter(w => !used.has(w.id)));
+    if (!extra.length) break;
+    used.add(extra[0].id);
+    deck.push(extra[0]);
+  }
+  return deck.slice(0, 5);
+}
+
 /**
  * Fasi:
  *   'pre'    → schermata punteggio Bo3 + bottone "Combatti"
@@ -93,12 +129,15 @@ export default function RoundViewer({ battle, waifuCat, collezione, profilo, onR
       if (resolved.length === 5) pool = resolved;
     }
     if (!pool.length) {
-      // Fallback casuale (pixel CPU senza team specificato)
+      // Per CPU: deck basato sulla difficoltà del territorio
       let candidates = [...waifuCat];
-      if (isCPUDefender && !hasHardPass) {
-        candidates = candidates.filter(w => !w.hot);
+      if (!hasHardPass) candidates = candidates.filter(w => !w.hot);
+
+      if (isCPUDefender) {
+        pool = buildCPUDifficultyDeck(candidates, battle?.cpuDifficulty ?? 'easy').map(patchW).filter(Boolean);
+      } else {
+        pool = candidates.sort(() => Math.random() - 0.5).slice(0, 5).map(patchW).filter(Boolean);
       }
-      pool = candidates.sort(() => Math.random() - 0.5).slice(0, 5).map(patchW).filter(Boolean);
     }
 
     // Per pixel CPU: rimuovi waifu hot se player non ha Pass Hard
@@ -172,7 +211,7 @@ export default function RoundViewer({ battle, waifuCat, collezione, profilo, onR
         roster5E={roster5E}
         isCpu={true}
         isPvP={false}
-        forcedEnemyIndices={battle?.isRaid ? [0] : []}
+        forcedEnemyIndices={battle?.isRaid ? [0] : (battle?.defenderUid === 'CPU' && (!battle?.defenderTeam?.length) ? [0, 1, 2] : [])}
         battleCtx={{
           nomeImperoAvversario: battle?.isRaid ? (battle?.name ?? 'Waifu Raid') : (battle?.defenderUid === 'CPU' ? 'CPU' : 'Avversario'),
           sonoAttaccante: true,

@@ -197,35 +197,46 @@ export default function RaidIslandPanel({ user, profilo, onClose, onBattle }) {
 
 // ── Tab Dettaglio ──────────────────────────────────────────────────────────────
 function TabDettaglio({ raid, hpPct, isActive, isCompleted, myParticipation, myPrize, myRankPos, canClaim, claimed, claiming, onBattle, onClaim }) {
+  // HP bar multicolore: verde→giallo→arancione→rosso
+  const hpBarColor = hpPct > 60 ? '#06d6a0' : hpPct > 30 ? '#f5c560' : hpPct > 10 ? '#f97316' : '#ef4444';
+
   return (
     <>
-      {/* Waifu Raid */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 20, alignItems: 'center' }}>
-        {raid.waifuImage && (
-          <img src={ikUrl(raid.waifuImage, 'card')} alt={raid.waifuNome}
-            style={{ width: 80, height: 110, objectFit: 'cover', objectPosition: 'top', borderRadius: 10, border: '2px solid rgba(236,72,153,0.4)' }} />
-        )}
-        <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: FF.display, fontSize: 16, color: '#fff', fontWeight: 700, marginBottom: 4 }}>{raid.waifuNome}</div>
-          <div style={{ fontFamily: FF.label, fontSize: 10, color: 'rgba(236,72,153,0.7)', marginBottom: 8 }}>WAIFU RAID</div>
-          <div style={{ fontFamily: FF.mono, fontSize: 13, color: isActive ? '#ff5b6c' : '#06d6a0' }}>
-            {Math.max(0, raid.currentHp).toLocaleString()} / {raid.totalHp.toLocaleString()} HP
-          </div>
-        </div>
+      {/* Nome waifu */}
+      <div style={{ textAlign: 'center', marginBottom: 12 }}>
+        <div style={{ fontFamily: FF.display, fontSize: 18, color: '#fff', fontWeight: 800 }}>{raid.waifuNome}</div>
       </div>
 
-      {/* HP bar */}
-      <div style={{ height: 10, background: 'rgba(255,255,255,0.1)', borderRadius: 5, marginBottom: 8 }}>
-        <div style={{ height: '100%', width: `${hpPct}%`, background: hpPct > 30 ? '#ff5b6c' : '#f59e0b', borderRadius: 5, transition: 'width 0.5s' }} />
+      {/* Foto grande centrata */}
+      {raid.waifuImage && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+          <img src={ikUrl(raid.waifuImage, 'card')} alt={raid.waifuNome}
+            style={{ width: 140, height: 196, objectFit: 'cover', objectPosition: 'top', borderRadius: 14, border: '2px solid rgba(236,72,153,0.5)', boxShadow: '0 8px 32px rgba(236,72,153,0.3)' }} />
+        </div>
+      )}
+
+      {/* Label */}
+      <div style={{ textAlign: 'center', fontFamily: FF.label, fontSize: 10, color: 'rgba(236,72,153,0.7)', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 12 }}>
+        WAIFU RAID
+      </div>
+
+      {/* HP numbers */}
+      <div style={{ textAlign: 'center', fontFamily: FF.mono, fontSize: 16, fontWeight: 700, color: hpBarColor, marginBottom: 8 }}>
+        {Math.max(0, raid.currentHp).toLocaleString()} <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>/</span> {raid.totalHp.toLocaleString()} HP
+      </div>
+
+      {/* HP bar multicolore */}
+      <div style={{ height: 12, background: 'rgba(255,255,255,0.08)', borderRadius: 6, marginBottom: 14, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${hpPct}%`, background: `linear-gradient(90deg, ${hpBarColor}cc, ${hpBarColor})`, borderRadius: 6, transition: 'width 0.5s, background 0.5s' }} />
       </div>
 
       {/* Status + countdown */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, alignItems: 'center' }}>
-        <div style={{ fontFamily: FF.label, fontSize: 10, color: isActive ? '#06d6a0' : isCompleted ? '#f59e0b' : 'rgba(255,255,255,0.4)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div style={{ fontFamily: FF.label, fontSize: 10, color: isActive ? '#06d6a0' : isCompleted ? '#f59e0b' : 'rgba(255,255,255,0.4)', letterSpacing: '0.1em' }}>
           {isActive ? '🟢 RAID ATTIVO' : isCompleted ? '✅ COMPLETATO' : '❌ SCADUTO'}
         </div>
         {isActive && raid.endsAt && (
-          <div style={{ fontFamily: FF.mono, fontSize: 12, color: '#f59e0b' }}>
+          <div style={{ fontFamily: FF.mono, fontSize: 13, color: '#f59e0b', fontVariantNumeric: 'tabular-nums' }}>
             ⏱ <Countdown endsAt={raid.endsAt} />
           </div>
         )}
@@ -265,14 +276,20 @@ function TabDettaglio({ raid, hpPct, isActive, isCompleted, myParticipation, myP
 
       {/* CTA */}
       {isActive && (
-        <button onClick={() => onBattle?.(raid)} style={{
-          width: '100%', padding: '14px',
-          background: 'linear-gradient(135deg,#ec4899,#a855f7)', border: 'none',
-          borderRadius: 12, color: '#fff', fontFamily: FF.label, fontSize: 12,
-          fontWeight: 700, cursor: 'pointer', marginBottom: 10, letterSpacing: '0.1em',
-        }}>
-          ⚔ COMBATTI
-        </button>
+        <>
+          <button onClick={() => onBattle?.(raid)} style={{
+            width: '100%', padding: '14px',
+            background: 'linear-gradient(135deg,#ec4899,#a855f7)', border: 'none',
+            borderRadius: 12, color: '#fff', fontFamily: FF.label, fontSize: 13,
+            fontWeight: 700, cursor: 'pointer', marginBottom: 10, letterSpacing: '0.1em',
+            boxShadow: '0 4px 20px rgba(236,72,153,0.4)',
+          }}>
+            ⚔ COMBATTI
+          </button>
+          <div style={{ textAlign: 'center', fontFamily: FF.label, fontSize: 10, color: 'rgba(241,235,255,0.4)', lineHeight: 1.6, marginBottom: 16, letterSpacing: '0.05em' }}>
+            Porta gli HP della Waifu Raid a 0 collaborando con altri giocatori per sbloccare le ricompense. Ogni vittoria in battaglia toglie HP, ogni sconfitta ne aggiunge.
+          </div>
+        </>
       )}
 
       {canClaim && !claimed && (

@@ -16,6 +16,7 @@ import TeamDifesaEditor from '@/components/difesa/TeamDifesaEditor';
 import MappaInfoModal from '@/components/mappa/MappaInfoModal';
 import TerritoryConquestAnimation from '@/components/mappa/TerritoryConquestAnimation';
 import KissesIcon from '@/components/KissesIcon';
+import { ikUrl } from '@/lib/imagekitUrl';
 
 export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat, mosseCat = [], onRaidBattle, raidBattleCtx, onRaidBattleEnd }) {
   const [chunks, setChunks] = useState(null);
@@ -114,11 +115,21 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat,
     } catch { /* ignora */ }
   }, [user]);
 
+  const loadRaidInfo = useCallback(async () => {
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/raid/current', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      setRaidInfo(data.raid ?? null);
+    } catch { /* ignora */ }
+  }, [user]);
+
   useEffect(() => {
     loadChunks();
     loadMyDefenseConfig();
     loadPendingOffers();
     loadActiveMission();
+    loadRaidInfo();
     // Mostra tutorial se pixelCount è 0 o non inizializzato
     const hasNoPixels = (profilo?.pixelCount ?? 0) === 0;
     if (hasNoPixels) setShowTutorial(true);
@@ -419,23 +430,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat,
       </div>
 
       {/* Raid Island widget — SOPRA la mappa */}
-      <div
-        onClick={() => setShowRaidPanel(true)}
-        style={{
-          margin: '0 16px 10px', padding: '10px 16px',
-          background: 'linear-gradient(135deg, rgba(236,72,153,0.12), rgba(10,7,38,0.9))',
-          border: '1px solid rgba(236,72,153,0.35)', borderRadius: 12, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 12,
-        }}>
-        <div style={{ fontSize: 24 }}>⚔</div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Unbounded',sans-serif", fontSize: 12, color: '#ec4899', fontWeight: 800 }}>Raid Island</div>
-          <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 9, color: 'rgba(241,235,255,0.5)', letterSpacing: '0.12em' }}>
-            Tocca per il Raid orario cooperativo ⚔
-          </div>
-        </div>
-        <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 10, color: 'rgba(236,72,153,0.7)' }}>→</div>
-      </div>
+      <RaidWidget raid={raidInfo} onClick={() => setShowRaidPanel(true)} />
 
       {/* Canvas mappa */}
       <div style={{ height: 380 }}>
@@ -492,6 +487,7 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat,
         passiveRate={swapConfig?.passiveKissesRate ?? 1}
         user={user}
         onKissesUpdate={(earned) => setProfilo(p => ({ ...p, kisses: (p.kisses ?? 0) + earned }))}
+        onClaimAt={(ts) => setProfilo(p => ({ ...p, lastKissesClaimAt: { toMillis: () => ts, seconds: ts / 1000 } }))}
       />
 
       {/* Pixel detail popup */}
@@ -629,6 +625,73 @@ export function MappaPixelTab({ user, profilo, setProfilo, collezione, waifuCat,
         />
       )}
 
+    </div>
+  );
+}
+
+// ── Widget Raid Island sopra la mappa ─────────────────────────────────────────
+function RaidWidget({ raid, onClick }) {
+  const [countdown, setCountdown] = useState('');
+  useEffect(() => {
+    if (!raid?.endsAt) return;
+    const endsMs = new Date(raid.endsAt).getTime();
+    const tick = () => {
+      const diff = Math.max(0, endsMs - Date.now());
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setCountdown(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
+    };
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [raid?.endsAt]);
+
+  const hpPct = raid ? Math.max(0, (raid.currentHp / raid.totalHp) * 100) : 0;
+  const hpColor = hpPct > 60 ? '#06d6a0' : hpPct > 30 ? '#f59e0b' : hpPct > 10 ? '#f97316' : '#ef4444';
+
+  return (
+    <div onClick={onClick} style={{
+      margin: '0 16px 10px', padding: '10px 14px',
+      background: 'linear-gradient(135deg, rgba(236,72,153,0.12), rgba(10,7,38,0.9))',
+      border: '1px solid rgba(236,72,153,0.35)', borderRadius: 12, cursor: 'pointer',
+      display: 'flex', alignItems: 'center', gap: 10,
+    }}>
+      {/* Thumbnail waifu raid */}
+      {raid?.waifuImage ? (
+        <img src={ikUrl(raid.waifuImage, 'thumbnail')} alt={raid.waifuNome}
+          style={{ width: 38, height: 52, objectFit: 'cover', objectPosition: 'top', borderRadius: 6, border: '1px solid rgba(236,72,153,0.4)', flexShrink: 0 }} />
+      ) : (
+        <div style={{ fontSize: 22, flexShrink: 0 }}>⚔</div>
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: "'Unbounded',sans-serif", fontSize: 11, color: '#ec4899', fontWeight: 800, marginBottom: 2 }}>
+          {raid?.waifuNome ?? 'Raid Island'}
+        </div>
+        {raid ? (
+          <>
+            {/* HP bar */}
+            <div style={{ height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, marginBottom: 3, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${hpPct}%`, background: hpColor, borderRadius: 2, transition: 'width 0.5s' }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: hpColor }}>
+                {Math.max(0, raid.currentHp).toLocaleString()} / {raid.totalHp.toLocaleString()} HP
+              </div>
+              {countdown && (
+                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: 'rgba(245,158,11,0.8)', fontVariantNumeric: 'tabular-nums' }}>
+                  ⏱ {countdown}
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 9, color: 'rgba(241,235,255,0.5)', letterSpacing: '0.12em' }}>
+            Tocca per il Raid orario cooperativo ⚔
+          </div>
+        )}
+      </div>
+      <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 10, color: 'rgba(236,72,153,0.7)', flexShrink: 0 }}>→</div>
     </div>
   );
 }

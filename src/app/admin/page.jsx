@@ -164,7 +164,7 @@ export default function AdminPage() {
         {tab === 'config' && <ConfigTab waifu={waifu} ricarica={carica} flash={flash} />}
         {tab === 'prezzi'    && <PrezziTab flash={flash} user={user} />}
         {tab === 'missioni'  && <MissioniTab flash={flash} />}
-        {tab === 'classifica' && <PremioClassificaTab flash={flash} />}
+        {tab === 'classifica' && <PremioClassificaTab flash={flash} user={user} />}
         {tab === 'swap' && <SwapAdminTab flash={flash} user={user} waifu={waifu} />}
         {tab === 'mappa-debug' && <MappaDebugTab flash={flash} user={user} />}
       </div>
@@ -3197,10 +3197,12 @@ function MissioniTab({ flash }) {
 // ════════════════════════════════════════════════════════════════════
 // PREMIO CLASSIFICA TAB — configurazione premi settimanali per posizione
 // ════════════════════════════════════════════════════════════════════
-function PremioClassificaTab({ flash }) {
+function PremioClassificaTab({ flash, user }) {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [actionBusy, setActionBusy] = useState(null);
+  const [winners, setWinners] = useState(null);
 
   useEffect(() => {
     getPremiClassificaConfig().then(c => { setConfig(c); setLoading(false); });
@@ -3352,9 +3354,80 @@ function PremioClassificaTab({ flash }) {
         borderRadius: 10, fontSize: 10, color: 'rgba(108,240,224,0.5)',
         fontFamily: 'Orbitron', lineHeight: 1.8,
       }}>
-        ⏰ Reset automatico: ogni <strong style={{ color: 'rgba(108,240,224,0.7)' }}>lunedì alle 01:00 UTC</strong> via Vercel Cron Job.<br/>
-        L'endpoint <code style={{ color: 'rgba(108,240,224,0.7)' }}>/api/cron/reset-classifica</code> assegna i premi e azzera i punteggi settimanali.<br/>
-        Variabile ambiente richiesta: <code style={{ color: 'rgba(108,240,224,0.7)' }}>CRON_SECRET</code> (impostala nel dashboard Vercel).
+        ⏰ Reset automatico: ogni <strong style={{ color: 'rgba(108,240,224,0.7)' }}>lunedì alle 01:00 UTC</strong> via Vercel Cron Job.
+      </div>
+
+      {/* Azioni manuali classifica */}
+      <div style={{ marginTop: 32, padding: '20px', background: 'rgba(236,72,153,0.05)', border: '1px solid rgba(236,72,153,0.2)', borderRadius: 12 }}>
+        <div style={{ fontFamily: 'Cinzel,serif', fontSize: 15, color: '#ec4899', marginBottom: 16 }}>⚡ Azioni Manuali Classifica Territori</div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+          {/* Recupera vincitori */}
+          <button disabled={!!actionBusy} onClick={async () => {
+            setActionBusy('winners'); setWinners(null);
+            try {
+              const token = await user.getIdToken();
+              const res = await fetch('/api/admin/territory-ranking', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'winners' }) });
+              const data = await res.json();
+              if (data.success) { setWinners(data.winners); flash(`✅ Classifica caricata: ${data.total} giocatori`); }
+              else flash('❌ ' + data.error);
+            } catch (e) { flash('❌ ' + e.message); }
+            setActionBusy(null);
+          }} style={{ padding: '10px 18px', background: actionBusy === 'winners' ? 'rgba(108,240,224,0.2)' : 'rgba(108,240,224,0.1)', border: '1px solid rgba(108,240,224,0.3)', borderRadius: 8, color: '#6cf0e0', fontFamily: 'Orbitron', fontSize: 10, cursor: 'pointer' }}>
+            {actionBusy === 'winners' ? '⏳…' : '👁 Recupera Vincitori'}
+          </button>
+          {/* Chiudi e premia */}
+          <button disabled={!!actionBusy} onClick={async () => {
+            if (!confirm('Assegna premi e azzera classifica? Operazione irreversibile.')) return;
+            setActionBusy('close');
+            try {
+              const token = await user.getIdToken();
+              const res = await fetch('/api/admin/territory-ranking', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'close' }) });
+              const data = await res.json();
+              if (data.success) flash(`✅ Premi assegnati a ${data.assegnati} giocatori, ${data.azzerati} punteggi azzerati`);
+              else flash('❌ ' + data.error);
+            } catch (e) { flash('❌ ' + e.message); }
+            setActionBusy(null);
+          }} style={{ padding: '10px 18px', background: actionBusy === 'close' ? 'rgba(245,158,11,0.2)' : 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, color: '#f59e0b', fontFamily: 'Orbitron', fontSize: 10, cursor: 'pointer' }}>
+            {actionBusy === 'close' ? '⏳…' : '🏆 Chiudi e Assegna Premi'}
+          </button>
+          {/* Reset solo punteggi */}
+          <button disabled={!!actionBusy} onClick={async () => {
+            if (!confirm('Reset punteggi settimanali SENZA assegnare premi. Continuare?')) return;
+            setActionBusy('reset');
+            try {
+              const token = await user.getIdToken();
+              const res = await fetch('/api/admin/territory-ranking', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reset' }) });
+              const data = await res.json();
+              if (data.success) flash(`✅ ${data.azzerati} punteggi azzerati`);
+              else flash('❌ ' + data.error);
+            } catch (e) { flash('❌ ' + e.message); }
+            setActionBusy(null);
+          }} style={{ padding: '10px 18px', background: actionBusy === 'reset' ? 'rgba(239,68,68,0.2)' : 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444', fontFamily: 'Orbitron', fontSize: 10, cursor: 'pointer' }}>
+            {actionBusy === 'reset' ? '⏳…' : '🔄 Reset Senza Premi'}
+          </button>
+        </div>
+
+        {/* Tabella vincitori */}
+        {winners && winners.length > 0 && (
+          <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(245,230,211,0.6)', padding: '8px 12px', letterSpacing: 1, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              TOP 10 VINCITORI ATTUALI
+            </div>
+            {winners.map((w, i) => (
+              <div key={w.uid} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderBottom: i < winners.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none', background: i < 3 ? 'rgba(245,197,96,0.04)' : 'transparent' }}>
+                <div style={{ width: 24, textAlign: 'center', fontFamily: 'Orbitron', fontSize: 11, color: i === 0 ? '#ffc861' : i === 1 ? '#b0bec5' : i === 2 ? '#cd7f32' : 'rgba(255,255,255,0.4)' }}>{i + 1}</div>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: w.coloreImpero ?? '#888', flexShrink: 0 }} />
+                <div style={{ flex: 1, fontFamily: 'Orbitron', fontSize: 10, color: '#f5e6d3' }}>{w.nomeImpero}</div>
+                <div style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(108,240,224,0.7)' }}>{w.pixelCount} px</div>
+                <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(245,158,11,0.7)', textAlign: 'right' }}>
+                  {w.prize?.energia > 0 && <span>⚡{w.prize.energia} </span>}
+                  {w.prize?.bustineSfida > 0 && <span>🎴{w.prize.bustineSfida} </span>}
+                  {w.prize?.kisses > 0 && <span>💎{w.prize.kisses}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
