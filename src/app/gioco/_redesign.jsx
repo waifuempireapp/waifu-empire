@@ -76,10 +76,26 @@ export function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
   const popupImperoRef = useRef(null);
   const energiaMax    = TIMER.MAX_ENERGIA;
 
-  // Carica URL colonna sonora da Firestore al mount
+  // Carica URL colonna sonora e avvia autoplay al login
   useEffect(() => {
     fetch('/api/admin/soundtrack').then(r => r.json()).then(d => {
-      if (d.url) { setSoundtrackUrl(d.url); const a = getAudio(); if (a) a.src = d.url; }
+      if (!d.url) return;
+      setSoundtrackUrl(d.url);
+      const a = getAudio();
+      if (!a) return;
+      a.src = d.url;
+      // Prova autoplay immediato (funziona se il browser lo permette)
+      a.play().then(() => setIsPlaying(true)).catch(() => {
+        // Browser ha bloccato l'autoplay (policy: richiede interazione utente).
+        // Ascolta il primo click/touch sull'intera pagina e avvia lì.
+        const startOnInteraction = () => {
+          a.play().then(() => setIsPlaying(true)).catch(() => {});
+          document.removeEventListener('click', startOnInteraction);
+          document.removeEventListener('touchstart', startOnInteraction);
+        };
+        document.addEventListener('click', startOnInteraction, { once: true });
+        document.addEventListener('touchstart', startOnInteraction, { once: true });
+      });
     }).catch(() => {});
   }, []);
 
