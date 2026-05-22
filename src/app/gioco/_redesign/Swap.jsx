@@ -127,12 +127,18 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
       // Aggiorna contatori voti in real-time (daily + total)
       setSwapStatus(prev => prev ? { ...prev, dailyVotes: (prev.dailyVotes ?? 0) + 1, votesRemaining: prev.votesRemaining != null ? Math.max(0, prev.votesRemaining - 1) : null } : prev);
       // Aggiorna totalVotes e daily_swap_votes nel profilo (visibili nel banner Home)
-      setProfilo(p => ({
-        ...p,
-        totalVotes: data.totalVotes ?? (p.totalVotes ?? 0) + 1,
-        swipeCount: data.swipeCount ?? (p.swipeCount ?? 0) + 1,
-        daily_swap_votes: (p.daily_swap_votes ?? 0) + 1,
-      }));
+      // Stesso controllo del server: se la data è cambiata, resetta a 1 (non incrementa il vecchio valore)
+      setProfilo(p => {
+        const todayItaly = new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Rome' });
+        const isNewDay = (p.daily_swap_date ?? '') !== todayItaly;
+        return {
+          ...p,
+          totalVotes: data.totalVotes ?? (p.totalVotes ?? 0) + 1,
+          swipeCount: data.swipeCount ?? (p.swipeCount ?? 0) + 1,
+          daily_swap_votes: isNewDay ? 1 : (p.daily_swap_votes ?? 0) + 1,
+          daily_swap_date: todayItaly,
+        };
+      });
 
       if (data.kissesEarned > 0) {
         setToast({ amount: data.kissesEarned, streakDays: data.streakDays, multiplier: data.multiplier });

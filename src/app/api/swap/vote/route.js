@@ -109,9 +109,17 @@ export async function POST(request) {
     };
     if (totalKisses > 0) userUpdate.kisses = FieldValue.increment(totalKisses);
     // Aggiorna contatore giornaliero (solo per utenti senza Swap Pass)
+    // Se la data è cambiata (nuovo giorno): resetta a 1 invece di incrementare
+    // Così si evita che il vecchio valore (es. 50) venga incrementato a 51
     if (!hasSwapPass) {
       userUpdate.daily_swap_date = todayKey;
-      userUpdate.daily_swap_votes = FieldValue.increment(1);
+      if (dailyVotesDate !== todayKey) {
+        // Nuovo giorno → primo voto del giorno: setta a 1
+        userUpdate.daily_swap_votes = 1;
+      } else {
+        // Stesso giorno → incrementa normalmente
+        userUpdate.daily_swap_votes = FieldValue.increment(1);
+      }
     }
 
     const voteRef = adminDb.collection('swap_votes').doc(`${uid}_${waifuId}`);
