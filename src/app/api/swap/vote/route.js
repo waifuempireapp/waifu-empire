@@ -53,27 +53,25 @@ export async function POST(request) {
 
     const userData = userSnap.exists ? userSnap.data() : {};
 
-    // Limite giornaliero per utenti senza Swap Pass
+    // Legge contatori giornalieri una volta sola (usati sia per il check limite che per il write)
     const hasSwapPass = !!(userData.swap_pass) && (!userData.swap_pass_expires_at || userData.swap_pass_expires_at.toMillis?.() > Date.now());
-    if (!hasSwapPass) {
-      const todayKeyCheck = dayKey();
-      const dailyVotesDate = userData.daily_swap_date ?? '';
-      const dailyVotes = dailyVotesDate === todayKeyCheck ? (userData.daily_swap_votes ?? 0) : 0;
-      if (dailyVotes >= dailyLimit) {
-        const resetAt = nextMidnightRome();
-        return NextResponse.json({ error: 'Limite giornaliero raggiunto', resetAt: resetAt.toISOString(), dailyLimit }, { status: 429 });
-      }
+    const todayKey = dayKey();
+    const dailyVotesDate = userData.daily_swap_date ?? '';
+    const isNewDay = dailyVotesDate !== todayKey;
+    // Se è un nuovo giorno i voti giornalieri ripartono da 0; altrimenti usa il valore salvato
+    const currentDailyVotes = isNewDay ? 0 : (userData.daily_swap_votes ?? 0);
+    const dailyVotesAfterThisVote = currentDailyVotes + 1; // voti dopo questo voto (per ads e aggiornamento)
+
+    // Limite giornaliero per utenti senza Swap Pass
+    if (!hasSwapPass && currentDailyVotes >= dailyLimit) {
+      const resetAt = nextMidnightRome();
+      return NextResponse.json({ error: 'Limite giornaliero raggiunto', resetAt: resetAt.toISOString(), dailyLimit }, { status: 429 });
     }
 
     const swipeCount = (userData.swipeCount ?? 0) + 1;
     const totalVotes = (userData.totalVotes ?? 0) + 1;
-    // Voti giornalieri per il calcolo pubblicità (reset ogni giorno)
-    const todayKeyForAd = dayKey();
-    const dailyDateForAd = userData.daily_swap_date ?? '';
-    const dailyVotesForAd = (dailyDateForAd === todayKeyForAd ? (userData.daily_swap_votes ?? 0) : 0) + 1;
 
     // Streak
-    const todayKey = dayKey();
     const lastSwipeDay = userData.lastSwipeDate ?? '';
     const yesterday = dayKey(Date.now() - 86400000);
     let streakDays = userData.streakDays ?? 1;
@@ -108,18 +106,14 @@ export async function POST(request) {
       lastSwipeDate: todayKey,
     };
     if (totalKisses > 0) userUpdate.kisses = FieldValue.increment(totalKisses);
-    // Aggiorna contatore giornaliero (solo per utenti senza Swap Pass)
-    // Se la data è cambiata (nuovo giorno): resetta a 1 invece di incrementare
-    // Così si evita che il vecchio valore (es. 50) venga incrementato a 51
-    if (!hasSwapPass) {
-      userUpdate.daily_swap_date = todayKey;
-      if (dailyVotesDate !== todayKey) {
-        // Nuovo giorno → primo voto del giorno: setta a 1
-        userUpdate.daily_swap_votes = 1;
-      } else {
-        // Stesso giorno → incrementa normalmente
-        userUpdate.daily_swap_votes = FieldValue.increment(1);
-      }
+    // Aggiorna contatore giornaliero (tutti gli utenti — Swap Pass users non hanno limite ma tracciamo comunque)
+    userUpdate.daily_swap_date = todayKey;
+    if (isNewDay) {
+      // Nuovo giorno: setta a 1 (non incrementa il vecchio valore)
+      userUpdate.daily_swap_votes = 1;
+    } else {
+      // Stesso giorno: incrementa
+      userUpdate.daily_swap_votes = FieldValue.increment(1);
     }
 
     const voteRef = adminDb.collection('swap_votes').doc(`${uid}_${waifuId}`);
@@ -142,8 +136,8 @@ export async function POST(request) {
       milestoneHit,
       rewardHit,
       hasSwapPass,
-      // Pubblicità ogni adInterval voti GIORNALIERI (non lifetime) per utenti senza Swap Pass
-      showAd: !hasSwapPass && dailyVotesForAd % adInterval === 0,
+      // Pubblicità ogni adInterval voti GIORNALIERI per utenti senza Swap Pass
+      showAd: !hasSwapPass && dailyVotesAfterThisVote % adInterval === 0,
     });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
