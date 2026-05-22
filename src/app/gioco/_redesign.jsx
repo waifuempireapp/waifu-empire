@@ -467,6 +467,18 @@ export function HomeTab({
                 {profilo.totalVotes} voti totali
               </div>
             )}
+            {!profilo?.hasSwapPass && !profilo?.swap_pass && (() => {
+              // Calcola voti giornalieri rimasti (resetta a mezzanotte italiana)
+              const todayKey = new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Rome' });
+              const dailyDate = profilo?.daily_swap_date ?? '';
+              const dailyUsed = dailyDate === todayKey ? (profilo?.daily_swap_votes ?? 0) : 0;
+              const remaining = Math.max(0, 50 - dailyUsed);
+              return (
+                <div style={{background: remaining === 0 ? 'rgba(255,91,108,0.12)' : 'rgba(108,240,224,0.08)', border:`1px solid ${remaining === 0 ? 'rgba(255,91,108,0.3)' : 'rgba(108,240,224,0.2)'}`, borderRadius:8, padding:'4px 10px', fontFamily:"'JetBrains Mono',monospace", fontSize:10, color: remaining === 0 ? '#ff5b6c' : '#6cf0e0'}}>
+                  {remaining > 0 ? `${remaining} voti rimasti oggi` : 'Limite giornaliero raggiunto'}
+                </div>
+              );
+            })()}
             {(profilo?.streakDays ?? 0) > 1 && (
               <div style={{background:'rgba(108,240,224,0.1)',border:'1px solid rgba(108,240,224,0.25)',borderRadius:8,padding:'4px 10px',fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:'#6cf0e0'}}>
                 🔥 {profilo.streakDays} giorni streak

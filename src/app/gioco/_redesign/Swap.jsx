@@ -124,8 +124,15 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
       }
       const data = await res.json();
 
-      // Aggiorna contatore voti in real-time
+      // Aggiorna contatori voti in real-time (daily + total)
       setSwapStatus(prev => prev ? { ...prev, dailyVotes: (prev.dailyVotes ?? 0) + 1, votesRemaining: prev.votesRemaining != null ? Math.max(0, prev.votesRemaining - 1) : null } : prev);
+      // Aggiorna totalVotes e daily_swap_votes nel profilo (visibili nel banner Home)
+      setProfilo(p => ({
+        ...p,
+        totalVotes: data.totalVotes ?? (p.totalVotes ?? 0) + 1,
+        swipeCount: data.swipeCount ?? (p.swipeCount ?? 0) + 1,
+        daily_swap_votes: (p.daily_swap_votes ?? 0) + 1,
+      }));
 
       if (data.kissesEarned > 0) {
         setToast({ amount: data.kissesEarned, streakDays: data.streakDays, multiplier: data.multiplier });
@@ -202,10 +209,10 @@ export function SwapTab({ user, profilo, setProfilo, setTab }) {
             <span style={{ fontFamily: FF.display, fontSize: 16, color: C.gold, fontWeight: 700 }}>{profilo?.kisses ?? 0}</span>
           </div>
           {swapStatus && (
-            <div style={{ fontFamily: FF.label, fontSize: 9, color: swapStatus.hasSwapPass ? 'rgba(6,214,160,0.8)' : 'rgba(241,235,255,0.4)', letterSpacing: '0.1em' }}>
+            <div style={{ fontFamily: FF.label, fontSize: 9, color: swapStatus.hasSwapPass ? 'rgba(6,214,160,0.8)' : swapStatus.votesRemaining === 0 ? 'rgba(255,91,108,0.8)' : 'rgba(241,235,255,0.4)', letterSpacing: '0.1em' }}>
               {swapStatus.hasSwapPass
-                ? `${swapStatus.dailyVotes} voti`
-                : `${swapStatus.dailyVotes}/${swapStatus.dailyLimit}`}
+                ? `♾ voti illimitati`
+                : `${swapStatus.dailyVotes}/${swapStatus.dailyLimit} voti oggi`}
             </div>
           )}
         </div>
@@ -375,7 +382,7 @@ function SwapLimitScreen({ setTab }) {
       <div style={{ fontSize: 56 }}>🚫</div>
       <div style={{ fontFamily: FF.display, fontSize: 20, color: C.sakura, fontWeight: 800 }}>Limite voti raggiunto</div>
       <div style={{ fontFamily: FF.body, fontSize: 13, color: 'rgba(241,235,255,0.6)', lineHeight: 1.6, maxWidth: 320 }}>
-        Hai usato tutti i 50 voti giornalieri. Il contatore si azzera a mezzanotte (UTC).
+        Hai usato tutti i 50 voti giornalieri. Il contatore si azzera a mezzanotte (ora italiana).
       </div>
       <div style={{ fontFamily: FF.mono, fontSize: 28, color: C.gold, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
         {countdown}
