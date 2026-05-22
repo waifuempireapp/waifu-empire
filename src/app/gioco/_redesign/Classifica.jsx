@@ -26,6 +26,7 @@ export function ClassificaTab({ user }) {
   const [classifica, setClassifica] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errore, setErrore] = useState(null);
+  const [visibili, setVisibili] = useState(20); // paginazione: mostra 20 alla volta
 
   useEffect(() => {
     getClassifica(200)
@@ -174,7 +175,7 @@ export function ClassificaTab({ user }) {
             <div style={{ minWidth: 38, textAlign: 'right' }}>Premio</div>
           </div>
           <div style={{ maxHeight: 440, overflowY: 'auto' }}>
-            {classifica.map((u, i) => {
+            {classifica.slice(0, visibili).map((u, i) => {
               const isMe = user && u.id === user.uid;
               const isTop3 = i < 3;
               const col = isTop3 ? podiumColors[i] : isMe ? C.gold : null;
@@ -227,6 +228,17 @@ export function ClassificaTab({ user }) {
               );
             })}
           </div>
+
+          {/* Paginazione: carica altri 20 */}
+          {visibili < classifica.length && (
+            <div style={{ padding: '12px 16px', textAlign: 'center', borderTop: `1px solid ${C.inkLine}` }}>
+              <button onClick={() => setVisibili(v => v + 20)} style={{
+                background: 'rgba(245,197,96,0.08)', border: `1px solid ${C.gold}40`,
+                borderRadius: 10, color: C.goldL, fontFamily: FF.label, fontSize: 10,
+                letterSpacing: '0.15em', textTransform: 'uppercase', padding: '8px 20px', cursor: 'pointer',
+              }}>Carica altri 20 ({classifica.length - visibili} rimanenti)</button>
+            </div>
+          )}
 
           {classifica.length === 0 && (
             <div style={{ padding: 40, textAlign: 'center' }}>

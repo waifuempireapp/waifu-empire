@@ -119,7 +119,7 @@ export default function MiniLeaderboard({ chunks, userUid, profilo, passiveRate,
                 +{accumulated} {lastEarned ? <span style={{ color: C.ok }}>✓ +{lastEarned} riscossi!</span> : null}
               </div>
               <div style={{ fontFamily: FF.label, fontSize: 8, letterSpacing: '0.12em', color: 'rgba(241,235,255,0.35)', textTransform: 'uppercase', marginTop: 1 }}>
-                +{pixelCount * rate}/ora · prossima ora tra {formatTime(nextIn)}
+                +{effectivePixels * rate}/ora · prossima ora tra {formatTime(nextIn)}
               </div>
             </div>
           </div>

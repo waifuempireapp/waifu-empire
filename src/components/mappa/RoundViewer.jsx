@@ -204,7 +204,7 @@ export default function RoundViewer({ battle, waifuCat, mosseCat = [], collezion
           Inizia battaglia!
         </div>
         <div style={{ fontFamily: FF.body, fontSize: 12, color: 'rgba(241,235,255,0.5)', marginBottom: 6 }}>
-          Difficoltà CPU: <span style={{ color: C.aqua, textTransform: 'uppercase' }}>{battle?.cpuDifficulty ?? 'easy'}</span>
+          Difficoltà CPU: <span style={{ color: C.aqua, textTransform: 'uppercase' }}>{(battle?.cpuDifficulty ?? 'easy').charAt(0).toUpperCase() + (battle?.cpuDifficulty ?? 'easy').slice(1)}</span>
         </div>
         <div style={{ display: 'flex', gap: 32, marginBottom: 40 }}>
           <div style={{ textAlign: 'center' }}>

@@ -24,8 +24,8 @@ export async function GET(request) {
       (userData.swap_pass_expires_at.toMillis?.() ?? 0) > Date.now()
     );
 
-    // Calcola voti giornalieri (reset lazy se data diversa da oggi)
-    const todayKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD UTC
+    // Calcola voti giornalieri (reset lazy se data diversa da oggi — usa orario italiano)
+    const todayKey = new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Rome' }); // YYYY-MM-DD italiano
     const dailyDate = userData.daily_swap_date ?? '';
     const dailyVotes = dailyDate === todayKey ? (userData.daily_swap_votes ?? 0) : 0;
 

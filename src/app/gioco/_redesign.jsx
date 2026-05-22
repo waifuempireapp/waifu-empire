@@ -56,15 +56,39 @@ export function SakuraPetals() {
 // =====================================================================
 // HEADER
 // =====================================================================
+// Singleton audio player per la colonna sonora
+let _audioEl = null;
+function getAudio() {
+  if (typeof window === 'undefined') return null;
+  if (!_audioEl) { _audioEl = new Audio(); _audioEl.loop = true; _audioEl.volume = 0.35; }
+  return _audioEl;
+}
+
 export function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
   const [popupEnergia, setPopupEnergia] = useState(false);
   const [popupImpero, setPopupImpero] = useState(false);
   const [tempoRefill, setTempoRefill] = useState('');
+  const [soundtrackUrl, setSoundtrackUrl] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
   const energiaRef    = useRef(null);
   const popupRef      = useRef(null);
   const imperoRef     = useRef(null);
   const popupImperoRef = useRef(null);
   const energiaMax    = TIMER.MAX_ENERGIA;
+
+  // Carica URL colonna sonora da Firestore al mount
+  useEffect(() => {
+    fetch('/api/admin/soundtrack').then(r => r.json()).then(d => {
+      if (d.url) { setSoundtrackUrl(d.url); const a = getAudio(); if (a) a.src = d.url; }
+    }).catch(() => {});
+  }, []);
+
+  const toggleSoundtrack = () => {
+    const a = getAudio();
+    if (!a || !soundtrackUrl) return;
+    if (isPlaying) { a.pause(); setIsPlaying(false); }
+    else { a.play().then(() => setIsPlaying(true)).catch(() => {}); }
+  };
   const energiaAttuale = profilo.energia ?? 0;
   const energiaPiena  = energiaAttuale >= energiaMax;
   const colore        = profilo.coloreImpero;
@@ -144,6 +168,11 @@ export function Header({ profilo, isAdmin, onLogout, setProfilo, user }) {
                 <a href="/admin">
                   <BtnDecorato variant="secondary" size="sm" style={{ width: '100%' }}>⚙ ADMIN</BtnDecorato>
                 </a>
+              )}
+              {soundtrackUrl && (
+                <BtnDecorato variant="secondary" size="sm" onClick={toggleSoundtrack}>
+                  {isPlaying ? '⏸ Soundtrack' : '▶ Soundtrack'}
+                </BtnDecorato>
               )}
               <BtnDecorato variant="danger" size="sm" onClick={() => { setPopupImpero(false); onLogout(); }}>
                 ESCI
@@ -853,6 +882,7 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
   const [unclaimedMaps, setUnclaimedMaps]   = useState([]); // missioni mappa scadute non riscusse
   const [claimingRaid, setClaimingRaid] = useState(null);   // eventId del raid in claim
   const [claimingMap, setClaimingMap]   = useState(null);   // missionId in claim
+  const [claimToast, setClaimToast]     = useState(null);   // toast notifica claim
   const [claimedRaidIds, setClaimedRaidIds] = useState(new Set());
   const [claimedMapIds, setClaimedMapIds]   = useState(new Set());
   const [timerGiorn, setTimerGiorn] = useState('');
@@ -1035,7 +1065,10 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
           const token = await user.getIdToken();
           const res = await fetch('/api/raid/claim', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ eventId: raidInfo.id }) });
           const data = await res.json();
-          if (data.success || data.alreadyClaimed) setRaidClaimed(true);
+          if (data.success) {
+            setRaidClaimed(true);
+            setProfilo(p => ({ ...p, kisses: (p.kisses ?? 0) + (data.kisses ?? 0), energia: (p.energia ?? 0) + (data.energia ?? 0) }));
+          } else if (data.alreadyClaimed) setRaidClaimed(true);
         }
         // Claim raid passati
         for (const u of unclaimedRaids) {
@@ -1043,7 +1076,10 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
             const token = await user.getIdToken();
             const res = await fetch('/api/raid/claim', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ eventId: u.raidInfo.id }) });
             const data = await res.json();
-            if (data.success || data.alreadyClaimed) setClaimedRaidIds(prev => new Set([...prev, u.raidInfo.id]));
+            if (data.success) {
+              setClaimedRaidIds(prev => new Set([...prev, u.raidInfo.id]));
+              setProfilo(p => ({ ...p, kisses: (p.kisses ?? 0) + (data.kisses ?? 0), energia: (p.energia ?? 0) + (data.energia ?? 0) }));
+            } else if (data.alreadyClaimed) setClaimedRaidIds(prev => new Set([...prev, u.raidInfo.id]));
           }
         }
       }
@@ -1056,7 +1092,8 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
           const token = await user.getIdToken();
           const res = await fetch('/api/map-missions/claim', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ missionId: mId }) });
           const data = await res.json();
-          if (data.success || data.alreadyClaimed) { setMapClaimed(true); setClaimedMapIds(prev => new Set([...prev, mId])); }
+          if (data.success) { setMapClaimed(true); setClaimedMapIds(prev => new Set([...prev, mId])); if (data.kisses > 0) setProfilo(p => ({ ...p, kisses: (p.kisses ?? 0) + data.kisses })); }
+          else if (data.alreadyClaimed) { setMapClaimed(true); setClaimedMapIds(prev => new Set([...prev, mId])); }
         }
         // Claim missioni mappa passate
         for (const { missionId, mission } of unclaimedMaps) {
@@ -1065,7 +1102,8 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
             const token = await user.getIdToken();
             const res = await fetch('/api/map-missions/claim', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ missionId }) });
             const data = await res.json();
-            if (data.success || data.alreadyClaimed) setClaimedMapIds(prev => new Set([...prev, missionId]));
+            if (data.success) { setClaimedMapIds(prev => new Set([...prev, missionId])); if (data.kisses > 0) setProfilo(p => ({ ...p, kisses: (p.kisses ?? 0) + data.kisses })); }
+            else if (data.alreadyClaimed) setClaimedMapIds(prev => new Set([...prev, missionId]));
           }
         }
       }
@@ -1091,9 +1129,11 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
           </button>
           <button className={`missioni-tab${tabAttiva==='raid'?' missioni-tab--active':''}`} onClick={()=>{setTabAttiva('raid');setSubTab('incorso');}}>
             ⚔ Raid Waifu
+            {((raidPart?.damageDealt > 0 && !raidPart?.claimed && raidInfo?.status !== 'active' && !raidClaimed) || unclaimedRaids.length > 0) && <span className="missioni-tab__badge">{unclaimedRaids.length + ((raidPart?.damageDealt > 0 && !raidPart?.claimed && raidInfo?.status !== 'active' && !raidClaimed) ? 1 : 0)}</span>}
           </button>
           <button className={`missioni-tab${tabAttiva==='mappa'?' missioni-tab--active':''}`} onClick={()=>{setTabAttiva('mappa');setSubTab('incorso');}}>
             🗺 Mappa
+            {(unclaimedMaps.filter(u => !claimedMapIds.has(u.missionId)).length + (mapMission && !mapClaimed && !claimedMapIds.has(mapMission.missionId || mapMission.id) && mapMission.endsAt && (mapMission.endsAt.toMillis?.() ?? mapMission.endsAt) < Date.now() ? 1 : 0)) > 0 && <span className="missioni-tab__badge">{unclaimedMaps.filter(u => !claimedMapIds.has(u.missionId)).length + (mapMission && !mapClaimed && !claimedMapIds.has(mapMission.missionId || mapMission.id) && mapMission.endsAt && (mapMission.endsAt.toMillis?.() ?? mapMission.endsAt) < Date.now() ? 1 : 0)}</span>}
           </button>
         </div>
 
@@ -1222,11 +1262,14 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
                           if (data.success) {
                             setClaimedRaidIds(prev => new Set([...prev, eventId]));
                             if (eventId === raidInfo?.id) setRaidClaimed(true);
-                            alert(`✅ +${data.kisses} 💋, +${data.energia} ⚡! Pos. #${pos}`);
+                            // Aggiorna profilo in real-time
+                            if (data.kisses > 0 || data.energia > 0) setProfilo(p => ({ ...p, kisses: (p.kisses ?? 0) + (data.kisses ?? 0), energia: (p.energia ?? 0) + (data.energia ?? 0) }));
+                            setClaimToast({ message: `+${data.kisses} Kisses!`, kisses: data.kisses, energia: data.energia });
+                            setTimeout(() => setClaimToast(null), 3000);
                           } else if (data.alreadyClaimed) {
                             setClaimedRaidIds(prev => new Set([...prev, eventId]));
-                          } else alert(data.error);
-                        } catch (e) { alert(e.message); }
+                          } else { setClaimToast({ message: data.error }); setTimeout(() => setClaimToast(null), 3000); }
+                        } catch (e) { setClaimToast({ message: e.message }); setTimeout(() => setClaimToast(null), 3000); }
                         setClaimingRaid(null);
                       }}>
                       {claimingRaid === eventId ? '⏳…' : '🎁 RISCUOTI'}
@@ -1362,9 +1405,14 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
                           if (data.success || data.alreadyClaimed) {
                             setClaimedMapIds(prev => new Set([...prev, mId]));
                             if (mId === (mapMission?.missionId || mapMission?.id)) setMapClaimed(true);
-                            if (data.success && data.kisses > 0) alert(`✅ +${data.kisses} Kisses! (${data.pixelsOwned} pixel posseduti)`);
-                          } else alert(data.error);
-                        } catch (e) { alert(e.message); }
+                            if (data.success && data.kisses > 0) {
+                              // Aggiorna kisses in real-time
+                              setProfilo(p => ({ ...p, kisses: (p.kisses ?? 0) + data.kisses }));
+                              setClaimToast({ message: `+${data.kisses} Kisses!`, kisses: data.kisses, energia: 0 });
+                              setTimeout(() => setClaimToast(null), 3000);
+                            }
+                          } else { setClaimToast({ message: data.error }); setTimeout(() => setClaimToast(null), 3000); }
+                        } catch (e) { setClaimToast({ message: e.message }); setTimeout(() => setClaimToast(null), 3000); }
                         setClaimingMap(null);
                       }}>
                       {claimingMap === mId ? '⏳…' : `Riscuoti (max ${(mission.pixels?.length ?? 4) * (mission.rewardPerPixel ?? 100)} 💋)`}
@@ -1394,6 +1442,13 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
 
         </div>
       </div>
+      {claimToast && (
+        <div style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 400, background: 'rgba(10,7,38,0.98)', border: '1px solid rgba(245,197,96,0.4)', borderRadius: 14, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 8px 32px rgba(3,2,12,0.6)', whiteSpace: 'nowrap' }}>
+          {claimToast.energia > 0 && <span style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 16, color: '#06d6a0', fontWeight: 700 }}>+{claimToast.energia} ⚡</span>}
+          {claimToast.kisses > 0 && <span style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 16, color: '#f5c560', fontWeight: 700 }}>+{claimToast.kisses} 💋</span>}
+          {claimToast.message && !claimToast.kisses && !claimToast.energia && <span style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 13, color: '#06d6a0' }}>{claimToast.message}</span>}
+        </div>
+      )}
     </div>
   );
 }

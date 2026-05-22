@@ -31,18 +31,38 @@ export async function POST(request) {
     // Il deck del raid = difensore
     const defenderTeam = (raid.deck || []).slice(0, 5);
 
+    // Difficoltà CPU raid: 60% Medium, 30% Hard, 10% Extreme
+    // Persiste in raid_participants per la durata del combattimento
+    const participantId = `${eventId}_${uid}`;
+    const partSnap = await adminDb.doc(`raid_participants/${participantId}`).get();
+    let cpuDifficulty = partSnap.exists ? (partSnap.data().cpuDifficulty ?? null) : null;
+
+    if (!cpuDifficulty) {
+      // Prima volta o dopo ogni combattimento: genera nuova difficoltà casuale
+      const r = Math.random();
+      if (r < 0.60)      cpuDifficulty = 'medium';
+      else if (r < 0.90) cpuDifficulty = 'hard';
+      else               cpuDifficulty = 'extreme';
+    }
+
+    // Salva la difficoltà assegnata nel documento partecipante (persiste tra sessioni)
+    await adminDb.doc(`raid_participants/${participantId}`).set(
+      { uid, eventId, cpuDifficulty },
+      { merge: true }
+    );
+
     // Crea territory_battles document (stesso schema del normale)
     const battleRef = adminDb.collection('territory_battles').doc();
     await battleRef.set({
       attackerUid: uid,
       defenderUid: 'RAID',
-      pixelX: -1,           // -1 = raid (non un pixel reale)
+      pixelX: -1,
       pixelY: -1,
-      raidEventId: eventId,  // riferimento al raid
+      raidEventId: eventId,
       isRaid: true,
       attackerTeam,
       defenderTeam,
-      cpuDifficulty: 'medium', // Raid ha sempre difficoltà media
+      cpuDifficulty, // Medium 60% / Hard 30% / Extreme 10%
       rounds: [],
       attackerWins: 0,
       defenderWins: 0,
@@ -54,7 +74,7 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       battleId: battleRef.id,
-      cpuDifficulty: 'medium',
+      cpuDifficulty,
       defenderTeam,
       raidEventId: eventId,
       waifuNome: raid.waifuNome ?? 'Waifu Raid',

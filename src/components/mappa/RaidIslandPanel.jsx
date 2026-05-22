@@ -277,7 +277,7 @@ function TabDettaglio({ raid, hpPct, isActive, isCompleted, myParticipation, myP
       {/* CTA */}
       {isActive && (
         <>
-          <button onClick={() => onBattle?.(raid)} style={{
+          <button onClick={() => onBattle?.({ ...raid, cpuDifficulty: myParticipation?.cpuDifficulty ?? 'medium' })} style={{
             width: '100%', padding: '14px',
             background: 'linear-gradient(135deg,#ec4899,#a855f7)', border: 'none',
             borderRadius: 12, color: '#fff', fontFamily: FF.label, fontSize: 13,

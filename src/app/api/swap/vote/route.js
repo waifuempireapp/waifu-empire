@@ -67,6 +67,10 @@ export async function POST(request) {
 
     const swipeCount = (userData.swipeCount ?? 0) + 1;
     const totalVotes = (userData.totalVotes ?? 0) + 1;
+    // Voti giornalieri per il calcolo pubblicità (reset ogni giorno)
+    const todayKeyForAd = dayKey();
+    const dailyDateForAd = userData.daily_swap_date ?? '';
+    const dailyVotesForAd = (dailyDateForAd === todayKeyForAd ? (userData.daily_swap_votes ?? 0) : 0) + 1;
 
     // Streak
     const todayKey = dayKey();
@@ -130,7 +134,8 @@ export async function POST(request) {
       milestoneHit,
       rewardHit,
       hasSwapPass,
-      showAd: !hasSwapPass && swipeCount % adInterval === 0,
+      // Pubblicità ogni adInterval voti GIORNALIERI (non lifetime) per utenti senza Swap Pass
+      showAd: !hasSwapPass && dailyVotesForAd % adInterval === 0,
     });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });

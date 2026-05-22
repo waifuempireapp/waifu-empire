@@ -59,6 +59,9 @@ export async function POST(request) {
     });
 
     const existing = partSnap.exists ? partSnap.data() : null;
+    // Genera nuova difficoltà CPU per il prossimo combattimento (60% M / 30% H / 10% E)
+    const r = Math.random();
+    const nextCpuDifficulty = r < 0.60 ? 'medium' : r < 0.90 ? 'hard' : 'extreme';
     tx.set(participantRef, {
       uid, eventId,
       nomeImpero,
@@ -66,6 +69,7 @@ export async function POST(request) {
       damageDealt: (existing?.damageDealt ?? 0) + dmgDealt,
       claimed: existing?.claimed ?? false,
       rewardClaimed: existing?.rewardClaimed ?? null,
+      cpuDifficulty: nextCpuDifficulty, // aggiornata dopo ogni combattimento
     }, { merge: true });
   });
 

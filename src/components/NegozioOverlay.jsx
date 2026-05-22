@@ -454,6 +454,74 @@ function SezioneRicaricaKisses({ tagli, user, kisses, onKissesUpdate }) {
   );
 }
 
+function SezioneSwapPass({ user, kisses, profilo, onKissesUpdate, prezziPass }) {
+  const [busy, setBusy]     = useState(null);
+  const [notif, setNotif]   = useState(null);
+  const swapPassKissesCost  = prezziPass?.swap_pass_kisses ?? 500;
+  const prezzoEur           = prezziPass?.swap_pass ?? 2.99;
+  const hasPass = !!(profilo?.hasSwapPass || profilo?.swap_pass);
+
+  const mostra = (msg, ok = true) => { setNotif({ msg, ok }); setTimeout(() => setNotif(null), 4000); };
+
+  const acquistaPayPal = async () => {
+    setBusy('paypal');
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/paypal/create-swap-subscription', {
+        method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (data.approveUrl) window.location.href = data.approveUrl;
+      else mostra(data.error || 'Errore PayPal', false);
+    } catch (e) { mostra(e.message, false); }
+    setBusy(null);
+  };
+
+  const acquistaKisses = async () => {
+    if ((kisses ?? 0) < swapPassKissesCost) { mostra(`Servono ${swapPassKissesCost} Kisses (ne hai ${kisses ?? 0})`, false); return; }
+    setBusy('kisses');
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/swap/subscribe-kisses', {
+        method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'subscribe' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        onKissesUpdate((kisses ?? 0) - swapPassKissesCost);
+        mostra('✅ Swap Pass attivato con Kisses!');
+      } else mostra(data.error || 'Errore', false);
+    } catch (e) { mostra(e.message, false); }
+    setBusy(null);
+  };
+
+  return (
+    <div style={{ background: 'linear-gradient(135deg, rgba(236,72,153,0.08), rgba(6,3,15,0.9))', border: '1px solid rgba(236,72,153,0.25)', borderRadius: 14, padding: '14px 16px' }}>
+      {notif && <div style={{ marginBottom: 10, padding: '8px 10px', background: notif.ok ? 'rgba(6,214,160,0.1)' : 'rgba(255,91,108,0.1)', border: `1px solid ${notif.ok ? 'rgba(6,214,160,0.3)' : 'rgba(255,91,108,0.3)'}`, borderRadius: 8, fontFamily: 'Fredoka', fontSize: 11, color: notif.ok ? '#06d6a0' : '#ff5b6c' }}>{notif.msg}</div>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div>
+          <div style={{ fontFamily: 'Orbitron', fontSize: 11, color: '#ec4899', fontWeight: 700 }}>Swap Pass</div>
+          <div style={{ fontFamily: 'Fredoka', fontSize: 10, color: 'rgba(238,232,220,0.5)', marginTop: 2 }}>Voti illimitati • No pubblicità • Rinnovo mensile</div>
+        </div>
+      </div>
+      {hasPass ? (
+        <div style={{ background: 'rgba(6,214,160,0.1)', border: '1px solid rgba(6,214,160,0.3)', borderRadius: 8, padding: '8px 12px', textAlign: 'center', fontFamily: 'Orbitron', fontSize: 9, color: '#06d6a0' }}>
+          ✓ SWAP PASS ATTIVO
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={acquistaPayPal} disabled={!!busy} style={{ flex: 1, padding: '10px 6px', background: busy === 'paypal' ? 'rgba(236,72,153,0.2)' : 'linear-gradient(135deg,#ec4899,#a855f7)', border: 'none', borderRadius: 9, color: '#fff', fontFamily: 'Orbitron', fontSize: 8, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', letterSpacing: '0.08em' }}>
+            {busy === 'paypal' ? '⏳' : `PayPal €${prezzoEur.toFixed(2)}/m`}
+          </button>
+          <button onClick={acquistaKisses} disabled={!!busy} style={{ flex: 1, padding: '10px 6px', background: busy === 'kisses' ? 'rgba(245,197,96,0.2)' : 'rgba(245,197,96,0.12)', border: '1px solid rgba(245,197,96,0.35)', borderRadius: 9, color: '#f5c560', fontFamily: 'Orbitron', fontSize: 8, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', letterSpacing: '0.08em' }}>
+            {busy === 'kisses' ? '⏳' : <><KissesIcon size={10} /> {swapPassKissesCost}/m</>}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function NegozioOverlay({ user, profilo: profiloInit, onKissesUpdate, onProfileUpdate, onClose }) {
   const [config, setConfig] = useState(null);
   const [prezziCfg, setPrezziCfg] = useState(null);
@@ -541,6 +609,17 @@ export default function NegozioOverlay({ user, profilo: profiloInit, onKissesUpd
                 onPassHard={handlePassHard}
                 onTradePass={handleTradePass}
                 onKissesUpdate={handleKisses}
+              />
+            </div>
+
+            <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(236,72,153,0.25), transparent)' }} />
+            <div>
+              <div style={{ fontFamily: 'Orbitron', fontSize: 10, letterSpacing: 3, color: 'rgba(238,232,220,0.4)', marginBottom: 12 }}>PASS MENSILI</div>
+              <SezioneSwapPass
+                user={user} kisses={kisses}
+                profilo={profiloInit}
+                onKissesUpdate={handleKisses}
+                prezziPass={prezziCfg}
               />
             </div>
 

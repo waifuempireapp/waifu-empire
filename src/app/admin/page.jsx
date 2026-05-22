@@ -138,6 +138,7 @@ export default function AdminPage() {
           { k: 'missioni', l: '🎯 Missioni' },
           { k: 'classifica', l: '🏆 Classifica' },
           { k: 'swap', l: '💋 Swap' },
+          { k: 'soundtrack', l: '🎵 Soundtrack' },
           { k: 'mappa-debug', l: '🗺️ Mappa Debug' },
         ].map(t => (
           <button key={t.k} onClick={() => setTab(t.k)} style={{
@@ -166,6 +167,7 @@ export default function AdminPage() {
         {tab === 'missioni'  && <MissioniTab flash={flash} />}
         {tab === 'classifica' && <PremioClassificaTab flash={flash} user={user} />}
         {tab === 'swap' && <SwapAdminTab flash={flash} user={user} waifu={waifu} />}
+        {tab === 'soundtrack' && <SoundtrackTab flash={flash} user={user} />}
         {tab === 'mappa-debug' && <MappaDebugTab flash={flash} user={user} />}
       </div>
     </div>
@@ -4100,6 +4102,48 @@ function AssociaImmaginiTab({ waifu, ricarica, flash, user }) {
         })}
         {lista.length === 0 && <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 40, color: 'rgba(245,158,11,0.3)', fontFamily: 'Orbitron', fontSize: 11 }}>Nessuna waifu trovata</div>}
       </div>
+    </div>
+  );
+}
+
+// ── SOUNDTRACK TAB ──────────────────────────────────────────────────────────
+function SoundtrackTab({ flash, user }) {
+  const [url, setUrl] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/admin/soundtrack').then(r => r.json()).then(d => {
+      setUrl(d.url ?? ''); setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  const salva = async () => {
+    setSaving(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/admin/soundtrack', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+      const data = await res.json();
+      if (data.success) flash('Soundtrack salvata!'); else flash('Errore: ' + data.error);
+    } catch (e) { flash('Errore: ' + e.message); }
+    setSaving(false);
+  };
+
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'rgba(245,230,211,0.5)', fontFamily: 'Orbitron' }}>Caricamento...</div>;
+
+  return (
+    <div style={{ padding: 20, maxWidth: 600, margin: '0 auto' }}>
+      <div style={{ fontFamily: 'Cinzel,serif', fontSize: 18, color: '#f5a623', marginBottom: 8 }}>Colonna Sonora</div>
+      <div style={{ fontFamily: 'Fredoka', fontSize: 12, color: 'rgba(245,230,211,0.5)', marginBottom: 16 }}>
+        URL diretto di un file audio (MP3/OGG) riprodotto in loop nel gioco. Deve essere accessibile pubblicamente.
+      </div>
+      <input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://example.com/music.mp3"
+        style={{ width: '100%', padding: '10px 14px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, color: '#f5e6d3', fontFamily: 'Fredoka', fontSize: 13, boxSizing: 'border-box', marginBottom: 12 }} />
+      {url && <audio src={url} controls style={{ display: 'block', width: '100%', marginBottom: 12 }} />}
+      <button onClick={salva} disabled={saving} style={{ padding: '10px 24px', background: saving ? 'rgba(245,158,11,0.3)' : 'linear-gradient(135deg,#f59e0b,#ec4899)', border: 'none', borderRadius: 10, color: '#000', fontFamily: 'Orbitron', fontSize: 10, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>
+        {saving ? 'Salvataggio...' : 'SALVA SOUNDTRACK'}
+      </button>
+      {url && <div style={{ marginTop: 12, fontFamily: 'Fredoka', fontSize: 11, color: 'rgba(6,214,160,0.7)' }}>Attiva: {url}</div>}
     </div>
   );
 }

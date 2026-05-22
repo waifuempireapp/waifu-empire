@@ -420,10 +420,13 @@ export default function PickPhase({ roster5P = [], roster5E = [], isCpu = true, 
   // CPU pesca silenziosamente PICKS_RICHIESTI waifu al mount.
   // forcedEnemyIndices: indici di roster5E sempre inclusi (es. [0] per la Waifu Raid).
   const [cpuPicks] = useState(() => {
+    const RARITY_SCORE = { immersivo: 5, leggendario: 4, epico: 3, raro: 2, comune: 1 };
     const forced = forcedEnemyIndices.filter(i => i >= 0 && i < roster5E.length);
-    const others = roster5E.map((_, i) => i).filter(i => !forced.includes(i));
-    const shuffled = [...others].sort(() => Math.random() - 0.5);
-    return [...forced, ...shuffled].slice(0, PICKS_RICHIESTI).map(i => roster5E[i]).filter(Boolean);
+    const forcedWaifu = forced.map(i => roster5E[i]).filter(Boolean);
+    const others = roster5E.filter((_, i) => !forced.includes(i));
+    // Sort others by rarity descending
+    const sortedOthers = [...others].sort((a, b) => (RARITY_SCORE[b?.rarita] ?? 1) - (RARITY_SCORE[a?.rarita] ?? 1));
+    return [...forcedWaifu, ...sortedOthers].slice(0, PICKS_RICHIESTI).filter(Boolean);
   });
 
   // Selezioni del giocatore 1: array di indici nel roster (in ordine di selezione → slot order).

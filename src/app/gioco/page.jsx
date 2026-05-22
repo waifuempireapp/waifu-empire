@@ -1,4 +1,4 @@
-﻿// src/app/gioco/page.jsx
+// src/app/gioco/page.jsx
 // REWORK COMPLETO UI/UX — Con separazione carta/baby-doll
 // Mobile: solo landscape con overlay rotazione
 'use client';
@@ -471,7 +471,7 @@ function _Header_UNUSED({ profilo, isAdmin, onLogout, setProfilo, user }) {
               display: 'flex', flexDirection: 'column', gap: 8,
             }}>
               <div style={{ fontFamily: 'Orbitron', fontSize: 8, letterSpacing: 2, color: profilo.coloreImpero, opacity: 0.6, marginBottom: 2 }}>
-                âšœ {profilo.nomeImpero}
+                ⚜ {profilo.nomeImpero}
               </div>
               {isAdmin && (
                 <a href="/admin" style={{ textDecoration: 'none' }}>
@@ -613,7 +613,7 @@ function PackBlock({ profilo }) {
       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,45,120,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,45,120,0.25)'; }}
     >
       <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-        <span style={{ fontSize: 14, color: '#ff2d78', filter: 'drop-shadow(0 0 6px #ff2d78)' }}>â—ˆ</span>
+        <span style={{ fontSize: 14, color: '#ff2d78', filter: 'drop-shadow(0 0 6px #ff2d78)' }}>◈</span>
         <span style={{
           fontFamily: 'Orbitron', fontSize: 13, fontWeight: 800,
           color: '#ff2d78', letterSpacing: 1,
@@ -799,7 +799,7 @@ function _HomeTab_UNUSED({ profilo, setProfilo, collezione, waifuCat, outfitCat,
           fontSize: 'clamp(22px, 5vw, 38px)', margin: 0,
         }}>BENTORNATA/O</h1>
         <div style={{ marginTop: 8 }}>
-          <Chip colore={profilo.coloreImpero} icon="âšœ" size="md">{profilo.nomeImpero}</Chip>
+          <Chip colore={profilo.coloreImpero} icon="⚜" size="md">{profilo.nomeImpero}</Chip>
         </div>
       </div>
 
@@ -850,7 +850,7 @@ function _HomeTab_UNUSED({ profilo, setProfilo, collezione, waifuCat, outfitCat,
         {[
           { icon: '👑', val: numWaifu,  label: 'WAIFU',   col: '#f5a623', subTab: 'waifu'  },
           { icon: '✦',  val: numOutfit, label: 'OUTFIT',  col: '#9b59ff', subTab: 'outfit' },
-          { icon: 'âšœ',  val: numPose,   label: 'POSE',    col: '#ff2d78', subTab: 'pose'   },
+          { icon: '⚜',  val: numPose,   label: 'POSE',    col: '#ff2d78', subTab: 'pose'   },
           { icon: '⚡',  val: `${profilo.energia ?? 0}/10`, label: 'ENERGIA', col: '#00e676', subTab: null },
         ].map(s => (
           <CardInfo key={s.label} colore={s.col}
@@ -1395,9 +1395,9 @@ function ModaleWaifu({ waifu, dati, outfitCat, poseCat, equip, profilo, setProfi
   // Calcola stat effettive
   const stats = [
     { key: 'tette',          label: 'Tette',        icon: '✦', val: Math.min(7,    (waifu.tette          ?? 3)  + (statBonus.tette          || 0)), max: 7    },
-    { key: 'taglia_piedi',   label: 'Taglia Piedi', icon: 'âš˜', val: Math.min(45,   (waifu.taglia_piedi   ?? 38) + (statBonus.taglia_piedi   || 0)), max: 45   },
+    { key: 'taglia_piedi',   label: 'Taglia Piedi', icon: '🦶', val: Math.min(45,   (waifu.taglia_piedi   ?? 38) + (statBonus.taglia_piedi   || 0)), max: 45   },
     { key: 'eta',            label: 'Età',          icon: 'âŒ›', val: Math.min(5000, (waifu.eta            ?? 18) + (statBonus.eta            || 0)), max: 5000 },
-    { key: 'colore_capelli', label: 'Capelli',      icon: 'âœ¿', val: Math.min(10,   (waifu.colore_capelli ?? 1)  + (statBonus.colore_capelli || 0)), max: 10   },
+    { key: 'colore_capelli', label: 'Capelli',      icon: '💇', val: Math.min(10,   (waifu.colore_capelli ?? 1)  + (statBonus.colore_capelli || 0)), max: 10   },
     { key: 'esperienza',     label: 'Esperienza',   icon: '★', val: Math.min(5000, (waifu.esperienza     ?? 0)  + (statBonus.esperienza     || 0)), max: 5000 },
   ];
 
@@ -1454,7 +1454,7 @@ function ModaleWaifu({ waifu, dati, outfitCat, poseCat, equip, profilo, setProfi
           <Chip colore={rarInfo.colore} size="sm">
             {'★'.repeat(rarInfo.stelle)} {rarInfo.nome}
           </Chip>
-          <Chip colore="#9b59ff" size="sm">âšœ {archeNome}</Chip>
+          <Chip colore="#9b59ff" size="sm">⚜ {archeNome}</Chip>
         </div>
         {dati && (
           <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center', gap: 10 }}>
@@ -1639,7 +1639,7 @@ function AmiciTab({ user, profilo, collezione, waifuCat, onCollectionRefresh }) 
       {/* Sub-tab selector */}
       {tradeEnabled && (
         <div style={{ display: 'flex', gap: 6 }}>
-          {[{ k: 'amici', l: 'ðŸ‘¥ Amici' }, { k: 'scambi', l: 'â†” Scambi' }].map(t => (
+          {[{ k: 'amici', l: '👥 Amici' }, { k: 'scambi', l: '↔ Scambi' }].map(t => (
             <button key={t.k} onClick={() => setSubTab(t.k)} style={{
               padding: '7px 16px', borderRadius: 8, cursor: 'pointer', position: 'relative',
               background: subTab === t.k ? 'rgba(255,45,120,0.15)' : 'rgba(255,255,255,0.03)',
@@ -3459,7 +3459,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, mosseCa
               { k: 'tutte', l: `Tutte (${tuttiDrop.length})` },
               { k: 'waifu', l: `👑 Waifu (${dropWaifu.length})` },
               { k: 'outfit', l: `✦ Outfit (${dropOutfit.length})` },
-              { k: 'posa', l: `âšœ Pose (${dropPose.length})` },
+              { k: 'posa', l: `⚜ Pose (${dropPose.length})` },
             ].map(t => (
               <button key={t.k} onClick={() => setCatTab(t.k)} style={{
                 padding: '5px 10px', fontSize: 9, fontFamily: 'Orbitron',
@@ -3479,10 +3479,10 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, mosseCa
               fontFamily: 'Orbitron', cursor: 'pointer',
             }}>
               <option value="tutte">Tutte le rarità</option>
-              <option value="comune">âšª Comune (55%)</option>
-              <option value="raro">ðŸ”µ Raro (27%)</option>
-              <option value="epico">ðŸŸ£ Epico (12%)</option>
-              <option value="leggendario">ðŸŸ¡ Leggendario (5%)</option>
+              <option value="comune">⚪ Comune (55%)</option>
+              <option value="raro">🔵 Raro (27%)</option>
+              <option value="epico">🟣 Epico (12%)</option>
+              <option value="leggendario">🟡 Leggendario (5%)</option>
               <option value="immersivo">🌸 Immersivo (1%)</option>
             </select>
             <select value={ordine} onChange={e => setOrdine(e.target.value)} style={{
@@ -3521,7 +3521,7 @@ function SbustaTab({ profilo, setProfilo, collezione, setColl, waifuCat, mosseCa
             ))}
             {catalogoFiltrato.length === 0 && (
               <div style={{ padding: 40, textAlign: 'center' }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>ðŸ”</div>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>🔍</div>
                 <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#9b59ff', letterSpacing: 2, marginBottom: 6 }}>NESSUN CONTENUTO</div>
                 <div style={{ opacity: 0.4, fontSize: 10, lineHeight: 1.6 }}>Prova a cambiare i filtri.</div>
               </div>
@@ -4035,7 +4035,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
                 Avresti <strong style={{ color: '#f5a623' }}>{totScambiabili}</strong> waifu da poter scambiare ma hai esaurito gli scambi.
                 <TradeCountdownInline tradesResetAt={profilo?.tradesResetAt} />
                 <button onClick={() => window.dispatchEvent(new Event('impero:apri-negozio'))} style={{ marginTop: 8, background: 'rgba(245,166,35,0.15)', border: '1px solid rgba(245,166,35,0.4)', borderRadius: 8, color: '#f5a623', fontFamily: 'Orbitron', fontSize: 8, padding: '6px 12px', cursor: 'pointer', display: 'block', letterSpacing: 1 }}>
-                  ðŸ”“ ACQUISTA TRADE PASS
+                  🔓 ACQUISTA TRADE PASS
                 </button>
               </div>
             )}
@@ -4068,7 +4068,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
               ))}
               {waifuEntries.length === 0 && (
                 <PannelloOrnato style={{ width: '100%', textAlign: 'center', padding: 40 }}>
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>ðŸ”</div>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>🔍</div>
                   <div style={{ fontFamily: 'Orbitron', fontSize: 10, color: '#f5a623', letterSpacing: 2, marginBottom: 6 }}>NESSUNA WAIFU TROVATA</div>
                   <div style={{ opacity: 0.4, fontSize: 10, lineHeight: 1.6 }}>Prova a cambiare i filtri<br/>o sbusta nuovi pacchetti!</div>
                 </PannelloOrnato>
@@ -4235,7 +4235,7 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                       <div style={{ fontFamily: 'Orbitron', fontSize: 13, color: '#00e676', fontWeight: 600 }}>{team.nome}</div>
                       <div style={{ display: 'flex', gap: 4 }}>
-                        <BtnDecorato variant="secondary" size="sm" onClick={() => iniziaEditTeam(id)}>âœ</BtnDecorato>
+                        <BtnDecorato variant="secondary" size="sm" onClick={() => iniziaEditTeam(id)}>✏</BtnDecorato>
                         <BtnDecorato variant="secondary" size="sm" onClick={() => eliminaTeam(id)}>✕</BtnDecorato>
                       </div>
                     </div>
@@ -4950,7 +4950,7 @@ function ModalAcquistoPass({ onClose, onAcquistato, user }) {
           animation: 'scaleIn 0.2s ease-out',
         }}
       >
-        <div style={{ fontSize: 36, marginBottom: 12 }}>ðŸ”ž</div>
+        <div style={{ fontSize: 36, marginBottom: 12 }}>🔞</div>
         <div style={{
           fontFamily: 'Cinzel, serif', color: HARD_COLOR,
           fontSize: 16, letterSpacing: 3, fontWeight: 700,
@@ -4992,7 +4992,7 @@ function ModalAcquistoPass({ onClose, onAcquistato, user }) {
                 borderRadius: 8, color: HARD_COLOR, fontFamily: 'Orbitron',
                 fontSize: 10, padding: '8px 18px', cursor: 'pointer', letterSpacing: 1,
               }}
-            >â†» RIPROVA</button>
+            >↻ RIPROVA</button>
           </div>
         )}
 
@@ -5221,7 +5221,7 @@ function ZoomCartaOverlay({ w, dati, outfitCat, poseCat, equip, onClose, profilo
                 e.currentTarget.style.boxShadow = `0 0 20px ${HARD_COLOR}25`;
               }}
             >
-              <span style={{ fontSize: 13 }}>ðŸ”ž</span>
+              <span style={{ fontSize: 13 }}>🔞</span>
               {!hasVideoHard ? 'HARD NON DISPONIBILE' : (hasPass ? 'VEDI CARTA HARD' : '🔒 VEDI CARTA HARD')}
             </button>
           )}
@@ -5245,7 +5245,7 @@ function ZoomCartaOverlay({ w, dati, outfitCat, poseCat, equip, onClose, profilo
               padding: '10px 22px', cursor: 'pointer',
               boxShadow: `0 0 16px ${IMMERSIVA_COLOR}25`,
             }}
-          >â—€ RIVEDI</button>
+          >◀ RIVEDI</button>
           <button
             onClick={onClose}
             style={{
@@ -5277,7 +5277,7 @@ function ZoomCartaOverlay({ w, dati, outfitCat, poseCat, equip, onClose, profilo
               padding: '10px 22px', cursor: 'pointer',
               boxShadow: `0 0 16px ${HARD_COLOR}25`,
             }}
-          >â—€ RIVEDI</button>
+          >◀ RIVEDI</button>
           <button
             onClick={() => { setVideoHardAttivo(false); setVideoHardFinito(false); }}
             style={{
@@ -5319,7 +5319,7 @@ function ZoomCartaOverlay({ w, dati, outfitCat, poseCat, equip, onClose, profilo
           marginTop: 14,
           color: `${HARD_COLOR}55`, fontSize: 9,
           fontFamily: 'Orbitron', letterSpacing: 1,
-        }}>ðŸ”ž IN RIPRODUZIONE</div>
+        }}>🔞 IN RIPRODUZIONE</div>
       )}
     </div>
 
@@ -5393,9 +5393,9 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
 
   const STATS_INFO = [
     { key: 'tette',          label: 'Tette',        icon: '✦', min: statConfig.ranges.tette?.min          ?? 1,  max: statConfig.ranges.tette?.max          ?? 7    },
-    { key: 'taglia_piedi',   label: 'Taglia Piedi', icon: 'âš˜', min: statConfig.ranges.taglia_piedi?.min   ?? 34, max: statConfig.ranges.taglia_piedi?.max   ?? 45   },
+    { key: 'taglia_piedi',   label: 'Taglia Piedi', icon: '🦶', min: statConfig.ranges.taglia_piedi?.min   ?? 34, max: statConfig.ranges.taglia_piedi?.max   ?? 45   },
     { key: 'eta',            label: 'Età',          icon: 'âŒ›', min: statConfig.ranges.eta?.min            ?? 1,  max: statConfig.ranges.eta?.max            ?? 5000 },
-    { key: 'colore_capelli', label: 'Capelli',      icon: 'âœ¿', min: statConfig.ranges.colore_capelli?.min ?? 1,  max: statConfig.ranges.colore_capelli?.max ?? 10   },
+    { key: 'colore_capelli', label: 'Capelli',      icon: '💇', min: statConfig.ranges.colore_capelli?.min ?? 1,  max: statConfig.ranges.colore_capelli?.max ?? 10   },
     { key: 'esperienza',     label: 'Esperienza',   icon: '★', min: statConfig.ranges.esperienza?.min     ?? 0,  max: statConfig.ranges.esperienza?.max     ?? 5000 },
   ];
 
@@ -5490,7 +5490,7 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
             {/* Tab selector: Carta | Baby-doll | Battaglia */}
             <div style={{ display: 'flex', gap: 6, marginBottom: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
               {/* [WAIFU CHAMPIONS REFACTOR — COLLECTION] Baby-doll tab removed */}
-              {[{ k: 'carta', l: 'ðŸƒ Carta', c: '#f5a623' }, { k: 'battaglia', l: '⚔ Battaglia', c: '#7F77DD' }].map(t => (
+              {[{ k: 'carta', l: '🃏 Carta', c: '#f5a623' }, { k: 'battaglia', l: '⚔ Battaglia', c: '#7F77DD' }].map(t => (
                 <button key={t.k} onClick={() => setTabDettaglio(t.k)} style={{
                   padding: '8px 20px', borderRadius: 10, cursor: 'pointer',
                   background: tabDettaglio === t.k ? `linear-gradient(135deg, ${t.c}, ${t.c}80)` : 'rgba(255,255,255,0.03)',
@@ -5523,7 +5523,7 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
                 {/* 2. BANNER RARITÀ + ARCHETIPO */}
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap', width: '100%' }}>
                   <Chip colore={rar.colore} size="sm">{'★'.repeat(rar.stelle)} {rar.nome}</Chip>
-                  <Chip colore="#9b59ff" size="sm">âšœ {ARCHE_NOMI[w.archetipo] || w.archetipo || '—'}</Chip>
+                  <Chip colore="#9b59ff" size="sm">⚜ {ARCHE_NOMI[w.archetipo] || w.archetipo || '—'}</Chip>
                 </div>
 
                 {/* 3. IMMAGINE CARTA */}
@@ -5535,7 +5535,7 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
                 </div>
 
                 {/* 4. INDICAZIONE ZOOM */}
-                <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', letterSpacing: 1 }}>ðŸ” Click per zoom</div>
+                <div style={{ fontSize: 9, color: 'rgba(238,232,220,0.3)', fontFamily: 'Orbitron', letterSpacing: 1 }}>🔍 Click per zoom</div>
 
                 {/* 5. LIVELLO E COPIE */}
                 <div style={{ textAlign: 'center' }}>
@@ -5691,7 +5691,7 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
                             size="md"
                             onClick={() => setScambiaAperto(true)}
                           >
-                            â†” SCAMBIA
+                            ↔ SCAMBIA
                           </BtnDecorato>
                         )}
                       </div>
@@ -5729,7 +5729,7 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
                       const dCrit  = critAfter  - critBefore;
                       const PreviewRow = ({ label, before, after, delta, unit = '' }) => {
                         const col = delta > 0 ? '#00e676' : delta < 0 ? '#ff6b6b' : 'rgba(238,232,220,0.45)';
-                        const arrow = delta > 0 ? 'â–²' : delta < 0 ? 'â–¼' : '→';
+                        const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '→';
                         return (
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
                             <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.55)' }}>{label}</span>
@@ -5874,7 +5874,7 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
                 {/* Baby-doll visiva */}
                 <div>
                   <div style={{ textAlign: 'center', marginBottom: 8 }}>
-                    <Chip colore="#ff2d78" icon="ðŸ‘—" size="sm">BABY-DOLL</Chip>
+                    <Chip colore="#ff2d78" icon="🍑" size="sm">BABY-DOLL</Chip>
                   </div>
                   <BabyDoll waifu={w} equip={equip} datiCollezione={dati} dimensione={200} outfitCatalogo={outfitCat} poseCatalogo={poseCat} mostraInfo={false} />
 
@@ -5897,14 +5897,14 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
                       border: `1px solid ${tabSlot === 'pose' ? 'transparent' : 'rgba(245,166,35,0.2)'}`,
                       borderRadius: 8, cursor: 'pointer',
                       fontFamily: 'Orbitron', letterSpacing: 1, fontWeight: 700,
-                    }}>âšœ Pose</button>
+                    }}>⚜ Pose</button>
                   </div>
                 </div>
 
                 {/* Griglia outfit/pose con abilità visibile */}
                 <div>
                   <div style={{ fontSize: 9, letterSpacing: 2, color: '#ff2d78', fontFamily: 'Orbitron', marginBottom: 8 }}>
-                    {tabSlot === 'pose' ? 'âšœ POSE' : `${SLOT_OUTFIT[tabSlot]?.icon || ''} OUTFIT — ${SLOT_OUTFIT[tabSlot]?.nome || ''}`}
+                    {tabSlot === 'pose' ? '⚜ POSE' : `${SLOT_OUTFIT[tabSlot]?.icon || ''} OUTFIT — ${SLOT_OUTFIT[tabSlot]?.nome || ''}`}
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 8, maxHeight: 360, overflowY: 'auto', padding: 4 }}>
                     {tabSlot !== 'pose' && (
@@ -5974,7 +5974,7 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
                           {/* Abilità visibile */}
                           {abDesc && (
                             <div style={{ fontSize: 7, color: item.abilita?.tipo === 'doppia' ? '#ffd666' : itemRar.colore, fontFamily: 'Fredoka', textAlign: 'center', opacity: 0.9, lineHeight: 1.3 }}>
-                              âœ¨ {abDesc}
+                              ✏¨ {abDesc}
                             </div>
                           )}
                           {!compatibile && (
@@ -6082,7 +6082,7 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
                             </div>
                             {move.ability && (
                               <div style={{ marginTop: 6, fontSize: 11, fontFamily: 'Fredoka', color: mc, fontStyle: 'italic', lineHeight: 1.4 }}>
-                                âœ¨ {move.ability}
+                                ✏¨ {move.ability}
                               </div>
                             )}
                           </PannelloOrnato>
@@ -6147,7 +6147,7 @@ function RoundEndBar({ vincitoreRound, statScelta, direzione, carteP, carteC, ro
           <span style={{ fontSize: 11, marginLeft: 8, opacity: 0.6 }}>({timer}s)</span>
         </div>
         <div style={{ fontSize: 10, color: 'rgba(238,232,220,0.6)', marginBottom: 6 }}>
-          {statInfo?.icon} {statInfo?.label} {direzione === 'piu' ? 'â–²' : 'â–¼'} — Tu: <strong>{carteP[statScelta]}</strong> vs CPU: <strong>{carteC[statScelta]}</strong>
+          {statInfo?.icon} {statInfo?.label} {direzione === 'piu' ? '▲' : '▼'} — Tu: <strong>{carteP[statScelta]}</strong> vs CPU: <strong>{carteC[statScelta]}</strong>
         </div>
         <BtnDecorato variant="primary" size="md" onClick={onProssimoRound}>
           {eFine ? 'FINE PARTITA' : 'PROSSIMO ROUND →'}
@@ -6204,7 +6204,7 @@ function BarraFiltriWaifu({ filtroNome, setFiltroNome, filtroRarita, setFiltroRa
   return (
     <div style={{ marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
       {/* Riga 1: ricerca nome */}
-      <input value={filtroNome} onChange={e => setFiltroNome(e.target.value)} placeholder="ðŸ” Cerca per nome…"
+      <input value={filtroNome} onChange={e => setFiltroNome(e.target.value)} placeholder="🔍 Cerca per nome…"
         style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', color: '#eedcd4', borderRadius: 8, padding: '7px 11px', fontFamily: 'Fredoka', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
       {/* Riga 2: filtri rapidi */}
       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -6228,7 +6228,7 @@ function BarraFiltriWaifu({ filtroNome, setFiltroNome, filtroRarita, setFiltroRa
           background: filtroScambiabile ? 'rgba(255,77,158,0.18)' : 'rgba(255,255,255,0.03)',
           border: `1px solid ${filtroScambiabile ? 'rgba(255,77,158,0.6)' : 'rgba(255,255,255,0.1)'}`,
           color: filtroScambiabile ? '#ff4d9e' : 'rgba(238,232,220,0.45)', fontFamily: 'Orbitron', fontSize: 8, flex: '0 0 auto',
-        }}>â†” Scamb.</button>
+        }}>↔ Scamb.</button>
         {setFiltroPreferiti && (
           <button onClick={() => setFiltroPreferiti(!filtroPreferiti)} style={{
             padding: '5px 10px', borderRadius: 7, cursor: 'pointer',
@@ -6373,7 +6373,7 @@ function SelezioneWaifuTeam({ waifuDisponibili, waifuSelezionate, onToggle, maxS
           <TradeCountdownInline tradesResetAt={profilo?.tradesResetAt} />
           acquista il pass per scambi illimitati.
           <button onClick={() => window.dispatchEvent(new Event('impero:apri-negozio'))} style={{ marginTop: 6, background: 'rgba(245,166,35,0.15)', border: '1px solid rgba(245,166,35,0.4)', borderRadius: 8, color: '#f5a623', fontFamily: 'Orbitron', fontSize: 8, padding: '5px 10px', cursor: 'pointer', display: 'block' }}>
-            ðŸ”“ ACQUISTA TRADE PASS
+            🔓 ACQUISTA TRADE PASS
           </button>
         </div>
       )}
@@ -6532,10 +6532,10 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
   const NOMI_IMPERI = ['Drago Nero', "Rosa d'Oro", 'Ombra Viola', 'Fenice Rossa'];
   const COLORI_IMPERI = ['#ef4444', '#a855f7', '#3b82f6', '#ec4899'];
   const STATS_BATTAGLIA = [
-    { key: 'tette',          label: 'Tette',      icon: 'ðŸ’—' },
-    { key: 'taglia_piedi',   label: 'Piedi',      icon: 'ðŸ‘ ' },
-    { key: 'eta',            label: 'Età',        icon: 'ðŸ“…' },
-    { key: 'colore_capelli', label: 'Capelli',    icon: 'ðŸ’‡' },
+    { key: 'tette',          label: 'Tette',      icon: '🍑' },
+    { key: 'taglia_piedi',   label: 'Piedi',      icon: '🦶' },
+    { key: 'eta',            label: 'Età',        icon: '⏳' },
+    { key: 'colore_capelli', label: 'Capelli',    icon: '💇' },
     { key: 'esperienza',     label: 'Esperienza', icon: '⭐' },
   ];
 
@@ -6625,11 +6625,11 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
     }
   };
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ══════════════════════════════════════════════════════════
   // HANDLER TURNO PLAYER
   // Ordine: playerScegliWaifu → playerScegliStat → playerScegliDir
   //         → cpuRispondeWaifu → reveal → roundEnd
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ══════════════════════════════════════════════════════════
 
   const onPlayerScegliWaifu = (waifu) => {
     if (fase !== 'playerScegliWaifu') return;
@@ -6659,10 +6659,10 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
     setTimeout(() => eseguiRisoluzione(carteP, cpuW, statScelta, dir), 1200);
   };
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ══════════════════════════════════════════════════════════
   // HANDLER TURNO CPU
   // Ordine: cpuSceglieTutto → playerScegliWaifuVsCPU → reveal → roundEnd
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ══════════════════════════════════════════════════════════
 
   const onPlayerScegliWaifuVsCPU = (waifu) => {
     if (fase !== 'playerScegliWaifuVsCPU') return;
@@ -6678,11 +6678,11 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
     setTimeout(() => eseguiRisoluzione(waifu, cpuWaifuPending, cpuStatPending, cpuDirPending), 1400);
   };
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ══════════════════════════════════════════════════════════
   // SUDDEN DEATH
   // Ordine: CPU sceglie waifu+stat+dir → player sceglie waifu
   //         → riveliamo stat+dir → risolviamo
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ══════════════════════════════════════════════════════════
 
   const onPlayerScegliWaifuSD = (waifu) => {
     if (fase !== 'suddenDeathWaifu') return;
@@ -7015,7 +7015,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
                   padding: '8px 16px', background: teamSelezionato === 'manuale' ? 'linear-gradient(135deg, #f5a623, #f5a62380)' : 'rgba(255,255,255,0.03)',
                   color: teamSelezionato === 'manuale' ? '#000' : '#eee8dc', border: `1px solid ${teamSelezionato === 'manuale' ? 'transparent' : 'rgba(245,166,35,0.2)'}`,
                   borderRadius: 8, cursor: 'pointer', fontFamily: 'Orbitron', fontSize: 10, fontWeight: 600,
-                }}>âœ‹ MANUALE</button>
+                }}>✏‹ MANUALE</button>
               </div>
             </div>
           )}
@@ -7063,7 +7063,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
         <style>{`@keyframes coinSpin { 0% { transform: rotateY(0); } 100% { transform: rotateY(2160deg); } } .coin-spin { animation: coinSpin 1.6s ease-out forwards; }`}</style>
         <div className="coin-spin" style={{ width: 100, height: 100, margin: '0 auto', borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%, #ffd666, #c77d0a)', boxShadow: '0 0 40px rgba(245,166,35,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, fontFamily: 'Orbitron', color: '#3a1c00', fontWeight: 700 }}>♛</div>
         <div style={{ marginTop: 20, fontFamily: 'Orbitron', letterSpacing: 3, fontSize: 14, color: '#f5a623' }}>
-          {coinResult ? (coinResult === 'player' ? '🎯 INIZI TU!' : '🤖 INIZIA LA CPU') : 'ðŸª™ LANCIO...'}
+          {coinResult ? (coinResult === 'player' ? '🎯 INIZI TU!' : '🤖 INIZIA LA CPU') : '🪙 LANCIO...'}
         </div>
       </div>
     );
@@ -7084,12 +7084,12 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
 
     // Etichetta della fase corrente per l'utente
     const labelFase = () => {
-      if (fase === 'playerScegliWaifu')      return 'ðŸ‘‡ Scegli la tua waifu';
+      if (fase === 'playerScegliWaifu')      return '💇 Scegli la tua waifu';
       if (fase === 'playerScegliStat')       return '🎯 Scegli la statistica';
       if (fase === 'playerScegliDir')        return '📊 Scegli la direzione';
       if (fase === 'cpuRispondeWaifu')       return '🤖 La CPU sceglie la sua waifu...';
       if (fase === 'cpuSceglieTutto')        return '🤖 La CPU sta decidendo...';
-      if (fase === 'playerScegliWaifuVsCPU') return 'ðŸ‘‡ Scegli la tua waifu (la CPU ha già scelto)';
+      if (fase === 'playerScegliWaifuVsCPU') return '💇 Scegli la tua waifu (la CPU ha già scelto)';
       if (fase === 'reveal')                 return '⚡ Risoluzione in corso...';
       if (fase === 'roundEnd')               return '';
       if (fase === 'suddenDeathWaifu')       return '⚡ SUDDEN DEATH — Scegli la tua waifu!';
@@ -7172,7 +7172,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
                     {statInfoScelta?.icon} {statInfoScelta?.label}
                   </div>
                   <div style={{ fontSize: 11, marginTop: 2, color: direzione === 'piu' ? '#00e676' : '#ff3d3d' }}>
-                    {direzione === 'piu' ? 'â–² PIÃ™' : 'â–¼ MENO'}
+                    {direzione === 'piu' ? '▲ PIÙ' : '▼ MENO'}
                   </div>
                 </div>
               )}
@@ -7218,7 +7218,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
         {/* ── Mazzo del player ── */}
         <PannelloOrnato style={{ padding: 10, marginBottom: 10 }}>
           <div style={{ fontSize: 9, letterSpacing: 2, color: '#f5a623', textAlign: 'center', marginBottom: 8, fontFamily: 'Orbitron' }}>
-            {playerDeveScegliereWaifu ? 'ðŸ‘‡ SCEGLI LA TUA WAIFU' : 'IL TUO TEAM'}
+            {playerDeveScegliereWaifu ? '💇 SCEGLI LA TUA WAIFU' : 'IL TUO TEAM'}
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
             {mazzoP.map(w => {
@@ -7320,8 +7320,8 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,230,118,0.2)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,230,118,0.08)'; }}
                 >
-                  <div style={{ fontSize: 24 }}>â–²</div>
-                  <div style={{ marginTop: 4, fontSize: 10 }}>PIÃ™ ALTO</div>
+                  <div style={{ fontSize: 24 }}>▲</div>
+                  <div style={{ marginTop: 4, fontSize: 10 }}>PIÙ ALTO</div>
                 </button>
                 <button onClick={() => onPlayerScegliDir('meno')} style={{
                   flex: 1, padding: '16px 12px', background: 'rgba(255,61,61,0.08)',
@@ -7331,8 +7331,8 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,61,61,0.2)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,61,61,0.08)'; }}
                 >
-                  <div style={{ fontSize: 24 }}>â–¼</div>
-                  <div style={{ marginTop: 4, fontSize: 10 }}>PIÃ™ BASSO</div>
+                  <div style={{ fontSize: 24 }}>▼</div>
+                  <div style={{ marginTop: 4, fontSize: 10 }}>PIÙ BASSO</div>
                 </button>
               </div>
             </div>
@@ -7367,7 +7367,7 @@ function MappaTab({ profilo, setProfilo, collezione, waifuCat, outfitCat, user, 
           borderRadius: 16, padding: 28, maxWidth: 380, width: '100%', textAlign: 'center',
           boxShadow: `0 0 50px ${vittoria ? 'rgba(0,230,118,0.2)' : 'rgba(255,61,61,0.2)'}`,
         }}>
-          <div style={{ fontSize: 52, marginBottom: 10 }}>{vittoria ? '👑' : 'ðŸ’”'}</div>
+          <div style={{ fontSize: 52, marginBottom: 10 }}>{vittoria ? '👑' : '💔'}</div>
           <div style={{ fontFamily: 'Orbitron', fontSize: 22, fontWeight: 700, color: vittoria ? '#00e676' : '#ff3d3d', letterSpacing: 3 }}>
             {vittoria ? 'VITTORIA!' : punteggio.player === punteggio.cpu ? 'PAREGGIO' : 'SCONFITTA'}
           </div>

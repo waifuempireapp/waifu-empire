@@ -532,6 +532,9 @@ export function initBattleWaifu(waifuFirestore, collectionData = null) {
   let finalMoves = null;
   const mosseSlot = collectionData?.mosse_slot;
   const mosseData = collectionData?._mosseData;
+  // Valori di danno default per rarità (usati quando il catalogo non ha danno)
+  const _RARITY_POWER_DEFAULT = { comune: 22, raro: 39, epico: 60, leggendario: 85, immersivo: 112 };
+
   if (mosseSlot && mosseData) {
     // Usa chiavi stringa ('1','2','3','4') per compatibilità con Firestore
     const slotMoves = ['1','2','3','4'].map(k => mosseSlot[k] ?? mosseSlot[Number(k)]).filter(Boolean);
@@ -539,7 +542,10 @@ export function initBattleWaifu(waifuFirestore, collectionData = null) {
       const resolved = slotMoves.map(mid => {
         const m = mosseData[mid];
         if (!m) return null;
-        const danno = Math.round(m.danno ?? 0);
+        // danno: usa valore utente (post level-up) → catalogo → default per rarità
+        const dannoDefault = _RARITY_POWER_DEFAULT[m.rarita ?? 'comune'] ?? 22;
+        const rawDanno = m.danno ?? 0;
+        const danno = Math.round(rawDanno > 0 ? rawDanno : dannoDefault);
         // Bonifica danno_critico: se < 5 è nel vecchio formato float → ricalcola come danno × 1.25
         const damageCrit = (m.danno_critico != null && m.danno_critico < 5)
           ? Math.round(danno * 1.25)

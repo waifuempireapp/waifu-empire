@@ -195,24 +195,25 @@ function TypeBadge({ type, sm }) {
  * @returns {JSX.Element}
  */
 function PpDots({ pp, maxPp, color = 'rgba(238,220,212,.78)' }) {
-  const count  = Math.min(maxPp ?? 8, 8);
-  const filled = Math.max(0, Math.min(count, pp ?? 0));
-  const totalPp = maxPp ?? count;
-  // Pallino pieno = colore passato; pallino vuoto = stesso colore al 25% opacità
+  const totalPp  = maxPp ?? 8;
+  const currentPp = Math.max(0, pp ?? 0);
+  // Pallini visivi: max 8 per non occupare troppo spazio
+  const dotCount  = Math.min(totalPp, 8);
+  const dotFilled = Math.max(0, Math.min(dotCount, Math.round(currentPp * dotCount / totalPp)));
   return (
     <div style={{ display:'flex', gap:3, alignItems:'center' }}>
-      {Array.from({ length: count }).map((_,i) => (
+      {Array.from({ length: dotCount }).map((_,i) => (
         <div key={i} style={{
           width:5, height:5, borderRadius:'50%', flexShrink:0,
           background: color,
-          opacity: i < filled ? 1 : 0.22,
+          opacity: i < dotFilled ? 1 : 0.22,
         }}/>
       ))}
-      {/* PP: X/Y — sempre visibile, stesso colore nome mossa */}
+      {/* PP numerico: mostra i valori reali (non limitati a 8) */}
       <span style={{
         fontFamily:'Orbitron', fontSize:7, color, marginLeft:3, opacity:0.85, flexShrink:0,
       }}>
-        {filled}/{totalPp}
+        {currentPp}/{totalPp}
       </span>
     </div>
   );
