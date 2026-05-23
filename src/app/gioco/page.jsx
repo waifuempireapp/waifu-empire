@@ -74,7 +74,7 @@ import MappaScrollabile from '@/components/mappa/MappaScrollabile';
 import WaifuBattleArena from '@/components/WaifuBattleArena';
 import PickPhase from '@/components/PickPhase';
 // RevealScreen removed — unused named re-export from PickPhase
-import { generateCPUTeamOf5, generateBattleStats, computeSpeed, computeCritChance, computeHp, calculateSpeed } from '@/lib/battleEngine';
+import { generateCPUTeamOf5, generateBattleStats, computeSpeed, computeCritChance, computeHp } from '@/lib/battleEngine';
 // Removed unused: initBattleWaifu, generateCPUTeam
 import {
   PannelloOrnato, TitoloOrnato, BtnDecorato, Chip,
@@ -5714,34 +5714,37 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
                     </>
                   ) : (
                     <>
-                    {/* [WAIFU CHAMPIONS REFACTOR — COLLECTION] Speed/Crit preview before confirm */}
+                    {/* Preview impatto level-up: "prima" dal DB (= Tab Battaglia), "dopo" calcolato come handleLevelUp */}
                     {statSel && (() => {
                       const sKey = statSel.key;
                       const isDirPlus = statSel.dir === 'plus';
                       const s = STATS_INFO.find(x => x.key === sKey);
                       if (!s) return null;
                       const step = statConfig.steps[sKey] ?? INCREMENTI_LEVELUP[sKey];
-                      // Build effective-stats objects (base + bonus) before and after change
-                      const wCurr = {
-                        tette:          (w.tette          ?? 4)  + (dati.stat_bonus?.tette          || 0),
-                        eta:            (w.eta            ?? 25) + (dati.stat_bonus?.eta            || 0),
-                        esperienza:     (w.esperienza     ?? 0)  + (dati.stat_bonus?.esperienza     || 0),
-                        colore_capelli: (w.colore_capelli ?? 5)  + (dati.stat_bonus?.colore_capelli || 0),
-                        taglia_piedi:   (w.taglia_piedi   ?? 39) + (dati.stat_bonus?.taglia_piedi   || 0),
-                      };
-                      const rawAfter = wCurr[sKey] + (isDirPlus ? step : -step);
-                      const clampedAfter = Math.min(s.max, Math.max(s.min, rawAfter));
-                      const wAfter = { ...wCurr, [sKey]: clampedAfter };
-                      const rarCfgPrev = RARITY_MULTIPLIERS_DEFAULT[w.rarita] ?? RARITY_MULTIPLIERS_DEFAULT.comune;
-                      const speedBefore = Math.min(rarCfgPrev.vel_max,  Math.max(rarCfgPrev.vel_min,  Math.round(calculateSpeed(wCurr, rarCfgPrev.multiplier, rarCfgPrev))));
-                      const speedAfter  = Math.min(rarCfgPrev.vel_max,  Math.max(rarCfgPrev.vel_min,  Math.round(calculateSpeed(wAfter, rarCfgPrev.multiplier, rarCfgPrev))));
-                      const critBefore  = Math.round(Math.min(rarCfgPrev.crit_max, Math.max(rarCfgPrev.crit_min, computeCritChance(wCurr, rarCfgPrev.multiplier, rarCfgPrev))) * 100);
-                      const critAfter   = Math.round(Math.min(rarCfgPrev.crit_max, Math.max(rarCfgPrev.crit_min, computeCritChance(wAfter, rarCfgPrev.multiplier, rarCfgPrev))) * 100);
-                      const hpBefore    = computeHp(wCurr, rarCfgPrev.multiplier);
-                      const hpAfter     = computeHp(wAfter, rarCfgPrev.multiplier);
+                      const rarCfg = RARITY_MULTIPLIERS_DEFAULT[w.rarita] ?? RARITY_MULTIPLIERS_DEFAULT.comune;
+
+                      // "Prima" = valori esatti dal DB, identici a quelli mostrati nel Tab Battaglia
+                      const speedBefore = Math.round(dati.velocita   ?? w.velocita_base   ?? computeSpeed(w));
+                      const critBefore  = Math.round((dati.crit_chance ?? w.crit_chance_base ?? computeCritChance(w)) * 100);
+                      const hpBefore    = Math.round(dati.hp ?? w.hp_base ?? computeHp(w));
+
+                      // "Dopo" = calcolato esattamente come handleLevelUp farà dopo la conferma
+                      const bonusAfter = { ...(dati.stat_bonus ?? {}) };
+                      bonusAfter[sKey] = (bonusAfter[sKey] || 0) + (isDirPlus ? step : -step);
+                      const statPersonaliAfter = {};
+                      for (const key of ['tette', 'eta', 'esperienza', 'colore_capelli', 'taglia_piedi']) {
+                        const bonus = bonusAfter[key] || 0;
+                        if (bonus !== 0) statPersonaliAfter[key] = (w[key] ?? 0) + bonus;
+                      }
+                      const derivedAfter = computeAndSaveStats(w, w.rarita ?? 'comune', statPersonaliAfter);
+                      const speedAfter = Math.round(derivedAfter.velocita);
+                      const critAfter  = Math.round(derivedAfter.crit_chance * 100);
+                      const hpAfter    = Math.round(derivedAfter.hp);
+
                       const dSpeed = speedAfter - speedBefore;
                       const dCrit  = critAfter  - critBefore;
-                      const dHp    = hpAfter - hpBefore;
+                      const dHp    = hpAfter    - hpBefore;
+
                       const PreviewRow = ({ label, before, after, delta, unit = '', atLimit = false }) => {
                         const col = atLimit ? 'rgba(238,232,220,0.35)' : delta > 0 ? '#00e676' : delta < 0 ? '#ff6b6b' : 'rgba(238,232,220,0.45)';
                         const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '→';
@@ -5762,8 +5765,8 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
                           <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(155,89,255,0.7)', letterSpacing: 2, marginBottom: 8, textAlign: 'center' }}>
                             IMPATTO SUL TUO PERSONAGGIO
                           </div>
-                          <PreviewRow label="Velocità"      before={speedBefore} after={speedAfter} delta={dSpeed} atLimit={dSpeed === 0 && speedBefore === (isDirPlus ? rarCfgPrev.vel_max : rarCfgPrev.vel_min)} />
-                          <PreviewRow label="Prob. Critico" before={`${critBefore}%`} after={`${critAfter}%`} delta={dCrit} unit="%" atLimit={dCrit === 0 && critBefore === Math.round((isDirPlus ? rarCfgPrev.crit_max : rarCfgPrev.crit_min) * 100)} />
+                          <PreviewRow label="Velocità"      before={speedBefore} after={speedAfter} delta={dSpeed} atLimit={dSpeed === 0 && speedAfter === (isDirPlus ? rarCfg.vel_max : rarCfg.vel_min)} />
+                          <PreviewRow label="Prob. Critico" before={`${critBefore}%`} after={`${critAfter}%`} delta={dCrit} unit="%" atLimit={dCrit === 0 && critAfter === Math.round((isDirPlus ? rarCfg.crit_max : rarCfg.crit_min) * 100)} />
                           <PreviewRow label="HP"            before={hpBefore}    after={hpAfter}    delta={dHp} />
                         </div>
                       );

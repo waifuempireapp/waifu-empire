@@ -1261,8 +1261,8 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
                       <div style={{ fontFamily: "'Unbounded',sans-serif", fontSize: 10, color: '#ec4899', fontWeight: 700 }}>{ri?.waifuNome ?? 'Waifu Raid'}</div>
                       {dmg > 0 && <div style={{ fontFamily: "'Saira Condensed',sans-serif", fontSize: 9, color: 'rgba(6,214,160,0.7)' }}>-{dmg.toLocaleString()} HP inflitti {pos > 0 ? `· #${pos}` : ''}</div>}
                     </div>
-                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: completed ? '#06d6a0' : '#f59e0b', background: completed ? 'rgba(6,214,160,0.1)' : 'rgba(245,158,11,0.1)', border: `1px solid ${completed ? 'rgba(6,214,160,0.3)' : 'rgba(245,158,11,0.3)'}`, borderRadius: 5, padding: '2px 6px' }}>
-                      {completed ? '✅' : '⏰ SCADUTO'}
+                    <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 7, color: completed ? '#06d6a0' : ri?.status === 'active' ? '#ec4899' : '#f59e0b', background: completed ? 'rgba(6,214,160,0.1)' : ri?.status === 'active' ? 'rgba(236,72,153,0.1)' : 'rgba(245,158,11,0.1)', border: `1px solid ${completed ? 'rgba(6,214,160,0.3)' : ri?.status === 'active' ? 'rgba(236,72,153,0.3)' : 'rgba(245,158,11,0.3)'}`, borderRadius: 5, padding: '2px 6px' }}>
+                      {completed ? '✅ COMPLETATO' : ri?.status === 'active' ? '⚡ IN CORSO' : '⏰ SCADUTO'}
                     </div>
                   </div>
                   {/* Lista missioni per questo raid */}
@@ -1278,8 +1278,13 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
                   {lista.length === 0 && <div style={{ textAlign: 'center', padding: 8, color: 'rgba(241,235,255,0.3)', fontFamily: "'Orbitron',sans-serif", fontSize: 9 }}>
                     {subTab === 'incorso' ? 'Tutte le missioni completate!' : 'Nessuna missione completata'}
                   </div>}
-                  {/* Claim — visibile in Completate SENZA filtri extra (solo !alreadyClaimed) */}
-                  {subTab === 'completate' && completateMissions.length > 0 && !alreadyClaimed && (
+                  {/* Claim — visibile in Completate: se il raid è ancora attivo mostra messaggio attesa */}
+                  {subTab === 'completate' && completateMissions.length > 0 && !alreadyClaimed && ri?.status === 'active' && (
+                    <div style={{ textAlign: 'center', padding: '8px 0', color: 'rgba(236,72,153,0.6)', fontFamily: "'Orbitron',sans-serif", fontSize: 8, letterSpacing: 0.5 }}>
+                      ⏳ Raid in corso · riscuoti a fine raid
+                    </div>
+                  )}
+                  {subTab === 'completate' && completateMissions.length > 0 && !alreadyClaimed && ri?.status !== 'active' && (
                     <button className="missione-item__claim" disabled={claimingRaid === eventId} style={{ width: '100%', marginTop: 8 }}
                       onClick={async () => {
                         setClaimingRaid(eventId);
@@ -1351,10 +1356,11 @@ function MissioniModal({ quest, setQuest, user, profilo, setProfilo, onClose }) 
               );
             }
 
-            // Completate: raid corrente (se ha missioni completate) + raid passati non riscossi
+            // Completate: raid corrente (se ha partecipato) + raid passati non riscossi
             const allCompletate = [];
-            // Raid corrente (se scaduto/completato e non ancora riscosso)
-            if (raidInfo && raidInfo.status !== 'active' && myDmg > 0) {
+            // Raid corrente: visibile appena l'utente ha inflitto danno (dmg > 0),
+            // anche se il raid è ancora attivo (in quel caso il claim è disabilitato finché non finisce)
+            if (raidInfo && myDmg > 0) {
               allCompletate.push({ ri: raidInfo, part: raidPart, pos: myPos, isClaimed: raidClaimed || !!raidPart?.claimed, eventId: raidInfo.id });
             }
             // Raid passati non riscossi
