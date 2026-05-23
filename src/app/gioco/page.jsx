@@ -41,7 +41,7 @@ import { useScrollLock } from '@/lib/useScrollLock';
 import { ikUrl } from '@/lib/imagekitUrl';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listMosse, listDropsAttivi, getClassifica, premioPerPosizione, deleteTeamFromCollezione, createPackSnapshot, getFriendsList, getFriendRequests, getClassificaSettimanale, getPremiClassificaConfig, lazyMigrateStats, incrementaQuestProgress } from '@/lib/firestoreService';
+import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listMosse, listDropsAttivi, getClassifica, premioPerPosizione, deleteTeamFromCollezione, createPackSnapshot, getFriendsList, getFriendRequests, getClassificaSettimanale, getPremiClassificaConfig, lazyMigrateStats, incrementaQuestProgress, checkAndInvalidateCatalogCache } from '@/lib/firestoreService';
 // Removed unused: getDropAttivo, isDropCompleto, progressioneDrop
 import { calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, GOD_PACK_PROB_DEFAULT, checkMoveLevelUp, computeAndSaveStats } from '@/lib/gameLogic';
 // Removed unused: calcolaRicaricaPacchetti, clampStat, clampWaifuStats
@@ -146,6 +146,8 @@ export default function GiocoPage() {
   }, []);
 
   const caricaTutto = async () => {
+    // Controlla se il catalogo in localStorage è obsoleto (es. dopo aggiornamento rarità da admin)
+    if (!catalogRef.current) await checkAndInvalidateCatalogCache();
     // Carica catalogo una sola volta per sessione (seconda linea di difesa dopo localStorage)
     const catalogPromise = catalogRef.current
       ? Promise.resolve(catalogRef.current)
@@ -5801,10 +5803,13 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
 
             {/* ── TAB BATTAGLIA ── */}
             {tabDettaglio === 'battaglia' && (() => {
-              // Usa velocita/crit_chance/hp salvati dal DB; fallback al valore calcolato
-              const speed   = Math.round(dati.velocita   ?? w.velocita_base   ?? computeSpeed(w));
-              const critPct = Math.round((dati.crit_chance ?? w.crit_chance_base ?? computeCritChance(w)) * 100);
-              const hpVal   = Math.round(dati.hp ?? w.hp_base ?? computeHp(w));
+              // Usa velocita/crit_chance/hp salvati dal DB con clamping rarità — identico a initBattleWaifu
+              const rarDisp = RARITY_MULTIPLIERS_DEFAULT[w.rarita] ?? RARITY_MULTIPLIERS_DEFAULT.comune;
+              const rawSpeed = dati.velocita ?? w.velocita_base ?? computeSpeed(w);
+              const rawCrit  = dati.crit_chance ?? w.crit_chance_base ?? computeCritChance(w);
+              const speed    = Math.min(rarDisp.vel_max, Math.max(rarDisp.vel_min, Math.round(rawSpeed)));
+              const critPct  = Math.round(Math.min(rarDisp.crit_max, Math.max(rarDisp.crit_min, rawCrit)) * 100);
+              const hpVal    = Math.round(dati.hp ?? w.hp_base ?? computeHp(w));
               const mosseSlot = dati.mosse_slot ?? { 1: null, 2: null, 3: null, 4: null };
               const mosseAssegnate = Object.values(mosseSlot).filter(Boolean).length;
 

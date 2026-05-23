@@ -208,6 +208,28 @@ export function clearCatalogCache() {
 }
 
 /**
+ * Confronta il timestamp `config/catalog_version.updated_at` su Firestore con
+ * quello salvato in localStorage. Se il server è più recente, invalida tutta la
+ * cache locale del catalogo in modo che la prossima `listWaifu()` / `listMosse()`
+ * rilegga dati freschi (es. dopo un aggiornamento di rarità da Area Admin).
+ *
+ * Da chiamare una volta per sessione, prima di caricare i dati catalogo.
+ */
+export async function checkAndInvalidateCatalogCache() {
+  if (typeof window === 'undefined') return;
+  try {
+    const snap = await getDoc(doc(db, 'config', 'catalog_version'));
+    if (!snap.exists()) return;
+    const remoteTs = snap.data().updated_at?.toMillis?.() ?? 0;
+    const localTs  = Number(localStorage.getItem('iw_catalog_version_ts') ?? 0);
+    if (remoteTs > localTs) {
+      clearCatalogCache();
+      localStorage.setItem('iw_catalog_version_ts', String(remoteTs));
+    }
+  } catch (_) {}
+}
+
+/**
  * Restituisce l'elenco delle mosse attacco del catalogo, ordinate per nome.
  * @returns {Promise<Array<Object>>}
  */

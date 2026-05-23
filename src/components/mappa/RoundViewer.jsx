@@ -5,17 +5,37 @@ import PickPhase from '@/components/PickPhase';
 import { generateCPUTeamOf5, initBattleTeam, initBattleWaifu, generateCPUMovesFromCatalog } from '@/lib/battleEngine';
 import { C, FF } from '@/app/gioco/_redesign/_shared';
 
-const DIFFICULTY_LEVEL = { easy: 3, medium: 12, hard: 35, expert: 55 };
-
 // Schema rarità per il deck CPU basato sulla difficoltà del territorio
 // Prime 3 waifu = quelle che verranno scelte dalla pick phase (rarità alta)
 // Ultime 2 = "filler" a tema (rarità inferiore)
+// 'expert' usato dal server (attack/route.js), 'extreme' usato nel frontend — entrambi gestiti
 const CPU_DECK_PLAN = {
-  easy:    { combat: ['comune','comune','raro'],             filler: ['raro','comune']      },
-  medium:  { combat: ['raro','raro','raro'],                 filler: ['raro','comune']      },
-  hard:    { combat: ['epico','epico','leggendario'],        filler: ['raro','epico']       },
+  easy:    { combat: ['comune','comune','raro'],                filler: ['raro','comune']       },
+  medium:  { combat: ['raro','raro','raro'],                    filler: ['raro','comune']       },
+  hard:    { combat: ['epico','epico','leggendario'],           filler: ['raro','epico']        },
   extreme: { combat: ['leggendario','leggendario','immersivo'], filler: ['epico','leggendario'] },
+  expert:  { combat: ['leggendario','leggendario','immersivo'], filler: ['epico','leggendario'] },
 };
+
+// Moltiplicatori stat battle CPU per difficoltà — applicati dopo initBattleWaifu
+const DIFFICULTY_STAT_MULT = {
+  easy:    { hp: 1.0,  speed: 1.0,  crit: 1.0  },
+  medium:  { hp: 1.25, speed: 1.15, crit: 1.05 },
+  hard:    { hp: 1.65, speed: 1.40, crit: 1.10 },
+  extreme: { hp: 2.0,  speed: 1.65, crit: 1.15 },
+  expert:  { hp: 2.0,  speed: 1.65, crit: 1.15 },
+};
+
+function applyDifficultyScaling(team, mult) {
+  if (!mult || (mult.hp === 1.0 && mult.speed === 1.0 && mult.crit === 1.0)) return team;
+  return team.map(w => ({
+    ...w,
+    maxHp:      Math.round(w.maxHp * mult.hp),
+    hp:         Math.round(w.hp    * mult.hp),
+    speed:      Math.min(1000, Math.round(w.speed * mult.speed)),
+    critChance: Math.min(0.9, parseFloat((w.critChance * mult.crit).toFixed(3))),
+  }));
+}
 
 function buildCPUDifficultyDeck(candidates, difficulty) {
   const plan = CPU_DECK_PLAN[difficulty] ?? CPU_DECK_PLAN.easy;
@@ -55,8 +75,6 @@ function buildCPUDifficultyDeck(candidates, difficulty) {
  *   - null:     prima volta o match concluso, mostra 'pre'
  */
 export default function RoundViewer({ battle, waifuCat, mosseCat = [], collezione, profilo, onRoundComplete, onClose, hasHardPass }) {
-  const difficulty = DIFFICULTY_LEVEL[battle?.cpuDifficulty ?? 'easy'];
-
   // Inizializza la fase in base a nextRoundChoice
   const initialPhase = battle?.nextRoundChoice === 'same'   ? 'battle'
                      : battle?.nextRoundChoice === 'switch' ? 'pick'
@@ -94,7 +112,10 @@ export default function RoundViewer({ battle, waifuCat, mosseCat = [], collezion
         .map(id => waifuCat?.find(w => w.id === id))
         .map(patchW)
         .filter(Boolean);
-      return waifu.length === 3 ? initBattleTeam(waifu, {}) : null;
+      if (waifu.length !== 3) return null;
+      const team = initBattleTeam(waifu, {});
+      const mult = DIFFICULTY_STAT_MULT[battle?.cpuDifficulty ?? 'easy'];
+      return battle?.defenderUid === 'CPU' ? applyDifficultyScaling(team, mult) : team;
     }
     return null;
   });
@@ -248,7 +269,12 @@ export default function RoundViewer({ battle, waifuCat, mosseCat = [], collezion
             const orig = roster5E.find(r => r.id === w.id);
             return orig?._hotBlurred ? { ...w, _hotBlurred: true } : w;
           });
-          setEnemyTeam(eTeamWithFlags);
+          // Applica moltiplicatori difficoltà alle stat della CPU (HP, velocità, crit)
+          const mult = DIFFICULTY_STAT_MULT[battle?.cpuDifficulty ?? 'easy'];
+          const scaledETeam = battle?.defenderUid === 'CPU'
+            ? applyDifficultyScaling(eTeamWithFlags, mult)
+            : eTeamWithFlags;
+          setEnemyTeam(scaledETeam);
           setPhase('battle');
         }}
       />

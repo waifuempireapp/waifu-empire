@@ -9,6 +9,9 @@ import { upgradeRarity, computeAndSaveStats } from '@/lib/gameLogic';
 export const maxDuration = 300; // 5 minuti — operazione potenzialmente lunga
 
 const RARITY_ORDER = ['comune', 'raro', 'epico', 'leggendario', 'immersivo'];
+const STAT_KEYS    = ['tette', 'eta', 'esperienza', 'colore_capelli', 'taglia_piedi'];
+const BATCH_SIZE   = 400;
+const GETALL_CHUNK = 300; // limite sicuro per adminDb.getAll()
 
 async function getRarityConfig() {
   const snap = await adminDb.doc('config/rarity_multipliers').get();
@@ -71,6 +74,15 @@ export async function POST(request) {
     const logEntries = [];
     let totalUsersUpdated = 0;
 
+    // Legge tutte le collezioni utenti in parallelo una volta sola per tutte le waifu
+    const usersSnap = await adminDb.collection('users').get();
+    const collRefs = usersSnap.docs.map(u => adminDb.doc(`users/${u.id}/collezione/main`));
+    const collSnapsAll = [];
+    for (let i = 0; i < collRefs.length; i += GETALL_CHUNK) {
+      const snaps = await adminDb.getAll(...collRefs.slice(i, i + GETALL_CHUNK));
+      collSnapsAll.push(...snaps);
+    }
+
     for (const entry of top5) {
       const { id, waifu } = entry;
       const oldRarita = waifu.rarita ?? 'comune';
@@ -89,21 +101,28 @@ export async function POST(request) {
       });
 
       // Aggiorna tutte le copie utenti in batch
-      const usersSnap = await adminDb.collection('users').get();
-      const BATCH_SIZE = 400;
       let batch = adminDb.batch();
       let cnt = 0;
-      for (const userDoc of usersSnap.docs) {
-        const collRef = adminDb.doc(`users/${userDoc.id}/collezione/main`);
-        const collSnap = await collRef.get();
+
+      for (let i = 0; i < usersSnap.docs.length; i++) {
+        const collSnap = collSnapsAll[i];
         if (!collSnap.exists) continue;
         const userWaifu = collSnap.data()?.waifu?.[id];
         if (!userWaifu) continue;
-        const statPersonali = userWaifu.stat_personali ?? {};
-        const { velocita: v, crit_chance: c } = computeAndSaveStats(waifu, newRarita, statPersonali, rarityConfig);
-        batch.update(collRef, {
+
+        // Ricostruisce statPersonali da stat_bonus (sistema attuale di level-up lato client)
+        const statBonus = userWaifu.stat_bonus ?? {};
+        const statPersonali = {};
+        for (const key of STAT_KEYS) {
+          const bonus = statBonus[key] || 0;
+          if (bonus !== 0) statPersonali[key] = (waifu[key] ?? 0) + bonus;
+        }
+
+        const { velocita: v, crit_chance: c, hp: h } = computeAndSaveStats(waifu, newRarita, statPersonali, rarityConfig);
+        batch.update(collSnap.ref, {
           [`waifu.${id}.velocita`]:    v,
           [`waifu.${id}.crit_chance`]: c,
+          [`waifu.${id}.hp`]:          h,
         });
         cnt++;
         totalUsersUpdated++;
@@ -118,6 +137,13 @@ export async function POST(request) {
     await adminDb.doc('swap_config/main').update({
       classifica_reset_at: FieldValue.serverTimestamp(),
     });
+
+    // Invalida la cache catalogo lato client: al prossimo accesso tutti i client
+    // confronteranno questo timestamp con quello in localStorage e ricaricheranno.
+    await adminDb.doc('config/catalog_version').set(
+      { updated_at: FieldValue.serverTimestamp() },
+      { merge: true }
+    );
 
     // Salva log
     const logRef = adminDb.doc(`admin_logs/swap_closure_${Date.now()}`);
