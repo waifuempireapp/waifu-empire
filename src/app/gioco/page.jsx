@@ -43,7 +43,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserProfile, updateUserProfile, getCollezione, setCollezione as saveCollezione, listWaifu, listMosse, listDropsAttivi, getClassifica, premioPerPosizione, deleteTeamFromCollezione, createPackSnapshot, getFriendsList, getFriendRequests, getClassificaSettimanale, getPremiClassificaConfig, lazyMigrateStats, incrementaQuestProgress } from '@/lib/firestoreService';
 // Removed unused: getDropAttivo, isDropCompleto, progressioneDrop
-import { calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, GOD_PACK_PROB_DEFAULT, checkMoveLevelUp } from '@/lib/gameLogic';
+import { calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, GOD_PACK_PROB_DEFAULT, checkMoveLevelUp, computeAndSaveStats } from '@/lib/gameLogic';
 // Removed unused: calcolaRicaricaPacchetti, clampStat, clampWaifuStats
 import { TIMER, RARITA, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT } from '@/lib/constants';
 // Removed unused: COLORI_CAPELLI, CATEGORIE_TETTE, ABILITA_TIPI
@@ -3936,12 +3936,23 @@ function CollezioneTab({ collezione, setColl, waifuCat, mosseCat = [], outfitCat
   const handleLevelUp = async (waifuId, statKey, direzione = 1) => {
     const nuova = JSON.parse(JSON.stringify(collezione));
     const w = nuova.waifu[waifuId];
-    // Usa gli step caricati da Firestore (o fallback a INCREMENTI_LEVELUP hardcoded)
     const stepConfigurato = statConfig.steps[statKey] ?? INCREMENTI_LEVELUP[statKey];
     const incr = stepConfigurato * direzione;
     w.copie -= 3; w.livello += 1;
-    const nuovoBonus = (w.stat_bonus[statKey] || 0) + incr;
-    w.stat_bonus[statKey] = nuovoBonus;
+    if (!w.stat_bonus) w.stat_bonus = {};
+    w.stat_bonus[statKey] = (w.stat_bonus[statKey] || 0) + incr;
+    const catW = waifuCat.find(x => x.id === waifuId);
+    if (catW) {
+      const statPersonali = {};
+      for (const key of ['tette', 'eta', 'esperienza', 'colore_capelli', 'taglia_piedi']) {
+        const bonus = w.stat_bonus[key] || 0;
+        if (bonus !== 0) statPersonali[key] = (catW[key] ?? 0) + bonus;
+      }
+      const derived = computeAndSaveStats(catW, catW.rarita ?? 'comune', statPersonali);
+      w.velocita    = derived.velocita;
+      w.crit_chance = derived.crit_chance;
+      w.hp          = derived.hp;
+    }
     setColl(nuova); await saveCollezione(user.uid, nuova);
     mostraNotif(`Level up! ${direzione > 0 ? '+' : ''}${incr} ${statKey}`, '#f5a623');
   };
@@ -5725,8 +5736,11 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
                       const speedAfter  = computeSpeed(wAfter);
                       const critBefore  = Math.round(computeCritChance(wCurr) * 100);
                       const critAfter   = Math.round(computeCritChance(wAfter) * 100);
+                      const hpBefore    = computeHp(wCurr);
+                      const hpAfter     = computeHp(wAfter);
                       const dSpeed = speedAfter - speedBefore;
                       const dCrit  = critAfter  - critBefore;
+                      const dHp    = hpAfter - hpBefore;
                       const PreviewRow = ({ label, before, after, delta, unit = '' }) => {
                         const col = delta > 0 ? '#00e676' : delta < 0 ? '#ff6b6b' : 'rgba(238,232,220,0.45)';
                         const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '→';
@@ -5747,6 +5761,7 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
                           </div>
                           <PreviewRow label="Velocità"      before={speedBefore} after={speedAfter} delta={dSpeed} />
                           <PreviewRow label="Prob. Critico" before={`${critBefore}%`} after={`${critAfter}%`} delta={dCrit} unit="%" />
+                          <PreviewRow label="HP"            before={hpBefore}    after={hpAfter}    delta={dHp} />
                         </div>
                       );
                     })()}

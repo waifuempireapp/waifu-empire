@@ -86,7 +86,8 @@ export async function POST(request) {
     let kissesEarned = 0;
     let milestoneEarned = 0;
     let milestoneHit = null;
-    const rewardHit = swipeCount % rewardThreshold === 0;
+    // Premio ogni rewardThreshold voti GIORNALIERI (non lifetime)
+    const rewardHit = dailyVotesAfterThisVote % rewardThreshold === 0;
     if (rewardHit) kissesEarned = Math.floor(rewardKisses * multiplier);
 
     // Milestone
