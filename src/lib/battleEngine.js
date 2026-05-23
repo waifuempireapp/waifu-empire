@@ -22,6 +22,8 @@
  *     come astrazioni pure (nessun side-effect), lasciando il RNG come dettaglio di implementazione.
  */
 
+import { RARITY_MULTIPLIERS_DEFAULT } from './constants.js';
+
 // ─── TYPE CHART ────────────────────────────────────────────────────────────
 /**
  * Array dei 5 tipi esistenti nel gioco.
@@ -517,15 +519,17 @@ export function initBattleWaifu(waifuFirestore, collectionData = null) {
 
   const level = collectionData?.livello ?? 1;
 
-  // HP: preferisce il valore calcolato e salvato nel DB (collectionData.hp),
-  // fallback su battleStats.maxHp → scalato per livello (0.775 a Lv1, 1.0 a Lv10)
-  const dbHp = collectionData?.hp ?? null;
-  const bsHp = bs.maxHp ?? 300;
-  const hpScale = 0.75 + (Math.min(level, 10) / 10) * 0.25;
-  const scaledMaxHp = Math.round((dbHp ?? bsHp) * hpScale);
+  // Configurazione rarità per clamping speed/crit
+  const rarCfg = RARITY_MULTIPLIERS_DEFAULT[waifuFirestore.rarita ?? 'comune'] ?? RARITY_MULTIPLIERS_DEFAULT.comune;
 
-  // Velocità e crit_chance: usa i valori salvati nel DB se disponibili
+  // HP: usa esattamente il valore salvato nel DB (mostrato nel Tab Battaglia della UI),
+  // fallback deterministico via computeHp (stessa formula della UI, senza scaling per livello)
+  const dbHp = collectionData?.hp ?? null;
+  const maxHp = Math.round(dbHp ?? computeHp(waifuFirestore));
+
+  // Velocità: usa valore DB clampato al range di rarità, fallback con moltiplicatore rarità
   const savedSpeed = collectionData?.velocita ?? null;
+  // Crit_chance: usa valore DB clampato al range di rarità, fallback con moltiplicatore rarità
   const savedCrit  = collectionData?.crit_chance ?? null;
 
   // Legge mosse dagli slot assegnati se disponibili, altrimenti usa le mosse nei battleStats
@@ -569,11 +573,15 @@ export function initBattleWaifu(waifuFirestore, collectionData = null) {
     id:     waifuFirestore.id,
     name:   waifuFirestore.nome ?? 'Waifu',
     level,
-    hp:     scaledMaxHp,
-    maxHp:  scaledMaxHp,
+    hp:     maxHp,
+    maxHp:  maxHp,
     type:      bs.type ?? waifuFirestore.tipo ?? waifuFirestore.tipologia ?? _pick(TYPE_NAMES),
-    speed:     savedSpeed != null ? Math.round(savedSpeed) : Math.round(computeSpeed(waifuFirestore)),
-    critChance: savedCrit != null ? parseFloat(Math.min(0.60, Math.max(0.05, savedCrit)).toFixed(2)) : computeCritChance(waifuFirestore),
+    speed:     savedSpeed != null
+      ? Math.min(rarCfg.vel_max, Math.max(rarCfg.vel_min, Math.round(savedSpeed)))
+      : Math.min(rarCfg.vel_max, Math.max(rarCfg.vel_min, Math.round(calculateSpeed(waifuFirestore, rarCfg.multiplier, rarCfg)))),
+    critChance: savedCrit != null
+      ? parseFloat(Math.min(rarCfg.crit_max, Math.max(rarCfg.crit_min, savedCrit)).toFixed(2))
+      : parseFloat(computeCritChance(waifuFirestore, rarCfg.multiplier, rarCfg).toFixed(2)),
     image:  waifuFirestore.asset_statica ?? waifuFirestore.asset_immersiva ?? null,
     moves:  finalMoves.map(m => {
       const danno = Math.round(m.power ?? m.danno ?? 0);

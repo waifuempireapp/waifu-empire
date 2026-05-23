@@ -45,7 +45,7 @@ import { getUserProfile, updateUserProfile, getCollezione, setCollezione as save
 // Removed unused: getDropAttivo, isDropCompleto, progressioneDrop
 import { calcolaRicaricaPacchettiOmaggio, calcolaRicaricaEnergia, generaPacchetto, calcolaEnergiaScarto, GOD_PACK_PROB_DEFAULT, checkMoveLevelUp, computeAndSaveStats } from '@/lib/gameLogic';
 // Removed unused: calcolaRicaricaPacchetti, clampStat, clampWaifuStats
-import { TIMER, RARITA, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT } from '@/lib/constants';
+import { TIMER, RARITA, SLOT_OUTFIT, TERRITORI, NOMI_CONTINENTI, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, RARITY_MULTIPLIERS_DEFAULT } from '@/lib/constants';
 // Removed unused: COLORI_CAPELLI, CATEGORIE_TETTE, ABILITA_TIPI
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -74,7 +74,7 @@ import MappaScrollabile from '@/components/mappa/MappaScrollabile';
 import WaifuBattleArena from '@/components/WaifuBattleArena';
 import PickPhase from '@/components/PickPhase';
 // RevealScreen removed — unused named re-export from PickPhase
-import { generateCPUTeamOf5, generateBattleStats, computeSpeed, computeCritChance, computeHp } from '@/lib/battleEngine';
+import { generateCPUTeamOf5, generateBattleStats, computeSpeed, computeCritChance, computeHp, calculateSpeed } from '@/lib/battleEngine';
 // Removed unused: initBattleWaifu, generateCPUTeam
 import {
   PannelloOrnato, TitoloOrnato, BtnDecorato, Chip,
@@ -5732,24 +5732,27 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
                       const rawAfter = wCurr[sKey] + (isDirPlus ? step : -step);
                       const clampedAfter = Math.min(s.max, Math.max(s.min, rawAfter));
                       const wAfter = { ...wCurr, [sKey]: clampedAfter };
-                      const speedBefore = computeSpeed(wCurr);
-                      const speedAfter  = computeSpeed(wAfter);
-                      const critBefore  = Math.round(computeCritChance(wCurr) * 100);
-                      const critAfter   = Math.round(computeCritChance(wAfter) * 100);
-                      const hpBefore    = computeHp(wCurr);
-                      const hpAfter     = computeHp(wAfter);
+                      const rarCfgPrev = RARITY_MULTIPLIERS_DEFAULT[w.rarita] ?? RARITY_MULTIPLIERS_DEFAULT.comune;
+                      const speedBefore = Math.min(rarCfgPrev.vel_max,  Math.max(rarCfgPrev.vel_min,  Math.round(calculateSpeed(wCurr, rarCfgPrev.multiplier, rarCfgPrev))));
+                      const speedAfter  = Math.min(rarCfgPrev.vel_max,  Math.max(rarCfgPrev.vel_min,  Math.round(calculateSpeed(wAfter, rarCfgPrev.multiplier, rarCfgPrev))));
+                      const critBefore  = Math.round(Math.min(rarCfgPrev.crit_max, Math.max(rarCfgPrev.crit_min, computeCritChance(wCurr, rarCfgPrev.multiplier, rarCfgPrev))) * 100);
+                      const critAfter   = Math.round(Math.min(rarCfgPrev.crit_max, Math.max(rarCfgPrev.crit_min, computeCritChance(wAfter, rarCfgPrev.multiplier, rarCfgPrev))) * 100);
+                      const hpBefore    = computeHp(wCurr, rarCfgPrev.multiplier);
+                      const hpAfter     = computeHp(wAfter, rarCfgPrev.multiplier);
                       const dSpeed = speedAfter - speedBefore;
                       const dCrit  = critAfter  - critBefore;
                       const dHp    = hpAfter - hpBefore;
-                      const PreviewRow = ({ label, before, after, delta, unit = '' }) => {
-                        const col = delta > 0 ? '#00e676' : delta < 0 ? '#ff6b6b' : 'rgba(238,232,220,0.45)';
+                      const PreviewRow = ({ label, before, after, delta, unit = '', atLimit = false }) => {
+                        const col = atLimit ? 'rgba(238,232,220,0.35)' : delta > 0 ? '#00e676' : delta < 0 ? '#ff6b6b' : 'rgba(238,232,220,0.45)';
                         const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '→';
                         return (
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
                             <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: 'rgba(238,232,220,0.55)' }}>{label}</span>
                             <span style={{ fontFamily: 'Orbitron', fontSize: 9, color: col, fontWeight: 700 }}>
-                              {arrow}{' '}
-                              {delta === 0 ? 'no change' : `${delta > 0 ? '+' : ''}${delta}${unit}  (${before}${unit} → ${after}${unit})`}
+                              {atLimit
+                                ? (isDirPlus ? '→ Max rarità' : '→ Min rarità')
+                                : delta === 0 ? '→ Nessuna var.'
+                                : `${arrow} ${delta > 0 ? '+' : ''}${delta}${unit}  (${before}${unit} → ${after}${unit})`}
                             </span>
                           </div>
                         );
@@ -5759,8 +5762,8 @@ function ModaPersonalizzazione({ waifuId, collezione, waifuCat, mosseCat = [], o
                           <div style={{ fontFamily: 'Orbitron', fontSize: 8, color: 'rgba(155,89,255,0.7)', letterSpacing: 2, marginBottom: 8, textAlign: 'center' }}>
                             IMPATTO SUL TUO PERSONAGGIO
                           </div>
-                          <PreviewRow label="Velocità"      before={speedBefore} after={speedAfter} delta={dSpeed} />
-                          <PreviewRow label="Prob. Critico" before={`${critBefore}%`} after={`${critAfter}%`} delta={dCrit} unit="%" />
+                          <PreviewRow label="Velocità"      before={speedBefore} after={speedAfter} delta={dSpeed} atLimit={dSpeed === 0 && speedBefore === (isDirPlus ? rarCfgPrev.vel_max : rarCfgPrev.vel_min)} />
+                          <PreviewRow label="Prob. Critico" before={`${critBefore}%`} after={`${critAfter}%`} delta={dCrit} unit="%" atLimit={dCrit === 0 && critBefore === Math.round((isDirPlus ? rarCfgPrev.crit_max : rarCfgPrev.crit_min) * 100)} />
                           <PreviewRow label="HP"            before={hpBefore}    after={hpAfter}    delta={dHp} />
                         </div>
                       );
