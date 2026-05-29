@@ -555,6 +555,102 @@ onUnmounted(() => {
   if (missionCountdownTimer)      clearInterval(missionCountdownTimer)
   if (missionDetailCountdownTimer) clearInterval(missionDetailCountdownTimer)
 })
+
+// ------------------------------------------------------------------ Mappa immagine: territori
+
+const MAP_TERRITORIES = [
+  // Northernas region (top-left ice/castle)
+  { id: 't_alaska',        nome: 'Northernas',    x: 11, y: 14, size: 28 },
+  { id: 't_canada_w',      nome: 'Frost Peak',    x: 8,  y: 26, size: 22 },
+  { id: 't_canada_e',      nome: 'Glacier Vale',  x: 20, y: 22, size: 22 },
+  { id: 't_groenlandia',   nome: 'Frozen Crown',  x: 30, y: 10, size: 20 },
+  // Aurelia region (left, golden towers)
+  { id: 't_usa_w',         nome: 'Aurelia Keep',  x: 14, y: 36, size: 24 },
+  { id: 't_usa_e',         nome: 'Aurelia',       x: 20, y: 43, size: 28 },
+  { id: 't_messico',       nome: 'Golden Shore',  x: 13, y: 53, size: 22 },
+  // Center-left territories
+  { id: 't_caraibi',       nome: 'Misty Isle',    x: 30, y: 35, size: 20 },
+  { id: 't_venezuela',     nome: 'Verdant Pass',  x: 37, y: 27, size: 20 },
+  { id: 't_peru',          nome: 'Thornbriar',    x: 35, y: 42, size: 22 },
+  { id: 't_brasile',       nome: 'Deepwood',      x: 43, y: 36, size: 22 },
+  { id: 't_argentina',     nome: 'Voidfen',       x: 27, y: 55, size: 20 },
+  // Top-center territories
+  { id: 't_islanda',       nome: 'Skyveil',       x: 46, y: 11, size: 20 },
+  { id: 't_uk',            nome: 'Willowfen',     x: 44, y: 24, size: 22 },
+  { id: 't_scandinavia',   nome: 'Mossgrove',     x: 53, y: 17, size: 22 },
+  // Valerion region (center, large green)
+  { id: 't_europa_o',      nome: 'Valerion West', x: 51, y: 32, size: 24 },
+  { id: 't_europa_e',      nome: 'Valerion',      x: 61, y: 44, size: 28 },
+  { id: 't_africa_n',      nome: 'Fernwood',      x: 55, y: 52, size: 24 },
+  { id: 't_africa_o',      nome: 'Moonpool',      x: 46, y: 58, size: 22 },
+  { id: 't_africa_e',      nome: 'Silverfen',     x: 64, y: 57, size: 22 },
+  // Interna region (right, volcanic)
+  { id: 't_russia',        nome: 'Shadowpeak',    x: 77, y: 12, size: 22 },
+  { id: 't_medio_oriente', nome: 'Cinderfall',    x: 71, y: 32, size: 24 },
+  { id: 't_cina',          nome: 'Interna North', x: 82, y: 28, size: 24 },
+  { id: 't_india',         nome: 'Interna',       x: 79, y: 42, size: 28 },
+  { id: 't_giappone',      nome: 'Emberveil',     x: 91, y: 24, size: 20 },
+  { id: 't_kamchatka',     nome: 'Darkforge',     x: 89, y: 14, size: 20 },
+  { id: 't_indonesia',     nome: 'Ashfen',        x: 86, y: 54, size: 22 },
+  { id: 't_australia',     nome: 'Ironmoor',      x: 91, y: 64, size: 22 },
+]
+
+// Calcola i 6 punti di un esagono in coordinate viewBox (flat-top)
+function hexPoints(cx: number, cy: number, r: number): string {
+  const pts = []
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 6
+    pts.push(`${(cx + r * Math.cos(angle)).toFixed(2)},${(cy + r * Math.sin(angle)).toFixed(2)}`)
+  }
+  return pts.join(' ')
+}
+
+// Recupera i dati del pixel dal chunk in base alle coordinate x,y (0-49)
+function getPixelData(px: number, py: number): any {
+  if (!chunks.value) return null
+  const chunkCol = Math.floor(px / 10)
+  const chunkRow = Math.floor(py / 10)
+  const chunkId  = `chunk_${chunkCol}_${chunkRow}`
+  const key      = `${px}_${py}`
+  return chunks.value[chunkId]?.pixels?.[key] ?? null
+}
+
+// Ottieni l'owner dominante del territorio (dal chunks data)
+function getTerritoryOwner(territoryId: string): any {
+  if (!chunks.value) return null
+  const terr = MAP_TERRITORIES.find(t => t.id === territoryId)
+  if (!terr) return null
+  // Mappa posizione percentuale (0-100) → pixel griglia (0-49)
+  const px = Math.min(49, Math.max(0, Math.floor(terr.x / 2)))
+  const py = Math.min(49, Math.max(0, Math.floor(terr.y / 2)))
+  const pixelData = getPixelData(px, py)
+  return pixelData?.ownerId ? pixelData : null
+}
+
+// Ottieni il colore del proprietario del territorio
+function getTerritoryColor(territoryId: string): string {
+  const owner = getTerritoryOwner(territoryId)
+  if (!owner) return 'rgba(245,197,96,0.4)'
+  if (owner.ownerId === 'CPU') return '#888888'
+  return owner.ownerColor || '#f5c560'
+}
+
+// Gestisce il click su un territorio: costruisce un pixel object e chiama handlePixelSelect
+async function onTerritoryClick(territoryId: string) {
+  const terr = MAP_TERRITORIES.find(t => t.id === territoryId)
+  if (!terr) return
+  const px = Math.min(49, Math.max(0, Math.floor(terr.x / 2)))
+  const py = Math.min(49, Math.max(0, Math.floor(terr.y / 2)))
+  const pixelData = getPixelData(px, py) ?? {}
+  await handlePixelSelect({
+    x:          px,
+    y:          py,
+    ownerId:    pixelData.ownerId    ?? 'CPU',
+    ownerColor: pixelData.ownerColor ?? '#888888',
+    ownerLevel: pixelData.ownerLevel ?? 1,
+    ...pixelData,
+  })
+}
 </script>
 
 <template>
@@ -668,17 +764,50 @@ onUnmounted(() => {
         <div :style="{ fontFamily: FF.label, fontSize: '10px', color: 'rgba(236,72,153,0.7)', flexShrink: 0 }">→</div>
       </div>
 
-      <!-- Canvas mappa pixel 50×50 con pan/zoom/pinch -->
-      <div :style="{ height: '380px' }">
-        <MappaPixelGrid
-          :chunks="chunks"
-          :user-uid="authStore.user?.uid ?? ''"
-          :selected-pixel="selectedPixel"
-          :land-set="LAND_SET"
-          :mission-pixel-set="missionPixelSet"
-          :focus-pixel="missionFocusPixel"
-          @pixel-select="(key, data) => handlePixelSelect(data)"
+      <!-- Mappa interattiva con immagine di sfondo e overlay esagonali -->
+      <div style="position: relative; margin: 0 16px 16px; border-radius: 16px; overflow: hidden; border: 1px solid rgba(245,197,96,0.15);">
+
+        <!-- Immagine mappa di sfondo -->
+        <img
+          src="~/assets/world/Mappa_Del_Mondo_Waifu.jpeg"
+          alt="Mappa del Mondo"
+          style="width: 100%; height: auto; display: block; user-select: none;"
+          draggable="false"
         />
+
+        <!-- SVG overlay con territori cliccabili -->
+        <svg
+          style="position: absolute; inset: 0; width: 100%; height: 100%;"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+        >
+          <g
+            v-for="t in MAP_TERRITORIES"
+            :key="t.id"
+            style="cursor: pointer;"
+            @click="onTerritoryClick(t.id)"
+          >
+            <polygon
+              :points="hexPoints(t.x, t.y, t.size * 0.45)"
+              :fill="getTerritoryColor(t.id)"
+              :fill-opacity="getTerritoryOwner(t.id) ? 0.55 : 0.18"
+              :stroke="getTerritoryOwner(t.id) ? getTerritoryColor(t.id) : 'rgba(245,197,96,0.35)'"
+              stroke-width="0.4"
+            />
+            <text
+              :x="t.x"
+              :y="t.y + t.size * 0.18"
+              text-anchor="middle"
+              font-size="1.8"
+              fill="white"
+              fill-opacity="0.85"
+              font-family="var(--ff-label, sans-serif)"
+              font-weight="700"
+              style="pointer-events: none; text-shadow: 0 1px 3px rgba(0,0,0,0.9);"
+            >{{ t.nome }}</text>
+          </g>
+        </svg>
+
       </div>
 
       <!-- ── Badge Missioni Mappa (inline) — sotto la mappa ────────────── -->

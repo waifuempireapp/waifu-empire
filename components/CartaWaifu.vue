@@ -263,7 +263,7 @@ function onMouseLeave(e: MouseEvent) {
         }">
           <span :style="{ fontSize: `${Math.round(32 * scale)}px`, filter: 'drop-shadow(0 0 8px rgba(255,140,0,0.8))' }">🔒</span>
           <div :style="{
-            fontFamily: \"var(--ff-label, 'Saira Condensed', sans-serif)\",
+            fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
             fontSize: `${Math.max(7, Math.round(8 * scale))}px`,
             color: 'rgba(241,235,255,0.7)',
             letterSpacing: '0.18em', textAlign: 'center', lineHeight: '1.4',
@@ -276,7 +276,7 @@ function onMouseLeave(e: MouseEvent) {
               border: '1px solid rgba(255,140,0,0.5)',
               borderRadius: '7px',
               color: '#ffb86b',
-              fontFamily: \"var(--ff-label, 'Saira Condensed', sans-serif)\",
+              fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
               fontSize: `${Math.max(6, Math.round(8 * scale))}px`,
               padding: '4px 10px', cursor: 'pointer',
               letterSpacing: '0.18em', textTransform: 'uppercase',
@@ -306,7 +306,7 @@ function onMouseLeave(e: MouseEvent) {
         }" />
         <div :style="{
           position: 'absolute', bottom: '6px', left: '0', right: '0', textAlign: 'center',
-          fontFamily: \"var(--ff-mono, 'JetBrains Mono', monospace)\",
+          fontFamily: `var(--ff-mono, 'JetBrains Mono', monospace)`,
           fontSize: `${Math.round(8 * scale)}px`, letterSpacing: '0.18em',
           color: 'rgba(241,235,255,0.4)', textTransform: 'uppercase',
         }">{{ (waifu.nome || 'WAIFU').toUpperCase() }} · ART</div>
@@ -320,7 +320,7 @@ function onMouseLeave(e: MouseEvent) {
         position: 'absolute', top: `${Math.round(6 * scale)}px`, left: `${Math.round(6 * scale)}px`,
         background: 'linear-gradient(135deg, rgba(255,69,0,0.92), rgba(255,140,0,0.92))',
         color: '#fff',
-        fontFamily: \"var(--ff-label, 'Saira Condensed', sans-serif)\",
+        fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
         fontSize: `${Math.max(7, Math.round(8 * scale))}px`,
         fontWeight: '800', letterSpacing: '0.12em',
         padding: `${Math.round(2 * scale)}px ${Math.round(7 * scale)}px`,
@@ -357,7 +357,7 @@ function onMouseLeave(e: MouseEvent) {
       }">
         <div :style="{
           color: '#fff',
-          fontFamily: \"var(--ff-label, 'Saira Condensed', sans-serif)\",
+          fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
           fontSize: `${Math.round(11 * scale)}px`, opacity: '0.85',
           letterSpacing: '0.22em', textTransform: 'uppercase',
         }">&#9664; Rivedi</div>
@@ -378,7 +378,7 @@ function onMouseLeave(e: MouseEvent) {
       <div style="min-width: 0;">
         <!-- Nome waifu -->
         <div :style="{
-          fontFamily: \"var(--ff-display, 'Unbounded', sans-serif)\",
+          fontFamily: `var(--ff-display, 'Unbounded', sans-serif)`,
           fontSize: `${Math.round(14 * scale)}px`, fontWeight: '700',
           color: '#fff', letterSpacing: '-0.005em',
           textShadow: `0 0 12px ${rb.glow}, 0 2px 4px rgba(0,0,0,0.85)`,
@@ -390,7 +390,7 @@ function onMouseLeave(e: MouseEvent) {
         <div v-if="datiCollezione" :style="{
           fontSize: `${Math.round(8.5 * scale)}px`,
           color: rb.inner, letterSpacing: '0.22em',
-          fontFamily: \"var(--ff-label, 'Saira Condensed', sans-serif)\",
+          fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
           marginTop: '3px', textShadow: '0 1px 3px rgba(0,0,0,0.8)',
           textTransform: 'uppercase',
         }">Lv.{{ datiCollezione.livello ?? 1 }}</div>
@@ -434,7 +434,7 @@ function onMouseLeave(e: MouseEvent) {
       padding: `${Math.round(2.5 * scale)}px ${Math.round(9 * scale)}px`,
       fontSize: `${Math.round(7.5 * scale)}px`,
       fontWeight: '800', letterSpacing: '0.2em',
-      fontFamily: \"var(--ff-label, 'Saira Condensed', sans-serif)\",
+      fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
       borderRadius: `${Math.round(5 * scale)}px 0 0 ${Math.round(5 * scale)}px`,
       textTransform: 'uppercase',
       boxShadow: `0 2px 12px ${rb.glow}, 0 0 0 1px rgba(255,255,255,0.18) inset`,
@@ -512,7 +512,7 @@ function onMouseLeave(e: MouseEvent) {
             <div :style="{
               position: 'absolute', inset: '0', display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: `${statSize * 0.32}px`, fontWeight: '700', color: '#fff',
-              fontFamily: \"var(--ff-mono, 'JetBrains Mono', monospace)\",
+              fontFamily: `var(--ff-mono, 'JetBrains Mono', monospace)`,
               textShadow: '0 0 6px #ff9ec6', letterSpacing: '-0.02em',
             }">{{ tetteEff }}</div>
           </div>
@@ -531,7 +531,7 @@ function onMouseLeave(e: MouseEvent) {
             <div :style="{
               position: 'absolute', inset: '0', display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: `${statSize * 0.32}px`, fontWeight: '700', color: '#fff',
-              fontFamily: \"var(--ff-mono, 'JetBrains Mono', monospace)\",
+              fontFamily: `var(--ff-mono, 'JetBrains Mono', monospace)`,
               textShadow: '0 0 6px #b573ff', letterSpacing: '-0.02em',
             }">{{ piediEff }}</div>
           </div>
@@ -550,7 +550,7 @@ function onMouseLeave(e: MouseEvent) {
             <div :style="{
               position: 'absolute', inset: '0', display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: `${statSize * 0.32}px`, fontWeight: '700', color: '#fff',
-              fontFamily: \"var(--ff-mono, 'JetBrains Mono', monospace)\",
+              fontFamily: `var(--ff-mono, 'JetBrains Mono', monospace)`,
               textShadow: '0 0 6px #6cf0e0', letterSpacing: '-0.02em',
             }">{{ etaEff }}</div>
           </div>
@@ -569,7 +569,7 @@ function onMouseLeave(e: MouseEvent) {
             <div :style="{
               position: 'absolute', inset: '0', display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: `${statSize * 0.32}px`, fontWeight: '700', color: '#fff',
-              fontFamily: \"var(--ff-mono, 'JetBrains Mono', monospace)\",
+              fontFamily: `var(--ff-mono, 'JetBrains Mono', monospace)`,
               textShadow: '0 0 6px #ffc861', letterSpacing: '-0.02em',
             }">{{ capelliEff }}</div>
           </div>
@@ -588,7 +588,7 @@ function onMouseLeave(e: MouseEvent) {
             <div :style="{
               position: 'absolute', inset: '0', display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: `${statSize * 0.32}px`, fontWeight: '700', color: '#fff',
-              fontFamily: \"var(--ff-mono, 'JetBrains Mono', monospace)\",
+              fontFamily: `var(--ff-mono, 'JetBrains Mono', monospace)`,
               textShadow: '0 0 6px #a78bfa', letterSpacing: '-0.02em',
             }">{{ expEff }}</div>
           </div>
@@ -608,7 +608,7 @@ function onMouseLeave(e: MouseEvent) {
         borderRadius: `${Math.round(5 * scale)}px`,
         padding: `${Math.round(1.5*scale)}px ${Math.round(6*scale)}px`,
         fontSize: `${Math.round(7.5 * scale)}px`,
-        fontFamily: \"var(--ff-mono, 'JetBrains Mono', monospace)\",
+        fontFamily: `var(--ff-mono, 'JetBrains Mono', monospace)`,
         fontWeight: '700', color: '#58e0a3',
         display: 'flex', alignItems: 'center', gap: '4px',
         backdropFilter: 'blur(4px)',
@@ -621,7 +621,7 @@ function onMouseLeave(e: MouseEvent) {
         borderRadius: `${Math.round(5 * scale)}px`,
         padding: `${Math.round(1.5*scale)}px ${Math.round(6*scale)}px`,
         fontSize: `${Math.round(7.5 * scale)}px`,
-        fontFamily: \"var(--ff-mono, 'JetBrains Mono', monospace)\",
+        fontFamily: `var(--ff-mono, 'JetBrains Mono', monospace)`,
         fontWeight: '700', color: '#ff85b6',
         display: 'flex', alignItems: 'center', gap: '4px',
         backdropFilter: 'blur(4px)',
@@ -639,7 +639,7 @@ function onMouseLeave(e: MouseEvent) {
       fontSize: `${Math.round(10 * scale)}px`, fontWeight: '700',
       padding: `${Math.round(2*scale)}px ${Math.round(7*scale)}px`,
       borderRadius: `${Math.round(7 * scale)}px`,
-      fontFamily: \"var(--ff-mono, 'JetBrains Mono', monospace)\",
+      fontFamily: `var(--ff-mono, 'JetBrains Mono', monospace)`,
       letterSpacing: '-0.02em',
       backdropFilter: 'blur(4px)',
       boxShadow: `0 0 8px ${rb.glow}`,

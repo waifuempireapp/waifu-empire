@@ -226,42 +226,15 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
 </script>
 
 <template>
-  <!-- Contenitore principale HomeTab con animazione fade-in -->
-  <div class="fade-in" style="position: relative;">
-
-    <!-- ── SAKURA PETALS OVERLAY ─────────────────────────────────────── -->
-    <div style="position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0;">
-      <div
-        v-for="(p, i) in sakuraPetals"
-        :key="i"
-        class="sakura-petal"
-        :style="{
-          position:     'absolute',
-          top:          '-20px',
-          left:         `${p.left}%`,
-          width:        `${p.size}px`,
-          height:       `${p.size}px`,
-          borderRadius: '50% 0 50% 50%',
-          background:   'linear-gradient(135deg, #ffc3da, #ff85b6)',
-          opacity:      0.45,
-          transform:    'rotate(45deg)',
-          animation:    `sakuraFall ${p.dur}s linear ${p.delay}s infinite`,
-        }"
-      />
-    </div>
-
-    <!-- ── CONTENUTO PRINCIPALE (z-index > sakura) ───────────────────── -->
-    <div style="position: relative; z-index: 1; padding-top: 12px;">
+  <!-- Contenitore principale HomeTab -->
+  <div style="padding-top: 12px;">
 
       <!-- ═══════════════════════════════════════════════════════════════
            1. PACK HERO SECTION — banner dominante con CTA apertura pack
-           Panel scuro con gradiente radiale + bordo sakura/gold
            ═══════════════════════════════════════════════════════════════ -->
       <div
-        class="glass-panel"
         :style="{
           position:     'relative',
-          overflow:     'hidden',
           marginBottom: '14px',
           background:   `
             radial-gradient(120% 90% at 0% 0%, rgba(255,126,182,0.28) 0%, transparent 55%),
@@ -277,8 +250,6 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
           borderRadius: '18px',
         }"
       >
-        <!-- Effetto foil holografico leggero -->
-        <div class="foil foil--soft" />
 
         <!-- Raggi decorativi rotativi -->
         <div :style="{
@@ -526,7 +497,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
       <!-- ═══════════════════════════════════════════════════════════════
            4. BANNER ULTIME CARTE — carousel orizzontale con pack + carte
            ═══════════════════════════════════════════════════════════════ -->
-      <PannelloOrnato :glow="C.violet" variant="purple">
+      <UiPannelloOrnato :glow="C.violet" variant="purple">
         <!-- Titolo sezione ornato -->
         <div :style="{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -624,7 +595,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
             <div :style="{ opacity: 0.50, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">Apri il primo pacchetto<br/>e inizia la tua collezione!</div>
           </div>
         </div>
-      </PannelloOrnato>
+      </UiPannelloOrnato>
 
       <!-- ═══════════════════════════════════════════════════════════════
            5. SWAP PROMO / DAILY EVENT WIDGET
@@ -703,8 +674,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
         </button>
       </div>
 
-    </div><!-- fine contenuto z-index:1 -->
-  </div><!-- fine fade-in wrapper -->
+  </div><!-- fine HomeTab -->
 </template>
 
 <style scoped>

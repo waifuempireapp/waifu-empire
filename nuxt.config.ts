@@ -7,6 +7,12 @@
 export default defineNuxtConfig({
   devtools: { enabled: true },
 
+  // Disabilita il prefisso del percorso per i componenti nelle subdirectory
+  // (es. components/tabs/HomeTab.vue → <HomeTab> invece di <TabsHomeTab>)
+  components: [
+    { path: '~/components', pathPrefix: false },
+  ],
+
   // SPA mode: tutte le pagine renderizzate lato client (come il Next.js originale con 'use client').
   // Le server/api/ routes rimangono server-side.
   ssr: false,

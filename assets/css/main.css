@@ -2306,10 +2306,8 @@ img {
 
 /* ── Glass panel: pannello glassmorphism per sezioni ─────────────────── */
 .glass-panel {
-  background: rgba(27,22,56,0.70);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(245,197,96,0.12);
+  background: rgba(27,22,56,0.92);
+  border: 1px solid rgba(245,197,96,0.18);
   border-radius: 16px;
 }
 
