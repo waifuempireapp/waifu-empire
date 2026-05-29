@@ -1,6 +1,7 @@
 <!-- ============================================================
-  Pagina principale del gioco: navigazione a tab, caricamento
-  dati utente (profilo, collezione, catalogo) da Firestore.
+  Pagina principale del gioco: navigazione a 5 tab (Pokémon TCG Pocket style),
+  caricamento dati utente (profilo, collezione, catalogo) da Firestore.
+  Pacchetti e Community usano sub-navigazione interna a pill.
   Equivalente di src/app/gioco/page.jsx nel Next.js originale.
   Ogni tab ha il proprio componente separato (SRP).
   ============================================================ -->
@@ -27,38 +28,52 @@ const authStore = useAuthStore()
 const gameStore = useGameStore()
 const router    = useRouter()
 
-// Stato locale UI (non globale)
-const tab          = computed({ get: () => gameStore.tabAttiva, set: v => gameStore.setTab(v) })
+// ── Stato locale UI (non globale) ──────────────────────────────────────
+const tab           = computed({ get: () => gameStore.tabAttiva, set: v => gameStore.setTab(v) })
 const negozioAperto = computed({ get: () => gameStore.negozioAperto, set: v => gameStore.toggleNegozio(v) })
-const pescaAperta  = ref(false)
+const pescaAperta   = ref(false)
 const pescaPacksInitial = ref<unknown[] | null>(null)
-const notif        = ref<{ testo: string; colore: string } | null>(null)
-const isAdmin      = ref(false)
-const statConfig   = ref({ ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT })
-const godPackProb     = ref(GOD_PACK_PROB_DEFAULT)
-const caricato        = ref(false)
+const notif         = ref<{ testo: string; colore: string } | null>(null)
+const isAdmin       = ref(false)
+const statConfig    = ref({ ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT })
+const godPackProb   = ref(GOD_PACK_PROB_DEFAULT)
+const caricato      = ref(false)
 // Contesto battaglia raid — passato a MappaTab come prop, poi reimpostato a null
-const raidBattleCtx   = ref<unknown>(null)
+const raidBattleCtx = ref<unknown>(null)
+
+// ── Sub-navigazione per la tab "Pacchetti" (Sbusta | Pesca) ───────────
+const subTabPacchetti = ref<'sbusta' | 'pesca'>('sbusta')
+
+// ── Sub-navigazione per la tab "Community" (Amici | Classifica | Swap) ─
+const subTabCommunity = ref<'amici' | 'classifica' | 'swap'>('amici')
 
 // Cache catalogo in-sessione — evita riscrittura ad ogni tab-switch
 let catalogRef: { ws: unknown[]; ms: unknown[] } | null = null
 
 function chiudiPesca() {
-  pescaAperta.value      = false
+  pescaAperta.value       = false
   pescaPacksInitial.value = null
 }
 
-// Listener eventi globali (equivalenti a window.addEventListener in React)
+// ── Listener eventi globali (window.addEventListener) ─────────────────
 onMounted(() => {
   window.addEventListener('impero:apri-negozio', () => gameStore.toggleNegozio(true))
-  window.addEventListener('impero:apri-pesca',   () => (pescaAperta.value = true))
+  window.addEventListener('impero:apri-pesca', () => {
+    gameStore.setTab('pacchetti')
+    subTabPacchetti.value = 'pesca'
+    pescaAperta.value = true
+  })
 })
 onUnmounted(() => {
   window.removeEventListener('impero:apri-negozio', () => gameStore.toggleNegozio(true))
-  window.removeEventListener('impero:apri-pesca',   () => (pescaAperta.value = true))
+  window.removeEventListener('impero:apri-pesca', () => {
+    gameStore.setTab('pacchetti')
+    subTabPacchetti.value = 'pesca'
+    pescaAperta.value = true
+  })
 })
 
-// Carica tutto al mount, quando l'utente è disponibile
+// ── Carica tutto al mount, quando l'utente è disponibile ──────────────
 watch(
   () => authStore.user,
   async (user) => {
@@ -68,7 +83,7 @@ watch(
   { immediate: true },
 )
 
-// Reset scroll al cambio tab
+// ── Reset scroll al cambio di tab principale ────────────────────────
 watch(tab, () => window.scrollTo({ top: 0, behavior: 'instant' }))
 
 async function caricaTutto(uid: string) {
@@ -97,7 +112,7 @@ async function caricaTutto(uid: string) {
   }
 
   // Controlla se l'utente è admin
-  const runtimeConfig  = useRuntimeConfig()
+  const runtimeConfig   = useRuntimeConfig()
   const adminEmailsList = ((runtimeConfig.public.adminEmails as string) || '').split(',').map(s => s.trim().toLowerCase())
   isAdmin.value = adminEmailsList.includes(authStore.user?.email?.toLowerCase() ?? '')
 
@@ -127,7 +142,7 @@ async function caricaTutto(uid: string) {
     })
   }
 
-  // Aggiorna store
+  // Aggiorna store globale
   gameStore.setProfilo(updatedProfile as never)
   gameStore.setCollezione(collezione as never)
   gameStore.setCatalogoWaifu(catalog.ws as never[])
@@ -173,45 +188,80 @@ function mostraNotif(testo: string, colore = '#00e676') {
   setTimeout(() => (notif.value = null), 2200)
 }
 
+// ── 5 tab principali (Pokémon TCG Pocket style) ───────────────────────
 const TABS = [
-  { id: 'home',       label: 'Home',       icon: '♛' },
-  { id: 'mappa',      label: 'Mappa',      icon: '🗺' },
-  { id: 'sbusta',     label: 'Sbusta',     icon: '🎴' },
-  { id: 'collezione', label: 'Collezione', icon: '💎' },
-  { id: 'amici',      label: 'Amici',      icon: '👥' },
-  { id: 'swap',       label: 'Swap',       icon: '↔' },
-  { id: 'classifica', label: 'Classifica', icon: '🏆' },
+  { id: 'home',       label: 'Home',       icon: '🏠' },
+  { id: 'pacchetti',  label: 'Pacchetti',  icon: '📦' },
+  { id: 'collezione', label: 'Collezione', icon: '🃏' },
+  { id: 'mappa',      label: 'Mappa',      icon: '🗺️' },
+  { id: 'community',  label: 'Community',  icon: '👥' },
 ]
+
+// ── Sub-tab Pacchetti: Sbusta e Pesca ─────────────────────────────────
+const SUB_PACCHETTI = [
+  { id: 'sbusta', label: 'Sbusta', icon: '🎴' },
+  { id: 'pesca',  label: 'Pesca',  icon: '🎣' },
+]
+
+// ── Sub-tab Community: Amici, Classifica, Swap ────────────────────────
+const SUB_COMMUNITY = [
+  { id: 'amici',      label: 'Amici',      icon: '👫' },
+  { id: 'classifica', label: 'Classifica', icon: '🏆' },
+  { id: 'swap',       label: 'Swap',       icon: '↔️' },
+]
+
+// ── Mappatura vecchie stringhe tab → nuova struttura a 5 tab ──────────
+// Utilizzato dagli emit @set-tab dei componenti figli (es. HomeTab → 'sbusta')
+function handleSetTab(t: string) {
+  switch (t) {
+    case 'sbusta':
+      gameStore.setTab('pacchetti')
+      subTabPacchetti.value = 'sbusta'
+      break
+    case 'pesca':
+      gameStore.setTab('pacchetti')
+      subTabPacchetti.value = 'pesca'
+      break
+    case 'amici':
+    case 'classifica':
+    case 'swap':
+      gameStore.setTab('community')
+      subTabCommunity.value = t as 'amici' | 'classifica' | 'swap'
+      break
+    default:
+      gameStore.setTab(t)
+  }
+}
 </script>
 
 <template>
-  <!-- Schermata di caricamento iniziale -->
+  <!-- Schermata di caricamento: logo centrato mentre si caricano i dati -->
   <div v-if="!caricato" class="min-h-screen flex items-center justify-center">
     <img src="~/assets/images/Waifu_Empire_Logo_NO_BG.png" alt="Impero delle Waifu" class="w-48 h-auto" />
   </div>
 
-  <!-- Contenuto gioco -->
+  <!-- Contenuto principale del gioco -->
   <div v-else class="game-container min-h-screen" style="padding-bottom:80px">
 
-    <!-- Notifica flottante -->
+    <!-- Notifica flottante (toast slide-down) -->
     <Transition name="slide-down">
       <div
         v-if="notif"
         class="fixed top-4 left-1/2 -translate-x-1/2 z-[200] px-6 py-2.5 rounded-xl
                text-xs tracking-widest font-orbitron"
         :style="{
-          background:  'rgba(6,3,15,0.95)',
+          background:     'rgba(6,3,15,0.95)',
           backdropFilter: 'blur(12px)',
-          border: `1px solid ${notif.colore}80`,
-          color:  notif.colore,
-          boxShadow: `0 0 24px ${notif.colore}40`,
+          border:         `1px solid ${notif.colore}80`,
+          color:          notif.colore,
+          boxShadow:      `0 0 24px ${notif.colore}40`,
         }"
       >
         {{ notif.testo }}
       </div>
     </Transition>
 
-    <!-- Overlay negozio -->
+    <!-- Overlay negozio: accessibile da qualsiasi tab tramite evento globale -->
     <Suspense>
       <LazyNegozioOverlay
         v-if="negozioAperto"
@@ -222,40 +272,87 @@ const TABS = [
       />
     </Suspense>
 
-    <!-- Header -->
+    <!-- Header Pokémon TCG Pocket: risorse sx, logo centro, campana dx -->
     <LazyGiocoHeader
       :profilo="gameStore.profilo"
       :is-admin="isAdmin"
       @logout="authStore.logout()"
     />
 
-    <!-- Contenuto tab principale -->
+    <!-- ── Area contenuto del tab attivo ────────────────────────────── -->
     <div class="px-4 max-w-[1400px] mx-auto">
 
-      <!-- HOME -->
+      <!-- ═══ TAB: HOME ════════════════════════════════════════════════ -->
       <LazyHomeTab
-        v-if="tab === 'home' && !pescaAperta"
+        v-if="tab === 'home'"
         :user="authStore.user"
         :profilo="gameStore.profilo"
         :collezione="gameStore.collezione"
         :waifu-cat="gameStore.catalogoWaifu"
-        @set-tab="(t: string) => gameStore.setTab(t)"
-        @apri-pesca="pescaAperta = true"
+        @set-tab="handleSetTab"
+        @apri-pesca="() => { gameStore.setTab('pacchetti'); subTabPacchetti = 'pesca'; pescaAperta = true }"
         @apri-negozio="gameStore.toggleNegozio(true)"
       />
 
-      <!-- PESCA MISTERIOSA (overlay a schermo intero dentro home) -->
-      <LazyPescaSection
-        v-if="tab === 'home' && pescaAperta"
+      <!-- ═══ TAB: PACCHETTI ════════════════════════════════════════════
+           Sub-nav interna: Sbusta (SbustaTab) | Pesca (PescaSection)
+      ════════════════════════════════════════════════════════════════════ -->
+      <div v-if="tab === 'pacchetti'">
+
+        <!-- Pill sub-navigazione interna a Pacchetti -->
+        <div class="flex gap-2 mb-4 pt-3 overflow-x-auto">
+          <button
+            v-for="s in SUB_PACCHETTI"
+            :key="s.id"
+            class="sub-nav-pill"
+            :class="subTabPacchetti === s.id ? 'sub-nav-pill--active' : ''"
+            style="min-height:44px"
+            @click="subTabPacchetti = s.id as 'sbusta' | 'pesca'; chiudiPesca()"
+          >
+            <span class="text-base leading-none">{{ s.icon }}</span>
+            <span>{{ s.label }}</span>
+          </button>
+        </div>
+
+        <!-- Sbusta: apertura pacchetti -->
+        <LazySbustaTab
+          v-if="subTabPacchetti === 'sbusta'"
+          :profilo="gameStore.profilo"
+          :collezione="gameStore.collezione"
+          :waifu-cat="gameStore.catalogoWaifu"
+          :mosse-cat="gameStore.catalogoMosse"
+          :god-pack-prob="godPackProb"
+          @notif="(t: string, c: string) => mostraNotif(t, c)"
+          @update-profilo="(p: unknown) => gameStore.setProfilo(p as never)"
+          @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)"
+        />
+
+        <!-- Pesca: pesca carte dagli amici -->
+        <LazyPescaSection
+          v-if="subTabPacchetti === 'pesca'"
+          :profilo="gameStore.profilo"
+          :collezione="gameStore.collezione"
+          :initial-packs="pescaPacksInitial"
+          @indietro="subTabPacchetti = 'sbusta'"
+          @update-profilo="(p: unknown) => gameStore.setProfilo(p as never)"
+          @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)"
+        />
+      </div>
+
+      <!-- ═══ TAB: COLLEZIONE ════════════════════════════════════════════ -->
+      <LazyCollezioneTab
+        v-if="tab === 'collezione'"
         :profilo="gameStore.profilo"
         :collezione="gameStore.collezione"
-        :initial-packs="pescaPacksInitial"
-        @indietro="chiudiPesca"
+        :waifu-cat="gameStore.catalogoWaifu"
+        :mosse-cat="gameStore.catalogoMosse"
+        :stat-config="statConfig"
+        @notif="(t: string, c: string) => mostraNotif(t, c)"
         @update-profilo="(p: unknown) => gameStore.setProfilo(p as never)"
         @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)"
       />
 
-      <!-- MAPPA -->
+      <!-- ═══ TAB: MAPPA ════════════════════════════════════════════════ -->
       <LazyMappaTab
         v-if="tab === 'mappa'"
         :profilo="gameStore.profilo"
@@ -270,80 +367,121 @@ const TABS = [
         @raid-battle-end="() => { raidBattleCtx = null }"
       />
 
-      <!-- SBUSTA (apertura pacchetti) -->
-      <LazySbustaTab
-        v-if="tab === 'sbusta'"
-        :profilo="gameStore.profilo"
-        :collezione="gameStore.collezione"
-        :waifu-cat="gameStore.catalogoWaifu"
-        :mosse-cat="gameStore.catalogoMosse"
-        :god-pack-prob="godPackProb"
-        @notif="(t: string, c: string) => mostraNotif(t, c)"
-        @update-profilo="(p: unknown) => gameStore.setProfilo(p as never)"
-        @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)"
-      />
+      <!-- ═══ TAB: COMMUNITY ════════════════════════════════════════════
+           Sub-nav interna: Amici | Classifica | Swap
+      ════════════════════════════════════════════════════════════════════ -->
+      <div v-if="tab === 'community'">
 
-      <!-- COLLEZIONE -->
-      <LazyCollezioneTab
-        v-if="tab === 'collezione'"
-        :profilo="gameStore.profilo"
-        :collezione="gameStore.collezione"
-        :waifu-cat="gameStore.catalogoWaifu"
-        :mosse-cat="gameStore.catalogoMosse"
-        :stat-config="statConfig"
-        @notif="(t: string, c: string) => mostraNotif(t, c)"
-        @update-profilo="(p: unknown) => gameStore.setProfilo(p as never)"
-        @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)"
-      />
+        <!-- Pill sub-navigazione interna a Community -->
+        <div class="flex gap-2 mb-4 pt-3 overflow-x-auto">
+          <button
+            v-for="s in SUB_COMMUNITY"
+            :key="s.id"
+            class="sub-nav-pill"
+            :class="subTabCommunity === s.id ? 'sub-nav-pill--active' : ''"
+            style="min-height:44px"
+            @click="subTabCommunity = s.id as 'amici' | 'classifica' | 'swap'"
+          >
+            <span class="text-base leading-none">{{ s.icon }}</span>
+            <span>{{ s.label }}</span>
+          </button>
+        </div>
 
-      <!-- AMICI -->
-      <LazyAmiciTab
-        v-if="tab === 'amici'"
-        :profilo="gameStore.profilo"
-        :collezione="gameStore.collezione"
-        :waifu-cat="gameStore.catalogoWaifu"
-        @collection-refresh="getCollezione(authStore.user!.uid).then(c => gameStore.setCollezione(c as never)).catch(() => {})"
-      />
+        <!-- Amici: lista amici e richieste di amicizia -->
+        <LazyAmiciTab
+          v-if="subTabCommunity === 'amici'"
+          :profilo="gameStore.profilo"
+          :collezione="gameStore.collezione"
+          :waifu-cat="gameStore.catalogoWaifu"
+          @collection-refresh="getCollezione(authStore.user!.uid).then(c => gameStore.setCollezione(c as never)).catch(() => {})"
+        />
 
-      <!-- CLASSIFICA -->
-      <LazyClassificaTab
-        v-if="tab === 'classifica'"
-        :user="authStore.user"
-      />
+        <!-- Classifica: ranking globale giocatori -->
+        <LazyClassificaTab
+          v-if="subTabCommunity === 'classifica'"
+          :user="authStore.user"
+        />
 
-      <!-- SWAP -->
-      <LazySwapTab
-        v-if="tab === 'swap'"
-        :user="authStore.user"
-        :profilo="gameStore.profilo"
-        @profilo-update="(p: Record<string, any>) => gameStore.aggiornaProfilo(p as never)"
-        @set-tab="(t: string) => gameStore.setTab(t)"
-      />
-    </div>
+        <!-- Swap: vota waifu e guadagna Kisses -->
+        <LazySwapTab
+          v-if="subTabCommunity === 'swap'"
+          :user="authStore.user"
+          :profilo="gameStore.profilo"
+          @profilo-update="(p: Record<string, any>) => gameStore.aggiornaProfilo(p as never)"
+          @set-tab="handleSetTab"
+        />
+      </div>
 
-    <!-- Bottom navigation -->
-    <nav class="fixed bottom-0 left-0 right-0 z-50 flex"
-         style="background:rgba(6,3,15,0.95);backdrop-filter:blur(12px);
-                border-top:1px solid rgba(245,158,11,0.15);min-height:60px">
+    </div><!-- fine area contenuto tab -->
+
+    <!-- ── Bottom Navigation (5 tab, stile Pokémon TCG Pocket) ─────────
+         Altezza 70px, sfondo scuro rgba con blur, bordo gold/15.
+         Tab attiva: pallino gold + icona scalata 1.2x + label oro.
+         Tab inattiva: opacity 0.55.
+         Touch target minimo 44px per accessibilità mobile.
+    ──────────────────────────────────────────────────────────────────── -->
+    <nav
+      class="fixed bottom-0 left-0 right-0 z-50 flex"
+      style="
+        background: rgba(7,5,26,0.98);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-top: 1px solid rgba(245,197,96,0.15);
+        height: 70px;
+      "
+    >
       <button
         v-for="t in TABS"
         :key="t.id"
-        class="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 cursor-pointer
-               transition-colors border-0 bg-transparent"
-        :class="tab === t.id ? 'text-amber-400' : 'text-white/40'"
+        class="flex-1 flex flex-col items-center justify-center gap-0.5 cursor-pointer
+               border-0 bg-transparent relative"
+        style="transition: all 0.2s ease; min-height:44px; padding-top:8px; padding-bottom:6px;"
+        :style="{
+          opacity: tab === t.id ? '1' : '0.55',
+        }"
         @click="() => {
           if (t.id === 'home') { gameStore.toggleNegozio(false); chiudiPesca() }
           gameStore.setTab(t.id)
         }"
       >
-        <span class="text-lg leading-none">{{ t.icon }}</span>
-        <span class="text-[9px] tracking-wider font-cinzel">{{ t.label }}</span>
+        <!-- Pallino indicatore attivo (4px, gold) posizionato sopra l'icona -->
+        <span
+          v-if="tab === t.id"
+          class="nav-tab-active-dot"
+        />
+
+        <!-- Icona: scala a 1.2x se tab attiva, con glow dorato -->
+        <span
+          class="leading-none"
+          style="transition: transform 0.2s ease, filter 0.2s ease;"
+          :style="{
+            fontSize: '22px',
+            transform: tab === t.id ? 'scale(1.2)' : 'scale(1)',
+            filter: tab === t.id ? 'drop-shadow(0 0 6px rgba(245,197,96,0.7))' : 'none',
+            color: tab === t.id ? '#f5c560' : 'rgba(255,255,255,0.75)',
+          }"
+        >{{ t.icon }}</span>
+
+        <!-- Label: 9px, tracking, Saira Condensed, oro se attiva -->
+        <span
+          style="
+            font-size: 9px;
+            letter-spacing: 0.12em;
+            font-family: var(--ff-label, 'Saira Condensed', sans-serif);
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-top: 2px;
+          "
+          :style="{ color: tab === t.id ? '#f5c560' : 'rgba(255,255,255,0.55)' }"
+        >{{ t.label }}</span>
       </button>
     </nav>
-  </div>
+
+  </div><!-- fine .game-container -->
 </template>
 
 <style scoped>
+/* Animazione notifica flottante slide-down */
 .slide-down-enter-active, .slide-down-leave-active { transition: all 0.3s ease; }
 .slide-down-enter-from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
 .slide-down-leave-to   { opacity: 0; transform: translateX(-50%) translateY(-12px); }

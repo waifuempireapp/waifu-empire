@@ -194,22 +194,36 @@ function onMouseLeave(e: MouseEvent) {
 </script>
 
 <template>
-  <!-- Carta waifu full-art: immagine, video, stats, badge Hot e censura -->
+  <!-- Carta waifu full-art: immagine, video, stats, badge Hot e censura.
+       Bordo esterno: border-radius 14px + glow rarità specifico per rarità.
+       Leggendario/immersivo: shimmer animato su hover (.rarity-shimmer).
+  -->
   <div
     v-if="waifu"
     class="carta-waifu-root"
+    :class="[
+      waifu.rarita === 'leggendario' || waifu.rarita === 'immersivo' ? 'rarity-shimmer' : '',
+    ]"
     :style="{
       width: `${W}px`,
       height: `${H}px`,
       position: 'relative',
       cursor: censurata ? 'not-allowed' : (onClick || hasVideo ? 'pointer' : 'default'),
-      borderRadius: `${Math.round(14 * scale)}px`,
+      borderRadius: '14px',
       border: `${borderW}px solid ${evidenziato ? '#ffe9a8' : videoAttivo ? '#ff7eb6' : rb.outer}`,
       boxShadow: evidenziato
-        ? '0 0 30px rgba(255,233,168,0.6), inset 0 0 20px rgba(255,233,168,0.1)'
+        ? '0 0 0 2px #ffe9a8, 0 4px 28px rgba(255,233,168,0.5), inset 0 0 20px rgba(255,233,168,0.1)'
         : videoAttivo
-          ? '0 0 36px rgba(255,126,182,0.8), inset 0 0 22px rgba(255,126,182,0.15)'
-          : `0 0 22px ${rb.glow}, inset 0 0 18px rgba(0,0,0,0.35)`,
+          ? '0 0 0 2px #ff7eb6, 0 4px 28px rgba(255,126,182,0.5), inset 0 0 22px rgba(255,126,182,0.15)'
+          : waifu.rarita === 'immersivo'
+            ? '0 0 0 2px #ff7eb6, 0 4px 28px rgba(255,126,182,0.45), 0 0 60px rgba(255,126,182,0.15), inset 0 0 16px rgba(0,0,0,0.3)'
+            : waifu.rarita === 'leggendario'
+              ? '0 0 0 2px #ffc861, 0 4px 28px rgba(255,200,97,0.40), inset 0 0 16px rgba(0,0,0,0.3)'
+              : waifu.rarita === 'epico'
+                ? '0 0 0 1.5px #b573ff, 0 4px 20px rgba(181,115,255,0.35), inset 0 0 16px rgba(0,0,0,0.3)'
+                : waifu.rarita === 'raro'
+                  ? '0 0 0 1.5px #5aa9ff, 0 4px 20px rgba(90,169,255,0.30), inset 0 0 16px rgba(0,0,0,0.3)'
+                  : '0 0 0 1.5px #b4bcc8, 0 4px 20px rgba(180,188,200,0.20), inset 0 0 16px rgba(0,0,0,0.3)',
       overflow: 'hidden',
       background: rb.bg,
       transition: 'all 0.3s ease',
@@ -648,3 +662,35 @@ function onMouseLeave(e: MouseEvent) {
     />
   </div>
 </template>
+
+<style scoped>
+/* Shimmer animato su hover per rarità leggendario e immersivo.
+   Aggiunge un riflesso luminoso che scorre sulla carta. */
+@keyframes rarityShimmerSweep {
+  0%   { transform: translateX(-120%) skewX(-12deg); opacity: 0;    }
+  15%  { opacity: 0.55; }
+  85%  { opacity: 0.40; }
+  100% { transform: translateX(220%)  skewX(-12deg); opacity: 0;    }
+}
+
+.rarity-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255,255,255,0.18) 50%,
+    rgba(255,255,255,0.06) 55%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+  border-radius: inherit;
+}
+
+.rarity-shimmer:hover::after {
+  animation: rarityShimmerSweep 0.7s ease-out forwards;
+}
+</style>

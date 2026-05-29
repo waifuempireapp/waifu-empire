@@ -2282,3 +2282,154 @@ img {
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
 }
+
+/* =====================================================================
+   POKÉMON TCG POCKET INSPIRED UI CLASSES
+   Prefissi: nav- (bottom nav), glass- (glassmorphism), pack- (hero pack),
+             sub-nav- (pill navigation), rarity-glow-* (card borders),
+             section- (section headers), btn-premium (CTA buttons)
+   ===================================================================== */
+
+/* ── Bottom nav: pallino gold indicatore tab attiva ─────────────────── */
+.nav-tab-active-dot {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #f5c560;
+  box-shadow: 0 0 6px rgba(245,197,96,0.8), 0 0 12px rgba(245,197,96,0.4);
+  pointer-events: none;
+}
+
+/* ── Glass panel: pannello glassmorphism per sezioni ─────────────────── */
+.glass-panel {
+  background: rgba(27,22,56,0.70);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(245,197,96,0.12);
+  border-radius: 16px;
+}
+
+/* ── Pack card: carta pack nell'hero hero section ────────────────────── */
+.pack-card {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: filter 0.2s, transform 0.2s;
+  flex-shrink: 0;
+}
+.pack-card:hover {
+  filter: brightness(1.08);
+  transform: translateY(-2px);
+}
+
+/* ── Sub-navigation pills: navigazione interna Pacchetti / Community ─── */
+.sub-nav-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(174,156,255,0.14);
+  color: rgba(241,235,255,0.55);
+  font-family: var(--ff-label, 'Saira Condensed', sans-serif);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.sub-nav-pill:hover {
+  background: rgba(245,197,96,0.08);
+  border-color: rgba(245,197,96,0.28);
+  color: rgba(245,197,96,0.85);
+}
+.sub-nav-pill--active {
+  background: linear-gradient(135deg, rgba(245,197,96,0.22), rgba(245,197,96,0.08));
+  border-color: rgba(245,197,96,0.55);
+  color: #f5c560;
+  box-shadow: 0 0 14px rgba(245,197,96,0.20);
+}
+
+/* ── Rarity glow borders (applicati come classi dinamiche su CartaWaifu) */
+.rarity-glow-comune {
+  box-shadow: 0 0 0 1.5px #b4bcc8, 0 4px 20px rgba(180,188,200,0.20);
+}
+.rarity-glow-raro {
+  box-shadow: 0 0 0 1.5px #5aa9ff, 0 4px 20px rgba(90,169,255,0.30);
+}
+.rarity-glow-epico {
+  box-shadow: 0 0 0 1.5px #b573ff, 0 4px 20px rgba(181,115,255,0.35);
+}
+.rarity-glow-leggendario {
+  box-shadow: 0 0 0 2px #ffc861, 0 4px 28px rgba(255,200,97,0.40);
+}
+.rarity-glow-immersivo {
+  box-shadow: 0 0 0 2px #ff7eb6, 0 4px 28px rgba(255,126,182,0.45), 0 0 60px rgba(255,126,182,0.15);
+}
+
+/* ── Section header: intestazione sezioni con icona + label ─────────── */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--ff-label, 'Saira Condensed', sans-serif);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: rgba(241,235,255,0.75);
+}
+
+/* ── Premium button: CTA principale con gradiente e glow ────────────── */
+.btn-premium {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: none;
+  font-family: var(--ff-label, 'Saira Condensed', sans-serif);
+  font-size: 12px;
+  letter-spacing: 0.20em;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 44px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.btn-premium::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.btn-premium:hover::after {
+  opacity: 1;
+}
+.btn-premium:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+.btn-premium:active {
+  transform: translateY(0) scale(0.97);
+}

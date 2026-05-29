@@ -1,7 +1,12 @@
 <!-- ============================================================
-  HomeTab: schermata principale dell'Impero con hero banner,
-  azioni rapide, Swap promo, statistiche collezione e ultime carte.
-  Porta di Lobby.jsx HomeTab (righe 349-467) + sub-componenti inline.
+  HomeTab: schermata Home rivisitata stile Pokémon TCG Pocket.
+  Layout:
+    1. Pack Hero Section — banner hero con CTA apri pacchetto
+    2. Resource bar — Kisses + Energia come pill card grandi
+    3. Quick sections 2 colonne — Collezione e Mappa
+    4. Banner ultime carte — carousel orizzontale
+    5. Swap promo widget — banner evento/daily
+  Script: INVARIATO (tutti i timer, watcher, computed e API calls originali).
   ============================================================ -->
 <script setup lang="ts">
 import { TIMER } from '~/utils/constants'
@@ -63,7 +68,7 @@ const FF = {
 const MAX_ENERGIA = TIMER.MAX_ENERGIA  // 10
 
 // ── Computed dal profilo ──────────────────────────────────────────────
-const profilo = computed(() => props.profilo ?? {})
+const profilo   = computed(() => props.profilo ?? {})
 const collezione = computed(() => props.collezione ?? {})
 
 const totalPack = computed(() =>
@@ -77,14 +82,13 @@ const numOutfit = computed(() => Object.keys((collezione.value.outfit as Record<
 const numPose   = computed(() => Object.keys((collezione.value.pose   as Record<string, unknown>) ?? {}).length)
 
 const energiaAttuale = computed(() => (profilo.value.energia as number) ?? 0)
-const nomeImpero = computed(() => (profilo.value.nomeImpero as string) || 'Il Tuo Impero')
+const nomeImpero     = computed(() => (profilo.value.nomeImpero as string) || 'Il Tuo Impero')
 
 // ── Statistiche collezione per le tile ───────────────────────────────
 const statTiles = computed(() => [
-  { icon: '♛', val: numWaifu.value,   label: 'WAIFU',   col: C.gold,   subTab: 'waifu'  },
-  { icon: '✦', val: numOutfit.value,  label: 'OUTFIT',  col: C.violet, subTab: 'outfit' },
-  { icon: '⚜', val: numPose.value,    label: 'POSE',    col: C.sakura, subTab: 'pose'   },
-  { icon: '⚡', val: `${energiaAttuale.value}/${MAX_ENERGIA}`, label: 'ENERGIA', col: C.aqua, subTab: null },
+  { icon: '♛', val: numWaifu.value,  label: 'WAIFU',  col: C.gold,   subTab: 'waifu'  },
+  { icon: '✦', val: numOutfit.value, label: 'OUTFIT', col: C.violet, subTab: 'outfit' },
+  { icon: '⚜', val: numPose.value,   label: 'POSE',   col: C.sakura, subTab: 'pose'   },
 ])
 
 // ── Ultime carte (ordinamento per data acquisizione, max 20) ─────────
@@ -163,15 +167,19 @@ const sakuraPetals = Array.from({ length: 6 }).map((_, i) => ({
 const swapBannerPetals = [10, 25, 42, 60, 78]
 
 // ── Helper: profilo swap stats ────────────────────────────────────────
-const totalVoti = computed(() => (profilo.value?.totalVotes as number) ?? 0)
+const totalVoti  = computed(() => (profilo.value?.totalVotes as number) ?? 0)
 const streakDays = computed(() => (profilo.value?.streakDays as number) ?? 0)
 
 // ── Helper: navigazione collezione ────────────────────────────────────
 function goToCollez(subTab: string) {
   emit('setTab', 'collezione')
-  // Il parent gestisce il subTab tramite evento setTab; se necessario
-  // si può estendere con un emit dedicato
 }
+
+// ── Helper: numero territori conquistati ─────────────────────────────
+const numTerritori = computed(() =>
+  Object.values((profilo.value.territoriUtente as Record<string, { conquistato?: boolean }>) ?? {})
+    .filter(t => t?.conquistato).length
+)
 
 // ── Helper: URL immagine waifu (placeholder per ultime carte) ────────
 function waifuImgUrl(item: ItemCollezione): string | null {
@@ -215,842 +223,483 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
   el.style.transform = 'translateY(0)'
   el.style.boxShadow = highlight ? `0 0 18px ${color}40` : 'none'
 }
-
-// ── Hover handlers BigActionButton ───────────────────────────────────
-function bigEnter(e: MouseEvent, color: string) {
-  const el = e.currentTarget as HTMLElement
-  el.style.background = `linear-gradient(135deg, ${color}2a, ${color}10)`
-  el.style.transform  = 'translateY(-1px)'
-}
-function bigLeave(e: MouseEvent, color: string) {
-  const el = e.currentTarget as HTMLElement
-  el.style.background = `linear-gradient(135deg, ${color}1a, ${color}06)`
-  el.style.transform  = 'translateY(0)'
-}
 </script>
 
 <template>
   <!-- Contenitore principale HomeTab con animazione fade-in -->
   <div class="fade-in" style="position: relative;">
 
-    <!-- ── SAKURA PETALS OVERLAY ─────────────────────────────────── -->
+    <!-- ── SAKURA PETALS OVERLAY ─────────────────────────────────────── -->
     <div style="position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0;">
       <div
         v-for="(p, i) in sakuraPetals"
         :key="i"
+        class="sakura-petal"
         :style="{
-          position:   'absolute',
-          top:        '-20px',
-          left:       `${p.left}%`,
-          width:      `${p.size}px`,
-          height:     `${p.size}px`,
+          position:     'absolute',
+          top:          '-20px',
+          left:         `${p.left}%`,
+          width:        `${p.size}px`,
+          height:       `${p.size}px`,
           borderRadius: '50% 0 50% 50%',
-          background: 'linear-gradient(135deg, #ffc3da, #ff85b6)',
-          opacity:    0.45,
-          transform:  'rotate(45deg)',
-          animation:  `sakuraFall ${p.dur}s linear ${p.delay}s infinite`,
+          background:   'linear-gradient(135deg, #ffc3da, #ff85b6)',
+          opacity:      0.45,
+          transform:    'rotate(45deg)',
+          animation:    `sakuraFall ${p.dur}s linear ${p.delay}s infinite`,
         }"
       />
     </div>
 
-    <!-- ── CONTENUTO PRINCIPALE (z-index > sakura) ───────────────── -->
-    <div style="position: relative; z-index: 1;">
+    <!-- ── CONTENUTO PRINCIPALE (z-index > sakura) ───────────────────── -->
+    <div style="position: relative; z-index: 1; padding-top: 12px;">
 
-      <!-- ═══════════════════════════════════════════════════════════
-           HERO DROP BANNER (DropHeroBanner)
-           ═══════════════════════════════════════════════════════════ -->
-      <div :style="{
-        position:     'relative',
-        borderRadius: '22px',
-        overflow:     'hidden',
-        marginBottom: '18px',
-        background:   `
-          radial-gradient(120% 90% at 0% 0%, rgba(255,126,182,0.32) 0%, transparent 60%),
-          radial-gradient(120% 90% at 100% 100%, rgba(167,139,250,0.28) 0%, transparent 60%),
-          linear-gradient(135deg, #2a1255 0%, #15102f 60%, #07051a 100%)
-        `,
-        border:       '1px solid rgba(255,126,182,0.35)',
-        boxShadow:    '0 18px 42px rgba(3,2,12,0.55), 0 0 36px rgba(255,126,182,0.18)',
-        minHeight:    '220px',
-        padding:      '20px 22px',
-      }">
-        <!-- Effetto foil holografico -->
+      <!-- ═══════════════════════════════════════════════════════════════
+           1. PACK HERO SECTION — banner dominante con CTA apertura pack
+           Panel scuro con gradiente radiale + bordo sakura/gold
+           ═══════════════════════════════════════════════════════════════ -->
+      <div
+        class="glass-panel"
+        :style="{
+          position:     'relative',
+          overflow:     'hidden',
+          marginBottom: '14px',
+          background:   `
+            radial-gradient(120% 90% at 0% 0%, rgba(255,126,182,0.28) 0%, transparent 55%),
+            radial-gradient(120% 90% at 100% 100%, rgba(167,139,250,0.22) 0%, transparent 55%),
+            linear-gradient(135deg, #2a1255 0%, #15102f 60%, #07051a 100%)
+          `,
+          border:       totalPack > 0 ? '1px solid rgba(255,126,182,0.45)' : '1px solid rgba(245,197,96,0.20)',
+          boxShadow:    totalPack > 0
+            ? '0 12px 40px rgba(3,2,12,0.55), 0 0 30px rgba(255,126,182,0.15)'
+            : '0 12px 40px rgba(3,2,12,0.45)',
+          minHeight:    '180px',
+          padding:      '18px 20px 16px',
+          borderRadius: '18px',
+        }"
+      >
+        <!-- Effetto foil holografico leggero -->
         <div class="foil foil--soft" />
 
-        <!-- Raggi decorativi in alto a destra -->
+        <!-- Raggi decorativi rotativi -->
         <div :style="{
-          position:     'absolute',
-          top:          '-60px',
-          right:        '-60px',
-          width:        '280px',
-          height:       '280px',
-          pointerEvents:'none',
-          background:   'conic-gradient(from 0deg, rgba(245,197,96,0.35), transparent 30%, rgba(245,197,96,0.35) 60%, transparent 90%)',
-          borderRadius: '50%',
-          mixBlendMode: 'screen',
-          animation:    'spinSlow 40s linear infinite',
-          opacity:      0.45,
+          position:      'absolute',
+          top:           '-50px',
+          right:         '-50px',
+          width:         '220px',
+          height:        '220px',
+          pointerEvents: 'none',
+          background:    'conic-gradient(from 0deg, rgba(245,197,96,0.30), transparent 30%, rgba(245,197,96,0.30) 60%, transparent 90%)',
+          borderRadius:  '50%',
+          mixBlendMode:  'screen',
+          animation:     'spinSlow 40s linear infinite',
+          opacity:       0.40,
         }" />
 
         <!-- Contenuto hero -->
         <div style="position: relative; z-index: 2;">
-          <!-- Badge stagione -->
-          <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 10px;">
+
+          <!-- Badge stagione + timer -->
+          <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;">
             <span :style="{
-              display:       'inline-flex',
-              alignItems:    'center',
-              gap:           '5px',
-              padding:       '4px 10px',
-              borderRadius:  '999px',
-              background:    `${C.sakura}1f`,
-              border:        `1px solid ${C.sakura}66`,
-              color:         C.sakuraL,
-              fontFamily:    FF.label,
-              fontSize:      '9px',
-              letterSpacing: '0.18em',
-              textTransform: 'uppercase',
-              fontWeight:    700,
+              display:       'inline-flex', alignItems: 'center', gap: '5px',
+              padding:       '4px 10px', borderRadius: '999px',
+              background:    `${C.sakura}1f`, border: `1px solid ${C.sakura}55`,
+              color:         C.sakuraL, fontFamily: FF.label,
+              fontSize:      '9px', letterSpacing: '0.18em',
+              textTransform: 'uppercase', fontWeight: 700,
             }">❀ Stagione · Hanami</span>
-            <span :style="{
-              fontFamily:    FF.mono,
-              fontSize:      '9px',
-              color:         'rgba(241,235,255,0.55)',
-              letterSpacing: '-0.01em',
-            }">5d 14h</span>
+            <span :style="{ fontFamily: FF.mono, fontSize: '9px', color: 'rgba(241,235,255,0.50)', letterSpacing: '-0.01em' }">5d 14h</span>
           </div>
 
-          <!-- Kicker BENTORNATA -->
-          <div :style="{
-            fontFamily:    FF.label,
-            fontSize:      '10px',
-            letterSpacing: '0.42em',
-            color:         C.gold,
-            textTransform: 'uppercase',
-            marginBottom:  '4px',
-            fontWeight:    700,
-          }">◆ BENTORNATA</div>
+          <!-- Kicker BENTORNATA + nome impero -->
+          <div :style="{ fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.38em', color: C.gold, textTransform: 'uppercase', marginBottom: '3px', fontWeight: 700 }">◆ BENTORNATA</div>
+          <h1 class="shimmer-text" :style="{ fontFamily: FF.display, fontSize: 'clamp(24px, 6vw, 36px)', fontWeight: 800, margin: 0, letterSpacing: '-0.01em', lineHeight: 0.96 }">
+            {{ nomeImpero }}
+          </h1>
 
-          <!-- Nome impero (shimmer) -->
-          <h1 class="shimmer-text" :style="{
-            fontFamily:    FF.display,
-            fontSize:      'clamp(26px, 6.5vw, 38px)',
-            fontWeight:    800,
-            margin:        0,
-            letterSpacing: '-0.01em',
-            lineHeight:    0.96,
-          }">{{ nomeImpero }}</h1>
-
-          <!-- Sottotitolo dinamico -->
-          <div :style="{
-            fontFamily: FF.body,
-            fontSize:   '12px',
-            color:      'rgba(241,235,255,0.65)',
-            marginTop:  '8px',
-            maxWidth:   '360px',
-            lineHeight: 1.5,
-          }">
+          <!-- Sottotitolo dinamico: pack disponibili o testo incoraggiamento -->
+          <div :style="{ fontFamily: FF.body, fontSize: '12px', color: 'rgba(241,235,255,0.60)', marginTop: '7px', maxWidth: '320px', lineHeight: 1.5 }">
             <template v-if="totalPack > 0">
-              Hai <b :style="{ color: C.goldL }">{{ totalPack }} {{ totalPack === 1 ? 'bustina' : 'bustine' }}</b> pronte da aprire. Il drop stagionale Hanami ti aspetta.
+              Hai <b :style="{ color: C.goldL }">{{ totalPack }} {{ totalPack === 1 ? 'bustina' : 'bustine' }}</b> pronte da aprire!
             </template>
             <template v-else>
-              Conquista nuovi territori per guadagnare Kisses, oppure attendi la prossima bustina omaggio.
+              Conquista territori per guadagnare Kisses e aspetta la prossima bustina omaggio.
             </template>
           </div>
 
-          <!-- CTA buttons -->
+          <!-- CTA buttons: APRI PACCHETTO e NEGOZIO -->
           <div style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;">
-            <BtnDecorato
-              :variant="totalPack > 0 ? 'primary' : 'secondary'"
-              size="md"
-              @click="emit('setTab', 'sbusta')"
-            >{{ totalPack > 0 ? '🎁 SBUSTA ORA' : '🎁 VAI A SBUSTA' }}</BtnDecorato>
-            <BtnDecorato variant="secondary" size="md" @click="emit('apriNegozio')">
-              🛒 NEGOZIO
-            </BtnDecorato>
+            <button
+              class="btn-premium"
+              :style="{
+                background:    totalPack > 0
+                  ? `linear-gradient(135deg, ${C.sakura}, #c54a86)`
+                  : `linear-gradient(135deg, ${C.gold}, #c08a1f)`,
+                border:        'none',
+                borderRadius:  '12px',
+                padding:       '10px 20px',
+                color:         '#fff',
+                fontFamily:    FF.label,
+                fontSize:      '12px',
+                letterSpacing: '0.18em',
+                textTransform: 'uppercase',
+                fontWeight:    700,
+                cursor:        'pointer',
+                boxShadow:     totalPack > 0
+                  ? `0 4px 18px rgba(197,74,134,0.45)`
+                  : `0 4px 18px rgba(192,138,31,0.40)`,
+                minHeight:     '44px',
+                display:       'inline-flex',
+                alignItems:    'center',
+                gap:           '6px',
+                transition:    'all 0.2s',
+              }"
+              @click="emit('setTab', 'pacchetti')"
+            >
+              {{ totalPack > 0 ? '🎁 SBUSTA ORA' : '📦 PACCHETTI' }}
+              <span style="opacity:0.8; font-size:14px;">→</span>
+            </button>
+
+            <button
+              :style="{
+                background:    'rgba(245,197,96,0.10)',
+                border:        `1px solid rgba(245,197,96,0.35)`,
+                borderRadius:  '12px',
+                padding:       '10px 16px',
+                color:         C.goldL,
+                fontFamily:    FF.label,
+                fontSize:      '11px',
+                letterSpacing: '0.18em',
+                textTransform: 'uppercase',
+                fontWeight:    700,
+                cursor:        'pointer',
+                minHeight:     '44px',
+                display:       'inline-flex',
+                alignItems:    'center',
+                gap:           '6px',
+                transition:    'all 0.2s',
+              }"
+              @click="emit('apriNegozio')"
+            >🛒 NEGOZIO</button>
           </div>
         </div>
 
-        <!-- Decorazione pack silhouette -->
+        <!-- Decorazione pack count in alto a destra -->
         <div v-if="totalPack > 0" :style="{
-          position:   'absolute',
-          bottom:     '-12px',
-          right:      '8px',
-          fontSize:   '100px',
-          fontFamily: FF.display,
-          fontWeight: 800,
-          color:      'transparent',
-          pointerEvents: 'none',
+          position:   'absolute', top: '16px', right: '18px',
+          fontFamily: FF.display, fontSize: '68px', fontWeight: 800,
+          color:      'transparent', pointerEvents: 'none',
           background: `linear-gradient(180deg, ${C.goldL}, ${C.sakura})`,
-          WebkitBackgroundClip: 'text',
-          backgroundClip: 'text',
-          opacity:    0.18,
-          lineHeight: 0.8,
-          letterSpacing: '-0.02em',
+          WebkitBackgroundClip: 'text', backgroundClip: 'text',
+          opacity: 0.15, lineHeight: 0.8, letterSpacing: '-0.02em',
         }">♛</div>
       </div>
 
-      <!-- ═══════════════════════════════════════════════════════════
-           QUICK ACTIONS (QuickTile ×4)
-           ═══════════════════════════════════════════════════════════ -->
-      <div style="margin-bottom: 20px;">
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+      <!-- ═══════════════════════════════════════════════════════════════
+           2. RESOURCE BAR — Kisses e Energia come pill card affiancate
+           ═══════════════════════════════════════════════════════════════ -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
 
-          <!-- Mappa -->
-          <div
-            :style="{
-              position:   'relative',
-              padding:    '14px 8px',
-              borderRadius: '14px',
-              background: `linear-gradient(180deg, ${C.aqua}12, rgba(7,5,26,0.6))`,
-              border:     `1px solid ${C.aqua}50`,
-              textAlign:  'center',
-              cursor:     'pointer',
-              transition: 'all 0.2s',
-              overflow:   'hidden',
-            }"
-            @click="emit('setTab', 'mappa')"
-            @mouseenter="quickEnter($event, C.aqua)"
-            @mouseleave="quickLeave($event, C.aqua, false)"
-          >
-            <div :style="{
-              display: 'inline-grid', placeItems: 'center',
-              width: '36px', height: '36px', borderRadius: '11px',
-              background: `${C.aqua}22`, color: C.aqua, marginBottom: '5px',
-              boxShadow: `0 0 12px ${C.aqua}33`, border: `1px solid ${C.aqua}66`, fontSize: '18px',
-            }">⚔</div>
-            <div :style="{ fontFamily: FF.label, fontSize: '10px', color: '#fff', letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 700 }">Mappa</div>
-            <div :style="{ fontFamily: FF.mono, fontSize: '10px', color: C.aqua, marginTop: '3px', fontWeight: 700 }">
-              {{ Object.values((profilo as Record<string, unknown>).territoriUtente as Record<string, { conquistato?: boolean }> ?? {}).filter(t => t?.conquistato).length }} terr.
+        <!-- Pill Kisses grande -->
+        <div
+          :style="{
+            background:   `linear-gradient(135deg, rgba(255,133,182,0.15), rgba(255,133,182,0.06))`,
+            border:       `1px solid rgba(255,133,182,0.30)`,
+            borderRadius: '14px',
+            padding:      '14px 16px',
+            display:      'flex',
+            alignItems:   'center',
+            gap:          '12px',
+            cursor:       'pointer',
+            transition:   'all 0.2s',
+          }"
+          @click="emit('apriNegozio')"
+        >
+          <span style="font-size: 26px; line-height:1; flex-shrink:0;">💋</span>
+          <div>
+            <div :style="{ fontFamily: FF.mono, fontSize: '22px', fontWeight: 700, color: C.sakura, letterSpacing: '-0.02em', lineHeight: 1 }">
+              {{ profilo?.kisses ?? 0 }}
+            </div>
+            <div :style="{ fontFamily: FF.label, fontSize: '8px', color: 'rgba(255,133,182,0.70)', letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700, marginTop: '3px' }">
+              KISSES
             </div>
           </div>
-
-          <!-- Sbusta (highlight se ha pack) -->
-          <div
-            :style="{
-              position:   'relative',
-              padding:    '14px 8px',
-              borderRadius: '14px',
-              background: totalPack > 0
-                ? `linear-gradient(180deg, ${C.gold}30, ${C.gold}10)`
-                : `linear-gradient(180deg, ${C.gold}12, rgba(7,5,26,0.6))`,
-              border:     `1px solid ${C.gold}${totalPack > 0 ? '88' : '50'}`,
-              textAlign:  'center',
-              cursor:     'pointer',
-              transition: 'all 0.2s',
-              boxShadow:  totalPack > 0 ? `0 0 18px ${C.gold}40` : 'none',
-              overflow:   'hidden',
-            }"
-            @click="emit('setTab', 'sbusta')"
-            @mouseenter="quickEnter($event, C.gold)"
-            @mouseleave="quickLeave($event, C.gold, totalPack > 0)"
-          >
-            <div :style="{
-              display: 'inline-grid', placeItems: 'center',
-              width: '36px', height: '36px', borderRadius: '11px',
-              background: `${C.gold}22`, color: C.gold, marginBottom: '5px',
-              boxShadow: `0 0 12px ${C.gold}33`, border: `1px solid ${C.gold}66`, fontSize: '18px',
-            }">🎁</div>
-            <div :style="{ fontFamily: FF.label, fontSize: '10px', color: '#fff', letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 700 }">Sbusta</div>
-            <div :style="{ fontFamily: FF.mono, fontSize: '10px', color: C.gold, marginTop: '3px', fontWeight: 700 }">×{{ totalPack }}</div>
-          </div>
-
-          <!-- Negozio -->
-          <div
-            :style="{
-              position:   'relative',
-              padding:    '14px 8px',
-              borderRadius: '14px',
-              background: `linear-gradient(180deg, ${C.violet}12, rgba(7,5,26,0.6))`,
-              border:     `1px solid ${C.violet}50`,
-              textAlign:  'center',
-              cursor:     'pointer',
-              transition: 'all 0.2s',
-              overflow:   'hidden',
-            }"
-            @click="emit('apriNegozio')"
-            @mouseenter="quickEnter($event, C.violet)"
-            @mouseleave="quickLeave($event, C.violet, false)"
-          >
-            <div :style="{
-              display: 'inline-grid', placeItems: 'center',
-              width: '36px', height: '36px', borderRadius: '11px',
-              background: `${C.violet}22`, color: C.violet, marginBottom: '5px',
-              boxShadow: `0 0 12px ${C.violet}33`, border: `1px solid ${C.violet}66`, fontSize: '18px',
-            }">🛒</div>
-            <div :style="{ fontFamily: FF.label, fontSize: '10px', color: '#fff', letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 700 }">Negozio</div>
-            <div :style="{ fontFamily: FF.mono, fontSize: '10px', color: C.violet, marginTop: '3px', fontWeight: 700 }">Hot</div>
-          </div>
-
-          <!-- Pesca (se abilitata) oppure Cards -->
-          <div
-            :style="{
-              position:   'relative',
-              padding:    '14px 8px',
-              borderRadius: '14px',
-              background: `linear-gradient(180deg, ${C.sakura}12, rgba(7,5,26,0.6))`,
-              border:     `1px solid ${C.sakura}50`,
-              textAlign:  'center',
-              cursor:     'pointer',
-              transition: 'all 0.2s',
-              overflow:   'hidden',
-            }"
-            @click="pescaAbilitata ? emit('apriPesca') : emit('setTab', 'collezione')"
-            @mouseenter="quickEnter($event, C.sakura)"
-            @mouseleave="quickLeave($event, C.sakura, false)"
-          >
-            <div :style="{
-              display: 'inline-grid', placeItems: 'center',
-              width: '36px', height: '36px', borderRadius: '11px',
-              background: `${C.sakura}22`, color: C.sakura, marginBottom: '5px',
-              boxShadow: `0 0 12px ${C.sakura}33`, border: `1px solid ${C.sakura}66`, fontSize: '18px',
-            }">{{ pescaAbilitata ? '🎣' : '💎' }}</div>
-            <div :style="{ fontFamily: FF.label, fontSize: '10px', color: '#fff', letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 700 }">
-              {{ pescaAbilitata ? 'Pesca' : 'Cards' }}
-            </div>
-            <div :style="{ fontFamily: FF.mono, fontSize: '10px', color: C.sakura, marginTop: '3px', fontWeight: 700 }">
-              {{ pescaAbilitata ? '' : numWaifu }}
-            </div>
-          </div>
-
         </div>
-      </div>
 
-      <!-- ═══════════════════════════════════════════════════════════
-           SWAP PROMO BANNER (SwapPromoBanner)
-           ═══════════════════════════════════════════════════════════ -->
+        <!-- Pill Energia grande con barra di progresso -->
+        <div
+          :style="{
+            background:   `linear-gradient(135deg, rgba(108,240,224,0.12), rgba(108,240,224,0.05))`,
+            border:       `1px solid rgba(108,240,224,0.25)`,
+            borderRadius: '14px',
+            padding:      '14px 16px',
+            display:      'flex',
+            flexDirection:'column',
+            gap:          '6px',
+          }"
+        >
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 22px; line-height:1; flex-shrink:0;">⚡</span>
+            <div>
+              <div :style="{ fontFamily: FF.mono, fontSize: '22px', fontWeight: 700, color: C.aqua, letterSpacing: '-0.02em', lineHeight: 1 }">
+                {{ energiaAttuale }}<span :style="{ fontSize: '12px', opacity: 0.55 }">/{{ MAX_ENERGIA }}</span>
+              </div>
+              <div :style="{ fontFamily: FF.label, fontSize: '8px', color: 'rgba(108,240,224,0.65)', letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700, marginTop: '3px' }">
+                ENERGIA
+              </div>
+            </div>
+          </div>
+          <!-- Barra progresso energia -->
+          <div :style="{ height: '4px', borderRadius: '2px', background: 'rgba(108,240,224,0.12)', overflow: 'hidden' }">
+            <div :style="{
+              height:       '100%',
+              borderRadius: '2px',
+              background:   `linear-gradient(90deg, ${C.aqua}, #b8faf2)`,
+              width:        `${(energiaAttuale / MAX_ENERGIA) * 100}%`,
+              transition:   'width 0.6s ease',
+              boxShadow:    `0 0 6px rgba(108,240,224,0.6)`,
+            }" />
+          </div>
+        </div>
+
+      </div><!-- fine resource bar -->
+
+      <!-- ═══════════════════════════════════════════════════════════════
+           3. QUICK SECTIONS — 2 colonne: Collezione e Mappa
+           ═══════════════════════════════════════════════════════════════ -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+
+        <!-- Sezione Collezione -->
+        <div
+          class="glass-panel"
+          :style="{
+            padding:    '14px',
+            cursor:     'pointer',
+            transition: 'all 0.2s',
+            borderRadius: '14px',
+          }"
+          @click="emit('setTab', 'collezione')"
+          @mouseenter="quickEnter($event, C.violet)"
+          @mouseleave="quickLeave($event, C.violet, false)"
+        >
+          <div class="section-header" :style="{ marginBottom: '10px' }">
+            <span style="font-size: 18px;">🃏</span>
+            <span>COLLEZIONE</span>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <div v-for="s in statTiles" :key="s.label" style="text-align: center; flex: 1; min-width: 30px;">
+              <div :style="{ fontFamily: FF.mono, fontSize: '16px', fontWeight: 700, color: s.col, lineHeight: 1 }">{{ s.val }}</div>
+              <div :style="{ fontFamily: FF.label, fontSize: '7px', color: s.col, opacity: 0.75, letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: '2px' }">{{ s.label }}</div>
+            </div>
+          </div>
+          <div :style="{ fontFamily: FF.label, fontSize: '8px', color: C.violet, opacity: 0.65, letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: '8px' }">Vedi tutto →</div>
+        </div>
+
+        <!-- Sezione Mappa -->
+        <div
+          class="glass-panel"
+          :style="{
+            padding:    '14px',
+            cursor:     'pointer',
+            transition: 'all 0.2s',
+            borderRadius: '14px',
+          }"
+          @click="emit('setTab', 'mappa')"
+          @mouseenter="quickEnter($event, C.aqua)"
+          @mouseleave="quickLeave($event, C.aqua, false)"
+        >
+          <div class="section-header" :style="{ marginBottom: '10px' }">
+            <span style="font-size: 18px;">🗺️</span>
+            <span>MAPPA</span>
+          </div>
+          <div :style="{ fontFamily: FF.mono, fontSize: '24px', fontWeight: 700, color: C.aqua, lineHeight: 1 }">
+            {{ numTerritori }}
+          </div>
+          <div :style="{ fontFamily: FF.label, fontSize: '8px', color: 'rgba(241,235,255,0.55)', letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: '3px' }">
+            territori conquistati
+          </div>
+          <div :style="{ fontFamily: FF.label, fontSize: '8px', color: C.aqua, opacity: 0.65, letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: '8px' }">Esplora →</div>
+        </div>
+
+      </div><!-- fine quick sections -->
+
+      <!-- ═══════════════════════════════════════════════════════════════
+           4. BANNER ULTIME CARTE — carousel orizzontale con pack + carte
+           ═══════════════════════════════════════════════════════════════ -->
+      <PannelloOrnato :glow="C.violet" variant="purple">
+        <!-- Titolo sezione ornato -->
+        <div :style="{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          gap: '14px', marginBottom: '9px',
+        }">
+          <div :style="{ flex: 1, height: '1px', maxWidth: '110px', background: `linear-gradient(90deg, transparent, ${C.goldL}55)` }" />
+          <div :style="{
+            fontFamily: FF.display, fontSize: 'clamp(14px, 2.4vw, 18px)', fontWeight: 700,
+            letterSpacing: '0.5px', color: C.goldL,
+            textShadow: `0 0 16px ${C.goldL}44, 0 0 28px ${C.goldL}18`, whiteSpace: 'nowrap',
+          }">ULTIME CARTE</div>
+          <div :style="{ flex: 1, height: '1px', maxWidth: '110px', background: `linear-gradient(270deg, transparent, ${C.goldL}55)` }" />
+        </div>
+
+        <!-- Scroll orizzontale carte -->
+        <div :style="{
+          display: 'flex', gap: '10px',
+          overflowX: 'auto', padding: '10px 4px 8px',
+          scrollbarWidth: 'thin', scrollbarColor: `${C.violet}55 transparent`,
+        }">
+          <!-- Card pacchetto (pack count o countdown) -->
+          <div
+            :style="{
+              width: '143px', height: '215px', borderRadius: '14px',
+              background: totalPack > 0
+                ? `radial-gradient(120% 80% at 50% 20%, ${C.sakura}28, transparent 55%), linear-gradient(160deg, #1e0c40 0%, #07051a 100%)`
+                : `radial-gradient(120% 80% at 50% 20%, ${C.gold}28, transparent 55%), linear-gradient(160deg, #1e0c40 0%, #07051a 100%)`,
+              border: `2px solid ${totalPack > 0 ? C.sakura : C.gold}70`,
+              cursor: 'pointer', position: 'relative', overflow: 'hidden',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              boxShadow: totalPack > 0
+                ? `0 0 26px ${C.sakura}45, inset 0 0 18px rgba(0,0,0,0.35)`
+                : `0 0 14px ${C.gold}20, inset 0 0 18px rgba(0,0,0,0.35)`,
+              transition: 'all 0.2s', flexShrink: 0,
+            }"
+            @click="emit('setTab', 'pacchetti')"
+          >
+            <div class="foil foil--soft" />
+            <!-- Pattern svg decorativo -->
+            <svg width="100%" height="100%" style="position: absolute; inset: 0; opacity: 0.06;">
+              <pattern id="hbp-pat" width="28" height="28" patternUnits="userSpaceOnUse">
+                <path d="M14,0 L28,14 L14,28 L0,14 Z" fill="none" :stroke="totalPack > 0 ? C.sakura : C.gold" stroke-width="0.5"/>
+              </pattern>
+              <rect width="100%" height="100%" fill="url(#hbp-pat)" />
+            </svg>
+            <!-- Corona centrale -->
+            <div style="text-align: center; z-index: 1;">
+              <div :style="{ fontFamily: FF.display, fontSize: '46px', color: totalPack > 0 ? C.sakura : C.gold, textShadow: `0 0 20px ${totalPack > 0 ? C.sakura : C.gold}aa`, marginBottom: '4px' }">♛</div>
+              <div :style="{ fontFamily: FF.label, fontSize: '9px', letterSpacing: '0.30em', color: totalPack > 0 ? C.sakura : C.gold, fontWeight: 700, opacity: 0.85, textTransform: 'uppercase' }">Pack scellato</div>
+            </div>
+            <!-- Footer countdown o CTA -->
+            <div :style="{
+              position: 'absolute', bottom: 0, left: 0, right: 0,
+              background: totalPack > 0
+                ? `linear-gradient(0deg, ${C.sakura}cc 0%, ${C.sakura}88 60%, transparent 100%)`
+                : 'linear-gradient(0deg, rgba(7,5,26,0.94) 0%, rgba(7,5,26,0.65) 60%, transparent 100%)',
+              padding: '20px 10px 11px', textAlign: 'center', zIndex: 2,
+            }">
+              <template v-if="totalPack > 0">
+                <div :style="{ fontFamily: FF.display, fontSize: '12px', fontWeight: 800, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.55)' }">SBUSTA ORA</div>
+                <div :style="{ marginTop: '4px', background: 'rgba(0,0,0,0.4)', borderRadius: '999px', padding: '3px 12px', display: 'inline-block', fontFamily: FF.mono, fontSize: '13px', fontWeight: 800, color: '#fff', border: '1px solid rgba(255,255,255,0.18)' }">×{{ totalPack }}</div>
+              </template>
+              <template v-else>
+                <div :style="{ fontSize: '8px', color: 'rgba(241,235,255,0.50)', fontFamily: FF.label, letterSpacing: '0.22em', marginBottom: '3px', textTransform: 'uppercase' }">Prossimo tra</div>
+                <div :style="{ fontFamily: FF.mono, fontSize: '12px', fontWeight: 700, color: C.goldL, textShadow: `0 0 10px ${C.goldL}70` }">{{ countdown || '—' }}</div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Carte recenti (placeholder img+nome) -->
+          <div
+            v-for="item in ultimeCarte"
+            :key="`${item.tipo}-${item.id}`"
+            :style="{
+              width: '143px', height: '215px', borderRadius: '14px',
+              background: 'linear-gradient(160deg, #1a0a35 0%, #07051a 100%)',
+              border: `1px solid ${C.violet}40`, flexShrink: 0, overflow: 'hidden',
+              position: 'relative', cursor: 'pointer',
+              display: 'flex', flexDirection: 'column',
+            }"
+          >
+            <div :style="{ flex: 1, overflow: 'hidden', position: 'relative', background: 'rgba(0,0,0,0.25)' }">
+              <img v-if="waifuImgUrl(item)" :src="waifuImgUrl(item)!" :alt="cartaNome(item)" :style="{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }" />
+              <div v-else :style="{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', fontSize: '30px', color: C.violet, opacity: 0.35 }">
+                {{ item.tipo === 'waifu' ? '♛' : item.tipo === 'outfit' ? '✦' : '⚜' }}
+              </div>
+            </div>
+            <div :style="{ padding: '7px 6px 9px', background: 'linear-gradient(0deg, rgba(7,5,26,0.95), rgba(7,5,26,0.55))', fontFamily: FF.label, fontSize: '9px', color: '#fff', letterSpacing: '0.10em', textTransform: 'uppercase', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }">{{ cartaNome(item) }}</div>
+          </div>
+
+          <!-- Stato vuoto collezione -->
+          <div v-if="!hasCarte" style="padding: 40px 20px; text-align: center; min-width: 220px;">
+            <div :style="{ fontSize: '36px', marginBottom: '8px', filter: `drop-shadow(0 0 10px ${C.sakura}80)` }">🌸</div>
+            <div :style="{ fontFamily: FF.label, fontSize: '10px', color: C.gold, letterSpacing: '0.26em', marginBottom: '6px', textTransform: 'uppercase', fontWeight: 700 }">Collezione vuota</div>
+            <div :style="{ opacity: 0.50, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">Apri il primo pacchetto<br/>e inizia la tua collezione!</div>
+          </div>
+        </div>
+      </PannelloOrnato>
+
+      <!-- ═══════════════════════════════════════════════════════════════
+           5. SWAP PROMO / DAILY EVENT WIDGET
+           Banner evento Waifu Swap con stats e CTA
+           ═══════════════════════════════════════════════════════════════ -->
       <div
         :style="{
-          position:     'relative',
-          marginBottom: '20px',
-          borderRadius: '20px',
-          overflow:     'hidden',
-          cursor:       'pointer',
-          background:   'linear-gradient(135deg, #1a0730 0%, #2d0a4e 40%, #1a0730 100%)',
-          border:       '1px solid rgba(255,133,182,0.35)',
-          boxShadow:    '0 8px 32px rgba(197,74,134,0.25), 0 0 0 1px rgba(255,255,255,0.04) inset',
-          padding:      '20px 22px',
-          minHeight:    '120px',
+          position: 'relative', marginTop: '14px', borderRadius: '18px',
+          overflow: 'hidden', cursor: 'pointer',
+          background: 'linear-gradient(135deg, #1a0730 0%, #2d0a4e 40%, #1a0730 100%)',
+          border: '1px solid rgba(255,133,182,0.30)',
+          boxShadow: '0 8px 28px rgba(197,74,134,0.22), 0 0 0 1px rgba(255,255,255,0.03) inset',
+          padding: '18px 20px', minHeight: '110px',
         }"
-        @click="emit('setTab', 'swap')"
+        @click="emit('setTab', 'community')"
       >
         <!-- Petali decorativi animati -->
         <div
           v-for="(left, i) in swapBannerPetals"
           :key="i"
           :style="{
-            position:    'absolute',
-            bottom:      '8px',
-            left:        `${left}%`,
-            width:       '8px',
-            height:      '8px',
-            borderRadius:'50% 0 50% 50%',
-            background:  i % 2 === 0 ? 'rgba(255,133,182,0.5)' : 'rgba(196,108,240,0.45)',
-            transform:   'rotate(45deg)',
-            animation:   `floatPetal ${3 + i * 0.7}s ease-in-out ${i * 0.4}s infinite`,
+            position: 'absolute', bottom: '8px', left: `${left}%`,
+            width: '7px', height: '7px', borderRadius: '50% 0 50% 50%',
+            background: i % 2 === 0 ? 'rgba(255,133,182,0.45)' : 'rgba(196,108,240,0.40)',
+            transform: 'rotate(45deg)',
+            animation: `floatPetal ${3 + i * 0.7}s ease-in-out ${i * 0.4}s infinite`,
             pointerEvents: 'none',
           }"
         />
 
-        <!-- Shimmer -->
+        <!-- Shimmer sweep -->
         <div style="position: absolute; inset: 0; overflow: hidden; pointer-events: none; border-radius: inherit;">
           <div :style="{
-            position:  'absolute',
-            top:       0,
-            bottom:    0,
-            width:     '40%',
-            background:'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)',
+            position: 'absolute', top: 0, bottom: 0, width: '40%',
+            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)',
             animation: 'shimmerBanner 3.5s ease-in-out 1s infinite',
           }" />
         </div>
 
         <!-- Emoji decorativa -->
-        <div :style="{
-          position:  'absolute',
-          right:     '18px',
-          top:       '50%',
-          transform: 'translateY(-50%)',
-          fontSize:  '56px',
-          opacity:   0.18,
-          pointerEvents: 'none',
-          userSelect: 'none',
-          filter:    'drop-shadow(0 0 12px rgba(255,133,182,0.6))',
-        }">🩷</div>
+        <div :style="{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', fontSize: '52px', opacity: 0.15, pointerEvents: 'none', userSelect: 'none', filter: 'drop-shadow(0 0 10px rgba(255,133,182,0.6))' }">🩷</div>
 
-        <!-- Contenuto -->
+        <!-- Contenuto evento -->
         <div style="position: relative; z-index: 1;">
-          <div :style="{
-            fontFamily:    FF.label,
-            fontSize:      '8px',
-            letterSpacing: '0.28em',
-            color:         'rgba(255,133,182,0.75)',
-            textTransform: 'uppercase',
-            marginBottom:  '6px',
-          }">✦ Scopri le Waifu ✦</div>
-
-          <div :style="{
-            fontFamily:    FF.display,
-            fontSize:      '22px',
-            fontWeight:    900,
-            color:         '#fff',
-            letterSpacing: '-0.01em',
-            marginBottom:  '6px',
-            textShadow:    '0 0 20px rgba(255,133,182,0.5)',
-          }">Waifu Swap</div>
-
-          <div :style="{
-            fontFamily:   FF.body,
-            fontSize:     '12px',
-            color:        'rgba(241,235,255,0.6)',
-            lineHeight:   1.5,
-            marginBottom: '14px',
-            maxWidth:     '75%',
-          }">
-            Swipa, vota e guadagna Kisses ogni 10 voti. Più voti, più guadagni!
+          <div :style="{ fontFamily: FF.label, fontSize: '8px', letterSpacing: '0.26em', color: 'rgba(255,133,182,0.70)', textTransform: 'uppercase', marginBottom: '5px' }">✦ Scopri le Waifu ✦</div>
+          <div :style="{ fontFamily: FF.display, fontSize: '20px', fontWeight: 900, color: '#fff', letterSpacing: '-0.01em', marginBottom: '5px', textShadow: '0 0 18px rgba(255,133,182,0.45)' }">Waifu Swap</div>
+          <div :style="{ fontFamily: FF.body, fontSize: '11px', color: 'rgba(241,235,255,0.55)', lineHeight: 1.5, marginBottom: '12px', maxWidth: '72%' }">
+            Swipa, vota e guadagna Kisses ogni 10 voti.
           </div>
-
           <!-- Stats rapide + CTA -->
-          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <div v-if="totalVoti > 0" :style="{
-              background:    'rgba(255,133,182,0.12)',
-              border:        '1px solid rgba(255,133,182,0.25)',
-              borderRadius:  '8px',
-              padding:       '4px 10px',
-              fontFamily:    FF.mono,
-              fontSize:      '10px',
-              color:         C.sakura,
-            }">{{ totalVoti }} voti totali</div>
-            <div v-if="streakDays > 1" :style="{
-              background:   'rgba(108,240,224,0.1)',
-              border:       '1px solid rgba(108,240,224,0.25)',
-              borderRadius: '8px',
-              padding:      '4px 10px',
-              fontFamily:   FF.mono,
-              fontSize:     '10px',
-              color:        C.aqua,
-            }">🔥 {{ streakDays }} giorni streak</div>
-            <div :style="{
-              background:    'linear-gradient(135deg, #c54a86, #ff85b6)',
-              borderRadius:  '10px',
-              padding:       '7px 16px',
-              color:         '#fff',
-              fontFamily:    FF.label,
-              fontSize:      '11px',
-              letterSpacing: '0.2em',
-              textTransform: 'uppercase',
-              fontWeight:    700,
-              boxShadow:     '0 4px 14px rgba(197,74,134,0.4)',
-            }">Inizia →</div>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <div v-if="totalVoti > 0" :style="{ background: 'rgba(255,133,182,0.10)', border: '1px solid rgba(255,133,182,0.22)', borderRadius: '8px', padding: '3px 9px', fontFamily: FF.mono, fontSize: '9px', color: C.sakura }">{{ totalVoti }} voti</div>
+            <div v-if="streakDays > 1" :style="{ background: 'rgba(108,240,224,0.08)', border: '1px solid rgba(108,240,224,0.22)', borderRadius: '8px', padding: '3px 9px', fontFamily: FF.mono, fontSize: '9px', color: C.aqua }">🔥 {{ streakDays }}d streak</div>
+            <div :style="{ background: 'linear-gradient(135deg, #c54a86, #ff85b6)', borderRadius: '9px', padding: '6px 14px', color: '#fff', fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 700, boxShadow: '0 3px 12px rgba(197,74,134,0.4)' }">Inizia →</div>
           </div>
         </div>
       </div>
 
-      <!-- ═══════════════════════════════════════════════════════════
-           STATISTICHE COLLEZIONE (CardInfo ×4)
-           ═══════════════════════════════════════════════════════════ -->
-      <div :style="{
-        display:               'grid',
-        gridTemplateColumns:   'repeat(auto-fit, minmax(145px, 1fr))',
-        gap:                   '10px',
-        marginBottom:          '24px',
-      }">
-        <CardInfo
-          v-for="s in statTiles"
-          :key="s.label"
-          :colore="s.col"
-          @click="s.subTab ? goToCollez(s.subTab) : undefined"
-        >
-          <div style="text-align: center;">
-            <div :style="{
-              fontSize:   '26px',
-              color:      s.col,
-              marginBottom: '4px',
-              filter:     `drop-shadow(0 0 8px ${s.col})`,
-              fontFamily: FF.display,
-            }">{{ s.icon }}</div>
-            <div :style="{
-              fontFamily:    FF.mono,
-              fontSize:      '22px',
-              color:         '#fff',
-              fontWeight:    700,
-              letterSpacing: '-0.02em',
-              textShadow:    `0 0 10px ${s.col}55`,
-            }">{{ s.val }}</div>
-            <div :style="{
-              fontSize:      '8.5px',
-              color:         s.col,
-              opacity:       0.85,
-              fontFamily:    FF.label,
-              letterSpacing: '0.24em',
-              marginTop:     '4px',
-              textTransform: 'uppercase',
-              fontWeight:    700,
-            }">{{ s.label }}</div>
-            <div v-if="s.subTab" :style="{
-              fontSize:      '8px',
-              color:         s.col,
-              opacity:       0.55,
-              marginTop:     '4px',
-              fontFamily:    FF.label,
-              letterSpacing: '0.18em',
-              textTransform: 'uppercase',
-            }">Vedi ›</div>
-          </div>
-        </CardInfo>
-      </div>
-
-      <!-- ═══════════════════════════════════════════════════════════
-           BANNER ULTIME CARTE (BannerUltimeCarte)
-           Nota: CartaWaifu non ancora migrata → placeholder img+nome
-           ═══════════════════════════════════════════════════════════ -->
-      <PannelloOrnato :glow="C.violet" variant="purple">
-        <!-- Titolo ornato (TitoloOrnato livello 2) -->
-        <div :style="{
-          display:        'flex',
-          alignItems:     'center',
-          justifyContent: 'center',
-          gap:            '14px',
-          marginBottom:   '9px',
-        }">
-          <div :style="{
-            flex:       1,
-            height:     '1px',
-            maxWidth:   '110px',
-            background: `linear-gradient(90deg, transparent, ${C.goldL}66)`,
-          }" />
-          <div :style="{
-            fontFamily:  FF.display,
-            fontSize:    'clamp(15px, 2.6vw, 20px)',
-            fontWeight:  700,
-            letterSpacing: '0.5px',
-            color:       C.goldL,
-            textShadow:  `0 0 18px ${C.goldL}55, 0 0 32px ${C.goldL}22`,
-            whiteSpace:  'nowrap',
-          }">ULTIME CARTE</div>
-          <div :style="{
-            flex:       1,
-            height:     '1px',
-            maxWidth:   '110px',
-            background: `linear-gradient(270deg, transparent, ${C.goldL}66)`,
-          }" />
-        </div>
-
-        <!-- Scroll orizzontale delle carte -->
-        <div :style="{
-          display:         'flex',
-          gap:             '10px',
-          overflowX:       'auto',
-          padding:         '10px 4px 8px',
-          scrollbarWidth:  'thin',
-          scrollbarColor:  `${C.violet}66 transparent`,
-        }">
-          <!-- Card pacchetto overlay (CardPacchettoOverlay) -->
-          <div
-            :style="{
-              width:        '143px',
-              height:       '215px',
-              borderRadius: '14px',
-              background:   totalPack > 0
-                ? `radial-gradient(120% 80% at 50% 20%, ${C.sakura}30, transparent 60%), linear-gradient(160deg, #1e0c40 0%, #07051a 100%)`
-                : `radial-gradient(120% 80% at 50% 20%, ${C.gold}30, transparent 60%), linear-gradient(160deg, #1e0c40 0%, #07051a 100%)`,
-              border:       `2px solid ${totalPack > 0 ? C.sakura : C.gold}80`,
-              cursor:       'pointer',
-              position:     'relative',
-              overflow:     'hidden',
-              display:      'flex',
-              flexDirection:'column',
-              alignItems:   'center',
-              justifyContent: 'center',
-              boxShadow:    totalPack > 0
-                ? `0 0 30px ${C.sakura}55, inset 0 0 22px rgba(0,0,0,0.4)`
-                : `0 0 16px ${C.gold}25, inset 0 0 22px rgba(0,0,0,0.4)`,
-              transition:   'all 0.2s',
-              flexShrink:   0,
-            }"
-            @click="emit('setTab', 'sbusta')"
-          >
-            <div class="foil foil--soft" />
-            <!-- Pattern svg decorativo -->
-            <svg width="100%" height="100%" style="position: absolute; inset: 0; opacity: 0.06;">
-              <pattern id="hbp-pat" width="28" height="28" patternUnits="userSpaceOnUse">
-                <path
-                  d="M14,0 L28,14 L14,28 L0,14 Z"
-                  fill="none"
-                  :stroke="totalPack > 0 ? C.sakura : C.gold"
-                  stroke-width="0.5"
-                />
-              </pattern>
-              <rect width="100%" height="100%" fill="url(#hbp-pat)" />
-            </svg>
-            <!-- Corona centrale -->
-            <div style="text-align: center; z-index: 1;">
-              <div :style="{
-                fontFamily: FF.display,
-                fontSize:   '46px',
-                color:      totalPack > 0 ? C.sakura : C.gold,
-                textShadow: `0 0 22px ${totalPack > 0 ? C.sakura : C.gold}aa`,
-                marginBottom: '4px',
-              }">♛</div>
-              <div :style="{
-                fontFamily:    FF.label,
-                fontSize:      '9px',
-                letterSpacing: '0.32em',
-                color:         totalPack > 0 ? C.sakura : C.gold,
-                fontWeight:    700,
-                opacity:       0.85,
-                textTransform: 'uppercase',
-              }">Pack scellato</div>
-            </div>
-            <!-- Footer con countdown o CTA sbusta -->
-            <div :style="{
-              position:   'absolute',
-              bottom:     0,
-              left:       0,
-              right:      0,
-              background: totalPack > 0
-                ? `linear-gradient(0deg, ${C.sakura}d0 0%, ${C.sakura}88 60%, transparent 100%)`
-                : 'linear-gradient(0deg, rgba(7,5,26,0.94) 0%, rgba(7,5,26,0.7) 60%, transparent 100%)',
-              padding:    '20px 10px 11px',
-              textAlign:  'center',
-              zIndex:     2,
-            }">
-              <template v-if="totalPack > 0">
-                <div :style="{
-                  fontFamily:    FF.display,
-                  fontSize:      '12px',
-                  fontWeight:    800,
-                  color:         '#fff',
-                  letterSpacing: '-0.005em',
-                  textShadow:    '0 1px 4px rgba(0,0,0,0.6)',
-                }">SBUSTA ORA</div>
-                <div :style="{
-                  marginTop:     '4px',
-                  background:    'rgba(0,0,0,0.45)',
-                  borderRadius:  '999px',
-                  padding:       '3px 12px',
-                  display:       'inline-block',
-                  fontFamily:    FF.mono,
-                  fontSize:      '13px',
-                  fontWeight:    800,
-                  color:         '#fff',
-                  border:        '1px solid rgba(255,255,255,0.2)',
-                }">×{{ totalPack }}</div>
-              </template>
-              <template v-else>
-                <div :style="{
-                  fontSize:      '8px',
-                  color:         'rgba(241,235,255,0.55)',
-                  fontFamily:    FF.label,
-                  letterSpacing: '0.24em',
-                  marginBottom:  '3px',
-                  textTransform: 'uppercase',
-                }">Prossimo tra</div>
-                <div :style="{
-                  fontFamily: FF.mono,
-                  fontSize:   '12px',
-                  fontWeight: 700,
-                  color:      C.goldL,
-                  textShadow: `0 0 10px ${C.goldL}80`,
-                }">{{ countdown || '—' }}</div>
-              </template>
-            </div>
-          </div>
-
-          <!-- Placeholder carte waifu/outfit/posa (CartaWaifu non ancora migrata) -->
-          <div
-            v-for="item in ultimeCarte"
-            :key="`${item.tipo}-${item.id}`"
-            :style="{
-              width:        '143px',
-              height:       '215px',
-              borderRadius: '14px',
-              background:   'linear-gradient(160deg, #1a0a35 0%, #07051a 100%)',
-              border:       `1px solid ${C.violet}44`,
-              flexShrink:   0,
-              overflow:     'hidden',
-              position:     'relative',
-              cursor:       'pointer',
-              display:      'flex',
-              flexDirection:'column',
-            }"
-          >
-            <!-- Immagine (placeholder se nessun URL) -->
-            <div :style="{
-              flex:       1,
-              overflow:   'hidden',
-              position:   'relative',
-              background: 'rgba(0,0,0,0.3)',
-            }">
-              <img
-                v-if="waifuImgUrl(item)"
-                :src="waifuImgUrl(item)!"
-                :alt="cartaNome(item)"
-                :style="{
-                  width:      '100%',
-                  height:     '100%',
-                  objectFit:  'cover',
-                  display:    'block',
-                }"
-              />
-              <div v-else :style="{
-                width:          '100%',
-                height:         '100%',
-                display:        'grid',
-                placeItems:     'center',
-                fontSize:       '32px',
-                color:          C.violet,
-                opacity:        0.4,
-              }">
-                {{ item.tipo === 'waifu' ? '♛' : item.tipo === 'outfit' ? '✦' : '⚜' }}
-              </div>
-            </div>
-            <!-- Nome carta -->
-            <div :style="{
-              padding:       '8px 6px 10px',
-              background:    'linear-gradient(0deg, rgba(7,5,26,0.95), rgba(7,5,26,0.6))',
-              fontFamily:    FF.label,
-              fontSize:      '9px',
-              color:         '#fff',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              textAlign:     'center',
-              whiteSpace:    'nowrap',
-              overflow:      'hidden',
-              textOverflow:  'ellipsis',
-            }">{{ cartaNome(item) }}</div>
-          </div>
-
-          <!-- Stato vuoto collezione -->
-          <div v-if="!hasCarte" style="padding: 40px 20px; text-align: center; min-width: 240px;">
-            <div :style="{
-              fontSize:     '38px',
-              marginBottom: '8px',
-              filter:       `drop-shadow(0 0 12px ${C.sakura}88)`,
-            }">🌸</div>
-            <div :style="{
-              fontFamily:    FF.label,
-              fontSize:      '10px',
-              color:         C.gold,
-              letterSpacing: '0.28em',
-              marginBottom:  '6px',
-              textTransform: 'uppercase',
-              fontWeight:    700,
-            }">Collezione vuota</div>
-            <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">
-              Apri il primo pacchetto<br />e inizia la tua collezione!
-            </div>
-          </div>
-        </div>
-      </PannelloOrnato>
-
-      <!-- ═══════════════════════════════════════════════════════════
-           BIG ACTION BUTTONS (BigActionButton)
-           ═══════════════════════════════════════════════════════════ -->
-
-      <!-- Negozio -->
-      <div style="margin-top: 18px;">
+      <!-- Pesca (se abilitata) — CTA separata sotto il banner -->
+      <div v-if="pescaAbilitata" style="margin-top: 12px; margin-bottom: 4px;">
         <button
           :style="{
-            width:           '100%',
-            background:      `linear-gradient(135deg, ${C.gold}1a, ${C.gold}06)`,
-            border:          `1px solid ${C.gold}55`,
-            borderRadius:    '16px',
-            padding:         '16px 20px',
-            cursor:          'pointer',
-            display:         'flex',
-            alignItems:      'center',
-            gap:             '14px',
-            transition:      'all 0.2s',
-            boxShadow:       `0 0 22px ${C.gold}1a, 0 8px 24px rgba(3,2,12,0.4)`,
-            backdropFilter:  'blur(8px)',
-          }"
-          @click="emit('apriNegozio')"
-          @mouseenter="bigEnter($event, C.gold)"
-          @mouseleave="bigLeave($event, C.gold)"
-        >
-          <div :style="{
-            width:        '46px',
-            height:       '46px',
-            borderRadius: '13px',
-            background:   `${C.gold}22`,
-            border:       `1px solid ${C.gold}55`,
-            display:      'grid',
-            placeItems:   'center',
-            color:        C.gold,
-            fontSize:     '22px',
-            flexShrink:   0,
-            boxShadow:    `0 0 14px ${C.gold}33`,
-          }">🛒</div>
-          <div style="text-align: left; flex: 1; min-width: 0;">
-            <div :style="{
-              fontFamily:    FF.display,
-              fontSize:      '13px',
-              fontWeight:    700,
-              color:         '#fff',
-              letterSpacing: '-0.005em',
-              textShadow:    `0 0 12px ${C.gold}66`,
-            }">NEGOZIO</div>
-            <div :style="{
-              fontSize:   '11px',
-              color:      'rgba(241,235,255,0.55)',
-              fontFamily: FF.body,
-              marginTop:  '3px',
-            }">Acquista pack sfida, energia e Kisses</div>
-          </div>
-          <span :style="{ color: C.gold, opacity: 0.7, fontSize: '18px' }">›</span>
-        </button>
-      </div>
-
-      <!-- Pesca (se abilitata) -->
-      <div v-if="pescaAbilitata" style="margin-top: 14px;">
-        <button
-          :style="{
-            width:          '100%',
-            background:     `linear-gradient(135deg, ${C.sakura}1a, ${C.sakura}06)`,
-            border:         `1px solid ${C.sakura}55`,
-            borderRadius:   '16px',
-            padding:        '16px 20px',
-            cursor:         'pointer',
-            display:        'flex',
-            alignItems:     'center',
-            gap:            '14px',
-            transition:     'all 0.2s',
-            boxShadow:      `0 0 22px ${C.sakura}1a, 0 8px 24px rgba(3,2,12,0.4)`,
-            backdropFilter: 'blur(8px)',
+            width: '100%', background: `linear-gradient(135deg, ${C.sakura}18, ${C.sakura}06)`,
+            border: `1px solid ${C.sakura}44`, borderRadius: '14px', padding: '14px 18px',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px',
+            transition: 'all 0.2s', backdropFilter: 'blur(8px)', minHeight: '44px',
           }"
           @click="emit('apriPesca')"
-          @mouseenter="bigEnter($event, C.sakura)"
-          @mouseleave="bigLeave($event, C.sakura)"
         >
-          <div :style="{
-            width:        '46px',
-            height:       '46px',
-            borderRadius: '13px',
-            background:   `${C.sakura}22`,
-            border:       `1px solid ${C.sakura}55`,
-            display:      'grid',
-            placeItems:   'center',
-            color:        C.sakura,
-            fontSize:     '22px',
-            flexShrink:   0,
-            boxShadow:    `0 0 14px ${C.sakura}33`,
-          }">🎣</div>
+          <div :style="{ width: '40px', height: '40px', borderRadius: '12px', background: `${C.sakura}20`, border: `1px solid ${C.sakura}44`, display: 'grid', placeItems: 'center', color: C.sakura, fontSize: '20px', flexShrink: 0 }">🎣</div>
           <div style="text-align: left; flex: 1; min-width: 0;">
-            <div :style="{
-              fontFamily:    FF.display,
-              fontSize:      '13px',
-              fontWeight:    700,
-              color:         '#fff',
-              letterSpacing: '-0.005em',
-              textShadow:    `0 0 12px ${C.sakura}66`,
-            }">PESCA MISTERIOSA</div>
-            <div :style="{
-              fontSize:   '11px',
-              color:      'rgba(241,235,255,0.55)',
-              fontFamily: FF.body,
-              marginTop:  '3px',
-            }">Pesca una carta dalle bustine dei tuoi amici</div>
+            <div :style="{ fontFamily: FF.display, fontSize: '12px', fontWeight: 700, color: '#fff', textShadow: `0 0 10px ${C.sakura}55` }">PESCA MISTERIOSA</div>
+            <div :style="{ fontSize: '10px', color: 'rgba(241,235,255,0.50)', fontFamily: FF.body, marginTop: '2px' }">Pesca carte dalle bustine dei tuoi amici</div>
           </div>
-          <span :style="{ color: C.sakura, opacity: 0.7, fontSize: '18px' }">›</span>
+          <span :style="{ color: C.sakura, opacity: 0.65, fontSize: '16px' }">›</span>
         </button>
       </div>
 
