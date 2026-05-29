@@ -226,196 +226,292 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
 </script>
 
 <template>
-  <!-- Home stile Pokémon TCG Pocket: hero pack + 2 card azione -->
-  <div style="padding-top: 12px;">
-      <div
-        :style="{
-          position:     'relative',
-          marginBottom: '14px',
-          background:   `
-            radial-gradient(120% 90% at 0% 0%, rgba(255,126,182,0.28) 0%, transparent 55%),
-            radial-gradient(120% 90% at 100% 100%, rgba(167,139,250,0.22) 0%, transparent 55%),
-            linear-gradient(135deg, #2a1255 0%, #15102f 60%, #07051a 100%)
-          `,
-          border:       totalPack > 0 ? '1px solid rgba(255,126,182,0.45)' : '1px solid rgba(245,197,96,0.20)',
-          boxShadow:    totalPack > 0
-            ? '0 12px 40px rgba(3,2,12,0.55), 0 0 30px rgba(255,126,182,0.15)'
-            : '0 12px 40px rgba(3,2,12,0.45)',
-          minHeight:    '180px',
-          padding:      '18px 20px 16px',
-          borderRadius: '18px',
-        }"
-      >
+  <!-- Home stile Pokémon TCG Pocket: avatar grande → sbusta dominante → 2 card -->
+  <div style="padding: 0 0 8px;">
 
-        <!-- Raggi decorativi rotativi -->
+    <!-- ══════════════════════════════════════════════════════════════
+         1. HERO AVATAR — logo grande + nome impero + livello
+         Corrisponde all'avatar circolare centrato di Pokémon TCG Pocket
+    ══════════════════════════════════════════════════════════════════ -->
+    <div style="display:flex; flex-direction:column; align-items:center; padding: 20px 16px 16px; text-align:center;">
+
+      <!-- Anello decorativo + logo -->
+      <div :style="{
+        position:     'relative',
+        width:        '120px',
+        height:       '120px',
+        borderRadius: '50%',
+        background:   `conic-gradient(${C.sakura} 0%, ${C.gold} 35%, ${C.violet} 70%, ${C.sakura} 100%)`,
+        padding:      '3px',
+        boxShadow:    `0 0 32px ${C.sakura}55, 0 0 60px ${C.violet}33`,
+        marginBottom: '12px',
+      }">
         <div :style="{
-          position:      'absolute',
-          top:           '-50px',
-          right:         '-50px',
-          width:         '220px',
-          height:        '220px',
-          pointerEvents: 'none',
-          background:    'conic-gradient(from 0deg, rgba(245,197,96,0.30), transparent 30%, rgba(245,197,96,0.30) 60%, transparent 90%)',
-          borderRadius:  '50%',
-          mixBlendMode:  'screen',
-          animation:     'spinSlow 40s linear infinite',
-          opacity:       0.40,
-        }" />
-
-        <!-- Contenuto hero -->
-        <div style="position: relative; z-index: 2;">
-
-          <!-- Badge stagione + timer -->
-          <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;">
-            <span :style="{
-              display:       'inline-flex', alignItems: 'center', gap: '5px',
-              padding:       '4px 10px', borderRadius: '999px',
-              background:    `${C.sakura}1f`, border: `1px solid ${C.sakura}55`,
-              color:         C.sakuraL, fontFamily: FF.label,
-              fontSize:      '9px', letterSpacing: '0.18em',
-              textTransform: 'uppercase', fontWeight: 700,
-            }">❀ Stagione · Hanami</span>
-            <span :style="{ fontFamily: FF.mono, fontSize: '9px', color: 'rgba(241,235,255,0.50)', letterSpacing: '-0.01em' }">5d 14h</span>
-          </div>
-
-          <!-- Kicker BENTORNATA + nome impero -->
-          <div :style="{ fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.38em', color: C.gold, textTransform: 'uppercase', marginBottom: '3px', fontWeight: 700 }">◆ BENTORNATA</div>
-          <h1 class="shimmer-text" :style="{ fontFamily: FF.display, fontSize: 'clamp(24px, 6vw, 36px)', fontWeight: 800, margin: 0, letterSpacing: '-0.01em', lineHeight: 0.96 }">
-            {{ nomeImpero }}
-          </h1>
-
-          <!-- Sottotitolo dinamico: pack disponibili o testo incoraggiamento -->
-          <div :style="{ fontFamily: FF.body, fontSize: '12px', color: 'rgba(241,235,255,0.60)', marginTop: '7px', maxWidth: '320px', lineHeight: 1.5 }">
-            <template v-if="totalPack > 0">
-              Hai <b :style="{ color: C.goldL }">{{ totalPack }} {{ totalPack === 1 ? 'bustina' : 'bustine' }}</b> pronte da aprire!
-            </template>
-            <template v-else>
-              Conquista territori per guadagnare Kisses e aspetta la prossima bustina omaggio.
-            </template>
-          </div>
-
-          <!-- CTA buttons: APRI PACCHETTO e NEGOZIO -->
-          <div style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;">
-            <button
-              class="btn-premium"
-              :style="{
-                background:    totalPack > 0
-                  ? `linear-gradient(135deg, ${C.sakura}, #c54a86)`
-                  : `linear-gradient(135deg, ${C.gold}, #c08a1f)`,
-                border:        'none',
-                borderRadius:  '12px',
-                padding:       '10px 20px',
-                color:         '#fff',
-                fontFamily:    FF.label,
-                fontSize:      '12px',
-                letterSpacing: '0.18em',
-                textTransform: 'uppercase',
-                fontWeight:    700,
-                cursor:        'pointer',
-                boxShadow:     totalPack > 0
-                  ? `0 4px 18px rgba(197,74,134,0.45)`
-                  : `0 4px 18px rgba(192,138,31,0.40)`,
-                minHeight:     '44px',
-                display:       'inline-flex',
-                alignItems:    'center',
-                gap:           '6px',
-                transition:    'all 0.2s',
-              }"
-              @click="emit('setTab', 'pacchetti')"
-            >
-              {{ totalPack > 0 ? '🎁 SBUSTA ORA' : '📦 PACCHETTI' }}
-              <span style="opacity:0.8; font-size:14px;">→</span>
-            </button>
-
-            <button
-              :style="{
-                background:    'rgba(245,197,96,0.10)',
-                border:        `1px solid rgba(245,197,96,0.35)`,
-                borderRadius:  '12px',
-                padding:       '10px 16px',
-                color:         C.goldL,
-                fontFamily:    FF.label,
-                fontSize:      '11px',
-                letterSpacing: '0.18em',
-                textTransform: 'uppercase',
-                fontWeight:    700,
-                cursor:        'pointer',
-                minHeight:     '44px',
-                display:       'inline-flex',
-                alignItems:    'center',
-                gap:           '6px',
-                transition:    'all 0.2s',
-              }"
-              @click="emit('apriNegozio')"
-            >🛒 NEGOZIO</button>
-          </div>
+          width: '100%', height: '100%',
+          borderRadius: '50%',
+          background: '#07051a',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }">
+          <img
+            src="~/assets/images/Waifu_Empire_Logo_NO_BG.png"
+            alt="Impero delle Waifu"
+            style="width: 90px; height: 90px; object-fit: contain;"
+          />
         </div>
-
-        <!-- Decorazione pack count in alto a destra -->
-        <div v-if="totalPack > 0" :style="{
-          position:   'absolute', top: '16px', right: '18px',
-          fontFamily: FF.display, fontSize: '68px', fontWeight: 800,
-          color:      'transparent', pointerEvents: 'none',
-          background: `linear-gradient(180deg, ${C.goldL}, ${C.sakura})`,
-          WebkitBackgroundClip: 'text', backgroundClip: 'text',
-          opacity: 0.15, lineHeight: 0.8, letterSpacing: '-0.02em',
-        }">♛</div>
       </div>
 
-      <!-- ═══════════════════════════════════════════════════════════════
-           2. CARD AZIONI — Pesca Misteriosa (sx) + Swipe Waifu (dx)
-           ═══════════════════════════════════════════════════════════════ -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+      <!-- Nome impero -->
+      <div class="shimmer-text" :style="{
+        fontFamily:    FF.display,
+        fontSize:      'clamp(18px,5vw,24px)',
+        fontWeight:    800,
+        letterSpacing: '-0.01em',
+        lineHeight:    1.1,
+        marginBottom:  '6px',
+      }">{{ nomeImpero }}</div>
 
-        <!-- Card Pesca Misteriosa -->
-        <div
-          :style="{
-            background:   `linear-gradient(135deg, rgba(255,133,182,0.14) 0%, rgba(167,139,250,0.08) 100%)`,
-            border:       `1px solid rgba(255,133,182,0.28)`,
-            borderRadius: '18px',
-            padding:      '18px 14px 16px',
-            cursor:       'pointer',
-            transition:   'all 0.2s',
-            minHeight:    '130px',
-            display:      'flex',
-            flexDirection:'column',
-            justifyContent:'space-between',
-          }"
-          @click="emit('apriPesca')"
-        >
-          <div :style="{ fontSize: '36px', lineHeight: 1, filter: `drop-shadow(0 0 10px ${C.sakura}88)` }">🎣</div>
-          <div>
-            <div :style="{ fontFamily: FF.display, fontSize: '13px', fontWeight: 700, color: '#fff', marginBottom: '4px' }">Pesca<br/>Misteriosa</div>
-            <div v-if="pescaAbilitata" :style="{ fontFamily: FF.label, fontSize: '8px', color: 'rgba(255,133,182,0.65)', letterSpacing: '0.14em', textTransform: 'uppercase' }">Disponibile →</div>
+      <!-- Livello + badge risorse inline -->
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;">
+        <div :style="{
+          background:    'rgba(245,197,96,0.12)',
+          border:        '1px solid rgba(245,197,96,0.30)',
+          borderRadius:  '999px',
+          padding:       '3px 12px',
+          fontFamily:    FF.label,
+          fontSize:      '11px',
+          color:         C.gold,
+          fontWeight:    700,
+          letterSpacing: '0.14em',
+        }">LV. {{ profilo?.livello ?? 1 }}</div>
+        <div :style="{ fontFamily: FF.mono, fontSize: '10px', color: 'rgba(241,235,255,0.40)' }">
+          {{ totalPack > 0 ? `✦ ${totalPack} bustine disponibili` : '✦ Nessuna bustina' }}
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         2. SBUSTA — area pack dominante (50% altezza schermo)
+         Come il pannello pack di Pokémon TCG Pocket
+    ══════════════════════════════════════════════════════════════════ -->
+    <div
+      style="margin: 0 16px 14px; border-radius: 20px; overflow: hidden; position: relative; cursor: pointer;"
+      :style="{
+        background: totalPack > 0
+          ? `radial-gradient(ellipse 80% 60% at 50% 0%, ${C.sakura}35 0%, transparent 60%), linear-gradient(180deg, #2a0d4a 0%, #0f0520 50%, #07051a 100%)`
+          : `radial-gradient(ellipse 80% 60% at 50% 0%, ${C.gold}22 0%, transparent 60%), linear-gradient(180deg, #1a1230 0%, #0d0a26 50%, #07051a 100%)`,
+        border: totalPack > 0
+          ? `1px solid ${C.sakura}50`
+          : `1px solid ${C.gold}28`,
+        boxShadow: totalPack > 0
+          ? `0 8px 40px ${C.sakura}25, 0 0 0 1px ${C.sakura}18 inset`
+          : `0 8px 32px rgba(3,2,12,0.5)`,
+        minHeight: '320px',
+      }"
+      @click="emit('setTab', 'pacchetti')"
+    >
+
+      <!-- Raggi decorativi in rotazione -->
+      <div :style="{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: `conic-gradient(from 0deg at 50% 40%, transparent 0%, ${totalPack > 0 ? C.sakura : C.gold}14 15%, transparent 30%, ${totalPack > 0 ? C.violet : C.gold}0a 45%, transparent 60%, ${totalPack > 0 ? C.sakura : C.gold}0f 75%, transparent 90%)`,
+        animation: 'spinSlow 20s linear infinite',
+        opacity: 0.8,
+      }" />
+
+      <!-- Contenuto pack centrato -->
+      <div style="position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 32px 20px; min-height:320px; gap:16px;">
+
+        <!-- Icona pack grande -->
+        <div :style="{
+          width:        '100px',
+          height:       '140px',
+          borderRadius: '14px',
+          background:   totalPack > 0
+            ? `radial-gradient(circle at 40% 30%, ${C.sakura}50, ${C.violet}40 50%, ${C.ink} 100%)`
+            : `radial-gradient(circle at 40% 30%, ${C.gold}40, rgba(80,50,20,0.8) 50%, ${C.ink} 100%)`,
+          border:       totalPack > 0
+            ? `2px solid ${C.sakura}80`
+            : `2px solid ${C.gold}50`,
+          boxShadow:    totalPack > 0
+            ? `0 0 40px ${C.sakura}50, 0 8px 24px rgba(0,0,0,0.6), inset 0 1px 0 ${C.sakura}40`
+            : `0 0 24px ${C.gold}30, 0 8px 24px rgba(0,0,0,0.6), inset 0 1px 0 ${C.gold}20`,
+          display:      'flex',
+          alignItems:   'center',
+          justifyContent:'center',
+          position:     'relative',
+          overflow:     'hidden',
+        }">
+          <div class="foil foil--soft" />
+          <img
+            src="~/assets/images/Waifu_Empire_Logo_NO_BG.png"
+            alt=""
+            style="width:70px; height:70px; object-fit:contain; position:relative; z-index:1; opacity:0.85;"
+          />
+          <!-- Badge quantità in alto a destra -->
+          <div v-if="totalPack > 0" :style="{
+            position: 'absolute', top:'6px', right:'6px',
+            background: C.sakura, color: '#fff',
+            fontFamily: FF.mono, fontSize: '10px', fontWeight: 800,
+            padding: '2px 6px', borderRadius: '999px',
+            border: '1px solid rgba(255,255,255,0.3)',
+            lineHeight: 1.2, zIndex: 2,
+          }">×{{ totalPack }}</div>
+        </div>
+
+        <!-- Testo stato pack -->
+        <div style="text-align:center;">
+          <div :style="{
+            fontFamily: FF.display,
+            fontSize:   'clamp(20px,5vw,26px)',
+            fontWeight: 800,
+            color:      totalPack > 0 ? '#fff' : C.goldL,
+            textShadow: totalPack > 0
+              ? `0 0 24px ${C.sakura}aa`
+              : `0 0 16px ${C.gold}66`,
+            marginBottom: '6px',
+          }">
+            {{ totalPack > 0 ? 'SBUSTA ORA' : 'PACCHETTI' }}
+          </div>
+          <div v-if="totalPack > 0" :style="{ fontFamily: FF.body, fontSize:'13px', color:'rgba(241,235,255,0.65)' }">
+            Hai <b :style="{color: C.sakura}">{{ totalPack }}</b> {{ totalPack === 1 ? 'bustina' : 'bustine' }} da aprire
+          </div>
+          <div v-else :style="{ fontFamily: FF.mono, fontSize:'12px', color: 'rgba(241,235,255,0.45)' }">
+            {{ countdown ? `Prossima tra ${countdown}` : 'Visita il negozio' }}
           </div>
         </div>
 
-        <!-- Card Swipe Waifu -->
-        <div
+        <!-- CTA button -->
+        <button
           :style="{
-            background:   `linear-gradient(135deg, rgba(167,139,250,0.14) 0%, rgba(255,133,182,0.08) 100%)`,
-            border:       `1px solid rgba(167,139,250,0.28)`,
-            borderRadius: '18px',
-            padding:      '18px 14px 16px',
-            cursor:       'pointer',
-            transition:   'all 0.2s',
-            minHeight:    '130px',
-            display:      'flex',
-            flexDirection:'column',
-            justifyContent:'space-between',
+            background:    totalPack > 0
+              ? `linear-gradient(135deg, ${C.sakura}, #c54a86)`
+              : `linear-gradient(135deg, ${C.gold}, #c08a1f)`,
+            border:        'none',
+            borderRadius:  '999px',
+            padding:       '12px 32px',
+            color:         '#fff',
+            fontFamily:    FF.label,
+            fontSize:      '13px',
+            letterSpacing: '0.20em',
+            textTransform: 'uppercase',
+            fontWeight:    700,
+            cursor:        'pointer',
+            boxShadow:     totalPack > 0
+              ? `0 4px 20px ${C.sakura}55`
+              : `0 4px 16px ${C.gold}44`,
+            minHeight:     '48px',
+            minWidth:      '160px',
+            transition:    'all 0.2s',
           }"
-          @click="emit('setTab', 'community')"
         >
-          <div :style="{ fontSize: '36px', lineHeight: 1, filter: `drop-shadow(0 0 10px ${C.violet}88)` }">🩷</div>
-          <div>
-            <div :style="{ fontFamily: FF.display, fontSize: '13px', fontWeight: 700, color: '#fff', marginBottom: '4px' }">Swipe<br/>Waifu</div>
-            <div :style="{ fontFamily: FF.label, fontSize: '8px', color: 'rgba(167,139,250,0.65)', letterSpacing: '0.14em', textTransform: 'uppercase' }">
-              {{ totalVoti > 0 ? `${totalVoti} voti →` : 'Vota →' }}
-            </div>
-          </div>
+          {{ totalPack > 0 ? '🎁 Apri ora' : '📦 Vai ai pacchetti' }}
+        </button>
+
+        <!-- Timer inferiore -->
+        <div v-if="totalPack === 0 && countdown" :style="{
+          display: 'flex', alignItems: 'center', gap: '6px',
+          fontFamily: FF.mono, fontSize: '11px', color: 'rgba(241,235,255,0.35)',
+        }">
+          <span>⏱</span>
+          <span>{{ countdown }}</span>
         </div>
 
-      </div><!-- fine card azioni -->
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         3. CARD AZIONI — Pesca Misteriosa (sx) + Swipe Waifu (dx)
+         Come le due card action di Pokémon TCG Pocket
+    ══════════════════════════════════════════════════════════════════ -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:0 16px 8px;">
+
+      <!-- Card Pesca Misteriosa -->
+      <div
+        :style="{
+          background:    `linear-gradient(145deg, rgba(255,133,182,0.18), rgba(20,10,40,0.95))`,
+          border:        `1px solid ${C.sakura}35`,
+          borderRadius:  '20px',
+          padding:       '20px 16px 18px',
+          cursor:        'pointer',
+          transition:    'all 0.2s',
+          minHeight:     '160px',
+          display:       'flex',
+          flexDirection: 'column',
+          justifyContent:'space-between',
+          boxShadow:     `0 4px 20px ${C.sakura}18`,
+        }"
+        @click="emit('apriPesca')"
+      >
+        <!-- Icona grande -->
+        <div :style="{
+          width: '52px', height: '52px',
+          borderRadius: '14px',
+          background: `${C.sakura}20`,
+          border: `1px solid ${C.sakura}40`,
+          display: 'grid', placeItems: 'center',
+          fontSize: '28px',
+          marginBottom: '12px',
+          filter: `drop-shadow(0 0 8px ${C.sakura}66)`,
+        }">🎣</div>
+        <div>
+          <div :style="{
+            fontFamily: FF.display, fontSize: '15px', fontWeight: 700,
+            color: '#fff', lineHeight: 1.2, marginBottom: '6px',
+          }">Pesca<br/>Misteriosa</div>
+          <div :style="{
+            fontFamily: FF.label, fontSize: '9px',
+            color: `${C.sakura}99`, letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            display: 'flex', alignItems: 'center', gap: '4px',
+          }">
+            <span :style="{ width:'6px', height:'6px', borderRadius:'50%', background: C.sakura, display:'inline-block', boxShadow:`0 0 6px ${C.sakura}` }" />
+            Disponibile
+          </div>
+        </div>
+      </div>
+
+      <!-- Card Swipe Waifu -->
+      <div
+        :style="{
+          background:    `linear-gradient(145deg, rgba(167,139,250,0.18), rgba(20,10,40,0.95))`,
+          border:        `1px solid ${C.violet}35`,
+          borderRadius:  '20px',
+          padding:       '20px 16px 18px',
+          cursor:        'pointer',
+          transition:    'all 0.2s',
+          minHeight:     '160px',
+          display:       'flex',
+          flexDirection: 'column',
+          justifyContent:'space-between',
+          boxShadow:     `0 4px 20px ${C.violet}18`,
+        }"
+        @click="emit('setTab', 'community')"
+      >
+        <!-- Icona grande -->
+        <div :style="{
+          width: '52px', height: '52px',
+          borderRadius: '14px',
+          background: `${C.violet}20`,
+          border: `1px solid ${C.violet}40`,
+          display: 'grid', placeItems: 'center',
+          fontSize: '28px',
+          marginBottom: '12px',
+          filter: `drop-shadow(0 0 8px ${C.violet}66)`,
+        }">🩷</div>
+        <div>
+          <div :style="{
+            fontFamily: FF.display, fontSize: '15px', fontWeight: 700,
+            color: '#fff', lineHeight: 1.2, marginBottom: '6px',
+          }">Swipe<br/>Waifu</div>
+          <div :style="{
+            fontFamily: FF.label, fontSize: '9px',
+            color: `${C.violet}99`, letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+          }">{{ totalVoti > 0 ? `${totalVoti} voti totali` : 'Vota ora' }}</div>
+        </div>
+      </div>
+
+    </div><!-- fine card azioni -->
 
   </div><!-- fine HomeTab -->
 </template>
