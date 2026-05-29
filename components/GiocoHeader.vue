@@ -53,33 +53,33 @@ const pendingFriendRequests = computed(() => {
     <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
 
       <div style="
-        display: flex; align-items: center; gap: 6px;
-        padding: 0 10px;
+        display: flex; align-items: center; gap: 4px;
+        padding: 0 8px;
         background: rgba(255,133,182,0.12);
         border: 1px solid rgba(255,133,182,0.25);
         border-radius: 999px;
-        height: 34px;
+        height: 28px;
       ">
-        <span style="font-size:14px; line-height:1;">💋</span>
+        <span style="font-size:11px; line-height:1;">💋</span>
         <span style="
           font-family: var(--ff-mono,'JetBrains Mono',monospace);
-          font-size: 14px; font-weight: 700;
+          font-size: 12px; font-weight: 700;
           color: #ff85b6; letter-spacing: -0.02em;
         ">{{ profilo?.kisses ?? 0 }}</span>
       </div>
 
       <div style="
-        display: flex; align-items: center; gap: 6px;
-        padding: 0 10px;
+        display: flex; align-items: center; gap: 4px;
+        padding: 0 8px;
         background: rgba(108,240,224,0.10);
         border: 1px solid rgba(108,240,224,0.22);
         border-radius: 999px;
-        height: 34px;
+        height: 28px;
       ">
-        <span style="font-size:14px; line-height:1;">⚡</span>
+        <span style="font-size:11px; line-height:1;">⚡</span>
         <span style="
           font-family: var(--ff-mono,'JetBrains Mono',monospace);
-          font-size: 14px; font-weight: 700;
+          font-size: 12px; font-weight: 700;
           color: #6cf0e0; letter-spacing: -0.02em;
         ">{{ profilo?.energia ?? 0 }}</span>
       </div>
@@ -154,7 +154,7 @@ const pendingFriendRequests = computed(() => {
           background: transparent; border: none;
           border: 1px solid rgba(245,197,96,0.45);
           border-radius: 99px;
-          cursor: pointer; padding: 0 10px;
+          cursor: pointer; padding: 0 8px;
           min-height: 35px; font-weight: 700;
           transition: color 0.2s;
         " @mouseenter="($event.target as HTMLElement).style.color = 'rgba(245,197,96,0.9)'"

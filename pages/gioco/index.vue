@@ -403,8 +403,7 @@ function handleSetTab(t: string) {
         background: rgba(7,5,26,0.98);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
-        border-top: 1px solid rgba(245,197,96,0.15);
-        height: 95px;
+        height: 75px;
       ">
       <button v-for="t in TABS" :key="t.id" class="flex-1 flex flex-col items-center justify-center gap-0.5 cursor-pointer
                border-0 bg-transparent relative"
