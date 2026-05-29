@@ -40,6 +40,8 @@ const godPackProb = ref(GOD_PACK_PROB_DEFAULT)
 const caricato = ref(false)
 // Contesto battaglia raid — passato a MappaTab come prop, poi reimpostato a null
 const raidBattleCtx = ref<unknown>(null)
+// Pannello impostazioni utente (FAB hamburger)
+const settingsAperte = ref(false)
 
 // ── Sub-navigazione per la tab "Pacchetti" (Sbusta | Pesca) ───────────
 const subTabPacchetti = ref<'sbusta' | 'pesca'>('sbusta')
@@ -438,23 +440,119 @@ function handleSetTab(t: string) {
       </button>
     </nav>
 
+    <!-- ── FAB Impostazioni: bottone rotondo hamburger fisso bottom-right ── -->
+    <button
+      style="
+        position: fixed;
+        bottom: 90px;
+        right: 16px;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(167,139,250,0.85), rgba(107,70,193,0.90));
+        border: 1.5px solid rgba(167,139,250,0.55);
+        box-shadow: 0 4px 20px rgba(107,70,193,0.45), 0 0 0 4px rgba(167,139,250,0.08);
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer;
+        z-index: 60;
+        transition: all 0.2s;
+        backdrop-filter: blur(8px);
+      "
+      @click="settingsAperte = true"
+    >
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <rect x="3" y="5" width="16" height="2" rx="1" fill="white"/>
+        <rect x="3" y="10" width="16" height="2" rx="1" fill="white"/>
+        <rect x="3" y="15" width="16" height="2" rx="1" fill="white"/>
+      </svg>
+    </button>
+
+    <!-- ── Pannello Impostazioni slide-up ─────────────────────────────── -->
+    <Transition name="settings-up">
+      <div
+        v-if="settingsAperte"
+        style="
+          position: fixed; inset: 0; z-index: 200;
+          display: flex; flex-direction: column; justify-content: flex-end;
+        "
+        @click.self="settingsAperte = false"
+      >
+        <!-- Backdrop -->
+        <div style="position:absolute;inset:0;background:rgba(3,2,12,0.65);backdrop-filter:blur(4px);" @click="settingsAperte = false" />
+
+        <!-- Sheet -->
+        <div style="
+          position: relative;
+          background: linear-gradient(180deg, #1b1638 0%, #0d0a26 100%);
+          border-top: 1px solid rgba(167,139,250,0.25);
+          border-radius: 24px 24px 0 0;
+          padding: 8px 24px 48px;
+          z-index: 1;
+        ">
+          <!-- Handle -->
+          <div style="width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,0.15);margin:12px auto 24px;"/>
+
+          <!-- Avatar + nome -->
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">
+            <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#a78bfa,#7c3aed);display:grid;place-items:center;font-size:22px;flex-shrink:0;">
+              👤
+            </div>
+            <div>
+              <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:15px;font-weight:700;color:#fff;">
+                {{ gameStore.profilo?.nomeImpero ?? '—' }}
+              </div>
+              <div style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:11px;color:rgba(167,139,250,0.7);margin-top:2px;">
+                {{ authStore.user?.email ?? '' }}
+              </div>
+              <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.14em;color:rgba(245,197,96,0.6);text-transform:uppercase;margin-top:3px;">
+                LV. {{ gameStore.profilo?.livello ?? 1 }} · {{ gameStore.profilo?.kisses ?? 0 }} 💋
+              </div>
+            </div>
+          </div>
+
+          <!-- Voci menu -->
+          <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:20px;">
+            <button
+              v-if="isAdmin"
+              style="display:flex;align-items:center;gap:12px;padding:14px 0;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer;color:#b573ff;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:14px;letter-spacing:0.08em;"
+              @click="settingsAperte=false; $router.push('/admin')"
+            >
+              <span style="font-size:20px;">⚙️</span> Pannello Admin
+            </button>
+            <button
+              style="display:flex;align-items:center;gap:12px;padding:14px 0;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer;color:rgba(241,235,255,0.8);font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:14px;letter-spacing:0.08em;"
+              @click="gameStore.toggleNegozio(true); settingsAperte=false"
+            >
+              <span style="font-size:20px;">🛒</span> Negozio
+            </button>
+            <button
+              style="display:flex;align-items:center;gap:12px;padding:14px 0;background:transparent;border:none;cursor:pointer;color:#ff5b6c;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:14px;letter-spacing:0.08em;"
+              @click="authStore.logout(); settingsAperte=false"
+            >
+              <span style="font-size:20px;">🚪</span> Esci
+            </button>
+          </div>
+
+          <!-- Versione app -->
+          <div style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:10px;color:rgba(255,255,255,0.18);text-align:center;">
+            Waifu's Empire · nuxt-redesign
+          </div>
+        </div>
+      </div>
+    </Transition>
+
   </div><!-- fine .game-container -->
 </template>
 
 <style scoped>
 /* Animazione notifica flottante slide-down */
-.slide-down-enter-active,
-.slide-down-leave-active {
-  transition: all 0.3s ease;
-}
+.slide-down-enter-active, .slide-down-leave-active { transition: all 0.3s ease; }
+.slide-down-enter-from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+.slide-down-leave-to   { opacity: 0; transform: translateX(-50%) translateY(-12px); }
 
-.slide-down-enter-from {
-  opacity: 0;
-  transform: translateX(-50%) translateY(-12px);
-}
-
-.slide-down-leave-to {
-  opacity: 0;
-  transform: translateX(-50%) translateY(-12px);
-}
+/* Animazione pannello impostazioni slide-up */
+.settings-up-enter-active, .settings-up-leave-active { transition: all 0.32s cubic-bezier(0.4,0,0.2,1); }
+.settings-up-enter-from .settings-up-leave-to { opacity: 0; }
+.settings-up-enter-from > div:last-child,
+.settings-up-leave-to  > div:last-child { transform: translateY(100%); }
 </style>
