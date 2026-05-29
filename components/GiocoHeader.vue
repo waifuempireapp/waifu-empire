@@ -9,7 +9,7 @@
 import type { ProfiloUtente } from '~/types/game'
 
 const props = defineProps<{
-  profilo:  ProfiloUtente | null
+  profilo: ProfiloUtente | null
   isAdmin?: boolean
 }>()
 
@@ -24,9 +24,7 @@ const pendingFriendRequests = computed(() => {
 
 <template>
   <!-- Header sticky 100px — overflow:visible per il logo che sborda -->
-  <header
-    class="sticky top-0 z-40 px-4"
-    style="
+  <header class="sticky top-0 z-40 px-4" style="
       height: 100px;
       overflow: visible;
       backdrop-filter: blur(12px);
@@ -35,12 +33,9 @@ const pendingFriendRequests = computed(() => {
       display: flex;
       align-items: center;
       justify-content: space-between;
-    "
-  >
+    ">
     <!-- ── LINEA SFUMATA separatore in basso ──────────────────── -->
-    <div
-      aria-hidden="true"
-      style="
+    <div aria-hidden="true" style="
         position: absolute;
         bottom: 0; left: 0; right: 0;
         height: 1px;
@@ -52,8 +47,7 @@ const pendingFriendRequests = computed(() => {
           rgba(245,197,96,0.25) 80%,
           transparent 100%
         );
-      "
-    />
+      " />
 
     <!-- ── SINISTRA: pills Kisses + Energia ───────────────────── -->
     <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
@@ -100,15 +94,10 @@ const pendingFriendRequests = computed(() => {
       align-items: center;
       z-index: 50;
     ">
-      <img
-        src="~/assets/images/Logo.png"
-        alt="Impero delle Waifu"
-        style="height: 110px; width: auto; display: block;"
-      />
+      <img src="~/assets/images/Logo.png" alt="Impero delle Waifu"
+        style="height: 110px; width: auto; display: block;" />
       <!-- Nome impero sotto il logo, fuori dall'header -->
-      <span
-        v-if="profilo?.nomeImpero"
-        style="
+      <span v-if="profilo?.nomeImpero" style="
           font-family: var(--ff-label,'Saira Condensed',sans-serif);
           font-size: 8px; letter-spacing: 0.22em;
           text-transform: uppercase;
@@ -116,45 +105,35 @@ const pendingFriendRequests = computed(() => {
           font-weight: 700;
           margin-top: 2px;
           white-space: nowrap;
-        "
-      >{{ profilo.nomeImpero }}</span>
+        ">{{ profilo.nomeImpero }}</span>
     </div>
 
     <!-- ── DESTRA: admin + campanella + EXIT ─────────────────── -->
     <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
 
-      <NuxtLink
-        v-if="isAdmin"
-        to="/admin"
-        style="
-          font-size: 8px;
+      <NuxtLink v-if="isAdmin" to="/admin" style="
+          font-size: 13px;
           font-family: var(--ff-label,'Saira Condensed',sans-serif);
           color: #b573ff;
           border: 1px solid rgba(181,115,255,0.30);
-          border-radius: 4px;
-          padding: 3px 6px;
+          border-radius: 99px;
+          padding: 6px 10px;
           letter-spacing: 0.12em;
           text-transform: uppercase;
           font-weight: 700;
           text-decoration: none;
           display: inline-flex; align-items: center;
-        "
-      >ADMIN</NuxtLink>
+        ">ADMIN</NuxtLink>
 
-      <button
-        style="
+      <button style="
           position: relative;
-          width: 44px; height: 44px;
+          width: 32.5px; height: 32.5px;
           border: none; background: transparent;
           cursor: pointer; display: flex;
           align-items: center; justify-content: center;
-        "
-        @click="() => {}"
-      >
-        <span style="font-size:22px; line-height:1;">🔔</span>
-        <span
-          v-if="pendingFriendRequests > 0"
-          style="
+        " @click="() => { }">
+        <span style="font-size:20px; line-height:1;">🔔</span>
+        <span v-if="pendingFriendRequests > 0" style="
             position: absolute; top: 4px; right: 4px;
             background: #ff5b6c; color: #fff;
             font-size: 7px; font-weight: 800;
@@ -162,27 +141,25 @@ const pendingFriendRequests = computed(() => {
             min-width: 14px; height: 14px;
             border-radius: 999px;
             display: flex; align-items: center; justify-content: center;
-            padding: 0 2px;
+            padding: 0 0 0 2px;
             border: 1.5px solid rgba(3,2,12,0.9);
-          "
-        >{{ pendingFriendRequests > 9 ? '9+' : pendingFriendRequests }}</span>
+          ">{{ pendingFriendRequests > 9 ? '9+' : pendingFriendRequests }}</span>
       </button>
 
-      <button
-        style="
+      <button style="
           font-family: var(--ff-label,'Saira Condensed',sans-serif);
-          font-size: 8px; letter-spacing: 0.18em;
+          font-size: 12px; letter-spacing: 0.13em;
           text-transform: uppercase;
           color: rgba(245,197,96,0.45);
           background: transparent; border: none;
-          cursor: pointer; padding: 0 4px;
-          min-height: 44px; font-weight: 700;
+          border: 1px solid rgba(245,197,96,0.45);
+          border-radius: 99px;
+          cursor: pointer; padding: 0 10px;
+          min-height: 35px; font-weight: 700;
           transition: color 0.2s;
-        "
-        @mouseenter="($event.target as HTMLElement).style.color='rgba(245,197,96,0.9)'"
-        @mouseleave="($event.target as HTMLElement).style.color='rgba(245,197,96,0.45)'"
-        @click="$emit('logout')"
-      >EXIT</button>
+        " @mouseenter="($event.target as HTMLElement).style.color = 'rgba(245,197,96,0.9)'"
+        @mouseleave="($event.target as HTMLElement).style.color = 'rgba(245,197,96,0.45)'"
+        @click="$emit('logout')">EXIT</button>
 
     </div>
   </header>

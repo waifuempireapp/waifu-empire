@@ -460,7 +460,7 @@ function onMouseLeave(e: MouseEvent) {
       }">
         <!-- Velocità -->
         <div v-if="vel != null" :style="{
-          fontFamily: \"'JetBrains Mono', monospace\",
+          fontFamily: `'JetBrains Mono', monospace`,
           fontSize: `${Math.round(9 * scale)}px`, color: '#6cf0e0', textAlign: 'center',
         }">
           <div :style="{ fontSize: `${Math.round(11 * scale)}px` }">&#9889;</div>
@@ -470,7 +470,7 @@ function onMouseLeave(e: MouseEvent) {
 
         <!-- HP -->
         <div v-if="hp != null" :style="{
-          fontFamily: \"'JetBrains Mono', monospace\",
+          fontFamily: `'JetBrains Mono', monospace`,
           fontSize: `${Math.round(10.5 * scale)}px`, color: '#06d6a0', textAlign: 'center',
           background: 'rgba(6,214,160,0.12)',
           borderRadius: `${Math.round(5 * scale)}px`,
@@ -482,7 +482,7 @@ function onMouseLeave(e: MouseEvent) {
 
         <!-- Crit -->
         <div v-if="crit != null" :style="{
-          fontFamily: \"'JetBrains Mono', monospace\",
+          fontFamily: `'JetBrains Mono', monospace`,
           fontSize: `${Math.round(9 * scale)}px`, color: '#fbbf24', textAlign: 'center',
         }">
           <div :style="{ fontSize: `${Math.round(11 * scale)}px` }">💥</div>

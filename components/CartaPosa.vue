@@ -185,7 +185,7 @@ function onMouseLeave(e: MouseEvent) {
       padding: `${Math.round(2.5 * scale)}px ${Math.round(9 * scale)}px`,
       fontSize: `${Math.round(7.5 * scale)}px`,
       fontWeight: '800', letterSpacing: '0.2em',
-      fontFamily: \"var(--ff-label, 'Saira Condensed', sans-serif)\",
+      fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
       borderRadius: `${Math.round(5 * scale)}px 0 0 ${Math.round(5 * scale)}px`,
       textTransform: 'uppercase',
       boxShadow: `0 2px 12px ${rb.glow}, 0 0 0 1px rgba(255,255,255,0.18) inset`,
@@ -231,7 +231,7 @@ function onMouseLeave(e: MouseEvent) {
           filter: `drop-shadow(0 0 4px ${rb.glow})`,
         }">&#9884;</span>
         <div :style="{
-          fontFamily: \"var(--ff-display, 'Unbounded', sans-serif)\",
+          fontFamily: `var(--ff-display, 'Unbounded', sans-serif)`,
           fontSize: `${Math.round(12 * scale)}px`, fontWeight: '700',
           color: '#fff', letterSpacing: '-0.005em', lineHeight: '1.15',
           textShadow: `0 0 10px ${rb.glow}, 0 2px 4px rgba(0,0,0,0.85)`,
@@ -265,7 +265,7 @@ function onMouseLeave(e: MouseEvent) {
         </div>
         <span :style="{
           fontSize: `${Math.round(8 * scale)}px`, color: rb.inner,
-          fontFamily: \"var(--ff-label, 'Saira Condensed', sans-serif)\",
+          fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
           letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: '600',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           maxWidth: `${Math.round(110 * scale)}px`,
@@ -275,7 +275,7 @@ function onMouseLeave(e: MouseEvent) {
       <!-- Label universale (se nessuna waifu associata) -->
       <div v-if="isUniversale" :style="{
         fontSize: `${Math.round(8 * scale)}px`, color: 'rgba(241,235,255,0.45)',
-        fontFamily: \"var(--ff-label, 'Saira Condensed', sans-serif)\",
+        fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
         letterSpacing: '0.22em', textTransform: 'uppercase',
       }">&#9672; Universale</div>
     </div>
@@ -289,7 +289,7 @@ function onMouseLeave(e: MouseEvent) {
       fontSize: `${Math.round(10 * scale)}px`, fontWeight: '700',
       padding: `${Math.round(2*scale)}px ${Math.round(7*scale)}px`,
       borderRadius: `${Math.round(7 * scale)}px`,
-      fontFamily: \"var(--ff-mono, 'JetBrains Mono', monospace)\",
+      fontFamily: `var(--ff-mono, 'JetBrains Mono', monospace)`,
       backdropFilter: 'blur(4px)',
       boxShadow: `0 0 8px ${rb.glow}`,
       zIndex: '6',

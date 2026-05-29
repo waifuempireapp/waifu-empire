@@ -200,7 +200,7 @@ function onMouseLeave(e: MouseEvent) {
         <div :style="{
           fontSize: `${Math.round(22 * scale)}px`, fontWeight: '800', color: sc.primary,
           opacity: '0.5',
-          fontFamily: \"var(--ff-display, 'Unbounded', sans-serif)\",
+          fontFamily: `var(--ff-display, 'Unbounded', sans-serif)`,
           textShadow: `0 0 10px ${sc.primary}`,
           position: 'relative',
         }">{{ iniziale }}</div>
@@ -228,7 +228,7 @@ function onMouseLeave(e: MouseEvent) {
       </span>
       <span :style="{
         fontSize: `${Math.round(7.5 * scale)}px`, color: sc.primary,
-        fontFamily: \"var(--ff-label, 'Saira Condensed', sans-serif)\",
+        fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
         letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: '700',
       }">{{ outfit.slot ?? 'slot' }}</span>
     </div>
@@ -241,7 +241,7 @@ function onMouseLeave(e: MouseEvent) {
       padding: `${Math.round(2.5 * scale)}px ${Math.round(9 * scale)}px`,
       fontSize: `${Math.round(7.5 * scale)}px`,
       fontWeight: '800', letterSpacing: '0.2em',
-      fontFamily: \"var(--ff-label, 'Saira Condensed', sans-serif)\",
+      fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
       borderRadius: `${Math.round(5 * scale)}px 0 0 ${Math.round(5 * scale)}px`,
       textTransform: 'uppercase',
       boxShadow: `0 2px 12px ${rb.glow}, 0 0 0 1px rgba(255,255,255,0.18) inset`,
@@ -280,7 +280,7 @@ function onMouseLeave(e: MouseEvent) {
 
       <!-- Nome outfit -->
       <div :style="{
-        fontFamily: \"var(--ff-display, 'Unbounded', sans-serif)\",
+        fontFamily: `var(--ff-display, 'Unbounded', sans-serif)`,
         fontSize: `${Math.round(12 * scale)}px`, fontWeight: '700',
         color: '#fff', letterSpacing: '-0.005em', lineHeight: '1.15',
         marginBottom: `${Math.round(4 * scale)}px`,
@@ -303,7 +303,7 @@ function onMouseLeave(e: MouseEvent) {
         }">{{ archetipoSym.sym }}</div>
         <span :style="{
           fontSize: `${Math.round(7.5 * scale)}px`, color: archetipoSym.color,
-          fontFamily: \"var(--ff-label, 'Saira Condensed', sans-serif)\",
+          fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
           letterSpacing: '0.16em', opacity: '0.9', textTransform: 'uppercase',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           maxWidth: `${Math.round(110 * scale)}px`, fontWeight: '600',
@@ -326,7 +326,7 @@ function onMouseLeave(e: MouseEvent) {
         }">{{ abilitaIcon }}</span>
         <span :style="{
           color: '#e8e0ff', fontSize: `${Math.round(7.5 * scale)}px`,
-          fontFamily: \"var(--ff-label, 'Saira Condensed', sans-serif)\",
+          fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
           letterSpacing: '0.08em',
           maxWidth: `${Math.round(95 * scale)}px`,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -344,7 +344,7 @@ function onMouseLeave(e: MouseEvent) {
       fontSize: `${Math.round(9 * scale)}px`, fontWeight: '700',
       padding: `${Math.round(2*scale)}px ${Math.round(6*scale)}px`,
       borderRadius: `${Math.round(6 * scale)}px`,
-      fontFamily: \"var(--ff-mono, 'JetBrains Mono', monospace)\",
+      fontFamily: `var(--ff-mono, 'JetBrains Mono', monospace)`,
       backdropFilter: 'blur(4px)',
       zIndex: '7',
     }">&#215;{{ quantita }}</div>

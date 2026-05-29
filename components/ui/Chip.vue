@@ -38,7 +38,7 @@ const SIZES = {
       letterSpacing:      '0.14em',
       textTransform:      'uppercase',
       fontWeight:         700,
-      fontFamily:         \"var(--ff-label, 'Saira Condensed', sans-serif)\",
+      fontFamily:         `var(--ff-label, 'Saira Condensed', sans-serif)`,
       backdropFilter:     'blur(6px)',
       WebkitBackdropFilter: 'blur(6px)',
     }"

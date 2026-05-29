@@ -176,7 +176,7 @@ async function acquistaBene(beneId: string) {
           <!-- Taglie Kisses -->
           <div class="grid grid-cols-2 gap-2.5 mb-4">
             <div
-              v-for="taglio in (prezzi?.tagli_kisses as {id:string;kisses:number;bonus:string;price_eur:string}[])"
+              v-for="taglio in (prezzi?.tagli_kisses as any[])"
               :key="taglio.id"
               class="p-3 rounded-xl text-center cursor-pointer transition-all"
               style="background:rgba(6,3,15,0.6);border:2px solid rgba(255,77,158,0.2)"
