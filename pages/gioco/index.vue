@@ -294,8 +294,8 @@ function handleSetTab(t: string) {
       @logout="authStore.logout()"
     />
 
-    <!-- ── Area contenuto del tab attivo ────────────────────────────── -->
-    <div class="px-4 max-w-[1400px] mx-auto">
+    <!-- ── Area contenuto: padding-top 40px per clearare il logo che sborda (10px) + gap 30px ── -->
+    <div class="px-4 max-w-[1400px] mx-auto" style="padding-top: 40px;">
 
       <!-- ═══ TAB: HOME ════════════════════════════════════════════════ -->
       <LazyHomeTab

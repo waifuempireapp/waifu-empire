@@ -1,137 +1,134 @@
 <!-- ============================================================
-  GiocoHeader.vue — Header stile Pokémon TCG Pocket.
-  Layout a 3 zone su 56px di altezza:
-    Sinistra: resource pills compatte (Kisses 💋 rosa + Energia ⚡ acqua)
-    Centro:   logo app (36px) + nome impero sotto in micro-font
-    Destra:   campanella 🔔 con badge richieste + pulsante EXIT muted
-  Mantiene tutti gli emit e props originali invariati.
+  GiocoHeader.vue — Header 100px con logo 110px che sborda sotto.
+  - Nessun background diverso dal body (trasparente + blur sottile)
+  - Logo centrato, alto 110px, overflow visible → sborda 10px sotto
+  - Linea sfumata gold in basso come separatore
+  - Pills sx: kisses + energia | Dx: admin, campanella, exit
   ============================================================ -->
 <script setup lang="ts">
 import type { ProfiloUtente } from '~/types/game'
 
-// ── Props: profilo utente e flag admin ────────────────────────────────
 const props = defineProps<{
   profilo:  ProfiloUtente | null
   isAdmin?: boolean
 }>()
 
-// ── Emits: logout (invariato dall'originale) ──────────────────────────
 defineEmits<{ logout: [] }>()
 
-const router = useRouter()
-
-// ── Contatore richieste amicizia in sospeso per il badge campanella ───
 const pendingFriendRequests = computed(() => {
   const received = (props.profilo as Record<string, unknown> | null)?.friendRequestsReceived
   if (Array.isArray(received)) return received.length
   return 0
 })
-
-// ── Toggle popup campanella ───────────────────────────────────────────
-const campanaAperta = ref(false)
 </script>
 
 <template>
-  <!-- Header principale: 56px, sfondo ink-void traslucido, blur, bordo gold sottile -->
+  <!-- Header sticky 100px — overflow:visible per il logo che sborda -->
   <header
-    class="sticky top-0 z-40 flex items-center justify-between px-4"
+    class="sticky top-0 z-40 px-4"
     style="
-      background: rgba(3,2,12,0.95);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-bottom: 1px solid rgba(245,197,96,0.10);
-      height: 72px;
+      height: 100px;
+      overflow: visible;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      position: sticky;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     "
   >
+    <!-- ── LINEA SFUMATA separatore in basso ──────────────────── -->
+    <div
+      aria-hidden="true"
+      style="
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        height: 1px;
+        background: linear-gradient(
+          to right,
+          transparent 0%,
+          rgba(245,197,96,0.25) 20%,
+          rgba(245,197,96,0.45) 50%,
+          rgba(245,197,96,0.25) 80%,
+          transparent 100%
+        );
+      "
+    />
 
-    <!-- ── SINISTRA: resource pills (Kisses + Energia) ─────────────── -->
-    <div class="flex items-center gap-2 flex-shrink-0">
+    <!-- ── SINISTRA: pills Kisses + Energia ───────────────────── -->
+    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
 
-      <!-- Pill Kisses (💋 rosa sakura) -->
-      <div
-        class="flex items-center gap-1.5 px-2.5 rounded-xl"
-        style="
-          background: rgba(255,133,182,0.12);
-          border: 1px solid rgba(255,133,182,0.25);
-          border-radius: 999px;
-          height: 32px;
-        "
-      >
-        <span style="font-size:13px; line-height:1;">💋</span>
-        <span
-          style="
-            font-family: var(--ff-mono, 'JetBrains Mono', monospace);
-            font-size: 13px;
-            font-weight: 700;
-            color: #ff85b6;
-            letter-spacing: -0.02em;
-          "
-        >{{ profilo?.kisses ?? 0 }}</span>
+      <div style="
+        display: flex; align-items: center; gap: 6px;
+        padding: 0 10px;
+        background: rgba(255,133,182,0.12);
+        border: 1px solid rgba(255,133,182,0.25);
+        border-radius: 999px;
+        height: 34px;
+      ">
+        <span style="font-size:14px; line-height:1;">💋</span>
+        <span style="
+          font-family: var(--ff-mono,'JetBrains Mono',monospace);
+          font-size: 14px; font-weight: 700;
+          color: #ff85b6; letter-spacing: -0.02em;
+        ">{{ profilo?.kisses ?? 0 }}</span>
       </div>
 
-      <!-- Pill Energia (⚡ acqua verde) -->
-      <div
-        class="flex items-center gap-1.5 px-2.5 rounded-xl"
-        style="
-          background: rgba(108,240,224,0.10);
-          border: 1px solid rgba(108,240,224,0.22);
-          border-radius: 999px;
-          height: 32px;
-        "
-      >
-        <span style="font-size:13px; line-height:1;">⚡</span>
-        <span
-          style="
-            font-family: var(--ff-mono, 'JetBrains Mono', monospace);
-            font-size: 13px;
-            font-weight: 700;
-            color: #6cf0e0;
-            letter-spacing: -0.02em;
-          "
-        >{{ profilo?.energia ?? 0 }}</span>
+      <div style="
+        display: flex; align-items: center; gap: 6px;
+        padding: 0 10px;
+        background: rgba(108,240,224,0.10);
+        border: 1px solid rgba(108,240,224,0.22);
+        border-radius: 999px;
+        height: 34px;
+      ">
+        <span style="font-size:14px; line-height:1;">⚡</span>
+        <span style="
+          font-family: var(--ff-mono,'JetBrains Mono',monospace);
+          font-size: 14px; font-weight: 700;
+          color: #6cf0e0; letter-spacing: -0.02em;
+        ">{{ profilo?.energia ?? 0 }}</span>
       </div>
-
     </div>
 
-    <!-- ── CENTRO: logo app + nome impero ─────────────────────────── -->
-    <div class="flex flex-col items-center justify-center flex-1 mx-3 min-w-0">
-
-      <!-- Logo applicazione a 36px di altezza -->
+    <!-- ── CENTRO: logo 110px che sborda sotto l'header ──────── -->
+    <div style="
+      position: absolute;
+      left: 50%; transform: translateX(-50%);
+      top: 0;
+      display: flex; flex-direction: column;
+      align-items: center;
+      z-index: 50;
+    ">
       <img
         src="~/assets/images/Maps_Waifu_PNG_Logo.png"
         alt="Impero delle Waifu"
-        style="height: 60px; width: auto; display: block; mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, black 68%, transparent 92%); -webkit-mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, black 68%, transparent 92%);"
+        style="height: 110px; width: auto; display: block;"
       />
-
-      <!-- Nome impero mostrato sotto il logo se disponibile -->
+      <!-- Nome impero sotto il logo, fuori dall'header -->
       <span
         v-if="profilo?.nomeImpero"
         style="
-          font-family: var(--ff-label, 'Saira Condensed', sans-serif);
-          font-size: 8px;
-          letter-spacing: 0.22em;
+          font-family: var(--ff-label,'Saira Condensed',sans-serif);
+          font-size: 8px; letter-spacing: 0.22em;
           text-transform: uppercase;
-          color: rgba(245,197,96,0.60);
+          color: rgba(245,197,96,0.55);
           font-weight: 700;
-          margin-top: 1px;
+          margin-top: 2px;
           white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          max-width: 120px;
         "
       >{{ profilo.nomeImpero }}</span>
     </div>
 
-    <!-- ── DESTRA: admin badge + campanella + EXIT ─────────────────── -->
-    <div class="flex items-center gap-1.5 flex-shrink-0">
+    <!-- ── DESTRA: admin + campanella + EXIT ─────────────────── -->
+    <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
 
-      <!-- Badge admin (link pannello) — visibile solo agli admin -->
       <NuxtLink
         v-if="isAdmin"
         to="/admin"
         style="
           font-size: 8px;
-          font-family: var(--ff-label, 'Saira Condensed', sans-serif);
+          font-family: var(--ff-label,'Saira Condensed',sans-serif);
           color: #b573ff;
           border: 1px solid rgba(181,115,255,0.30);
           border-radius: 4px;
@@ -140,71 +137,53 @@ const campanaAperta = ref(false)
           text-transform: uppercase;
           font-weight: 700;
           text-decoration: none;
-          display: inline-flex;
-          align-items: center;
+          display: inline-flex; align-items: center;
         "
       >ADMIN</NuxtLink>
 
-      <!-- Campanella 🔔: cliccabile, badge rosso se ci sono richieste amicizia -->
       <button
-        class="relative flex items-center justify-center border-0 bg-transparent cursor-pointer"
         style="
-          width: 40px;
-          height: 40px;
-          min-height: 44px;
-          min-width: 44px;
-          padding: 0;
-          transition: opacity 0.2s;
+          position: relative;
+          width: 44px; height: 44px;
+          border: none; background: transparent;
+          cursor: pointer; display: flex;
+          align-items: center; justify-content: center;
         "
-        @click="campanaAperta = !campanaAperta"
+        @click="() => {}"
       >
-        <span style="font-size: 20px; line-height: 1;">🔔</span>
-        <!-- Badge rosso con conteggio richieste amicizia in sospeso -->
+        <span style="font-size:22px; line-height:1;">🔔</span>
         <span
           v-if="pendingFriendRequests > 0"
           style="
-            position: absolute;
-            top: 4px;
-            right: 4px;
-            background: #ff5b6c;
-            color: #fff;
-            font-size: 7px;
-            font-weight: 800;
-            font-family: var(--ff-mono, 'JetBrains Mono', monospace);
-            min-width: 14px;
-            height: 14px;
+            position: absolute; top: 4px; right: 4px;
+            background: #ff5b6c; color: #fff;
+            font-size: 7px; font-weight: 800;
+            font-family: var(--ff-mono,'JetBrains Mono',monospace);
+            min-width: 14px; height: 14px;
             border-radius: 999px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             padding: 0 2px;
             border: 1.5px solid rgba(3,2,12,0.9);
           "
         >{{ pendingFriendRequests > 9 ? '9+' : pendingFriendRequests }}</span>
       </button>
 
-      <!-- Pulsante EXIT: piccolo, muted gold, min-height 44px per touch -->
       <button
         style="
-          font-family: var(--ff-label, 'Saira Condensed', sans-serif);
-          font-size: 8px;
-          letter-spacing: 0.18em;
+          font-family: var(--ff-label,'Saira Condensed',sans-serif);
+          font-size: 8px; letter-spacing: 0.18em;
           text-transform: uppercase;
           color: rgba(245,197,96,0.45);
-          background: transparent;
-          border: none;
-          cursor: pointer;
-          padding: 0 4px;
-          min-height: 44px;
+          background: transparent; border: none;
+          cursor: pointer; padding: 0 4px;
+          min-height: 44px; font-weight: 700;
           transition: color 0.2s;
-          font-weight: 700;
         "
-        @mouseenter="($event.target as HTMLElement).style.color = 'rgba(245,197,96,0.9)'"
-        @mouseleave="($event.target as HTMLElement).style.color = 'rgba(245,197,96,0.45)'"
+        @mouseenter="($event.target as HTMLElement).style.color='rgba(245,197,96,0.9)'"
+        @mouseleave="($event.target as HTMLElement).style.color='rgba(245,197,96,0.45)'"
         @click="$emit('logout')"
       >EXIT</button>
 
-    </div><!-- fine destra -->
-
+    </div>
   </header>
 </template>
