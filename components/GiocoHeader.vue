@@ -53,6 +53,7 @@ const campanaAperta = ref(false)
         style="
           background: rgba(255,133,182,0.12);
           border: 1px solid rgba(255,133,182,0.25);
+          border-radius: 999px;
           height: 32px;
         "
       >
@@ -74,6 +75,7 @@ const campanaAperta = ref(false)
         style="
           background: rgba(108,240,224,0.10);
           border: 1px solid rgba(108,240,224,0.22);
+          border-radius: 999px;
           height: 32px;
         "
       >

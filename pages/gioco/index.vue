@@ -50,6 +50,21 @@ const subTabCommunity = ref<'amici' | 'classifica' | 'swap'>('amici')
 // Cache catalogo in-sessione — evita riscrittura ad ogni tab-switch
 let catalogRef: { ws: unknown[]; ms: unknown[] } | null = null
 
+// Ultime carte acquisite (per il banner in cima a Pacchetti)
+const ultimeCarte = computed(() => {
+  const waifu = (gameStore.collezione?.waifu as Record<string, any>) ?? {}
+  const cat   = (gameStore.catalogoWaifu as any[]) ?? []
+  return Object.entries(waifu)
+    .map(([id, d]) => ({ id, d, w: cat.find((x: any) => x.id === id) }))
+    .filter(x => x.w)
+    .sort((a, b) => {
+      const ta = a.d?.acquisito?.toMillis?.() ?? Number(a.d?.acquisito) ?? 0
+      const tb = b.d?.acquisito?.toMillis?.() ?? Number(b.d?.acquisito) ?? 0
+      return tb - ta
+    })
+    .slice(0, 12)
+})
+
 function chiudiPesca() {
   pescaAperta.value       = false
   pescaPacksInitial.value = null
@@ -298,6 +313,29 @@ function handleSetTab(t: string) {
            Sub-nav interna: Sbusta (SbustaTab) | Pesca (PescaSection)
       ════════════════════════════════════════════════════════════════════ -->
       <div v-if="tab === 'pacchetti'">
+
+        <!-- Ultime carte acquisite — carousel orizzontale in cima -->
+        <div v-if="ultimeCarte.length > 0" style="margin-top: 12px; margin-bottom: 4px;">
+          <div style="font-family: var(--ff-label,'Saira Condensed',sans-serif); font-size:9px; letter-spacing:0.22em; color:rgba(245,197,96,0.7); text-transform:uppercase; margin-bottom:8px; font-weight:700;">
+            ✦ Ultime Carte
+          </div>
+          <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; scrollbar-width:thin;">
+            <div
+              v-for="item in ultimeCarte"
+              :key="item.id"
+              style="width:80px; height:120px; border-radius:10px; flex-shrink:0; overflow:hidden; position:relative; background:linear-gradient(160deg,#1a0a35,#07051a); border:1px solid rgba(167,139,250,0.3);"
+            >
+              <img
+                v-if="item.w?.asset_statica || item.w?.asset_immersiva"
+                :src="`https://ik.imagekit.io/nresohzgs/tr:w-80,h-120,c-maintain_ratio/${item.w.asset_statica || item.w.asset_immersiva}`"
+                :alt="item.w.nome"
+                style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"
+              />
+              <div v-else style="width:100%;height:100%;display:grid;place-items:center;font-size:24px;opacity:0.3;">♛</div>
+              <div style="position:absolute;bottom:0;left:0;right:0;padding:4px 4px 5px;background:linear-gradient(0deg,rgba(7,5,26,0.95),transparent);font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:7px;color:#fff;text-transform:uppercase;text-align:center;letter-spacing:0.08em;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ item.w.nome }}</div>
+            </div>
+          </div>
+        </div>
 
         <!-- Pill sub-navigazione interna a Pacchetti -->
         <div class="flex gap-2 mb-4 pt-3 overflow-x-auto">
