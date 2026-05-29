@@ -1,0 +1,1243 @@
+<!-- ============================================================
+  Tab Collezione: visualizzazione e gestione waifu, mosse e team.
+  Equivalente di src/app/gioco/_redesign/Collezione.jsx (989 righe).
+  Contiene inline: LevelUpPanel, EmptyState, FiltroCompatto,
+  BarraFiltriWaifu, TradeCountdownInline, SelezioneWaifuTeam.
+  ModaPersonalizzazione non renderizzata: emette 'apriModa'.
+  ============================================================ -->
+<script setup lang="ts">
+import {
+  listDropsAttivi,
+  setCollezione as saveCollezione,
+  deleteTeamFromCollezione,
+  updateUserProfile,
+} from '~/utils/firestoreService'
+import { computeAndSaveStats, calcolaEnergiaScarto } from '~/utils/gameLogic'
+import { TIMER, RARITA, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, RARITY_MULTIPLIERS_DEFAULT } from '~/utils/constants'
+import { useAuthStore } from '~/stores/auth'
+
+// ── Costanti colori e font (replica di _shared.jsx) ──────────
+const C = {
+  gold:    '#f5c560',
+  goldL:   '#ffe9a8',
+  sakura:  '#ff85b6',
+  sakuraL: '#ffc3da',
+  aqua:    '#6cf0e0',
+  violet:  '#a78bfa',
+  ok:      '#58e0a3',
+  err:     '#ff5b6c',
+  inkLine: 'rgba(174,156,255,0.12)',
+}
+const FF = {
+  display: "var(--ff-display,'Unbounded',sans-serif)",
+  label:   "var(--ff-label,'Saira Condensed',sans-serif)",
+  body:    "var(--ff-body,'DM Sans',sans-serif)",
+  mono:    "var(--ff-mono,'JetBrains Mono',monospace)",
+}
+
+// ── Stile level-up badge ──────────────────────────────────────
+const stileLevelUp = {
+  fontFamily: FF.label,
+  fontWeight: 700,
+  letterSpacing: '0.2em',
+  textTransform: 'uppercase',
+  padding: '2px 7px', borderRadius: '999px',
+  background: `${C.ok}1a`,
+  border: `1px solid ${C.ok}66`,
+  textShadow: `0 0 6px ${C.ok}88`,
+}
+
+// ── Props ────────────────────────────────────────────────────
+const props = withDefaults(defineProps<{
+  collezione:       Record<string, any>
+  waifuCat:         any[]
+  mosseCat?:        any[]
+  outfitCat?:       any[]
+  poseCat?:         any[]
+  profilo:          Record<string, any> | null
+  initialSubTab?:   string
+  statConfig?:      { ranges: Record<string, any>; steps: Record<string, any> }
+}>(), {
+  mosseCat:       () => [],
+  outfitCat:      () => [],
+  poseCat:        () => [],
+  initialSubTab:  'waifu',
+  statConfig:     () => ({ ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT }),
+})
+
+// ── Emits ────────────────────────────────────────────────────
+const emit = defineEmits<{
+  notif:            [testo: string, colore: string]
+  updateProfilo:    [p: unknown]
+  updateCollezione: [c: unknown]
+  apriModa:         []
+}>()
+
+const authStore = useAuthStore()
+
+// ── Stato principale ─────────────────────────────────────────
+const tabSub     = ref(props.initialSubTab)
+const waifuSel   = ref<string | null>(null)
+const teamInEdit = ref<string | null>(null)
+
+// ── Filtri waifu ─────────────────────────────────────────────
+const filtroRarita      = ref('tutte')
+const filtroNome        = ref('')
+const filtroScambiabile = ref(false)
+const filtroHot         = ref('tutti')
+const filtroLevelUp     = ref('tutti')
+const sortKey           = ref('')
+const sortDir           = ref<'desc' | 'asc'>('desc')
+
+function onToggleSort(key: string) {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'desc' ? 'asc' : 'desc'
+  } else {
+    sortDir.value = 'desc'
+    sortKey.value = key
+  }
+  visibiliWaifu.value = 12
+}
+
+// ── Filtri outfit/pose ────────────────────────────────────────
+const filtroRaritaOutfit = ref('tutte')
+const filtroRaritaPose   = ref('tutte')
+
+// ── Drop attivi ───────────────────────────────────────────────
+const drops       = ref<any[]>([])
+const filtroDropId = ref('tutti')
+
+// ── Paginazione ───────────────────────────────────────────────
+const visibiliWaifu  = ref(12)
+const visibiliOutfit = ref(12)
+const visibiliPose   = ref(12)
+
+// ── Team ──────────────────────────────────────────────────────
+const teamNome  = ref('')
+const teamWaifu = ref<string[]>([])
+
+// ── Carica drop attivi al mount ───────────────────────────────
+onMounted(() => {
+  listDropsAttivi().then(d => { drops.value = d }).catch(() => {})
+})
+
+// ── Computed: drop selezionato ────────────────────────────────
+const dropSelezionato = computed(() => drops.value.find(d => d.id === filtroDropId.value) || null)
+const dropWaifuIds    = computed(() => dropSelezionato.value ? new Set(dropSelezionato.value.waifuIds || []) : null)
+const dropOutfitIds   = computed(() => dropSelezionato.value ? new Set(dropSelezionato.value.outfitIds || []) : null)
+const dropPoseIds     = computed(() => dropSelezionato.value ? new Set(dropSelezionato.value.poseIds || []) : null)
+
+// ── Team helpers ──────────────────────────────────────────────
+const teams = computed(() => props.collezione.teams || {})
+
+async function salvaTeam() {
+  if (!teamNome.value.trim()) { emit('notif', 'Inserisci un nome', '#ff3d3d'); return }
+  if (teamWaifu.value.length !== 5) { emit('notif', 'Seleziona esattamente 5 waifu per il team', '#ff3d3d'); return }
+  const nomiEsistenti = Object.entries(teams.value)
+    .filter(([id]) => id !== teamInEdit.value)
+    .map(([, t]: [string, any]) => (t.nome as string).toLowerCase())
+  if (nomiEsistenti.includes(teamNome.value.trim().toLowerCase())) { emit('notif', 'Nome già esistente', '#ff3d3d'); return }
+  const nuova = JSON.parse(JSON.stringify(props.collezione))
+  if (!nuova.teams) nuova.teams = {}
+  const teamId = teamInEdit.value === 'new' ? `team_${Date.now()}` : teamInEdit.value!
+  nuova.teams[teamId] = { nome: teamNome.value.trim(), waifu: teamWaifu.value }
+  emit('updateCollezione', nuova)
+  await saveCollezione(authStore.user!.uid, nuova)
+  emit('notif', 'Team salvato!', '#00e676')
+  teamInEdit.value = null; teamNome.value = ''; teamWaifu.value = []
+}
+
+async function eliminaTeam(teamId: string) {
+  const nuova = JSON.parse(JSON.stringify(props.collezione))
+  delete nuova.teams[teamId]
+  emit('updateCollezione', nuova)
+  await deleteTeamFromCollezione(authStore.user!.uid, teamId)
+  emit('notif', 'Team eliminato', '#ff3d3d')
+}
+
+function iniziaEditTeam(teamId: string) {
+  const t = teams.value[teamId]
+  teamInEdit.value = teamId; teamNome.value = t.nome; teamWaifu.value = [...t.waifu]
+}
+
+// ── Handlers collezione ───────────────────────────────────────
+async function handleScarta(tipo: string, id: string, rarita: string) {
+  const guadagno = calcolaEnergiaScarto(rarita)
+  const nuova = JSON.parse(JSON.stringify(props.collezione))
+  nuova[tipo][id].quantita -= 1
+  if (nuova[tipo][id].quantita <= 0) delete nuova[tipo][id]
+  emit('updateCollezione', nuova)
+  await saveCollezione(authStore.user!.uid, nuova)
+  const nuovaEnergia = Math.min(TIMER.MAX_ENERGIA, (props.profilo?.energia ?? 0) + guadagno)
+  const nuovoProfilo = { ...props.profilo, energia: nuovaEnergia }
+  emit('updateProfilo', nuovoProfilo)
+  await updateUserProfile(authStore.user!.uid, { energia: nuovaEnergia })
+  emit('notif', `+${guadagno} energia`, C.ok)
+}
+
+// ── Sub-tab config ────────────────────────────────────────────
+const subTabs = computed(() => [
+  { k: 'waifu',  l: 'Waifu',  icon: '♛', n: Object.keys(props.collezione.waifu || {}).length,  c: C.gold   },
+  { k: 'mosse',  l: 'Mosse',  icon: '⚔', n: Object.keys(props.collezione.mosse || {}).length,  c: C.violet },
+  { k: 'team',   l: 'Team',   icon: '🛡', n: Object.keys(teams.value).length,                   c: C.ok     },
+])
+
+// ── Computed: waifu entries filtrate e ordinate ───────────────
+const rarOrder  = ['comune','raro','epico','leggendario','immersivo']
+const STAT_KEYS = ['tette','taglia_piedi','eta','colore_capelli','esperienza']
+
+const waifuEntries = computed(() => {
+  let entries = Object.entries(props.collezione.waifu || {}).map(([id, dati]: [string, any]) => {
+    const w = props.waifuCat.find((x: any) => x.id === id)
+    return w ? { id, dati, w } : null
+  }).filter(Boolean) as { id: string; dati: any; w: any }[]
+
+  if (filtroNome.value)
+    entries = entries.filter(({ w }) => (w.nome || '').toLowerCase().includes(filtroNome.value.toLowerCase()))
+  if (filtroRarita.value !== 'tutte')
+    entries = entries.filter(({ w }) => w.rarita === filtroRarita.value)
+  if (dropWaifuIds.value)
+    entries = entries.filter(({ w }) => dropWaifuIds.value!.has(w.id))
+  if (filtroScambiabile.value)
+    entries = entries.filter(({ dati }) => (dati.copie ?? 0) >= 2)
+  if (filtroHot.value === 'hot')
+    entries = entries.filter(({ w }) => w.hot === true)
+  if (filtroHot.value === 'non-hot')
+    entries = entries.filter(({ w }) => !w.hot)
+  if (filtroLevelUp.value === 'si')
+    entries = entries.filter(({ dati }) => (dati.copie ?? 0) >= 3)
+  if (filtroLevelUp.value === 'no')
+    entries = entries.filter(({ dati }) => (dati.copie ?? 0) < 3)
+
+  const sk = sortKey.value
+  const sd = sortDir.value
+  if (sk === 'rarita')
+    entries.sort((a, b) => sd === 'desc'
+      ? rarOrder.indexOf(b.w.rarita) - rarOrder.indexOf(a.w.rarita)
+      : rarOrder.indexOf(a.w.rarita) - rarOrder.indexOf(b.w.rarita))
+  else if (sk === 'livello')
+    entries.sort((a, b) => sd === 'desc' ? b.dati.livello - a.dati.livello : a.dati.livello - b.dati.livello)
+  else if (sk === 'copie')
+    entries.sort((a, b) => sd === 'desc' ? b.dati.copie - a.dati.copie : a.dati.copie - b.dati.copie)
+  else if (STAT_KEYS.includes(sk))
+    entries.sort((a, b) => {
+      const va = (a.w[sk] || 0) + (a.dati.stat_bonus?.[sk] || 0)
+      const vb = (b.w[sk] || 0) + (b.dati.stat_bonus?.[sk] || 0)
+      return sd === 'desc' ? vb - va : va - vb
+    })
+
+  return entries
+})
+
+const totScambiabili = computed(() =>
+  filtroScambiabile.value
+    ? Object.values(props.collezione.waifu || {}).filter((d: any) => (d.copie ?? 0) >= 2).length
+    : 0
+)
+
+// ── Computed: outfit entries filtrate ─────────────────────────
+const outfitEntries = computed(() => {
+  let entries = Object.entries(props.collezione.outfit || {}).map(([id, dati]: [string, any]) => {
+    const o = props.outfitCat.find((x: any) => x.id === id)
+    return o ? { id, dati, o } : null
+  }).filter(Boolean) as { id: string; dati: any; o: any }[]
+  if (filtroRaritaOutfit.value !== 'tutte')
+    entries = entries.filter(({ o }) => o.rarita === filtroRaritaOutfit.value)
+  if (dropOutfitIds.value)
+    entries = entries.filter(({ o }) => dropOutfitIds.value!.has(o.id))
+  return entries
+})
+
+// ── Computed: pose entries filtrate ───────────────────────────
+const poseEntries = computed(() => {
+  let entries = Object.entries(props.collezione.pose || {}).map(([id, dati]: [string, any]) => {
+    const p = props.poseCat.find((x: any) => x.id === id)
+    return p ? { id, dati, p } : null
+  }).filter(Boolean) as { id: string; dati: any; p: any }[]
+  if (filtroRaritaPose.value !== 'tutte')
+    entries = entries.filter(({ p }) => p.rarita === filtroRaritaPose.value)
+  if (dropPoseIds.value)
+    entries = entries.filter(({ p }) => dropPoseIds.value!.has(p.id))
+  return entries
+})
+
+// ── Waifu selezionata per LevelUp panel ───────────────────────
+const datiWaifuSel = computed(() =>
+  waifuSel.value ? props.collezione.waifu?.[waifuSel.value] : null
+)
+const catalogWaifuSel = computed(() =>
+  waifuSel.value ? props.waifuCat.find((w: any) => w.id === waifuSel.value) : null
+)
+const mostraLevelUp = computed(() =>
+  !!waifuSel.value && !!datiWaifuSel.value?.levelup_pending && !!catalogWaifuSel.value
+)
+
+// ── LevelUp Panel state ───────────────────────────────────────
+const STAT_DEFS = [
+  { key: 'tette',          label: 'Tette',        min: 1,  max: 7    },
+  { key: 'taglia_piedi',   label: 'Taglia Piedi', min: 34, max: 45   },
+  { key: 'eta',            label: 'Età',          min: 16, max: 5000 },
+  { key: 'colore_capelli', label: 'Capelli',      min: 1,  max: 10   },
+  { key: 'esperienza',     label: 'Esperienza',   min: 0,  max: 5000 },
+]
+
+const lvlPreview = ref<{ stat: string; delta: number } | null>(null)
+const lvlBusy    = ref(false)
+
+const lvlStatBase = computed(() => {
+  if (!catalogWaifuSel.value || !datiWaifuSel.value) return {}
+  return { ...catalogWaifuSel.value, ...(datiWaifuSel.value.stat_personali ?? {}) }
+})
+
+function lvlCalcPreview(stat: string, delta: number) {
+  const waifu = catalogWaifuSel.value
+  if (!waifu) return { velocita: 0, crit_chance: 0 }
+  const newStats = { ...lvlStatBase.value, [stat]: (lvlStatBase.value[stat] ?? 0) + delta }
+  const { velocita, crit_chance } = computeAndSaveStats(waifu, waifu.rarita ?? 'comune', { [stat]: newStats[stat] })
+  return { velocita, crit_chance: Math.round(crit_chance * 100) }
+}
+
+const lvlCurrentVel = computed(() => {
+  const d = datiWaifuSel.value
+  const w = catalogWaifuSel.value
+  if (!d || !w) return 0
+  return Math.round(d.velocita ?? computeAndSaveStats(w, w.rarita ?? 'comune', d.stat_personali ?? {}).velocita)
+})
+const lvlCurrentCrit = computed(() => {
+  const d = datiWaifuSel.value
+  const w = catalogWaifuSel.value
+  if (!d || !w) return 0
+  return Math.round((d.crit_chance ?? computeAndSaveStats(w, w.rarita ?? 'comune', d.stat_personali ?? {}).crit_chance) * 100)
+})
+
+async function lvlApply() {
+  if (!lvlPreview.value || lvlBusy.value) return
+  lvlBusy.value = true
+  try {
+    const token = await authStore.user?.getIdToken()
+    const data = await $fetch(`/api/waifu/${catalogWaifuSel.value!.id}/level-up`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: { stat: lvlPreview.value.stat, delta: lvlPreview.value.delta },
+    }) as any
+    const newStatPersonali = {
+      ...(datiWaifuSel.value?.stat_personali ?? {}),
+      [lvlPreview.value.stat]: (lvlStatBase.value[lvlPreview.value.stat] ?? 0) + lvlPreview.value.delta,
+    }
+    const patch = {
+      livello: data.livello,
+      velocita: data.velocita,
+      crit_chance: data.crit_chance,
+      stat_personali: newStatPersonali,
+      levelup_pending: false,
+    }
+    const nuova = JSON.parse(JSON.stringify(props.collezione))
+    nuova.waifu[waifuSel.value!] = { ...datiWaifuSel.value, ...patch }
+    emit('updateCollezione', nuova)
+    await saveCollezione(authStore.user!.uid, nuova)
+    waifuSel.value = null
+    lvlPreview.value = null
+    emit('notif', 'Level Up applicato!', '#06d6a0')
+  } catch (e: any) {
+    alert('Errore: ' + (e.message || e))
+  } finally {
+    lvlBusy.value = false
+  }
+}
+
+// ── SelezioneWaifuTeam — stato filtri inline ──────────────────
+const TEAM_PAGE_SIZE = 12
+const teamFiltroNome        = ref('')
+const teamFiltroRar         = ref('tutte')
+const teamFiltroDropId      = ref('tutti')
+const teamFiltroScambiabile = ref(false)
+const teamFiltroHot         = ref('tutti')
+const teamSortKey           = ref('')
+const teamSortDir           = ref<'desc' | 'asc'>('desc')
+const teamVisibili          = ref(TEAM_PAGE_SIZE)
+
+function teamToggleSort(key: string) {
+  if (teamSortKey.value === key) {
+    teamSortDir.value = teamSortDir.value === 'desc' ? 'asc' : 'desc'
+  } else {
+    teamSortDir.value = 'desc'
+    teamSortKey.value = key
+  }
+  teamVisibili.value = TEAM_PAGE_SIZE
+}
+
+// Reset paginazione quando cambiano i filtri team
+watch([teamFiltroNome, teamFiltroRar, teamFiltroDropId, teamFiltroScambiabile, teamFiltroHot, teamSortKey], () => {
+  teamVisibili.value = TEAM_PAGE_SIZE
+})
+
+const waifuDisponibiliPerTeam = computed(() =>
+  Object.entries(props.collezione.waifu || {}).map(([id, dati]: [string, any]) => {
+    const w = props.waifuCat.find((x: any) => x.id === id)
+    if (!w) return null
+    const mosseAssegnate = Object.values(dati.mosse_slot ?? {}).filter(Boolean).length
+    return { ...w, copie: dati.copie, livello: dati.livello, stat_bonus: dati.stat_bonus, mosse_ok: mosseAssegnate === 4 }
+  }).filter(Boolean) as any[]
+)
+
+const teamListaFiltrata = computed(() => {
+  let lista = [...waifuDisponibiliPerTeam.value]
+  if (teamFiltroNome.value) lista = lista.filter(w => (w.nome || '').toLowerCase().includes(teamFiltroNome.value.toLowerCase()))
+  if (teamFiltroRar.value !== 'tutte') lista = lista.filter(w => w.rarita === teamFiltroRar.value)
+  if (teamFiltroDropId.value !== 'tutti') {
+    const drop = drops.value.find(d => d.id === teamFiltroDropId.value)
+    if (drop?.waifuIds) lista = lista.filter(w => drop.waifuIds.includes(w.id))
+  }
+  if (teamFiltroScambiabile.value) lista = lista.filter(w => (w.copie ?? 0) >= 2)
+  if (teamFiltroHot.value === 'hot')     lista = lista.filter(w => w.hot === true)
+  if (teamFiltroHot.value === 'non-hot') lista = lista.filter(w => !w.hot)
+
+  const sk = teamSortKey.value
+  const sd = teamSortDir.value
+  if (sk === 'rarita')
+    lista.sort((a, b) => sd === 'desc' ? rarOrder.indexOf(b.rarita) - rarOrder.indexOf(a.rarita) : rarOrder.indexOf(a.rarita) - rarOrder.indexOf(b.rarita))
+  else if (sk === 'livello')
+    lista.sort((a, b) => sd === 'desc' ? (b.livello || 0) - (a.livello || 0) : (a.livello || 0) - (b.livello || 0))
+  else if (sk === 'copie')
+    lista.sort((a, b) => sd === 'desc' ? (b.copie || 0) - (a.copie || 0) : (a.copie || 0) - (b.copie || 0))
+  else if (STAT_KEYS.includes(sk))
+    lista.sort((a, b) => {
+      const va = (a[sk] || 0) + (a.stat_bonus?.[sk] || 0)
+      const vb = (b[sk] || 0) + (b.stat_bonus?.[sk] || 0)
+      return sd === 'desc' ? vb - va : va - vb
+    })
+
+  return lista
+})
+
+function teamToggleWaifu(id: string) {
+  if (teamWaifu.value.includes(id)) {
+    teamWaifu.value = teamWaifu.value.filter(x => x !== id)
+    return
+  }
+  const waifuEntry = Object.entries(props.collezione.waifu || {}).find(([wid]) => wid === id)
+  if (waifuEntry) {
+    const dati = waifuEntry[1] as any
+    const mosseOk = Object.values(dati.mosse_slot ?? {}).filter(Boolean).length === 4
+    if (!mosseOk) { emit('notif', 'Equipaggia 4 mosse per usare questa waifu in combattimento', '#f5a623'); return }
+  }
+  if (teamWaifu.value.length >= 5) { emit('notif', 'Massimo 5 waifu per team', '#f5a623'); return }
+  teamWaifu.value = [...teamWaifu.value, id]
+}
+
+// ── TradeCountdown ────────────────────────────────────────────
+const tradeCountdownTxt = ref('')
+let tradeCountdownIv: ReturnType<typeof setInterval> | null = null
+
+function aggiornaTradeCountdown() {
+  const tradesResetAt = props.profilo?.tradesResetAt
+  const ts = tradesResetAt?.toMillis ? tradesResetAt.toMillis() : Number(tradesResetAt) || 0
+  const diff = ts - Date.now()
+  if (diff <= 0) { tradeCountdownTxt.value = ''; return }
+  const h = Math.floor(diff / 3600000)
+  const m = Math.floor((diff % 3600000) / 60000)
+  tradeCountdownTxt.value = ` Reset in ${h}h ${m}m. `
+}
+
+onMounted(() => {
+  aggiornaTradeCountdown()
+  tradeCountdownIv = setInterval(aggiornaTradeCountdown, 30000)
+})
+onUnmounted(() => { if (tradeCountdownIv) clearInterval(tradeCountdownIv) })
+</script>
+
+<template>
+  <!-- Contenitore principale con fade-in -->
+  <div class="fade-in" :style="{ position: 'relative' }">
+    <div :style="{ position: 'relative', zIndex: 1 }">
+
+      <!-- Titolo schermata -->
+      <div :style="{
+        textAlign: 'center', marginBottom: 24, paddingTop: 8,
+      }">
+        <div :style="{
+          fontFamily: FF.label, fontSize: 9, color: `${C.goldL}99`,
+          letterSpacing: '0.32em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 4,
+        }">La tua collezione</div>
+        <div :style="{
+          fontFamily: FF.display, fontSize: 22, color: C.goldL,
+          textShadow: `0 0 24px ${C.gold}88`,
+        }" class="shimmer-text">Le mie carte</div>
+        <div :style="{
+          fontFamily: FF.body, fontSize: 12, color: 'rgba(241,235,255,0.55)',
+          marginTop: 6, lineHeight: 1.5,
+        }">Filtra, ordina e potenzia le tue waifu, outfit e pose.</div>
+      </div>
+
+      <!-- SUB-TAB BUTTONS -->
+      <div :style="{
+        display: 'flex', gap: '6px', flexWrap: 'wrap',
+        justifyContent: 'center', marginBottom: '18px',
+      }">
+        <button
+          v-for="t in subTabs"
+          :key="t.k"
+          @click="tabSub = t.k"
+          :style="{
+            position: 'relative',
+            padding: '9px 16px', borderRadius: '11px', cursor: 'pointer',
+            background: tabSub === t.k
+              ? `linear-gradient(180deg, ${t.c}40, ${t.c}1a)`
+              : 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))',
+            color: tabSub === t.k ? '#fff' : t.c,
+            border: `1px solid ${tabSub === t.k ? t.c : `${t.c}40`}`,
+            fontFamily: FF.label, fontSize: '10px',
+            letterSpacing: '0.16em', fontWeight: 700,
+            textTransform: 'uppercase',
+            boxShadow: tabSub === t.k
+              ? `0 1px 0 rgba(255,255,255,0.18) inset, 0 0 18px ${t.c}55`
+              : 'none',
+            transition: 'all 0.2s',
+            display: 'inline-flex', alignItems: 'center', gap: '7px',
+            overflow: 'hidden',
+          }"
+        >
+          <!-- Sheen overlay quando attivo -->
+          <span
+            v-if="tabSub === t.k"
+            :style="{
+              position: 'absolute', inset: 0, borderRadius: 'inherit',
+              background: 'linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.22) 50%, transparent 65%)',
+              opacity: 0.55, mixBlendMode: 'overlay', pointerEvents: 'none',
+            }"
+          />
+          <span :style="{
+            position: 'relative', fontSize: '14px',
+            color: t.c, filter: `drop-shadow(0 0 4px ${t.c})`,
+          }">{{ t.icon }}</span>
+          <span :style="{ position: 'relative' }">{{ t.l }}</span>
+          <span :style="{
+            position: 'relative',
+            background: tabSub === t.k ? `${t.c}40` : `${t.c}1a`,
+            border: `1px solid ${tabSub === t.k ? t.c : `${t.c}33`}`,
+            padding: '1px 7px', borderRadius: '999px',
+            fontSize: '9px', fontFamily: FF.mono, fontWeight: 700,
+            color: tabSub === t.k ? '#fff' : t.c,
+          }">{{ t.n }}</span>
+        </button>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════
+           TAB WAIFU
+      ══════════════════════════════════════════════════════ -->
+      <div v-if="tabSub === 'waifu'">
+
+        <!-- ── Barra filtri waifu ── -->
+        <div :style="{
+          background: 'linear-gradient(180deg, rgba(27,22,56,0.55), rgba(13,10,38,0.7))',
+          border: `1px solid ${C.inkLine}`,
+          borderRadius: '14px', padding: '12px 14px', marginBottom: '14px',
+          backdropFilter: 'blur(8px)',
+        }">
+          <!-- Search row -->
+          <div :style="{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px' }">
+            <div :style="{
+              flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '8px 14px',
+              background: 'rgba(7,5,26,0.8)',
+              border: `1px solid ${C.inkLine}`,
+              borderRadius: '999px',
+            }">
+              <span :style="{ color: 'rgba(241,235,255,0.4)', fontSize: '13px' }">🔍</span>
+              <input
+                v-model="filtroNome"
+                @input="visibiliWaifu = 12"
+                placeholder="Cerca per nome…"
+                :style="{
+                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                  color: '#fff', fontSize: '12px', fontFamily: FF.body, padding: 0,
+                }"
+              />
+              <button
+                v-if="filtroNome"
+                @click="filtroNome = ''; visibiliWaifu = 12"
+                :style="{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'rgba(241,235,255,0.5)', fontSize: '12px', lineHeight: 1, padding: 0,
+                }"
+              >✕</button>
+            </div>
+            <span :style="{
+              fontFamily: FF.mono, fontSize: '11px', color: 'rgba(241,235,255,0.5)',
+              fontWeight: 700, padding: '0 6px',
+            }">{{ waifuEntries.length }}</span>
+          </div>
+
+          <!-- Rarità + drop -->
+          <div :style="{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }">
+            <select
+              v-model="filtroRarita"
+              @change="visibiliWaifu = 12"
+              :style="{
+                background: 'rgba(7,5,26,0.85)', border: `1px solid ${C.inkLine}`,
+                color: '#fff', borderRadius: '9px', padding: '6px 10px', fontSize: '10px',
+                fontFamily: FF.label, cursor: 'pointer', letterSpacing: '0.08em', fontWeight: 600,
+              }"
+            >
+              <option value="tutte">Tutte le rarità</option>
+              <option v-for="r in ['comune','raro','epico','leggendario','immersivo']" :key="r" :value="r">
+                {{ r.charAt(0).toUpperCase() + r.slice(1) }}
+              </option>
+            </select>
+            <select
+              v-if="drops.length > 0"
+              v-model="filtroDropId"
+              @change="visibiliWaifu = 12"
+              :style="{
+                background: 'rgba(7,5,26,0.85)', border: `1px solid ${C.inkLine}`,
+                color: '#fff', borderRadius: '9px', padding: '6px 10px', fontSize: '10px',
+                fontFamily: FF.label, cursor: 'pointer', letterSpacing: '0.08em', fontWeight: 600,
+              }"
+            >
+              <option value="tutti">Tutti i drop</option>
+              <option v-for="d in drops" :key="d.id" :value="d.id">{{ d.nome || d.id }}</option>
+            </select>
+          </div>
+
+          <!-- Toggle chips filtri -->
+          <div :style="{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }">
+            <!-- Scambiabili -->
+            <button
+              @click="filtroScambiabile = !filtroScambiabile; visibiliWaifu = 12"
+              :style="{
+                padding: '5px 12px', borderRadius: '999px',
+                background: filtroScambiabile ? `${C.gold}26` : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${filtroScambiabile ? C.gold : C.inkLine}`,
+                color: filtroScambiabile ? C.gold : 'rgba(241,235,255,0.5)',
+                fontFamily: FF.label, fontSize: '9px', fontWeight: 700,
+                letterSpacing: '0.18em', textTransform: 'uppercase',
+                cursor: 'pointer', transition: 'all 0.18s',
+              }"
+            >↔ Scambiabili</button>
+            <!-- Level up pronti -->
+            <button
+              @click="filtroLevelUp = filtroLevelUp === 'si' ? 'tutti' : 'si'; visibiliWaifu = 12"
+              :style="{
+                padding: '5px 12px', borderRadius: '999px',
+                background: filtroLevelUp === 'si' ? `${C.ok}26` : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${filtroLevelUp === 'si' ? C.ok : C.inkLine}`,
+                color: filtroLevelUp === 'si' ? C.ok : 'rgba(241,235,255,0.5)',
+                fontFamily: FF.label, fontSize: '9px', fontWeight: 700,
+                letterSpacing: '0.18em', textTransform: 'uppercase',
+                cursor: 'pointer', transition: 'all 0.18s',
+              }"
+            >⚡ Pronti</button>
+            <!-- In crescita -->
+            <button
+              @click="filtroLevelUp = filtroLevelUp === 'no' ? 'tutti' : 'no'; visibiliWaifu = 12"
+              :style="{
+                padding: '5px 12px', borderRadius: '999px',
+                background: filtroLevelUp === 'no' ? `${C.violet}26` : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${filtroLevelUp === 'no' ? C.violet : C.inkLine}`,
+                color: filtroLevelUp === 'no' ? C.violet : 'rgba(241,235,255,0.5)',
+                fontFamily: FF.label, fontSize: '9px', fontWeight: 700,
+                letterSpacing: '0.18em', textTransform: 'uppercase',
+                cursor: 'pointer', transition: 'all 0.18s',
+              }"
+            >In crescita</button>
+            <!-- Hot (solo se hardPass) -->
+            <template v-if="profilo?.hardPass">
+              <button
+                @click="filtroHot = filtroHot === 'hot' ? 'tutti' : 'hot'; visibiliWaifu = 12"
+                :style="{
+                  padding: '5px 12px', borderRadius: '999px',
+                  background: filtroHot === 'hot' ? 'rgba(255,140,0,0.15)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${filtroHot === 'hot' ? '#ff8c00' : C.inkLine}`,
+                  color: filtroHot === 'hot' ? '#ff8c00' : 'rgba(241,235,255,0.5)',
+                  fontFamily: FF.label, fontSize: '9px', fontWeight: 700,
+                  letterSpacing: '0.18em', textTransform: 'uppercase',
+                  cursor: 'pointer', transition: 'all 0.18s',
+                }"
+              >🔥 Hot</button>
+              <button
+                @click="filtroHot = filtroHot === 'non-hot' ? 'tutti' : 'non-hot'; visibiliWaifu = 12"
+                :style="{
+                  padding: '5px 12px', borderRadius: '999px',
+                  background: filtroHot === 'non-hot' ? `${C.aqua}26` : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${filtroHot === 'non-hot' ? C.aqua : C.inkLine}`,
+                  color: filtroHot === 'non-hot' ? C.aqua : 'rgba(241,235,255,0.5)',
+                  fontFamily: FF.label, fontSize: '9px', fontWeight: 700,
+                  letterSpacing: '0.18em', textTransform: 'uppercase',
+                  cursor: 'pointer', transition: 'all 0.18s',
+                }"
+              >SFW</button>
+            </template>
+          </div>
+
+          <!-- Sort row -->
+          <div :style="{
+            display: 'flex', gap: '5px', flexWrap: 'wrap', alignItems: 'center',
+            paddingTop: '10px', borderTop: `1px solid ${C.inkLine}`,
+          }">
+            <span :style="{
+              fontFamily: FF.label, fontSize: '8px',
+              color: 'rgba(241,235,255,0.4)',
+              letterSpacing: '0.24em', textTransform: 'uppercase', fontWeight: 700,
+            }">Ordina:</span>
+            <button
+              v-for="s in [
+                { k: 'rarita', l: 'Rarità' },
+                { k: 'livello', l: 'Livello' },
+                { k: 'copie', l: 'Copie' },
+                { k: 'tette', l: 'Tette' },
+                { k: 'taglia_piedi', l: 'Piedi' },
+                { k: 'eta', l: 'Età' },
+                { k: 'colore_capelli', l: 'Capelli' },
+                { k: 'esperienza', l: 'EXP' },
+              ]"
+              :key="s.k"
+              @click="onToggleSort(s.k)"
+              :style="{
+                padding: '4px 10px', borderRadius: '999px', cursor: 'pointer',
+                background: sortKey === s.k ? `${C.gold}26` : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${sortKey === s.k ? C.gold : C.inkLine}`,
+                color: sortKey === s.k ? C.goldL : 'rgba(241,235,255,0.5)',
+                fontFamily: FF.label, fontSize: '8px', fontWeight: 700,
+                letterSpacing: '0.16em', textTransform: 'uppercase',
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+              }"
+            >
+              {{ s.l }}
+              <span v-if="sortKey === s.k" :style="{ fontSize: '9px' }">{{ sortDir === 'desc' ? '↓' : '↑' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Avviso trade esauriti -->
+        <div
+          v-if="filtroScambiabile && totScambiabili > 0 && waifuEntries.length === totScambiabili && !profilo?.tradePass && (profilo?.tradesToday ?? 0) >= 5"
+          :style="{
+            background: `${C.gold}14`, border: `1px solid ${C.gold}55`,
+            borderRadius: '12px', padding: '12px 14px', marginBottom: '12px',
+            fontSize: '11px', fontFamily: FF.body, color: 'rgba(241,235,255,0.75)', lineHeight: 1.5,
+          }"
+        >
+          Avresti <strong :style="{ color: C.gold }">{{ totScambiabili }}</strong> waifu da poter scambiare ma hai esaurito gli scambi.
+          <span :style="{ color: C.gold, fontFamily: FF.mono, fontWeight: 700 }">{{ tradeCountdownTxt }}</span>
+          <br/>
+          <button
+            @click="window.dispatchEvent(new Event('impero:apri-negozio'))"
+            :style="{
+              marginTop: '8px',
+              background: `${C.gold}1f`, border: `1px solid ${C.gold}55`,
+              borderRadius: '9px', color: C.goldL,
+              fontFamily: FF.label, fontSize: '9px',
+              padding: '7px 12px', cursor: 'pointer',
+              letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 700,
+            }"
+          >🔓 Acquista Trade Pass</button>
+        </div>
+
+        <!-- Griglia waifu -->
+        <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }">
+          <div
+            v-for="({ id, dati, w }, idx) in waifuEntries.slice(0, visibiliWaifu)"
+            :key="id"
+            class="card-fade-up card-clickable collection-card-item"
+            :style="{ display: 'flex', flexDirection: 'column', alignItems: 'center', animationDelay: `${idx * 40}ms` }"
+          >
+            <CartaWaifu
+              :waifu="w"
+              :datiCollezione="dati"
+              dimensione="piccola"
+              tipo="auto"
+              @click="waifuSel = id"
+              :outfitCatalogo="outfitCat"
+              :poseCatalogo="poseCat"
+              :equip="collezione.equipaggiamento?.[id]"
+              :isHot="w.hot === true"
+              :censurata="w.hot === true && !profilo?.hardPass"
+            />
+            <div :style="{ textAlign: 'center', marginTop: '6px' }">
+              <span v-if="dati.levelup_pending" :style="{ ...stileLevelUp, fontSize: '8px', color: C.ok }">⚡ Level Up!</span>
+              <span v-else :style="{
+                color: C.violet, fontFamily: FF.label, fontSize: '8px',
+                letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600,
+              }">
+                {{ dati.copie }} copie · LV<strong :style="{ color: C.goldL, marginLeft: '3px' }">{{ dati.livello }}</strong>
+              </span>
+            </div>
+          </div>
+
+          <!-- Empty state waifu -->
+          <UiPannelloOrnato
+            v-if="waifuEntries.length === 0"
+            :glow="C.gold"
+            :style="{ width: '100%', textAlign: 'center', padding: '40px' }"
+          >
+            <div :style="{ fontSize: '36px', marginBottom: '8px', filter: `drop-shadow(0 0 12px ${C.gold}88)`, color: C.gold }">🔍</div>
+            <div :style="{
+              fontFamily: FF.label, fontSize: '10px', color: C.gold,
+              letterSpacing: '0.28em', marginBottom: '6px',
+              textTransform: 'uppercase', fontWeight: 700,
+            }">Nessuna waifu trovata</div>
+            <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">Cambia filtri o sbusta nuovi pacchetti!</div>
+          </UiPannelloOrnato>
+        </div>
+
+        <!-- Carica altre waifu -->
+        <div v-if="visibiliWaifu < waifuEntries.length" :style="{ textAlign: 'center', marginTop: '16px' }">
+          <UiBtnDecorato variant="secondary" size="sm" @click="visibiliWaifu += 12">
+            Carica altre ({{ waifuEntries.length - visibiliWaifu }} rimanenti)
+          </UiBtnDecorato>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════
+           TAB MOSSE
+      ══════════════════════════════════════════════════════ -->
+      <div v-if="tabSub === 'mosse'">
+        <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }">
+          <template v-for="([moveId, dati], idx) in Object.entries(collezione.mosse || {})" :key="moveId">
+            <div
+              v-if="mosseCat.find(m => m.id === moveId)"
+              class="card-fade-up collection-card-item"
+              :style="{
+                width: '130px', display: 'flex', flexDirection: 'column',
+                alignItems: 'center', gap: '6px',
+                animationDelay: `${idx * 40}ms`,
+              }"
+            >
+              <div :style="{
+                width: '120px', height: '160px',
+                background: 'rgba(0,0,0,0.6)',
+                border: `1px solid ${C.violet}44`, borderRadius: '12px',
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                gap: '4px', position: 'relative', padding: '8px',
+              }">
+                <img
+                  v-if="mosseCat.find(m => m.id === moveId)?.immagine_url && mosseCat.find(m => m.id === moveId)?.immagine_url !== '/images/mosse/placeholder.png'"
+                  :src="mosseCat.find(m => m.id === moveId)!.immagine_url"
+                  :alt="mosseCat.find(m => m.id === moveId)!.nome"
+                  :style="{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px' }"
+                />
+                <div
+                  v-if="!mosseCat.find(m => m.id === moveId)?.immagine_url || mosseCat.find(m => m.id === moveId)?.immagine_url === '/images/mosse/placeholder.png'"
+                  :style="{ fontSize: '28px', marginBottom: '4px' }"
+                >⚔</div>
+                <div :style="{ fontFamily: FF.label, fontSize: '9px', color: C.goldL, textAlign: 'center', lineHeight: 1.3 }">
+                  {{ mosseCat.find(m => m.id === moveId)!.nome }}
+                </div>
+                <div :style="{ fontFamily: FF.label, fontSize: '8px', color: C.violet, opacity: 0.8 }">
+                  {{ mosseCat.find(m => m.id === moveId)!.tipologia }} · Lv{{ (dati as any).livello ?? 1 }}
+                </div>
+                <div :style="{ fontFamily: FF.label, fontSize: '8px', color: '#f5e6d3' }">
+                  PP:{{ mosseCat.find(m => m.id === moveId)!.pp }} · Danno:{{ (dati as any).danno ?? mosseCat.find(m => m.id === moveId)!.danno }}
+                </div>
+                <!-- Badge livello up mossa -->
+                <div
+                  v-if="(dati as any).livello < 10"
+                  :style="{
+                    position: 'absolute', top: '4px', right: '4px',
+                    background: `${C.ok}22`, border: `1px solid ${C.ok}66`,
+                    borderRadius: '6px', padding: '2px 5px',
+                    fontFamily: FF.label, fontSize: '7px', color: C.ok,
+                  }"
+                >
+                  {{ (dati as any).copie % 5 === 0 && (dati as any).livello < 10 ? '⬆ LVL UP' : `${(5 - ((dati as any).copie ?? 0) % 5) % 5 || 5} al lv` }}
+                </div>
+              </div>
+              <span :style="{ fontFamily: FF.label, fontSize: '8px', color: C.violet }">
+                ×<strong :style="{ color: C.goldL }">{{ (dati as any).copie ?? 0 }}</strong> copie
+              </span>
+            </div>
+          </template>
+
+          <!-- Empty state mosse -->
+          <UiPannelloOrnato
+            v-if="Object.keys(collezione.mosse || {}).length === 0"
+            :glow="C.violet"
+            :style="{ width: '100%', textAlign: 'center', padding: '40px' }"
+          >
+            <div :style="{ fontSize: '36px', marginBottom: '8px', filter: `drop-shadow(0 0 12px ${C.violet}88)`, color: C.violet }">⚔</div>
+            <div :style="{
+              fontFamily: FF.label, fontSize: '10px', color: C.violet,
+              letterSpacing: '0.28em', marginBottom: '6px',
+              textTransform: 'uppercase', fontWeight: 700,
+            }">Nessuna mossa trovata</div>
+            <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">Apri bustine per trovare mosse attacco!</div>
+          </UiPannelloOrnato>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════
+           TAB TEAM
+      ══════════════════════════════════════════════════════ -->
+      <div v-if="tabSub === 'team'" :style="{ position: 'relative' }">
+
+        <!-- Editor team -->
+        <UiPannelloOrnato v-if="teamInEdit" :glow="C.ok" :style="{ padding: '20px' }">
+          <UiTitoloOrnato :livello="3" :colore="C.ok">
+            {{ teamInEdit === 'new' ? 'Crea Team' : 'Modifica Team' }}
+          </UiTitoloOrnato>
+          <input
+            v-model="teamNome"
+            placeholder="Nome del team…"
+            :style="{ width: '100%', marginBottom: '14px' }"
+          />
+
+          <!-- ── SelezioneWaifuTeam (inline) ── -->
+          <div :style="{ position: 'relative' }">
+            <div :style="{
+              fontFamily: FF.label, fontSize: '10px', color: C.ok,
+              letterSpacing: '0.24em', marginBottom: '10px', textAlign: 'center',
+              textTransform: 'uppercase', fontWeight: 700,
+            }">Seleziona waifu (max 5) ({{ teamWaifu.length }}/5)</div>
+
+            <!-- Barra filtri team -->
+            <div :style="{
+              background: 'linear-gradient(180deg, rgba(27,22,56,0.55), rgba(13,10,38,0.7))',
+              border: `1px solid ${C.inkLine}`,
+              borderRadius: '14px', padding: '12px 14px', marginBottom: '14px',
+              backdropFilter: 'blur(8px)',
+            }">
+              <!-- Search -->
+              <div :style="{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px' }">
+                <div :style="{
+                  flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '8px 14px',
+                  background: 'rgba(7,5,26,0.8)',
+                  border: `1px solid ${C.inkLine}`,
+                  borderRadius: '999px',
+                }">
+                  <span :style="{ color: 'rgba(241,235,255,0.4)', fontSize: '13px' }">🔍</span>
+                  <input
+                    v-model="teamFiltroNome"
+                    placeholder="Cerca per nome…"
+                    :style="{
+                      flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                      color: '#fff', fontSize: '12px', fontFamily: FF.body, padding: 0,
+                    }"
+                  />
+                </div>
+                <span :style="{
+                  fontFamily: FF.mono, fontSize: '11px', color: 'rgba(241,235,255,0.5)',
+                  fontWeight: 700, padding: '0 6px',
+                }">{{ teamListaFiltrata.length }}</span>
+              </div>
+              <!-- Rarità + drop -->
+              <div :style="{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }">
+                <select
+                  v-model="teamFiltroRar"
+                  :style="{
+                    background: 'rgba(7,5,26,0.85)', border: `1px solid ${C.inkLine}`,
+                    color: '#fff', borderRadius: '9px', padding: '6px 10px', fontSize: '10px',
+                    fontFamily: FF.label, cursor: 'pointer', letterSpacing: '0.08em', fontWeight: 600,
+                  }"
+                >
+                  <option value="tutte">Tutte le rarità</option>
+                  <option v-for="r in ['comune','raro','epico','leggendario','immersivo']" :key="r" :value="r">
+                    {{ r.charAt(0).toUpperCase() + r.slice(1) }}
+                  </option>
+                </select>
+                <select
+                  v-if="drops.length > 0"
+                  v-model="teamFiltroDropId"
+                  :style="{
+                    background: 'rgba(7,5,26,0.85)', border: `1px solid ${C.inkLine}`,
+                    color: '#fff', borderRadius: '9px', padding: '6px 10px', fontSize: '10px',
+                    fontFamily: FF.label, cursor: 'pointer', letterSpacing: '0.08em', fontWeight: 600,
+                  }"
+                >
+                  <option value="tutti">Tutti i drop</option>
+                  <option v-for="d in drops" :key="d.id" :value="d.id">{{ d.nome || d.id }}</option>
+                </select>
+              </div>
+              <!-- Sort -->
+              <div :style="{
+                display: 'flex', gap: '5px', flexWrap: 'wrap', alignItems: 'center',
+                paddingTop: '10px', borderTop: `1px solid ${C.inkLine}`,
+              }">
+                <span :style="{
+                  fontFamily: FF.label, fontSize: '8px',
+                  color: 'rgba(241,235,255,0.4)',
+                  letterSpacing: '0.24em', textTransform: 'uppercase', fontWeight: 700,
+                }">Ordina:</span>
+                <button
+                  v-for="s in [
+                    { k: 'rarita', l: 'Rarità' },
+                    { k: 'livello', l: 'Livello' },
+                    { k: 'copie', l: 'Copie' },
+                  ]"
+                  :key="s.k"
+                  @click="teamToggleSort(s.k)"
+                  :style="{
+                    padding: '4px 10px', borderRadius: '999px', cursor: 'pointer',
+                    background: teamSortKey === s.k ? `${C.gold}26` : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${teamSortKey === s.k ? C.gold : C.inkLine}`,
+                    color: teamSortKey === s.k ? C.goldL : 'rgba(241,235,255,0.5)',
+                    fontFamily: FF.label, fontSize: '8px', fontWeight: 700,
+                    letterSpacing: '0.16em', textTransform: 'uppercase',
+                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                  }"
+                >
+                  {{ s.l }}
+                  <span v-if="teamSortKey === s.k" :style="{ fontSize: '9px' }">{{ teamSortDir === 'desc' ? '↓' : '↑' }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Griglia selezione waifu team -->
+            <div :style="{
+              display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center',
+              paddingBottom: '96px',
+            }">
+              <div
+                v-for="w in teamListaFiltrata.slice(0, teamVisibili)"
+                :key="w.id"
+                @click="teamToggleWaifu(w.id)"
+                :style="{
+                  cursor: 'pointer',
+                  opacity: teamWaifu.includes(w.id) ? 1 : w.mosse_ok === false ? 0.4 : 0.6,
+                  transition: 'all 0.15s',
+                  transform: teamWaifu.includes(w.id) ? 'scale(1.02)' : 'scale(1)',
+                  filter: teamWaifu.includes(w.id) ? `drop-shadow(0 0 12px ${C.ok})` : 'none',
+                  position: 'relative',
+                }"
+              >
+                <CartaWaifu :waifu="w" dimensione="piccola" :evidenziato="teamWaifu.includes(w.id)" />
+                <div
+                  v-if="w.mosse_ok === false && !teamWaifu.includes(w.id)"
+                  :style="{
+                    position: 'absolute', bottom: '4px', left: 0, right: 0, textAlign: 'center',
+                    background: 'rgba(0,0,0,0.8)', padding: '3px 4px',
+                    fontFamily: FF.label, fontSize: '7px', color: '#f5a623', letterSpacing: '0.1em',
+                  }"
+                >⚔ 0/4 mosse</div>
+              </div>
+              <!-- Empty state team picker -->
+              <UiPannelloOrnato
+                v-if="teamListaFiltrata.length === 0"
+                :glow="C.ok"
+                :style="{ width: '100%', textAlign: 'center', padding: '40px' }"
+              >
+                <div :style="{ fontSize: '36px', marginBottom: '8px', color: C.ok }">🔍</div>
+                <div :style="{
+                  fontFamily: FF.label, fontSize: '10px', color: C.ok,
+                  letterSpacing: '0.28em', marginBottom: '6px',
+                  textTransform: 'uppercase', fontWeight: 700,
+                }">Nessuna waifu</div>
+                <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">Cambia i filtri.</div>
+              </UiPannelloOrnato>
+            </div>
+
+            <!-- Carica altre team -->
+            <div v-if="teamVisibili < teamListaFiltrata.length" :style="{ textAlign: 'center', marginTop: '12px' }">
+              <UiBtnDecorato variant="secondary" size="sm" @click="teamVisibili += TEAM_PAGE_SIZE">
+                Carica altre ({{ teamListaFiltrata.length - teamVisibili }})
+              </UiBtnDecorato>
+            </div>
+
+            <!-- Footer sticky azioni team -->
+            <div :style="{
+              position: 'sticky', bottom: 0,
+              background: 'linear-gradient(180deg, transparent, rgba(7,5,26,0.95) 35%)',
+              padding: '20px 0 8px', marginTop: '-40px',
+              display: 'flex', gap: '10px', justifyContent: 'center', zIndex: 5,
+            }">
+              <UiBtnDecorato
+                variant="secondary" size="md"
+                @click="teamInEdit = null; teamNome = ''; teamWaifu = []"
+              >ANNULLA</UiBtnDecorato>
+              <UiBtnDecorato
+                variant="primary" size="md"
+                @click="salvaTeam"
+                :disabled="teamWaifu.length !== 5 || !teamNome.trim()"
+              >SALVA ({{ teamWaifu.length }}/5)</UiBtnDecorato>
+            </div>
+          </div>
+        </UiPannelloOrnato>
+
+        <!-- Lista team esistenti -->
+        <template v-else>
+          <div :style="{ textAlign: 'center', marginBottom: '14px' }">
+            <UiBtnDecorato variant="primary" @click="teamInEdit = 'new'; teamNome = ''; teamWaifu = []">
+              + Crea Team
+            </UiBtnDecorato>
+          </div>
+
+          <!-- Empty state team -->
+          <UiPannelloOrnato
+            v-if="Object.keys(teams).length === 0"
+            :glow="C.ok"
+            :style="{ width: '100%', textAlign: 'center', padding: '40px' }"
+          >
+            <div :style="{ fontSize: '36px', marginBottom: '8px', filter: `drop-shadow(0 0 12px ${C.ok}88)`, color: C.ok }">⚔</div>
+            <div :style="{
+              fontFamily: FF.label, fontSize: '10px', color: C.ok,
+              letterSpacing: '0.28em', marginBottom: '6px',
+              textTransform: 'uppercase', fontWeight: 700,
+            }">Nessun team</div>
+            <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">Crea il tuo primo team per la battaglia!</div>
+          </UiPannelloOrnato>
+
+          <div :style="{ display: 'flex', flexDirection: 'column', gap: '12px' }">
+            <UiPannelloOrnato
+              v-for="([id, team]) in Object.entries(teams)"
+              :key="id"
+              :glow="C.ok"
+              :style="{ padding: '14px' }"
+            >
+              <div :style="{
+                display: 'flex', justifyContent: 'space-between',
+                alignItems: 'center', marginBottom: '12px',
+              }">
+                <div :style="{
+                  fontFamily: FF.display, fontSize: '14px', color: C.ok,
+                  fontWeight: 700, textShadow: `0 0 10px ${C.ok}66`,
+                }">{{ (team as any).nome }}</div>
+                <div :style="{ display: 'flex', gap: '4px' }">
+                  <UiBtnDecorato variant="secondary" size="sm" @click="iniziaEditTeam(id)">✏</UiBtnDecorato>
+                  <UiBtnDecorato variant="danger" size="sm" @click="eliminaTeam(id)">✕</UiBtnDecorato>
+                </div>
+              </div>
+              <div :style="{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }">
+                <CartaWaifu
+                  v-for="wId in (team as any).waifu"
+                  :key="wId"
+                  :waifu="waifuCat.find(x => x.id === wId)"
+                  v-if="waifuCat.find(x => x.id === wId)"
+                  dimensione="piccola"
+                />
+              </div>
+            </UiPannelloOrnato>
+          </div>
+        </template>
+      </div>
+
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         MODALE LEVEL UP PANEL (overlay fisso)
+    ══════════════════════════════════════════════════════════ -->
+    <div
+      v-if="mostraLevelUp"
+      :style="{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
+      }"
+      @click.self="waifuSel = null; lvlPreview = null"
+    >
+      <div :style="{
+        background: 'rgba(10,7,38,0.97)', border: '1px solid rgba(245,158,11,0.4)',
+        borderRadius: '20px', padding: '24px', maxWidth: '420px', width: '100%',
+        boxShadow: '0 0 60px rgba(245,158,11,0.15)',
+      }">
+        <div :style="{
+          fontFamily: FF.display, fontSize: '18px', color: C.gold,
+          marginBottom: '4px', textAlign: 'center',
+        }">
+          ⬆ Level Up — {{ catalogWaifuSel?.nome }}
+        </div>
+        <div :style="{
+          fontFamily: FF.label, fontSize: '9px', color: 'rgba(245,158,11,0.6)',
+          textAlign: 'center', marginBottom: '20px', letterSpacing: '0.2em',
+        }">SCEGLI UNA STAT DA MODIFICARE</div>
+
+        <!-- Preview velocità / crit -->
+        <div :style="{ display: 'flex', gap: '12px', marginBottom: '20px', justifyContent: 'center' }">
+          <div :style="{
+            textAlign: 'center', padding: '8px 16px',
+            background: 'rgba(174,156,255,0.08)', borderRadius: '10px',
+            border: '1px solid rgba(174,156,255,0.2)',
+          }">
+            <div :style="{ fontFamily: FF.label, fontSize: '8px', color: 'rgba(174,156,255,0.6)', marginBottom: '4px' }">VELOCITÀ</div>
+            <div :style="{ fontFamily: FF.mono, fontSize: '16px', color: lvlPreview ? '#aef0d8' : '#f5e6d3' }">
+              {{ lvlPreview ? lvlCalcPreview(lvlPreview.stat, lvlPreview.delta).velocita : lvlCurrentVel }}
+            </div>
+            <div v-if="lvlPreview" :style="{ fontFamily: FF.label, fontSize: '8px', color: 'rgba(245,158,11,0.5)' }">
+              era {{ lvlCurrentVel }}
+            </div>
+          </div>
+          <div :style="{
+            textAlign: 'center', padding: '8px 16px',
+            background: 'rgba(255,126,182,0.08)', borderRadius: '10px',
+            border: '1px solid rgba(255,126,182,0.2)',
+          }">
+            <div :style="{ fontFamily: FF.label, fontSize: '8px', color: 'rgba(255,126,182,0.6)', marginBottom: '4px' }">CRITICO</div>
+            <div :style="{ fontFamily: FF.mono, fontSize: '16px', color: lvlPreview ? '#aef0d8' : '#f5e6d3' }">
+              {{ lvlPreview ? lvlCalcPreview(lvlPreview.stat, lvlPreview.delta).crit_chance : lvlCurrentCrit }}%
+            </div>
+            <div v-if="lvlPreview" :style="{ fontFamily: FF.label, fontSize: '8px', color: 'rgba(245,158,11,0.5)' }">
+              era {{ lvlCurrentCrit }}%
+            </div>
+          </div>
+        </div>
+
+        <!-- Stat picker -->
+        <div :style="{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }">
+          <div
+            v-for="({ key, label, min, max }) in STAT_DEFS"
+            :key="key"
+            :style="{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '8px 12px', borderRadius: '10px',
+              background: lvlPreview?.stat === key ? 'rgba(245,158,11,0.08)' : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${lvlPreview?.stat === key ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.06)'}`,
+            }"
+          >
+            <div :style="{ flex: 1, fontFamily: FF.label, fontSize: '10px', color: '#f5e6d3' }">{{ label }}</div>
+            <div :style="{ fontFamily: FF.mono, fontSize: '12px', color: 'rgba(174,156,255,0.7)', minWidth: '40px', textAlign: 'center' }">
+              {{ lvlStatBase[key] ?? 0 }}
+            </div>
+            <button
+              @click="lvlPreview = { stat: key, delta: -1 }"
+              :disabled="(lvlStatBase[key] ?? 0) <= min"
+              :style="{
+                width: '28px', height: '28px',
+                background: lvlPreview?.stat === key && lvlPreview?.delta === -1 ? 'rgba(236,72,153,0.3)' : 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px',
+                color: '#f5e6d3',
+                cursor: (lvlStatBase[key] ?? 0) <= min ? 'not-allowed' : 'pointer', fontSize: '14px',
+              }"
+            >−</button>
+            <button
+              @click="lvlPreview = { stat: key, delta: +1 }"
+              :disabled="(lvlStatBase[key] ?? 0) >= max"
+              :style="{
+                width: '28px', height: '28px',
+                background: lvlPreview?.stat === key && lvlPreview?.delta === 1 ? 'rgba(6,214,160,0.3)' : 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px',
+                color: '#f5e6d3',
+                cursor: (lvlStatBase[key] ?? 0) >= max ? 'not-allowed' : 'pointer', fontSize: '14px',
+              }"
+            >+</button>
+          </div>
+        </div>
+
+        <!-- Pulsanti level up -->
+        <div :style="{ display: 'flex', gap: '10px' }">
+          <button
+            @click="lvlApply"
+            :disabled="!lvlPreview || lvlBusy"
+            :style="{
+              flex: 1, padding: '12px',
+              background: lvlPreview && !lvlBusy ? 'linear-gradient(135deg,#f59e0b,#ec4899)' : 'rgba(255,255,255,0.1)',
+              border: 'none', borderRadius: '12px',
+              color: lvlPreview && !lvlBusy ? '#000' : 'rgba(255,255,255,0.4)',
+              fontFamily: FF.label, fontSize: '11px', fontWeight: 700,
+              cursor: lvlPreview && !lvlBusy ? 'pointer' : 'not-allowed',
+              letterSpacing: '0.1em',
+            }"
+          >{{ lvlBusy ? '⏳ Applicando…' : '✅ CONFERMA' }}</button>
+          <button
+            @click="waifuSel = null; lvlPreview = null"
+            :style="{
+              padding: '12px 16px',
+              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: '12px', color: '#f5e6d3',
+              fontFamily: FF.label, fontSize: '11px', cursor: 'pointer',
+            }"
+          >Annulla</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</template>

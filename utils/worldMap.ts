@@ -1,0 +1,519 @@
+// ============================================================
+// UTIL: Mappa mondo 50×50 per Waifu Empire (~1500 pixel terra)
+// x: 0-49 = 180°W → 180°E | y: 0-49 = 90°N → 90°S
+// Porta TypeScript di src/lib/worldMap.js
+// ============================================================
+
+export interface MapPixel {
+  x:    number
+  y:    number
+  name: string
+}
+
+// Helper: genera pixel per righe di specifica [y, xMin, xMax]
+function rows(spec: [number, number, number][], name: string): MapPixel[] {
+  const pixels: MapPixel[] = []
+  for (const [y, xMin, xMax] of spec)
+    for (let x = xMin; x <= xMax; x++)
+      pixels.push({ x, y, name })
+  return pixels
+}
+
+export const WORLD_MAP_PIXELS: MapPixel[] = [
+
+  // ── GROENLANDIA
+  ...rows([[2,14,15],[3,13,17],[4,12,18],[5,12,18],[6,13,18],[7,14,17],[8,15,16]], 'Groenlandia'),
+
+  // ── ALASKA
+  ...rows([[5,1,3],[6,1,5],[7,1,5],[8,1,5],[9,2,5],[10,2,4],[11,0,3]], 'Alaska'),
+
+  // ── CANADA
+  ...rows([[5,4,13],[6,4,14],[7,5,15],[8,5,16],[9,5,16],[10,5,16],[11,4,15],[12,4,15],[13,4,14],[14,4,14]], 'Canada'),
+
+  // ── USA
+  ...rows([[15,3,14],[16,3,14],[17,3,14],[18,3,13],[19,3,12]], 'USA'),
+
+  // ── ALEUTINE
+  ...rows([[11,0,3],[12,0,2]], 'Aleutine'),
+
+  // ── FLORIDA
+  ...rows([[19,11,13],[20,11,12],[21,11,12]], 'Florida'),
+
+  // ── CARAIBI
+  ...rows([[20,12,14],[21,12,14],[22,12,14]], 'Caraibi'),
+
+  // ── MESSICO
+  ...rows([[19,5,11],[20,5,10],[21,5,10],[22,5,10],[23,7,10]], 'Messico'),
+
+  // ── AMERICA CENTRALE
+  ...rows([[23,8,11],[24,8,11],[25,9,11]], 'America Centrale'),
+
+  // ── COLOMBIA / VENEZUELA
+  ...rows([[25,9,15],[26,9,15],[27,9,15],[28,9,14]], 'Colombia-Venezuela'),
+
+  // ── GUYANA / SURINAME
+  ...rows([[26,14,16],[27,14,16]], 'Guyana'),
+
+  // ── BRASILE
+  ...rows([[27,10,17],[28,10,17],[29,10,17],[30,10,17],[31,10,16],[32,11,16],[33,12,16],[34,12,16],[35,12,15],[36,12,15]], 'Brasile'),
+
+  // ── PERÙ / BOLIVIA
+  ...rows([[28,8,11],[29,8,11],[30,8,11],[31,8,11],[32,8,11],[33,8,11]], 'Perù-Bolivia'),
+
+  // ── ECUADOR
+  ...rows([[25,8,9],[26,8,9],[27,8,9]], 'Ecuador'),
+
+  // ── ARGENTINA / CILE
+  ...rows([[34,8,14],[35,8,14],[36,8,13],[37,9,13],[38,9,12],[39,9,12],[40,10,11],[41,10,11],[42,10,11],[43,10,11]], 'Argentina-Cile'),
+
+  // ── PATAGONIA
+  ...rows([[44,10,11],[45,10,11]], 'Patagonia'),
+
+  // ── ISLANDA
+  ...rows([[5,20,22],[6,20,22],[7,20,22]], 'Islanda'),
+
+  // ── IRLANDA
+  ...rows([[8,21,22],[9,21,22]], 'Irlanda'),
+
+  // ── REGNO UNITO
+  ...rows([[7,22,23],[8,22,24],[9,22,23],[10,22,23]], 'Regno Unito'),
+
+  // ── PORTOGALLO
+  ...rows([[11,21,22],[12,21,22],[13,21,22]], 'Portogallo'),
+
+  // ── SPAGNA
+  ...rows([[11,22,25],[12,22,25],[13,22,25]], 'Spagna'),
+
+  // ── FRANCIA
+  ...rows([[9,23,25],[10,23,25],[11,23,25]], 'Francia'),
+
+  // ── BELGIO / OLANDA
+  ...rows([[8,24,25],[9,24,25]], 'Belgio-Olanda'),
+
+  // ── SVIZZERA / AUSTRIA
+  ...rows([[11,25,27],[12,25,26]], 'Svizzera-Austria'),
+
+  // ── GERMANIA
+  ...rows([[8,25,27],[9,25,27],[10,25,27]], 'Germania'),
+
+  // ── DANIMARCA
+  ...rows([[7,25,26],[8,25,26]], 'Danimarca'),
+
+  // ── NORVEGIA
+  ...rows([[3,24,26],[4,24,26],[5,24,27],[6,24,27],[7,24,27]], 'Norvegia'),
+
+  // ── SVEZIA / FINLANDIA
+  ...rows([[3,26,29],[4,26,29],[5,26,29],[6,26,29],[7,27,29],[8,27,29]], 'Svezia-Finlandia'),
+
+  // ── ITALIA
+  ...rows([[12,25,26],[13,25,26],[14,25,26],[15,26,26]], 'Italia'),
+
+  // ── GRECIA
+  ...rows([[13,27,28],[14,27,28],[15,27,28]], 'Grecia'),
+
+  // ── POLONIA
+  ...rows([[8,27,28],[9,27,29],[10,27,29]], 'Polonia'),
+
+  // ── REP. CECA / SLOVACCHIA
+  ...rows([[10,26,28],[11,26,28]], 'Rep.Ceca-Slovacchia'),
+
+  // ── UNGHERIA / ROMANIA
+  ...rows([[11,28,29],[12,28,30],[13,28,30]], 'Romania-Ungheria'),
+
+  // ── BALCANI
+  ...rows([[12,27,29],[13,26,28]], 'Balcani'),
+
+  // ── UCRAINA / BIELORUSSIA
+  ...rows([[7,29,32],[8,29,32],[9,29,32],[10,29,32],[11,29,32]], 'Ucraina'),
+
+  // ── PAESI BALTICI
+  ...rows([[6,28,30],[7,28,30]], 'Paesi Baltici'),
+
+  // ── TURCHIA
+  ...rows([[11,29,33],[12,29,33],[13,29,32]], 'Turchia'),
+
+  // ── RUSSIA (europea)
+  ...rows([[3,29,40],[4,29,42],[5,29,45],[6,29,46],[7,29,47],[8,30,47],[9,30,46],[10,30,44],[11,33,44],[12,33,43]], 'Russia'),
+
+  // ── SIBERIA EST
+  ...rows([[3,40,49],[4,42,49],[5,45,49],[6,46,49]], 'Siberia Est'),
+
+  // ── KAZAKISTAN / ASIA CENTRALE
+  ...rows([[12,33,40],[13,33,40],[14,33,40],[15,33,39]], 'Asia Centrale'),
+
+  // ── CINA
+  ...rows([[9,36,47],[10,36,46],[11,36,46],[12,36,46],[13,37,46],[14,36,45],[15,36,44],[16,36,43],[17,36,42]], 'Cina'),
+
+  // ── TIBET / XINJIANG
+  ...rows([[12,34,36],[13,34,36],[14,34,36]], 'Tibet'),
+
+  // ── INDIA
+  ...rows([[14,34,37],[15,33,38],[16,33,38],[17,33,38],[18,33,37],[19,33,37],[20,34,36],[21,34,35]], 'India'),
+
+  // ── SRI LANKA
+  ...rows([[22,36,36]], 'Sri Lanka'),
+
+  // ── PAKISTAN / AFGHANISTAN
+  ...rows([[12,32,35],[13,32,35],[14,32,34]], 'Pakistan-Afghanistan'),
+
+  // ── IRAN
+  ...rows([[12,31,34],[13,31,34],[14,31,33]], 'Iran'),
+
+  // ── SIRIA / IRAQ / GIORDANIA
+  ...rows([[12,29,32],[13,29,32],[14,29,31]], 'Medio Oriente'),
+
+  // ── ARABIA SAUDITA
+  ...rows([[14,30,34],[15,30,34],[16,30,34],[17,30,33],[18,30,32]], 'Arabia Saudita'),
+
+  // ── EMIRATI / YEMEN
+  ...rows([[18,31,33],[19,30,33]], 'Yemen-Emirati'),
+
+  // ── EGITTO
+  ...rows([[13,27,30],[14,27,29],[15,27,29]], 'Egitto'),
+
+  // ── MAROCCO / ALGERIA / TUNISIA
+  ...rows([[13,21,27],[14,21,28],[15,21,27]], 'Nord Africa'),
+
+  // ── LIBIA
+  ...rows([[13,27,30],[14,27,30],[15,28,30]], 'Libia'),
+
+  // ── MALI / NIGER / CIAD
+  ...rows([[16,20,29],[17,20,29],[18,20,28]], 'Sahel'),
+
+  // ── SUDAN / ETIOPIA
+  ...rows([[15,28,32],[16,28,33],[17,28,33],[18,28,32]], 'Sudan-Etiopia'),
+
+  // ── CORNO D'AFRICA
+  ...rows([[17,32,34],[18,32,35],[19,31,34]], 'Corno Africa'),
+
+  // ── NIGERIA / GHANA
+  ...rows([[18,21,26],[19,21,26],[20,21,26],[21,21,25]], 'Africa Ovest'),
+
+  // ── CAMERUN / CONGO
+  ...rows([[19,24,29],[20,24,30],[21,24,30],[22,24,30],[23,24,30]], 'Africa Centrale'),
+
+  // ── KENYA / TANZANIA
+  ...rows([[19,29,33],[20,29,33],[21,29,33],[22,29,32]], 'Africa Est'),
+
+  // ── ANGOLA / ZAMBIA / MOZAMBICO
+  ...rows([[22,25,32],[23,24,32],[24,24,32],[25,24,32],[26,24,31]], 'Africa Sud-Centro'),
+
+  // ── ZIMBABWE / BOTSWANA
+  ...rows([[26,26,30],[27,26,30],[28,26,30]], 'Zimbabwe-Botswana'),
+
+  // ── SUDAFRICA
+  ...rows([[27,24,30],[28,24,30],[29,24,29],[30,25,29],[31,25,28]], 'Sudafrica'),
+
+  // ── MADAGASCAR
+  ...rows([[21,32,34],[22,32,35],[23,32,35],[24,33,35],[25,33,35]], 'Madagascar'),
+
+  // ── MYANMAR / TAILANDIA
+  ...rows([[17,39,41],[18,39,42],[19,39,42],[20,39,42],[21,39,42]], 'Myanmar-Tailandia'),
+
+  // ── VIETNAM / CAMBOGIA
+  ...rows([[18,41,43],[19,41,43],[20,41,43],[21,41,43]], 'Vietnam-Cambogia'),
+
+  // ── MALESIA / SINGAPORE
+  ...rows([[21,40,42],[22,39,42],[23,39,41]], 'Malesia'),
+
+  // ── INDONESIA
+  ...rows([[22,40,46],[23,40,47],[24,40,47],[25,40,46],[26,41,45]], 'Indonesia'),
+
+  // ── FILIPPINE
+  ...rows([[17,43,46],[18,43,46],[19,43,46],[20,43,46]], 'Filippine'),
+
+  // ── GIAPPONE
+  ...rows([[9,44,46],[10,44,47],[11,44,47],[12,44,46],[13,45,46]], 'Giappone'),
+
+  // ── COREA
+  ...rows([[11,42,44],[12,42,44],[13,42,44]], 'Corea'),
+
+  // ── MONGOLIA
+  ...rows([[8,36,43],[9,36,43],[10,36,43]], 'Mongolia'),
+
+  // ── BANGLADESH
+  ...rows([[16,38,39],[17,38,39]], 'Bangladesh'),
+
+  // ── NEPAL / BHUTAN
+  ...rows([[14,37,39],[15,37,38]], 'Nepal-Bhutan'),
+
+  // ── TAIWAN
+  ...rows([[15,45,46],[16,45,46]], 'Taiwan'),
+
+  // ── AUSTRALIA
+  ...rows([[29,38,46],[30,37,47],[31,37,47],[32,37,47],[33,37,47],[34,37,47],[35,37,47],[36,38,47],[37,39,47],[38,40,46],[39,40,46],[40,40,46],[41,40,45],[42,41,45]], 'Australia'),
+
+  // ── NUOVA ZELANDA
+  ...rows([[35,47,49],[36,47,49],[37,47,49],[38,47,48],[39,47,48]], 'Nuova Zelanda'),
+
+  // ── PAPUA NUOVA GUINEA
+  ...rows([[25,44,47],[26,44,47],[27,44,47]], 'Papua Nuova Guinea'),
+
+  // ── ISOLE DEL PACIFICO
+  ...rows([[22,47,49],[23,48,49]], 'Polinesia'),
+
+  // ── CUBA / HISPANIOLA
+  ...rows([[20,12,14],[21,12,13],[21,13,14],[22,13,14]], 'Cuba-Hispaniola'),
+
+  // ── SUD AMERICA (ulteriori)
+  ...rows([[25,8,9],[26,8,9]], 'Ecuador'),
+  ...rows([[29,8,9],[30,8,9]], 'Paraguay'),
+  ...rows([[31,9,11],[32,10,11]], 'Uruguay'),
+
+  // ── AFRICA (ulteriori)
+  ...rows([[14,27,28],[15,27,28]], 'Sudan del Sud'),
+  ...rows([[20,27,29],[21,27,29]], 'Kenya Costa'),
+
+  // ── CANADA (extra nordico)
+  ...rows([[3,4,13],[4,4,14],[5,4,15]], 'Canada Artico'),
+
+  // ── GROENLANDIA (più dettagliata)
+  ...rows([[9,14,17],[10,14,16]], 'Groenlandia Sud'),
+
+  // ── ISOLE BRITANNICHE (extra)
+  ...rows([[6,22,23],[7,22,23]], 'Scozia'),
+
+  // ── RUSSIA (espansione significativa)
+  ...rows([[3,24,48],[4,24,49],[5,24,48],[6,24,49],[7,24,48],[8,24,48],[9,24,46],[10,24,46],[11,24,44],[12,24,43]], 'Russia Est'),
+
+  // ── CINA (più dettagliata)
+  ...rows([[9,37,44],[10,37,46],[11,37,46]], 'Cina Nord'),
+
+  // ── INDIA (extra peninsulare)
+  ...rows([[18,34,37],[19,34,36],[20,33,36]], 'India Centro-Sud'),
+
+  // ── INDONESIA (più isole)
+  ...rows([[22,42,48],[23,42,49],[24,42,48]], 'Indonesia Est'),
+
+  // ── BRASILE (extra Amazzonia)
+  ...rows([[27,10,16],[28,9,16],[29,9,14]], 'Brasile Amazzonia'),
+
+  // ── AFRICA (espansione Congo/Angola)
+  ...rows([[20,22,28],[21,22,28],[22,22,28]], 'Congo-Angola'),
+
+  // ── AUSTRALIA (espansione deserto centrale)
+  ...rows([[33,38,47],[34,38,47],[35,38,47],[36,39,47]], 'Australia Centrale'),
+
+  // ── NORD AFRICA (espansione Sahara)
+  ...rows([[14,20,26],[15,20,26],[16,20,26],[17,20,28]], 'Sahara'),
+
+  // ── ASIA SUD-EST (espansione)
+  ...rows([[19,40,44],[20,40,44],[21,40,44]], 'Asia Sud-Est Centro'),
+
+  // ── SCANDINAVIA (espansione Nord)
+  ...rows([[2,24,29],[3,24,29]], 'Scandinavia Nord'),
+
+  // ── KAZAKISTAN (espansione)
+  ...rows([[11,32,37],[12,32,37],[13,32,37]], 'Kazakistan'),
+
+  // ── SUD AMERICA (espansione costiera)
+  ...rows([[28,8,10],[29,8,10],[30,8,10]], 'Perù Costa'),
+
+  // ── AFRICA ORIENTALE (espansione)
+  ...rows([[22,29,34],[23,29,34],[24,29,33]], 'Tanzania-Mozambico'),
+
+  // ── RUSSIA (parte artica nordovest)
+  ...rows([[2,24,32],[3,24,32],[4,24,32],[5,24,32]], 'Russia Artica'),
+
+  // ── CANADA (isole artiche)
+  ...rows([[0,3,14],[1,3,14],[2,3,16],[3,3,14]], 'Canada Isole Artiche'),
+
+  // ── SAHARA AMPIO
+  ...rows([[15,21,33],[16,21,33],[17,21,32],[18,21,30]], 'Sahara Centrale'),
+
+  // ── AFRICA SUB-SAHARIANA
+  ...rows([[19,21,30],[20,21,28],[21,20,27]], 'Africa Subsahariana'),
+
+  // ── RUSSIA (steppa centrale)
+  ...rows([[9,31,37],[10,31,37],[11,31,36],[12,31,36]], 'Russia Steppa'),
+
+  // ── AUSTRALIA (nordovest)
+  ...rows([[27,36,44],[28,35,46],[29,35,47]], 'Australia NW'),
+
+  // ── SUD AMERICA (pianura argentina)
+  ...rows([[33,8,15],[34,8,14],[35,8,13],[36,9,13]], 'Gran Chaco'),
+
+  // ── ASIA CENTRALE (espansione)
+  ...rows([[12,37,42],[13,37,42],[14,37,42]], 'Mongolia-Cina NW'),
+
+  // ── BORNEO
+  ...rows([[21,42,44],[22,42,44],[23,42,44],[24,42,43]], 'Borneo'),
+
+  // ── CELEBES / SULAWESI
+  ...rows([[21,44,46],[22,44,46],[23,44,46]], 'Sulawesi'),
+
+  // ── SUMATRA
+  ...rows([[20,39,42],[21,39,42],[22,39,42]], 'Sumatra'),
+
+  // ── SAHEL ESPANSO
+  ...rows([[15,21,26],[16,21,27],[17,21,27]], 'Mali-Niger'),
+
+  // ── AFRICA MERIDIONALE ESPANSA
+  ...rows([[26,22,26],[27,22,26],[28,22,26]], 'Namibia-Zambia'),
+
+  // ── KAMCHATKA / EST ASIATICO
+  ...rows([[7,46,49],[8,46,49],[9,47,49],[10,47,49]], 'Kamchatka'),
+
+  // ── PENISOLA ARABICA (espansione)
+  ...rows([[15,31,35],[16,31,35],[17,31,34]], 'Penisola Arabica'),
+
+  // ── MYANMAR (costa)
+  ...rows([[17,38,41],[18,38,41]], 'Myanmar Costa'),
+
+  // ── LAOS / CAMBOGIA
+  ...rows([[18,40,43],[19,40,43],[20,40,43]], 'Laos-Cambogia'),
+
+  // ── NEPAL (espansione)
+  ...rows([[13,36,40],[14,36,40]], 'Nepal-Himalaya'),
+
+  // ── CANADA (est artico)
+  ...rows([[2,14,19],[3,15,19],[4,15,18]], 'Labrador'),
+
+  // ── USA (più dettagliato)
+  ...rows([[15,3,16],[16,3,16],[17,3,15],[18,3,14],[19,3,11]], 'USA Esteso'),
+
+  // ── RUSSIA (Yakutia)
+  ...rows([[4,40,49],[5,40,49],[6,40,49],[7,40,49]], 'Yakutia'),
+
+  // ── AFRICA SUBSAHARIANA (più copertura)
+  ...rows([[18,22,30],[19,22,30],[20,22,30]], 'Africa Centro N'),
+
+  // ── ARGENTINA (espanso)
+  ...rows([[31,9,14],[32,9,14],[33,9,13],[34,9,13]], 'Argentina Centrale'),
+
+  // ── BRASILE (espanso)
+  ...rows([[30,11,17],[31,11,17],[32,11,16]], 'Brasile Est'),
+
+  // ── SIBERIA CENTRALE
+  ...rows([[5,33,45],[6,33,46],[7,33,45]], 'Siberia Centrale'),
+
+  // ── CINA SETTENTRIONALE
+  ...rows([[8,36,46],[9,36,46],[10,36,46]], 'Cina Nord Espansa'),
+
+  // ── AFRICA ORIENTALE ESPANSA
+  ...rows([[16,27,34],[17,27,34],[18,27,34]], 'Africa Est Nord'),
+
+  // ── AUSTRALIA ESPANSA
+  ...rows([[30,37,48],[31,36,48],[32,36,48]], 'Australia Sud'),
+
+  // ── NUOVA GUINEA (espansione)
+  ...rows([[24,43,47],[25,43,47],[26,43,46]], 'Nuova Guinea Est'),
+
+  // ── INDIA ESPANSA
+  ...rows([[16,33,38],[17,33,38],[18,32,37]], 'India Espansa'),
+
+  // ── NORDAMERICA COSTA OVEST
+  ...rows([[12,3,5],[13,3,5],[14,3,5]], 'California-BC'),
+
+  // ── RUSSIA (Urali e Siberia Ovest)
+  ...rows([[5,28,36],[6,28,36],[7,28,36],[8,28,36],[9,28,36],[10,28,36],[11,28,36],[12,28,36]], 'Russia Urali-Siberia'),
+
+  // ── RUSSIA (Estremo Oriente)
+  ...rows([[5,44,49],[6,44,49],[7,44,49],[8,44,49],[9,44,49],[10,44,49],[11,44,49]], 'Russia Estremo Oriente'),
+
+  // ── AFRICA CENTRALE (blocco pieno)
+  ...rows([[19,23,30],[20,23,30],[21,23,30],[22,23,30],[23,23,30],[24,23,30]], 'Africa Centrale Piena'),
+
+  // ── NORD AFRICA (Sahara completo)
+  ...rows([[13,21,33],[14,21,33],[15,21,33],[16,21,33],[17,21,33],[18,21,33]], 'Sahara Completo'),
+
+  // ── CINA + MONGOLIA (blocco nord)
+  ...rows([[7,36,47],[8,36,47],[9,36,47],[10,36,47],[11,36,47]], 'Cina-Mongolia Nord'),
+
+  // ── RUSSIA (blocchi mancanti colonne 32-45)
+  ...rows([[4,32,45],[5,32,45],[6,32,45],[7,32,45],[8,32,44],[9,32,44],[10,32,43]], 'Russia Centro-Est'),
+
+  // ── AFRICA (blocchi mancanti rows 16-26)
+  ...rows([[16,28,36],[17,28,36],[18,28,36],[19,29,36],[20,29,35],[21,29,35],[22,29,35],[23,29,35],[24,29,35],[25,29,35]], 'Africa Est-Centro'),
+
+  // ── AUSTRALIA (blocchi mancanti rows 28-32)
+  ...rows([[26,36,47],[27,36,48],[28,36,48],[29,36,48],[30,36,48],[31,36,48],[32,36,47]], 'Australia NW-Centro'),
+
+  // ── ASIA SUD-OVEST mancante
+  ...rows([[11,29,36],[12,29,36],[13,29,36],[14,29,36],[15,29,36],[16,29,35]], 'Medio Oriente Espanso'),
+
+  // ── INDIA + PAKISTAN (righe mancanti)
+  ...rows([[14,32,38],[15,32,38],[16,32,38],[17,32,38],[18,32,38],[19,32,38]], 'India-Pakistan Espanso'),
+
+  // ── CINA SUD + VIETNAM
+  ...rows([[16,39,45],[17,39,45],[18,39,45],[19,39,45],[20,39,45]], 'Cina Sud-Vietnam'),
+]
+
+// ── NOMI UNICI ───────────────────────────────────────────────
+
+function _directionSuffix(dx: number, dy: number): string {
+  const t = 1.8 // soglia per "Centro"
+  const aX = Math.abs(dx)
+  const aY = Math.abs(dy)
+  if (aX <= t && aY <= t) return 'Centro'
+  if (aY > aX) {
+    if (dy < 0) return aX <= t ? 'Nord'  : (dx > 0 ? 'Nord-Est'  : 'Nord-Ovest')
+    else         return aX <= t ? 'Sud'   : (dx > 0 ? 'Sud-Est'   : 'Sud-Ovest')
+  } else {
+    if (dx > 0) return aY <= t ? 'Est'   : (dy < 0 ? 'Nord-Est'  : 'Sud-Est')
+    else         return aY <= t ? 'Ovest' : (dy < 0 ? 'Nord-Ovest': 'Sud-Ovest')
+  }
+}
+
+function _makeNamesUnique(pixels: MapPixel[]): MapPixel[] {
+  // Deduplica: mantieni solo la prima occorrenza per coordinate
+  const seenCoords = new Set<string>()
+  const deduped = pixels.filter(p => {
+    const k = `${p.x}_${p.y}`
+    if (seenCoords.has(k)) return false
+    seenCoords.add(k)
+    return true
+  })
+
+  // Raggruppa per nome base
+  const groups: Record<string, MapPixel[]> = {}
+  deduped.forEach(p => {
+    if (!groups[p.name]) groups[p.name] = []
+    groups[p.name].push(p)
+  })
+
+  const result: MapPixel[] = []
+  for (const [baseName, group] of Object.entries(groups)) {
+    if (group.length === 1) { result.push(group[0]); continue }
+
+    group.sort((a, b) => a.y - b.y || a.x - b.x)
+    const cx = group.reduce((s, p) => s + p.x, 0) / group.length
+    const cy = group.reduce((s, p) => s + p.y, 0) / group.length
+
+    const usedSuffixes: Record<string, number> = {}
+    for (const p of group) {
+      const dir = _directionSuffix(p.x - cx, p.y - cy)
+      usedSuffixes[dir] = (usedSuffixes[dir] || 0) + 1
+      const count = usedSuffixes[dir]
+      const uniqueName = count === 1 ? `${baseName} ${dir}` : `${baseName} ${dir} ${count}`
+      result.push({ ...p, name: uniqueName })
+    }
+  }
+  return result
+}
+
+// Garanzia finale: assegna numero progressivo a qualsiasi nome duplicato residuo
+function _ensureGlobalUniqueness(pixels: MapPixel[]): MapPixel[] {
+  const taken = new Set<string>()
+  return pixels.map(p => {
+    if (!taken.has(p.name)) { taken.add(p.name); return p }
+    let n = 2
+    while (taken.has(`${p.name} ${n}`)) n++
+    const uniqueName = `${p.name} ${n}`
+    taken.add(uniqueName)
+    return { ...p, name: uniqueName }
+  })
+}
+
+const _uniquePixels = _ensureGlobalUniqueness(_makeNamesUnique(WORLD_MAP_PIXELS))
+
+// Set per lookup veloce (canvas rendering)
+export const LAND_SET = new Set(_uniquePixels.map(p => `${p.x}_${p.y}`))
+
+// Map coordinate → nome univoco
+export const PIXEL_NAMES: Record<string, string> = Object.fromEntries(
+  _uniquePixels.map(p => [`${p.x}_${p.y}`, p.name])
+)
+
+// Array completo con nomi unici (usato dal seed script)
+export const UNIQUE_PIXELS = _uniquePixels

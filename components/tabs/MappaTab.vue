@@ -1,0 +1,918 @@
+<!-- ============================================================
+  Tab Mappa: mappa Risiko 50×50 per la conquista di territori.
+  Migrato da: src/app/gioco/_redesign/MappaPixel.jsx
+  Sotto-componenti inline: RaidWidget, MissionMapBadge, MissionDetailModal.
+  Componenti mappa principali delegati a ~/components/mappa/* (da migrare).
+  ============================================================ -->
+<script setup lang="ts">
+import { PIXEL_NAMES, LAND_SET } from '~/utils/worldMap'
+import { ikUrl } from '~/utils/imagekitUrl'
+import { useAuthStore } from '~/stores/auth'
+
+// ------------------------------------------------------------------ Props
+const props = defineProps<{
+  profilo: Record<string, unknown> | null
+  collezione: Record<string, unknown> | null
+  waifuCat: any[]
+  mosseCat: any[]
+  raidBattleCtx?: any
+}>()
+
+// ------------------------------------------------------------------ Emits
+const emit = defineEmits<{
+  notif:            [testo: string, colore: string]
+  updateProfilo:    [p: unknown]
+  updateCollezione: [c: unknown]
+  raidBattle:       [ctx: any]
+  raidBattleEnd:    [result: any]
+}>()
+
+// ------------------------------------------------------------------ Costanti locali (da _shared.jsx)
+// Colori brand del design system
+const C = {
+  ink:     '#03020c',
+  ink2:    '#0d0a26',
+  inkLine: 'rgba(174,156,255,0.18)',
+  gold:    '#f5c560',
+  goldL:   '#ffe9a8',
+  sakura:  '#ff85b6',
+  sakuraL: '#ffc3da',
+  aqua:    '#6cf0e0',
+  violet:  '#a78bfa',
+  ok:      '#58e0a3',
+  err:     '#ff5b6c',
+}
+
+// Famiglie font brand
+const FF = {
+  display: "var(--ff-display, 'Unbounded', sans-serif)",
+  label:   "var(--ff-label, 'Saira Condensed', sans-serif)",
+  body:    "var(--ff-body, 'DM Sans', sans-serif)",
+  mono:    "var(--ff-mono, 'JetBrains Mono', monospace)",
+}
+
+// ------------------------------------------------------------------ Store
+const authStore = useAuthStore()
+
+// ------------------------------------------------------------------ Stato principale
+const chunks          = ref<any>(null)
+const swapConfig      = ref<any>(null)
+const loading         = ref(true)
+const selectedPixel   = ref<any>(null)
+const myDefenseMap    = ref<Record<string, any[]>>({}) // defense_config dell'utente corrente
+
+const pendingOffersCount = ref(0)
+const attackError        = ref<string | null>(null)
+const showInfoModal      = ref(false)
+const conquestAnim       = ref<any>(null) // { pixelName, oldColor, newColor, empireName }
+const showBattle         = ref(false)
+const raidAttackMode     = ref(false) // distingue BattleModal normale da raid
+const showRound          = ref(false)
+const showPurchase       = ref(false)
+const showOffers         = ref(false)
+const showTutorial       = ref(false)
+const showDefenseEditor  = ref(false)
+const activeBattle       = ref<any>(null)
+const showRaidPanel      = ref(false)
+const raidInfo           = ref<any>(null)
+const activeMission      = ref<any>(null)
+const showMissionDetail  = ref(false)
+const missionFocusPixel  = ref<any>(null)
+
+// ------------------------------------------------------------------ RaidWidget state (inline)
+// Countdown per il widget Raid Island (aggiornato da setInterval)
+const raidCountdown = ref('')
+let raidCountdownTimer: ReturnType<typeof setInterval> | null = null
+
+// ------------------------------------------------------------------ MissionMapBadge state (inline)
+// Countdown per il badge missioni mappa
+const missionCountdown = ref('')
+let missionCountdownTimer: ReturnType<typeof setInterval> | null = null
+
+// ------------------------------------------------------------------ MissionDetailModal state (inline)
+// Countdown per la modale dettaglio missioni
+const missionDetailCountdown = ref('')
+let missionDetailCountdownTimer: ReturnType<typeof setInterval> | null = null
+
+// ------------------------------------------------------------------ Computed
+
+// Set di chiavi x_y dei pixel della missione corrente (overlay fucsia)
+const missionPixelSet = computed<Set<string>>(() => {
+  if (!activeMission.value?.pixels) return new Set()
+  const now = Date.now()
+  const endsMs = activeMission.value.endsAt ? new Date(activeMission.value.endsAt).getTime() : 0
+  if (endsMs < now) return new Set()
+  return new Set(activeMission.value.pixels.map((p: any) => `${p.x}_${p.y}`))
+})
+
+// Percentuale HP raid (0–100)
+const raidHpPct = computed<number>(() => {
+  if (!raidInfo.value) return 0
+  return Math.max(0, (raidInfo.value.currentHp / raidInfo.value.totalHp) * 100)
+})
+
+// Colore barra HP raid in base alla percentuale
+const raidHpColor = computed<string>(() => {
+  const pct = raidHpPct.value
+  if (pct > 60) return '#06d6a0'
+  if (pct > 30) return '#f59e0b'
+  if (pct > 10) return '#f97316'
+  return '#ef4444'
+})
+
+// ------------------------------------------------------------------ Helpers countdown
+
+// Formatta millisecondi rimanenti come HH:MM:SS
+function formatCountdown(endsAt: string): string {
+  const diff = Math.max(0, new Date(endsAt).getTime() - Date.now())
+  const h = Math.floor(diff / 3600000)
+  const m = Math.floor((diff % 3600000) / 60000)
+  const s = Math.floor((diff % 60000) / 1000)
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+// Avvia il countdown del widget Raid Island
+function startRaidCountdown() {
+  if (raidCountdownTimer) clearInterval(raidCountdownTimer)
+  if (!raidInfo.value?.endsAt) { raidCountdown.value = ''; return }
+  const tick = () => { raidCountdown.value = formatCountdown(raidInfo.value.endsAt) }
+  tick()
+  raidCountdownTimer = setInterval(tick, 1000)
+}
+
+// Avvia il countdown del badge missioni mappa
+function startMissionCountdown() {
+  if (missionCountdownTimer) clearInterval(missionCountdownTimer)
+  if (!activeMission.value?.endsAt) { missionCountdown.value = ''; return }
+  const tick = () => { missionCountdown.value = formatCountdown(activeMission.value.endsAt) }
+  tick()
+  missionCountdownTimer = setInterval(tick, 1000)
+}
+
+// Avvia il countdown nella modale dettaglio missioni
+function startMissionDetailCountdown() {
+  if (missionDetailCountdownTimer) clearInterval(missionDetailCountdownTimer)
+  if (!activeMission.value?.endsAt) { missionDetailCountdown.value = ''; return }
+  const tick = () => { missionDetailCountdown.value = formatCountdown(activeMission.value.endsAt) }
+  tick()
+  missionDetailCountdownTimer = setInterval(tick, 1000)
+}
+
+// ------------------------------------------------------------------ Watch
+
+// Quando raidBattleCtx arriva da GiocoPage, apri BattleModal in modalità raid
+watch(() => props.raidBattleCtx, (val) => {
+  if (val) { raidAttackMode.value = true; showBattle.value = true }
+})
+
+// Rinnova il countdown raid ogni volta che cambia raidInfo
+watch(raidInfo, () => startRaidCountdown())
+
+// Rinnova il countdown missioni quando cambia la missione attiva
+watch(activeMission, () => {
+  startMissionCountdown()
+  startMissionDetailCountdown()
+})
+
+// Avvia/stoppa il countdown modale quando si apre/chiude
+watch(showMissionDetail, (val) => {
+  if (val) startMissionDetailCountdown()
+  else {
+    if (missionDetailCountdownTimer) clearInterval(missionDetailCountdownTimer)
+    missionDetailCountdown.value = ''
+  }
+})
+
+// ------------------------------------------------------------------ API helpers
+
+// Carica i chunk della mappa pixel (con cache sessionStorage da 2 minuti)
+const loadChunks = async (forceRefresh = false) => {
+  const cached   = sessionStorage.getItem('pixel_map_chunks')
+  const cachedAt = Number(sessionStorage.getItem('pixel_map_chunks_at') || 0)
+  const TTL      = 2 * 60 * 1000 // 2 minuti — la mappa cambia solo dopo battaglie/acquisti
+
+  if (!forceRefresh && cached && Date.now() - cachedAt < TTL) {
+    chunks.value = JSON.parse(cached)
+    loading.value = false
+    return
+  }
+
+  try {
+    const token = await authStore.user?.getIdToken()
+    const [chunksData, configData] = await Promise.all([
+      $fetch<{ chunks: any }>('/api/mappa/chunks', { headers: { Authorization: `Bearer ${token}` } }),
+      $fetch<any>('/api/swap/config',              { headers: { Authorization: `Bearer ${token}` } }),
+    ])
+    sessionStorage.setItem('pixel_map_chunks',    JSON.stringify(chunksData.chunks))
+    sessionStorage.setItem('pixel_map_chunks_at', String(Date.now()))
+    chunks.value     = chunksData.chunks
+    swapConfig.value = configData
+  } catch (e) {
+    console.error('Errore caricamento mappa:', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Carica la configurazione difensiva dell'utente per la mappa corrente
+const loadMyDefenseConfig = async () => {
+  try {
+    const token = await authStore.user?.getIdToken()
+    const data = await $fetch<{ defenseMap: Record<string, any[]> }>('/api/difesa', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    myDefenseMap.value = data.defenseMap ?? {}
+  } catch { /* ignora */ }
+}
+
+// Carica il conteggio delle offerte in entrata in sospeso
+const loadPendingOffers = async () => {
+  try {
+    const token = await authStore.user?.getIdToken()
+    const data = await $fetch<{ incoming: any[] }>('/api/mappa/offers', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    pendingOffersCount.value = (data.incoming || []).filter((o: any) => o.status === 'pending').length
+  } catch { /* ignora */ }
+}
+
+// Carica la missione mappa attiva per l'utente
+const loadActiveMission = async () => {
+  try {
+    const token = await authStore.user?.getIdToken()
+    const data = await $fetch<{ mission: any }>('/api/map-missions/current', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    activeMission.value = data.mission ?? null
+  } catch { /* ignora */ }
+}
+
+// Carica le informazioni del Raid Island corrente
+const loadRaidInfo = async () => {
+  try {
+    const token = await authStore.user?.getIdToken()
+    const data = await $fetch<{ raid: any }>('/api/raid/current', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    raidInfo.value = data.raid ?? null
+  } catch { /* ignora */ }
+}
+
+// Invalida la cache della mappa e forza il ricaricamento
+const invalidateAndReload = async () => {
+  sessionStorage.removeItem('pixel_map_chunks')
+  sessionStorage.removeItem('pixel_map_chunks_at')
+  await loadChunks(true)
+}
+
+// ------------------------------------------------------------------ Adiacenza client-side
+
+// Controlla se il pixel (tx, ty) è adiacente all'impero dell'utente via mare (8 direzioni)
+const checkAdjacentToEmpire = (tx: number, ty: number): boolean => {
+  const userPixelCount = (props.profilo?.pixelCount as number) ?? 0
+  if (userPixelCount === 0) return true // primo pixel → sempre adiacente
+  if (!chunks.value) return false
+  const dirs8: [number, number][] = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]
+  for (const [dx, dy] of dirs8) {
+    let nx = tx + dx
+    let ny = ty + dy
+    while (nx >= 0 && nx < 50 && ny >= 0 && ny < 50) {
+      const key      = `${nx}_${ny}`
+      const chunkCol = Math.floor(nx / 10)
+      const chunkRow = Math.floor(ny / 10)
+      const cid      = `chunk_${chunkCol}_${chunkRow}`
+      const pData    = chunks.value[cid]?.pixels?.[key]
+      if (pData !== undefined) {
+        if (pData.ownerId === authStore.user?.uid) return true
+        break
+      }
+      nx += dx
+      ny += dy
+    }
+  }
+  return false
+}
+
+// ------------------------------------------------------------------ Selezione pixel
+
+// Gestisce la selezione di un pixel sulla mappa, arricchendolo con metadati
+const handlePixelSelect = async (pixel: any) => {
+  const isAdj      = checkAdjacentToEmpire(pixel.x, pixel.y)
+  const price      = 200 + ((pixel.ownerLevel ?? 1) * 50)
+  const chunkCol   = Math.floor(pixel.x / 10)
+  const chunkRow   = Math.floor(pixel.y / 10)
+  const chunkId    = `chunk_${chunkCol}_${chunkRow}`
+  const chunkDiff  = chunks.value?.[chunkId]?.difficulty ?? 'easy'
+  const pixelWithName = {
+    ...pixel,
+    name: PIXEL_NAMES[`${pixel.x}_${pixel.y}`] || null,
+    isAdjacentToEmpire: isAdj,
+    canAffordBuy: ((props.profilo?.kisses as number) ?? 0) >= price,
+    buyPrice: price,
+    difficulty: chunkDiff,
+  }
+  selectedPixel.value = pixelWithName
+  if (pixel.ownerId !== 'CPU' && pixel.ownerId !== authStore.user?.uid) {
+    try {
+      const token = await authStore.user?.getIdToken()
+      const data = await $fetch<{ defenderTeam?: any[] }>(`/api/mappa/pixel/${pixel.x}/${pixel.y}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (data.defenderTeam && selectedPixel.value) {
+        selectedPixel.value = { ...selectedPixel.value, defenderTeam: data.defenderTeam }
+      }
+    } catch { /* ignora */ }
+  }
+}
+
+// ------------------------------------------------------------------ Attacco pixel normale
+
+// Avvia un attacco contro il pixel selezionato con il team scelto dall'utente
+const handleAttack = async (attackerTeam: any[]) => {
+  try {
+    const token = await authStore.user?.getIdToken()
+    const data = await $fetch<any>('/api/mappa/attack', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: { targetX: selectedPixel.value.x, targetY: selectedPixel.value.y, attackerTeam },
+    })
+    if (data.battleId) {
+      activeBattle.value = {
+        id: data.battleId,
+        attackerTeam,
+        defenderTeam: data.defenderTeam || [],
+        cpuDifficulty: data.cpuDifficulty || 'easy',
+        attackerWins: 0,
+        defenderWins: 0,
+        pixelX: selectedPixel.value.x,
+        pixelY: selectedPixel.value.y,
+        defenderUid: selectedPixel.value.ownerId,
+        defenderColor: selectedPixel.value.ownerColor,
+        name: selectedPixel.value.name || null,
+      }
+      showBattle.value = false
+      showRound.value  = true
+    } else {
+      attackError.value = data.error || 'Errore nel tentativo di attacco. Riprova.'
+      showBattle.value  = false
+    }
+  } catch (e: any) {
+    attackError.value = e?.data?.error || 'Errore nel tentativo di attacco. Riprova.'
+    showBattle.value  = false
+  }
+}
+
+// ------------------------------------------------------------------ Attacco Raid
+
+// Avvia un attacco Raid con il team scelto dall'utente
+const handleRaidAttack = async (attackerTeam: any[]) => {
+  try {
+    const token = await authStore.user?.getIdToken()
+    const data = await $fetch<any>('/api/raid/attack', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: { attackerTeam },
+    })
+    if (data.battleId) {
+      activeBattle.value = {
+        id: data.battleId,
+        attackerTeam,
+        defenderTeam: data.defenderTeam || [],
+        cpuDifficulty: data.cpuDifficulty || 'medium',
+        attackerWins: 0,
+        defenderWins: 0,
+        isRaid: true,
+        raidEventId: data.raidEventId,
+        name: data.waifuNome ?? 'Waifu Raid',
+      }
+      showBattle.value = false
+      showRound.value  = true
+    } else {
+      attackError.value = data.error || 'Errore attacco raid. Riprova.'
+      showBattle.value  = false
+    }
+  } catch (e: any) {
+    attackError.value = e?.data?.error || 'Errore attacco raid. Riprova.'
+    showBattle.value  = false
+  }
+}
+
+// ------------------------------------------------------------------ Risultato round
+
+// Gestisce il completamento di un round: aggiorna i contatori e determina il vincitore finale
+const handleRoundComplete = async (
+  isVictory: boolean,
+  choice: 'same' | 'switch' | null,
+  prevPlayerIds: string[],
+  prevEnemyIds: string[],
+) => {
+  if (!activeBattle.value?.id) return
+  const roundWinner = isVictory ? 'attacker' : 'defender'
+  try {
+    const token = await authStore.user?.getIdToken()
+    const data = await $fetch<any>(`/api/mappa/battle/${activeBattle.value.id}/round`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: { roundWinner },
+    })
+
+    if (data.status === 'attacker_wins' || data.status === 'defender_wins') {
+      showRound.value     = false
+      selectedPixel.value = null
+
+      if (activeBattle.value.isRaid) {
+        const savedRaidEventId = activeBattle.value.raidEventId
+        const won              = data.status === 'attacker_wins'
+        activeBattle.value     = null
+        emit('raidBattleEnd', { won })
+        showRaidPanel.value = true
+        // Aggiorna HP raid in background dopo aver mostrato il pannello
+        try {
+          const raidToken = await authStore.user?.getIdToken()
+          await $fetch('/api/raid/join', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${raidToken}`, 'Content-Type': 'application/json' },
+            body: { eventId: savedRaidEventId, won },
+          })
+        } catch (e) { console.error('[raid/join]', e) }
+        return
+      }
+
+      const battSnap = activeBattle.value
+      activeBattle.value = null
+
+      if (data.status === 'attacker_wins') {
+        // Animazione conquista territorio
+        const oldColor = battSnap?.defenderUid === 'CPU' ? '#888888' : (battSnap?.defenderColor || '#ff85b6')
+        const newColor = (props.profilo?.coloreImpero as string) || '#ff85b6'
+        conquestAnim.value = {
+          pixelName: battSnap?.name || `(${battSnap?.pixelX}, ${battSnap?.pixelY})`,
+          oldColor, newColor,
+          empireName: (props.profilo?.nomeImpero as string) || 'Tu',
+        }
+        emit('updateProfilo', {
+          ...props.profilo,
+          pixelCount:      ((props.profilo?.pixelCount as number) ?? 0) + 1,
+          pacchettiSfida:  ((props.profilo?.pacchettiSfida as number) ?? 0) + 1,
+        })
+        showTutorial.value = false
+      } else if (data.status === 'defender_wins') {
+        emit('updateProfilo', {
+          ...props.profilo,
+          energia: Math.max(0, ((props.profilo?.energia as number) ?? 0) - 1),
+        })
+      }
+      await invalidateAndReload()
+    } else {
+      // Round in corso: aggiorna win counts e dati per il round successivo
+      activeBattle.value = {
+        ...activeBattle.value,
+        attackerWins:       data.attackerWins ?? (activeBattle.value.attackerWins + (roundWinner === 'attacker' ? 1 : 0)),
+        defenderWins:       data.defenderWins ?? (activeBattle.value.defenderWins + (roundWinner === 'defender' ? 1 : 0)),
+        nextRoundChoice:    choice,
+        prevPlayerTeamIds:  prevPlayerIds ?? [],
+        prevEnemyTeamIds:   prevEnemyIds ?? [],
+      }
+    }
+  } catch (e) {
+    console.error('Errore round API:', e)
+    activeBattle.value = {
+      ...activeBattle.value,
+      attackerWins:      activeBattle.value.attackerWins + (roundWinner === 'attacker' ? 1 : 0),
+      defenderWins:      activeBattle.value.defenderWins + (roundWinner === 'defender' ? 1 : 0),
+      nextRoundChoice:   choice,
+      prevPlayerTeamIds: prevPlayerIds ?? [],
+      prevEnemyTeamIds:  prevEnemyIds ?? [],
+    }
+  }
+}
+
+// ------------------------------------------------------------------ Acquisto pixel
+
+// Gestisce l'acquisto/offerta di un pixel (acquisto CPU diretto o offerta a giocatore)
+const handlePurchase = async ({ amount }: { amount?: number }) => {
+  try {
+    const token  = await authStore.user?.getIdToken()
+    const isCPU  = selectedPixel.value?.ownerId === 'CPU'
+    const data = await $fetch<{ success: boolean; type?: string; price?: number }>('/api/mappa/purchase', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: {
+        targetX:     selectedPixel.value.x,
+        targetY:     selectedPixel.value.y,
+        offerAmount: isCPU ? undefined : amount,
+      },
+    })
+    if (data.success) {
+      showPurchase.value  = false
+      await invalidateAndReload()
+      if (data.type === 'cpu_purchase') {
+        emit('updateProfilo', {
+          ...props.profilo,
+          kisses:     ((props.profilo?.kisses as number) ?? 0) - (data.price ?? 0),
+          pixelCount: ((props.profilo?.pixelCount as number) ?? 0) + 1,
+        })
+        showTutorial.value = false
+      }
+      selectedPixel.value = null
+    }
+  } catch (e) { console.error(e) }
+}
+
+// ------------------------------------------------------------------ Tutorial
+
+// Chiude il tutorial e segna pixelCount = 0 nel profilo per non rimostrarlo
+const closeTutorial = async () => {
+  showTutorial.value = false
+  try {
+    const token = await authStore.user?.getIdToken()
+    await $fetch('/api/profilo/update', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: { pixelCount: 0 },
+    })
+    emit('updateProfilo', { ...props.profilo, pixelCount: 0 })
+  } catch { /* ignora errori di rete */ }
+}
+
+// ------------------------------------------------------------------ Mount / Unmount
+
+onMounted(async () => {
+  await Promise.all([
+    loadChunks(),
+    loadMyDefenseConfig(),
+    loadPendingOffers(),
+    loadActiveMission(),
+    loadRaidInfo(),
+  ])
+  // Mostra tutorial se il giocatore non ha ancora pixel
+  const hasNoPixels = ((props.profilo?.pixelCount as number) ?? 0) === 0
+  if (hasNoPixels) showTutorial.value = true
+})
+
+onUnmounted(() => {
+  if (raidCountdownTimer)         clearInterval(raidCountdownTimer)
+  if (missionCountdownTimer)      clearInterval(missionCountdownTimer)
+  if (missionDetailCountdownTimer) clearInterval(missionDetailCountdownTimer)
+})
+</script>
+
+<template>
+  <!-- Contenitore principale: margini negativi per estendersi fino ai bordi del tab -->
+  <div :style="{ position: 'relative', margin: '-12px -16px' }">
+
+    <!-- ── Loading state ─────────────────────────────────────────────── -->
+    <div
+      v-if="loading"
+      :style="{
+        display: 'flex', flexDirection: 'column',
+        height: '60vh', alignItems: 'center', justifyContent: 'center'
+      }"
+    >
+      <div :style="{ fontFamily: FF.display, fontSize: '32px', color: C.sakura, animation: 'pulse 1.2s ease-in-out infinite' }">♛</div>
+      <div :style="{ fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.22em', color: 'rgba(174,156,255,0.5)', marginTop: '12px', textTransform: 'uppercase' }">
+        Caricamento mappa…
+      </div>
+    </div>
+
+    <!-- ── Contenuto principale (dopo il caricamento) ────────────────── -->
+    <template v-else>
+
+      <!-- Header -->
+      <div :style="{ padding: '14px 16px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }">
+        <div>
+          <div :style="{ fontFamily: FF.label, fontSize: '9px', letterSpacing: '0.22em', color: C.sakura, textTransform: 'uppercase' }">◆ CONQUISTA</div>
+          <div :style="{ fontFamily: FF.display, fontSize: '20px', color: '#fff', fontWeight: 800 }">Mappa del Mondo</div>
+        </div>
+        <!-- Pulsante offerte con badge contatore -->
+        <button
+          @click="showOffers = true"
+          :style="{
+            position: 'relative',
+            background: 'rgba(245,197,96,0.1)', border: '1px solid rgba(245,197,96,0.3)',
+            borderRadius: '10px', color: C.gold, fontFamily: FF.label, fontSize: '10px',
+            letterSpacing: '0.15em', textTransform: 'uppercase', padding: '6px 12px', cursor: 'pointer',
+          }"
+        >
+          💌 Offerte
+          <span
+            v-if="pendingOffersCount > 0"
+            :style="{
+              position: 'absolute', top: '-6px', right: '-6px',
+              background: '#ff5b6c', color: '#fff',
+              width: '16px', height: '16px', borderRadius: '50%',
+              display: 'grid', placeItems: 'center',
+              fontFamily: 'DM Sans, sans-serif', fontSize: '9px', fontWeight: 800,
+              border: '1px solid rgba(3,2,12,0.8)',
+            }"
+          >{{ pendingOffersCount }}</span>
+        </button>
+        <!-- Pulsante info mappa -->
+        <button
+          @click="showInfoModal = true"
+          :style="{
+            background: 'rgba(174,156,255,0.08)', border: '1px solid rgba(174,156,255,0.25)',
+            borderRadius: '10px', color: 'rgba(174,156,255,0.8)', fontFamily: FF.label, fontSize: '12px',
+            fontWeight: 700, padding: '6px 10px', cursor: 'pointer', minWidth: '32px',
+          }"
+        >?</button>
+      </div>
+
+      <!-- ── Raid Widget (inline) — sopra la mappa ─────────────────────── -->
+      <!-- Widget compatto per il Raid Island cooperativo orario -->
+      <div
+        @click="showRaidPanel = true"
+        :style="{
+          margin: '0 16px 10px', padding: '10px 14px',
+          background: 'linear-gradient(135deg, rgba(236,72,153,0.12), rgba(10,7,38,0.9))',
+          border: '1px solid rgba(236,72,153,0.35)', borderRadius: '12px', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: '10px',
+        }"
+      >
+        <!-- Thumbnail waifu raid -->
+        <img
+          v-if="raidInfo?.waifuImage"
+          :src="ikUrl(raidInfo.waifuImage, 'thumbnail') ?? undefined"
+          :alt="raidInfo.waifuNome"
+          :style="{ width: '38px', height: '52px', objectFit: 'cover', objectPosition: 'top', borderRadius: '6px', border: '1px solid rgba(236,72,153,0.4)', flexShrink: 0 }"
+        />
+        <div v-else :style="{ fontSize: '22px', flexShrink: 0 }">⚔</div>
+
+        <div :style="{ flex: 1, minWidth: 0 }">
+          <div :style="{ fontFamily: FF.label, fontSize: '8px', color: 'rgba(236,72,153,0.6)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '1px' }">
+            ⚔ Raid Waifu
+          </div>
+          <div :style="{ fontFamily: FF.display, fontSize: '11px', color: '#ec4899', fontWeight: 800, marginBottom: '2px' }">
+            {{ raidInfo?.waifuNome ?? 'Raid Island' }}
+          </div>
+          <template v-if="raidInfo">
+            <!-- Barra HP raid -->
+            <div :style="{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', marginBottom: '3px', overflow: 'hidden' }">
+              <div :style="{ height: '100%', width: `${raidHpPct}%`, background: raidHpColor, borderRadius: '2px', transition: 'width 0.5s' }" />
+            </div>
+            <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }">
+              <div :style="{ fontFamily: FF.mono, fontSize: '9px', color: raidHpColor }">
+                {{ Math.max(0, raidInfo.currentHp).toLocaleString() }} / {{ raidInfo.totalHp.toLocaleString() }} HP
+              </div>
+              <div v-if="raidCountdown" :style="{ fontFamily: FF.mono, fontSize: '9px', color: 'rgba(245,158,11,0.8)', fontVariantNumeric: 'tabular-nums' }">
+                ⏱ {{ raidCountdown }}
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <div :style="{ fontFamily: FF.label, fontSize: '9px', color: 'rgba(241,235,255,0.5)', letterSpacing: '0.12em' }">
+              Tocca per il Raid orario cooperativo ⚔
+            </div>
+          </template>
+        </div>
+        <div :style="{ fontFamily: FF.label, fontSize: '10px', color: 'rgba(236,72,153,0.7)', flexShrink: 0 }">→</div>
+      </div>
+
+      <!-- Canvas mappa pixel 50×50 con pan/zoom/pinch -->
+      <div :style="{ height: '380px' }">
+        <MappaPixelGrid
+          :chunks="chunks"
+          :user-uid="authStore.user?.uid ?? ''"
+          :selected-pixel="selectedPixel"
+          :land-set="LAND_SET"
+          :mission-pixel-set="missionPixelSet"
+          :focus-pixel="missionFocusPixel"
+          @pixel-select="(key, data) => handlePixelSelect(data)"
+        />
+      </div>
+
+      <!-- ── Badge Missioni Mappa (inline) — sotto la mappa ────────────── -->
+      <!-- Badge compatto che mostra la missione mappa attiva con countdown -->
+      <div
+        v-if="activeMission && missionPixelSet.size > 0"
+        @click="showMissionDetail = true"
+        :style="{
+          margin: '8px 16px 4px', padding: '8px 14px',
+          background: 'rgba(232,121,249,0.08)',
+          border: '1px solid rgba(232,121,249,0.3)',
+          borderRadius: '10px', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: '10px',
+        }"
+      >
+        <span :style="{ fontSize: '14px' }">🎯</span>
+        <div :style="{ flex: 1 }">
+          <span :style="{ fontFamily: FF.label, fontSize: '11px', color: '#e879f9', fontWeight: 700, letterSpacing: '0.08em' }">
+            Missioni Mappa in corso
+          </span>
+          <span
+            v-if="missionCountdown"
+            :style="{ fontFamily: FF.label, fontSize: '10px', color: 'rgba(232,121,249,0.65)', marginLeft: '8px', fontVariantNumeric: 'tabular-nums' }"
+          >
+            · ancora {{ missionCountdown }}
+          </span>
+        </div>
+        <span :style="{ fontFamily: FF.label, fontSize: '10px', color: 'rgba(232,121,249,0.5)' }">→</span>
+      </div>
+
+      <!-- Mini leaderboard territori + kisses passivi -->
+      <MappaMiniLeaderboard
+        :chunks="chunks"
+        :user-uid="authStore.user?.uid ?? ''"
+        :profilo="profilo as any"
+        @kisses-update="(k) => emit('updateProfilo', { kisses: (profilo?.kisses as number ?? 0) + k })"
+        @claim-at="() => {}"
+      />
+
+      <!-- Pixel detail popup -->
+      <MappaPixelDetail
+        v-if="selectedPixel"
+        :pixel="selectedPixel"
+        :waifu-cat="waifuCat"
+        @chiudi="selectedPixel = null"
+        @attacca="raidAttackMode = false; showBattle = true"
+        @acquista="showPurchase = true"
+        @edit-difesa="showDefenseEditor = true"
+        @offerte="showOffers = true"
+      />
+
+      <!-- ── Errore attacco ──────────────────────────────────────────────── -->
+      <!-- Toast errore mostrato quando un attacco non riesce -->
+      <div
+        v-if="attackError"
+        :style="{
+          position: 'fixed', top: '80px', left: '50%', transform: 'translateX(-50%)',
+          zIndex: 500, maxWidth: '320px', width: '90vw',
+          background: 'rgba(255,91,108,0.95)', color: '#fff',
+          borderRadius: '14px', padding: '14px 18px',
+          fontFamily: FF.body, fontSize: '13px', lineHeight: 1.5, textAlign: 'center',
+          boxShadow: '0 8px 32px rgba(255,91,108,0.4)',
+          animation: 'slideDown 0.3s ease-out',
+        }"
+      >
+        <div :style="{ marginBottom: '8px', fontWeight: 700 }">⚠️ Attacco non riuscito</div>
+        <div :style="{ opacity: 0.9, fontSize: '12px' }">{{ attackError }}</div>
+        <button
+          @click="attackError = null"
+          :style="{
+            marginTop: '10px', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.4)',
+            borderRadius: '8px', color: '#fff', fontFamily: FF.label, fontSize: '10px',
+            letterSpacing: '0.15em', textTransform: 'uppercase', padding: '5px 14px', cursor: 'pointer',
+          }"
+        >OK</button>
+      </div>
+
+      <!-- ── Animazione conquista territorio ───────────────────────────── -->
+      <MappaTerritoryConquestAnimation
+        v-if="conquestAnim"
+        :pixel-name="conquestAnim.pixelName"
+        :old-color="conquestAnim.oldColor"
+        :new-color="conquestAnim.newColor"
+        :empire-name="conquestAnim.empireName"
+        @done="conquestAnim = null"
+      />
+
+      <!-- ── Info Modal ─────────────────────────────────────────────────── -->
+      <MappaInfoModal v-if="showInfoModal" @close="showInfoModal = false" />
+
+      <!-- ── Tutorial (nuovo utente senza pixel) ───────────────────────── -->
+      <MappaTutorialOverlay v-if="showTutorial" @close="showTutorial = false" />
+
+      <!-- ── BattleModal: selezione team offensivo pixel normale ────────── -->
+      <MappaBattleModal
+        v-if="showBattle && !raidAttackMode"
+        :pixel="selectedPixel"
+        :collezione="collezione as any"
+        :waifu-cat="waifuCat"
+        @conferma="(team) => handleAttack(team)"
+        @chiudi="showBattle = false"
+      />
+
+      <!-- ── BattleModal: selezione team offensivo Raid Island ──────────── -->
+      <MappaBattleModal
+        v-if="showBattle && raidAttackMode"
+        :pixel="null"
+        :collezione="collezione as any"
+        :waifu-cat="waifuCat"
+        @conferma="(team) => { raidAttackMode = false; handleRaidAttack(team) }"
+        @chiudi="showBattle = false; raidAttackMode = false"
+      />
+
+      <!-- ── RoundViewer: pick phase + arena battaglia ──────────────────── -->
+      <!-- key cambia ad ogni round completato → rimonta il viewer con phase 'pre' -->
+      <MappaRoundViewer
+        v-if="showRound && activeBattle"
+        :key="activeBattle.id + '-' + (activeBattle.attackerWins + activeBattle.defenderWins)"
+        :battle="activeBattle"
+        :waifu-cat="waifuCat"
+        :mosse-cat="mosseCat"
+        :collezione="collezione as any"
+        :profilo="profilo as any"
+        @conquista="(r) => handleRoundComplete(r.isVictory, r.choice, r.prevPlayerTeamIds, r.prevEnemyTeamIds)"
+        @chiudi="showRound = false; activeBattle = null"
+      />
+
+      <!-- ── Raid Island full panel ─────────────────────────────────────── -->
+      <MappaRaidIslandPanel
+        v-if="showRaidPanel"
+        :profilo="profilo as any"
+        @chiudi="showRaidPanel = false"
+        @battle="(data) => { raidInfo = data; raidAttackMode = true; showBattle = true }"
+      />
+
+      <!-- ── Acquisto pixel ─────────────────────────────────────────────── -->
+      <MappaPurchaseModal
+        v-if="showPurchase && selectedPixel"
+        :pixel="selectedPixel"
+        :profilo="profilo as any"
+        @confirm="() => { showPurchase = false; selectedPixel = null }"
+        @close="showPurchase = false"
+      />
+
+      <!-- ── Lista offerte ──────────────────────────────────────────────── -->
+      <MappaOffersPanel
+        v-if="showOffers"
+        @close="showOffers = false"
+        @kisses-update="(k) => emit('updateProfilo', { kisses: k })"
+        @map-update="() => {}"
+      />
+
+      <!-- ── Editor team difensore ──────────────────────────────────────── -->
+      <DifesaTeamDifesaEditor
+        v-if="showDefenseEditor && selectedPixel"
+        :pixel-key="`${selectedPixel.x}_${selectedPixel.y}`"
+        :collezione="collezione as any"
+        :waifu-cat="waifuCat"
+        :profilo="profilo as any"
+        :current-team="myDefenseMap[`${selectedPixel.x}_${selectedPixel.y}`] || []"
+        @close="showDefenseEditor = false"
+        @saved="showDefenseEditor = false"
+      />
+
+    </template>
+
+    <!-- ── MissionDetailModal (inline) ──────────────────────────────── -->
+    <!-- Modale dettaglio missioni mappa con elenco pixel obiettivo cliccabili -->
+    <template v-if="showMissionDetail && activeMission">
+      <!-- Backdrop -->
+      <div
+        @click="showMissionDetail = false"
+        :style="{ position: 'fixed', inset: 0, zIndex: 130, background: 'rgba(3,2,12,0.6)', backdropFilter: 'blur(4px)' }"
+      />
+      <!-- Modale -->
+      <div :style="{
+        position: 'fixed', left: '50%', top: '50%',
+        transform: 'translate(-50%,-50%)', zIndex: 140,
+        width: 'min(92vw, 360px)',
+        background: 'rgba(13,10,38,0.99)', backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(232,121,249,0.35)', borderRadius: '18px',
+        padding: '22px 20px', boxShadow: '0 20px 60px rgba(3,2,12,0.9)',
+      }">
+        <!-- Pulsante chiudi -->
+        <button
+          @click="showMissionDetail = false"
+          :style="{ position: 'absolute', top: '14px', right: '16px', background: 'none', border: 'none', color: 'rgba(241,235,255,0.35)', fontSize: '20px', cursor: 'pointer', padding: 0 }"
+        >✕</button>
+
+        <div :style="{ fontFamily: FF.display, fontSize: '13px', color: '#e879f9', fontWeight: 800, marginBottom: '4px' }">
+          🎯 Missioni Mappa
+        </div>
+        <div
+          v-if="missionDetailCountdown"
+          :style="{ fontFamily: FF.label, fontSize: '11px', color: 'rgba(232,121,249,0.6)', marginBottom: '16px', fontVariantNumeric: 'tabular-nums' }"
+        >
+          Scade tra <strong :style="{ color: '#e879f9' }">{{ missionDetailCountdown }}</strong>
+        </div>
+
+        <div :style="{ fontFamily: FF.label, fontSize: '11px', color: 'rgba(241,235,255,0.5)', marginBottom: '12px', lineHeight: 1.5 }">
+          Possiedi questi territori alla scadenza per guadagnare
+          <strong :style="{ color: C.gold }">+{{ activeMission.rewardPerPixel ?? 100 }} <KissesIcon :size="12" /></strong>
+          a territorio.
+        </div>
+
+        <!-- Elenco pixel obiettivo della missione -->
+        <div :style="{ display: 'flex', flexDirection: 'column', gap: '8px' }">
+          <div
+            v-for="(px, i) in (activeMission.pixels || [])"
+            :key="i"
+            @click="missionFocusPixel = { x: px.x, y: px.y }; showMissionDetail = false"
+            :style="{
+              display: 'flex', alignItems: 'center', gap: '12px',
+              padding: '10px 14px',
+              background: 'rgba(232,121,249,0.07)',
+              border: '1px solid rgba(232,121,249,0.2)',
+              borderRadius: '10px', cursor: 'pointer',
+              transition: 'background 0.15s',
+            }"
+          >
+            <span :style="{ fontSize: '16px' }">♛</span>
+            <div :style="{ flex: 1 }">
+              <div :style="{ fontFamily: FF.label, fontSize: '13px', color: '#fff', fontWeight: 700 }">
+                {{ PIXEL_NAMES[`${px.x}_${px.y}`] || px.name || `(${px.x}, ${px.y})` }}
+              </div>
+              <div :style="{ fontFamily: FF.label, fontSize: '10px', color: 'rgba(241,235,255,0.4)' }">
+                +{{ activeMission.rewardPerPixel ?? 100 }} <KissesIcon :size="11" /> se in tuo possesso
+              </div>
+            </div>
+            <span :style="{ fontFamily: FF.label, fontSize: '10px', color: 'rgba(232,121,249,0.5)' }">→</span>
+          </div>
+        </div>
+      </div>
+    </template>
+
+  </div>
+</template>

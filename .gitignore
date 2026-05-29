@@ -1,0 +1,23 @@
+node_modules
+.nuxt
+.output
+dist
+.env
+.env.local
+
+# Capacitor builds nativi
+android
+ios
+
+# Log
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode
+.idea
+*.swp
