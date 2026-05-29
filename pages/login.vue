@@ -84,7 +84,7 @@ function traduciErrore(code?: string): string {
 
       <!-- Header -->
       <div class="text-center mb-6">
-        <img src="~/assets/images/Maps_Waifu_PNG_Logo.png" alt="Impero delle Waifu" class="w-80 h-auto mx-auto mb-3" />
+        <img src="~/assets/images/Maps_Waifu_PNG_Logo.png" alt="Impero delle Waifu" class="w-80 h-auto mx-auto mb-3" style="mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, black 68%, transparent 92%); -webkit-mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, black 68%, transparent 92%);" />
         <div class="text-xs tracking-widest text-purple-400">
           ⚜ {{ modo === 'login' ? 'ACCEDI' : 'REGISTRATI' }} ⚜
         </div>

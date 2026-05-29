@@ -100,7 +100,7 @@ const campanaAperta = ref(false)
       <img
         src="~/assets/images/Maps_Waifu_PNG_Logo.png"
         alt="Impero delle Waifu"
-        style="height: 56px; width: auto; object-fit: contain; flex-shrink: 0;"
+        style="height: 60px; width: auto; display: block; mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, black 68%, transparent 92%); -webkit-mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, black 68%, transparent 92%);"
       />
 
       <!-- Nome impero mostrato sotto il logo se disponibile -->

@@ -61,7 +61,7 @@ async function conferma() {
 
       <!-- Header -->
       <div class="text-center mb-5">
-        <img src="~/assets/images/Maps_Waifu_PNG_Logo.png" alt="Impero delle Waifu" class="w-32 h-auto mx-auto" />
+        <img src="~/assets/images/Maps_Waifu_PNG_Logo.png" alt="Impero delle Waifu" class="w-32 h-auto mx-auto" style="mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, black 68%, transparent 92%); -webkit-mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, black 68%, transparent 92%);" />
         <h2 class="font-cinzel tracking-widest text-xl mt-2 mb-0
                    bg-gradient-to-br from-amber-400 via-pink-500 to-purple-500
                    bg-clip-text text-transparent">
