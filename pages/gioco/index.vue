@@ -252,7 +252,7 @@ function handleSetTab(t: string) {
 <template>
   <!-- Schermata di caricamento: logo centrato mentre si caricano i dati -->
   <div v-if="!caricato" class="min-h-screen flex items-center justify-center">
-    <img src="~/assets/images/Maps_Waifu_PNG_Logo.png" alt="Impero delle Waifu" class="w-48 h-auto" />
+    <img src="~/assets/images/Logo.png" alt="Impero delle Waifu" class="w-48 h-auto" />
   </div>
 
   <!-- Contenuto principale del gioco -->
@@ -287,6 +287,9 @@ function handleSetTab(t: string) {
       />
     </Suspense>
 
+    <!-- Petali sakura decorativi — fissi su tutta la schermata -->
+    <SakuraPetals />
+
     <!-- Header Pokémon TCG Pocket: risorse sx, logo centro, campana dx -->
     <LazyGiocoHeader
       :profilo="gameStore.profilo"
@@ -295,7 +298,7 @@ function handleSetTab(t: string) {
     />
 
     <!-- ── Area contenuto: padding-top 40px per clearare il logo che sborda (10px) + gap 30px ── -->
-    <div class="px-4 max-w-[1400px] mx-auto" style="padding-top: 40px;">
+    <div class="px-4 max-w-[1400px] mx-auto" style="padding-top: 75px;">
 
       <!-- ═══ TAB: HOME ════════════════════════════════════════════════ -->
       <LazyHomeTab

@@ -234,7 +234,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
          Come il pannello pack di Pokémon TCG Pocket
     ══════════════════════════════════════════════════════════════════ -->
     <div
-      style="margin: 0 16px 14px; border-radius: 20px; overflow: hidden; position: relative; cursor: pointer;"
+      style="margin: 0 16px 40px; border-radius: 20px; overflow: hidden; position: relative; cursor: pointer;"
       :style="{
         background: totalPack > 0
           ? `radial-gradient(ellipse 80% 60% at 50% 0%, ${C.sakura}35 0%, transparent 60%), linear-gradient(180deg, #2a0d4a 0%, #0f0520 50%, #07051a 100%)`
@@ -283,7 +283,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
         }">
           <div class="foil foil--soft" />
           <img
-            src="~/assets/images/Maps_Waifu_PNG_Logo.png"
+            src="~/assets/images/Logo.png"
             alt=""
             style="width:70px; height:70px; object-fit:contain; position:relative; z-index:1; opacity:0.85;"
           />
