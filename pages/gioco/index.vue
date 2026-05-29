@@ -254,7 +254,7 @@ function handleSetTab(t: string) {
 <template>
   <!-- Schermata di caricamento: logo centrato mentre si caricano i dati -->
   <div v-if="!caricato" class="min-h-screen flex items-center justify-center">
-    <img src="~/assets/images/Logo.png" alt="Impero delle Waifu" class="w-48 h-auto" />
+    <img src="~/assets/images/Maps_Waifu_PNG_Logo.png" alt="Impero delle Waifu" style="width:70dvw; max-width:420px; height:auto;" />
   </div>
 
   <!-- Contenuto principale del gioco -->
@@ -448,15 +448,14 @@ function handleSetTab(t: string) {
         width: 52px;
         height: 52px;
         border-radius: 50%;
-        background: linear-gradient(135deg, rgba(167,139,250,0.85), rgba(107,70,193,0.90));
-        border: 1.5px solid rgba(167,139,250,0.55);
+        background: linear-gradient(135deg, rgba(167,139,250,0.85), rgba(7,5,26,0.98));        
         box-shadow: 0 4px 20px rgba(107,70,193,0.45), 0 0 0 4px rgba(167,139,250,0.08);
         display: flex; align-items: center; justify-content: center;
         cursor: pointer;
         z-index: 60;
         transition: all 0.2s;
         backdrop-filter: blur(8px);
-      "
+        "
       @click="settingsAperte = true"
     >
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
