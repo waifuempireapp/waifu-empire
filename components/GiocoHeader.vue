@@ -40,7 +40,7 @@ const campanaAperta = ref(false)
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border-bottom: 1px solid rgba(245,197,96,0.10);
-      height: 56px;
+      height: 72px;
     "
   >
 
@@ -98,9 +98,9 @@ const campanaAperta = ref(false)
 
       <!-- Logo applicazione a 36px di altezza -->
       <img
-        src="~/assets/images/Waifu_Empire_Logo_NO_BG.png"
+        src="~/assets/images/Maps_Waifu_PNG_Logo.png"
         alt="Impero delle Waifu"
-        style="height: 36px; width: auto; object-fit: contain; flex-shrink: 0;"
+        style="height: 56px; width: auto; object-fit: contain; flex-shrink: 0;"
       />
 
       <!-- Nome impero mostrato sotto il logo se disponibile -->

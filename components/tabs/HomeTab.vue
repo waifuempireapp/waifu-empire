@@ -230,67 +230,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
   <div style="padding: 0 0 8px;">
 
     <!-- ══════════════════════════════════════════════════════════════
-         1. HERO AVATAR — logo grande + nome impero + livello
-         Corrisponde all'avatar circolare centrato di Pokémon TCG Pocket
-    ══════════════════════════════════════════════════════════════════ -->
-    <div style="display:flex; flex-direction:column; align-items:center; padding: 20px 16px 16px; text-align:center;">
-
-      <!-- Anello decorativo + logo -->
-      <div :style="{
-        position:     'relative',
-        width:        '120px',
-        height:       '120px',
-        borderRadius: '50%',
-        background:   `conic-gradient(${C.sakura} 0%, ${C.gold} 35%, ${C.violet} 70%, ${C.sakura} 100%)`,
-        padding:      '3px',
-        boxShadow:    `0 0 32px ${C.sakura}55, 0 0 60px ${C.violet}33`,
-        marginBottom: '12px',
-      }">
-        <div :style="{
-          width: '100%', height: '100%',
-          borderRadius: '50%',
-          background: '#07051a',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }">
-          <img
-            src="~/assets/images/Waifu_Empire_Logo_NO_BG.png"
-            alt="Impero delle Waifu"
-            style="width: 90px; height: 90px; object-fit: contain;"
-          />
-        </div>
-      </div>
-
-      <!-- Nome impero -->
-      <div class="shimmer-text" :style="{
-        fontFamily:    FF.display,
-        fontSize:      'clamp(18px,5vw,24px)',
-        fontWeight:    800,
-        letterSpacing: '-0.01em',
-        lineHeight:    1.1,
-        marginBottom:  '6px',
-      }">{{ nomeImpero }}</div>
-
-      <!-- Livello + badge risorse inline -->
-      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;">
-        <div :style="{
-          background:    'rgba(245,197,96,0.12)',
-          border:        '1px solid rgba(245,197,96,0.30)',
-          borderRadius:  '999px',
-          padding:       '3px 12px',
-          fontFamily:    FF.label,
-          fontSize:      '11px',
-          color:         C.gold,
-          fontWeight:    700,
-          letterSpacing: '0.14em',
-        }">LV. {{ profilo?.livello ?? 1 }}</div>
-        <div :style="{ fontFamily: FF.mono, fontSize: '10px', color: 'rgba(241,235,255,0.40)' }">
-          {{ totalPack > 0 ? `✦ ${totalPack} bustine disponibili` : '✦ Nessuna bustina' }}
-        </div>
-      </div>
-    </div>
-
-    <!-- ══════════════════════════════════════════════════════════════
-         2. SBUSTA — area pack dominante (50% altezza schermo)
+         1. SBUSTA — area pack dominante (50% altezza schermo)
          Come il pannello pack di Pokémon TCG Pocket
     ══════════════════════════════════════════════════════════════════ -->
     <div
@@ -343,7 +283,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
         }">
           <div class="foil foil--soft" />
           <img
-            src="~/assets/images/Waifu_Empire_Logo_NO_BG.png"
+            src="~/assets/images/Maps_Waifu_PNG_Logo.png"
             alt=""
             style="width:70px; height:70px; object-fit:contain; position:relative; z-index:1; opacity:0.85;"
           />
@@ -420,7 +360,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
     </div>
 
     <!-- ══════════════════════════════════════════════════════════════
-         3. CARD AZIONI — Pesca Misteriosa (sx) + Swipe Waifu (dx)
+         2. CARD AZIONI — Pesca Misteriosa (sx) + Swipe Waifu (dx)
          Come le due card action di Pokémon TCG Pocket
     ══════════════════════════════════════════════════════════════════ -->
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:0 16px 8px;">

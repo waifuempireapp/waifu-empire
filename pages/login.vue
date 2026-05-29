@@ -84,7 +84,7 @@ function traduciErrore(code?: string): string {
 
       <!-- Header -->
       <div class="text-center mb-6">
-        <img src="~/assets/images/Waifu_Empire_Logo_NO_BG.png" alt="Impero delle Waifu" class="w-80 h-auto mx-auto mb-3" />
+        <img src="~/assets/images/Maps_Waifu_PNG_Logo.png" alt="Impero delle Waifu" class="w-80 h-auto mx-auto mb-3" />
         <div class="text-xs tracking-widest text-purple-400">
           ⚜ {{ modo === 'login' ? 'ACCEDI' : 'REGISTRATI' }} ⚜
         </div>

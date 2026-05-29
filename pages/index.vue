@@ -23,7 +23,7 @@ watch(
 <template>
   <!-- Schermata di caricamento durante l'inizializzazione di Firebase Auth -->
   <div class="min-h-screen flex flex-col items-center justify-center gap-5">
-    <img src="~/assets/images/Waifu_Empire_Logo_NO_BG.png" alt="Impero delle Waifu" class="w-96 h-auto" />
+    <img src="~/assets/images/Maps_Waifu_PNG_Logo.png" alt="Impero delle Waifu" class="w-96 h-auto" />
     <div class="text-xs opacity-60 tracking-widest">caricamento...</div>
   </div>
 </template>
