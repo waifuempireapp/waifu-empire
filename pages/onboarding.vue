@@ -61,7 +61,7 @@ async function conferma() {
 
       <!-- Header -->
       <div class="text-center mb-5">
-        <div class="glow-pulse text-5xl text-amber-400">♛</div>
+        <img src="~/assets/images/Waifu_Empire_Logo_NO_BG.png" alt="Impero delle Waifu" class="w-32 h-auto mx-auto" />
         <h2 class="font-cinzel tracking-widest text-xl mt-2 mb-0
                    bg-gradient-to-br from-amber-400 via-pink-500 to-purple-500
                    bg-clip-text text-transparent">

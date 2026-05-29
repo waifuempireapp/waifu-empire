@@ -39,7 +39,9 @@ export default defineNuxtPlugin(() => {
   const auth = getAuth(app)
   const googleProvider = new GoogleAuthProvider()
 
-  // Rende disponibili globalmente tramite $firebase
+  const authStore = useAuthStore()
+  authStore.initAuthListener(auth)
+
   return {
     provide: {
       firebase: { app, db, auth, googleProvider },

@@ -58,7 +58,7 @@ const TABS_ADMIN = [
 <template>
   <!-- Caricamento -->
   <div v-if="authorized === null" class="min-h-screen flex items-center justify-center">
-    <div class="glow-pulse text-4xl text-amber-400">♛</div>
+    <img src="~/assets/images/Waifu_Empire_Logo_NO_BG.png" alt="Impero delle Waifu" class="w-16 h-auto" />
   </div>
 
   <!-- Accesso negato -->

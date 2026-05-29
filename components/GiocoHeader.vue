@@ -19,7 +19,7 @@ const router = useRouter()
                  border-bottom:1px solid rgba(245,158,11,0.12)">
     <!-- Nome impero -->
     <div class="flex items-center gap-2">
-      <span class="text-amber-400 text-lg font-cinzel glow-pulse">♛</span>
+      <img src="~/assets/images/Waifu_Empire_Logo_NO_BG.png" alt="" class="w-7 h-7 object-contain" />
       <span class="font-cinzel text-sm font-semibold tracking-wider text-amber-100">
         {{ profilo?.nomeImpero ?? '...' }}
       </span>

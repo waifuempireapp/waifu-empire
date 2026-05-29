@@ -1,8 +1,22 @@
-@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700;800;900&family=Saira+Condensed:wght@500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Cinzel:wght@400;600;700;900&family=Fredoka:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
-
+/* Direttive Tailwind CSS — vanno prima di ogni altra regola */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ============================================================
+   Stili globali originali — tutti i CSS var e le classi legacy
+   sono preservati per retrocompatibilità con i componenti
+   non ancora migrati a classi Tailwind.
+   ============================================================ */
+
+/* =====================================================================
+   src/app/globals.css — IMPERO DELLE WAIFU · Redesign
+   Premium gacha mobile aesthetic. Tutte le variabili legacy sono
+   preservate come alias verso la nuova palette, così le inline styles
+   nel codice esistente continuano a funzionare senza modifiche.
+   ===================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700;800;900&family=Saira+Condensed:wght@500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Cinzel:wght@400;600;700;900&family=Fredoka:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
 
 :root {
   /* ---------- NUOVA PALETTE (canon) ---------- */

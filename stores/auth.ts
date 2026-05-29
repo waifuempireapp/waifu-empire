@@ -26,26 +26,15 @@ export const useAuthStore = defineStore('auth', {
   }),
 
   getters: {
-    // True se l'utente è autenticato
     isLoggedIn: (state): boolean => state.user !== null,
-    // UID dell'utente corrente (stringa vuota se non autenticato)
     uid: (state): string => state.user?.uid ?? '',
-    // Email dell'utente corrente
     email: (state): string => state.user?.email ?? '',
+    ready: (state): boolean => !state.loading,
   },
 
   actions: {
-    // Avvia il listener sull'autenticazione Firebase.
-    // Va chiamato una volta sola al mount dell'app.
-    initAuthListener() {
-      // Accede al plugin Firebase (disponibile solo client-side)
-      const nuxtApp = useNuxtApp()
-      const { auth } = nuxtApp.$firebase as { auth: import('firebase/auth').Auth }
-
-      // Cancella listener precedente se esiste
+    initAuthListener(auth: import('firebase/auth').Auth) {
       if (this.unsubscribe) this.unsubscribe()
-
-      // Sottoscrizione allo stato di autenticazione
       this.unsubscribe = onAuthStateChanged(auth, (user) => {
         this.user = user
         this.loading = false

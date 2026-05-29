@@ -187,7 +187,7 @@ const TABS = [
 <template>
   <!-- Schermata di caricamento iniziale -->
   <div v-if="!caricato" class="min-h-screen flex items-center justify-center">
-    <div class="glow-pulse text-6xl text-amber-400 font-cinzel">♛</div>
+    <img src="~/assets/images/Waifu_Empire_Logo_NO_BG.png" alt="Impero delle Waifu" class="w-48 h-auto" />
   </div>
 
   <!-- Contenuto gioco -->

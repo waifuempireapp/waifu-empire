@@ -84,12 +84,7 @@ function traduciErrore(code?: string): string {
 
       <!-- Header -->
       <div class="text-center mb-6">
-        <div class="glow-pulse text-5xl text-amber-400">♛</div>
-        <h1 class="font-cinzel tracking-widest text-2xl mt-3 mb-1
-                   bg-gradient-to-br from-amber-400 via-pink-500 to-purple-500
-                   bg-clip-text text-transparent">
-          IMPERO DELLE WAIFU
-        </h1>
+        <img src="~/assets/images/Waifu_Empire_Logo_NO_BG.png" alt="Impero delle Waifu" class="w-80 h-auto mx-auto mb-3" />
         <div class="text-xs tracking-widest text-purple-400">
           ⚜ {{ modo === 'login' ? 'ACCEDI' : 'REGISTRATI' }} ⚜
         </div>
@@ -148,10 +143,11 @@ function traduciErrore(code?: string): string {
         <button
           type="submit"
           :disabled="busy"
-          class="w-full py-3 mt-1.5 rounded-lg font-cinzel font-semibold text-sm
+          class="w-full py-3 mt-1.5 rounded-lg font-semibold text-sm
                  tracking-widest text-black cursor-pointer
                  bg-gradient-to-r from-amber-400 to-pink-500
                  hover:opacity-90 transition-opacity disabled:opacity-50"
+          style="font-family:'Fredoka',sans-serif;letter-spacing:0.15em"
         >
           {{ busy ? '...' : (modo === 'login' ? 'ACCEDI' : 'CREA ACCOUNT') }}
         </button>

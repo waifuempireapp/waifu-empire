@@ -23,13 +23,7 @@ watch(
 <template>
   <!-- Schermata di caricamento durante l'inizializzazione di Firebase Auth -->
   <div class="min-h-screen flex flex-col items-center justify-center gap-5">
-    <div class="glow-pulse text-5xl text-amber-400 font-cinzel">♛</div>
-    <div
-      class="font-cinzel tracking-widest text-2xl bg-gradient-to-br from-amber-400 via-pink-500 to-purple-500
-             bg-clip-text text-transparent"
-    >
-      IMPERO DELLE WAIFU
-    </div>
+    <img src="~/assets/images/Waifu_Empire_Logo_NO_BG.png" alt="Impero delle Waifu" class="w-96 h-auto" />
     <div class="text-xs opacity-60 tracking-widest">caricamento...</div>
   </div>
 </template>
