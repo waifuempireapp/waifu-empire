@@ -23,7 +23,7 @@ watch(
 <template>
   <!-- Schermata di caricamento durante l'inizializzazione di Firebase Auth -->
   <div class="min-h-screen flex flex-col items-center justify-center gap-5">
-    <img src="~/assets/images/Logo.png" alt="Impero delle Waifu" class="w-96 h-auto" style="mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, black 68%, transparent 92%); -webkit-mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, black 68%, transparent 92%);" />
+    <img src="~/assets/images/Maps_Waifu_PNG_Logo.png" alt="Impero delle Waifu" style="width: min(80vw, 340px); height: auto;" />
     <div class="text-xs opacity-60 tracking-widest">caricamento...</div>
   </div>
 </template>

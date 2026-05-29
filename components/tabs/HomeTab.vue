@@ -371,40 +371,36 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
           background:    `linear-gradient(145deg, rgba(255,133,182,0.18), rgba(20,10,40,0.95))`,
           border:        `1px solid ${C.sakura}35`,
           borderRadius:  '20px',
-          padding:       '20px 16px 18px',
+          padding:       '22px 16px 20px',
           cursor:        'pointer',
           transition:    'all 0.2s',
-          minHeight:     '160px',
+          minHeight:     '170px',
           display:       'flex',
           flexDirection: 'column',
-          justifyContent:'space-between',
+          alignItems:    'center',
+          justifyContent:'center',
+          gap:           '10px',
           boxShadow:     `0 4px 20px ${C.sakura}18`,
+          textAlign:     'center',
         }"
         @click="emit('apriPesca')"
       >
-        <!-- Icona grande -->
-        <div :style="{
-          width: '52px', height: '52px',
-          borderRadius: '14px',
-          background: `${C.sakura}20`,
-          border: `1px solid ${C.sakura}40`,
-          display: 'grid', placeItems: 'center',
-          fontSize: '28px',
-          marginBottom: '12px',
-          filter: `drop-shadow(0 0 8px ${C.sakura}66)`,
-        }">🎣</div>
+        <!-- Icona grande senza box -->
+        <div :style="{ fontSize: '52px', lineHeight: 1, filter: `drop-shadow(0 0 12px ${C.sakura}88)` }">🎣</div>
+
+        <!-- Titolo + stato inline -->
         <div>
           <div :style="{
-            fontFamily: FF.display, fontSize: '15px', fontWeight: 700,
+            fontFamily: FF.display, fontSize: '16px', fontWeight: 700,
             color: '#fff', lineHeight: 1.2, marginBottom: '6px',
-          }">Pesca<br/>Misteriosa</div>
+          }">Pesca Misteriosa</div>
           <div :style="{
-            fontFamily: FF.label, fontSize: '9px',
-            color: `${C.sakura}99`, letterSpacing: '0.12em',
+            fontFamily: FF.label, fontSize: '11px',
+            color: C.sakura, letterSpacing: '0.10em',
             textTransform: 'uppercase',
-            display: 'flex', alignItems: 'center', gap: '4px',
+            display: 'inline-flex', alignItems: 'center', gap: '5px',
           }">
-            <span :style="{ width:'6px', height:'6px', borderRadius:'50%', background: C.sakura, display:'inline-block', boxShadow:`0 0 6px ${C.sakura}` }" />
+            <span :style="{ width:'7px', height:'7px', borderRadius:'50%', background: C.sakura, display:'inline-block', boxShadow:`0 0 6px ${C.sakura}` }" />
             Disponibile
           </div>
         </div>
@@ -416,36 +412,32 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
           background:    `linear-gradient(145deg, rgba(167,139,250,0.18), rgba(20,10,40,0.95))`,
           border:        `1px solid ${C.violet}35`,
           borderRadius:  '20px',
-          padding:       '20px 16px 18px',
+          padding:       '22px 16px 20px',
           cursor:        'pointer',
           transition:    'all 0.2s',
-          minHeight:     '160px',
+          minHeight:     '170px',
           display:       'flex',
           flexDirection: 'column',
-          justifyContent:'space-between',
+          alignItems:    'center',
+          justifyContent:'center',
+          gap:           '10px',
           boxShadow:     `0 4px 20px ${C.violet}18`,
+          textAlign:     'center',
         }"
         @click="emit('setTab', 'community')"
       >
-        <!-- Icona grande -->
-        <div :style="{
-          width: '52px', height: '52px',
-          borderRadius: '14px',
-          background: `${C.violet}20`,
-          border: `1px solid ${C.violet}40`,
-          display: 'grid', placeItems: 'center',
-          fontSize: '28px',
-          marginBottom: '12px',
-          filter: `drop-shadow(0 0 8px ${C.violet}66)`,
-        }">🩷</div>
+        <!-- Icona grande senza box -->
+        <div :style="{ fontSize: '52px', lineHeight: 1, filter: `drop-shadow(0 0 12px ${C.violet}88)` }">🩷</div>
+
+        <!-- Titolo + voti inline -->
         <div>
           <div :style="{
-            fontFamily: FF.display, fontSize: '15px', fontWeight: 700,
+            fontFamily: FF.display, fontSize: '16px', fontWeight: 700,
             color: '#fff', lineHeight: 1.2, marginBottom: '6px',
-          }">Swipe<br/>Waifu</div>
+          }">Swipe Waifu</div>
           <div :style="{
-            fontFamily: FF.label, fontSize: '9px',
-            color: `${C.violet}99`, letterSpacing: '0.12em',
+            fontFamily: FF.label, fontSize: '11px',
+            color: C.violet, letterSpacing: '0.10em',
             textTransform: 'uppercase',
           }">{{ totalVoti > 0 ? `${totalVoti} voti totali` : 'Vota ora' }}</div>
         </div>
