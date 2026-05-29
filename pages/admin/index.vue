@@ -58,7 +58,7 @@ const TABS_ADMIN = [
 <template>
   <!-- Caricamento -->
   <div v-if="authorized === null" class="min-h-screen flex items-center justify-center">
-    <img src="~/assets/images/Maps_Waifu_PNG_Logo.png" alt="Impero delle Waifu" class="w-16 h-auto" />
+    <img src="~/assets/images/Logo.png" alt="Impero delle Waifu" class="w-16 h-auto" />
   </div>
 
   <!-- Accesso negato -->

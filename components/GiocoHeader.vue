@@ -101,7 +101,7 @@ const pendingFriendRequests = computed(() => {
       z-index: 50;
     ">
       <img
-        src="~/assets/images/Maps_Waifu_PNG_Logo.png"
+        src="~/assets/images/Logo.png"
         alt="Impero delle Waifu"
         style="height: 110px; width: auto; display: block;"
       />

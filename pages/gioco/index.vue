@@ -468,7 +468,7 @@ function handleSetTab(t: string) {
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         border-top: 1px solid rgba(245,197,96,0.15);
-        height: 70px;
+        height: 95px;
       "
     >
       <button
@@ -496,7 +496,7 @@ function handleSetTab(t: string) {
           class="leading-none"
           style="transition: transform 0.2s ease, filter 0.2s ease;"
           :style="{
-            fontSize: '22px',
+            fontSize: '28px',
             transform: tab === t.id ? 'scale(1.2)' : 'scale(1)',
             filter: tab === t.id ? 'drop-shadow(0 0 6px rgba(245,197,96,0.7))' : 'none',
             color: tab === t.id ? '#f5c560' : 'rgba(255,255,255,0.75)',
@@ -506,7 +506,7 @@ function handleSetTab(t: string) {
         <!-- Label: 9px, tracking, Saira Condensed, oro se attiva -->
         <span
           style="
-            font-size: 9px;
+            font-size: 12px;
             letter-spacing: 0.12em;
             font-family: var(--ff-label, 'Saira Condensed', sans-serif);
             text-transform: uppercase;
