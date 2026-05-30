@@ -231,30 +231,44 @@ onUnmounted(() => {
            background:rgba(6,3,15,0.98);backdrop-filter:blur(20px);
            overflow-y:auto;display:flex;flex-direction:column"
   >
-    <!-- Header sticky con pulsante INDIETRO e contatore Kisses -->
-    <div
-      style="position:sticky;top:0;z-index:10;
-             background:rgba(6,3,15,0.97);backdrop-filter:blur(20px);
-             border-bottom:1px solid rgba(255,77,158,0.12);
-             padding:12px 18px;display:flex;align-items:center;justify-content:space-between"
-    >
-      <div style="display:flex;align-items:center;gap:12px">
+    <!-- Header sticky — stile screenshot Waifu Drop -->
+    <div style="
+      position:sticky; top:0; z-index:100;
+      background:rgba(6,3,15,0.97); backdrop-filter:blur(20px);
+      border-bottom:1px solid rgba(255,255,255,0.05);
+      padding:14px 18px;
+      display:flex; align-items:center; justify-content:space-between;
+    ">
+      <!-- Sinistra: back + titolo -->
+      <div style="display:flex;align-items:center;gap:14px;">
         <button
-          style="background:none;border:1px solid rgba(255,77,158,0.3);border-radius:7px;
-                 color:#ff4d9e;font-family:'Orbitron',sans-serif;font-size:9px;
-                 padding:6px 12px;cursor:pointer"
+          style="background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;"
           @click="$emit('indietro')"
-        >← INDIETRO</button>
-        <div style="font-family:'Orbitron',sans-serif;font-size:14px;font-weight:900;color:#ff4d9e;letter-spacing:3px">
-          🎣 WAIFU DROP
+        >
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <path d="M14 5L8 11L14 17" stroke="rgba(255,255,255,0.65)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <!-- Icona cuffie + titolo -->
+        <div style="display:flex;align-items:center;gap:8px;">
+          <!--<svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M3 18v-6a9 9 0 0 1 18 0v6" stroke="#6cf0e0" stroke-width="2" stroke-linecap="round"/> 
+            <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" stroke="#6cf0e0" stroke-width="2"/>
+          </svg> -->
+          <div>
+            <span style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:#fff;letter-spacing:0.02em;">WAIFU </span>
+            <span style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:rgb(255, 77, 158);letter-spacing:0.02em;">DROP</span>
+          </div>
         </div>
       </div>
-      <!-- Saldo Kisses in tempo reale -->
-      <div style="display:flex;align-items:center;gap:4px">
-        <KissesIcon :size="16" />
-        <span style="font-family:'Orbitron',sans-serif;font-size:14px;font-weight:800;color:#ff4d9e">
-          {{ kissesAttuali }}
-        </span>
+
+      <!-- Destra: GEMME counter -->
+      <div style="display:flex;align-items:center;gap:7px;background:rgba(255,80,160,0.1);border:1px solid rgba(255,80,160,0.3);border-radius:999px;padding:6px 14px;">
+        <span style="font-size:16px;line-height:1">💎</span>
+        <div>
+          <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:7px;color:rgba(255,80,160,0.6);letter-spacing:0.2em;text-transform:uppercase;line-height:1;font-weight:700;">GEMME</div>
+          <div style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:14px;font-weight:800;color:#ff4d9e;line-height:1.2;">{{ kissesAttuali }}</div>
+        </div>
       </div>
     </div>
 
@@ -291,145 +305,167 @@ onUnmounted(() => {
         :on-complete="onRivelazioneFine"
       />
 
-      <!-- Modale selezione alla cieca — full-viewport -->
+      <!-- Pesca alla cieca — pagina full-screen, no scroll -->
       <div
         v-if="selectedPack"
-        style="position:fixed;inset:0;z-index:400;
-               background:rgba(6,3,15,0.97);backdrop-filter:blur(20px);
-               display:flex;flex-direction:column;
-               padding-top:max(16px,env(safe-area-inset-top));
-               padding-bottom:max(20px,env(safe-area-inset-bottom));
-               padding-inline:16px"
+        style="
+          position:fixed; inset:0; z-index:400;
+          background:linear-gradient(160deg, #08041a 0%, #0d0520 50%, #07051a 100%);
+          display:flex; flex-direction:column; overflow:hidden;
+          padding-top:max(20px,env(safe-area-inset-top));
+          padding-bottom:max(20px,env(safe-area-inset-bottom));
+        "
       >
-        <!-- Intestazione selezione cieca -->
-        <div style="text-align:center;flex-shrink:0;padding-bottom:12px">
-          <div style="font-family:'Orbitron',sans-serif;font-size:12px;letter-spacing:3px;color:#ff4d9e;margin-bottom:4px">
-            PESCA ALLA CIECA
-          </div>
-          <div style="font-size:11px;color:rgba(238,232,220,0.45);font-family:'Fredoka',sans-serif">
-            Di {{ selectedPack.ownerName }} — Scegli una carta senza sapere cosa c'è dentro
-          </div>
+        <!-- Header -->
+        <div style="flex-shrink:0; text-align:center; padding:0 20px 10px;">
+          <div style="
+            font-family:var(--ff-label,'Saira Condensed',sans-serif);
+            font-size:11px; letter-spacing:0.32em; color:rgba(255,77,158,0.7);
+            text-transform:uppercase; font-weight:700; margin-bottom:4px;
+          ">PESCA ALLA CIECA</div>
+          <div style="
+            font-family:var(--ff-body,'DM Sans',sans-serif);
+            font-size:13px; color:rgba(255,255,255,0.5);
+          ">{{ selectedPack.ownerName }} · scegli senza sapere cosa c'è dentro</div>
         </div>
 
-        <!-- Griglia carte coperte 3+2 -->
-        <div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:0">
-          <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
-            <!-- Riga 1: 3 carte -->
-            <div style="display:flex;gap:10px">
+        <!-- Area carte: flex:1, no scroll, layout quadrifoglio -->
+        <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:0; padding:0 16px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; width:100%; max-width:360px;">
+
+            <!-- 5 carte: le prime 4 nel grid 2x2, la quinta si sovrappone al centro -->
+            <div style="position:relative; grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:auto auto; gap:12px;">
+
+              <!-- Carte 0-3 in griglia 2×2 -->
               <div
-                v-for="uiIdx in [0,1,2]"
+                v-for="uiIdx in [0,1,2,3]"
                 :key="uiIdx"
                 :style="{
-                  width:'72px', height:'100px', borderRadius:'8px', flexShrink:0,
-                  background:'linear-gradient(145deg,#120825,#0d0618)',
-                  border:`2px solid ${selectedCardIndex === uiIdx ? '#ff4d9e' : 'rgba(245,166,35,0.35)'}`,
+                  position:'relative',
+                  aspectRatio:'2/3',
+                  borderRadius:'16px',
+                  background: selectedCardIndex === uiIdx
+                    ? 'linear-gradient(145deg,#2a0a55,#1a0535)'
+                    : 'linear-gradient(145deg,#160830,#0d0520)',
+                  border: `2px solid ${selectedCardIndex === uiIdx ? '#ff4d9e' : 'rgba(245,166,35,0.30)'}`,
                   cursor:'pointer',
                   display:'flex', alignItems:'center', justifyContent:'center',
-                  flexDirection:'column', gap:'4px',
+                  flexDirection:'column', gap:'8px',
                   boxShadow: selectedCardIndex === uiIdx
-                    ? '0 0 20px rgba(255,77,158,0.6),0 0 8px rgba(255,77,158,0.3)'
-                    : '0 2px 12px rgba(0,0,0,0.5)',
-                  transform: selectedCardIndex === uiIdx ? 'scale(1.1) translateY(-6px)' : 'scale(1)',
-                  transition:'all 0.2s cubic-bezier(.4,0,.2,1)',
-                  position:'relative', overflow:'hidden', userSelect:'none',
+                    ? '0 0 30px rgba(255,77,158,0.55), 0 0 0 1px rgba(255,77,158,0.2) inset'
+                    : '0 4px 20px rgba(0,0,0,0.6)',
+                  transform: selectedCardIndex === uiIdx ? 'scale(1.05)' : 'scale(1)',
+                  transition:'all 0.25s cubic-bezier(.4,0,.2,1)',
+                  overflow:'hidden', userSelect:'none',
                 }"
                 @click="selectedCardIndex = (selectedCardIndex === uiIdx ? null : uiIdx)"
               >
+                <!-- Pattern di sfondo -->
+                <div style='position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(245,166,35,0.025) 8px,rgba(245,166,35,0.025) 9px);pointer-events:none;' />
+                <!-- Bordo interno -->
                 <div :style="{
-                  position:'absolute', inset:'4px',
-                  border:`1px solid ${selectedCardIndex === uiIdx ? 'rgba(255,77,158,0.4)' : 'rgba(245,166,35,0.15)'}`,
-                  borderRadius:'5px', transition:'border-color 0.2s'
+                  position:'absolute', inset:'6px', borderRadius:'11px',
+                  border: `1px solid ${selectedCardIndex === uiIdx ? 'rgba(255,77,158,0.35)' : 'rgba(245,166,35,0.12)'}`,
+                  transition:'border-color 0.2s', pointerEvents:'none',
                 }" />
-                <div style="position:absolute;inset:0;
-                            background-image:repeating-linear-gradient(45deg,transparent,transparent 6px,rgba(245,166,35,0.03) 6px,rgba(245,166,35,0.03) 7px)" />
-                <span :style="{
-                  fontSize:'26px',
-                  color: selectedCardIndex === uiIdx ? '#ff4d9e' : 'rgba(245,166,35,0.55)',
-                  filter: selectedCardIndex === uiIdx ? 'drop-shadow(0 0 10px rgba(255,77,158,0.9))' : 'none',
-                  transition:'all 0.2s', zIndex:1
-                }">♛</span>
-                <div
-                  v-if="selectedCardIndex === uiIdx"
-                  style="font-size:7px;font-family:'Orbitron',sans-serif;letter-spacing:1px;color:#ff4d9e;z-index:1"
-                >SCELTA</div>
+                <!-- Logo -->
+                <img
+                  src="~/assets/images/Logo.png" alt=""
+                  :style="{
+                    width:'55%', height:'auto', objectFit:'contain',
+                    opacity: selectedCardIndex === uiIdx ? 1 : 0.75,
+                    filter: selectedCardIndex === uiIdx ? 'drop-shadow(0 0 14px rgba(255,77,158,0.8))' : 'none',
+                    transition:'all 0.2s', position:'relative', zIndex:1,
+                  }"
+                />
+                <!-- Label SCELTA -->
+                <div v-if="selectedCardIndex === uiIdx" style="
+                  font-size:9px; font-family:var(--ff-label,'Saira Condensed',sans-serif);
+                  letter-spacing:2px; color:#ff4d9e; font-weight:800; position:relative; zIndex:1;
+                ">SCELTA</div>
               </div>
-            </div>
 
-            <!-- Riga 2: 2 carte centrate -->
-            <div style="display:flex;gap:10px">
-              <div
-                v-for="uiIdx in [3,4]"
-                :key="uiIdx"
-                :style="{
-                  width:'72px', height:'100px', borderRadius:'8px', flexShrink:0,
-                  background:'linear-gradient(145deg,#120825,#0d0618)',
-                  border:`2px solid ${selectedCardIndex === uiIdx ? '#ff4d9e' : 'rgba(245,166,35,0.35)'}`,
-                  cursor:'pointer',
-                  display:'flex', alignItems:'center', justifyContent:'center',
-                  flexDirection:'column', gap:'4px',
-                  boxShadow: selectedCardIndex === uiIdx
-                    ? '0 0 20px rgba(255,77,158,0.6),0 0 8px rgba(255,77,158,0.3)'
-                    : '0 2px 12px rgba(0,0,0,0.5)',
-                  transform: selectedCardIndex === uiIdx ? 'scale(1.1) translateY(-6px)' : 'scale(1)',
-                  transition:'all 0.2s cubic-bezier(.4,0,.2,1)',
-                  position:'relative', overflow:'hidden', userSelect:'none',
-                }"
-                @click="selectedCardIndex = (selectedCardIndex === uiIdx ? null : uiIdx)"
-              >
-                <div :style="{
-                  position:'absolute', inset:'4px',
-                  border:`1px solid ${selectedCardIndex === uiIdx ? 'rgba(255,77,158,0.4)' : 'rgba(245,166,35,0.15)'}`,
-                  borderRadius:'5px', transition:'border-color 0.2s'
-                }" />
-                <div style="position:absolute;inset:0;
-                            background-image:repeating-linear-gradient(45deg,transparent,transparent 6px,rgba(245,166,35,0.03) 6px,rgba(245,166,35,0.03) 7px)" />
-                <span :style="{
-                  fontSize:'26px',
-                  color: selectedCardIndex === uiIdx ? '#ff4d9e' : 'rgba(245,166,35,0.55)',
-                  filter: selectedCardIndex === uiIdx ? 'drop-shadow(0 0 10px rgba(255,77,158,0.9))' : 'none',
-                  transition:'all 0.2s', zIndex:1
-                }">♛</span>
+              <!-- Carta 4: centrata, sovrapposta al centro della griglia -->
+              <div style="grid-column:1/-1; display:flex; justify-content:center; margin-top:-8px;">
                 <div
-                  v-if="selectedCardIndex === uiIdx"
-                  style="font-size:7px;font-family:'Orbitron',sans-serif;letter-spacing:1px;color:#ff4d9e;z-index:1"
-                >SCELTA</div>
+                  :style="{
+                    width:'calc(50% - 6px)',
+                    aspectRatio:'2/3',
+                    borderRadius:'16px',
+                    background: selectedCardIndex === 4
+                      ? 'linear-gradient(145deg,#2a0a55,#1a0535)'
+                      : 'linear-gradient(145deg,#160830,#0d0520)',
+                    border: `2px solid ${selectedCardIndex === 4 ? '#ff4d9e' : 'rgba(245,166,35,0.30)'}`,
+                    cursor:'pointer',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    flexDirection:'column', gap:'8px',
+                    boxShadow: selectedCardIndex === 4
+                      ? '0 0 30px rgba(255,77,158,0.55), 0 0 0 1px rgba(255,77,158,0.2) inset'
+                      : '0 4px 20px rgba(0,0,0,0.6)',
+                    transform: selectedCardIndex === 4 ? 'scale(1.05)' : 'scale(1)',
+                    transition:'all 0.25s cubic-bezier(.4,0,.2,1)',
+                    overflow:'hidden', userSelect:'none', position:'relative',
+                  }"
+                  @click="selectedCardIndex = (selectedCardIndex === 4 ? null : 4)"
+                >
+                  <div style='position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(245,166,35,0.025) 8px,rgba(245,166,35,0.025) 9px);pointer-events:none;' />
+                  <div :style="{
+                    position:'absolute', inset:'6px', borderRadius:'11px',
+                    border: `1px solid ${selectedCardIndex === 4 ? 'rgba(255,77,158,0.35)' : 'rgba(245,166,35,0.12)'}`,
+                    transition:'border-color 0.2s', pointerEvents:'none',
+                  }" />
+                  <img
+                    src="~/assets/images/Logo.png" alt=""
+                    :style="{
+                      width:'55%', height:'auto', objectFit:'contain',
+                      opacity: selectedCardIndex === 4 ? 1 : 0.75,
+                      filter: selectedCardIndex === 4 ? 'drop-shadow(0 0 14px rgba(255,77,158,0.8))' : 'none',
+                      transition:'all 0.2s', position:'relative', zIndex:1,
+                    }"
+                  />
+                  <div v-if="selectedCardIndex === 4" style="
+                    font-size:9px; font-family:var(--ff-label,'Saira Condensed',sans-serif);
+                    letter-spacing:2px; color:#ff4d9e; font-weight:800; position:relative; zIndex:1;
+                  ">SCELTA</div>
+                </div>
               </div>
+
             </div>
           </div>
         </div>
 
-        <!-- Footer fisso: conferma / annulla -->
-        <div style="flex-shrink:0;padding-top:12px">
-          <div
-            v-if="selectedCardIndex !== null"
-            style="font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:2px;
-                   color:#ff4d9e;opacity:0.8;text-align:center;margin-bottom:10px"
-          >
-            Carta {{ selectedCardIndex + 1 }} selezionata
-          </div>
-          <div style="display:flex;gap:10px;justify-content:center">
+        <!-- Footer: conferma + annulla, no scroll -->
+        <div style="flex-shrink:0; padding:10px 20px 0;">
+          <div v-if="selectedCardIndex !== null" style="
+            font-family:var(--ff-label,'Saira Condensed',sans-serif);
+            font-size:11px; letter-spacing:0.2em; color:#ff4d9e;
+            text-align:center; margin-bottom:10px; font-weight:700;
+          ">Carta {{ selectedCardIndex + 1 }} selezionata</div>
+          <div style="display:flex; gap:10px; justify-content:center;">
             <button
-              style="background:none;border:1px solid rgba(255,255,255,0.15);border-radius:8px;
-                     color:rgba(238,232,220,0.45);font-family:'Orbitron',sans-serif;
-                     font-size:9px;padding:12px 18px;cursor:pointer"
+              style="
+                background:none; border:1px solid rgba(255,255,255,0.15); border-radius:999px;
+                color:rgba(238,232,220,0.45); font-family:var(--ff-label,'Saira Condensed',sans-serif);
+                font-size:11px; padding:13px 28px; cursor:pointer; letter-spacing:0.12em;
+              "
               @click="selectedPack = null; selectedCardIndex = null; shuffledOrder = []"
             >ANNULLA</button>
             <button
               :disabled="selectedCardIndex === null || busy"
               :style="{
-                background:   selectedCardIndex !== null ? 'rgba(255,77,158,0.15)' : 'rgba(255,255,255,0.03)',
-                border:       `1px solid ${selectedCardIndex !== null ? 'rgba(255,77,158,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                borderRadius: '24px',
-                color:        selectedCardIndex !== null ? '#ff4d9e' : 'rgba(255,255,255,0.2)',
-                fontFamily:   'Orbitron,sans-serif', fontSize:'11px', letterSpacing:'1px',
-                padding:      '13px 22px',
-                cursor:       (selectedCardIndex !== null && !busy) ? 'pointer' : 'not-allowed',
-                display:      'flex', alignItems:'center', gap:'6px', transition:'all 0.2s',
+                background: selectedCardIndex !== null ? 'linear-gradient(135deg,rgba(255,77,158,0.25),rgba(255,77,158,0.12))' : 'rgba(255,255,255,0.03)',
+                border: `2px solid ${selectedCardIndex !== null ? 'rgba(255,77,158,0.6)' : 'rgba(255,255,255,0.08)'}`,
+                borderRadius:'999px', padding:'13px 28px',
+                color: selectedCardIndex !== null ? '#ff4d9e' : 'rgba(255,255,255,0.2)',
+                fontFamily:'var(--ff-label,\'Saira Condensed\',sans-serif)', fontSize:'13px', fontWeight:700,
+                letterSpacing:'0.14em', cursor: selectedCardIndex !== null && !busy ? 'pointer' : 'not-allowed',
+                display:'flex', alignItems:'center', gap:'8px', transition:'all 0.2s',
+                boxShadow: selectedCardIndex !== null ? '0 0 20px rgba(255,77,158,0.3)' : 'none',
               }"
               @click="confermaScelta"
             >
-              <KissesIcon :size="14" />
-              {{ busy ? 'PESCA IN CORSO…' : `PESCA (${KISSES_COST} Kisses)` }}
+              <KissesIcon :size="16" />
+              {{ busy ? 'PESCA IN CORSO…' : `PESCA (${KISSES_COST})` }}
             </button>
           </div>
         </div>
@@ -451,16 +487,35 @@ onUnmounted(() => {
       >{{ error }}</div>
 
       <!-- Lista pack del feed -->
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <PescaPackCard
-          v-for="pack in packs"
+      <div style="display:flex;flex-direction:column;gap:28px;padding-top:20px;overflow:visible;">
+        <div
+          v-for="(pack, idx) in packs"
           :key="pack.id"
-          :pack="pack"
-          :kisses-cost="KISSES_COST"
-          :user-kisses="kissesAttuali"
-          :collezione="collezione"
-          :on-pesca="onClickPesca"
-        />
+          style="position:relative;"
+        >
+          <!-- Badge NUOVA/HOT: fuori dalla card, z-index altissimo -->
+          <div
+            v-if="(pack.createdAt && (Date.now() - new Date(pack.createdAt).getTime() < 3*60*60*1000) || pack.hasHot) && !pack.alreadyFished"
+            style="position:absolute;top:-16px;right:16px;z-index:10;display:flex;gap:6px;pointer-events:none;"
+          >
+            <div
+              v-if="pack.createdAt && Date.now() - new Date(pack.createdAt).getTime() < 3*60*60*1000"
+              style="background:linear-gradient(135deg,#00c853,#00e676);border:2px solid rgba(255,255,255,0.3);border-radius:999px;padding:5px 16px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;color:#000;font-weight:900;letter-spacing:0.12em;box-shadow:0 4px 16px rgba(0,230,118,0.5);"
+            >NUOVA</div>
+            <div
+              v-if="pack.hasHot"
+              style="background:linear-gradient(135deg,#ff6500,#ff9000);border:2px solid rgba(255,255,255,0.3);border-radius:999px;padding:5px 16px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;color:#fff;font-weight:900;letter-spacing:0.1em;box-shadow:0 4px 16px rgba(255,100,0,0.5);"
+            >HOT 🔥</div>
+          </div>
+
+          <PescaPackCard
+            :pack="pack"
+            :kisses-cost="KISSES_COST"
+            :user-kisses="kissesAttuali"
+            :collezione="collezione"
+            :on-pesca="onClickPesca"
+          />
+        </div>
       </div>
 
     </div>
