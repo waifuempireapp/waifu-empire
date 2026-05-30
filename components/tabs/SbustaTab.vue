@@ -662,7 +662,17 @@ function onPackLeave(id: string) {
             :key="d.id"
             class="pack-card-3d"
             :class="{ 'pack-card-3d--selected': d.id === dropSelId }"
-            @click="dropSelId = d.id"
+            @click="() => {
+              if (dropSelId === d.id) {
+                // Già selezionata: apri direttamente il pacchetto migliore disponibile
+                if (nOmag > 0) popupApertura = { tipoPacchetto: 'omaggio' }
+                else if (nBenv > 0) popupApertura = { tipoPacchetto: 'benvenuto' }
+                else if (nSfid > 0) popupApertura = { tipoPacchetto: 'sfida' }
+                else sfidaConferma = true
+              } else {
+                dropSelId = d.id
+              }
+            }"
             @mousemove="(e) => onPackHover(e, d.id)"
             @mouseleave="onPackLeave(d.id)"
             :data-pack-id="d.id"
@@ -775,7 +785,7 @@ function onPackLeave(id: string) {
                 }">{{ d.waifuIds?.length || 0 }} waifu · Serie {{ d.stagione || 1 }}</div>
               </div>
 
-              <!-- Badge selezionato -->
+              <!-- Badge + CTA apertura sulla carta selezionata -->
               <div v-if="d.id === dropSelId" style="
                 position: absolute; top: 8px; right: 8px;
                 background: #f5c560; color: #07051a;
@@ -784,7 +794,21 @@ function onPackLeave(id: string) {
                 padding: 2px 6px; border-radius: 999px;
                 letter-spacing: 0.1em; text-transform: uppercase;
                 z-index: 20; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-              ">✓ SEL</div>
+              ">✓ ATTIVA</div>
+              <!-- Overlay "TAP PER APRIRE" sulla carta già selezionata -->
+              <div v-if="d.id === dropSelId" style="
+                position: absolute; bottom: 44px; left: 0; right: 0;
+                background: linear-gradient(0deg, rgba(245,197,96,0.22), transparent);
+                display: flex; align-items: center; justify-content: center;
+                padding: 6px 0; z-index: 15; pointer-events: none;
+              ">
+                <div style="
+                  font-family: var(--ff-label,'Saira Condensed',sans-serif);
+                  font-size: 8px; letter-spacing: 0.18em; color: #ffe9a8;
+                  text-transform: uppercase; font-weight: 700;
+                  animation: pulse 1.4s ease-in-out infinite;
+                ">▶ Tocca per aprire</div>
+              </div>
 
             </div><!-- fine pack-body -->
           </div><!-- fine pack card -->

@@ -21,6 +21,7 @@ import {
 } from '~/utils/gameLogic'
 import { STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT } from '~/utils/constants'
 import { getDb } from '~/utils/firebase'
+import { ikUrl } from '~/utils/imagekitUrl'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -312,7 +313,7 @@ function handleSetTab(t: string) {
             <div v-for="item in ultimeCarte" :key="item.id"
               style="width:80px; height:120px; border-radius:10px; flex-shrink:0; overflow:hidden; position:relative; background:linear-gradient(160deg,#1a0a35,#07051a); border:1px solid rgba(167,139,250,0.3);">
               <img v-if="item.w?.asset_statica || item.w?.asset_immersiva"
-                :src="`https://ik.imagekit.io/nresohzgs/tr:w-80,h-120,c-maintain_ratio/${item.w.asset_statica || item.w.asset_immersiva}`"
+                :src="ikUrl(item.w.asset_statica || item.w.asset_immersiva, 'thumbnail') ?? undefined"
                 :alt="item.w.nome"
                 style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
               <div v-else style="width:100%;height:100%;display:grid;place-items:center;font-size:24px;opacity:0.3;">♛
