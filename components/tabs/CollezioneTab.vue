@@ -782,9 +782,9 @@ onUnmounted(() => { if (tradeCountdownIv) clearInterval(tradeCountdownIv) })
 
         <!-- Carica altre waifu -->
         <div v-if="visibiliWaifu < waifuEntries.length" :style="{ textAlign: 'center', marginTop: '16px' }">
-          <UiBtnDecorato variant="secondary" size="sm" @click="visibiliWaifu += 12">
+          <BtnDecorato variant="secondary" size="sm" @click="visibiliWaifu += 12">
             Carica altre ({{ waifuEntries.length - visibiliWaifu }} rimanenti)
-          </UiBtnDecorato>
+          </BtnDecorato>
         </div>
       </div>
 
@@ -1029,9 +1029,9 @@ onUnmounted(() => { if (tradeCountdownIv) clearInterval(tradeCountdownIv) })
 
             <!-- Carica altre team -->
             <div v-if="teamVisibili < teamListaFiltrata.length" :style="{ textAlign: 'center', marginTop: '12px' }">
-              <UiBtnDecorato variant="secondary" size="sm" @click="teamVisibili += TEAM_PAGE_SIZE">
+              <BtnDecorato variant="secondary" size="sm" @click="teamVisibili += TEAM_PAGE_SIZE">
                 Carica altre ({{ teamListaFiltrata.length - teamVisibili }})
-              </UiBtnDecorato>
+              </BtnDecorato>
             </div>
 
             <!-- Footer sticky azioni team -->
@@ -1041,15 +1041,15 @@ onUnmounted(() => { if (tradeCountdownIv) clearInterval(tradeCountdownIv) })
               padding: '20px 0 8px', marginTop: '-40px',
               display: 'flex', gap: '10px', justifyContent: 'center', zIndex: 5,
             }">
-              <UiBtnDecorato
+              <BtnDecorato
                 variant="secondary" size="md"
                 @click="teamInEdit = null; teamNome = ''; teamWaifu = []"
-              >ANNULLA</UiBtnDecorato>
-              <UiBtnDecorato
+              >ANNULLA</BtnDecorato>
+              <BtnDecorato
                 variant="primary" size="md"
                 @click="salvaTeam"
                 :disabled="teamWaifu.length !== 5 || !teamNome.trim()"
-              >SALVA ({{ teamWaifu.length }}/5)</UiBtnDecorato>
+              >SALVA ({{ teamWaifu.length }}/5)</BtnDecorato>
             </div>
           </div>
         </UiPannelloOrnato>
@@ -1057,9 +1057,9 @@ onUnmounted(() => { if (tradeCountdownIv) clearInterval(tradeCountdownIv) })
         <!-- Lista team esistenti -->
         <template v-else>
           <div :style="{ textAlign: 'center', marginBottom: '14px' }">
-            <UiBtnDecorato variant="primary" @click="teamInEdit = 'new'; teamNome = ''; teamWaifu = []">
+            <BtnDecorato variant="primary" @click="teamInEdit = 'new'; teamNome = ''; teamWaifu = []">
               + Crea Team
-            </UiBtnDecorato>
+            </BtnDecorato>
           </div>
 
           <!-- Empty state team -->
@@ -1093,8 +1093,8 @@ onUnmounted(() => { if (tradeCountdownIv) clearInterval(tradeCountdownIv) })
                   fontWeight: 700, textShadow: `0 0 10px ${C.ok}66`,
                 }">{{ (team as any).nome }}</div>
                 <div :style="{ display: 'flex', gap: '4px' }">
-                  <UiBtnDecorato variant="secondary" size="sm" @click="iniziaEditTeam(id)">✏</UiBtnDecorato>
-                  <UiBtnDecorato variant="danger" size="sm" @click="eliminaTeam(id)">✕</UiBtnDecorato>
+                  <BtnDecorato variant="secondary" size="sm" @click="iniziaEditTeam(id)">✏</BtnDecorato>
+                  <BtnDecorato variant="danger" size="sm" @click="eliminaTeam(id)">✕</BtnDecorato>
                 </div>
               </div>
               <div :style="{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }">

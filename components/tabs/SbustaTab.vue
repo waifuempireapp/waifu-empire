@@ -345,6 +345,30 @@ onUnmounted(() => {
   if (countdownInterval) clearInterval(countdownInterval)
 })
 watch(() => (props.profilo as any)?.ultimaRicaricaPacchetti, aggiornaCountdown)
+
+// ── 3D tilt per le bustine nel carosello ─────────────────────
+const packTilts  = ref<Record<string, string>>({})
+const packSheens = ref<Record<string, string>>({})
+const hoveredPack = ref<string | null>(null)
+
+function onPackHover(e: MouseEvent, id: string) {
+  hoveredPack.value = id
+  const el = (e.currentTarget as HTMLElement).querySelector('.pack-body') as HTMLElement
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  const x = (e.clientX - rect.left) / rect.width   // 0-1
+  const y = (e.clientY - rect.top)  / rect.height  // 0-1
+  const rotY =  (x - 0.5) * 22
+  const rotX = -(y - 0.5) * 16
+  packTilts.value  = { ...packTilts.value,  [id]: `rotateX(${rotX}deg) rotateY(${rotY}deg) scale(1.04)` }
+  packSheens.value = { ...packSheens.value, [id]: `radial-gradient(circle at ${x*100}% ${y*100}%, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.06) 40%, transparent 70%)` }
+}
+
+function onPackLeave(id: string) {
+  hoveredPack.value = null
+  packTilts.value  = { ...packTilts.value,  [id]: 'rotateX(0deg) rotateY(0deg) scale(1)' }
+  packSheens.value = { ...packSheens.value, [id]: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 70%)' }
+}
 </script>
 
 <template>
@@ -532,17 +556,17 @@ watch(() => (props.profilo as any)?.ultimaRicaricaPacchetti, aggiornaCountdown)
       <!-- CTA dopo rivelazione completa -->
       <div v-if="indiceRivelato >= carteRivelate.length - 1" :style="{ textAlign: 'center', marginTop: '26px' }">
         <!-- Prossimo pacchetto (multi) -->
-        <UiBtnDecorato
+        <BtnDecorato
           v-if="stato === 'reveal_multi' && multiPackIndice < multiPackCarte.length - 1"
           variant="primary" size="lg"
           @click="prossimoPackMulti"
         >
           PROSSIMO PACCHETTO ({{ multiPackIndice + 2 }}/{{ multiPackCarte.length }}) →
-        </UiBtnDecorato>
+        </BtnDecorato>
         <!-- Fine rivelazione -->
-        <UiBtnDecorato v-else variant="primary" size="lg" @click="tornaIdle">
+        <BtnDecorato v-else variant="primary" size="lg" @click="tornaIdle">
           {{ stato === 'reveal_multi' ? `✅ FINE · ${multiPackCarte.length} PACCHETTI` : 'CONTINUA' }}
-        </UiBtnDecorato>
+        </BtnDecorato>
       </div>
     </div>
 
@@ -576,8 +600,8 @@ watch(() => (props.profilo as any)?.ultimaRicaricaPacchetti, aggiornaCountdown)
         textTransform: 'uppercase', fontWeight: 600,
       }">In riproduzione…</div>
       <div v-if="sbusVideoFinito" @click.stop :style="{ marginTop: '18px', display: 'flex', gap: '10px' }">
-        <UiBtnDecorato variant="secondary" size="md" @click="rivediVideoSbusto">↺ Rivedi</UiBtnDecorato>
-        <UiBtnDecorato variant="danger" size="md" @click="chiudiVideoSbusto">✕ Chiudi</UiBtnDecorato>
+        <BtnDecorato variant="secondary" size="md" @click="rivediVideoSbusto">↺ Rivedi</BtnDecorato>
+        <BtnDecorato variant="danger" size="md" @click="chiudiVideoSbusto">✕ Chiudi</BtnDecorato>
       </div>
     </div>
   </div>
@@ -601,24 +625,7 @@ watch(() => (props.profilo as any)?.ultimaRicaricaPacchetti, aggiornaCountdown)
 
     <div :style="{ position: 'relative', zIndex: 1 }">
 
-      <!-- Titolo sezione -->
-      <div :style="{ textAlign: 'center', marginBottom: '20px' }">
-        <div :style="{
-          fontFamily: FF.label, fontSize: '9px', color: C.gold,
-          letterSpacing: '0.4em', textTransform: 'uppercase', fontWeight: 700, marginBottom: '6px',
-        }">Apri una bustina</div>
-        <div :style="{
-          fontFamily: FF.display, fontSize: '26px', fontWeight: 800, color: '#fff',
-          letterSpacing: '-0.01em',
-        }">
-          <span :style="{ color: C.gold }">🎁</span>
-          <span class="shimmer-text"> Sbusta</span>
-        </div>
-        <div :style="{
-          fontFamily: FF.body, fontSize: '11px', color: 'rgba(241,235,255,0.5)',
-          marginTop: '4px',
-        }">Ogni pacchetto contiene 5 carte. Le rare brillano.</div>
-      </div>
+
 
       <!-- Nessun drop attivo -->
       <div v-if="dropsAttivi.length === 0" :style="{
@@ -629,94 +636,175 @@ watch(() => (props.profilo as any)?.ultimaRicaricaPacchetti, aggiornaCountdown)
         textTransform: 'uppercase', fontWeight: 700,
       }">Nessun drop attivo · tutte le carte disponibili</div>
 
-      <!-- Drop header (singolo drop) -->
-      <div v-if="dropsAttivi.length === 1 && dropAttivo" :style="{
-        background: `radial-gradient(120% 100% at 0% 0%, ${dropColore}22 0%, transparent 60%), linear-gradient(135deg, ${dropColore}14, ${dropColore2}0e)`,
-        border: `1px solid ${dropColore}55`,
-        borderRadius: '14px', padding: '12px 14px', marginBottom: '16px',
-        display: 'flex', alignItems: 'center', gap: '12px',
-        boxShadow: `0 0 18px ${dropColore}1a`,
-      }">
-        <img v-if="dropAttivo?.asset_bustina" :src="dropAttivo.asset_bustina" alt="" :style="{
-          width: '48px', height: '48px', borderRadius: '10px', objectFit: 'cover',
-          border: `1px solid ${dropColore}55`, boxShadow: `0 0 12px ${dropColore}33`,
-        }" />
-        <div v-else :style="{
-          width: '48px', height: '48px', borderRadius: '10px',
-          background: `linear-gradient(135deg, ${dropColore}40, ${dropColore2}30)`,
-          display: 'grid', placeItems: 'center', fontSize: '24px',
-          boxShadow: `0 0 12px ${dropColore}33`,
-        }">🌸</div>
-        <div :style="{ flex: 1, minWidth: 0 }">
-          <div :style="{
-            fontFamily: FF.label, fontSize: '9px', color: dropColore,
-            letterSpacing: '0.24em', marginBottom: '2px', textTransform: 'uppercase', fontWeight: 700,
-          }">Drop attivo</div>
-          <div :style="{ fontFamily: FF.display, fontSize: '14px', fontWeight: 700, color: '#fff' }">{{ dropAttivo?.nome }}</div>
-          <div v-if="dropAttivo?.descrizione" :style="{
-            fontSize: '10px', color: 'rgba(241,235,255,0.5)', marginTop: '2px',
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: FF.body,
-          }">{{ dropAttivo.descrizione }}</div>
-        </div>
-        <div :style="{ textAlign: 'right' }">
-          <div :style="{
-            fontFamily: FF.label, fontSize: '8px', color: 'rgba(241,235,255,0.5)',
-            letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 700,
-          }">Waifu</div>
-          <div :style="{
-            fontFamily: FF.mono, fontSize: '16px', color: dropColore, fontWeight: 700,
-            textShadow: `0 0 8px ${dropColore}66`,
-          }">{{ dropWaifu.length }}</div>
-        </div>
-      </div>
+      <!-- ◆ CAROSELLO 3D BUSTINE — selezione espansione ◆ -->
+      <div v-if="dropsAttivi.length > 0" style="margin-bottom: 20px; padding-top: 8px;">
+        <div style="
+          font-family: var(--ff-label,'Saira Condensed',sans-serif);
+          font-size: 9px; letter-spacing: 0.32em; color: rgba(245,197,96,0.6);
+          text-transform: uppercase; font-weight: 700;
+          text-align: center; margin-bottom: 16px;
+        ">◆ Scegli il Drop</div>
 
-      <!-- Selezione drop (multi drop) -->
-      <div v-if="dropsAttivi.length > 1" :style="{ marginBottom: '16px' }">
-        <div :style="{
-          fontFamily: FF.label, fontSize: '9px', color: 'rgba(241,235,255,0.5)',
-          letterSpacing: '0.28em', marginBottom: '10px', textAlign: 'center',
-          textTransform: 'uppercase', fontWeight: 700,
-        }">◆ Scegli il drop</div>
-        <div :style="{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '6px' }">
+        <!-- Carosello orizzontale con scroll-snap -->
+        <div
+          class="pack-carousel"
+          style="
+            display: flex; gap: 16px;
+            overflow-x: auto; padding: 16px 20px 24px;
+            scroll-snap-type: x mandatory;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+            justify-content: flex-start;
+          "
+        >
           <div
-            v-for="d in dropsAttivi" :key="d.id"
+            v-for="d in dropsAttivi"
+            :key="d.id"
+            class="pack-card-3d"
+            :class="{ 'pack-card-3d--selected': d.id === dropSelId }"
+            @click="dropSelId = d.id"
+            @mousemove="(e) => onPackHover(e, d.id)"
+            @mouseleave="onPackLeave(d.id)"
+            :data-pack-id="d.id"
+            style="
+              flex-shrink: 0;
+              scroll-snap-align: center;
+              perspective: 700px;
+              cursor: pointer;
+            "
+          >
+            <!-- Il corpo 3D della bustina -->
+            <div
+              class="pack-body"
+              :style="{
+                width: '150px',
+                height: '220px',
+                borderRadius: '14px',
+                position: 'relative',
+                transformStyle: 'preserve-3d',
+                transition: 'transform 0.15s ease-out, box-shadow 0.2s',
+                transform: packTilts[d.id] || 'rotateX(0deg) rotateY(0deg)',
+                boxShadow: d.id === dropSelId
+                  ? `0 20px 50px rgba(0,0,0,0.6), 0 0 0 2px ${d.colore || C.violet}, 0 0 30px ${d.colore || C.violet}55`
+                  : '0 12px 30px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06)',
+                background: `linear-gradient(155deg, ${d.colore || '#a78bfa'} 0%, ${d.colore2 || '#ff85b6'} 50%, #07051a 100%)`,
+                overflow: 'hidden',
+              }"
+            >
+              <!-- Texture pattern overlay -->
+              <div style="
+                position: absolute; inset: 0; pointer-events: none;
+                background-image: repeating-radial-gradient(circle at 50% 50%, transparent 0px, transparent 10px, rgba(0,0,0,0.04) 10px, rgba(0,0,0,0.04) 11px);
+                mix-blend-mode: overlay;
+              " />
+
+              <!-- Bordo metallico -->
+              <div style="
+                position: absolute; inset: 0; border-radius: inherit;
+                border: 1.5px solid rgba(255,255,255,0.18);
+                pointer-events: none; z-index: 10;
+              " />
+
+              <!-- Header fascia -->
+              <div style="
+                position: absolute; top: 0; left: 0; right: 0; height: 44px;
+                background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.25) 100%);
+                display: flex; flex-direction: column;
+                align-items: center; justify-content: center; gap: 1px;
+                border-bottom: 1px solid rgba(255,255,255,0.12); z-index: 5;
+              ">
+                <div style="font-family: var(--ff-display,'Unbounded',sans-serif); font-size: 8px; letter-spacing: 3px; color: #f5c560; font-weight: 700; text-shadow: 0 0 8px rgba(245,197,96,0.8);">WAIFU'S</div>
+                <div style="font-size: 6px; letter-spacing: 3px; color: rgba(255,255,255,0.5); text-transform: uppercase;">Empire · Card Game</div>
+              </div>
+
+              <!-- Immagine espansione / placeholder -->
+              <div style="
+                position: absolute; top: 44px; left: 0; right: 0; bottom: 44px;
+                display: flex; align-items: center; justify-content: center;
+                overflow: hidden;
+              ">
+                <img
+                  v-if="d.asset_bustina"
+                  :src="d.asset_bustina"
+                  :alt="d.nome"
+                  style="width: 100%; height: 100%; object-fit: cover; object-position: center;"
+                />
+                <div v-else style="
+                  font-size: 48px; opacity: 0.55;
+                  filter: drop-shadow(0 0 16px currentColor);
+                ">🌸</div>
+              </div>
+
+              <!-- Shimmer olografico -->
+              <div
+                class="pack-sheen"
+                :style="{
+                  position: 'absolute', inset: 0, borderRadius: 'inherit',
+                  background: packSheens[d.id] || 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.12) 0%, transparent 70%)',
+                  pointerEvents: 'none', zIndex: 8, transition: 'background 0.1s',
+                  mixBlendMode: 'screen',
+                }"
+              />
+
+              <!-- Rainbow holo overlay -->
+              <div :style="{
+                position: 'absolute', inset: 0, borderRadius: 'inherit',
+                opacity: d.id === dropSelId ? 0.55 : (hoveredPack === d.id ? 0.4 : 0),
+                background: 'linear-gradient(135deg, rgba(255,0,128,0.2) 0%, rgba(255,128,0,0.15) 20%, rgba(255,255,0,0.18) 40%, rgba(0,255,128,0.15) 60%, rgba(0,128,255,0.18) 80%, rgba(128,0,255,0.2) 100%)',
+                pointerEvents: 'none', zIndex: 7, mixBlendMode: 'screen',
+                transition: 'opacity 0.3s',
+              }" />
+
+              <!-- Footer fascia -->
+              <div style="
+                position: absolute; bottom: 0; left: 0; right: 0; height: 44px;
+                background: linear-gradient(0deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.2) 100%);
+                display: flex; flex-direction: column;
+                align-items: center; justify-content: center; gap: 1px;
+                border-top: 1px solid rgba(255,255,255,0.08); z-index: 5;
+              ">
+                <div :style="{
+                  fontFamily: FF.display, fontSize: '10px', fontWeight: 800,
+                  letterSpacing: '2px', color: '#fff', lineHeight: 1,
+                  textShadow: `0 0 16px ${d.colore || C.violet}cc`,
+                }">{{ (d.nome || 'DROP').toUpperCase() }}</div>
+                <div :style="{
+                  fontSize: '7px', letterSpacing: '2px',
+                  color: d.colore || C.violet, textTransform: 'uppercase', fontWeight: 700,
+                  opacity: 0.85,
+                }">{{ d.waifuIds?.length || 0 }} waifu · Serie {{ d.stagione || 1 }}</div>
+              </div>
+
+              <!-- Badge selezionato -->
+              <div v-if="d.id === dropSelId" style="
+                position: absolute; top: 8px; right: 8px;
+                background: #f5c560; color: #07051a;
+                font-family: var(--ff-label,'Saira Condensed',sans-serif);
+                font-size: 7px; font-weight: 800;
+                padding: 2px 6px; border-radius: 999px;
+                letter-spacing: 0.1em; text-transform: uppercase;
+                z-index: 20; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+              ">✓ SEL</div>
+
+            </div><!-- fine pack-body -->
+          </div><!-- fine pack card -->
+        </div><!-- fine carosello -->
+
+        <!-- Dot indicator -->
+        <div v-if="dropsAttivi.length > 1" style="display: flex; justify-content: center; gap: 6px; margin-top: 4px;">
+          <div
+            v-for="d in dropsAttivi"
+            :key="d.id"
             @click="dropSelId = d.id"
             :style="{
-              flexShrink: 0, cursor: 'pointer',
-              borderRadius: '14px', padding: '10px 12px', minWidth: '130px',
-              background: d.id === dropSelId
-                ? `linear-gradient(135deg, ${d.colore || C.violet}35, ${d.colore2 || C.sakura}20)`
-                : 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))',
-              border: d.id === dropSelId
-                ? `1.5px solid ${d.colore || C.violet}`
-                : `1px solid ${C.inkLine}`,
-              boxShadow: d.id === dropSelId ? `0 0 18px ${d.colore || C.violet}55` : 'none',
-              transition: 'all 0.2s',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+              width: d.id === dropSelId ? '18px' : '6px',
+              height: '6px',
+              borderRadius: '999px',
+              background: d.id === dropSelId ? (d.colore || C.violet) : 'rgba(255,255,255,0.2)',
+              transition: 'all 0.25s',
+              cursor: 'pointer',
             }"
-          >
-            <img v-if="d.asset_bustina" :src="d.asset_bustina" alt="" :style="{
-              width: '44px', height: '44px', borderRadius: '9px', objectFit: 'cover',
-              border: `1px solid ${d.colore || C.violet}55`,
-            }" />
-            <div v-else :style="{
-              width: '44px', height: '44px', borderRadius: '9px',
-              background: `linear-gradient(135deg, ${d.colore || C.violet}50, ${d.colore2 || C.sakura}30)`,
-              display: 'grid', placeItems: 'center', fontSize: '22px',
-            }">🌸</div>
-            <div :style="{
-              fontFamily: FF.display, fontSize: '11px', fontWeight: 700,
-              color: d.id === dropSelId ? '#fff' : 'rgba(241,235,255,0.65)',
-              textAlign: 'center', lineHeight: 1.2,
-            }">{{ d.nome }}</div>
-            <div :style="{ fontFamily: FF.mono, fontSize: '9px', color: d.colore || C.violet, fontWeight: 700 }">
-              {{ d.waifuIds?.length || 0 }} waifu
-            </div>
-            <div v-if="d.id === dropSelId" :style="{
-              width: '6px', height: '6px', borderRadius: '50%',
-              background: d.colore || C.violet, boxShadow: `0 0 8px ${d.colore || C.violet}`,
-            }" />
-          </div>
+          />
         </div>
       </div>
 

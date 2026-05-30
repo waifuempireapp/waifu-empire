@@ -254,7 +254,7 @@ function handleSetTab(t: string) {
 <template>
   <!-- Schermata di caricamento: logo centrato mentre si caricano i dati -->
   <div v-if="!caricato" class="min-h-screen flex items-center justify-center">
-    <img src="~/assets/images/Maps_Waifu_PNG_Logo.png" alt="Impero delle Waifu" style="width:70dvw; max-width:420px; height:auto;" />
+    <img src="~/assets/images/Logo.png" alt="Impero delle Waifu" style="width:70dvw; max-width:420px; height:auto;" />
   </div>
 
   <!-- Contenuto principale del gioco -->
@@ -289,7 +289,7 @@ function handleSetTab(t: string) {
     <LazyGiocoHeader :profilo="gameStore.profilo" :is-admin="isAdmin" @logout="authStore.logout()" />
 
     <!-- ── Area contenuto: padding-top 40px per clearare il logo che sborda (10px) + gap 30px ── -->
-    <div class="px-4 max-w-[1400px] mx-auto" style="padding-top: 75px;">
+    <div class="px-4 max-w-[1400px] mx-auto" style="padding-top: 60px;">
 
       <!-- ═══ TAB: HOME ════════════════════════════════════════════════ -->
       <LazyHomeTab v-if="tab === 'home'" :user="authStore.user" :profilo="gameStore.profilo"
@@ -324,26 +324,10 @@ function handleSetTab(t: string) {
           </div>
         </div>
 
-        <!-- Pill sub-navigazione interna a Pacchetti -->
-        <div class="flex gap-2 mb-4 pt-3 overflow-x-auto">
-          <button v-for="s in SUB_PACCHETTI" :key="s.id" class="sub-nav-pill"
-            :class="subTabPacchetti === s.id ? 'sub-nav-pill--active' : ''" style="min-height:44px"
-            @click="subTabPacchetti = s.id as 'sbusta' | 'pesca'; chiudiPesca()">
-            <span class="text-base leading-none">{{ s.icon }}</span>
-            <span>{{ s.label }}</span>
-          </button>
-        </div>
-
-        <!-- Sbusta: apertura pacchetti -->
-        <LazySbustaTab v-if="subTabPacchetti === 'sbusta'" :profilo="gameStore.profilo"
+        <!-- Sbusta: apertura pacchetti (Pesca separata nella Home) -->
+        <LazySbustaTab :profilo="gameStore.profilo"
           :collezione="gameStore.collezione as any" :waifu-cat="gameStore.catalogoWaifu" :mosse-cat="gameStore.catalogoMosse"
           :god-pack-prob="godPackProb" @notif="(t: string, c: string) => mostraNotif(t, c)"
-          @update-profilo="(p: unknown) => gameStore.setProfilo(p as never)"
-          @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)" />
-
-        <!-- Pesca: pesca carte dagli amici -->
-        <LazyPescaSection v-if="subTabPacchetti === 'pesca'" :profilo="gameStore.profilo"
-          :collezione="gameStore.collezione as any" :initial-packs="pescaPacksInitial" @indietro="subTabPacchetti = 'sbusta'"
           @update-profilo="(p: unknown) => gameStore.setProfilo(p as never)"
           @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)" />
       </div>
