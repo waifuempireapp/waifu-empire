@@ -513,6 +513,7 @@ onUnmounted(() => {
             :kisses-cost="KISSES_COST"
             :user-kisses="kissesAttuali"
             :collezione="collezione"
+            :has-hard-pass="profilo?.hardPass === true"
             :on-pesca="onClickPesca"
           />
         </div>
