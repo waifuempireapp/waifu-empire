@@ -77,8 +77,6 @@ function chiudiPesca() {
 onMounted(() => {
   window.addEventListener('impero:apri-negozio', () => gameStore.toggleNegozio(true))
   window.addEventListener('impero:apri-pesca', () => {
-    gameStore.setTab('pacchetti')
-    subTabPacchetti.value = 'pesca'
     pescaAperta.value = true
   })
 })
@@ -283,6 +281,27 @@ function handleSetTab(t: string) {
         @close="gameStore.toggleNegozio(false)" />
     </Suspense>
 
+    <!-- Pesca Misteriosa: overlay fullscreen (stessa pagina della vecchia app) -->
+    <Transition name="pesca-slide">
+      <div
+        v-if="pescaAperta"
+        style="
+          position: fixed; inset: 0; z-index: 150;
+          background: var(--ink-abyss, #07051a);
+          overflow-y: auto;
+        "
+      >
+        <LazyPescaSection
+          :profilo="gameStore.profilo"
+          :collezione="gameStore.collezione as any"
+          :initial-packs="pescaPacksInitial"
+          @indietro="chiudiPesca"
+          @update-profilo="(p: unknown) => gameStore.setProfilo(p as never)"
+          @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)"
+        />
+      </div>
+    </Transition>
+
     <!-- Petali sakura decorativi — fissi su tutta la schermata -->
     <SakuraPetals />
 
@@ -295,7 +314,7 @@ function handleSetTab(t: string) {
       <!-- ═══ TAB: HOME ════════════════════════════════════════════════ -->
       <LazyHomeTab v-if="tab === 'home'" :user="authStore.user" :profilo="gameStore.profilo"
         :collezione="gameStore.collezione as any" :waifu-cat="gameStore.catalogoWaifu" @set-tab="handleSetTab"
-        @apri-pesca="() => { gameStore.setTab('pacchetti'); subTabPacchetti = 'pesca'; pescaAperta = true }"
+        @apri-pesca="() => { pescaAperta = true }"
         @apri-negozio="gameStore.toggleNegozio(true)" />
 
       <!-- ═══ TAB: PACCHETTI ════════════════════════════════════════════
@@ -528,6 +547,10 @@ function handleSetTab(t: string) {
 </template>
 
 <style scoped>
+/* Pesca Misteriosa: slide-in da destra */
+.pesca-slide-enter-active, .pesca-slide-leave-active { transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); }
+.pesca-slide-enter-from, .pesca-slide-leave-to { transform: translateX(100%); }
+
 /* Animazione notifica flottante slide-down */
 .slide-down-enter-active, .slide-down-leave-active { transition: all 0.3s ease; }
 .slide-down-enter-from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
