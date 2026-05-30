@@ -513,7 +513,7 @@ function handleSetTab(t: string) {
             <button
               v-if="isAdmin"
               style="display:flex;align-items:center;gap:12px;padding:14px 0;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer;color:#b573ff;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:14px;letter-spacing:0.08em;"
-              @click="settingsAperte=false; $router.push('/admin')"
+              @click="settingsAperte=false; router.push('/admin')"
             >
               <span style="font-size:20px;">⚙️</span> Pannello Admin
             </button>
