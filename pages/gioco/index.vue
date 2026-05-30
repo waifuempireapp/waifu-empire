@@ -281,26 +281,16 @@ function handleSetTab(t: string) {
         @close="gameStore.toggleNegozio(false)" />
     </Suspense>
 
-    <!-- Pesca Misteriosa: overlay fullscreen (stessa pagina della vecchia app) -->
-    <Transition name="pesca-slide">
-      <div
-        v-if="pescaAperta"
-        style="
-          position: fixed; inset: 0; z-index: 150;
-          background: var(--ink-abyss, #07051a);
-          overflow-y: auto;
-        "
-      >
-        <LazyPescaSection
-          :profilo="gameStore.profilo"
-          :collezione="gameStore.collezione as any"
-          :initial-packs="pescaPacksInitial"
-          @indietro="chiudiPesca"
-          @update-profilo="(p: unknown) => gameStore.setProfilo(p as never)"
-          @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)"
-        />
-      </div>
-    </Transition>
+    <!-- Pesca Misteriosa: PescaSection gestisce il proprio overlay fixed -->
+    <LazyPescaSection
+      v-if="pescaAperta"
+      :profilo="gameStore.profilo"
+      :collezione="gameStore.collezione as any"
+      :initial-packs="pescaPacksInitial"
+      @indietro="chiudiPesca"
+      @update-profilo="(p: unknown) => gameStore.setProfilo(p as never)"
+      @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)"
+    />
 
     <!-- Petali sakura decorativi — fissi su tutta la schermata -->
     <SakuraPetals />
