@@ -157,11 +157,18 @@ async function _generaEAggiorna(tipoPacchetto: string, nuovaCollezione: any) {
   return carte
 }
 
-// Countdown timer rivelazione
-function avviaRivelazione(carte: any[]) {
-  carte.forEach((_: any, i: number) => {
-    setTimeout(() => { indiceRivelato.value = i }, 500 + i * 700)
-  })
+// Rivelazione: prima carta automatica dopo 400ms, poi attende tap utente
+function avviaRivelazione(_carte: any[]) {
+  setTimeout(() => { indiceRivelato.value = 0 }, 400)
+}
+
+// Avanza alla carta successiva (tap manuale)
+function avanzaCartaManuale() {
+  const next = indiceRivelato.value + 1
+  if (next < carteRivelate.value.length) {
+    indiceRivelato.value = next
+    revealTilt.value = { x: 0, y: 0 }
+  }
 }
 
 // Apri singolo pacchetto
@@ -346,6 +353,56 @@ onUnmounted(() => {
 })
 watch(() => (props.profilo as any)?.ultimaRicaricaPacchetti, aggiornaCountdown)
 
+// ── 3D tilt carta rivelata (reveal view) ─────────────────────
+const revealTilt        = ref({ x: 0, y: 0 })
+const revealDragging    = ref(false)
+const revealDragOrigin  = ref({ x: 0, y: 0, tx: 0, ty: 0 })
+
+const cartaCorrente = computed(() =>
+  indiceRivelato.value >= 0 ? carteRivelate.value[indiceRivelato.value] : null
+)
+const carteNelMazzo = computed(() =>
+  carteRivelate.value.slice(indiceRivelato.value + 1)
+)
+
+const RARITY_COLORS: Record<string, string> = {
+  comune: '#b4bcc8', raro: '#5aa9ff', epico: '#b573ff',
+  leggendario: '#ffc861', immersivo: '#ff7eb6',
+}
+function raritaGlow(carta: any): string {
+  return RARITY_COLORS[carta?.data?.rarita] || '#a78bfa'
+}
+
+function onRevealMouseMove(e: MouseEvent) {
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  const x = (e.clientX - rect.left) / rect.width
+  const y = (e.clientY - rect.top)  / rect.height
+  revealTilt.value = { x: -(y - 0.5) * 28, y: (x - 0.5) * 34 }
+}
+function onRevealMouseLeave() {
+  revealTilt.value = { x: 0, y: 0 }
+}
+function onRevealTouchStart(e: TouchEvent) {
+  revealDragging.value = true
+  revealDragOrigin.value = {
+    x: e.touches[0].clientX, y: e.touches[0].clientY,
+    tx: revealTilt.value.x,  ty: revealTilt.value.y,
+  }
+}
+function onRevealTouchMove(e: TouchEvent) {
+  if (!revealDragging.value) return
+  const dx = e.touches[0].clientX - revealDragOrigin.value.x
+  const dy = e.touches[0].clientY - revealDragOrigin.value.y
+  revealTilt.value = {
+    x: Math.max(-35, Math.min(35, revealDragOrigin.value.tx - dy * 0.35)),
+    y: Math.max(-35, Math.min(35, revealDragOrigin.value.ty + dx * 0.35)),
+  }
+}
+function onRevealTouchEnd() {
+  revealDragging.value = false
+  revealTilt.value = { x: 0, y: 0 }
+}
+
 // ── 3D tilt per le bustine nel carosello ─────────────────────
 const packTilts  = ref<Record<string, string>>({})
 const packSheens = ref<Record<string, string>>({})
@@ -404,173 +461,203 @@ function onPackLeave(id: string) {
   </div>
 
   <!-- ══════════════════════════════════════════════════════════
-    REVEAL VIEW — rivelazione carte
+    REVEAL VIEW — stack 3D interattivo carta per carta
   ══════════════════════════════════════════════════════════════ -->
-  <div v-else-if="stato === 'reveal' || stato === 'reveal_multi'" class="fade-in" :style="{ padding: '14px 0', position: 'relative' }">
-    <!-- Sakura petali -->
-    <div :style="{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }">
-      <span v-for="i in 8" :key="i" :style="{
-        position: 'absolute',
-        fontSize: `${14 + (i % 3) * 4}px`,
-        opacity: 0.18,
-        top: `${(i * 13) % 100}%`,
-        left: `${(i * 17) % 100}%`,
-        animation: `float ${3 + (i % 3)}s ease-in-out infinite`,
-        animationDelay: `${i * 0.4}s`,
-      }">🌸</span>
-    </div>
+  <div
+    v-else-if="stato === 'reveal' || stato === 'reveal_multi'"
+    style="position: relative; min-height: 100vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;"
+  >
+    <!-- Sfondo glow basato sulla rarità della carta corrente -->
+    <div :style="{
+      position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
+      background: `radial-gradient(ellipse 80% 60% at 50% 40%, ${raritaGlow(cartaCorrente)}22 0%, transparent 65%)`,
+      transition: 'background 0.6s ease',
+    }" />
 
-    <div :style="{ position: 'relative', zIndex: 1 }">
-      <!-- Header rivelazione -->
-      <div :style="{ textAlign: 'center', marginBottom: '18px' }">
-        <div :style="{
-          fontFamily: FF.label, fontSize: '10px', color: C.goldL,
-          letterSpacing: '0.42em', textTransform: 'uppercase', fontWeight: 700,
-        }">
-          ◆ Apertura Pacchetto
-          <template v-if="stato === 'reveal_multi'">
-            · {{ multiPackIndice + 1 }}/{{ multiPackCarte.length }}
-          </template>
-        </div>
-        <div :style="{
-          fontFamily: FF.display, fontSize: '28px', color: '#fff', fontWeight: 800,
-          marginTop: '4px', letterSpacing: '-0.01em',
-        }" class="shimmer-text">Rivelazione</div>
+    <!-- Header: counter + God Pack banner -->
+    <div style="position: relative; z-index: 10; padding: 16px 20px 0; text-align: center;">
+      <!-- Counter progress -->
+      <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
+        <div
+          v-for="(c, i) in carteRivelate"
+          :key="i"
+          :style="{
+            width: i <= indiceRivelato ? '20px' : '8px',
+            height: '4px',
+            borderRadius: '999px',
+            background: i < indiceRivelato
+              ? 'rgba(255,255,255,0.35)'
+              : i === indiceRivelato
+                ? raritaGlow(cartaCorrente)
+                : 'rgba(255,255,255,0.12)',
+            transition: 'all 0.4s',
+            boxShadow: i === indiceRivelato ? `0 0 8px ${raritaGlow(cartaCorrente)}` : 'none',
+          }"
+        />
+      </div>
+      <div :style="{ fontFamily: FF.label, fontSize: '9px', color: 'rgba(245,197,96,0.6)', letterSpacing: '0.3em', textTransform: 'uppercase', fontWeight: 700 }">
+        <template v-if="stato === 'reveal_multi'">Pacchetto {{ multiPackIndice + 1 }}/{{ multiPackCarte.length }} · </template>
+        Carta {{ Math.max(1, indiceRivelato + 1) }} di {{ carteRivelate.length }}
       </div>
 
       <!-- God Pack banner -->
       <div v-if="isGodPackAperto" :style="{
-        textAlign: 'center', marginBottom: '22px', padding: '16px 22px',
-        background: 'linear-gradient(135deg, rgba(245,197,96,0.22), rgba(255,126,182,0.22))',
-        border: `2px solid ${C.gold}88`,
-        borderRadius: '16px',
-        boxShadow: `0 0 36px ${C.gold}55, inset 0 0 22px ${C.gold}1f`,
+        margin: '8px auto 0', padding: '6px 16px',
+        background: `linear-gradient(135deg, rgba(245,197,96,0.22), rgba(255,126,182,0.22))`,
+        border: `1px solid ${C.gold}66`, borderRadius: '999px',
+        display: 'inline-flex', alignItems: 'center', gap: '6px',
+        fontFamily: FF.display, fontSize: '11px', fontWeight: 800, color: C.goldL,
         animation: 'pulseStrong 1.5s infinite',
-        position: 'relative', overflow: 'hidden',
-      }">
-        <div class="foil foil--soft" />
+      }">✦ WAIFU GOD PACK ✦</div>
+    </div>
+
+    <!-- Zona centrale: stack di carte + carta corrente interattiva -->
+    <div
+      style="position: relative; flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px 0; z-index: 5;"
+      @click="indiceRivelato < carteRivelate.length - 1 ? avanzaCartaManuale() : undefined"
+    >
+      <!-- Stack carte future (face-down con glow rarità) -->
+      <div
+        v-for="(c, i) in carteNelMazzo.slice(0, 3)"
+        :key="'stack-' + i"
+        :style="{
+          position: 'absolute',
+          width: '200px', height: '300px',
+          borderRadius: '16px',
+          transform: `translateX(${(i + 1) * 10}px) translateY(${(i + 1) * -6}px) scale(${1 - (i + 1) * 0.03}) rotateZ(${(i + 1) * 1.5}deg)`,
+          zIndex: 4 - i,
+          background: `radial-gradient(120% 80% at 50% 30%, ${raritaGlow(c)}35 0%, transparent 55%), linear-gradient(160deg, #1e0c40 0%, #07051a 100%)`,
+          border: `2px solid ${raritaGlow(c)}60`,
+          boxShadow: `0 0 20px ${raritaGlow(c)}30, 0 12px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden',
+          transition: 'transform 0.3s ease-out',
+        }"
+      >
+        <!-- Pattern decorativo sul retro -->
+        <div style="position: absolute; inset: 0; background-image: repeating-radial-gradient(circle at 50% 50%, transparent 0px, transparent 12px, rgba(255,255,255,0.02) 12px, rgba(255,255,255,0.02) 13px); pointer-events: none;" />
+        <!-- Simbolo rarità al centro -->
         <div :style="{
-          position: 'relative', fontFamily: FF.display, fontSize: '18px', fontWeight: 800,
-          letterSpacing: '0.08em', color: C.goldL,
-          textShadow: `0 0 18px ${C.gold}`,
-        }">✦ WAIFU GOD PACK ✦</div>
+          fontSize: '48px', opacity: 0.18,
+          filter: `drop-shadow(0 0 14px ${raritaGlow(c)})`,
+          color: raritaGlow(c),
+        }">♛</div>
+        <!-- Indicatore rarità in basso -->
         <div :style="{
-          position: 'relative', fontFamily: FF.label, fontSize: '10px',
-          color: 'rgba(241,235,255,0.65)', letterSpacing: '0.32em',
-          marginTop: '6px', textTransform: 'uppercase', fontWeight: 700,
-        }">5 WAIFU TROVATE!</div>
+          position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)',
+          padding: '3px 10px', borderRadius: '999px',
+          background: `${raritaGlow(c)}22`,
+          border: `1px solid ${raritaGlow(c)}55`,
+          fontFamily: FF.label, fontSize: '7px', fontWeight: 700,
+          color: raritaGlow(c), letterSpacing: '0.2em', textTransform: 'uppercase',
+          whiteSpace: 'nowrap',
+        }">{{ c?.data?.rarita || '?' }}</div>
       </div>
 
-      <!-- Griglia carte -->
-      <div :style="{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '14px', marginTop: '18px' }">
-        <div v-for="(c, i) in carteRivelate" :key="i" :style="{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }">
-          <!-- Carta -->
-          <div :style="{
-            position: 'relative',
-            opacity: i <= indiceRivelato ? 1 : 0.18,
-            transform: i <= indiceRivelato ? 'scale(1)' : 'scale(0.85)',
-            transition: 'all 0.6s',
-            animation: i <= indiceRivelato && (c.data?.rarita === 'leggendario' || c.data?.rarita === 'immersivo')
-              ? 'pulseStrong 1.2s infinite' : 'none',
-          }">
-            <!-- Carta coperta -->
-            <div v-if="i > indiceRivelato" :style="{
-              width: '143px', height: '215px', borderRadius: '14px',
-              background: `radial-gradient(120% 80% at 50% 20%, ${C.gold}30, transparent 60%), linear-gradient(160deg, #1e0c40 0%, #07051a 100%)`,
-              border: `2px solid ${C.gold}55`,
-              position: 'relative', overflow: 'hidden',
-              display: 'grid', placeItems: 'center',
-              boxShadow: `0 0 20px ${C.gold}33, inset 0 0 22px rgba(0,0,0,0.4)`,
-            }">
-              <div class="foil foil--soft" />
-              <div :style="{ textAlign: 'center', position: 'relative', zIndex: 1 }">
-                <div :style="{ fontFamily: FF.display, fontSize: '40px', color: C.gold, textShadow: `0 0 18px ${C.gold}aa` }">♛</div>
-                <div :style="{
-                  fontFamily: FF.label, fontSize: '8px', color: C.gold,
-                  letterSpacing: '0.28em', marginTop: '6px', opacity: 0.85,
-                  textTransform: 'uppercase', fontWeight: 700,
-                }">Sigillato</div>
-              </div>
-            </div>
+      <!-- Carta corrente: grande, interattiva in 3D -->
+      <div
+        v-if="cartaCorrente && indiceRivelato >= 0"
+        style="position: relative; z-index: 10; perspective: 800px; cursor: pointer;"
+        @mousemove="onRevealMouseMove"
+        @mouseleave="onRevealMouseLeave"
+        @touchstart.passive="onRevealTouchStart"
+        @touchmove.passive="onRevealTouchMove"
+        @touchend.passive="onRevealTouchEnd"
+      >
+        <!-- Glow aura intorno alla carta -->
+        <div :style="{
+          position: 'absolute', inset: '-20px',
+          borderRadius: '30px',
+          background: `radial-gradient(ellipse at center, ${raritaGlow(cartaCorrente)}45 0%, transparent 70%)`,
+          pointerEvents: 'none',
+          animation: cartaCorrente?.data?.rarita === 'leggendario' || cartaCorrente?.data?.rarita === 'immersivo'
+            ? 'pulseStrong 1.4s infinite' : 'pulseSoft 2s infinite',
+        }" />
 
-            <!-- Carta waifu rivelata -->
-            <template v-else-if="c.tipo === 'waifu'">
-              <CartaWaifu :waifu="c.data" dimensione="piccola" tipo="auto" style="cursor: pointer" />
-            </template>
-
-            <!-- Carta mossa rivelata -->
-            <template v-else-if="c.tipo === 'mossa'">
-              <CartaMossa :mossa="c.data" dimensione="piccola" />
-            </template>
-
-            <!-- Badge NEW -->
-            <div v-if="i <= indiceRivelato && c.isNuova" :style="{
-              position: 'absolute', top: '-6px', right: '-4px',
-              background: `linear-gradient(135deg, ${C.gold}, ${C.sakura})`,
-              color: '#1d0419',
-              fontFamily: FF.label, fontSize: '8px', fontWeight: 800,
-              padding: '2px 7px', borderRadius: '999px',
-              letterSpacing: '0.14em', textTransform: 'uppercase',
-              boxShadow: `0 4px 12px ${C.sakura}66`,
-              pointerEvents: 'none', zIndex: 10,
-            }">NEW</div>
-          </div>
-
-          <!-- Copie waifu -->
-          <div v-if="i <= indiceRivelato && c.tipo === 'waifu'" :style="{ textAlign: 'center', minHeight: '16px' }">
-            <span v-if="(collezione?.waifu?.[c.data?.id]?.copie ?? 0) >= 3" :style="{
-              fontFamily: FF.label, fontSize: '8px', color: C.ok,
-              fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase',
-              padding: '2px 7px', borderRadius: '999px',
-              background: `${C.ok}1a`, border: `1px solid ${C.ok}66`,
-              textShadow: `0 0 6px ${C.ok}88`,
-            }">⚡ Level Up!</span>
-            <span v-else :style="{ fontFamily: FF.mono, fontSize: '9px', color: 'rgba(241,235,255,0.45)' }">
-              {{ collezione?.waifu?.[c.data?.id]?.copie ?? 0 }}/3 copie
-            </span>
-          </div>
-
-          <!-- Bottone video immersiva -->
-          <button
-            v-if="i <= indiceRivelato && c.tipo === 'waifu' && c.data?.rarita === 'immersivo'"
-            @click="c.data?.asset_video ? avviaVideoSbusto(c.data) : undefined"
-            :style="{
-              background: c.data?.asset_video
-                ? `linear-gradient(135deg, ${C.sakura}33, ${C.sakura}18)`
-                : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${c.data?.asset_video ? C.sakura + '99' : C.sakura + '30'}`,
-              borderRadius: '10px', color: c.data?.asset_video ? C.sakuraL : `${C.sakura}55`,
-              fontFamily: FF.label, fontSize: '8px', fontWeight: 700,
-              letterSpacing: '0.18em', padding: '6px 12px',
-              cursor: c.data?.asset_video ? 'pointer' : 'not-allowed',
-              boxShadow: c.data?.asset_video ? `0 0 14px ${C.sakura}30` : 'none',
-              transition: 'all 0.2s', textTransform: 'uppercase',
-              display: 'inline-flex', alignItems: 'center', gap: '6px',
-            }">
-            <span :style="{ fontSize: '10px' }">▶</span>
-            {{ c.data?.asset_video ? 'Vedi immersiva' : 'Video non disponibile' }}
-          </button>
+        <div
+          :style="{
+            transform: `rotateX(${revealTilt.x}deg) rotateY(${revealTilt.y}deg) scale(1.02)`,
+            transformStyle: 'preserve-3d',
+            transition: revealDragging ? 'none' : 'transform 0.2s ease-out',
+            willChange: 'transform',
+          }"
+          class="fade-in"
+        >
+          <CartaWaifu v-if="cartaCorrente.tipo === 'waifu'" :waifu="cartaCorrente.data" dimensione="grande" tipo="auto" />
+          <CartaMossa v-else-if="cartaCorrente.tipo === 'mossa'" :mossa="cartaCorrente.data" dimensione="grande" />
         </div>
       </div>
 
-      <!-- CTA dopo rivelazione completa -->
-      <div v-if="indiceRivelato >= carteRivelate.length - 1" :style="{ textAlign: 'center', marginTop: '26px' }">
-        <!-- Prossimo pacchetto (multi) -->
-        <BtnDecorato
-          v-if="stato === 'reveal_multi' && multiPackIndice < multiPackCarte.length - 1"
-          variant="primary" size="lg"
-          @click="prossimoPackMulti"
-        >
-          PROSSIMO PACCHETTO ({{ multiPackIndice + 2 }}/{{ multiPackCarte.length }}) →
-        </BtnDecorato>
-        <!-- Fine rivelazione -->
-        <BtnDecorato v-else variant="primary" size="lg" @click="tornaIdle">
-          {{ stato === 'reveal_multi' ? `✅ FINE · ${multiPackCarte.length} PACCHETTI` : 'CONTINUA' }}
-        </BtnDecorato>
+      <!-- Prima carta ancora in attesa (skeleton) -->
+      <div
+        v-else-if="indiceRivelato < 0"
+        style="width: 200px; height: 300px; border-radius: 16px; background: linear-gradient(160deg, #1e0c40, #07051a); border: 2px solid rgba(167,139,250,0.3); display: flex; align-items: center; justify-content: center; animation: pulseSoft 1.2s infinite;"
+      >
+        <div style="font-size: 52px; opacity: 0.25; color: #a78bfa;">♛</div>
       </div>
     </div>
 
-    <!-- Video overlay carta immersiva -->
+    <!-- Footer: info carta + hint navigazione -->
+    <div style="position: relative; z-index: 10; padding: 0 20px 32px; text-align: center;">
+
+      <!-- Info carta rivelata -->
+      <div v-if="cartaCorrente && indiceRivelato >= 0" style="margin-bottom: 14px;">
+        <!-- Badge NEW -->
+        <div v-if="cartaCorrente.isNuova" :style="{
+          display: 'inline-flex', alignItems: 'center', gap: '5px',
+          padding: '4px 12px', borderRadius: '999px', marginBottom: '8px',
+          background: `linear-gradient(135deg, ${C.gold}, ${C.sakura})`,
+          color: '#1d0419', fontFamily: FF.label, fontSize: '9px', fontWeight: 800,
+          letterSpacing: '0.16em', textTransform: 'uppercase',
+          boxShadow: `0 4px 14px ${C.sakura}66`,
+        }">✨ NUOVA!</div>
+
+        <!-- Copie -->
+        <div v-if="cartaCorrente.tipo === 'waifu'" :style="{ fontFamily: FF.mono, fontSize: '10px', color: 'rgba(241,235,255,0.4)' }">
+          <span v-if="(collezione?.waifu?.[cartaCorrente.data?.id]?.copie ?? 0) >= 3" :style="{ color: C.ok }">⚡ Level Up disponibile!</span>
+          <span v-else>{{ collezione?.waifu?.[cartaCorrente.data?.id]?.copie ?? 0 }}/3 copie</span>
+        </div>
+      </div>
+
+      <!-- Pulsante avanza / fine -->
+      <div v-if="indiceRivelato >= carteRivelate.length - 1" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+        <!-- Prossimo pacchetto (multi) -->
+        <button
+          v-if="stato === 'reveal_multi' && multiPackIndice < multiPackCarte.length - 1"
+          @click="prossimoPackMulti"
+          :style="{
+            padding: '12px 28px', borderRadius: '999px',
+            background: `linear-gradient(135deg, ${C.gold}, ${C.sakura})`,
+            border: 'none', color: '#fff',
+            fontFamily: FF.label, fontSize: '12px', fontWeight: 700,
+            letterSpacing: '0.16em', textTransform: 'uppercase',
+            cursor: 'pointer', boxShadow: `0 4px 18px ${C.sakura}55`,
+          }"
+        >Prossimo {{ multiPackIndice + 2 }}/{{ multiPackCarte.length }} →</button>
+        <!-- Fine rivelazione -->
+        <button
+          v-else
+          @click="tornaIdle"
+          :style="{
+            padding: '12px 32px', borderRadius: '999px',
+            background: `linear-gradient(135deg, ${C.violet}, #6938e8)`,
+            border: 'none', color: '#fff',
+            fontFamily: FF.label, fontSize: '12px', fontWeight: 700,
+            letterSpacing: '0.16em', textTransform: 'uppercase',
+            cursor: 'pointer', boxShadow: `0 4px 18px ${C.violet}55`,
+          }"
+        >✅ {{ stato === 'reveal_multi' ? `Fine · ${multiPackCarte.length} pack` : 'Continua' }}</button>
+      </div>
+
+      <!-- Hint "tocca per la prossima" -->
+      <div v-else-if="indiceRivelato >= 0" :style="{
+        fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.2em',
+        color: 'rgba(241,235,255,0.35)', textTransform: 'uppercase',
+        animation: 'pulseSoft 1.8s ease-in-out infinite',
+      }">Tocca per la prossima →</div>
+    </div>
+
+    <!-- Video overlay carta immersiva (invariato) -->
     <div
       v-if="sbusVideoAttivo && sbusCartaImmersiva"
       @click="sbusVideoFinito ? chiudiVideoSbusto() : undefined"
@@ -607,6 +694,7 @@ function onPackLeave(id: string) {
   </div>
 
   <!-- ══════════════════════════════════════════════════════════
+    IDLE VIEW — selezione e apertura pacchetti  <!-- ══════════════════════════════════════════════════════════
     IDLE VIEW — selezione e apertura pacchetti
   ══════════════════════════════════════════════════════════════ -->
   <div v-else class="fade-in" :style="{ padding: '10px 0', position: 'relative' }">
