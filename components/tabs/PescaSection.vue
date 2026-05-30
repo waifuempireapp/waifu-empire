@@ -202,6 +202,7 @@ async function onRivelazioneFine() {
 // ── Gestione click su un pack del feed ───────────────────────
 function onClickPesca(pack: Pack) {
   if (pack.alreadyFished) return
+  if (pack.hasHot && !props.profilo?.hardPass) return // bloccato senza Hard Pass
   if (kissesAttuali.value < KISSES_COST) {
     kissesShortage.value = { pendingPack: pack }
   } else {

@@ -47,7 +47,8 @@ const puoPescare  = computed(() => userKisses.value >= kissesCost.value)
 const giaFiscata  = computed(() => props.pack.alreadyFished === true)
 const cards       = computed(() => props.pack.cards ?? [])
 
-// Carte sempre visibili (no bottone espansione)
+// Pack bloccato: contiene hot content e l'utente non ha Hard Pass
+const packBloccato = computed(() => props.pack.hasHot === true && !props.hasHardPass)
 
 const isNuovo = computed(() => {
   if (!props.pack.createdAt) return false
@@ -101,12 +102,6 @@ function rarityGlow(r?: string) {
   return `0 0 12px ${c}44`
 }
 
-// Carta visibile: nascosta se hot e senza hard pass
-function cartaVisibile(carta: CartaPack): boolean {
-  if (carta.hot && !props.hasHardPass) return false
-  return true
-}
-
 // Timer
 const remaining = ref('')
 let timerInterval: ReturnType<typeof setInterval> | null = null
@@ -140,7 +135,20 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
   }">
 
     <!-- Inner wrapper: clip il contenuto rispettando border-radius senza bloccare il badge esterno -->
-    <div style="border-radius:19px;overflow:hidden;position:relative;">
+    <div :style="{
+      borderRadius:'19px', overflow:'hidden', position:'relative',
+      filter: packBloccato ? 'blur(6px) brightness(0.4)' : 'none',
+      pointerEvents: packBloccato ? 'none' : 'auto',
+      userSelect: packBloccato ? 'none' : 'auto',
+      transition: 'filter 0.3s',
+    }">
+
+    <!-- Overlay Hard Pass: sopra il blur, non interattivo -->
+    <div v-if="packBloccato" style="position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-radius:19px;pointer-events:none;">
+      <div style="font-size:36px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,140,0,0.7))">🔒</div>
+      <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:14px;font-weight:900;color:#ffa020;letter-spacing:0.14em;text-transform:uppercase;text-align:center;text-shadow:0 0 16px rgba(255,140,0,0.8);">Hard Pass<br/>Richiesto</div>
+      <div style="font-family:var(--ff-body,'DM Sans',sans-serif);font-size:11px;color:rgba(255,255,255,0.55);text-align:center;padding:0 20px;">Acquista il Pass per vedere e pescare i contenuti hot</div>
+    </div>
 
     <!-- Overlay PESCATA -->
     <div v-if="giaFiscata" style="position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);pointer-events:none">
@@ -191,23 +199,23 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
 
     <!-- ── CARTE: grid 3 colonne, row 1 = col 1-2, row 2 = col 1-2-3 ── -->
     <div style="padding:16px 12px 8px; overflow:visible;">
-      <div style="display:grid; grid-template-columns:repeat(3,1fr); grid-auto-rows:auto; gap:8px;">
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); grid-auto-rows:auto; gap:12px;">
 
         <!-- Riga 1: 2 carte centrate — wrapper flex su 3 colonne -->
-        <div style="grid-column:1/-1; grid-row:1; display:flex; justify-content:center; gap:8px; margin-top:14px;">
+        <div style="grid-column:1/-1; grid-row:1; display:flex; justify-content:center; gap:12px; margin-top:14px;">
 
         <!-- Carta 0 -->
-        <div v-if="cards[0]" style="width:calc((100% - 16px) / 3); position:relative; flex-shrink:0;">
+        <div v-if="cards[0]" style="width:calc((100% - 24px) / 3); position:relative; flex-shrink:0;">
           <div v-if="isNew(cards[0])" style="position:absolute;top:-12px;left:-4px;z-index:20;"><div style="background:linear-gradient(135deg,#00b4ff,#00e676);border:2px solid rgba(255,255,255,0.45);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;font-weight:900;color:#000;letter-spacing:0.06em;box-shadow:0 3px 12px rgba(0,180,255,0.55);white-space:nowrap;line-height:1;">NEW</div></div>
           <div v-if="(true)&&getCopie(cards[0])>0" :style="{position:'absolute',top:'-12px',right:'-4px',zIndex:20,background:getCopie(cards[0])>=3?'linear-gradient(135deg,#00c853,#58e0a3)':'linear-gradient(135deg,#1a0a35,#2a1255)',border:getCopie(cards[0])>=3?'2px solid rgba(89,224,163,0.8)':'2px solid rgba(245,197,96,0.8)',borderRadius:'999px',minWidth:'22px',height:'22px',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--ff-mono,JetBrains Mono,monospace)',fontSize:'11px',fontWeight:900,color:'#fff',padding:'0 4px'}">{{ getCopie(cards[0])>=3?'C':getCopie(cards[0]) }}</div>
           <div :style="{borderRadius:'10px',border:true?rarityBorder(cards[0].rarita):'1.5px solid rgba(255,255,255,0.08)',background:'linear-gradient(160deg,#16082e,#08041a)',boxShadow:true?rarityGlow(cards[0].rarita):'none',overflow:'hidden',transition:'all 0.25s',position:'relative'}">
             <div style="aspect-ratio:2/3;position:relative;overflow:hidden;">
-              <template v-if="cartaVisibile(cards[0])">
+              <template v-if="true">
                 <img v-if="cards[0].immagine" :src="ikUrl(cards[0].immagine,'thumbnail')??undefined" :alt="cards[0].nome" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
                 <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.82;" /></div>
               </template>
               <template v-else>
-                <img v-if="cards[0].immagine" :src="ikUrl(cards[0].immagine,'thumbnail')??undefined" :alt="cards[0].nome" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;filter:blur(12px) brightness(0.5);" />
+                <!-- unreachable --><img v-if="false" :src="ikUrl(cards[0].immagine,'thumbnail')??undefined" :alt="cards[0].nome" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;filter:blur(12px) brightness(0.5);" />
                 <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.3;" /></div>
                 <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;z-index:3;"><span style="font-size:22px;">🔒</span><div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:8px;color:rgba(255,140,0,0.9);letter-spacing:0.12em;text-transform:uppercase;font-weight:800;text-align:center;">Hard Pass</div></div>
               </template>
@@ -218,19 +226,14 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
         </div>
 
         <!-- Carta 1 -->
-        <div v-if="cards[1]" style="width:calc((100% - 16px) / 3); position:relative; flex-shrink:0;">
+        <div v-if="cards[1]" style="width:calc((100% - 24px) / 3); position:relative; flex-shrink:0;">
           <div v-if="isNew(cards[1])" style="position:absolute;top:-12px;left:-4px;z-index:20;"><div style="background:linear-gradient(135deg,#00b4ff,#00e676);border:2px solid rgba(255,255,255,0.45);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;font-weight:900;color:#000;letter-spacing:0.06em;box-shadow:0 3px 12px rgba(0,180,255,0.55);white-space:nowrap;line-height:1;">NEW</div></div>
           <div v-if="(true)&&getCopie(cards[1])>0" :style="{position:'absolute',top:'-12px',right:'-4px',zIndex:20,background:getCopie(cards[1])>=3?'linear-gradient(135deg,#00c853,#58e0a3)':'linear-gradient(135deg,#1a0a35,#2a1255)',border:getCopie(cards[1])>=3?'2px solid rgba(89,224,163,0.8)':'2px solid rgba(245,197,96,0.8)',borderRadius:'999px',minWidth:'22px',height:'22px',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--ff-mono,JetBrains Mono,monospace)',fontSize:'11px',fontWeight:900,color:'#fff',padding:'0 4px'}">{{ getCopie(cards[1])>=3?'C':getCopie(cards[1]) }}</div>
           <div :style="{borderRadius:'10px',border:true?rarityBorder(cards[1].rarita):'1.5px solid rgba(255,255,255,0.08)',background:'linear-gradient(160deg,#16082e,#08041a)',boxShadow:true?rarityGlow(cards[1].rarita):'none',overflow:'hidden',transition:'all 0.25s',position:'relative'}">
             <div style="aspect-ratio:2/3;position:relative;overflow:hidden;">
-              <template v-if="cartaVisibile(cards[1])">
+              <template v-if="true">
                 <img v-if="cards[1].immagine" :src="ikUrl(cards[1].immagine,'thumbnail')??undefined" :alt="cards[1].nome" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
                 <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.82;" /></div>
-              </template>
-              <template v-else>
-                <img v-if="cards[1].immagine" :src="ikUrl(cards[1].immagine,'thumbnail')??undefined" :alt="cards[1].nome" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;filter:blur(12px) brightness(0.5);" />
-                <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.3;" /></div>
-                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;z-index:3;"><span style="font-size:22px;">🔒</span><div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:8px;color:rgba(255,140,0,0.9);letter-spacing:0.12em;text-transform:uppercase;font-weight:800;text-align:center;">Hard Pass</div></div>
               </template>
               <div v-if="true" :style="{position:'absolute',bottom:'4px',left:'4px',background:rarityColor(cards[1].rarita)+'33',border:'1px solid '+rarityColor(cards[1].rarita)+'88',borderRadius:'999px',padding:'2px 6px',fontFamily:'var(--ff-label,\'Saira Condensed\',sans-serif)',fontSize:'10px',fontWeight:800,color:rarityColor(cards[1].rarita),letterSpacing:'0.05em',textTransform:'capitalize',backdropFilter:'blur(4px)',zIndex:2}">{{ cards[1].rarita||'?' }}</div>
             </div>
@@ -250,14 +253,9 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
           <div v-if="(true)&&getCopie(carta)>0" :style="{position:'absolute',top:'-12px',right:'-4px',zIndex:20,background:getCopie(carta)>=3?'linear-gradient(135deg,#00c853,#58e0a3)':'linear-gradient(135deg,#1a0a35,#2a1255)',border:getCopie(carta)>=3?'2px solid rgba(89,224,163,0.8)':'2px solid rgba(245,197,96,0.8)',borderRadius:'999px',minWidth:'22px',height:'22px',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--ff-mono,JetBrains Mono,monospace)',fontSize:'11px',fontWeight:900,color:'#fff',padding:'0 4px'}">{{ getCopie(carta)>=3?'C':getCopie(carta) }}</div>
           <div :style="{borderRadius:'10px',border:true?rarityBorder(carta.rarita):'1.5px solid rgba(255,255,255,0.08)',background:'linear-gradient(160deg,#16082e,#08041a)',boxShadow:true?rarityGlow(carta.rarita):'none',overflow:'hidden',transition:'all 0.25s',position:'relative'}">
             <div style="aspect-ratio:2/3;position:relative;overflow:hidden;">
-              <template v-if="cartaVisibile(carta)">
+              <template v-if="true">
                 <img v-if="carta.immagine" :src="ikUrl(carta.immagine,'thumbnail')??undefined" :alt="carta.nome" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
                 <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.82;" /></div>
-              </template>
-              <template v-else>
-                <img v-if="carta.immagine" :src="ikUrl(carta.immagine,'thumbnail')??undefined" :alt="carta.nome" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;filter:blur(12px) brightness(0.5);" />
-                <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.3;" /></div>
-                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;z-index:3;"><span style="font-size:22px;">🔒</span><div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:8px;color:rgba(255,140,0,0.9);letter-spacing:0.12em;text-transform:uppercase;font-weight:800;text-align:center;">Hard Pass</div></div>
               </template>
               <div v-if="true" :style="{position:'absolute',bottom:'4px',left:'4px',background:rarityColor(carta.rarita)+'33',border:'1px solid '+rarityColor(carta.rarita)+'88',borderRadius:'999px',padding:'2px 6px',fontFamily:'var(--ff-label,\'Saira Condensed\',sans-serif)',fontSize:'10px',fontWeight:800,color:rarityColor(carta.rarita),letterSpacing:'0.05em',textTransform:'capitalize',backdropFilter:'blur(4px)',zIndex:2}">{{ carta.rarita||'?' }}</div>
             </div>
@@ -270,9 +268,8 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
     <!-- ── FOOTER ── -->
     <div v-if="!giaFiscata" style="padding:8px 16px 14px;display:flex;justify-content:center;">
 
-      <!-- Drop (N) button (pack espanso) -->
+      <!-- Drop (N) button -->
       <button
-        v-else
         :disabled="!puoPescare"
         :style="{
           display:      'flex', alignItems:'center', justifyContent:'center', gap:'8px',
