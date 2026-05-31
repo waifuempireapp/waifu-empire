@@ -1,0 +1,145 @@
+{
+  "nav": {
+    "home": "Home",
+    "packs": "Packs",
+    "collection": "Collection",
+    "map": "Map",
+    "community": "Community"
+  },
+  "auth": {
+    "login": "Log In",
+    "register": "Sign Up",
+    "logout": "Exit",
+    "google": "Sign in with Google",
+    "email_placeholder": "email",
+    "password_placeholder": "password",
+    "already_account": "Already have an account?",
+    "no_account": "Don't have an account?",
+    "loading": "loading...",
+    "error_invalid_email": "Invalid email",
+    "error_user_not_found": "User not found",
+    "error_wrong_password": "Wrong password",
+    "error_email_in_use": "Email already registered",
+    "error_weak_password": "Password too weak (min 6 chars)",
+    "error_popup_closed": "Login cancelled",
+    "error_network": "Network error"
+  },
+  "settings": {
+    "title": "Settings",
+    "admin_panel": "Admin Panel",
+    "shop": "Shop",
+    "logout": "Exit",
+    "version": "Waifu's Empire",
+    "language": {
+      "title": "Language",
+      "subtitle": "Choose your language"
+    }
+  },
+  "profile": {
+    "level": "LV. {n}",
+    "empire_name": "Found your Empire",
+    "empire_name_placeholder": "e.g. Empire of the Rising Sun",
+    "flag_color": "FLAG COLOR",
+    "found_cta": "FOUND THE EMPIRE",
+    "founding": "FOUNDING..."
+  },
+  "home": {
+    "open_pack": "Open pack",
+    "open_now": "🎁 Open now",
+    "packs": "📦 Packs",
+    "shop": "🛒 SHOP",
+    "packs_ready": "You have {n} {pack} ready to open!",
+    "pack_singular": "pack",
+    "pack_plural": "packs",
+    "next_pack": "Visit the shop",
+    "countdown": "Next in {time}",
+    "available": "Available"
+  },
+  "pesca": {
+    "title": "Waifu Drop",
+    "gems": "GEMS",
+    "blind_pick": "BLIND PICK",
+    "blind_subtitle": "By {owner} — Choose a card without knowing what's inside",
+    "confirm_pick": "Card {n} selected",
+    "cancel": "CANCEL",
+    "fishing": "FISHING…",
+    "fish_btn": "FISH ({n} Kisses)",
+    "card_added": "Card added to collection!",
+    "hard_pass_required": "Hard Pass Required",
+    "hard_pass_desc": "Buy the Pass to see and pick hot content",
+    "already_fished": "🎣 ALREADY FISHED",
+    "new_label": "NEW",
+    "full_view": "FULL CARD VIEW",
+    "time_remaining": "TIME REMAINING:",
+    "nuova": "NEW",
+    "loading": "LOADING…",
+    "drop_btn": "Drop ({n})"
+  },
+  "sbusta": {
+    "opening": "Opening Pack",
+    "revelation": "Revelation",
+    "god_pack": "✦ WAIFU GOD PACK ✦",
+    "five_found": "5 WAIFU FOUND!",
+    "tap_next": "Tap for the next →",
+    "sealed": "Sealed",
+    "continue": "CONTINUE",
+    "next_pack": "Next {n}/{total} →",
+    "end_multi": "Done · {n} packs",
+    "choose_drop": "◆ Choose Drop",
+    "active_badge": "✓ ACTIVE",
+    "tap_to_open": "▶ Tap to open"
+  },
+  "map": {
+    "title": "World Map",
+    "conquest": "◆ CONQUEST",
+    "offers_btn": "💌 Offers",
+    "territories_conquered": "territories conquered",
+    "explore": "Explore →"
+  },
+  "collection": {
+    "title": "Collection",
+    "empty": "Empty collection",
+    "empty_desc": "Open your first pack and start your collection!",
+    "see_all": "See all →",
+    "waifu": "WAIFU",
+    "outfit": "OUTFIT",
+    "pose": "POSE"
+  },
+  "community": {
+    "title": "Community",
+    "friends": "Friends",
+    "leaderboard": "Leaderboard",
+    "swap": "Swap",
+    "swipe_waifu": "Swipe Waifu",
+    "swipe_subtitle": "Swipe, vote and earn Kisses every 10 votes",
+    "vote": "Vote →",
+    "votes_total": "{n} total votes"
+  },
+  "loading": {
+    "text": "loading...",
+    "map": "Loading map…",
+    "drops": "Loading seasonal drop…"
+  },
+  "onboarding": {
+    "title": "FOUND YOUR EMPIRE",
+    "subtitle": "Welcome to Waifu's Empire. Start by choosing your domain name and you will receive 5 welcome packs with no duplicates.",
+    "welcome_packs": "5 welcome packs",
+    "empire_label": "EMPIRE NAME",
+    "flag_label": "FLAG COLOR",
+    "found_btn": "FOUND THE EMPIRE",
+    "founding_btn": "FOUNDING..."
+  },
+  "rarity": {
+    "comune": "Common",
+    "raro": "Rare",
+    "epico": "Epic",
+    "leggendario": "Legendary",
+    "immersivo": "Immersive"
+  },
+  "errors": {
+    "access_denied": "ACCESS DENIED",
+    "not_admin": "Your email {email} is not registered as admin.",
+    "env_hint": "Set ADMIN_EMAILS=your-email@gmail.com in the .env file and restart the server.",
+    "back": "← Back to game"
+  }
+}

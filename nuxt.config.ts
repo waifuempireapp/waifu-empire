@@ -43,7 +43,7 @@ export default defineNuxtConfig({
       { code: 'ja', name: '日本語',    file: 'ja.json' },
     ],
     lazy: true,
-    langDir: 'locales/',
+    langDir: 'locales/',   // relativo a i18n/ → i18n/locales/
   },
 
   // Variabili d'ambiente — private (server only) e pubbliche (client)
