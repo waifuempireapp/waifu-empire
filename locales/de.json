@@ -1,0 +1,145 @@
+{
+  "nav": {
+    "home": "Home",
+    "packs": "Pakete",
+    "collection": "Sammlung",
+    "map": "Karte",
+    "community": "Community"
+  },
+  "auth": {
+    "login": "Anmelden",
+    "register": "Registrieren",
+    "logout": "Abmelden",
+    "google": "Mit Google anmelden",
+    "email_placeholder": "E-Mail",
+    "password_placeholder": "Passwort",
+    "already_account": "Bereits ein Konto?",
+    "no_account": "Noch kein Konto?",
+    "loading": "Laden...",
+    "error_invalid_email": "Ungültige E-Mail",
+    "error_user_not_found": "Benutzer nicht gefunden",
+    "error_wrong_password": "Falsches Passwort",
+    "error_email_in_use": "E-Mail bereits registriert",
+    "error_weak_password": "Passwort zu schwach (min. 6 Zeichen)",
+    "error_popup_closed": "Anmeldung abgebrochen",
+    "error_network": "Netzwerkfehler"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "admin_panel": "Admin-Panel",
+    "shop": "Shop",
+    "logout": "Abmelden",
+    "version": "Waifu's Empire",
+    "language": {
+      "title": "Sprache",
+      "subtitle": "Sprache auswählen"
+    }
+  },
+  "profile": {
+    "level": "LV. {n}",
+    "empire_name": "Gründe dein Imperium",
+    "empire_name_placeholder": "z.B. Imperium der aufgehenden Sonne",
+    "flag_color": "FLAGGENFARBE",
+    "found_cta": "IMPERIUM GRÜNDEN",
+    "founding": "GRÜNDUNG..."
+  },
+  "home": {
+    "open_pack": "Paket öffnen",
+    "open_now": "🎁 Jetzt öffnen",
+    "packs": "📦 Pakete",
+    "shop": "🛒 SHOP",
+    "packs_ready": "Du hast {n} {pack} zum Öffnen bereit!",
+    "pack_singular": "Paket",
+    "pack_plural": "Pakete",
+    "next_pack": "Shop besuchen",
+    "countdown": "Nächstes in {time}",
+    "available": "Verfügbar"
+  },
+  "pesca": {
+    "title": "Waifu Drop",
+    "gems": "EDELSTEINE",
+    "blind_pick": "BLINDWAHL",
+    "blind_subtitle": "Von {owner} — Wähle eine Karte, ohne zu wissen was drin ist",
+    "confirm_pick": "Karte {n} ausgewählt",
+    "cancel": "ABBRECHEN",
+    "fishing": "ANGELN…",
+    "fish_btn": "ANGELN ({n} Küsse)",
+    "card_added": "Karte zur Sammlung hinzugefügt!",
+    "hard_pass_required": "Hard Pass erforderlich",
+    "hard_pass_desc": "Kaufe den Pass, um heisse Inhalte zu sehen und auszuwählen",
+    "already_fished": "🎣 BEREITS GEANGELT",
+    "new_label": "NEU",
+    "full_view": "VOLLANSICHT",
+    "time_remaining": "VERBLEIBENDE ZEIT:",
+    "nuova": "NEU",
+    "loading": "LADEN…",
+    "drop_btn": "Drop ({n})"
+  },
+  "sbusta": {
+    "opening": "Paket wird geöffnet",
+    "revelation": "Enthüllung",
+    "god_pack": "✦ WAIFU GOD PACK ✦",
+    "five_found": "5 WAIFU GEFUNDEN!",
+    "tap_next": "Tippe für die nächste →",
+    "sealed": "Versiegelt",
+    "continue": "WEITER",
+    "next_pack": "Nächstes {n}/{total} →",
+    "end_multi": "Fertig · {n} Pakete",
+    "choose_drop": "◆ Drop wählen",
+    "active_badge": "✓ AKTIV",
+    "tap_to_open": "▶ Tippen zum Öffnen"
+  },
+  "map": {
+    "title": "Weltkarte",
+    "conquest": "◆ EROBERUNG",
+    "offers_btn": "💌 Angebote",
+    "territories_conquered": "Gebiete erobert",
+    "explore": "Erkunden →"
+  },
+  "collection": {
+    "title": "Sammlung",
+    "empty": "Leere Sammlung",
+    "empty_desc": "Öffne dein erstes Paket und starte deine Sammlung!",
+    "see_all": "Alle anzeigen →",
+    "waifu": "WAIFU",
+    "outfit": "OUTFIT",
+    "pose": "POSE"
+  },
+  "community": {
+    "title": "Community",
+    "friends": "Freunde",
+    "leaderboard": "Bestenliste",
+    "swap": "Tausch",
+    "swipe_waifu": "Waifu wischen",
+    "swipe_subtitle": "Wischen, abstimmen und alle 10 Stimmen Küsse verdienen",
+    "vote": "Abstimmen →",
+    "votes_total": "{n} Stimmen gesamt"
+  },
+  "loading": {
+    "text": "Laden...",
+    "map": "Karte wird geladen…",
+    "drops": "Saisonaler Drop wird geladen…"
+  },
+  "onboarding": {
+    "title": "GRÜNDE DEIN IMPERIUM",
+    "subtitle": "Willkommen bei Waifu's Empire. Beginne mit der Wahl deines Domainnamens und erhalte 5 Willkommenspakete ohne Duplikate.",
+    "welcome_packs": "5 Willkommenspakete",
+    "empire_label": "IMPERIUMSNAME",
+    "flag_label": "FLAGGENFARBE",
+    "found_btn": "IMPERIUM GRÜNDEN",
+    "founding_btn": "GRÜNDUNG..."
+  },
+  "rarity": {
+    "comune": "Gewöhnlich",
+    "raro": "Selten",
+    "epico": "Episch",
+    "leggendario": "Legendär",
+    "immersivo": "Immersiv"
+  },
+  "errors": {
+    "access_denied": "ZUGRIFF VERWEIGERT",
+    "not_admin": "Deine E-Mail {email} ist nicht als Admin registriert.",
+    "env_hint": "Setze ADMIN_EMAILS=deine-email@gmail.com in der .env-Datei und starte den Server neu.",
+    "back": "← Zurück zum Spiel"
+  }
+}

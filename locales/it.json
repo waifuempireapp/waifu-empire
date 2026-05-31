@@ -1,0 +1,145 @@
+{
+  "nav": {
+    "home": "Home",
+    "packs": "Pacchetti",
+    "collection": "Collezione",
+    "map": "Mappa",
+    "community": "Community"
+  },
+  "auth": {
+    "login": "Accedi",
+    "register": "Registrati",
+    "logout": "Esci",
+    "google": "Accedi con Google",
+    "email_placeholder": "email",
+    "password_placeholder": "password",
+    "already_account": "Hai già un account?",
+    "no_account": "Non hai un account?",
+    "loading": "caricamento...",
+    "error_invalid_email": "Email non valida",
+    "error_user_not_found": "Utente non trovato",
+    "error_wrong_password": "Password errata",
+    "error_email_in_use": "Email già registrata",
+    "error_weak_password": "Password troppo debole (min 6 caratteri)",
+    "error_popup_closed": "Accesso annullato",
+    "error_network": "Errore di rete"
+  },
+  "settings": {
+    "title": "Impostazioni",
+    "admin_panel": "Pannello Admin",
+    "shop": "Negozio",
+    "logout": "Esci",
+    "version": "Waifu's Empire",
+    "language": {
+      "title": "Lingua",
+      "subtitle": "Scegli la tua lingua"
+    }
+  },
+  "profile": {
+    "level": "LV. {n}",
+    "empire_name": "Fonda il tuo Impero",
+    "empire_name_placeholder": "es. Impero del Sol Levante",
+    "flag_color": "COLORE BANDIERA",
+    "found_cta": "FONDA L'IMPERO",
+    "founding": "FONDAZIONE..."
+  },
+  "home": {
+    "open_pack": "Apri pacchetto",
+    "open_now": "🎁 Apri ora",
+    "packs": "📦 Pacchetti",
+    "shop": "🛒 NEGOZIO",
+    "packs_ready": "Hai {n} {pack} pronti da aprire!",
+    "pack_singular": "pacchetto",
+    "pack_plural": "pacchetti",
+    "next_pack": "Visita il negozio",
+    "countdown": "Prossimo tra {time}",
+    "available": "Disponibile"
+  },
+  "pesca": {
+    "title": "Waifu Drop",
+    "gems": "GEMME",
+    "blind_pick": "PESCA ALLA CIECA",
+    "blind_subtitle": "Di {owner} — Scegli una carta senza sapere cosa c'è dentro",
+    "confirm_pick": "Carta {n} selezionata",
+    "cancel": "ANNULLA",
+    "fishing": "PESCA IN CORSO…",
+    "fish_btn": "PESCA ({n} Baci)",
+    "card_added": "Carta aggiunta alla collezione!",
+    "hard_pass_required": "Hard Pass Richiesto",
+    "hard_pass_desc": "Acquista il Pass per vedere e scegliere contenuti hot",
+    "already_fished": "🎣 GIÀ PESCATO",
+    "new_label": "NUOVA",
+    "full_view": "VISTA COMPLETA",
+    "time_remaining": "TEMPO RIMANENTE:",
+    "nuova": "NUOVA",
+    "loading": "CARICAMENTO…",
+    "drop_btn": "Drop ({n})"
+  },
+  "sbusta": {
+    "opening": "Apertura Pacchetto",
+    "revelation": "Rivelazione",
+    "god_pack": "✦ WAIFU GOD PACK ✦",
+    "five_found": "5 WAIFU TROVATE!",
+    "tap_next": "Tocca per la prossima →",
+    "sealed": "Sigillato",
+    "continue": "CONTINUA",
+    "next_pack": "Prossimo {n}/{total} →",
+    "end_multi": "Fatto · {n} pacchetti",
+    "choose_drop": "◆ Scegli Drop",
+    "active_badge": "✓ ATTIVO",
+    "tap_to_open": "▶ Tocca per aprire"
+  },
+  "map": {
+    "title": "Mappa del Mondo",
+    "conquest": "◆ CONQUISTA",
+    "offers_btn": "💌 Offerte",
+    "territories_conquered": "territori conquistati",
+    "explore": "Esplora →"
+  },
+  "collection": {
+    "title": "Collezione",
+    "empty": "Collezione vuota",
+    "empty_desc": "Apri il tuo primo pacchetto e inizia la collezione!",
+    "see_all": "Vedi tutto →",
+    "waifu": "WAIFU",
+    "outfit": "OUTFIT",
+    "pose": "POSA"
+  },
+  "community": {
+    "title": "Community",
+    "friends": "Amici",
+    "leaderboard": "Classifica",
+    "swap": "Swap",
+    "swipe_waifu": "Swipe Waifu",
+    "swipe_subtitle": "Scorri, vota e guadagna Baci ogni 10 voti",
+    "vote": "Vota →",
+    "votes_total": "{n} voti totali"
+  },
+  "loading": {
+    "text": "caricamento...",
+    "map": "Caricamento mappa…",
+    "drops": "Caricamento drop stagionale…"
+  },
+  "onboarding": {
+    "title": "FONDA IL TUO IMPERO",
+    "subtitle": "Benvenuto in Waifu's Empire. Inizia scegliendo il nome del tuo dominio e riceverai 5 pacchetti di benvenuto senza duplicati.",
+    "welcome_packs": "5 pacchetti di benvenuto",
+    "empire_label": "NOME IMPERO",
+    "flag_label": "COLORE BANDIERA",
+    "found_btn": "FONDA L'IMPERO",
+    "founding_btn": "FONDAZIONE..."
+  },
+  "rarity": {
+    "comune": "Comune",
+    "raro": "Raro",
+    "epico": "Epico",
+    "leggendario": "Leggendario",
+    "immersivo": "Immersivo"
+  },
+  "errors": {
+    "access_denied": "ACCESSO NEGATO",
+    "not_admin": "La tua email {email} non è registrata come admin.",
+    "env_hint": "Imposta ADMIN_EMAILS=tua-email@gmail.com nel file .env e riavvia il server.",
+    "back": "← Torna al gioco"
+  }
+}

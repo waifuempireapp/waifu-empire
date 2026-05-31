@@ -1,0 +1,145 @@
+{
+  "nav": {
+    "home": "ホーム",
+    "packs": "パック",
+    "collection": "コレクション",
+    "map": "マップ",
+    "community": "コミュニティ"
+  },
+  "auth": {
+    "login": "ログイン",
+    "register": "新規登録",
+    "logout": "ログアウト",
+    "google": "Googleでログイン",
+    "email_placeholder": "メールアドレス",
+    "password_placeholder": "パスワード",
+    "already_account": "すでにアカウントをお持ちですか？",
+    "no_account": "アカウントをお持ちでないですか？",
+    "loading": "読み込み中...",
+    "error_invalid_email": "無効なメールアドレス",
+    "error_user_not_found": "ユーザーが見つかりません",
+    "error_wrong_password": "パスワードが間違っています",
+    "error_email_in_use": "このメールアドレスはすでに登録されています",
+    "error_weak_password": "パスワードが弱すぎます（最低6文字）",
+    "error_popup_closed": "ログインがキャンセルされました",
+    "error_network": "ネットワークエラー"
+  },
+  "settings": {
+    "title": "設定",
+    "admin_panel": "管理パネル",
+    "shop": "ショップ",
+    "logout": "ログアウト",
+    "version": "Waifu's Empire",
+    "language": {
+      "title": "言語",
+      "subtitle": "言語を選んでください"
+    }
+  },
+  "profile": {
+    "level": "LV. {n}",
+    "empire_name": "帝国を創設する",
+    "empire_name_placeholder": "例：日出ずる国の帝国",
+    "flag_color": "旗の色",
+    "found_cta": "帝国を創設する",
+    "founding": "創設中..."
+  },
+  "home": {
+    "open_pack": "パックを開く",
+    "open_now": "🎁 今すぐ開く",
+    "packs": "📦 パック",
+    "shop": "🛒 ショップ",
+    "packs_ready": "{n}個の{pack}が開封できます！",
+    "pack_singular": "パック",
+    "pack_plural": "パック",
+    "next_pack": "ショップを訪問",
+    "countdown": "次まで{time}",
+    "available": "利用可能"
+  },
+  "pesca": {
+    "title": "ワイフドロップ",
+    "gems": "ジェム",
+    "blind_pick": "ブラインドピック",
+    "blind_subtitle": "{owner}より — 中身を見ずにカードを選ぼう",
+    "confirm_pick": "{n}枚目のカードを選択",
+    "cancel": "キャンセル",
+    "fishing": "釣り中…",
+    "fish_btn": "釣る（{n}キス）",
+    "card_added": "カードをコレクションに追加しました！",
+    "hard_pass_required": "ハードパスが必要です",
+    "hard_pass_desc": "ホットコンテンツを見て選ぶにはパスを購入してください",
+    "already_fished": "🎣 釣り済み",
+    "new_label": "新着",
+    "full_view": "フルカード表示",
+    "time_remaining": "残り時間：",
+    "nuova": "新着",
+    "loading": "読み込み中…",
+    "drop_btn": "ドロップ（{n}）"
+  },
+  "sbusta": {
+    "opening": "パックを開封中",
+    "revelation": "公開",
+    "god_pack": "✦ ワイフ ゴッドパック ✦",
+    "five_found": "5体のワイフ発見！",
+    "tap_next": "次へタップ →",
+    "sealed": "未開封",
+    "continue": "続ける",
+    "next_pack": "次 {n}/{total} →",
+    "end_multi": "完了 · {n}パック",
+    "choose_drop": "◆ ドロップを選ぶ",
+    "active_badge": "✓ 有効",
+    "tap_to_open": "▶ タップして開く"
+  },
+  "map": {
+    "title": "ワールドマップ",
+    "conquest": "◆ 征服",
+    "offers_btn": "💌 オファー",
+    "territories_conquered": "征服した領土",
+    "explore": "探索する →"
+  },
+  "collection": {
+    "title": "コレクション",
+    "empty": "コレクションは空です",
+    "empty_desc": "最初のパックを開けてコレクションを始めよう！",
+    "see_all": "すべて見る →",
+    "waifu": "ワイフ",
+    "outfit": "コスチューム",
+    "pose": "ポーズ"
+  },
+  "community": {
+    "title": "コミュニティ",
+    "friends": "フレンド",
+    "leaderboard": "ランキング",
+    "swap": "スワップ",
+    "swipe_waifu": "ワイフをスワイプ",
+    "swipe_subtitle": "スワイプ、投票して10票ごとにキスを獲得",
+    "vote": "投票する →",
+    "votes_total": "合計{n}票"
+  },
+  "loading": {
+    "text": "読み込み中...",
+    "map": "マップを読み込み中…",
+    "drops": "シーズンドロップを読み込み中…"
+  },
+  "onboarding": {
+    "title": "帝国を創設しよう",
+    "subtitle": "Waifu's Empireへようこそ。ドメイン名を決めてスタートすると、重複なしの5つのウェルカムパックが届きます。",
+    "welcome_packs": "5つのウェルカムパック",
+    "empire_label": "帝国名",
+    "flag_label": "旗の色",
+    "found_btn": "帝国を創設する",
+    "founding_btn": "創設中..."
+  },
+  "rarity": {
+    "comune": "コモン",
+    "raro": "レア",
+    "epico": "エピック",
+    "leggendario": "レジェンダリー",
+    "immersivo": "イマーシブ"
+  },
+  "errors": {
+    "access_denied": "アクセス拒否",
+    "not_admin": "あなたのメールアドレス {email} は管理者として登録されていません。",
+    "env_hint": ".envファイルにADMIN_EMAILS=your-email@gmail.comを設定してサーバーを再起動してください。",
+    "back": "← ゲームに戻る"
+  }
+}

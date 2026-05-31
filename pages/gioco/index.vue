@@ -44,6 +44,18 @@ const raidBattleCtx = ref<unknown>(null)
 // Pannello impostazioni utente (FAB hamburger)
 const settingsAperte = ref(false)
 
+// ── i18n: lingua corrente e switcher ──────────────────────────────────
+const { locale, locales, setLocale } = useI18n()
+const currentLocale = computed(() => locale.value)
+const availableLocales = computed(() =>
+  (locales.value as { code: string; name: string }[]).map(l => ({ code: l.code, name: l.name }))
+)
+
+async function switchLocale(code: string) {
+  await setLocale(code)
+  localStorage.setItem('waifu_locale', code)
+}
+
 // ── Sub-navigazione per la tab "Pacchetti" (Sbusta | Pesca) ───────────
 const subTabPacchetti = ref<'sbusta' | 'pesca'>('sbusta')
 
@@ -79,6 +91,9 @@ onMounted(() => {
   window.addEventListener('impero:apri-pesca', () => {
     pescaAperta.value = true
   })
+  // Ripristina la lingua salvata
+  const savedLocale = localStorage.getItem('waifu_locale')
+  if (savedLocale) setLocale(savedLocale)
 })
 onUnmounted(() => {
   window.removeEventListener('impero:apri-negozio', () => gameStore.toggleNegozio(true))
@@ -475,18 +490,20 @@ function handleSetTab(t: string) {
         <!-- Sheet -->
         <div style="
           position: relative;
-          background: linear-gradient(180deg, #1b1638 0%, #0d0a26 100%);
-          border-top: 1px solid rgba(167,139,250,0.25);
+          background: linear-gradient(180deg, rgba(27,22,56,0.97) 0%, rgba(13,10,38,0.99) 100%);
+          border-top: 1px solid rgba(167,139,250,0.20);
           border-radius: 24px 24px 0 0;
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
           padding: 8px 24px 48px;
           z-index: 1;
         ">
           <!-- Handle -->
-          <div style="width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,0.15);margin:12px auto 24px;"/>
+          <div style="width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,0.18);margin:12px auto 20px;"/>
 
           <!-- Avatar + nome -->
           <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">
-            <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#a78bfa,#7c3aed);display:grid;place-items:center;font-size:22px;flex-shrink:0;">
+            <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a78bfa);display:grid;place-items:center;font-size:22px;flex-shrink:0;">
               👤
             </div>
             <div>
@@ -502,6 +519,32 @@ function handleSetTab(t: string) {
             </div>
           </div>
 
+          <!-- Language switcher -->
+          <div style="margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.06);">
+            <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.22em;color:rgba(245,197,96,0.6);text-transform:uppercase;font-weight:700;margin-bottom:12px;">
+              🌐 {{ $t('settings.language.title') }}
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button
+                v-for="loc in availableLocales"
+                :key="loc.code"
+                @click="switchLocale(loc.code)"
+                :style="{
+                  padding: '6px 12px',
+                  borderRadius: '999px',
+                  border: currentLocale === loc.code ? '1.5px solid rgba(167,139,250,0.7)' : '1px solid rgba(255,255,255,0.12)',
+                  background: currentLocale === loc.code ? 'rgba(167,139,250,0.18)' : 'rgba(255,255,255,0.04)',
+                  color: currentLocale === loc.code ? '#a78bfa' : 'rgba(255,255,255,0.55)',
+                  fontFamily: 'var(--ff-label,\'Saira Condensed\',sans-serif)',
+                  fontSize: '11px',
+                  fontWeight: currentLocale === loc.code ? '700' : '400',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }"
+              >{{ loc.name }}</button>
+            </div>
+          </div>
+
           <!-- Voci menu -->
           <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:20px;">
             <button
@@ -509,25 +552,25 @@ function handleSetTab(t: string) {
               style="display:flex;align-items:center;gap:12px;padding:14px 0;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer;color:#b573ff;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:14px;letter-spacing:0.08em;"
               @click="settingsAperte=false; router.push('/admin')"
             >
-              <span style="font-size:20px;">⚙️</span> Pannello Admin
+              <span style="font-size:20px;">⚙️</span> {{ $t('settings.admin_panel') }}
             </button>
             <button
               style="display:flex;align-items:center;gap:12px;padding:14px 0;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer;color:rgba(241,235,255,0.8);font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:14px;letter-spacing:0.08em;"
               @click="gameStore.toggleNegozio(true); settingsAperte=false"
             >
-              <span style="font-size:20px;">🛒</span> Negozio
+              <span style="font-size:20px;">🛒</span> {{ $t('settings.shop') }}
             </button>
             <button
               style="display:flex;align-items:center;gap:12px;padding:14px 0;background:transparent;border:none;cursor:pointer;color:#ff5b6c;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:14px;letter-spacing:0.08em;"
               @click="authStore.logout(); settingsAperte=false"
             >
-              <span style="font-size:20px;">🚪</span> Esci
+              <span style="font-size:20px;">🚪</span> {{ $t('settings.logout') }}
             </button>
           </div>
 
           <!-- Versione app -->
           <div style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:10px;color:rgba(255,255,255,0.18);text-align:center;">
-            Waifu's Empire · nuxt-redesign
+            {{ $t('settings.version') }} · nuxt-redesign
           </div>
         </div>
       </div>

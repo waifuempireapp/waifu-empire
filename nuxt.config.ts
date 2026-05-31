@@ -20,6 +20,7 @@ export default defineNuxtConfig({
   modules: [
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
+    '@nuxtjs/i18n',
   ],
 
   // Percorso CSS globale (contiene @tailwind + variabili CSS legacy + animazioni)
@@ -29,6 +30,20 @@ export default defineNuxtConfig({
     configPath: '~/tailwind.config.ts',
     exposeConfig: false,
     cssPath: '~/assets/css/main.css',
+  },
+
+  i18n: {
+    strategy: 'no_prefix',
+    defaultLocale: 'en',
+    locales: [
+      { code: 'en', name: 'English',  file: 'en.json' },
+      { code: 'it', name: 'Italiano', file: 'it.json' },
+      { code: 'de', name: 'Deutsch',  file: 'de.json' },
+      { code: 'es', name: 'Español',  file: 'es.json' },
+      { code: 'ja', name: '日本語',    file: 'ja.json' },
+    ],
+    lazy: true,
+    langDir: 'locales/',
   },
 
   // Variabili d'ambiente — private (server only) e pubbliche (client)
