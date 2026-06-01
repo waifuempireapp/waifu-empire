@@ -43,7 +43,9 @@ export default defineNuxtConfig({
       { code: 'ja', name: '日本語',    file: 'ja.json' },
     ],
     lazy: true,
-    langDir: 'locales/',   // relativo a i18n/ → i18n/locales/
+    langDir: 'locales/',
+    // Disabilita rilevamento automatico lingua browser (bloccava il redirect auth)
+    detectBrowserLanguage: false,
   },
 
   // Variabili d'ambiente — private (server only) e pubbliche (client)
