@@ -306,7 +306,8 @@ onUnmounted(() => {
         :on-complete="onRivelazioneFine"
       />
 
-      <!-- Pesca alla cieca — pagina full-screen, no scroll -->
+      <!-- Pesca alla cieca — Teleport to body per vero fullscreen (backdrop-filter fix) -->
+      <Teleport to="body">
       <div
         v-if="selectedPack"
         style="
@@ -471,6 +472,7 @@ onUnmounted(() => {
           </div>
         </div>
       </div>
+      </Teleport>
 
       <!-- Stato caricamento -->
       <div
