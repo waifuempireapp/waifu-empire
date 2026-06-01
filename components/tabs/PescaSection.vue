@@ -131,14 +131,16 @@ onMounted(() => {
 // 'reveal' = mostra carte originali, 'shuffle' = animazione mescola, 'pick' = scegli
 const pickPhase = ref<'reveal' | 'shuffle' | 'pick'>('reveal')
 // Posizioni casuali delle carte durante lo shuffle (translateX,translateY,rotate)
-const shufflePositions = ref<{ x: number; y: number; r: number }[]>([])
+const shufflePositions = ref<{ x: number; y: number; r: number; z?: number; s?: number }[]>([])
 let shuffleInterval: ReturnType<typeof setInterval> | null = null
 
 function randomShufflePositions(n: number) {
-  return Array.from({ length: n }, () => ({
-    x: (Math.random() - 0.5) * 120,
-    y: (Math.random() - 0.5) * 80,
-    r: (Math.random() - 0.5) * 30,
+  return Array.from({ length: n }, (_, i) => ({
+    x: (Math.random() - 0.5) * 200,  // wider spread
+    y: (Math.random() - 0.5) * 120,
+    r: (Math.random() - 0.5) * 45,
+    z: Math.floor(Math.random() * n), // z-index variation for overlap
+    s: 0.85 + Math.random() * 0.25,   // scale variation
   }))
 }
 
@@ -352,7 +354,7 @@ onUnmounted(() => {
         :on-complete="onRivelazioneFine"
       />
 
-      <!-- Pesca alla cieca — Teleport to body (backdrop-filter fix) -->
+      <!-- Pesca alla cieca — Teleport to body -->
       <Teleport to="body">
       <div
         v-if="selectedPack"
@@ -364,131 +366,125 @@ onUnmounted(() => {
           padding-bottom:max(16px,env(safe-area-inset-bottom));
         "
       >
-        <!-- Indicatore fase -->
+        <!-- Fase indicator -->
         <div style="flex-shrink:0; text-align:center; padding:8px 20px 4px;">
           <div :style="{
             fontFamily: 'var(--ff-label,\'Saira Condensed\',sans-serif)',
             fontSize: '9px', letterSpacing: '0.3em',
-            color: pickPhase === 'pick' ? 'rgba(255,77,158,0.7)' : 'rgba(255,255,255,0.3)',
-            textTransform: 'uppercase', fontWeight: 700,
-            transition: 'color 0.3s',
+            color: pickPhase === 'pick' ? 'rgba(255,77,158,0.7)' : 'rgba(255,255,255,0.28)',
+            textTransform: 'uppercase', fontWeight: 700, transition: 'color 0.3s',
           }">
             {{ pickPhase === 'reveal' ? '✦ Ecco le tue carte ✦' : pickPhase === 'shuffle' ? '⟳ Mescolando...' : 'Scegli una carta' }}
           </div>
         </div>
 
-        <!-- Area carte -->
-        <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:0; padding:4px 12px; overflow:hidden;">
-          <div style="width:100%; max-width:360px;">
-
-            <!-- Layout 2 sopra + 3 sotto -->
-            <!-- Riga 1: 2 carte -->
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; justify-items:center;">
-              <div
-                v-for="(uiIdx, pos) in [0, 1]"
-                :key="uiIdx"
-                :style="{
-                  width: '100%',
-                  aspectRatio: '2/3',
-                  borderRadius: '14px',
-                  overflow: 'hidden',
-                  position: 'relative',
-                  cursor: pickPhase === 'pick' ? 'pointer' : 'default',
-                  border: pickPhase === 'pick' && selectedCardIndex === uiIdx
-                    ? '2px solid #ff4d9e'
-                    : '1.5px solid rgba(245,166,35,0.28)',
-                  boxShadow: pickPhase === 'pick' && selectedCardIndex === uiIdx
-                    ? '0 0 24px rgba(255,77,158,0.5)'
-                    : '0 4px 16px rgba(0,0,0,0.5)',
-                  transform: pickPhase === 'shuffle'
-                    ? `translate(${shufflePositions[uiIdx]?.x ?? 0}px, ${shufflePositions[uiIdx]?.y ?? 0}px) rotate(${shufflePositions[uiIdx]?.r ?? 0}deg) ${selectedCardIndex === uiIdx ? 'scale(1.06)' : 'scale(1)'}`
-                    : pickPhase === 'pick' && selectedCardIndex === uiIdx ? 'scale(1.06)' : 'scale(1)',
-                  transition: pickPhase === 'shuffle' ? 'transform 0.35s ease-in-out' : 'all 0.2s ease',
-                  background: 'linear-gradient(145deg,#160830,#0d0520)',
-                  zIndex: pickPhase === 'pick' && selectedCardIndex === uiIdx ? 2 : 1,
-                }"
-                @click="pickPhase === 'pick' && (selectedCardIndex = (selectedCardIndex === uiIdx ? null : uiIdx))"
-              >
-                <!-- REVEAL: mostra immagine reale -->
-                <template v-if="pickPhase === 'reveal'">
-                  <img
-                    v-if="selectedPack.cards?.[uiIdx]?.immagine"
-                    :src="selectedPack.cards[uiIdx].immagine"
-                    style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"
-                  />
-                  <div v-else style="width:100%;height:100%;display:grid;place-items:center;">
-                    <img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;" />
-                  </div>
-                </template>
-                <!-- SHUFFLE / PICK: faccia giù -->
-                <template v-else>
-                  <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(245,166,35,0.025) 8px,rgba(245,166,35,0.025) 9px);" />
-                  <div style="width:100%;height:100%;display:grid;place-items:center;position:relative;">
-                    <img src="~/assets/images/New_Logo.png" alt="" :style="{
-                      width:'50%', opacity: pickPhase === 'pick' && selectedCardIndex === uiIdx ? 1 : 0.7,
-                      filter: pickPhase === 'pick' && selectedCardIndex === uiIdx ? 'drop-shadow(0 0 14px rgba(255,77,158,0.8))' : 'none',
-                      transition:'all 0.2s',
-                    }" />
-                    <div v-if="pickPhase === 'pick' && selectedCardIndex === uiIdx" style="position:absolute;bottom:8px;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div>
-                  </div>
-                </template>
-              </div>
+        <!-- Area carte: 6-column grid, stessa dimensione sopra e sotto -->
+        <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:0; padding:4px 14px; overflow:visible; position:relative;">
+          <div
+            :style="{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(6,1fr)',
+              gridTemplateRows: 'auto auto',
+              gap: '10px',
+              width: '100%',
+              maxWidth: '360px',
+              position: 'relative',
+            }"
+          >
+            <!-- Carte 0 e 1: span 3, riga 1, centrate verticalmente nella riga -->
+            <div
+              v-for="uiIdx in [0, 1]"
+              :key="uiIdx"
+              :style="{
+                gridColumn: 'span 3',
+                gridRow: '1',
+                justifySelf: 'center',
+                width: '100%',
+                aspectRatio: '2/3',
+                borderRadius: '14px',
+                overflow: 'hidden',
+                position: 'relative',
+                cursor: pickPhase === 'pick' ? 'pointer' : 'default',
+                border: pickPhase === 'pick' && selectedCardIndex === uiIdx
+                  ? '2px solid #ff4d9e'
+                  : '1.5px solid rgba(245,166,35,0.28)',
+                boxShadow: pickPhase === 'pick' && selectedCardIndex === uiIdx
+                  ? '0 0 24px rgba(255,77,158,0.55), 0 0 0 1px rgba(255,77,158,0.2) inset'
+                  : '0 6px 20px rgba(0,0,0,0.55)',
+                background: 'linear-gradient(145deg,#160830,#0d0520)',
+                zIndex: pickPhase === 'shuffle'
+                  ? (shufflePositions[uiIdx]?.z ?? 1)
+                  : pickPhase === 'pick' && selectedCardIndex === uiIdx ? 5 : 1,
+                transform: pickPhase === 'shuffle' && shufflePositions[uiIdx]
+                  ? `translate(${shufflePositions[uiIdx].x}px, ${shufflePositions[uiIdx].y}px) rotate(${shufflePositions[uiIdx].r}deg) scale(${shufflePositions[uiIdx].s ?? 1})`
+                  : pickPhase === 'pick' && selectedCardIndex === uiIdx ? 'scale(1.06)' : 'scale(1)',
+                transition: pickPhase === 'shuffle'
+                  ? 'transform 0.38s cubic-bezier(0.4,0,0.2,1), z-index 0.1s, box-shadow 0.2s'
+                  : 'all 0.22s ease',
+              }"
+              @click="pickPhase === 'pick' && (selectedCardIndex = (selectedCardIndex === uiIdx ? null : uiIdx))"
+            >
+              <template v-if="pickPhase === 'reveal'">
+                <img v-if="selectedPack.cards?.[uiIdx]?.immagine" :src="selectedPack.cards[uiIdx].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;" />
+                <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;" /></div>
+              </template>
+              <template v-else>
+                <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(245,166,35,0.03) 8px,rgba(245,166,35,0.03) 9px);" />
+                <div style="width:100%;height:100%;display:grid;place-items:center;position:relative;">
+                  <img src="~/assets/images/New_Logo.png" alt="" :style="{width:'50%',opacity:pickPhase==='pick'&&selectedCardIndex===uiIdx?1:0.68,filter:pickPhase==='pick'&&selectedCardIndex===uiIdx?'drop-shadow(0 0 14px rgba(255,77,158,0.8))':'none',transition:'all 0.2s'}" />
+                  <div v-if="pickPhase==='pick'&&selectedCardIndex===uiIdx" style="position:absolute;bottom:8px;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div>
+                </div>
+              </template>
             </div>
 
-            <!-- Riga 2: 3 carte -->
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
-              <div
-                v-for="(uiIdx, pos) in [2, 3, 4]"
-                :key="uiIdx"
-                :style="{
-                  aspectRatio: '2/3',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  position: 'relative',
-                  cursor: pickPhase === 'pick' ? 'pointer' : 'default',
-                  border: pickPhase === 'pick' && selectedCardIndex === uiIdx
-                    ? '2px solid #ff4d9e'
-                    : '1.5px solid rgba(245,166,35,0.28)',
-                  boxShadow: pickPhase === 'pick' && selectedCardIndex === uiIdx
-                    ? '0 0 20px rgba(255,77,158,0.5)'
-                    : '0 4px 14px rgba(0,0,0,0.5)',
-                  transform: pickPhase === 'shuffle'
-                    ? `translate(${shufflePositions[uiIdx]?.x ?? 0}px, ${shufflePositions[uiIdx]?.y ?? 0}px) rotate(${shufflePositions[uiIdx]?.r ?? 0}deg) ${selectedCardIndex === uiIdx ? 'scale(1.06)' : 'scale(1)'}`
-                    : pickPhase === 'pick' && selectedCardIndex === uiIdx ? 'scale(1.06)' : 'scale(1)',
-                  transition: pickPhase === 'shuffle' ? 'transform 0.35s ease-in-out' : 'all 0.2s ease',
-                  background: 'linear-gradient(145deg,#160830,#0d0520)',
-                  zIndex: pickPhase === 'pick' && selectedCardIndex === uiIdx ? 2 : 1,
-                }"
-                @click="pickPhase === 'pick' && (selectedCardIndex = (selectedCardIndex === uiIdx ? null : uiIdx))"
-              >
-                <template v-if="pickPhase === 'reveal'">
-                  <img
-                    v-if="selectedPack.cards?.[uiIdx]?.immagine"
-                    :src="selectedPack.cards[uiIdx].immagine"
-                    style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"
-                  />
-                  <div v-else style="width:100%;height:100%;display:grid;place-items:center;">
-                    <img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;" />
-                  </div>
-                </template>
-                <template v-else>
-                  <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(245,166,35,0.025) 8px,rgba(245,166,35,0.025) 9px);" />
-                  <div style="width:100%;height:100%;display:grid;place-items:center;position:relative;">
-                    <img src="~/assets/images/New_Logo.png" alt="" :style="{
-                      width:'45%', opacity: pickPhase === 'pick' && selectedCardIndex === uiIdx ? 1 : 0.65,
-                      filter: pickPhase === 'pick' && selectedCardIndex === uiIdx ? 'drop-shadow(0 0 12px rgba(255,77,158,0.8))' : 'none',
-                      transition:'all 0.2s',
-                    }" />
-                    <div v-if="pickPhase === 'pick' && selectedCardIndex === uiIdx" style="position:absolute;bottom:6px;font-size:7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:1.5px;color:#ff4d9e;font-weight:800;">SCELTA</div>
-                  </div>
-                </template>
-              </div>
+            <!-- Carte 2, 3, 4: span 2, riga 2 -->
+            <div
+              v-for="(uiIdx, pos) in [2, 3, 4]"
+              :key="uiIdx"
+              :style="{
+                gridColumn: 'span 2',
+                gridRow: '2',
+                aspectRatio: '2/3',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                position: 'relative',
+                cursor: pickPhase === 'pick' ? 'pointer' : 'default',
+                border: pickPhase === 'pick' && selectedCardIndex === uiIdx
+                  ? '2px solid #ff4d9e'
+                  : '1.5px solid rgba(245,166,35,0.28)',
+                boxShadow: pickPhase === 'pick' && selectedCardIndex === uiIdx
+                  ? '0 0 20px rgba(255,77,158,0.55), 0 0 0 1px rgba(255,77,158,0.2) inset'
+                  : '0 5px 16px rgba(0,0,0,0.5)',
+                background: 'linear-gradient(145deg,#160830,#0d0520)',
+                zIndex: pickPhase === 'shuffle'
+                  ? (shufflePositions[uiIdx]?.z ?? 1)
+                  : pickPhase === 'pick' && selectedCardIndex === uiIdx ? 5 : 1,
+                transform: pickPhase === 'shuffle' && shufflePositions[uiIdx]
+                  ? `translate(${shufflePositions[uiIdx].x}px, ${shufflePositions[uiIdx].y}px) rotate(${shufflePositions[uiIdx].r}deg) scale(${shufflePositions[uiIdx].s ?? 1})`
+                  : pickPhase === 'pick' && selectedCardIndex === uiIdx ? 'scale(1.06)' : 'scale(1)',
+                transition: pickPhase === 'shuffle'
+                  ? 'transform 0.38s cubic-bezier(0.4,0,0.2,1), z-index 0.1s, box-shadow 0.2s'
+                  : 'all 0.22s ease',
+              }"
+              @click="pickPhase === 'pick' && (selectedCardIndex = (selectedCardIndex === uiIdx ? null : uiIdx))"
+            >
+              <template v-if="pickPhase === 'reveal'">
+                <img v-if="selectedPack.cards?.[uiIdx]?.immagine" :src="selectedPack.cards[uiIdx].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;" />
+                <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;" /></div>
+              </template>
+              <template v-else>
+                <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(245,166,35,0.03) 8px,rgba(245,166,35,0.03) 9px);" />
+                <div style="width:100%;height:100%;display:grid;place-items:center;position:relative;">
+                  <img src="~/assets/images/New_Logo.png" alt="" :style="{width:'45%',opacity:pickPhase==='pick'&&selectedCardIndex===uiIdx?1:0.65,filter:pickPhase==='pick'&&selectedCardIndex===uiIdx?'drop-shadow(0 0 12px rgba(255,77,158,0.8))':'none',transition:'all 0.2s'}" />
+                  <div v-if="pickPhase==='pick'&&selectedCardIndex===uiIdx" style="position:absolute;bottom:6px;font-size:7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:1.5px;color:#ff4d9e;font-weight:800;">SCELTA</div>
+                </div>
+              </template>
             </div>
 
           </div>
         </div>
 
-        <!-- Footer: pick → PESCA, durante reveal/shuffle → nessun bottone -->
+        <!-- Footer -->
         <div style="flex-shrink:0; padding:10px 20px 0; display:flex; gap:10px; justify-content:center;">
           <button
             style="background:none;border:1px solid rgba(255,255,255,0.15);border-radius:999px;color:rgba(238,232,220,0.45);font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;padding:13px 28px;cursor:pointer;letter-spacing:0.12em;"
@@ -502,7 +498,7 @@ onUnmounted(() => {
               border: `2px solid ${selectedCardIndex !== null ? 'rgba(255,77,158,0.6)' : 'rgba(255,255,255,0.08)'}`,
               borderRadius:'999px', padding:'13px 28px',
               color: selectedCardIndex !== null ? '#ff4d9e' : 'rgba(255,255,255,0.2)',
-              fontFamily:'var(--ff-label,\'Saira Condensed\',sans-serif)', fontSize:'13px', fontWeight:700,
+              fontFamily: 'var(--ff-label,\'Saira Condensed\',sans-serif)', fontSize:'13px', fontWeight:700,
               letterSpacing:'0.14em', cursor: selectedCardIndex !== null && !busy ? 'pointer' : 'not-allowed',
               display:'flex', alignItems:'center', gap:'8px', transition:'all 0.2s',
               boxShadow: selectedCardIndex !== null ? '0 0 20px rgba(255,77,158,0.3)' : 'none',
@@ -512,8 +508,8 @@ onUnmounted(() => {
             <KissesIcon :size="16" />
             {{ busy ? 'PESCA IN CORSO…' : `PESCA (${KISSES_COST})` }}
           </button>
-          <div v-else style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;color:rgba(255,255,255,0.25);letter-spacing:0.2em;display:flex;align-items:center;">
-            {{ pickPhase === 'reveal' ? '...' : '⟳' }}
+          <div v-else style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;color:rgba(255,255,255,0.22);letter-spacing:0.2em;display:flex;align-items:center;min-height:44px;">
+            {{ pickPhase === 'shuffle' ? '⟳ mescolando...' : '' }}
           </div>
         </div>
       </div>
