@@ -139,7 +139,7 @@
   "errors": {
     "access_denied": "ACCESSO NEGATO",
     "not_admin": "La tua email {email} non è registrata come admin.",
-    "env_hint": "Imposta ADMIN_EMAILS=tua-email@gmail.com nel file .env e riavvia il server.",
+    "env_hint": "Imposta ADMIN_EMAILS=tua-email{'@'}gmail.com nel file .env e riavvia il server.",
     "back": "← Torna al gioco"
   }
 }

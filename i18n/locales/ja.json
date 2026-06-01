@@ -139,7 +139,7 @@
   "errors": {
     "access_denied": "アクセス拒否",
     "not_admin": "あなたのメールアドレス {email} は管理者として登録されていません。",
-    "env_hint": ".envファイルにADMIN_EMAILS=your-email@gmail.comを設定してサーバーを再起動してください。",
+    "env_hint": ".envファイルにADMIN_EMAILS=your-email{'@'}gmail.comを設定してサーバーを再起動してください。",
     "back": "← ゲームに戻る"
   }
 }

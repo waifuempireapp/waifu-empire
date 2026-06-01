@@ -139,7 +139,7 @@
   "errors": {
     "access_denied": "ACCESO DENEGADO",
     "not_admin": "Tu correo {email} no está registrado como admin.",
-    "env_hint": "Configura ADMIN_EMAILS=tu-email@gmail.com en el archivo .env y reinicia el servidor.",
+    "env_hint": "Configura ADMIN_EMAILS=tu-email{'@'}gmail.com en el archivo .env y reinicia el servidor.",
     "back": "← Volver al juego"
   }
 }

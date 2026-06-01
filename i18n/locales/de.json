@@ -139,7 +139,7 @@
   "errors": {
     "access_denied": "ZUGRIFF VERWEIGERT",
     "not_admin": "Deine E-Mail {email} ist nicht als Admin registriert.",
-    "env_hint": "Setze ADMIN_EMAILS=deine-email@gmail.com in der .env-Datei und starte den Server neu.",
+    "env_hint": "Setze ADMIN_EMAILS=deine-email{'@'}gmail.com in der .env-Datei und starte den Server neu.",
     "back": "← Zurück zum Spiel"
   }
 }
