@@ -152,27 +152,73 @@ function aprePack(pack: Pack) {
   selectedCardIndex.value = null
   pickPhase.value         = 'reveal'
 
-  // Dopo 1.5s inizia shuffle
+  // Sequenza shuffle stile Pokémon TCG: fan-out → rientro → fan-out → rientro → pick
+  const PKM_POSITIONS = [
+    // Spread 1: fan-out (sx, destra, alto, basso, centro-fuori)
+    [
+      { x: -80, y: -30, r: -18, s: 0.9, z: 3 },
+      { x:  80, y: -30, r:  18, s: 0.9, z: 4 },
+      { x: -60, y:  50, r: -12, s: 0.92, z: 2 },
+      { x:   0, y:  70, r:   0, s: 0.9, z: 1 },
+      { x:  60, y:  50, r:  12, s: 0.92, z: 5 },
+    ],
+    // Centro (torna)
+    Array.from({ length: n }, () => ({ x: 0, y: 0, r: 0, s: 1, z: 1 })),
+    // Spread 2 (diverso): incrocio
+    [
+      { x:  70, y: -40, r:  22, s: 0.88, z: 5 },
+      { x: -70, y:  40, r: -20, s: 0.88, z: 2 },
+      { x:  40, y:  60, r:  10, s: 0.93, z: 3 },
+      { x: -40, y: -60, r: -10, s: 0.93, z: 1 },
+      { x:   0, y: -20, r:  -5, s: 0.95, z: 4 },
+    ],
+    // Centro finale (torna)
+    Array.from({ length: n }, () => ({ x: 0, y: 0, r: 0, s: 1, z: 1 })),
+  ]
+
   setTimeout(() => {
     pickPhase.value = 'shuffle'
-    shufflePositions.value = randomShufflePositions(n)
-    // Aggiorna posizioni ogni 400ms per 2 secondi
-    let count = 0
+    let step = 0
+    shufflePositions.value = PKM_POSITIONS[0].slice(0, n) as any
     shuffleInterval = setInterval(() => {
-      shufflePositions.value = randomShufflePositions(n)
-      count++
-      if (count >= 5) {
+      step++
+      if (step < PKM_POSITIONS.length) {
+        shufflePositions.value = PKM_POSITIONS[step].slice(0, n) as any
+      } else {
         clearInterval(shuffleInterval!)
         shuffleInterval = null
-        // Porta al centro e poi passa a pick
-        shufflePositions.value = Array.from({ length: n }, () => ({ x: 0, y: 0, r: 0 }))
         setTimeout(() => {
           pickPhase.value = 'pick'
           shuffledOrder.value = fisherYates(Array.from({ length: n }, (_, i) => i))
-        }, 400)
+        }, 300)
       }
-    }, 400)
-  }, 1500)
+    }, 450)
+  }, 1200)
+}
+
+// Helper per gli stili di ogni carta nel blind pick
+function cardStyle(uiIdx: number) {
+  const pos = shufflePositions.value[uiIdx]
+  const isSel = selectedCardIndex.value === uiIdx && pickPhase.value === 'pick'
+  return {
+    aspectRatio: '2/3',
+    borderRadius: '13px',
+    overflow: 'hidden',
+    position: 'relative',
+    cursor: pickPhase.value === 'pick' ? 'pointer' : 'default',
+    border: isSel ? '2px solid #ff4d9e' : '1.5px solid rgba(245,166,35,0.28)',
+    boxShadow: isSel
+      ? '0 0 24px rgba(255,77,158,0.55), 0 0 0 1px rgba(255,77,158,0.2) inset'
+      : '0 5px 16px rgba(0,0,0,0.5)',
+    background: 'linear-gradient(145deg,#160830,#0d0520)',
+    zIndex: pickPhase.value === 'shuffle' ? (pos?.z ?? 1) : isSel ? 5 : 1,
+    transform: pickPhase.value === 'shuffle' && pos
+      ? `translate(${pos.x}px, ${pos.y}px) rotate(${pos.r}deg) scale(${pos.s ?? 1})`
+      : isSel ? 'scale(1.06)' : 'scale(1)',
+    transition: pickPhase.value === 'shuffle'
+      ? 'transform 0.42s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s'
+      : 'all 0.22s ease',
+  }
 }
 
 // Cleanup timer se il modale viene chiuso
@@ -225,7 +271,16 @@ async function confermaScelta() {
     // Notifica parent che sono stati spesi kisses
     emit('updateProfilo', { ...(props.profilo ?? {}), kisses: kissesAttuali.value - KISSES_COST })
   } catch (e: any) {
-    mostraNotif(e?.message ?? 'Errore pesca', '#ff4d4d')
+    const status = (e as any)?.statusCode ?? (e as any)?.status
+    if (status === 409) {
+      // Pack già pescato da un'altra sessione — chiudi modale e aggiorna feed
+      mostraNotif('Già pescata da qualcun altro!', '#f59e0b')
+      selectedPack.value = null
+      selectedCardIndex.value = null
+      await caricaFeed()
+    } else {
+      mostraNotif((e as any)?.data?.error ?? (e as any)?.message ?? 'Errore pesca', '#ff4d4d')
+    }
   } finally {
     busy.value = false
   }
@@ -378,107 +433,41 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- Area carte: 6-column grid, stessa dimensione sopra e sotto -->
+        <!-- Area carte: 3-column grid, tutte stesse dimensioni (1fr) -->
         <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:0; padding:4px 14px; overflow:visible; position:relative;">
-          <div
-            :style="{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(6,1fr)',
-              gridTemplateRows: 'auto auto',
-              gap: '10px',
-              width: '100%',
-              maxWidth: '360px',
-              position: 'relative',
-            }"
-          >
-            <!-- Carte 0 e 1: span 3, riga 1, centrate verticalmente nella riga -->
-            <div
-              v-for="uiIdx in [0, 1]"
-              :key="uiIdx"
-              :style="{
-                gridColumn: 'span 3',
-                gridRow: '1',
-                justifySelf: 'center',
-                width: '100%',
-                aspectRatio: '2/3',
-                borderRadius: '14px',
-                overflow: 'hidden',
-                position: 'relative',
-                cursor: pickPhase === 'pick' ? 'pointer' : 'default',
-                border: pickPhase === 'pick' && selectedCardIndex === uiIdx
-                  ? '2px solid #ff4d9e'
-                  : '1.5px solid rgba(245,166,35,0.28)',
-                boxShadow: pickPhase === 'pick' && selectedCardIndex === uiIdx
-                  ? '0 0 24px rgba(255,77,158,0.55), 0 0 0 1px rgba(255,77,158,0.2) inset'
-                  : '0 6px 20px rgba(0,0,0,0.55)',
-                background: 'linear-gradient(145deg,#160830,#0d0520)',
-                zIndex: pickPhase === 'shuffle'
-                  ? (shufflePositions[uiIdx]?.z ?? 1)
-                  : pickPhase === 'pick' && selectedCardIndex === uiIdx ? 5 : 1,
-                transform: pickPhase === 'shuffle' && shufflePositions[uiIdx]
-                  ? `translate(${shufflePositions[uiIdx].x}px, ${shufflePositions[uiIdx].y}px) rotate(${shufflePositions[uiIdx].r}deg) scale(${shufflePositions[uiIdx].s ?? 1})`
-                  : pickPhase === 'pick' && selectedCardIndex === uiIdx ? 'scale(1.06)' : 'scale(1)',
-                transition: pickPhase === 'shuffle'
-                  ? 'transform 0.38s cubic-bezier(0.4,0,0.2,1), z-index 0.1s, box-shadow 0.2s'
-                  : 'all 0.22s ease',
-              }"
-              @click="pickPhase === 'pick' && (selectedCardIndex = (selectedCardIndex === uiIdx ? null : uiIdx))"
-            >
-              <template v-if="pickPhase === 'reveal'">
-                <img v-if="selectedPack.cards?.[uiIdx]?.immagine" :src="selectedPack.cards[uiIdx].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;" />
-                <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;" /></div>
-              </template>
-              <template v-else>
-                <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(245,166,35,0.03) 8px,rgba(245,166,35,0.03) 9px);" />
-                <div style="width:100%;height:100%;display:grid;place-items:center;position:relative;">
-                  <img src="~/assets/images/New_Logo.png" alt="" :style="{width:'50%',opacity:pickPhase==='pick'&&selectedCardIndex===uiIdx?1:0.68,filter:pickPhase==='pick'&&selectedCardIndex===uiIdx?'drop-shadow(0 0 14px rgba(255,77,158,0.8))':'none',transition:'all 0.2s'}" />
-                  <div v-if="pickPhase==='pick'&&selectedCardIndex===uiIdx" style="position:absolute;bottom:8px;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div>
-                </div>
-              </template>
+          <div style="width:100%; max-width:360px; display:flex; flex-direction:column; gap:10px;">
+
+            <!-- Riga 1: 2 carte centrate (stessa larghezza delle 3 sotto) -->
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px;">
+              <!-- Carta 0: col 1 -->
+              <div
+                :style="cardStyle(0)"
+                @click="pickPhase === 'pick' && (selectedCardIndex = (selectedCardIndex === 0 ? null : 0))"
+              >
+                <template v-if="pickPhase === 'reveal'"><img v-if="selectedPack.cards?.[0]?.immagine" :src="selectedPack.cards[0].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/><div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div></template>
+                <template v-else><div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(245,166,35,0.03) 8px,rgba(245,166,35,0.03) 9px);"/><div style="width:100%;height:100%;display:grid;place-items:center;position:relative;"><img src="~/assets/images/New_Logo.png" alt="" :style="{width:'50%',opacity:pickPhase==='pick'&&selectedCardIndex===0?1:0.68,filter:pickPhase==='pick'&&selectedCardIndex===0?'drop-shadow(0 0 14px rgba(255,77,158,0.8))':'none',transition:'all 0.2s'}"/><div v-if="pickPhase==='pick'&&selectedCardIndex===0" style="position:absolute;bottom:8px;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div></div></template>
+              </div>
+              <!-- Carta 1: col 2 -->
+              <div
+                :style="cardStyle(1)"
+                @click="pickPhase === 'pick' && (selectedCardIndex = (selectedCardIndex === 1 ? null : 1))"
+              >
+                <template v-if="pickPhase === 'reveal'"><img v-if="selectedPack.cards?.[1]?.immagine" :src="selectedPack.cards[1].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/><div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div></template>
+                <template v-else><div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(245,166,35,0.03) 8px,rgba(245,166,35,0.03) 9px);"/><div style="width:100%;height:100%;display:grid;place-items:center;position:relative;"><img src="~/assets/images/New_Logo.png" alt="" :style="{width:'50%',opacity:pickPhase==='pick'&&selectedCardIndex===1?1:0.68,filter:pickPhase==='pick'&&selectedCardIndex===1?'drop-shadow(0 0 14px rgba(255,77,158,0.8))':'none',transition:'all 0.2s'}"/><div v-if="pickPhase==='pick'&&selectedCardIndex===1" style="position:absolute;bottom:8px;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div></div></template>
+              </div>
+              <!-- Col 3: vuota per centrare le 2 carte -->
+              <div />
             </div>
 
-            <!-- Carte 2, 3, 4: span 2, riga 2 -->
-            <div
-              v-for="(uiIdx, pos) in [2, 3, 4]"
-              :key="uiIdx"
-              :style="{
-                gridColumn: 'span 2',
-                gridRow: '2',
-                aspectRatio: '2/3',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                position: 'relative',
-                cursor: pickPhase === 'pick' ? 'pointer' : 'default',
-                border: pickPhase === 'pick' && selectedCardIndex === uiIdx
-                  ? '2px solid #ff4d9e'
-                  : '1.5px solid rgba(245,166,35,0.28)',
-                boxShadow: pickPhase === 'pick' && selectedCardIndex === uiIdx
-                  ? '0 0 20px rgba(255,77,158,0.55), 0 0 0 1px rgba(255,77,158,0.2) inset'
-                  : '0 5px 16px rgba(0,0,0,0.5)',
-                background: 'linear-gradient(145deg,#160830,#0d0520)',
-                zIndex: pickPhase === 'shuffle'
-                  ? (shufflePositions[uiIdx]?.z ?? 1)
-                  : pickPhase === 'pick' && selectedCardIndex === uiIdx ? 5 : 1,
-                transform: pickPhase === 'shuffle' && shufflePositions[uiIdx]
-                  ? `translate(${shufflePositions[uiIdx].x}px, ${shufflePositions[uiIdx].y}px) rotate(${shufflePositions[uiIdx].r}deg) scale(${shufflePositions[uiIdx].s ?? 1})`
-                  : pickPhase === 'pick' && selectedCardIndex === uiIdx ? 'scale(1.06)' : 'scale(1)',
-                transition: pickPhase === 'shuffle'
-                  ? 'transform 0.38s cubic-bezier(0.4,0,0.2,1), z-index 0.1s, box-shadow 0.2s'
-                  : 'all 0.22s ease',
-              }"
-              @click="pickPhase === 'pick' && (selectedCardIndex = (selectedCardIndex === uiIdx ? null : uiIdx))"
-            >
-              <template v-if="pickPhase === 'reveal'">
-                <img v-if="selectedPack.cards?.[uiIdx]?.immagine" :src="selectedPack.cards[uiIdx].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;" />
-                <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;" /></div>
-              </template>
-              <template v-else>
-                <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(245,166,35,0.03) 8px,rgba(245,166,35,0.03) 9px);" />
-                <div style="width:100%;height:100%;display:grid;place-items:center;position:relative;">
-                  <img src="~/assets/images/New_Logo.png" alt="" :style="{width:'45%',opacity:pickPhase==='pick'&&selectedCardIndex===uiIdx?1:0.65,filter:pickPhase==='pick'&&selectedCardIndex===uiIdx?'drop-shadow(0 0 12px rgba(255,77,158,0.8))':'none',transition:'all 0.2s'}" />
-                  <div v-if="pickPhase==='pick'&&selectedCardIndex===uiIdx" style="position:absolute;bottom:6px;font-size:7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:1.5px;color:#ff4d9e;font-weight:800;">SCELTA</div>
-                </div>
-              </template>
+            <!-- Riga 2: 3 carte (stessa larghezza) -->
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px;">
+              <div v-for="uiIdx in [2,3,4]" :key="uiIdx"
+                :style="cardStyle(uiIdx)"
+                @click="pickPhase === 'pick' && (selectedCardIndex = (selectedCardIndex === uiIdx ? null : uiIdx))"
+              >
+                <template v-if="pickPhase === 'reveal'"><img v-if="selectedPack.cards?.[uiIdx]?.immagine" :src="selectedPack.cards[uiIdx].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/><div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div></template>
+                <template v-else><div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(245,166,35,0.03) 8px,rgba(245,166,35,0.03) 9px);"/><div style="width:100%;height:100%;display:grid;place-items:center;position:relative;"><img src="~/assets/images/New_Logo.png" alt="" :style="{width:'48%',opacity:pickPhase==='pick'&&selectedCardIndex===uiIdx?1:0.65,filter:pickPhase==='pick'&&selectedCardIndex===uiIdx?'drop-shadow(0 0 12px rgba(255,77,158,0.8))':'none',transition:'all 0.2s'}"/><div v-if="pickPhase==='pick'&&selectedCardIndex===uiIdx" style="position:absolute;bottom:6px;font-size:7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:1.5px;color:#ff4d9e;font-weight:800;">SCELTA</div></div></template>
+              </div>
             </div>
 
           </div>
