@@ -437,26 +437,24 @@ onUnmounted(() => {
         <div style="flex:1; display:flex; align-items:center; justify-content:center; min-height:0; padding:4px 14px; overflow:visible; position:relative;">
           <div style="width:100%; max-width:360px; display:flex; flex-direction:column; gap:10px;">
 
-            <!-- Riga 1: 2 carte centrate (stessa larghezza delle 3 sotto) -->
-            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px;">
-              <!-- Carta 0: col 1 -->
+            <!-- Riga 1: 2 carte centrate con flex (stessa larghezza delle 3 sotto) -->
+            <div style="display:flex; justify-content:center; gap:10px;">
+              <!-- Carta 0 -->
               <div
-                :style="cardStyle(0)"
+                :style="{ ...cardStyle(0), width: 'calc((100% - 20px) / 3)', flexShrink: '0' }"
                 @click="pickPhase === 'pick' && (selectedCardIndex = (selectedCardIndex === 0 ? null : 0))"
               >
                 <template v-if="pickPhase === 'reveal'"><img v-if="selectedPack.cards?.[0]?.immagine" :src="selectedPack.cards[0].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/><div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div></template>
                 <template v-else><div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(245,166,35,0.03) 8px,rgba(245,166,35,0.03) 9px);"/><div style="width:100%;height:100%;display:grid;place-items:center;position:relative;"><img src="~/assets/images/New_Logo.png" alt="" :style="{width:'50%',opacity:pickPhase==='pick'&&selectedCardIndex===0?1:0.68,filter:pickPhase==='pick'&&selectedCardIndex===0?'drop-shadow(0 0 14px rgba(255,77,158,0.8))':'none',transition:'all 0.2s'}"/><div v-if="pickPhase==='pick'&&selectedCardIndex===0" style="position:absolute;bottom:8px;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div></div></template>
               </div>
-              <!-- Carta 1: col 2 -->
+              <!-- Carta 1 -->
               <div
-                :style="cardStyle(1)"
+                :style="{ ...cardStyle(1), width: 'calc((100% - 20px) / 3)', flexShrink: '0' }"
                 @click="pickPhase === 'pick' && (selectedCardIndex = (selectedCardIndex === 1 ? null : 1))"
               >
                 <template v-if="pickPhase === 'reveal'"><img v-if="selectedPack.cards?.[1]?.immagine" :src="selectedPack.cards[1].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/><div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div></template>
                 <template v-else><div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(245,166,35,0.03) 8px,rgba(245,166,35,0.03) 9px);"/><div style="width:100%;height:100%;display:grid;place-items:center;position:relative;"><img src="~/assets/images/New_Logo.png" alt="" :style="{width:'50%',opacity:pickPhase==='pick'&&selectedCardIndex===1?1:0.68,filter:pickPhase==='pick'&&selectedCardIndex===1?'drop-shadow(0 0 14px rgba(255,77,158,0.8))':'none',transition:'all 0.2s'}"/><div v-if="pickPhase==='pick'&&selectedCardIndex===1" style="position:absolute;bottom:8px;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div></div></template>
               </div>
-              <!-- Col 3: vuota per centrare le 2 carte -->
-              <div />
             </div>
 
             <!-- Riga 2: 3 carte (stessa larghezza) -->
