@@ -27,8 +27,10 @@ const pendingFriendRequests = computed(() => {
   <header class="sticky top-0 z-40 px-4" style="
       height: 100px;
       overflow: visible;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      background: rgba(10,10,15,0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-subtle);
       position: sticky;
       display: flex;
       align-items: center;
@@ -55,8 +57,8 @@ const pendingFriendRequests = computed(() => {
       <div style="
         display: flex; align-items: center; gap: 4px;
         padding: 0 8px;
-        background: rgba(255,133,182,0.12);
-        border: 1px solid rgba(255,133,182,0.25);
+        background: rgba(255,255,255,0.07);
+        border: 1px solid var(--border-subtle);
         border-radius: 999px;
         height: 28px;
       ">
@@ -71,8 +73,8 @@ const pendingFriendRequests = computed(() => {
       <div style="
         display: flex; align-items: center; gap: 4px;
         padding: 0 8px;
-        background: rgba(108,240,224,0.10);
-        border: 1px solid rgba(108,240,224,0.22);
+        background: rgba(255,255,255,0.07);
+        border: 1px solid var(--border-subtle);
         border-radius: 999px;
         height: 28px;
       ">
@@ -114,8 +116,9 @@ const pendingFriendRequests = computed(() => {
       <NuxtLink v-if="isAdmin" to="/admin" style="
           font-size: 13px;
           font-family: var(--ff-label,'Saira Condensed',sans-serif);
-          color: #b573ff;
-          border: 1px solid rgba(181,115,255,0.30);
+          color: #a855f7;
+          background: rgba(124,58,237,0.2);
+          border: 1px solid rgba(168,85,247,0.35);
           border-radius: 99px;
           padding: 6px 10px;
           letter-spacing: 0.12em;

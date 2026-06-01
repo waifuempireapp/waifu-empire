@@ -237,14 +237,14 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
       style="margin: 0 16px 40px; border-radius: 20px; overflow: hidden; position: relative; cursor: pointer;"
       :style="{
         background: totalPack > 0
-          ? `radial-gradient(ellipse 80% 60% at 50% 0%, ${C.sakura}35 0%, transparent 60%), linear-gradient(180deg, #2a0d4a 0%, #0f0520 50%, #07051a 100%)`
-          : `radial-gradient(ellipse 80% 60% at 50% 0%, ${C.gold}22 0%, transparent 60%), linear-gradient(180deg, #1a1230 0%, #0d0a26 50%, #07051a 100%)`,
+          ? `radial-gradient(ellipse 80% 60% at 50% 0%, ${C.sakura}35 0%, transparent 60%), linear-gradient(160deg, rgba(124,58,237,0.25) 0%, rgba(15,13,26,0.98) 60%, #0a0a0f 100%)`
+          : 'linear-gradient(160deg, rgba(124,58,237,0.25) 0%, rgba(15,13,26,0.98) 60%, #0a0a0f 100%)',
         border: totalPack > 0
           ? `1px solid ${C.sakura}50`
-          : `1px solid ${C.gold}28`,
+          : '1px solid rgba(168,85,247,0.2)',
         boxShadow: totalPack > 0
           ? `0 8px 40px ${C.sakura}25, 0 0 0 1px ${C.sakura}18 inset`
-          : `0 8px 32px rgba(3,2,12,0.5)`,
+          : '0 8px 32px rgba(124,58,237,0.15)',
         minHeight: '320px',
       }"
       @click="emit('setTab', 'pacchetti')"
@@ -325,7 +325,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
           :style="{
             background:    totalPack > 0
               ? `linear-gradient(135deg, ${C.sakura}, #c54a86)`
-              : `linear-gradient(135deg, ${C.gold}, #c08a1f)`,
+              : 'linear-gradient(135deg, #f5a623, #ff6b35)',
             border:        'none',
             borderRadius:  '999px',
             padding:       '12px 32px',
@@ -338,7 +338,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
             cursor:        'pointer',
             boxShadow:     totalPack > 0
               ? `0 4px 20px ${C.sakura}55`
-              : `0 4px 16px ${C.gold}44`,
+              : '0 8px 24px rgba(245,166,35,0.25)',
             minHeight:     '48px',
             minWidth:      '160px',
             transition:    'all 0.2s',
@@ -368,8 +368,8 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
       <!-- Card Pesca Misteriosa -->
       <div
         :style="{
-          background:    `linear-gradient(145deg, rgba(255,133,182,0.18), rgba(20,10,40,0.95))`,
-          border:        `1px solid ${C.sakura}35`,
+          background:    'rgba(255,255,255,0.05)',
+          border:        '1px solid rgba(255,255,255,0.08)',
           borderRadius:  '20px',
           padding:       '22px 16px 20px',
           cursor:        'pointer',
@@ -382,6 +382,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
           gap:           '10px',
           boxShadow:     `0 4px 20px ${C.sakura}18`,
           textAlign:     'center',
+          backdropFilter: 'blur(12px)',
         }"
         @click="emit('apriPesca')"
       >
@@ -409,8 +410,8 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
       <!-- Card Swipe Waifu -->
       <div
         :style="{
-          background:    `linear-gradient(145deg, rgba(167,139,250,0.18), rgba(20,10,40,0.95))`,
-          border:        `1px solid ${C.violet}35`,
+          background:    'rgba(255,255,255,0.05)',
+          border:        '1px solid rgba(255,255,255,0.08)',
           borderRadius:  '20px',
           padding:       '22px 16px 20px',
           cursor:        'pointer',
@@ -423,6 +424,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
           gap:           '10px',
           boxShadow:     `0 4px 20px ${C.violet}18`,
           textAlign:     'center',
+          backdropFilter: 'blur(12px)',
         }"
         @click="emit('setTab', 'community')"
       >

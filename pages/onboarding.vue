@@ -53,11 +53,11 @@ async function conferma() {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center p-4">
+  <div class="min-h-screen flex items-center justify-center p-4" style="background: #0a0a0f;">
     <div class="fade-up w-full max-w-[460px] rounded-2xl p-7"
-         style="background:rgba(15,10,30,0.7);backdrop-filter:blur(12px);
-                border:1px solid rgba(245,158,11,0.3);
-                box-shadow:0 0 40px rgba(168,85,247,0.2)">
+         style="background:rgba(15,13,26,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+                border:1px solid rgba(168,85,247,0.2);border-radius:20px;
+                box-shadow:0 0 40px rgba(124,58,237,0.2)">
 
       <!-- Header -->
       <div class="text-center mb-5">
@@ -85,7 +85,7 @@ async function conferma() {
         class="w-full px-3 py-3 mt-1.5 mb-4 rounded-lg text-sm text-amber-50
                placeholder-amber-50/30 outline-none box-border
                focus:border-amber-400/60 transition-colors"
-        style="background:rgba(0,0,0,0.4);border:1px solid rgba(245,158,11,0.3)"
+        style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:white;"
       />
 
       <!-- Colore bandiera -->
@@ -109,10 +109,10 @@ async function conferma() {
       <!-- CTA -->
       <button
         :disabled="!nomeImpero.trim() || busy"
-        class="w-full py-3 mt-5 rounded-lg font-cinzel font-semibold text-sm
-               tracking-widest text-black cursor-pointer
-               bg-gradient-to-r from-amber-400 to-pink-500
+        class="w-full py-3 mt-5 font-cinzel font-semibold text-sm
+               tracking-widest text-white cursor-pointer
                hover:opacity-90 transition-opacity disabled:opacity-40"
+        style="background:linear-gradient(135deg,#f5a623,#ff6b35);border-radius:50px;border:none;box-shadow:0 8px 24px rgba(245,166,35,0.25);"
         @click="conferma"
       >
         {{ busy ? 'CREAZIONE...' : "FONDA L'IMPERO" }}

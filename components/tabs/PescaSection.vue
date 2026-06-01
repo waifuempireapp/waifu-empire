@@ -228,7 +228,7 @@ onUnmounted(() => {
 <template>
   <!-- ── Contenitore outer a tutto schermo (stile Overlay) ── -->
   <div
-    style="position:fixed;inset:0;z-index:300;
+    style="position:fixed;inset:0;z-index:9999;
            background:rgba(6,3,15,0.98);backdrop-filter:blur(20px);
            overflow-y:auto;display:flex;flex-direction:column"
   >
@@ -310,7 +310,7 @@ onUnmounted(() => {
       <div
         v-if="selectedPack"
         style="
-          position:fixed; inset:0; z-index:400;
+          position:fixed; inset:0; z-index:99999;
           background:linear-gradient(160deg, #08041a 0%, #0d0520 50%, #07051a 100%);
           display:flex; flex-direction:column; overflow:hidden;
           padding-top:max(20px,env(safe-area-inset-top));

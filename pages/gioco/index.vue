@@ -409,15 +409,19 @@ function handleSetTab(t: string) {
          Touch target minimo 44px per accessibilità mobile.
     ──────────────────────────────────────────────────────────────────── -->
     <nav class="fixed bottom-0 left-0 right-0 z-50 flex" style="
-        background: rgba(7,5,26,0.98);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
+        background: rgba(10,10,15,0.92);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border-top: 1px solid rgba(255,255,255,0.06);
         height: 75px;
       ">
       <button v-for="t in TABS" :key="t.id" class="flex-1 flex flex-col items-center justify-center gap-0.5 cursor-pointer
                border-0 bg-transparent relative"
         style="transition: all 0.2s ease; min-height:44px; padding-top:8px; padding-bottom:6px;" :style="{
-          opacity: tab === t.id ? '1' : '0.55',
+          opacity: tab === t.id ? '1' : '0.45',
+          background: tab === t.id ? 'rgba(124,58,237,0.18)' : 'transparent',
+          border: tab === t.id ? '1px solid rgba(168,85,247,0.3)' : '1px solid transparent',
+          borderRadius: '12px',
         }" @click="() => {
           if (t.id === 'home') { gameStore.toggleNegozio(false); chiudiPesca() }
           gameStore.setTab(t.id)
@@ -485,13 +489,13 @@ function handleSetTab(t: string) {
         @click.self="settingsAperte = false"
       >
         <!-- Backdrop -->
-        <div style="position:absolute;inset:0;background:rgba(3,2,12,0.65);backdrop-filter:blur(4px);" @click="settingsAperte = false" />
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);" @click="settingsAperte = false" />
 
         <!-- Sheet -->
         <div style="
           position: relative;
-          background: linear-gradient(180deg, rgba(27,22,56,0.97) 0%, rgba(13,10,38,0.99) 100%);
-          border-top: 1px solid rgba(167,139,250,0.20);
+          background: linear-gradient(180deg, #0f0d1a 0%, #0a0a0f 100%);
+          border-top: 1px solid rgba(168,85,247,0.2);
           border-radius: 24px 24px 0 0;
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
@@ -499,21 +503,21 @@ function handleSetTab(t: string) {
           z-index: 1;
         ">
           <!-- Handle -->
-          <div style="width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,0.18);margin:12px auto 20px;"/>
+          <div style="background:rgba(255,255,255,0.15);width:40px;height:4px;border-radius:2px;margin:14px auto 20px;"/>
 
           <!-- Avatar + nome -->
           <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">
-            <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a78bfa);display:grid;place-items:center;font-size:22px;flex-shrink:0;">
+            <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);box-shadow:0 0 20px rgba(124,58,237,0.4);display:grid;place-items:center;font-size:22px;flex-shrink:0;">
               👤
             </div>
             <div>
-              <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:15px;font-weight:700;color:#fff;">
+              <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:700;color:#fff;">
                 {{ gameStore.profilo?.nomeImpero ?? '—' }}
               </div>
-              <div style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:11px;color:rgba(167,139,250,0.7);margin-top:2px;">
+              <div style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px;">
                 {{ authStore.user?.email ?? '' }}
               </div>
-              <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.14em;color:rgba(245,197,96,0.6);text-transform:uppercase;margin-top:3px;">
+              <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.14em;background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(168,85,247,0.2));border:1px solid rgba(168,85,247,0.4);border-radius:999px;padding:2px 8px;color:rgba(245,197,96,0.8);text-transform:uppercase;margin-top:4px;display:inline-flex;align-items:center;">
                 LV. {{ gameStore.profilo?.livello ?? 1 }} · {{ gameStore.profilo?.kisses ?? 0 }} 💋
               </div>
             </div>
@@ -532,9 +536,9 @@ function handleSetTab(t: string) {
                 :style="{
                   padding: '6px 12px',
                   borderRadius: '999px',
-                  border: currentLocale === loc.code ? '1.5px solid rgba(167,139,250,0.7)' : '1px solid rgba(255,255,255,0.12)',
-                  background: currentLocale === loc.code ? 'rgba(167,139,250,0.18)' : 'rgba(255,255,255,0.04)',
-                  color: currentLocale === loc.code ? '#a78bfa' : 'rgba(255,255,255,0.55)',
+                  border: currentLocale === loc.code ? '1.5px solid rgba(168,85,247,0.6)' : '1px solid rgba(255,255,255,0.12)',
+                  background: currentLocale === loc.code ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.04)',
+                  color: currentLocale === loc.code ? '#a855f7' : 'rgba(255,255,255,0.55)',
                   fontFamily: 'var(--ff-label,\'Saira Condensed\',sans-serif)',
                   fontSize: '11px',
                   fontWeight: currentLocale === loc.code ? '700' : '400',
@@ -561,7 +565,7 @@ function handleSetTab(t: string) {
               <span style="font-size:20px;">🛒</span> {{ $t('settings.shop') }}
             </button>
             <button
-              style="display:flex;align-items:center;gap:12px;padding:14px 0;background:transparent;border:none;cursor:pointer;color:#ff5b6c;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:14px;letter-spacing:0.08em;"
+              style="display:flex;align-items:center;gap:12px;padding:14px 0;background:transparent;border:none;cursor:pointer;color:#f87171;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:14px;letter-spacing:0.08em;"
               @click="authStore.logout(); settingsAperte=false"
             >
               <span style="font-size:20px;">🚪</span> {{ $t('settings.logout') }}

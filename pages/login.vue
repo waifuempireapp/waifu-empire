@@ -75,12 +75,12 @@ function traduciErrore(code?: string): string {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center p-4">
+  <div class="min-h-screen flex items-center justify-center p-4" style="background: #0a0a0f;">
     <!-- Card glassmorphism -->
     <div class="fade-up w-full max-w-md rounded-2xl p-7"
-         style="background:rgba(15,10,30,0.7);backdrop-filter:blur(12px);
-                border:1px solid rgba(245,158,11,0.3);
-                box-shadow:0 0 40px rgba(168,85,247,0.2)">
+         style="background:rgba(15,13,26,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+                border:1px solid rgba(168,85,247,0.2);border-radius:20px;
+                box-shadow:0 0 40px rgba(124,58,237,0.2)">
 
       <!-- Header -->
       <div class="text-center mb-6">
@@ -93,8 +93,9 @@ function traduciErrore(code?: string): string {
       <!-- Pulsante Google -->
       <button
         class="w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2.5
-               bg-white text-gray-700 font-medium text-sm cursor-pointer
-               hover:bg-gray-50 transition-colors"
+               font-medium text-sm cursor-pointer
+               transition-colors"
+        style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:12px;color:white;"
         :disabled="busy"
         @click="loginGoogle"
       >
@@ -121,9 +122,9 @@ function traduciErrore(code?: string): string {
           type="email" required
           placeholder="email"
           class="w-full px-3 py-3 mb-2.5 rounded-lg text-sm font-sans
-                 text-amber-50 placeholder-amber-50/30 outline-none
-                 focus:border-amber-400/60 transition-colors"
-          style="background:rgba(0,0,0,0.4);border:1px solid rgba(245,158,11,0.3)"
+                 text-white placeholder-white/30 outline-none
+                 focus:border-purple-400/60 transition-colors"
+          style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:white;"
         />
         <input
           v-model="password"
@@ -131,9 +132,9 @@ function traduciErrore(code?: string): string {
           placeholder="password"
           minlength="6"
           class="w-full px-3 py-3 mb-2.5 rounded-lg text-sm font-sans
-                 text-amber-50 placeholder-amber-50/30 outline-none
-                 focus:border-amber-400/60 transition-colors"
-          style="background:rgba(0,0,0,0.4);border:1px solid rgba(245,158,11,0.3)"
+                 text-white placeholder-white/30 outline-none
+                 focus:border-purple-400/60 transition-colors"
+          style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:white;"
         />
 
         <div v-if="errore" class="text-red-400 text-xs py-1.5 text-center">
@@ -143,11 +144,10 @@ function traduciErrore(code?: string): string {
         <button
           type="submit"
           :disabled="busy"
-          class="w-full py-3 mt-1.5 rounded-lg font-semibold text-sm
-                 tracking-widest text-black cursor-pointer
-                 bg-gradient-to-r from-amber-400 to-pink-500
+          class="w-full py-3 mt-1.5 font-semibold text-sm
+                 tracking-widest text-white cursor-pointer
                  hover:opacity-90 transition-opacity disabled:opacity-50"
-          style="font-family:'Fredoka',sans-serif;letter-spacing:0.15em"
+          style="background:linear-gradient(135deg,#f5a623,#ff6b35);border-radius:50px;border:none;font-family:'Fredoka',sans-serif;letter-spacing:0.15em;box-shadow:0 8px 24px rgba(245,166,35,0.25);"
         >
           {{ busy ? '...' : (modo === 'login' ? 'ACCEDI' : 'CREA ACCOUNT') }}
         </button>

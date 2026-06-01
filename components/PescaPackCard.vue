@@ -269,26 +269,23 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
     <!-- ── FOOTER ── -->
     <div v-if="!giaFiscata" style="padding:8px 16px 14px;display:flex;justify-content:center;">
 
-      <!-- Drop (N) button -->
+      <!-- Drop (N) button — always clickable, onClickPesca handles kiss check -->
       <button
-        :disabled="!puoPescare"
-        :style="{
-          display:      'flex', alignItems:'center', justifyContent:'center', gap:'8px',
-          padding:      '11px 32px', borderRadius:'999px',
-          background:   puoPescare ? 'rgba(255,80,160,0.14)' : 'rgba(255,255,255,0.03)',
-          border:       `2px solid ${puoPescare ? 'rgba(255,80,160,0.55)' : 'rgba(255,255,255,0.08)'}`,
-          cursor:       puoPescare ? 'pointer' : 'not-allowed',
-          transition:   'all 0.2s',
-          width:        '100%',
-          boxShadow:    puoPescare ? '0 0 20px rgba(255,80,160,0.2)' : 'none',
-        }"
+        style="
+          display:flex; align-items:center; justify-content:center; gap:8px;
+          padding:11px 32px; border-radius:999px;
+          background:linear-gradient(135deg,rgba(255,80,160,0.22),rgba(245,166,35,0.18));
+          border:2px solid rgba(255,80,160,0.55);
+          cursor:pointer; transition:all 0.2s; width:100%;
+          box-shadow:0 0 20px rgba(255,80,160,0.25);
+        "
         @click="emit('pesca', pack)"
       >
         <span style="font-size:18px;line-height:1;">💗</span>
         <span :style="{
           fontFamily:'var(--ff-display,Unbounded,sans-serif)',
           fontSize:'13px', fontWeight:700,
-          color: puoPescare ? '#ff4d9e' : 'rgba(255,255,255,0.2)',
+          color: '#ff4d9e',
           letterSpacing:'0.05em',
         }">Drop ({{ kissesCost }})</span>
       </button>

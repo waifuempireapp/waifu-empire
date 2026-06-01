@@ -79,6 +79,26 @@
   --r-2: 4px; --r-3: 8px; --r-4: 12px; --r-5: 16px; --r-6: 22px; --r-pill: 999px;
   --shadow-card:  0 10px 36px rgba(3,2,12,0.6), 0 1px 0 rgba(255,255,255,0.04) inset;
   --shadow-pop:   0 22px 60px rgba(3,2,12,0.7), 0 0 0 1px rgba(255,255,255,0.04) inset;
+
+  /* ── PREMIUM DARK GAME DESIGN SYSTEM ── */
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #0f0d1a;
+  --bg-card: rgba(255,255,255,0.05);
+  --bg-card-hover: rgba(255,255,255,0.09);
+  --accent-gold: #f5a623;
+  --accent-orange: #ff6b35;
+  --accent-purple: #7c3aed;
+  --accent-violet: #a855f7;
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255,255,255,0.6);
+  --text-muted: rgba(255,255,255,0.35);
+  --border-glow: rgba(168,85,247,0.3);
+  --border-subtle: rgba(255,255,255,0.08);
+  --shadow-glow: 0 8px 32px rgba(124,58,237,0.2);
+  --shadow-gold: 0 8px 24px rgba(245,166,35,0.25);
+  --radius-card: 20px;
+  --radius-btn: 50px;
+  --radius-input: 12px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -2431,3 +2451,186 @@ img {
 .btn-premium:active {
   transform: translateY(0) scale(0.97);
 }
+
+
+/* ══════════════════════════════════════════════════════════
+   PREMIUM REDESIGN UTILITY CLASSES
+   ══════════════════════════════════════════════════════════ */
+
+/* ── WAIFU IMAGE PLACEHOLDER ── */
+.waifu-placeholder {
+  width: 200px; height: 280px;
+  background: linear-gradient(160deg, rgba(124,58,237,0.3), rgba(168,85,247,0.1));
+  border-radius: 16px;
+  border: 1px solid rgba(168,85,247,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 48px;
+}
+
+/* ── WAIFU CHARACTER IMAGE ── */
+.waifu-character-img {
+  filter: drop-shadow(0 0 24px rgba(168,85,247,0.6));
+  max-height: 320px;
+  object-fit: contain;
+  position: relative;
+  z-index: 2;
+}
+
+/* ── GLASSMORPHISM PANELS ── */
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-glow);
+  border-radius: var(--radius-card);
+}
+
+/* ── PREMIUM BUTTONS ── */
+.btn-primary {
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff;
+  border-radius: var(--radius-btn);
+  padding: 12px 28px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 20px rgba(124,58,237,0.35);
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(124,58,237,0.5); }
+
+.btn-gold {
+  background: linear-gradient(135deg, #f5a623, #ff6b35);
+  color: #fff;
+  border-radius: var(--radius-btn);
+  padding: 12px 28px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-gold);
+}
+.btn-gold:hover { transform: translateY(-1px); }
+
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  color: #fff;
+  border-radius: var(--radius-btn);
+  padding: 12px 28px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-ghost {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border-glow);
+  color: var(--text-primary);
+  border-radius: var(--radius-btn);
+  padding: 10px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+
+/* ── BATTLE HEALTH BARS ── */
+.hp-bar-track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.1);
+  overflow: hidden;
+}
+.hp-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s ease;
+}
+.hp-bar-fill--player { background: linear-gradient(90deg, #f5a623, #ff6b35); }
+.hp-bar-fill--opponent { background: linear-gradient(90deg, #3b82f6, #06b6d4); }
+
+/* ── ATTACK CARD ── */
+.attack-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  backdrop-filter: blur(8px);
+}
+.attack-card:hover, .attack-card--selected {
+  background: rgba(245,166,35,0.12);
+  border-color: var(--accent-gold);
+  transform: scale(1.03);
+  box-shadow: 0 0 20px rgba(245,166,35,0.2);
+}
+
+/* ── FLOATING PARTICLES (CSS-only) ── */
+@keyframes float-particle {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.4; }
+  50% { transform: translateY(-20px) rotate(180deg); opacity: 0.8; }
+}
+.particle {
+  position: absolute;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--accent-purple);
+  animation: float-particle linear infinite;
+  pointer-events: none;
+}
+
+/* ── WAIFU CARD CAROUSEL ── */
+.waifu-select-card {
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06) inset;
+  transition: all 0.3s ease;
+}
+.waifu-select-card--raro {
+  background: linear-gradient(160deg, #1e3a8a 0%, #1e40af 40%, #0f172a 100%);
+}
+.waifu-select-card--epico {
+  background: linear-gradient(160deg, #4c1d95 0%, #6d28d9 40%, #0f172a 100%);
+}
+.waifu-select-card--leggendario {
+  background: linear-gradient(160deg, #78350f 0%, #b45309 40%, #0f172a 100%);
+}
+.waifu-select-card--immersivo {
+  background: linear-gradient(160deg, #831843 0%, #be185d 40%, #0f172a 100%);
+}
+
+/* ── ANIMATED GLOW PULSE for characters ── */
+@keyframes glow-pulse {
+  0%, 100% { filter: drop-shadow(0 0 16px rgba(168,85,247,0.5)); }
+  50% { filter: drop-shadow(0 0 36px rgba(168,85,247,0.9)); }
+}
+.char-glow-pulse { animation: glow-pulse 2.5s ease-in-out infinite; }
+
+/* ── NAV TAB PREMIUM ── */
+.nav-tab-premium {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; padding: 8px 12px; border-radius: 12px; cursor: pointer;
+  transition: all 0.2s ease;
+}
+.nav-tab-premium--active {
+  background: rgba(124,58,237,0.2);
+  border: 1px solid rgba(168,85,247,0.4);
+}
+
+/* ── RARITY BADGES ── */
+.rarity-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.rarity-badge--comune { background: rgba(148,163,184,0.2); color: #94a3b8; border: 1px solid rgba(148,163,184,0.3); }
+.rarity-badge--raro { background: rgba(59,130,246,0.2); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+.rarity-badge--epico { background: rgba(167,139,250,0.2); color: #a78bfa; border: 1px solid rgba(167,139,250,0.3); }
+.rarity-badge--leggendario { background: rgba(245,166,35,0.2); color: #f5a623; border: 1px solid rgba(245,166,35,0.4); }
+.rarity-badge--immersivo { background: rgba(236,72,153,0.2); color: #f472b6; border: 1px solid rgba(236,72,153,0.3); }
