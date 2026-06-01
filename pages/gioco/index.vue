@@ -353,7 +353,7 @@ function handleSetTab(t: string) {
         <LazySbustaTab :profilo="gameStore.profilo"
           :collezione="gameStore.collezione as any" :waifu-cat="gameStore.catalogoWaifu" :mosse-cat="gameStore.catalogoMosse"
           :god-pack-prob="godPackProb" @notif="(t: string, c: string) => mostraNotif(t, c)"
-          @update-profilo="(p: unknown) => gameStore.setProfilo(p as never)"
+          @update-profilo="(p: unknown) => gameStore.aggiornaProfilo(p as never)"
           @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)" />
       </div>
 
