@@ -503,7 +503,7 @@ function cfTouchEnd(e: TouchEvent) {
   ══════════════════════════════════════════════════════════════ -->
   <div
     v-else-if="stato === 'reveal' || stato === 'reveal_multi'"
-    style="position: relative; min-height: 100vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;"
+    style="position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; overflow: hidden; background: linear-gradient(180deg, #080318 0%, #120528 50%, #080318 100%);"
   >
     <!-- Sfondo glow basato sulla rarità della carta corrente -->
     <div :style="{
@@ -515,25 +515,25 @@ function cfTouchEnd(e: TouchEvent) {
     <!-- Header: counter + God Pack banner -->
     <div style="position: relative; z-index: 10; padding: 16px 20px 0; text-align: center;">
       <!-- Counter progress -->
-      <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
+      <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px;">
         <div
           v-for="(c, i) in carteRivelate"
           :key="i"
           :style="{
-            width: i <= indiceRivelato ? '20px' : '8px',
-            height: '4px',
+            width: i <= indiceRivelato ? '26px' : '9px',
+            height: '6px',
             borderRadius: '999px',
             background: i < indiceRivelato
-              ? 'rgba(255,255,255,0.35)'
+              ? 'rgba(255,255,255,0.45)'
               : i === indiceRivelato
                 ? raritaGlow(cartaCorrente)
-                : 'rgba(255,255,255,0.12)',
+                : 'rgba(255,255,255,0.18)',
             transition: 'all 0.4s',
-            boxShadow: i === indiceRivelato ? `0 0 8px ${raritaGlow(cartaCorrente)}` : 'none',
+            boxShadow: i === indiceRivelato ? `0 0 10px ${raritaGlow(cartaCorrente)}` : 'none',
           }"
         />
       </div>
-      <div :style="{ fontFamily: FF.label, fontSize: '9px', color: 'rgba(245,197,96,0.6)', letterSpacing: '0.3em', textTransform: 'uppercase', fontWeight: 700 }">
+      <div :style="{ fontFamily: FF.label, fontSize: '13px', color: 'rgba(245,197,96,0.85)', letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700 }">
         <template v-if="stato === 'reveal_multi'">Pacchetto {{ multiPackIndice + 1 }}/{{ multiPackCarte.length }} · </template>
         Carta {{ Math.max(1, indiceRivelato + 1) }} di {{ carteRivelate.length }}
       </div>
@@ -560,7 +560,7 @@ function cfTouchEnd(e: TouchEvent) {
         :key="'stack-' + i"
         :style="{
           position: 'absolute',
-          width: '200px', height: '300px',
+          width: '170px', height: '255px',
           borderRadius: '16px',
           transform: `translateX(${(i + 1) * 10}px) translateY(${(i + 1) * -6}px) scale(${1 - (i + 1) * 0.03}) rotateZ(${(i + 1) * 1.5}deg)`,
           zIndex: 4 - i,
@@ -602,6 +602,27 @@ function cfTouchEnd(e: TouchEvent) {
         @touchmove.passive="onRevealTouchMove"
         @touchend.passive="onRevealTouchEnd"
       >
+        <!-- Chip NEW — top-left, fuori dalla carta -->
+        <div v-if="cartaCorrente.isNuova" style="position:absolute;top:-32px;left:-10px;z-index:30;pointer-events:none;background:linear-gradient(135deg,#00b4ff,#00e676);border:2.5px solid rgba(255,255,255,0.5);border-radius:999px;padding:5px 16px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:15px;font-weight:900;color:#000;letter-spacing:0.08em;box-shadow:0 4px 16px rgba(0,180,255,0.65);">NEW</div>
+        <!-- Chip copie — top-right, fuori dalla carta -->
+        <template v-if="!cartaCorrente.isNuova && cartaCorrente.tipo === 'waifu'">
+          <div :style="{
+            position:'absolute', top:'-32px', right:'-10px', zIndex:30,
+            pointerEvents:'none',
+            background: (collezione?.waifu?.[cartaCorrente.data?.id]?.copie ?? 0) >= 3
+              ? 'linear-gradient(135deg,#00c853,#58e0a3)'
+              : 'linear-gradient(135deg,#1a0a35,#2a1255)',
+            border: (collezione?.waifu?.[cartaCorrente.data?.id]?.copie ?? 0) >= 3
+              ? '2.5px solid rgba(89,224,163,0.8)'
+              : '2.5px solid rgba(245,197,96,0.8)',
+            borderRadius:'999px', minWidth:'30px', height:'30px',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            fontFamily:'var(--ff-mono,JetBrains Mono,monospace)',
+            fontSize:'14px', fontWeight:900, color:'#fff', padding:'0 7px',
+            boxShadow: '0 3px 14px rgba(0,0,0,0.5)',
+          }">{{ (collezione?.waifu?.[cartaCorrente.data?.id]?.copie ?? 0) >= 3 ? 'C' : (collezione?.waifu?.[cartaCorrente.data?.id]?.copie ?? 0) }}</div>
+        </template>
+
         <!-- Glow aura intorno alla carta -->
         <div :style="{
           position: 'absolute', inset: '-20px',
@@ -621,45 +642,23 @@ function cfTouchEnd(e: TouchEvent) {
           }"
           class="fade-in"
         >
-          <CartaWaifu v-if="cartaCorrente.tipo === 'waifu'" :waifu="cartaCorrente.data" dimensione="grande" tipo="auto" />
-          <CartaMossa v-else-if="cartaCorrente.tipo === 'mossa'" :mossa="cartaCorrente.data" dimensione="grande" />
+          <CartaWaifu v-if="cartaCorrente.tipo === 'waifu'" :waifu="cartaCorrente.data" dimensione="normale" tipo="auto" />
+          <CartaMossa v-else-if="cartaCorrente.tipo === 'mossa'" :mossa="cartaCorrente.data" dimensione="normale" />
         </div>
       </div>
 
       <!-- Prima carta ancora in attesa (skeleton) -->
       <div
         v-else-if="indiceRivelato < 0"
-        style="width: 200px; height: 300px; border-radius: 16px; background: linear-gradient(160deg, #1e0c40, #07051a); border: 2px solid rgba(167,139,250,0.3); display: flex; align-items: center; justify-content: center; animation: pulseSoft 1.2s infinite;"
+        style="width: 170px; height: 255px; border-radius: 16px; background: linear-gradient(160deg, #1e0c40, #07051a); border: 2px solid rgba(167,139,250,0.3); display: flex; align-items: center; justify-content: center; animation: pulseSoft 1.2s infinite;"
       >
         <div style="font-size: 52px; opacity: 0.25; color: #a78bfa;">♛</div>
       </div>
     </div>
 
-    <!-- Footer: info carta + hint navigazione -->
+    <!-- Footer: solo pulsanti avanza/fine -->
     <div style="position: relative; z-index: 10; padding: 0 20px 32px; text-align: center;">
-
-      <!-- Info carta rivelata -->
-      <div v-if="cartaCorrente && indiceRivelato >= 0" style="margin-bottom: 14px;">
-        <!-- Badge NEW -->
-        <div v-if="cartaCorrente.isNuova" :style="{
-          display: 'inline-flex', alignItems: 'center', gap: '5px',
-          padding: '4px 12px', borderRadius: '999px', marginBottom: '8px',
-          background: `linear-gradient(135deg, ${C.gold}, ${C.sakura})`,
-          color: '#1d0419', fontFamily: FF.label, fontSize: '9px', fontWeight: 800,
-          letterSpacing: '0.16em', textTransform: 'uppercase',
-          boxShadow: `0 4px 14px ${C.sakura}66`,
-        }">✨ NUOVA!</div>
-
-        <!-- Copie -->
-        <div v-if="cartaCorrente.tipo === 'waifu'" :style="{ fontFamily: FF.mono, fontSize: '10px', color: 'rgba(241,235,255,0.4)' }">
-          <span v-if="(collezione?.waifu?.[cartaCorrente.data?.id]?.copie ?? 0) >= 3" :style="{ color: C.ok }">⚡ Level Up disponibile!</span>
-          <span v-else>{{ collezione?.waifu?.[cartaCorrente.data?.id]?.copie ?? 0 }}/3 copie</span>
-        </div>
-      </div>
-
-      <!-- Pulsante avanza / fine -->
       <div v-if="indiceRivelato >= carteRivelate.length - 1" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-        <!-- Prossimo pacchetto (multi) -->
         <button
           v-if="stato === 'reveal_multi' && multiPackIndice < multiPackCarte.length - 1"
           @click="prossimoPackMulti"
@@ -672,7 +671,6 @@ function cfTouchEnd(e: TouchEvent) {
             cursor: 'pointer', boxShadow: `0 4px 18px ${C.sakura}55`,
           }"
         >Prossimo {{ multiPackIndice + 2 }}/{{ multiPackCarte.length }} →</button>
-        <!-- Fine rivelazione -->
         <button
           v-else
           @click="tornaIdle"
@@ -686,13 +684,6 @@ function cfTouchEnd(e: TouchEvent) {
           }"
         >✅ {{ stato === 'reveal_multi' ? `Fine · ${multiPackCarte.length} pack` : 'Continua' }}</button>
       </div>
-
-      <!-- Hint "tocca per la prossima" -->
-      <div v-else-if="indiceRivelato >= 0" :style="{
-        fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.2em',
-        color: 'rgba(241,235,255,0.35)', textTransform: 'uppercase',
-        animation: 'pulseSoft 1.8s ease-in-out infinite',
-      }">Tocca per la prossima →</div>
     </div>
 
     <!-- Video overlay carta immersiva (invariato) -->
