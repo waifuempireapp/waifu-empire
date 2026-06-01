@@ -933,7 +933,7 @@ const assocPendingCount = computed(() => Object.keys(assocPending.value).length)
               background: 'linear-gradient(160deg, #130a24, #06030f)', position: 'relative',
             }">
               <img v-if="w.asset_statica || w.asset_immersiva" :src="ikUrl(w.asset_statica || w.asset_immersiva, 'thumbnail') || ''" :alt="w.nome" style="width: 100%; height: 100%; object-fit: cover; object-position: center 15%;" />
-              <div v-else style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;"><img src="~/assets/images/Logo.png" alt="" style="width:60%;height:60%;object-fit:contain;opacity:0.80;" /></div>
+              <div v-else style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:60%;object-fit:contain;opacity:0.80;" /></div>
               <div style="position: absolute; top: 0; left: 0; right: 0; padding: 4px 6px; background: linear-gradient(180deg, rgba(0,0,0,0.8), transparent);">
                 <div style="font-size: 9px; color: #fff; font-weight: 700; font-family: Orbitron; text-shadow: 0 1px 3px #000;">{{ w.nome }}</div>
                 <div :style="{ fontSize: '7px', color: (RARITA[w.rarita as keyof typeof RARITA] || RARITA.comune).colore }">{{ '★'.repeat((RARITA[w.rarita as keyof typeof RARITA] || RARITA.comune).stelle) }}</div>

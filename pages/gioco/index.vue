@@ -268,7 +268,7 @@ function handleSetTab(t: string) {
 <template>
   <!-- Schermata di caricamento: logo centrato mentre si caricano i dati -->
   <div v-if="!caricato" class="min-h-screen flex items-center justify-center">
-    <img src="~/assets/images/Logo.png" alt="Impero delle Waifu" style="width:70dvw; max-width:420px; height:auto;" />
+    <img src="~/assets/images/New_Logo.png" alt="Impero delle Waifu" style="width:70dvw; max-width:420px; height:auto;" />
   </div>
 
   <!-- Contenuto principale del gioco -->

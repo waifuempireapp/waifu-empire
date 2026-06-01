@@ -545,7 +545,7 @@ onUnmounted(() => {
           style="width: 120px; height: 168px; background: linear-gradient(145deg, #120825, #0d0618); border: 2px solid rgba(245,166,35,0.35);"
         >
           <div class="absolute inset-1" style="border: 1px solid rgba(245,166,35,0.15); border-radius: 5px;" />
-          <img src="~/assets/images/Logo.png" alt="" style="width:100%;height:100%;object-fit:contain;opacity:0.85;" />
+          <img src="~/assets/images/New_Logo.png" alt="" style="width:100%;height:100%;object-fit:contain;opacity:0.85;" />
         </div>
         <!-- Fronte carta -->
         <div class="card-face front overflow-hidden" style="width: 120px; height: 168px;">

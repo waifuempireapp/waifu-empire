@@ -213,11 +213,11 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
             <div style="aspect-ratio:2/3;position:relative;overflow:hidden;">
               <template v-if="true">
                 <img v-if="cards[0].immagine" :src="ikUrl(cards[0].immagine,'thumbnail')??undefined" :alt="cards[0].nome" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
-                <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.82;" /></div>
+                <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.82;" /></div>
               </template>
               <template v-else>
                 <!-- unreachable --><img v-if="false" :src="ikUrl(cards[0].immagine,'thumbnail')??undefined" :alt="cards[0].nome" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;filter:blur(12px) brightness(0.5);" />
-                <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.3;" /></div>
+                <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.3;" /></div>
                 <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;z-index:3;"><span style="font-size:22px;">🔒</span><div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:8px;color:rgba(255,140,0,0.9);letter-spacing:0.12em;text-transform:uppercase;font-weight:800;text-align:center;">Hard Pass</div></div>
               </template>
               <div v-if="true" :style="{position:'absolute',bottom:'4px',left:'4px',background:rarityColor(cards[0].rarita)+'33',border:'1px solid '+rarityColor(cards[0].rarita)+'88',borderRadius:'999px',padding:'2px 6px',fontFamily:'var(--ff-label,\'Saira Condensed\',sans-serif)',fontSize:'10px',fontWeight:800,color:rarityColor(cards[0].rarita),letterSpacing:'0.05em',textTransform:'capitalize',backdropFilter:'blur(4px)',zIndex:2}">{{ cards[0].rarita||'?' }}</div>
@@ -234,7 +234,7 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
             <div style="aspect-ratio:2/3;position:relative;overflow:hidden;">
               <template v-if="true">
                 <img v-if="cards[1].immagine" :src="ikUrl(cards[1].immagine,'thumbnail')??undefined" :alt="cards[1].nome" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
-                <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.82;" /></div>
+                <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.82;" /></div>
               </template>
               <div v-if="true" :style="{position:'absolute',bottom:'4px',left:'4px',background:rarityColor(cards[1].rarita)+'33',border:'1px solid '+rarityColor(cards[1].rarita)+'88',borderRadius:'999px',padding:'2px 6px',fontFamily:'var(--ff-label,\'Saira Condensed\',sans-serif)',fontSize:'10px',fontWeight:800,color:rarityColor(cards[1].rarita),letterSpacing:'0.05em',textTransform:'capitalize',backdropFilter:'blur(4px)',zIndex:2}">{{ cards[1].rarita||'?' }}</div>
             </div>
@@ -256,7 +256,7 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
             <div style="aspect-ratio:2/3;position:relative;overflow:hidden;">
               <template v-if="true">
                 <img v-if="carta.immagine" :src="ikUrl(carta.immagine,'thumbnail')??undefined" :alt="carta.nome" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
-                <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.82;" /></div>
+                <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.82;" /></div>
               </template>
               <div v-if="true" :style="{position:'absolute',bottom:'4px',left:'4px',background:rarityColor(carta.rarita)+'33',border:'1px solid '+rarityColor(carta.rarita)+'88',borderRadius:'999px',padding:'2px 6px',fontFamily:'var(--ff-label,\'Saira Condensed\',sans-serif)',fontSize:'10px',fontWeight:800,color:rarityColor(carta.rarita),letterSpacing:'0.05em',textTransform:'capitalize',backdropFilter:'blur(4px)',zIndex:2}">{{ carta.rarita||'?' }}</div>
             </div>

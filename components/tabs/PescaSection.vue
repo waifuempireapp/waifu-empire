@@ -371,7 +371,7 @@ onUnmounted(() => {
                 }" />
                 <!-- Logo -->
                 <img
-                  src="~/assets/images/Logo.png" alt=""
+                  src="~/assets/images/New_Logo.png" alt=""
                   :style="{
                     width:'55%', height:'auto', objectFit:'contain',
                     opacity: selectedCardIndex === uiIdx ? 1 : 0.75,
@@ -416,7 +416,7 @@ onUnmounted(() => {
                     transition:'border-color 0.2s', pointerEvents:'none',
                   }" />
                   <img
-                    src="~/assets/images/Logo.png" alt=""
+                    src="~/assets/images/New_Logo.png" alt=""
                     :style="{
                       width:'55%', height:'auto', objectFit:'contain',
                       opacity: selectedCardIndex === 4 ? 1 : 0.75,

@@ -139,7 +139,7 @@ const cardBackStyle = {
             <!-- Retro -->
             <div class="card-face back" :style="cardBackStyle">
               <div style="position:absolute;inset:4px;border:1px solid rgba(245,166,35,0.15);border-radius:5px" />
-              <img src="~/assets/images/Logo.png" alt="" style="width:100%;height:100%;object-fit:contain;opacity:0.85;" />
+              <img src="~/assets/images/New_Logo.png" alt="" style="width:100%;height:100%;object-fit:contain;opacity:0.85;" />
             </div>
             <!-- Fronte: grafica reale carta -->
             <div
@@ -184,7 +184,7 @@ const cardBackStyle = {
             <!-- Retro -->
             <div class="card-face back" :style="cardBackStyle">
               <div style="position:absolute;inset:4px;border:1px solid rgba(245,166,35,0.15);border-radius:5px" />
-              <img src="~/assets/images/Logo.png" alt="" style="width:100%;height:100%;object-fit:contain;opacity:0.85;" />
+              <img src="~/assets/images/New_Logo.png" alt="" style="width:100%;height:100%;object-fit:contain;opacity:0.85;" />
             </div>
             <!-- Fronte: grafica reale carta -->
             <div

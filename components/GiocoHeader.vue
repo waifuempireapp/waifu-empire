@@ -94,7 +94,7 @@ const pendingFriendRequests = computed(() => {
       align-items: center;
       z-index: 50;
     ">
-      <img src="~/assets/images/Logo.png" alt="Impero delle Waifu"
+      <img src="~/assets/images/New_Logo.png" alt="Impero delle Waifu"
         style="height: 110px; width: auto; display: block;" />
       <!-- Nome impero sotto il logo, fuori dall'header -->
       <span v-if="profilo?.nomeImpero" style="

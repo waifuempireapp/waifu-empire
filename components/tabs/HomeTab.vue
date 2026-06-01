@@ -283,7 +283,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
         }">
           <div class="foil foil--soft" />
           <img
-            src="~/assets/images/Logo.png"
+            src="~/assets/images/New_Logo.png"
             alt=""
             style="width:70px; height:70px; object-fit:contain; position:relative; z-index:1; opacity:0.85;"
           />
