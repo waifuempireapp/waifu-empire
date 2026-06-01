@@ -426,6 +426,44 @@ function onPackLeave(id: string) {
   packTilts.value  = { ...packTilts.value,  [id]: 'rotateX(0deg) rotateY(0deg) scale(1)' }
   packSheens.value = { ...packSheens.value, [id]: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 70%)' }
 }
+
+// ── Coverflow carousel ────────────────────────────────────────
+const selectedDropIndex = computed(() =>
+  Math.max(0, dropsAttivi.value.findIndex(d => d.id === dropSelId.value))
+)
+
+function getCoverflowStyle(index: number): Record<string, string | number> {
+  const dist = index - selectedDropIndex.value
+  const STEP = 88  // px orizzontali per step
+  let rotY: number, scale: number, zOff: number, opacity: number
+
+  if (dist === 0) {
+    rotY = 0; scale = 1.12; zOff = 50; opacity = 1
+  } else if (Math.abs(dist) === 1) {
+    rotY = dist < 0 ? 42 : -42; scale = 0.82; zOff = -18; opacity = 0.88
+  } else if (Math.abs(dist) === 2) {
+    rotY = dist < 0 ? 58 : -58; scale = 0.66; zOff = -56; opacity = 0.65
+  } else {
+    rotY = dist < 0 ? 68 : -68; scale = 0.54; zOff = -90; opacity = 0.38
+  }
+
+  const xOffset = dist * STEP
+  return {
+    transform: `translate(-50%, -50%) translateX(${xOffset}px) translateZ(${zOff}px) rotateY(${rotY}deg) scale(${scale})`,
+    zIndex: String(20 - Math.abs(dist)),
+    opacity: String(opacity),
+  }
+}
+
+const cfTouchStartX = ref(0)
+function cfTouchStart(e: TouchEvent) { cfTouchStartX.value = e.touches[0].clientX }
+function cfTouchEnd(e: TouchEvent) {
+  const dx = e.changedTouches[0].clientX - cfTouchStartX.value
+  if (Math.abs(dx) < 38) return
+  const idx = selectedDropIndex.value
+  if (dx < 0 && idx < dropsAttivi.value.length - 1) dropSelId.value = dropsAttivi.value[idx + 1].id
+  else if (dx > 0 && idx > 0) dropSelId.value = dropsAttivi.value[idx - 1].id
+}
 </script>
 
 <template>
@@ -724,35 +762,26 @@ function onPackLeave(id: string) {
         textTransform: 'uppercase', fontWeight: 700,
       }">Nessun drop attivo · tutte le carte disponibili</div>
 
-      <!-- ◆ CAROSELLO 3D BUSTINE — selezione espansione ◆ -->
-      <div v-if="dropsAttivi.length > 0" style="margin-bottom: 20px; padding-top: 8px;">
+      <!-- ◆ CAROSELLO COVERFLOW BUSTINE — selezione espansione ◆ -->
+      <div v-if="dropsAttivi.length > 0" style="margin-bottom: 20px; padding-top: 4px;">
         <div style="
           font-family: var(--ff-label,'Saira Condensed',sans-serif);
-          font-size: 9px; letter-spacing: 0.32em; color: rgba(245,197,96,0.6);
-          text-transform: uppercase; font-weight: 700;
-          text-align: center; margin-bottom: 16px;
+          font-size: 15px; letter-spacing: 0.22em; color: rgba(245,197,96,0.9);
+          text-transform: uppercase; font-weight: 800;
+          text-align: center; margin-bottom: 20px;
         ">◆ Scegli il Drop</div>
 
-        <!-- Carosello orizzontale con scroll-snap -->
+        <!-- Container coverflow 3D -->
         <div
-          class="pack-carousel"
-          style="
-            display: flex; gap: 16px;
-            overflow-x: auto; padding: 16px 20px 24px;
-            scroll-snap-type: x mandatory;
-            scrollbar-width: none;
-            -webkit-overflow-scrolling: touch;
-            justify-content: flex-start;
-          "
+          style="position: relative; height: 210px; perspective: 900px; overflow: hidden; touch-action: pan-y;"
+          @touchstart.passive="cfTouchStart"
+          @touchend.passive="cfTouchEnd"
         >
           <div
-            v-for="d in dropsAttivi"
+            v-for="(d, i) in dropsAttivi"
             :key="d.id"
-            class="pack-card-3d"
-            :class="{ 'pack-card-3d--selected': d.id === dropSelId }"
             @click="() => {
               if (dropSelId === d.id) {
-                // Già selezionata: apri direttamente il pacchetto migliore disponibile
                 if (nOmag > 0) popupApertura = { tipoPacchetto: 'omaggio' }
                 else if (nBenv > 0) popupApertura = { tipoPacchetto: 'benvenuto' }
                 else if (nSfid > 0) popupApertura = { tipoPacchetto: 'sfida' }
@@ -761,160 +790,88 @@ function onPackLeave(id: string) {
                 dropSelId = d.id
               }
             }"
-            @mousemove="(e) => onPackHover(e, d.id)"
-            @mouseleave="onPackLeave(d.id)"
-            :data-pack-id="d.id"
-            style="
-              flex-shrink: 0;
-              scroll-snap-align: center;
-              perspective: 700px;
-              cursor: pointer;
-            "
+            :style="{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              width: '100px',
+              height: '150px',
+              borderRadius: '12px',
+              cursor: 'pointer',
+              transformStyle: 'preserve-3d',
+              transition: 'transform 0.42s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.35s, box-shadow 0.3s',
+              boxShadow: d.id === dropSelId
+                ? `0 18px 48px rgba(0,0,0,0.65), 0 0 0 2px ${d.colore || C.violet}, 0 0 28px ${d.colore || C.violet}55`
+                : '0 8px 24px rgba(0,0,0,0.45)',
+              background: `linear-gradient(155deg, ${d.colore || '#a78bfa'} 0%, ${d.colore2 || '#ff85b6'} 50%, #07051a 100%)`,
+              overflow: 'hidden',
+              ...getCoverflowStyle(i),
+            }"
           >
-            <!-- Il corpo 3D della bustina -->
-            <div
-              class="pack-body"
-              :style="{
-                width: '150px',
-                height: '220px',
-                borderRadius: '14px',
-                position: 'relative',
-                transformStyle: 'preserve-3d',
-                transition: 'transform 0.15s ease-out, box-shadow 0.2s',
-                transform: packTilts[d.id] || 'rotateX(0deg) rotateY(0deg)',
-                boxShadow: d.id === dropSelId
-                  ? `0 20px 50px rgba(0,0,0,0.6), 0 0 0 2px ${d.colore || C.violet}, 0 0 30px ${d.colore || C.violet}55`
-                  : '0 12px 30px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06)',
-                background: `linear-gradient(155deg, ${d.colore || '#a78bfa'} 0%, ${d.colore2 || '#ff85b6'} 50%, #07051a 100%)`,
-                overflow: 'hidden',
-              }"
-            >
-              <!-- Texture pattern overlay -->
-              <div style="
-                position: absolute; inset: 0; pointer-events: none;
-                background-image: repeating-radial-gradient(circle at 50% 50%, transparent 0px, transparent 10px, rgba(0,0,0,0.04) 10px, rgba(0,0,0,0.04) 11px);
-                mix-blend-mode: overlay;
-              " />
+            <!-- Texture pattern -->
+            <div style="position:absolute;inset:0;pointer-events:none;background-image:repeating-radial-gradient(circle at 50% 50%,transparent 0,transparent 10px,rgba(0,0,0,0.04) 10px,rgba(0,0,0,0.04) 11px);mix-blend-mode:overlay;" />
+            <!-- Bordo metallico -->
+            <div style="position:absolute;inset:0;border-radius:inherit;border:1.5px solid rgba(255,255,255,0.18);pointer-events:none;z-index:10;" />
 
-              <!-- Bordo metallico -->
-              <div style="
-                position: absolute; inset: 0; border-radius: inherit;
-                border: 1.5px solid rgba(255,255,255,0.18);
-                pointer-events: none; z-index: 10;
-              " />
+            <!-- Header fascia -->
+            <div style="position:absolute;top:0;left:0;right:0;height:36px;background:linear-gradient(180deg,rgba(0,0,0,0.65) 0%,rgba(0,0,0,0.25) 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border-bottom:1px solid rgba(255,255,255,0.1);z-index:5;">
+              <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:7px;letter-spacing:3px;color:#f5c560;font-weight:700;text-shadow:0 0 8px rgba(245,197,96,0.8);">WAIFU'S</div>
+              <div style="font-size:5px;letter-spacing:2px;color:rgba(255,255,255,0.5);text-transform:uppercase;">Empire · Card Game</div>
+            </div>
 
-              <!-- Header fascia -->
-              <div style="
-                position: absolute; top: 0; left: 0; right: 0; height: 44px;
-                background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.25) 100%);
-                display: flex; flex-direction: column;
-                align-items: center; justify-content: center; gap: 1px;
-                border-bottom: 1px solid rgba(255,255,255,0.12); z-index: 5;
-              ">
-                <div style="font-family: var(--ff-display,'Unbounded',sans-serif); font-size: 8px; letter-spacing: 3px; color: #f5c560; font-weight: 700; text-shadow: 0 0 8px rgba(245,197,96,0.8);">WAIFU'S</div>
-                <div style="font-size: 6px; letter-spacing: 3px; color: rgba(255,255,255,0.5); text-transform: uppercase;">Empire · Card Game</div>
-              </div>
+            <!-- Immagine espansione -->
+            <div style="position:absolute;top:36px;left:0;right:0;bottom:36px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+              <img v-if="d.asset_bustina" :src="d.asset_bustina" :alt="d.nome" style="width:100%;height:100%;object-fit:cover;object-position:center;" />
+              <div v-else style="font-size:36px;opacity:0.55;filter:drop-shadow(0 0 14px currentColor);">🌸</div>
+            </div>
 
-              <!-- Immagine espansione / placeholder -->
-              <div style="
-                position: absolute; top: 44px; left: 0; right: 0; bottom: 44px;
-                display: flex; align-items: center; justify-content: center;
-                overflow: hidden;
-              ">
-                <img
-                  v-if="d.asset_bustina"
-                  :src="d.asset_bustina"
-                  :alt="d.nome"
-                  style="width: 100%; height: 100%; object-fit: cover; object-position: center;"
-                />
-                <div v-else style="
-                  font-size: 48px; opacity: 0.55;
-                  filter: drop-shadow(0 0 16px currentColor);
-                ">🌸</div>
-              </div>
+            <!-- Shimmer olografico -->
+            <div :style="{
+              position:'absolute', inset:0, borderRadius:'inherit',
+              background: packSheens[d.id] || 'radial-gradient(circle at 50% 50%,rgba(255,255,255,0.1) 0%,transparent 70%)',
+              pointerEvents:'none', zIndex:8, transition:'background 0.1s', mixBlendMode:'screen',
+            }" />
 
-              <!-- Shimmer olografico -->
-              <div
-                class="pack-sheen"
-                :style="{
-                  position: 'absolute', inset: 0, borderRadius: 'inherit',
-                  background: packSheens[d.id] || 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.12) 0%, transparent 70%)',
-                  pointerEvents: 'none', zIndex: 8, transition: 'background 0.1s',
-                  mixBlendMode: 'screen',
-                }"
-              />
+            <!-- Rainbow holo -->
+            <div :style="{
+              position:'absolute', inset:0, borderRadius:'inherit',
+              opacity: d.id === dropSelId ? 0.5 : 0,
+              background:'linear-gradient(135deg,rgba(255,0,128,0.2) 0%,rgba(255,128,0,0.15) 20%,rgba(255,255,0,0.18) 40%,rgba(0,255,128,0.15) 60%,rgba(0,128,255,0.18) 80%,rgba(128,0,255,0.2) 100%)',
+              pointerEvents:'none', zIndex:7, mixBlendMode:'screen', transition:'opacity 0.3s',
+            }" />
 
-              <!-- Rainbow holo overlay -->
-              <div :style="{
-                position: 'absolute', inset: 0, borderRadius: 'inherit',
-                opacity: d.id === dropSelId ? 0.55 : (hoveredPack === d.id ? 0.4 : 0),
-                background: 'linear-gradient(135deg, rgba(255,0,128,0.2) 0%, rgba(255,128,0,0.15) 20%, rgba(255,255,0,0.18) 40%, rgba(0,255,128,0.15) 60%, rgba(0,128,255,0.18) 80%, rgba(128,0,255,0.2) 100%)',
-                pointerEvents: 'none', zIndex: 7, mixBlendMode: 'screen',
-                transition: 'opacity 0.3s',
-              }" />
+            <!-- Footer fascia -->
+            <div :style="{
+              position:'absolute', bottom:0, left:0, right:0, height:'36px',
+              background:'linear-gradient(0deg,rgba(0,0,0,0.8) 0%,rgba(0,0,0,0.2) 100%)',
+              display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'1px',
+              borderTop:'1px solid rgba(255,255,255,0.07)', zIndex:5,
+            }">
+              <div :style="{ fontFamily:FF.display, fontSize:'9px', fontWeight:800, letterSpacing:'2px', color:'#fff', lineHeight:1, textShadow:`0 0 14px ${d.colore||C.violet}cc` }">{{ (d.nome||'DROP').toUpperCase() }}</div>
+              <div :style="{ fontSize:'6px', letterSpacing:'1.5px', color:d.colore||C.violet, textTransform:'uppercase', fontWeight:700, opacity:0.85 }">{{ d.waifuIds?.length||0 }} waifu · S{{ d.stagione||1 }}</div>
+            </div>
 
-              <!-- Footer fascia -->
-              <div style="
-                position: absolute; bottom: 0; left: 0; right: 0; height: 44px;
-                background: linear-gradient(0deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.2) 100%);
-                display: flex; flex-direction: column;
-                align-items: center; justify-content: center; gap: 1px;
-                border-top: 1px solid rgba(255,255,255,0.08); z-index: 5;
-              ">
-                <div :style="{
-                  fontFamily: FF.display, fontSize: '10px', fontWeight: 800,
-                  letterSpacing: '2px', color: '#fff', lineHeight: 1,
-                  textShadow: `0 0 16px ${d.colore || C.violet}cc`,
-                }">{{ (d.nome || 'DROP').toUpperCase() }}</div>
-                <div :style="{
-                  fontSize: '7px', letterSpacing: '2px',
-                  color: d.colore || C.violet, textTransform: 'uppercase', fontWeight: 700,
-                  opacity: 0.85,
-                }">{{ d.waifuIds?.length || 0 }} waifu · Serie {{ d.stagione || 1 }}</div>
-              </div>
+            <!-- Badge ATTIVA -->
+            <div v-if="d.id === dropSelId" style="position:absolute;top:6px;right:6px;background:#f5c560;color:#07051a;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:6px;font-weight:800;padding:2px 5px;border-radius:999px;letter-spacing:0.1em;text-transform:uppercase;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,0.4);">✓ ATTIVA</div>
 
-              <!-- Badge + CTA apertura sulla carta selezionata -->
-              <div v-if="d.id === dropSelId" style="
-                position: absolute; top: 8px; right: 8px;
-                background: #f5c560; color: #07051a;
-                font-family: var(--ff-label,'Saira Condensed',sans-serif);
-                font-size: 7px; font-weight: 800;
-                padding: 2px 6px; border-radius: 999px;
-                letter-spacing: 0.1em; text-transform: uppercase;
-                z-index: 20; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-              ">✓ ATTIVA</div>
-              <!-- Overlay "TAP PER APRIRE" sulla carta già selezionata -->
-              <div v-if="d.id === dropSelId" style="
-                position: absolute; bottom: 44px; left: 0; right: 0;
-                background: linear-gradient(0deg, rgba(245,197,96,0.22), transparent);
-                display: flex; align-items: center; justify-content: center;
-                padding: 6px 0; z-index: 15; pointer-events: none;
-              ">
-                <div style="
-                  font-family: var(--ff-label,'Saira Condensed',sans-serif);
-                  font-size: 8px; letter-spacing: 0.18em; color: #ffe9a8;
-                  text-transform: uppercase; font-weight: 700;
-                  animation: pulse 1.4s ease-in-out infinite;
-                ">▶ Tocca per aprire</div>
-              </div>
-
-            </div><!-- fine pack-body -->
-          </div><!-- fine pack card -->
-        </div><!-- fine carosello -->
+            <!-- CTA tocca per aprire (solo sulla carta selezionata) -->
+            <div v-if="d.id === dropSelId" style="position:absolute;bottom:36px;left:0;right:0;background:linear-gradient(0deg,rgba(245,197,96,0.2),transparent);display:flex;align-items:center;justify-content:center;padding:5px 0;z-index:15;pointer-events:none;">
+              <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:7px;letter-spacing:0.16em;color:#ffe9a8;text-transform:uppercase;font-weight:700;animation:pulse 1.4s ease-in-out infinite;">▶ Tocca per aprire</div>
+            </div>
+          </div>
+        </div>
 
         <!-- Dot indicator -->
-        <div v-if="dropsAttivi.length > 1" style="display: flex; justify-content: center; gap: 6px; margin-top: 4px;">
+        <div v-if="dropsAttivi.length > 1" style="display:flex;justify-content:center;gap:6px;margin-top:10px;">
           <div
             v-for="d in dropsAttivi"
             :key="d.id"
             @click="dropSelId = d.id"
             :style="{
               width: d.id === dropSelId ? '18px' : '6px',
-              height: '6px',
-              borderRadius: '999px',
+              height: '6px', borderRadius: '999px',
               background: d.id === dropSelId ? (d.colore || C.violet) : 'rgba(255,255,255,0.2)',
-              transition: 'all 0.25s',
-              cursor: 'pointer',
+              transition: 'all 0.25s', cursor: 'pointer',
             }"
           />
         </div>

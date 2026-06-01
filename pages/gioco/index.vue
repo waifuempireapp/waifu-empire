@@ -304,7 +304,7 @@ function handleSetTab(t: string) {
       :initial-packs="pescaPacksInitial"
       @indietro="chiudiPesca"
       @update-profilo="(p: unknown) => gameStore.setProfilo(p as never)"
-      @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)"
+      @update-collezione="() => getCollezione(authStore.user!.uid).then(c => gameStore.setCollezione(c as never)).catch(() => {})"
     />
 
     <!-- Petali sakura decorativi — fissi su tutta la schermata -->
@@ -313,8 +313,8 @@ function handleSetTab(t: string) {
     <!-- Header Pokémon TCG Pocket: risorse sx, logo centro, campana dx -->
     <LazyGiocoHeader :profilo="gameStore.profilo" :is-admin="isAdmin" @logout="authStore.logout()" />
 
-    <!-- ── Area contenuto: padding-top 40px per clearare il logo che sborda (10px) + gap 30px ── -->
-    <div class="px-4 max-w-[1400px] mx-auto" style="padding-top: 60px;">
+    <!-- ── Area contenuto: padding-top 60px di default, 5px nella tab pacchetti (sbusta) ── -->
+    <div class="px-4 max-w-[1400px] mx-auto" :style="{ paddingTop: tab === 'pacchetti' ? '5px' : '60px' }">
 
       <!-- ═══ TAB: HOME ════════════════════════════════════════════════ -->
       <LazyHomeTab v-if="tab === 'home'" :user="authStore.user" :profilo="gameStore.profilo"
