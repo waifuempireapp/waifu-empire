@@ -38,8 +38,9 @@ const props = defineProps<{
   userKisses?:  number
   collezione?:  Collezione | null
   hasHardPass?: boolean
-  onPesca:      (pack: Pack) => void
 }>()
+
+const emit = defineEmits<{ pesca: [pack: Pack] }>()
 
 const kissesCost = computed(() => props.kissesCost ?? 10)
 const userKisses = computed(() => props.userKisses ?? 0)
@@ -281,7 +282,7 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
           width:        '100%',
           boxShadow:    puoPescare ? '0 0 20px rgba(255,80,160,0.2)' : 'none',
         }"
-        @click="onPesca(pack)"
+        @click="emit('pesca', pack)"
       >
         <span style="font-size:18px;line-height:1;">💗</span>
         <span :style="{

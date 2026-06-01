@@ -515,7 +515,7 @@ onUnmounted(() => {
             :user-kisses="kissesAttuali"
             :collezione="collezione"
             :has-hard-pass="profilo?.hardPass === true"
-            :on-pesca="onClickPesca"
+            @pesca="onClickPesca"
           />
         </div>
       </div>
