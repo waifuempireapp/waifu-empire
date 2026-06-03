@@ -43,6 +43,11 @@ const caricato = ref(false)
 const raidBattleCtx = ref<unknown>(null)
 // Pannello impostazioni utente (FAB hamburger)
 const settingsAperte = ref(false)
+const langDropdownOpen = ref(false)
+const currentLocaleName = computed(() => {
+  const found = (availableLocales.value ?? []).find(l => l.code === currentLocale.value)
+  return found?.name ?? String(currentLocale.value)
+})
 
 // ── i18n: lingua corrente e switcher ──────────────────────────────────
 const { locale, locales, setLocale } = useI18n()
@@ -289,12 +294,10 @@ function handleSetTab(t: string) {
     </Transition>
 
     <!-- Overlay negozio: accessibile da qualsiasi tab tramite evento globale -->
-    <Suspense>
-      <LazyNegozioOverlay v-if="negozioAperto" :profilo="gameStore.profilo"
-        @kisses-update="(k: number) => gameStore.setKisses(k)"
-        @profile-update="(patch: Record<string, unknown>) => gameStore.aggiornaProfilo(patch as never)"
-        @close="gameStore.toggleNegozio(false)" />
-    </Suspense>
+    <LazyNegozioOverlay v-if="negozioAperto" :profilo="gameStore.profilo"
+      @kisses-update="(k: number) => gameStore.setKisses(k)"
+      @profile-update="(patch: Record<string, unknown>) => gameStore.aggiornaProfilo(patch as never)"
+      @close="gameStore.toggleNegozio(false)" />
 
     <!-- Pesca Misteriosa: PescaSection gestisce il proprio overlay fixed -->
     <LazyPescaSection
@@ -484,99 +487,107 @@ function handleSetTab(t: string) {
     <Transition name="settings-up">
       <div
         v-if="settingsAperte"
-        style="
-          position: fixed; inset: 0; z-index: 200;
-          display: flex; flex-direction: column; justify-content: flex-end;
-        "
+        style="position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;"
         @click.self="settingsAperte = false"
       >
         <!-- Backdrop -->
-        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);" @click="settingsAperte = false" />
+        <div style="position:absolute;inset:0;background:rgba(0,6,18,0.88);backdrop-filter:blur(24px);" @click="settingsAperte = false" />
 
-        <!-- Sheet -->
+        <!-- Card centrata -->
         <div style="
-          position: relative;
-          background: linear-gradient(180deg, #0f0d1a 0%, #0a0a0f 100%);
-          border-top: 1px solid rgba(168,85,247,0.2);
-          border-radius: 24px 24px 0 0;
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          padding: 8px 24px 48px;
-          z-index: 1;
+          position:relative; z-index:1;
+          width:100%; max-width:360px;
+          background:linear-gradient(165deg,#100820 0%,#080514 55%,#04030d 100%);
+          border:1.5px solid rgba(168,85,247,0.5);
+          border-radius:20px;
+          padding:32px 28px 28px;
+          box-shadow:0 0 60px rgba(124,58,237,0.2), 0 30px 60px rgba(0,0,0,0.8);
         ">
-          <!-- Handle -->
-          <div style="background:rgba(255,255,255,0.15);width:40px;height:4px;border-radius:2px;margin:14px auto 20px;"/>
-
-          <!-- Avatar + nome -->
-          <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">
-            <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);box-shadow:0 0 20px rgba(124,58,237,0.4);display:grid;place-items:center;font-size:22px;flex-shrink:0;">
+          <!-- Avatar + profilo centrato -->
+          <div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:28px;">
+            <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);box-shadow:0 0 28px rgba(124,58,237,0.55);display:grid;place-items:center;font-size:30px;margin-bottom:14px;">
               👤
             </div>
-            <div>
-              <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:700;color:#fff;">
-                {{ gameStore.profilo?.nomeImpero ?? '—' }}
-              </div>
-              <div style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px;">
-                {{ authStore.user?.email ?? '' }}
-              </div>
-              <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.14em;background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(168,85,247,0.2));border:1px solid rgba(168,85,247,0.4);border-radius:999px;padding:2px 8px;color:rgba(245,197,96,0.8);text-transform:uppercase;margin-top:4px;display:inline-flex;align-items:center;">
-                LV. {{ gameStore.profilo?.livello ?? 1 }} · {{ gameStore.profilo?.kisses ?? 0 }} 💋
-              </div>
+            <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:18px;font-weight:800;color:#fff;margin-bottom:5px;">
+              {{ gameStore.profilo?.nomeImpero ?? '—' }}
+            </div>
+            <div style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:13px;color:rgba(255,255,255,0.45);margin-bottom:8px;">
+              {{ authStore.user?.email ?? '' }}
+            </div>
+            <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;letter-spacing:0.14em;background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(168,85,247,0.2));border:1px solid rgba(168,85,247,0.5);border-radius:999px;padding:4px 14px;color:rgba(245,197,96,0.9);text-transform:uppercase;display:inline-flex;align-items:center;gap:6px;">
+              LV. {{ gameStore.profilo?.livello ?? 1 }} · {{ gameStore.profilo?.kisses ?? 0 }} 💋
             </div>
           </div>
 
-          <!-- Language switcher -->
-          <div style="margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.06);">
-            <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.22em;color:rgba(245,197,96,0.6);text-transform:uppercase;font-weight:700;margin-bottom:12px;">
+          <!-- Language dropdown custom -->
+          <div style="margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid rgba(255,255,255,0.07);">
+            <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;letter-spacing:0.22em;color:rgba(245,197,96,0.7);text-transform:uppercase;font-weight:700;margin-bottom:12px;text-align:center;">
               🌐 {{ $t('settings.language.title') }}
             </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+
+            <!-- Overlay trasparente per chiudere cliccando fuori -->
+            <div v-if="langDropdownOpen" @click="langDropdownOpen = false" style="position:fixed;inset:0;z-index:499;" />
+
+            <div style="position:relative;z-index:500;">
+              <!-- Trigger -->
               <button
-                v-for="loc in availableLocales"
-                :key="loc.code"
-                @click="switchLocale(loc.code)"
-                :style="{
-                  padding: '6px 12px',
-                  borderRadius: '999px',
-                  border: currentLocale === loc.code ? '1.5px solid rgba(168,85,247,0.6)' : '1px solid rgba(255,255,255,0.12)',
-                  background: currentLocale === loc.code ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.04)',
-                  color: currentLocale === loc.code ? '#a855f7' : 'rgba(255,255,255,0.55)',
-                  fontFamily: 'var(--ff-label,\'Saira Condensed\',sans-serif)',
-                  fontSize: '11px',
-                  fontWeight: currentLocale === loc.code ? '700' : '400',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }"
-              >{{ loc.name }}</button>
+                @click="langDropdownOpen = !langDropdownOpen"
+                style="width:100%;background:rgba(20,10,40,0.95);border:1.5px solid rgba(168,85,247,0.6);color:#fff;border-radius:14px;padding:14px 48px 14px 18px;font-size:17px;font-family:var(--ff-body,'DM Sans',sans-serif);font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:space-between;box-shadow:0 0 12px rgba(124,58,237,0.2);text-align:left;transition:border-color 0.2s;"
+                :style="langDropdownOpen ? 'border-color:rgba(168,85,247,0.9);border-radius:14px 14px 0 0;' : ''"
+              >
+                <span>{{ currentLocaleName }}</span>
+                <span :style="{ display:'inline-block', transition:'transform 0.2s', transform: langDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', color:'rgba(168,85,247,0.85)', fontSize:'20px', lineHeight:1 }">▾</span>
+              </button>
+
+              <!-- Lista opzioni ancorata sotto il trigger -->
+              <div
+                v-if="langDropdownOpen"
+                style="position:absolute;top:100%;left:0;right:0;z-index:500;background:rgba(20,10,40,0.98);border:1.5px solid rgba(168,85,247,0.6);border-top:none;border-radius:0 0 14px 14px;overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,0.7);"
+              >
+                <button
+                  v-for="loc in availableLocales"
+                  :key="loc.code"
+                  @click="switchLocale(loc.code); langDropdownOpen = false"
+                  style="width:100%;padding:14px 18px;background:transparent;border:none;border-top:1px solid rgba(255,255,255,0.06);cursor:pointer;text-align:left;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:16px;font-weight:600;display:flex;align-items:center;gap:10px;transition:background 0.15s;"
+                  :style="{
+                    color: loc.code === currentLocale ? '#a855f7' : 'rgba(241,235,255,0.85)',
+                    background: loc.code === currentLocale ? 'rgba(124,58,237,0.18)' : 'transparent',
+                  }"
+                  @mouseenter="($event.target as HTMLElement).style.background = 'rgba(124,58,237,0.12)'"
+                  @mouseleave="($event.target as HTMLElement).style.background = loc.code === currentLocale ? 'rgba(124,58,237,0.18)' : 'transparent'"
+                >
+                  <span v-if="loc.code === currentLocale" style="font-size:14px;">✓</span>
+                  <span v-else style="width:14px;display:inline-block;"></span>
+                  {{ loc.name }}
+                </button>
+              </div>
             </div>
           </div>
 
           <!-- Voci menu -->
-          <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:20px;">
+          <div style="display:flex;flex-direction:column;gap:2px;">
             <button
               v-if="isAdmin"
-              style="display:flex;align-items:center;gap:12px;padding:14px 0;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer;color:#b573ff;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:14px;letter-spacing:0.08em;"
+              style="display:flex;align-items:center;gap:14px;padding:16px 4px;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer;color:#b573ff;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:16px;font-weight:600;width:100%;text-align:left;"
               @click="settingsAperte=false; router.push('/admin')"
             >
-              <span style="font-size:20px;">⚙️</span> {{ $t('settings.admin_panel') }}
+              <span style="font-size:22px;width:28px;text-align:center;">⚙️</span>
+              {{ $t('settings.admin_panel') }}
             </button>
             <button
-              style="display:flex;align-items:center;gap:12px;padding:14px 0;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer;color:rgba(241,235,255,0.8);font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:14px;letter-spacing:0.08em;"
+              style="display:flex;align-items:center;gap:14px;padding:16px 4px;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer;color:rgba(241,235,255,0.85);font-family:var(--ff-body,'DM Sans',sans-serif);font-size:16px;font-weight:600;width:100%;text-align:left;"
               @click="gameStore.toggleNegozio(true); settingsAperte=false"
             >
-              <span style="font-size:20px;">🛒</span> {{ $t('settings.shop') }}
+              <span style="font-size:22px;width:28px;text-align:center;">🛒</span>
+              {{ $t('settings.shop') }}
             </button>
             <button
-              style="display:flex;align-items:center;gap:12px;padding:14px 0;background:transparent;border:none;cursor:pointer;color:#f87171;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:14px;letter-spacing:0.08em;"
+              style="display:flex;align-items:center;gap:14px;padding:16px 4px;background:transparent;border:none;cursor:pointer;color:#f87171;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:16px;font-weight:600;width:100%;text-align:left;margin-top:4px;"
               @click="authStore.logout(); settingsAperte=false"
             >
-              <span style="font-size:20px;">🚪</span> {{ $t('settings.logout') }}
+              <span style="font-size:22px;width:28px;text-align:center;">🚪</span>
+              {{ $t('settings.logout') }}
             </button>
-          </div>
-
-          <!-- Versione app -->
-          <div style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:10px;color:rgba(255,255,255,0.18);text-align:center;">
-            {{ $t('settings.version') }} · nuxt-redesign
           </div>
         </div>
       </div>

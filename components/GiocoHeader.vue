@@ -162,7 +162,7 @@ const pendingFriendRequests = computed(() => {
           transition: color 0.2s;
         " @mouseenter="($event.target as HTMLElement).style.color = 'rgba(245,197,96,0.9)'"
         @mouseleave="($event.target as HTMLElement).style.color = 'rgba(245,197,96,0.45)'"
-        @click="$emit('logout')">EXIT</button>
+        @click="$emit('logout')">{{ $t('header.exit') }}</button>
 
     </div>
   </header>

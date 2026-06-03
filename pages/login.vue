@@ -60,17 +60,19 @@ async function loginEmail(ev: Event) {
   } finally { busy.value = false }
 }
 
+const { t } = useI18n()
+
 function traduciErrore(code?: string): string {
   const m: Record<string, string> = {
-    'auth/invalid-email':        'Email non valida',
-    'auth/user-not-found':       'Utente non trovato',
-    'auth/wrong-password':       'Password errata',
-    'auth/email-already-in-use': 'Email già registrata',
-    'auth/weak-password':        'Password troppo debole (min 6 caratteri)',
-    'auth/popup-closed-by-user': 'Login annullato',
-    'auth/network-request-failed': 'Errore di rete',
+    'auth/invalid-email':        t('login.error_invalid_email'),
+    'auth/user-not-found':       t('login.error_user_not_found'),
+    'auth/wrong-password':       t('login.error_wrong_password'),
+    'auth/email-already-in-use': t('login.error_email_in_use'),
+    'auth/weak-password':        t('login.error_weak_password'),
+    'auth/popup-closed-by-user': t('login.error_popup_closed'),
+    'auth/network-request-failed': t('login.error_network'),
   }
-  return m[code ?? ''] || 'Errore: ' + code
+  return m[code ?? ''] || t('login.error_generic', { code })
 }
 </script>
 
@@ -86,7 +88,7 @@ function traduciErrore(code?: string): string {
       <div class="text-center mb-6">
         <img src="~/assets/images/New_Logo.png" alt="Impero delle Waifu" class="w-80 h-auto mx-auto mb-3" style="mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, black 68%, transparent 92%); -webkit-mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, black 68%, transparent 92%);" />
         <div class="text-xs tracking-widest text-purple-400">
-          ⚜ {{ modo === 'login' ? 'ACCEDI' : 'REGISTRATI' }} ⚜
+          {{ modo === 'login' ? $t('login.title_login') : $t('login.title_register') }}
         </div>
       </div>
 
@@ -105,13 +107,13 @@ function traduciErrore(code?: string): string {
           <path fill="#4CAF50" d="M24 44c5.2 0 9.8-2 13.4-5.2l-6.2-5.2C29.2 35 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.7 39.7 16.3 44 24 44z"/>
           <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.1 4.1-3.9 5.6l6.2 5.2C42 35.7 44 30.2 44 24c0-1.3-.1-2.7-.4-3.5z"/>
         </svg>
-        Accedi con Google
+        {{ $t('login.google_btn') }}
       </button>
 
       <!-- Separatore -->
       <div class="flex items-center gap-3 my-5">
         <div class="flex-1 h-px" style="background:rgba(245,158,11,0.2)" />
-        <span class="text-xs opacity-50 tracking-widest">OPPURE</span>
+        <span class="text-xs opacity-50 tracking-widest">{{ $t('login.or_separator') }}</span>
         <div class="flex-1 h-px" style="background:rgba(245,158,11,0.2)" />
       </div>
 
@@ -149,24 +151,24 @@ function traduciErrore(code?: string): string {
                  hover:opacity-90 transition-opacity disabled:opacity-50"
           style="background:linear-gradient(135deg,#f5a623,#ff6b35);border-radius:50px;border:none;font-family:'Fredoka',sans-serif;letter-spacing:0.15em;box-shadow:0 8px 24px rgba(245,166,35,0.25);"
         >
-          {{ busy ? '...' : (modo === 'login' ? 'ACCEDI' : 'CREA ACCOUNT') }}
+          {{ busy ? '…' : (modo === 'login' ? $t('login.submit_login') : $t('login.submit_register')) }}
         </button>
       </form>
 
       <!-- Cambio modalità -->
       <div class="text-center mt-3 text-xs" style="color:#d4c5b9">
         <span v-if="modo === 'login'">
-          Non hai un account?
+          {{ $t('login.no_account') }}
           <button class="text-amber-400 underline cursor-pointer bg-transparent border-0 font-sans text-xs"
                   @click="modo = 'register'; errore = ''">
-            Registrati
+            {{ $t('login.register_link') }}
           </button>
         </span>
         <span v-else>
-          Hai già un account?
+          {{ $t('login.has_account') }}
           <button class="text-amber-400 underline cursor-pointer bg-transparent border-0 font-sans text-xs"
                   @click="modo = 'login'; errore = ''">
-            Accedi
+            {{ $t('login.login_link') }}
           </button>
         </span>
       </div>

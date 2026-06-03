@@ -6,6 +6,8 @@ import SwapMilestoneModal from '~/components/swap/SwapMilestoneModal.vue'
 import AdSlot from '~/components/swap/AdSlot.vue'
 import { listDropsAttivi } from '~/utils/firestoreService'
 
+const { t } = useI18n()
+
 const props = defineProps<{
   user: any
   profilo: any
@@ -178,23 +180,21 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
   <!-- Caricamento iniziale -->
   <div v-if="loading" style="display:flex;flex-direction:column;min-height:70vh;align-items:center;justify-content:center;">
     <div style="font-size:40px;color:#ff85b6;animation:pulse 1.2s ease-in-out infinite">🩷</div>
-    <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.22em;color:rgba(174,156,255,0.5);margin-top:12px;text-transform:uppercase">Caricamento…</div>
+    <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.22em;color:rgba(174,156,255,0.5);margin-top:12px;text-transform:uppercase">{{ $t('swap.loading') }}</div>
   </div>
 
   <!-- Schermata limite voti giornalieri -->
   <div v-else-if="isLimitReached" style="display:flex;flex-direction:column;min-height:80vh;align-items:center;justify-content:center;padding:24px;text-align:center;gap:20px">
     <div style="font-size:56px">🚫</div>
-    <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:20px;color:#ff85b6;font-weight:800">Limite voti raggiunto</div>
-    <div style="font-size:13px;color:rgba(241,235,255,0.6);line-height:1.6;max-width:320px">
-      Hai usato tutti i voti giornalieri. Il contatore si azzera a mezzanotte (ora italiana).
-    </div>
+    <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:20px;color:#ff85b6;font-weight:800">{{ $t('swap.limit_reached') }}</div>
+    <div style="font-size:13px;color:rgba(241,235,255,0.6);line-height:1.6;max-width:320px">{{ $t('swap.limit_explanation') }}</div>
     <div style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:28px;color:#f5c560;font-weight:700;font-variant-numeric:tabular-nums">
       {{ countdown }}
     </div>
     <button @click="$emit('setTab', 'negozio')" style="padding:14px 28px;background:linear-gradient(135deg,#ec4899,#a855f7);border:none;border-radius:14px;color:#fff;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.1em">
-      <KissesIcon :size="13" /> Acquista Swap Pass — Voti illimitati
+      <KissesIcon :size="13" /> {{ $t('swap.buy_pass') }}
     </button>
-    <button @click="$emit('setTab', 'home')" style="background:transparent;border:none;color:rgba(241,235,255,0.4);font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;cursor:pointer">← Torna alla Home</button>
+    <button @click="$emit('setTab', 'home')" style="background:transparent;border:none;color:rgba(241,235,255,0.4);font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;cursor:pointer">{{ $t('swap.back_to_home') }}</button>
   </div>
 
   <!-- Card waifu centrata — SOLO card + ♥/✕ -->

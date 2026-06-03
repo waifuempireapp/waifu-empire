@@ -1,6 +1,7 @@
 <!-- Modal acquisto Kisses quando il saldo è insufficiente. Porta KissesShortageModal.jsx -->
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
+const { t } = useI18n()
 
 interface Taglio { id: string; kisses: number; bonus?: number; price_eur: string; label: string }
 
@@ -72,7 +73,7 @@ async function renderPayPal() {
     },
     onError: (err: any) => {
       console.error('[PayPal modal]', err)
-      errMsg.value = 'Errore PayPal. Riprova.'
+      errMsg.value = t('modal.paypal_error')
       stato.value = 'error'
     },
     onCancel: () => { /* utente ha chiuso PayPal */ },
@@ -81,14 +82,14 @@ async function renderPayPal() {
 
 function loadSDK() {
   const clientId = (config.public as any).paypalClientId
-  if (!clientId) { errMsg.value = 'Configurazione PayPal mancante.'; stato.value = 'error'; return }
+  if (!clientId) { errMsg.value = t('modal.paypal_config_missing'); stato.value = 'error'; return }
   const existing = document.getElementById('paypal-sdk-modal')
   if (existing && (window as any).paypal) { ppRendered.value = false; renderPayPal(); return }
   const script    = document.createElement('script')
   script.id       = 'paypal-sdk-modal'
   script.src      = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=EUR&locale=it_IT&disable-funding=credit,card`
   script.onload   = () => renderPayPal()
-  script.onerror  = () => { errMsg.value = 'Impossibile caricare PayPal.'; stato.value = 'error' }
+  script.onerror  = () => { errMsg.value = t('modal.paypal_loading_error'); stato.value = 'error' }
   document.head.appendChild(script)
 }
 
@@ -111,9 +112,9 @@ onUnmounted(() => { document.getElementById('paypal-sdk-modal')?.remove() })
       style="text-align:center;gap:16px;display:flex;flex-direction:column;align-items:center"
     >
       <div style="font-size:48px">💖</div>
-      <div style="font-family:'Unbounded',sans-serif;font-size:14px;color:#00e676;letter-spacing:2px">KISSES ACQUISTATI!</div>
+      <div style="font-family:'Unbounded',sans-serif;font-size:14px;color:#00e676;letter-spacing:2px">{{ $t('modal.kisses_purchased_title') }}</div>
       <div style="font-family:'DM Sans',sans-serif;font-size:13px;color:rgba(238,232,220,0.7)">
-        +{{ taglioScelto?.kisses }} Kisses aggiunti al tuo saldo
+        {{ $t('modal.kisses_added_msg', { n: taglioScelto?.kisses }) }}
       </div>
     </div>
 
@@ -122,11 +123,10 @@ onUnmounted(() => { document.getElementById('paypal-sdk-modal')?.remove() })
       <!-- Intestazione -->
       <div style="text-align:center">
         <div style="font-family:'Unbounded',sans-serif;font-size:12px;letter-spacing:3px;color:#ff4d9e;margin-bottom:6px">
-          KISSES INSUFFICIENTI
+          {{ $t('modal.insufficient_kisses_title') }}
         </div>
         <div style="font-family:'DM Sans',sans-serif;font-size:13px;color:rgba(238,232,220,0.55)">
-          Ti mancano <strong style="color:#ff4d9e">{{ missingKisses }}</strong> Kisses per completare questa azione.
-          Ricarica subito per proseguire.
+          {{ $t('modal.insufficient_kisses_msg', { n: missingKisses }) }}
         </div>
       </div>
 
@@ -161,7 +161,7 @@ onUnmounted(() => { document.getElementById('paypal-sdk-modal')?.remove() })
         {{ errMsg }}
       </div>
       <div v-else-if="stato === 'loading'" style="color:rgba(238,232,220,0.5);font-family:'Unbounded',sans-serif;font-size:10px">
-        Completamento acquisto…
+        {{ $t('modal.completing_purchase') }}
       </div>
       <div v-else style="width:100%;max-width:320px">
         <div ref="containerRef" style="min-height:45px" />
@@ -173,7 +173,7 @@ onUnmounted(() => { document.getElementById('paypal-sdk-modal')?.remove() })
         style="background:none;border:1px solid rgba(255,255,255,0.15);border-radius:8px;
                color:rgba(238,232,220,0.4);font-family:'Unbounded',sans-serif;
                font-size:9px;padding:8px 20px;cursor:pointer;letter-spacing:1px"
-      >ANNULLA</button>
+      >{{ $t('modal.cancel') }}</button>
     </template>
   </div>
 </template>

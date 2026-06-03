@@ -486,6 +486,8 @@ const sortCombo = computed({
     sortDir.value = (d as 'asc' | 'desc') || 'desc'
   },
 })
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -500,15 +502,15 @@ const sortCombo = computed({
         <div :style="{
           fontFamily: FF.label, fontSize: 12, color: `${C.goldL}bb`,
           letterSpacing: '0.28em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 6,
-        }">La tua collezione</div>
+        }">{{ $t('collection.your_collection') }}</div>
         <div :style="{
           fontFamily: FF.display, fontSize: 28, color: C.goldL,
           textShadow: `0 0 28px ${C.gold}88`, fontWeight: 900,
-        }" class="shimmer-text">Le mie carte</div>
+        }" class="shimmer-text">{{ $t('collection.my_cards') }}</div>
         <div :style="{
           fontFamily: FF.body, fontSize: 14, color: 'rgba(241,235,255,0.6)',
           marginTop: 10, lineHeight: 1.5,
-        }">Filtra, ordina e potenzia le tue waifu.</div>
+        }">{{ $t('collection.subtitle') }}</div>
       </div>
 
       <!-- SUB-TAB BUTTONS -->
@@ -593,47 +595,47 @@ const sortCombo = computed({
           <div style="display:flex;gap:8px;">
             <!-- FILTRA -->
             <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
-              <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'rgba(241,235,255,0.65)' }">FILTRA</div>
+              <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'rgba(241,235,255,0.65)' }">{{ $t('collection.filter_label') }}</div>
               <select v-model="filtroCombo"
                 :style="{ width:'100%', background:'rgba(7,5,26,0.9)', border:`1.5px solid ${filtroCombo ? C.violet+'aa' : C.inkLine}`, color:filtroCombo ? '#fff' : 'rgba(241,235,255,0.6)', borderRadius:'10px', padding:'12px 14px', fontSize:'16px', fontFamily:FF.body, cursor:'pointer', fontWeight:600, outline:'none', appearance:'none', WebkitAppearance:'none' }">
-                <option value="">Tutte</option>
-                <optgroup label="── Rarità">
-                  <option value="rarita:comune">Comuni</option>
-                  <option value="rarita:raro">Rare</option>
-                  <option value="rarita:epico">Epiche</option>
-                  <option value="rarita:leggendario">Leggendarie</option>
-                  <option value="rarita:immersivo">Immersive</option>
+                <option value="">{{ $t('collection.filter_all') }}</option>
+                <optgroup :label="$t('collection.filter_rarity_group')">
+                  <option value="rarita:comune">{{ $t('collection.filter_common') }}</option>
+                  <option value="rarita:raro">{{ $t('collection.filter_rare') }}</option>
+                  <option value="rarita:epico">{{ $t('collection.filter_epic') }}</option>
+                  <option value="rarita:leggendario">{{ $t('collection.filter_legendary') }}</option>
+                  <option value="rarita:immersivo">{{ $t('collection.filter_immersive') }}</option>
                 </optgroup>
-                <optgroup v-if="drops.length > 0" label="── Drop">
+                <optgroup v-if="drops.length > 0" :label="$t('collection.filter_drop_group')">
                   <option v-for="d in drops" :key="d.id" :value="`drop:${d.id}`">{{ d.nome || d.id }}</option>
                 </optgroup>
-                <optgroup label="── Speciale">
-                  <option value="scambiabili">↔ Scambiabili</option>
-                  <option value="pronti">⚡ Pronti (level-up)</option>
-                  <option value="crescita">In crescita</option>
-                  <option v-if="profilo?.hardPass" value="hot">🔥 Hot</option>
-                  <option v-if="profilo?.hardPass" value="sfw">SFW</option>
+                <optgroup :label="$t('collection.filter_special_group')">
+                  <option value="scambiabili">{{ $t('collection.filter_tradeable') }}</option>
+                  <option value="pronti">{{ $t('collection.filter_ready_levelup') }}</option>
+                  <option value="crescita">{{ $t('collection.filter_growing') }}</option>
+                  <option v-if="profilo?.hardPass" value="hot">{{ $t('collection.filter_hot') }}</option>
+                  <option v-if="profilo?.hardPass" value="sfw">{{ $t('collection.filter_sfw') }}</option>
                 </optgroup>
               </select>
             </div>
 
             <!-- ORDINA -->
             <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
-              <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'rgba(241,235,255,0.65)' }">ORDINA</div>
+              <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'rgba(241,235,255,0.65)' }">{{ $t('collection.sort_label') }}</div>
               <select v-model="sortCombo"
                 :style="{ width:'100%', background:'rgba(7,5,26,0.9)', border:`1.5px solid ${sortCombo ? C.gold+'aa' : C.inkLine}`, color:sortCombo ? '#fff' : 'rgba(241,235,255,0.6)', borderRadius:'10px', padding:'12px 14px', fontSize:'16px', fontFamily:FF.body, cursor:'pointer', fontWeight:600, outline:'none', appearance:'none', WebkitAppearance:'none' }">
-                <option value="">Default</option>
-                <option value="rarita:desc">Rarità ↓</option>
-                <option value="rarita:asc">Rarità ↑</option>
-                <option value="livello:desc">Livello ↓</option>
-                <option value="livello:asc">Livello ↑</option>
-                <option value="copie:desc">Copie ↓</option>
-                <option value="copie:asc">Copie ↑</option>
-                <option value="tette:desc">Tette ↓</option>
-                <option value="taglia_piedi:desc">Piedi ↓</option>
-                <option value="eta:desc">Età ↓</option>
-                <option value="colore_capelli:desc">Capelli ↓</option>
-                <option value="esperienza:desc">EXP ↓</option>
+                <option value="">{{ $t('collection.sort_default') }}</option>
+                <option value="rarita:desc">{{ $t('collection.sort_rarity_desc') }}</option>
+                <option value="rarita:asc">{{ $t('collection.sort_rarity_asc') }}</option>
+                <option value="livello:desc">{{ $t('collection.sort_level_desc') }}</option>
+                <option value="livello:asc">{{ $t('collection.sort_level_asc') }}</option>
+                <option value="copie:desc">{{ $t('collection.sort_copies_desc') }}</option>
+                <option value="copie:asc">{{ $t('collection.sort_copies_asc') }}</option>
+                <option value="tette:desc">{{ $t('collection.sort_stat_desc') }}</option>
+                <option value="taglia_piedi:desc">{{ $t('collection.sort_feet_desc') }}</option>
+                <option value="eta:desc">{{ $t('collection.sort_age_desc') }}</option>
+                <option value="colore_capelli:desc">{{ $t('collection.sort_hair_desc') }}</option>
+                <option value="esperienza:desc">{{ $t('collection.sort_exp_desc') }}</option>
               </select>
             </div>
           </div>
