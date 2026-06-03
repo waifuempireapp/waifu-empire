@@ -68,11 +68,11 @@ function actionBtn(color: string, bg: string) {
     <div
       :style="{
         position:'relative', borderRadius:'22px', overflow:'hidden',
-        aspectRatio:'3/4', cursor:'grab', touchAction:'none',
+        aspectRatio:'3/4', minHeight:'280px', cursor:'grab', touchAction:'none',
         transform: cardTransform,
         transition: cardTransition,
         opacity: cardOpacity,
-        boxShadow:'0 24px 60px rgba(3,2,12,0.7)',
+        boxShadow:'0 24px 60px rgba(3,2,12,0.8), 0 0 0 1.5px rgba(255,133,182,0.35)',
         userSelect:'none',
       }"
       @pointerdown="onPointerDown"

@@ -314,7 +314,7 @@ function handleSetTab(t: string) {
     <LazyGiocoHeader :profilo="gameStore.profilo" :is-admin="isAdmin" @logout="authStore.logout()" />
 
     <!-- ── Area contenuto: padding-top 60px di default, 5px nella tab pacchetti (sbusta) ── -->
-    <div class="px-4 max-w-[1400px] mx-auto" :style="{ paddingTop: tab === 'pacchetti' ? '5px' : '60px' }">
+    <div class="px-4 max-w-[1400px] mx-auto" :style="{ paddingTop: tab === 'pacchetti' ? '5px' : tab === 'community' ? '20px' : '60px' }">
 
       <!-- ═══ TAB: HOME ════════════════════════════════════════════════ -->
       <LazyHomeTab v-if="tab === 'home'" :user="authStore.user" :profilo="gameStore.profilo"
@@ -377,10 +377,12 @@ function handleSetTab(t: string) {
       ════════════════════════════════════════════════════════════════════ -->
       <div v-if="tab === 'community'">
 
-        <!-- Pill sub-navigazione interna a Community -->
-        <div class="flex gap-2 mb-4 pt-3 overflow-x-auto">
+        <!-- Pill sub-navigazione interna a Community — 1/3 ciascuno -->
+        <div style="display:flex;gap:0;margin-bottom:16px;">
           <button v-for="s in SUB_COMMUNITY" :key="s.id" class="sub-nav-pill"
-            :class="subTabCommunity === s.id ? 'sub-nav-pill--active' : ''" style="min-height:44px"
+            :class="subTabCommunity === s.id ? 'sub-nav-pill--active' : ''"
+            style="flex:1;min-height:44px;border-radius:0;"
+            :style="{ borderRadius: s.id === 'amici' ? '12px 0 0 12px' : s.id === 'swap' ? '0 12px 12px 0' : '0' }"
             @click="subTabCommunity = s.id as 'amici' | 'classifica' | 'swap'">
             <span class="text-base leading-none">{{ s.icon }}</span>
             <span>{{ s.label }}</span>

@@ -444,6 +444,48 @@ onMounted(() => {
   tradeCountdownIv = setInterval(aggiornaTradeCountdown, 30000)
 })
 onUnmounted(() => { if (tradeCountdownIv) clearInterval(tradeCountdownIv) })
+
+// ── Select unificata FILTRA ───────────────────────────────────
+const filtroCombo = computed({
+  get(): string {
+    if (filtroRarita.value !== 'tutte') return `rarita:${filtroRarita.value}`
+    if (filtroDropId.value !== 'tutti') return `drop:${filtroDropId.value}`
+    if (filtroScambiabile.value) return 'scambiabili'
+    if (filtroLevelUp.value === 'si') return 'pronti'
+    if (filtroLevelUp.value === 'no') return 'crescita'
+    if (filtroHot.value === 'hot') return 'hot'
+    if (filtroHot.value === 'non-hot') return 'sfw'
+    return ''
+  },
+  set(v: string) {
+    filtroRarita.value = 'tutte'
+    filtroDropId.value = 'tutti'
+    filtroScambiabile.value = false
+    filtroLevelUp.value = 'tutti'
+    filtroHot.value = 'tutti'
+    if (v.startsWith('rarita:')) filtroRarita.value = v.replace('rarita:', '')
+    else if (v.startsWith('drop:')) filtroDropId.value = v.replace('drop:', '')
+    else if (v === 'scambiabili') filtroScambiabile.value = true
+    else if (v === 'pronti') filtroLevelUp.value = 'si'
+    else if (v === 'crescita') filtroLevelUp.value = 'no'
+    else if (v === 'hot') filtroHot.value = 'hot'
+    else if (v === 'sfw') filtroHot.value = 'non-hot'
+    visibiliWaifu.value = 12
+  },
+})
+
+// ── Select unificata ORDINA ───────────────────────────────────
+const sortCombo = computed({
+  get(): string {
+    return sortKey.value ? `${sortKey.value}:${sortDir.value}` : ''
+  },
+  set(v: string) {
+    if (!v) { sortKey.value = ''; return }
+    const [k, d] = v.split(':')
+    sortKey.value = k
+    sortDir.value = (d as 'asc' | 'desc') || 'desc'
+  },
+})
 </script>
 
 <template>
@@ -453,26 +495,27 @@ onUnmounted(() => { if (tradeCountdownIv) clearInterval(tradeCountdownIv) })
 
       <!-- Titolo schermata -->
       <div :style="{
-        textAlign: 'center', marginBottom: 24, paddingTop: 8,
+        textAlign: 'center', marginBottom: '18px', paddingTop: 8,
       }">
         <div :style="{
-          fontFamily: FF.label, fontSize: 9, color: `${C.goldL}99`,
-          letterSpacing: '0.32em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 4,
+          fontFamily: FF.label, fontSize: 12, color: `${C.goldL}bb`,
+          letterSpacing: '0.28em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 6,
         }">La tua collezione</div>
         <div :style="{
-          fontFamily: FF.display, fontSize: 22, color: C.goldL,
-          textShadow: `0 0 24px ${C.gold}88`,
+          fontFamily: FF.display, fontSize: 28, color: C.goldL,
+          textShadow: `0 0 28px ${C.gold}88`, fontWeight: 900,
         }" class="shimmer-text">Le mie carte</div>
         <div :style="{
-          fontFamily: FF.body, fontSize: 12, color: 'rgba(241,235,255,0.55)',
-          marginTop: 6, lineHeight: 1.5,
-        }">Filtra, ordina e potenzia le tue waifu, outfit e pose.</div>
+          fontFamily: FF.body, fontSize: 14, color: 'rgba(241,235,255,0.6)',
+          marginTop: 10, lineHeight: 1.5,
+        }">Filtra, ordina e potenzia le tue waifu.</div>
       </div>
 
       <!-- SUB-TAB BUTTONS -->
       <div :style="{
-        display: 'flex', gap: '6px', flexWrap: 'wrap',
-        justifyContent: 'center', marginBottom: '18px',
+        display: 'flex', gap: '8px',
+        justifyContent: 'center', marginBottom: '22px',
+        paddingTop: '12px',
       }">
         <button
           v-for="t in subTabs"
@@ -480,23 +523,36 @@ onUnmounted(() => { if (tradeCountdownIv) clearInterval(tradeCountdownIv) })
           @click="tabSub = t.k"
           :style="{
             position: 'relative',
-            padding: '9px 16px', borderRadius: '11px', cursor: 'pointer',
+            flex: 1,
+            padding: '14px 10px 12px', borderRadius: '14px', cursor: 'pointer',
             background: tabSub === t.k
               ? `linear-gradient(180deg, ${t.c}40, ${t.c}1a)`
               : 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))',
             color: tabSub === t.k ? '#fff' : t.c,
             border: `1px solid ${tabSub === t.k ? t.c : `${t.c}40`}`,
-            fontFamily: FF.label, fontSize: '10px',
-            letterSpacing: '0.16em', fontWeight: 700,
+            fontFamily: FF.label, fontSize: '15px',
+            letterSpacing: '0.14em', fontWeight: 700,
             textTransform: 'uppercase',
             boxShadow: tabSub === t.k
-              ? `0 1px 0 rgba(255,255,255,0.18) inset, 0 0 18px ${t.c}55`
+              ? `0 1px 0 rgba(255,255,255,0.18) inset, 0 0 22px ${t.c}55`
               : 'none',
             transition: 'all 0.2s',
-            display: 'inline-flex', alignItems: 'center', gap: '7px',
-            overflow: 'hidden',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            overflow: 'visible',
           }"
         >
+          <!-- Chip count — top-right assoluto -->
+          <span :style="{
+            position: 'absolute', top: '-11px', right: '-6px', zIndex: 10,
+            background: tabSub === t.k ? t.c : `${t.c}22`,
+            border: `1.5px solid ${t.c}`,
+            padding: '2px 8px', borderRadius: '999px',
+            fontSize: '12px', fontFamily: FF.mono, fontWeight: 800,
+            color: tabSub === t.k ? '#07051a' : t.c,
+            boxShadow: tabSub === t.k ? `0 2px 10px ${t.c}66` : 'none',
+            lineHeight: 1.4,
+          }">{{ t.n }}</span>
+
           <!-- Sheen overlay quando attivo -->
           <span
             v-if="tabSub === t.k"
@@ -506,19 +562,13 @@ onUnmounted(() => { if (tradeCountdownIv) clearInterval(tradeCountdownIv) })
               opacity: 0.55, mixBlendMode: 'overlay', pointerEvents: 'none',
             }"
           />
+          <!-- Icona grande -->
           <span :style="{
-            position: 'relative', fontSize: '14px',
-            color: t.c, filter: `drop-shadow(0 0 4px ${t.c})`,
+            position: 'relative', fontSize: '22px', lineHeight: 1,
+            color: t.c, filter: `drop-shadow(0 0 6px ${t.c})`,
           }">{{ t.icon }}</span>
+          <!-- Label -->
           <span :style="{ position: 'relative' }">{{ t.l }}</span>
-          <span :style="{
-            position: 'relative',
-            background: tabSub === t.k ? `${t.c}40` : `${t.c}1a`,
-            border: `1px solid ${tabSub === t.k ? t.c : `${t.c}33`}`,
-            padding: '1px 7px', borderRadius: '999px',
-            fontSize: '9px', fontFamily: FF.mono, fontWeight: 700,
-            color: tabSub === t.k ? '#fff' : t.c,
-          }">{{ t.n }}</span>
         </button>
       </div>
 
@@ -527,184 +577,65 @@ onUnmounted(() => { if (tradeCountdownIv) clearInterval(tradeCountdownIv) })
       ══════════════════════════════════════════════════════ -->
       <div v-if="tabSub === 'waifu'">
 
-        <!-- ── Barra filtri waifu ── -->
-        <div :style="{
-          background: 'linear-gradient(180deg, rgba(27,22,56,0.55), rgba(13,10,38,0.7))',
-          border: `1px solid ${C.inkLine}`,
-          borderRadius: '14px', padding: '12px 14px', marginBottom: '14px',
-          backdropFilter: 'blur(8px)',
-        }">
-          <!-- Search row -->
-          <div :style="{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px' }">
-            <div :style="{
-              flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
-              padding: '8px 14px',
-              background: 'rgba(7,5,26,0.8)',
-              border: `1px solid ${C.inkLine}`,
-              borderRadius: '999px',
-            }">
-              <span :style="{ color: 'rgba(241,235,255,0.4)', fontSize: '13px' }">🔍</span>
-              <input
-                v-model="filtroNome"
-                @input="visibiliWaifu = 12"
-                placeholder="Cerca per nome…"
-                :style="{
-                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                  color: '#fff', fontSize: '12px', fontFamily: FF.body, padding: 0,
-                }"
-              />
-              <button
-                v-if="filtroNome"
-                @click="filtroNome = ''; visibiliWaifu = 12"
-                :style="{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: 'rgba(241,235,255,0.5)', fontSize: '12px', lineHeight: 1, padding: 0,
-                }"
-              >✕</button>
+        <!-- ── Barra filtri waifu — 2 select 50/50 ── -->
+        <div :style="{ marginBottom: '14px' }">
+          <!-- Ricerca -->
+          <div :style="{ display:'flex', alignItems:'center', gap:'8px', padding:'10px 14px', background:'rgba(7,5,26,0.8)', border:`1px solid ${C.inkLine}`, borderRadius:'12px', marginBottom:'10px' }">
+            <span style="color:rgba(241,235,255,0.4);font-size:14px;">🔍</span>
+            <input v-model="filtroNome" @input="visibiliWaifu = 12" placeholder="Cerca per nome…"
+              :style="{ flex:1, background:'transparent', border:'none', outline:'none', color:'#fff', fontSize:'14px', fontFamily:FF.body, padding:0 }" />
+            <button v-if="filtroNome" @click="filtroNome = ''; visibiliWaifu = 12"
+              style="background:none;border:none;cursor:pointer;color:rgba(241,235,255,0.5);font-size:14px;line-height:1;padding:0;">✕</button>
+            <span :style="{ fontFamily:FF.mono, fontSize:'13px', color:'rgba(241,235,255,0.45)', fontWeight:700, flexShrink:0 }">{{ waifuEntries.length }}</span>
+          </div>
+
+          <!-- Le 2 select 50/50 -->
+          <div style="display:flex;gap:8px;">
+            <!-- FILTRA -->
+            <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+              <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'rgba(241,235,255,0.65)' }">FILTRA</div>
+              <select v-model="filtroCombo"
+                :style="{ width:'100%', background:'rgba(7,5,26,0.9)', border:`1.5px solid ${filtroCombo ? C.violet+'aa' : C.inkLine}`, color:filtroCombo ? '#fff' : 'rgba(241,235,255,0.6)', borderRadius:'10px', padding:'12px 14px', fontSize:'16px', fontFamily:FF.body, cursor:'pointer', fontWeight:600, outline:'none', appearance:'none', WebkitAppearance:'none' }">
+                <option value="">Tutte</option>
+                <optgroup label="── Rarità">
+                  <option value="rarita:comune">Comuni</option>
+                  <option value="rarita:raro">Rare</option>
+                  <option value="rarita:epico">Epiche</option>
+                  <option value="rarita:leggendario">Leggendarie</option>
+                  <option value="rarita:immersivo">Immersive</option>
+                </optgroup>
+                <optgroup v-if="drops.length > 0" label="── Drop">
+                  <option v-for="d in drops" :key="d.id" :value="`drop:${d.id}`">{{ d.nome || d.id }}</option>
+                </optgroup>
+                <optgroup label="── Speciale">
+                  <option value="scambiabili">↔ Scambiabili</option>
+                  <option value="pronti">⚡ Pronti (level-up)</option>
+                  <option value="crescita">In crescita</option>
+                  <option v-if="profilo?.hardPass" value="hot">🔥 Hot</option>
+                  <option v-if="profilo?.hardPass" value="sfw">SFW</option>
+                </optgroup>
+              </select>
             </div>
-            <span :style="{
-              fontFamily: FF.mono, fontSize: '11px', color: 'rgba(241,235,255,0.5)',
-              fontWeight: 700, padding: '0 6px',
-            }">{{ waifuEntries.length }}</span>
-          </div>
 
-          <!-- Rarità + drop -->
-          <div :style="{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }">
-            <select
-              v-model="filtroRarita"
-              @change="visibiliWaifu = 12"
-              :style="{
-                background: 'rgba(7,5,26,0.85)', border: `1px solid ${C.inkLine}`,
-                color: '#fff', borderRadius: '9px', padding: '6px 10px', fontSize: '10px',
-                fontFamily: FF.label, cursor: 'pointer', letterSpacing: '0.08em', fontWeight: 600,
-              }"
-            >
-              <option value="tutte">Tutte le rarità</option>
-              <option v-for="r in ['comune','raro','epico','leggendario','immersivo']" :key="r" :value="r">
-                {{ r.charAt(0).toUpperCase() + r.slice(1) }}
-              </option>
-            </select>
-            <select
-              v-if="drops.length > 0"
-              v-model="filtroDropId"
-              @change="visibiliWaifu = 12"
-              :style="{
-                background: 'rgba(7,5,26,0.85)', border: `1px solid ${C.inkLine}`,
-                color: '#fff', borderRadius: '9px', padding: '6px 10px', fontSize: '10px',
-                fontFamily: FF.label, cursor: 'pointer', letterSpacing: '0.08em', fontWeight: 600,
-              }"
-            >
-              <option value="tutti">Tutti i drop</option>
-              <option v-for="d in drops" :key="d.id" :value="d.id">{{ d.nome || d.id }}</option>
-            </select>
-          </div>
-
-          <!-- Toggle chips filtri -->
-          <div :style="{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }">
-            <!-- Scambiabili -->
-            <button
-              @click="filtroScambiabile = !filtroScambiabile; visibiliWaifu = 12"
-              :style="{
-                padding: '5px 12px', borderRadius: '999px',
-                background: filtroScambiabile ? `${C.gold}26` : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${filtroScambiabile ? C.gold : C.inkLine}`,
-                color: filtroScambiabile ? C.gold : 'rgba(241,235,255,0.5)',
-                fontFamily: FF.label, fontSize: '9px', fontWeight: 700,
-                letterSpacing: '0.18em', textTransform: 'uppercase',
-                cursor: 'pointer', transition: 'all 0.18s',
-              }"
-            >↔ Scambiabili</button>
-            <!-- Level up pronti -->
-            <button
-              @click="filtroLevelUp = filtroLevelUp === 'si' ? 'tutti' : 'si'; visibiliWaifu = 12"
-              :style="{
-                padding: '5px 12px', borderRadius: '999px',
-                background: filtroLevelUp === 'si' ? `${C.ok}26` : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${filtroLevelUp === 'si' ? C.ok : C.inkLine}`,
-                color: filtroLevelUp === 'si' ? C.ok : 'rgba(241,235,255,0.5)',
-                fontFamily: FF.label, fontSize: '9px', fontWeight: 700,
-                letterSpacing: '0.18em', textTransform: 'uppercase',
-                cursor: 'pointer', transition: 'all 0.18s',
-              }"
-            >⚡ Pronti</button>
-            <!-- In crescita -->
-            <button
-              @click="filtroLevelUp = filtroLevelUp === 'no' ? 'tutti' : 'no'; visibiliWaifu = 12"
-              :style="{
-                padding: '5px 12px', borderRadius: '999px',
-                background: filtroLevelUp === 'no' ? `${C.violet}26` : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${filtroLevelUp === 'no' ? C.violet : C.inkLine}`,
-                color: filtroLevelUp === 'no' ? C.violet : 'rgba(241,235,255,0.5)',
-                fontFamily: FF.label, fontSize: '9px', fontWeight: 700,
-                letterSpacing: '0.18em', textTransform: 'uppercase',
-                cursor: 'pointer', transition: 'all 0.18s',
-              }"
-            >In crescita</button>
-            <!-- Hot (solo se hardPass) -->
-            <template v-if="profilo?.hardPass">
-              <button
-                @click="filtroHot = filtroHot === 'hot' ? 'tutti' : 'hot'; visibiliWaifu = 12"
-                :style="{
-                  padding: '5px 12px', borderRadius: '999px',
-                  background: filtroHot === 'hot' ? 'rgba(255,140,0,0.15)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${filtroHot === 'hot' ? '#ff8c00' : C.inkLine}`,
-                  color: filtroHot === 'hot' ? '#ff8c00' : 'rgba(241,235,255,0.5)',
-                  fontFamily: FF.label, fontSize: '9px', fontWeight: 700,
-                  letterSpacing: '0.18em', textTransform: 'uppercase',
-                  cursor: 'pointer', transition: 'all 0.18s',
-                }"
-              >🔥 Hot</button>
-              <button
-                @click="filtroHot = filtroHot === 'non-hot' ? 'tutti' : 'non-hot'; visibiliWaifu = 12"
-                :style="{
-                  padding: '5px 12px', borderRadius: '999px',
-                  background: filtroHot === 'non-hot' ? `${C.aqua}26` : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${filtroHot === 'non-hot' ? C.aqua : C.inkLine}`,
-                  color: filtroHot === 'non-hot' ? C.aqua : 'rgba(241,235,255,0.5)',
-                  fontFamily: FF.label, fontSize: '9px', fontWeight: 700,
-                  letterSpacing: '0.18em', textTransform: 'uppercase',
-                  cursor: 'pointer', transition: 'all 0.18s',
-                }"
-              >SFW</button>
-            </template>
-          </div>
-
-          <!-- Sort row -->
-          <div :style="{
-            display: 'flex', gap: '5px', flexWrap: 'wrap', alignItems: 'center',
-            paddingTop: '10px', borderTop: `1px solid ${C.inkLine}`,
-          }">
-            <span :style="{
-              fontFamily: FF.label, fontSize: '8px',
-              color: 'rgba(241,235,255,0.4)',
-              letterSpacing: '0.24em', textTransform: 'uppercase', fontWeight: 700,
-            }">Ordina:</span>
-            <button
-              v-for="s in [
-                { k: 'rarita', l: 'Rarità' },
-                { k: 'livello', l: 'Livello' },
-                { k: 'copie', l: 'Copie' },
-                { k: 'tette', l: 'Tette' },
-                { k: 'taglia_piedi', l: 'Piedi' },
-                { k: 'eta', l: 'Età' },
-                { k: 'colore_capelli', l: 'Capelli' },
-                { k: 'esperienza', l: 'EXP' },
-              ]"
-              :key="s.k"
-              @click="onToggleSort(s.k)"
-              :style="{
-                padding: '4px 10px', borderRadius: '999px', cursor: 'pointer',
-                background: sortKey === s.k ? `${C.gold}26` : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${sortKey === s.k ? C.gold : C.inkLine}`,
-                color: sortKey === s.k ? C.goldL : 'rgba(241,235,255,0.5)',
-                fontFamily: FF.label, fontSize: '8px', fontWeight: 700,
-                letterSpacing: '0.16em', textTransform: 'uppercase',
-                display: 'inline-flex', alignItems: 'center', gap: '4px',
-              }"
-            >
-              {{ s.l }}
-              <span v-if="sortKey === s.k" :style="{ fontSize: '9px' }">{{ sortDir === 'desc' ? '↓' : '↑' }}</span>
-            </button>
+            <!-- ORDINA -->
+            <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+              <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'rgba(241,235,255,0.65)' }">ORDINA</div>
+              <select v-model="sortCombo"
+                :style="{ width:'100%', background:'rgba(7,5,26,0.9)', border:`1.5px solid ${sortCombo ? C.gold+'aa' : C.inkLine}`, color:sortCombo ? '#fff' : 'rgba(241,235,255,0.6)', borderRadius:'10px', padding:'12px 14px', fontSize:'16px', fontFamily:FF.body, cursor:'pointer', fontWeight:600, outline:'none', appearance:'none', WebkitAppearance:'none' }">
+                <option value="">Default</option>
+                <option value="rarita:desc">Rarità ↓</option>
+                <option value="rarita:asc">Rarità ↑</option>
+                <option value="livello:desc">Livello ↓</option>
+                <option value="livello:asc">Livello ↑</option>
+                <option value="copie:desc">Copie ↓</option>
+                <option value="copie:asc">Copie ↑</option>
+                <option value="tette:desc">Tette ↓</option>
+                <option value="taglia_piedi:desc">Piedi ↓</option>
+                <option value="eta:desc">Età ↓</option>
+                <option value="colore_capelli:desc">Capelli ↓</option>
+                <option value="esperienza:desc">EXP ↓</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -733,14 +664,15 @@ onUnmounted(() => { if (tradeCountdownIv) clearInterval(tradeCountdownIv) })
           >🔓 Acquista Trade Pass</button>
         </div>
 
-        <!-- Griglia waifu -->
-        <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }">
+        <!-- Griglia waifu 3 colonne: zoom riduce layout + dimensione visiva -->
+        <div style="display:flex;flex-wrap:wrap;gap:3px;">
           <div
             v-for="({ id, dati, w }, idx) in waifuEntries.slice(0, visibiliWaifu)"
             :key="id"
             class="card-fade-up card-clickable collection-card-item"
-            :style="{ display: 'flex', flexDirection: 'column', alignItems: 'center', animationDelay: `${idx * 40}ms` }"
+            :style="{ width:'calc(33.33% - 3px)', display:'flex', flexDirection:'column', alignItems:'center', animationDelay:`${idx * 30}ms` }"
           >
+            <div style="zoom:0.74;flex-shrink:0;position:relative;">
             <CartaWaifu
               :waifu="w"
               :datiCollezione="dati"
@@ -753,15 +685,20 @@ onUnmounted(() => { if (tradeCountdownIv) clearInterval(tradeCountdownIv) })
               :isHot="w.hot === true"
               :censurata="w.hot === true && !profilo?.hardPass"
             />
-            <div :style="{ textAlign: 'center', marginTop: '6px' }">
-              <span v-if="dati.levelup_pending" :style="{ ...stileLevelUp, fontSize: '8px', color: C.ok }">⚡ Level Up!</span>
-              <span v-else :style="{
-                color: C.violet, fontFamily: FF.label, fontSize: '8px',
-                letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600,
-              }">
-                {{ dati.copie }} copie · LV<strong :style="{ color: C.goldL, marginLeft: '3px' }">{{ dati.livello }}</strong>
-              </span>
+            <!-- Chip LV — bottom-right della carta; font compensato per zoom:0.74 → 16px = ~12px visivi -->
+            <div :style="{
+              position:'absolute', bottom:'10px', right:'6px', zIndex:20,
+              background:'rgba(4,2,14,0.88)',
+              border:`2px solid ${dati.levelup_pending ? C.ok : C.gold}bb`,
+              borderRadius:'999px', padding:'3px 12px',
+              fontFamily:FF.label, fontSize:'16px', fontWeight:800,
+              color: dati.levelup_pending ? C.ok : C.gold,
+              letterSpacing:'0.04em', whiteSpace:'nowrap',
+              boxShadow: dati.levelup_pending ? `0 0 10px ${C.ok}55` : 'none',
+            }">
+              {{ dati.levelup_pending ? '⚡' : '' }}LV {{ dati.livello }}
             </div>
+            </div><!-- fine zoom wrapper -->
           </div>
 
           <!-- Empty state waifu -->

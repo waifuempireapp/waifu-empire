@@ -287,15 +287,6 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
             alt=""
             style="width:70px; height:70px; object-fit:contain; position:relative; z-index:1; opacity:0.85;"
           />
-          <!-- Badge quantità in alto a destra -->
-          <div v-if="totalPack > 0" :style="{
-            position: 'absolute', top:'6px', right:'6px',
-            background: C.sakura, color: '#fff',
-            fontFamily: FF.mono, fontSize: '10px', fontWeight: 800,
-            padding: '2px 6px', borderRadius: '999px',
-            border: '1px solid rgba(255,255,255,0.3)',
-            lineHeight: 1.2, zIndex: 2,
-          }">×{{ totalPack }}</div>
         </div>
 
         <!-- Testo stato pack -->
@@ -357,6 +348,18 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
         </div>
 
       </div>
+
+      <!-- Chip quantità — in alto a destra della card grande -->
+      <div v-if="totalPack > 0" :style="{
+        position: 'absolute', top: '14px', right: '14px',
+        background: C.sakura, color: '#fff',
+        fontFamily: FF.mono, fontSize: '16px', fontWeight: 900,
+        padding: '4px 12px', borderRadius: '999px',
+        border: '2px solid rgba(255,255,255,0.35)',
+        lineHeight: 1.2, zIndex: 5,
+        boxShadow: `0 2px 12px ${C.sakura}66`,
+        letterSpacing: '-0.02em',
+      }">×{{ totalPack }}</div>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════════
@@ -426,7 +429,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
           textAlign:     'center',
           backdropFilter: 'blur(12px)',
         }"
-        @click="emit('setTab', 'community')"
+        @click="emit('setTab', 'swap')"
       >
         <!-- Icona grande senza box -->
         <div :style="{ fontSize: '52px', lineHeight: 1, filter: `drop-shadow(0 0 12px ${C.violet}88)` }">🩷</div>

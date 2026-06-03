@@ -101,9 +101,9 @@ const pendingFriendRequests = computed(() => {
       <!-- Nome impero sotto il logo, fuori dall'header -->
       <span v-if="profilo?.nomeImpero" style="
           font-family: var(--ff-label,'Saira Condensed',sans-serif);
-          font-size: 8px; letter-spacing: 0.22em;
+          font-size: 11px; letter-spacing: 0.2em;
           text-transform: uppercase;
-          color: rgba(245,197,96,0.55);
+          color: rgba(245,197,96,0.85);
           font-weight: 700;
           margin-top: 2px;
           white-space: nowrap;

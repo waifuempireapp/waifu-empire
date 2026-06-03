@@ -345,6 +345,47 @@ const contaPackPopup = computed((): number => {
   return Number(nSfid.value)
 })
 
+// Schema colore del popup sincronizzato col pack cliccato
+const popupColor = computed(() => {
+  const t = popupApertura.value?.tipoPacchetto
+  if (t === 'omaggio') return {
+    main: C.gold,
+    border: 'rgba(220,182,55,0.92)',
+    bg: 'linear-gradient(165deg,#1e1a08 0%,#12100a 55%,#090805 100%)',
+    glow: 'rgba(220,175,40,0.28)',
+    btn1: 'linear-gradient(180deg,#8a6808 0%,#5a4205 100%)',
+    btn1txt: '#fff8dc',
+    btn2bg: '#1a1408',
+    btn2border: 'rgba(200,155,40,0.7)',
+    btn2txt: '#e8c448',
+    cornerColor: 'rgba(220,182,55,0.95)',
+  }
+  if (t === 'sfida') return {
+    main: C.sakura,
+    border: 'rgba(220,100,148,0.92)',
+    bg: 'linear-gradient(165deg,#200818 0%,#15060f 55%,#0c040a 100%)',
+    glow: 'rgba(220,100,148,0.26)',
+    btn1: 'linear-gradient(180deg,#9e2232 0%,#6b1020 100%)',
+    btn1txt: '#ffd050',
+    btn2bg: '#160810',
+    btn2border: 'rgba(200,90,130,0.7)',
+    btn2txt: '#ff85b6',
+    cornerColor: 'rgba(220,100,148,0.95)',
+  }
+  return {
+    main: C.ok,
+    border: 'rgba(70,200,145,0.92)',
+    bg: 'linear-gradient(165deg,#081e14 0%,#06140d 55%,#040c09 100%)',
+    glow: 'rgba(70,200,145,0.26)',
+    btn1: 'linear-gradient(180deg,#0a5c30 0%,#063d1f 100%)',
+    btn1txt: '#d0ffe8',
+    btn2bg: '#06140d',
+    btn2border: 'rgba(60,185,130,0.7)',
+    btn2txt: '#58e0a3',
+    cornerColor: 'rgba(70,200,145,0.95)',
+  }
+})
+
 function getCopie(carta: any): number {
   if (!carta || carta.tipo !== 'waifu') return 0
   return (props.collezione?.waifu as any)?.[carta.data?.id]?.copie ?? 0
@@ -497,7 +538,7 @@ const selectedDropIndex = computed(() =>
 
 function getCoverflowStyle(index: number): Record<string, string | number> {
   const dist = index - selectedDropIndex.value
-  const STEP = 88
+  const STEP = 84
   let rotY: number, scale: number, zOff: number, opacity: number
 
   if (dist === 0) {
@@ -605,73 +646,43 @@ function cfTouchEnd(e: TouchEvent) {
 
       <!-- Area Centrale di Gioco delle Carte -->
       <div
-        style="position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 0; z-index: 5; transform-style: preserve-3d;"
+        style="position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 0; z-index: 5;"
         @click="indiceRivelato < carteRivelate.length - 1 ? avanzaCartaManuale() : mostraRiepilogo()">
 
-        <!-- Stack carte rimanenti — centrate, con rarità e tilt sincronizzato -->
-        <div v-for="(c, i) in carteNelMazzo" :key="'back-' + i" :style="{
-          position: 'absolute',
-          top: '50%', left: '50%',
-          width: '220px', height: '330px',
-          borderRadius: '16px',
-          transform: `translate(-50%, -50%) rotateX(${revealTilt.x * 0.55}deg) rotateY(${revealTilt.y * 0.55}deg) translateZ(${-(i + 1) * 10}px) translateY(${(i + 1) * 3}px) scale(${1 - (i + 1) * 0.018})`,
-          zIndex: 50 - i,
-          background: `radial-gradient(130% 80% at 50% 20%, ${raritaGlow(c)}28 0%, transparent 50%), linear-gradient(160deg, #1c0e3a 0%, #060414 100%)`,
-          border: `1.5px solid ${raritaGlow(c)}55`,
-          boxShadow: `0 6px 20px rgba(0,0,0,0.6), 0 0 14px ${raritaGlow(c)}28`,
-          transition: revealDragging ? 'none' : 'transform 0.22s ease-out',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-        }">
-          <div style="position:absolute;inset:0;background-image:repeating-radial-gradient(circle at 50% 50%,transparent 0,transparent 12px,rgba(255,255,255,0.015) 12px,rgba(255,255,255,0.015) 13px);pointer-events:none;" />
-          <div :style="{ fontSize: '48px', opacity: 0.15, filter: `drop-shadow(0 0 12px ${raritaGlow(c)})`, color: raritaGlow(c) }">♛</div>
-          <div :style="{
-            position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)',
-            padding: '2px 8px', borderRadius: '999px',
-            background: `${raritaGlow(c)}22`, border: `1px solid ${raritaGlow(c)}55`,
-            fontFamily: FF.label, fontSize: '7px', fontWeight: 700,
-            color: raritaGlow(c), letterSpacing: '0.2em', textTransform: 'uppercase', whiteSpace: 'nowrap',
-          }">{{ c?.data?.rarita || '?' }}</div>
-        </div>
-
-        <!-- CARTA PRINCIPALE INTERATTIVA IN PRIMO PIANO -->
+        <!-- CARTA PRINCIPALE — centrata dal flex, nessun overflow hidden sopra -->
         <div v-if="cartaCorrente && indiceRivelato >= 0"
           :class="['main-reveal-card-container', { 'slide-out-animation': transizioneCarta }]"
-          style="position: relative; z-index: 100; perspective: 1000px;" @mousemove="onRevealMouseMove"
-          @mouseleave="onRevealMouseLeave" @touchstart.passive="onRevealTouchStart"
-          @touchmove.passive="onRevealTouchMove" @touchend.passive="onRevealTouchEnd">
-          <!-- Badge Nuova/Copie -->
+          style="position: relative; z-index: 100; perspective: 1000px;"
+          @mousemove="onRevealMouseMove" @mouseleave="onRevealMouseLeave"
+          @touchstart.passive="onRevealTouchStart" @touchmove.passive="onRevealTouchMove" @touchend.passive="onRevealTouchEnd">
+          <!-- Badge NEW — visibile sopra tutto, nessun overflow che lo taglia -->
           <div v-if="cartaCorrente.isNuova"
-            style="position:absolute; top:-25px; left:-15px; z-index:130; background:linear-gradient(135deg,#00b4ff,#00e676); border:2px solid #fff; border-radius:999px; padding:4px 14px; font-family:var(--ff-label); font-size:14px; font-weight:900; color:#000; boxShadow:0 4px 12px rgba(0,180,255,0.5);">
+            style="position:absolute;top:-28px;left:-10px;z-index:200;background:linear-gradient(135deg,#00b4ff,#00e676);border:2.5px solid #fff;border-radius:999px;padding:5px 16px;font-family:var(--ff-label);font-size:15px;font-weight:900;color:#000;box-shadow:0 4px 16px rgba(0,180,255,0.65);pointer-events:none;">
             NEW</div>
           <div v-else-if="cartaCorrente.tipo === 'waifu'"
-            style="position:absolute; top:-20px; right:-15px; z-index:130; background:linear-gradient(135deg,#1a0a35,#2a1255); border:2px solid #f5c560; border-radius:999px; min-width:32px; height:32px; display:flex; alignItems:center; justifyContent:center; font-family:var(--ff-mono); font-size:14px; font-weight:900; color:#fff;">
+            style="position:absolute;top:-22px;right:-12px;z-index:200;background:linear-gradient(135deg,#1a0a35,#2a1255);border:2.5px solid #f5c560;border-radius:999px;min-width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-family:var(--ff-mono);font-size:14px;font-weight:900;color:#fff;box-shadow:0 3px 12px rgba(0,0,0,0.5);pointer-events:none;">
             {{ copieCartaCorrente }}</div>
-
-          <!-- Aura Glow Energetica -->
-          <div
-            :style="{ position: 'absolute', inset: '-15px', borderRadius: '25px', background: `radial-gradient(circle, ${raritaGlow(cartaCorrente)}3b 0%, transparent 70%)`, pointerEvents: 'none' }" />
-
-          <!-- Render Fisico Carta Dinamica -->
+          <!-- Aura glow -->
+          <div :style="{ position:'absolute', inset:'-15px', borderRadius:'25px', background:`radial-gradient(circle,${raritaGlow(cartaCorrente)}3b 0%,transparent 70%)`, pointerEvents:'none' }" />
+          <!-- Tilt 3D -->
           <div :style="{
             transform: `rotateX(${revealTilt.x}deg) rotateY(${revealTilt.y}deg) scale(1.02)`,
             transformStyle: 'preserve-3d',
-            transition: revealDragging ? 'none' : 'transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+            transition: revealDragging ? 'none' : 'transform 0.25s cubic-bezier(0.25,0.46,0.45,0.94)',
             willChange: 'transform',
           }">
-            <CartaWaifu v-if="cartaCorrente.tipo === 'waifu'" :waifu="cartaCorrente.data" dimensione="normale"
-              tipo="auto" />
+            <CartaWaifu v-if="cartaCorrente.tipo === 'waifu'" :waifu="cartaCorrente.data" dimensione="normale" tipo="auto" />
             <CartaMossa v-else-if="cartaCorrente.tipo === 'mossa'" :mossa="cartaCorrente.data" dimensione="normale" />
           </div>
         </div>
 
-        <!-- Feedback UI in basso -->
+        <!-- Feedback UI (fuori dall'overflow:hidden) -->
         <div v-if="levelUpDisponibile && indiceRivelato >= 0"
-          style="margin-top:20px; padding:6px 16px; border-radius:999px; background:rgba(0,200,83,0.12); border:1px solid #58e0a3; font-family:var(--ff-label); font-size:12px; color:#58e0a3; text-transform:uppercase; letter-spacing:1px;">
+          style="margin-top:14px;padding:5px 18px;border-radius:999px;background:rgba(0,200,83,0.15);border:1.5px solid rgba(89,224,163,0.6);font-family:var(--ff-label);font-size:11px;font-weight:700;color:#58e0a3;letter-spacing:0.14em;text-transform:uppercase;pointer-events:none;">
           ⚡ Aumento di livello disponibile
         </div>
-
         <div v-if="indiceRivelato >= carteRivelate.length - 1"
-          style="margin-top:25px; font-family:var(--ff-label); font-size:12px; letter-spacing:2px; color:rgba(255,255,255,0.4); text-transform:uppercase; animation:pulseSoft 1.6s infinite;">
+          style="margin-top:18px;font-family:var(--ff-label);font-size:11px;letter-spacing:0.22em;color:rgba(241,235,255,0.4);text-transform:uppercase;animation:pulseSoft 1.6s ease-in-out infinite;pointer-events:none;">
           Tocca per il riepilogo →
         </div>
       </div>
@@ -858,24 +869,26 @@ function cfTouchEnd(e: TouchEvent) {
         <div
           style="font-family: var(--ff-label); font-size: 15px; letter-spacing: 0.22em; color: rgba(245,197,96,0.9); text-transform: uppercase; font-weight: 800; text-align: center; margin-bottom: 20px;">
           ◆ Scegli l'Espansione</div>
-        <div style="position: relative; height: 210px; perspective: 900px; overflow: hidden; touch-action: pan-y;"
+        <div style="position: relative; height: 190px; perspective: 900px; overflow: hidden; touch-action: pan-y;"
           @touchstart.passive="cfTouchStart" @touchend.passive="cfTouchEnd">
           <div v-for="(d, i) in dropsAttivi" :key="d.id"
             @click="() => { if (dropSelId === d.id) { if (nOmag > 0) popupApertura = { tipoPacchetto: 'omaggio' }; else if (nBenv > 0) popupApertura = { tipoPacchetto: 'benvenuto' }; else if (nSfid > 0) popupApertura = { tipoPacchetto: 'sfida' }; else sfidaConferma = true; } else { dropSelId = d.id; } }"
-            :style="{ position: 'absolute', left: '50%', top: '50%', width: '100px', height: '150px', borderRadius: '12px', cursor: 'pointer', transformStyle: 'preserve-3d', transition: 'transform 0.42s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.35s', boxShadow: d.id === dropSelId ? `0 18px 48px rgba(0,0,0,0.65), 0 0 0 2px ${d.colore || C.violet}, 0 0 28px ${d.colore || C.violet}55` : '0 8px 24px rgba(0,0,0,0.45)', background: `linear-gradient(155deg, ${d.colore || '#a78bfa'} 0%, ${d.colore2 || '#ff85b6'} 50%, #07051a 100%)`, overflow: 'hidden', ...getCoverflowStyle(i) }">
-            <div
-              style="position:absolute;top:0;left:0;right:0;height:36px;background:linear-gradient(180deg,rgba(0,0,0,0.65) 0%,rgba(0,0,0,0.25) 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:5;">
-              <div style="font-family:var(--ff-display);font-size:7px;letter-spacing:3px;color:#f5c560;fontWeight:700;">
-                WAIFU'S</div>
-            </div>
-            <div
-              style="position:absolute;top:36px;left:0;right:0;bottom:36px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+            :style="{ position: 'absolute', left: '50%', top: '50%', width: '96px', height: '140px', borderRadius: '12px', cursor: 'pointer', transformStyle: 'preserve-3d', transition: 'transform 0.42s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.35s', background: `linear-gradient(165deg,${d.colore || C.violet}18 0%,#071428 45%,#050e1c 100%)`, border: `1.5px solid ${d.id === dropSelId ? (d.colore || C.violet) + 'ee' : (d.colore || C.violet) + '77'}`, boxShadow: d.id === dropSelId ? `0 0 32px ${d.colore || C.violet}44, 0 16px 40px rgba(0,0,0,0.7), inset 0 1px 0 ${d.colore || C.violet}22` : `0 8px 24px rgba(0,0,0,0.55), 0 0 12px ${d.colore || C.violet}18`, overflow: 'hidden', ...getCoverflowStyle(i) }">
+            <!-- Angoli decorativi colorati -->
+            <div :style="{position:'absolute',top:'7px',left:'7px',width:'14px',height:'14px',borderTop:`1.5px solid ${d.colore || C.violet}cc`,borderLeft:`1.5px solid ${d.colore || C.violet}cc`,borderRadius:'2px 0 0 0',zIndex:10,pointerEvents:'none'}" />
+            <div :style="{position:'absolute',top:'7px',right:'7px',width:'14px',height:'14px',borderTop:`1.5px solid ${d.colore || C.violet}cc`,borderRight:`1.5px solid ${d.colore || C.violet}cc`,borderRadius:'0 2px 0 0',zIndex:10,pointerEvents:'none'}" />
+            <div :style="{position:'absolute',bottom:'7px',left:'7px',width:'14px',height:'14px',borderBottom:`1.5px solid ${d.colore || C.violet}cc`,borderLeft:`1.5px solid ${d.colore || C.violet}cc`,borderRadius:'0 0 0 2px',zIndex:10,pointerEvents:'none'}" />
+            <div :style="{position:'absolute',bottom:'7px',right:'7px',width:'14px',height:'14px',borderBottom:`1.5px solid ${d.colore || C.violet}cc`,borderRight:`1.5px solid ${d.colore || C.violet}cc`,borderRadius:'0 0 2px 0',zIndex:10,pointerEvents:'none'}" />
+            <!-- Glow radiale dietro immagine -->
+            <div :style="{position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',width:'100%',height:'80px',background:`radial-gradient(ellipse at 50% 0%,${d.colore || C.violet}28 0%,transparent 70%)`,pointerEvents:'none',zIndex:1}" />
+            <!-- Immagine espansione -->
+            <div style="position:absolute;top:24px;left:8px;right:8px;bottom:40px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:8px;z-index:2;">
               <img v-if="d.asset_bustina" :src="d.asset_bustina" style="width:100%;height:100%;object-fit:cover;" />
+              <img v-else src="~/assets/images/New_Logo.png" alt="" style="width:70%;height:auto;object-fit:contain;opacity:0.85;" />
             </div>
-            <div
-              :style="{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '36px', background: 'linear-gradient(0deg,rgba(0,0,0,0.8) 0%,rgba(0,0,0,0.2) 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 5 }">
-              <div :style="{ fontFamily: FF.display, fontSize: '9px', fontWeight: 800, color: '#fff' }">{{
-                (d.nome || 'DROP').toUpperCase() }}</div>
+            <!-- Nome espansione in basso -->
+            <div :style="{position:'absolute',bottom:0,left:0,right:0,padding:'6px 8px 8px',background:'linear-gradient(0deg,rgba(4,6,20,0.95) 0%,transparent 100%)',zIndex:5,textAlign:'center'}">
+              <div :style="{fontFamily:FF.display,fontSize:'9px',fontWeight:800,color:'#e8c448',textAlign:'center',lineHeight:'1.25',overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',width:'100%',textShadow:'0 0 8px rgba(230,180,40,0.5)'}">{{ (d.nome || 'DROP').toUpperCase() }}</div>
             </div>
           </div>
         </div>
@@ -911,73 +924,62 @@ function cfTouchEnd(e: TouchEvent) {
     </div>
   </div>
 
-  <!-- ── Modale apertura pack ─────────────────────────────────── -->
-  <div v-if="popupApertura" @click="popupApertura = null" :style="{
-    position: 'fixed', inset: 0, zIndex: 400,
-    background: 'rgba(3,2,12,0.94)', backdropFilter: 'blur(18px)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
-  }">
-    <div @click.stop :style="{
-      background: 'linear-gradient(180deg, rgba(27,22,56,0.96), rgba(13,10,38,0.98))',
-      border: `1.5px solid ${
-        popupApertura.tipoPacchetto === 'omaggio' ? C.gold :
-        popupApertura.tipoPacchetto === 'sfida'   ? C.sakura : C.ok}55`,
-      borderRadius: '18px',
-      padding: '24px 26px', maxWidth: '320px', width: '100%', textAlign: 'center',
-      boxShadow: `0 24px 50px rgba(3,2,12,0.85), 0 0 36px ${
-        popupApertura.tipoPacchetto === 'omaggio' ? C.gold :
-        popupApertura.tipoPacchetto === 'sfida'   ? C.sakura : C.ok}22`,
-    }">
-      <!-- Icona pack -->
-      <div :style="{
-        width: '64px', height: '64px', borderRadius: '16px', margin: '0 auto 14px',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px',
-        background: `linear-gradient(135deg, ${popupApertura.tipoPacchetto === 'omaggio' ? C.gold + '45' : popupApertura.tipoPacchetto === 'sfida' ? C.sakura + '45' : C.ok + '45'}, transparent)`,
-        border: `2px solid ${popupApertura.tipoPacchetto === 'omaggio' ? C.gold : popupApertura.tipoPacchetto === 'sfida' ? C.sakura : C.ok}66`,
-        boxShadow: `0 0 22px ${popupApertura.tipoPacchetto === 'omaggio' ? C.gold : popupApertura.tipoPacchetto === 'sfida' ? C.sakura : C.ok}44`,
-      }">{{ popupApertura.tipoPacchetto === 'omaggio' ? '🎁' : popupApertura.tipoPacchetto === 'sfida' ? '⚔' : '⭐' }}</div>
+  <!-- ── Modale apertura pack — stile game premium ───────────── -->
+  <div v-if="popupApertura" @click="popupApertura = null"
+    style="position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,6,18,0.88);backdrop-filter:blur(24px);">
+    <div @click.stop :style="{position:'relative',maxWidth:'310px',width:'100%',textAlign:'center',padding:'36px 26px 26px',borderRadius:'18px',background:popupColor.bg,border:`1.5px solid ${popupColor.border}`,boxShadow:`0 0 80px ${popupColor.glow},0 30px 70px rgba(0,0,0,0.85),inset 0 1px 0 rgba(255,255,255,0.05)`,overflow:'hidden'}">
 
-      <!-- Titolo -->
-      <div :style="{ fontFamily: FF.label, fontSize: '14px', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '6px',
-        color: popupApertura.tipoPacchetto === 'omaggio' ? C.gold : popupApertura.tipoPacchetto === 'sfida' ? C.sakura : C.ok }">
-        Pacchetto {{ popupApertura.tipoPacchetto === 'omaggio' ? 'OMAGGIO' : popupApertura.tipoPacchetto === 'sfida' ? 'SFIDA' : 'BENVENUTO' }}
+      <!-- Stelle di sfondo animate colorate -->
+      <div v-for="s in [8,17,29,43,56,71,82,91,37,65,14,78]" :key="s"
+        :style="{position:'absolute',width:'2px',height:'2px',borderRadius:'50%',background:`${popupColor.main}99`,top:`${(s*7)%88}%`,left:`${(s*11)%92}%`,animation:`pulseSoft ${1.4+s%3*0.5}s ease-in-out infinite`,animationDelay:`${(s*0.13)%2}s`,pointerEvents:'none'}" />
+
+      <!-- Glow dietro icona -->
+      <div :style="{position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',width:'220px',height:'150px',background:`radial-gradient(ellipse at 50% 35%,${popupColor.glow} 0%,transparent 70%)`,pointerEvents:'none'}" />
+
+      <!-- Angoli decorativi colorati -->
+      <div :style="{position:'absolute',top:'10px',left:'10px',width:'22px',height:'22px',borderTop:`2px solid ${popupColor.cornerColor}`,borderLeft:`2px solid ${popupColor.cornerColor}`,borderRadius:'3px 0 0 0'}" />
+      <div :style="{position:'absolute',top:'10px',right:'10px',width:'22px',height:'22px',borderTop:`2px solid ${popupColor.cornerColor}`,borderRight:`2px solid ${popupColor.cornerColor}`,borderRadius:'0 3px 0 0'}" />
+      <div :style="{position:'absolute',bottom:'10px',left:'10px',width:'22px',height:'22px',borderBottom:`2px solid ${popupColor.cornerColor}`,borderLeft:`2px solid ${popupColor.cornerColor}`,borderRadius:'0 0 0 3px'}" />
+      <div :style="{position:'absolute',bottom:'10px',right:'10px',width:'22px',height:'22px',borderBottom:`2px solid ${popupColor.cornerColor}`,borderRight:`2px solid ${popupColor.cornerColor}`,borderRadius:'0 0 3px 0'}" />
+
+      <!-- Icona con piattaforma luminosa -->
+      <div style="position:relative;z-index:1;margin-bottom:18px;">
+        <div style="position:relative;width:90px;height:90px;margin:0 auto;display:flex;align-items:center;justify-content:center;">
+          <div :style="{position:'absolute',bottom:'2px',left:'50%',transform:'translateX(-50%)',width:'70px',height:'10px',background:popupColor.glow,borderRadius:'50%',filter:'blur(6px)'}" />
+          <span :style="{fontSize:'52px',lineHeight:1,filter:`drop-shadow(0 0 22px ${popupColor.main}dd) drop-shadow(0 4px 10px rgba(0,0,0,0.6))`,position:'relative',zIndex:1}">{{ popupApertura.tipoPacchetto === 'omaggio' ? '🎁' : popupApertura.tipoPacchetto === 'sfida' ? '⚔️' : '⭐' }}</span>
+        </div>
       </div>
 
-      <!-- Quantità disponibile -->
-      <div :style="{ fontFamily: FF.mono, fontSize: '11px', color: 'rgba(241,235,255,0.45)', marginBottom: '20px' }">
+      <!-- Titolo -->
+      <div :style="{fontFamily:`var(--ff-display,'Unbounded',sans-serif)`,fontSize:'17px',fontWeight:900,letterSpacing:'0.1em',color:popupColor.main,textTransform:'uppercase',marginBottom:'5px',textShadow:`0 0 22px ${popupColor.main}88`}">
+        PACCHETTO {{ popupApertura.tipoPacchetto === 'omaggio' ? 'OMAGGIO' : popupApertura.tipoPacchetto === 'sfida' ? 'SFIDA' : 'BENVENUTO' }}
+      </div>
+
+      <!-- Quantità -->
+      <div style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:12px;color:rgba(148,192,232,0.75);margin-bottom:26px;letter-spacing:0.04em;">
         {{ contaPackPopup }} disponibili
       </div>
 
-      <!-- Pulsanti -->
-      <div :style="{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }">
+      <!-- Bottoni -->
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:18px;">
         <!-- APRI 1 -->
-        <button @click="() => { const t = popupApertura!.tipoPacchetto; popupApertura = null; apri(t) }" :style="{
-          padding: '12px 20px', borderRadius: '12px', border: 'none', cursor: 'pointer',
-          background: `linear-gradient(135deg, ${popupApertura.tipoPacchetto === 'omaggio' ? C.gold + ', ' + C.goldL : popupApertura.tipoPacchetto === 'sfida' ? C.sakura + ', #ff6b6b' : C.ok + ', #00bfa5'})`,
-          fontFamily: FF.label, fontSize: '12px', fontWeight: 700, color: '#07051a',
-          letterSpacing: '0.18em', textTransform: 'uppercase',
-        }">🎴 APRI 1</button>
-
-        <!-- APRI 10 (solo se ne hai ≥ 2) -->
-        <button
-          v-if="contaPackPopup >= 2"
-          @click="() => { const t = popupApertura!.tipoPacchetto; popupApertura = null; apriMulti(t) }" :style="{
-          padding: '12px 20px', borderRadius: '12px', cursor: 'pointer',
-          background: 'rgba(255,255,255,0.05)',
-          border: `1px solid ${popupApertura.tipoPacchetto === 'omaggio' ? C.gold : popupApertura.tipoPacchetto === 'sfida' ? C.sakura : C.ok}66`,
-          fontFamily: FF.label, fontSize: '12px', fontWeight: 700,
-          color: popupApertura.tipoPacchetto === 'omaggio' ? C.gold : popupApertura.tipoPacchetto === 'sfida' ? C.sakura : C.ok,
-          letterSpacing: '0.18em', textTransform: 'uppercase',
-        }">🎴×10 APRI TUTTI (max 10)</button>
+        <button @click="() => { const t = popupApertura!.tipoPacchetto; popupApertura = null; apri(t) }"
+          :style="{width:'100%',padding:'15px 24px',borderRadius:'999px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',background:popupColor.btn1,border:`1.5px solid ${popupColor.border}`,boxShadow:`0 4px 24px ${popupColor.glow},inset 0 1px 0 rgba(255,255,255,0.1)`,fontFamily:`var(--ff-display,'Unbounded',sans-serif)`,fontSize:'15px',fontWeight:800,color:popupColor.btn1txt,letterSpacing:'0.12em',textTransform:'uppercase'}">
+          <span style="font-size:18px;line-height:1;">🃏</span> APRI 1
+        </button>
+        <!-- APRI 10 -->
+        <button v-if="contaPackPopup >= 2"
+          @click="() => { const t = popupApertura!.tipoPacchetto; popupApertura = null; apriMulti(t) }"
+          :style="{width:'100%',padding:'15px 20px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',background:popupColor.btn2bg,border:`1.5px solid ${popupColor.btn2border}`,boxShadow:`0 4px 18px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.04)`,fontFamily:`var(--ff-display,'Unbounded',sans-serif)`,fontSize:'13px',fontWeight:800,color:popupColor.btn2txt,letterSpacing:'0.08em',textTransform:'uppercase',borderRadius:'8px',clipPath:'polygon(14px 0%,calc(100% - 14px) 0%,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0% calc(100% - 14px),0% 14px)'}">
+          <span style="font-size:18px;line-height:1;">🃏</span> ×10 APRI TUTTI (MAX 10)
+        </button>
       </div>
 
       <!-- Annulla -->
-      <button @click="popupApertura = null" :style="{
-        background: 'none', border: `1px solid ${C.inkLine}`, borderRadius: '10px',
-        color: 'rgba(241,235,255,0.4)', fontFamily: FF.label, fontSize: '10px',
-        padding: '10px 20px', cursor: 'pointer', width: '100%',
-        letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 600,
-      }">Annulla</button>
+      <button @click="popupApertura = null"
+        style="background:none;border:none;cursor:pointer;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;letter-spacing:0.28em;text-transform:uppercase;color:rgba(170,195,225,0.4);font-weight:600;padding:4px;">
+        ANNULLA
+      </button>
     </div>
   </div>
 

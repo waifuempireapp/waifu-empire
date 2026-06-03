@@ -225,7 +225,7 @@ function cardStyle(uiIdx: number) {
       transition = 'transform 0.3s ease'
     }
     return {
-      aspectRatio: '2/3', borderRadius: '13px', overflow: 'hidden',
+      aspectRatio: '2/3', borderRadius: '13px', overflow: 'visible',
       position: 'relative', cursor: 'default',
       border: isChosen && isFlipped
         ? '2px solid #ff4d9e'
@@ -235,7 +235,6 @@ function cardStyle(uiIdx: number) {
         : isFlipped ? '0 6px 20px rgba(0,0,0,0.5)' : '0 3px 10px rgba(0,0,0,0.4)',
       background: 'linear-gradient(145deg,#160830,#0d0520)',
       zIndex, transform, transition,
-      transformStyle: 'preserve-3d' as const,
     }
   }
 
@@ -281,7 +280,7 @@ function cardStyle(uiIdx: number) {
   return {
     aspectRatio: '2/3',
     borderRadius: '13px',
-    overflow: 'hidden',
+    overflow: pickPhase.value === 'reveal' ? 'hidden' : 'visible',
     position: 'relative',
     cursor: pickPhase.value === 'pick' ? 'pointer' : 'default',
     border: isSel ? '2px solid #ff4d9e' : '1.5px solid rgba(245,166,35,0.28)',
@@ -292,7 +291,6 @@ function cardStyle(uiIdx: number) {
     zIndex,
     transform,
     transition,
-    transformStyle: 'preserve-3d' as const
   }
 }
 
@@ -515,21 +513,19 @@ onUnmounted(() => {
                     <img v-if="selectedPack.cards?.[0]?.immagine" :src="selectedPack.cards[0].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
                     <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
                   </template>
-                  <!-- Carta girata (revealing/revealed) -->
-                  <template v-else-if="(pickPhase === 'revealing' || pickPhase === 'revealed') && inPlaceFlipped.has(0)">
-                    <img v-if="inPlaceCards[0]?.immagine" :src="inPlaceCards[0].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
-                    <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
-                    <!-- Badge NEW per carte nuove -->
-                    <div v-if="inPlaceNew[0]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">NEW</div>
-                    <!-- Rarità in basso -->
-                    <div v-if="inPlaceCards[0]?.rarita" style="position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,0.6);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#fff;letter-spacing:0.06em;text-transform:capitalize;">{{ inPlaceCards[0].rarita }}</div>
-                  </template>
-                  <!-- Carta face-down (pick / non ancora girata) -->
+                  <!-- CSS 3D flip: back face (default) → front face (quando inPlaceFlipped) -->
                   <template v-else>
-                    <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(245,166,35,0.03) 8px,rgba(245,166,35,0.03) 9px);"/>
-                    <div style="width:100%;height:100%;display:grid;place-items:center;position:relative;">
-                      <img src="~/assets/images/New_Logo.png" alt="" :style="{width:'50%',opacity:pickPhase==='pick'&&selectedCardIndex===0?1:0.65,filter:pickPhase==='pick'&&selectedCardIndex===0?'drop-shadow(0 0 14px rgba(255,77,158,0.8))':'none',transition:'all 0.2s'}"/>
-                      <div v-if="pickPhase==='pick'&&selectedCardIndex===0" style="position:absolute;bottom:8px;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div>
+                    <div :style="{position:'absolute',inset:0,transformStyle:'preserve-3d',transition:'transform 0.55s cubic-bezier(0.4,0,0.2,1)',transform:(pickPhase==='revealing'||pickPhase==='revealed')&&inPlaceFlipped.has(0)?'rotateY(180deg)':'rotateY(0deg)'}">
+                      <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:13px;overflow:hidden;">
+                        <img src="~/assets/images/back_card.png" style="width:100%;height:100%;object-fit:cover;display:block;"/>
+                        <div v-if="pickPhase==='pick'&&selectedCardIndex===0" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div>
+                      </div>
+                      <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
+                        <img v-if="inPlaceCards[0]?.immagine" :src="inPlaceCards[0].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
+                        <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
+                        <div v-if="inPlaceNew[0]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">NEW</div>
+                        <div v-if="inPlaceCards[0]?.rarita" style="position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,0.6);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#fff;letter-spacing:0.06em;text-transform:capitalize;">{{ inPlaceCards[0].rarita }}</div>
+                      </div>
                     </div>
                   </template>
                 </div>
@@ -540,21 +536,19 @@ onUnmounted(() => {
                     <img v-if="selectedPack.cards?.[1]?.immagine" :src="selectedPack.cards[1].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
                     <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
                   </template>
-                  <!-- Carta girata (revealing/revealed) -->
-                  <template v-else-if="(pickPhase === 'revealing' || pickPhase === 'revealed') && inPlaceFlipped.has(1)">
-                    <img v-if="inPlaceCards[1]?.immagine" :src="inPlaceCards[1].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
-                    <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
-                    <!-- Badge NEW per carte nuove -->
-                    <div v-if="inPlaceNew[1]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">NEW</div>
-                    <!-- Rarità in basso -->
-                    <div v-if="inPlaceCards[1]?.rarita" style="position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,0.6);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#fff;letter-spacing:0.06em;text-transform:capitalize;">{{ inPlaceCards[1].rarita }}</div>
-                  </template>
-                  <!-- Carta face-down (pick / non ancora girata) -->
+                  <!-- CSS 3D flip -->
                   <template v-else>
-                    <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(245,166,35,0.03) 8px,rgba(245,166,35,0.03) 9px);"/>
-                    <div style="width:100%;height:100%;display:grid;place-items:center;position:relative;">
-                      <img src="~/assets/images/New_Logo.png" alt="" :style="{width:'50%',opacity:pickPhase==='pick'&&selectedCardIndex===1?1:0.65,filter:pickPhase==='pick'&&selectedCardIndex===1?'drop-shadow(0 0 14px rgba(255,77,158,0.8))':'none',transition:'all 0.2s'}"/>
-                      <div v-if="pickPhase==='pick'&&selectedCardIndex===1" style="position:absolute;bottom:8px;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div>
+                    <div :style="{position:'absolute',inset:0,transformStyle:'preserve-3d',transition:'transform 0.55s cubic-bezier(0.4,0,0.2,1)',transform:(pickPhase==='revealing'||pickPhase==='revealed')&&inPlaceFlipped.has(1)?'rotateY(180deg)':'rotateY(0deg)'}">
+                      <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:13px;overflow:hidden;">
+                        <img src="~/assets/images/back_card.png" style="width:100%;height:100%;object-fit:cover;display:block;"/>
+                        <div v-if="pickPhase==='pick'&&selectedCardIndex===1" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div>
+                      </div>
+                      <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
+                        <img v-if="inPlaceCards[1]?.immagine" :src="inPlaceCards[1].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
+                        <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
+                        <div v-if="inPlaceNew[1]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">NEW</div>
+                        <div v-if="inPlaceCards[1]?.rarita" style="position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,0.6);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#fff;letter-spacing:0.06em;text-transform:capitalize;">{{ inPlaceCards[1].rarita }}</div>
+                      </div>
                     </div>
                   </template>
                 </div>
@@ -567,21 +561,19 @@ onUnmounted(() => {
                     <img v-if="selectedPack.cards?.[2]?.immagine" :src="selectedPack.cards[2].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
                     <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
                   </template>
-                  <!-- Carta girata (revealing/revealed) -->
-                  <template v-else-if="(pickPhase === 'revealing' || pickPhase === 'revealed') && inPlaceFlipped.has(2)">
-                    <img v-if="inPlaceCards[2]?.immagine" :src="inPlaceCards[2].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
-                    <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
-                    <!-- Badge NEW per carte nuove -->
-                    <div v-if="inPlaceNew[2]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">NEW</div>
-                    <!-- Rarità in basso -->
-                    <div v-if="inPlaceCards[2]?.rarita" style="position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,0.6);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#fff;letter-spacing:0.06em;text-transform:capitalize;">{{ inPlaceCards[2].rarita }}</div>
-                  </template>
-                  <!-- Carta face-down (pick / non ancora girata) -->
+                  <!-- CSS 3D flip -->
                   <template v-else>
-                    <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(245,166,35,0.03) 8px,rgba(245,166,35,0.03) 9px);"/>
-                    <div style="width:100%;height:100%;display:grid;place-items:center;position:relative;">
-                      <img src="~/assets/images/New_Logo.png" alt="" :style="{width:'48%',opacity:pickPhase==='pick'&&selectedCardIndex===2?1:0.65,filter:pickPhase==='pick'&&selectedCardIndex===2?'drop-shadow(0 0 14px rgba(255,77,158,0.8))':'none',transition:'all 0.2s'}"/>
-                      <div v-if="pickPhase==='pick'&&selectedCardIndex===2" style="position:absolute;bottom:8px;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div>
+                    <div :style="{position:'absolute',inset:0,transformStyle:'preserve-3d',transition:'transform 0.55s cubic-bezier(0.4,0,0.2,1)',transform:(pickPhase==='revealing'||pickPhase==='revealed')&&inPlaceFlipped.has(2)?'rotateY(180deg)':'rotateY(0deg)'}">
+                      <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:13px;overflow:hidden;">
+                        <img src="~/assets/images/back_card.png" style="width:100%;height:100%;object-fit:cover;display:block;"/>
+                        <div v-if="pickPhase==='pick'&&selectedCardIndex===2" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div>
+                      </div>
+                      <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
+                        <img v-if="inPlaceCards[2]?.immagine" :src="inPlaceCards[2].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
+                        <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
+                        <div v-if="inPlaceNew[2]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">NEW</div>
+                        <div v-if="inPlaceCards[2]?.rarita" style="position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,0.6);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#fff;letter-spacing:0.06em;text-transform:capitalize;">{{ inPlaceCards[2].rarita }}</div>
+                      </div>
                     </div>
                   </template>
                   </div>
@@ -591,21 +583,19 @@ onUnmounted(() => {
                     <img v-if="selectedPack.cards?.[3]?.immagine" :src="selectedPack.cards[3].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
                     <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
                   </template>
-                  <!-- Carta girata (revealing/revealed) -->
-                  <template v-else-if="(pickPhase === 'revealing' || pickPhase === 'revealed') && inPlaceFlipped.has(3)">
-                    <img v-if="inPlaceCards[3]?.immagine" :src="inPlaceCards[3].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
-                    <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
-                    <!-- Badge NEW per carte nuove -->
-                    <div v-if="inPlaceNew[3]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">NEW</div>
-                    <!-- Rarità in basso -->
-                    <div v-if="inPlaceCards[3]?.rarita" style="position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,0.6);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#fff;letter-spacing:0.06em;text-transform:capitalize;">{{ inPlaceCards[3].rarita }}</div>
-                  </template>
-                  <!-- Carta face-down (pick / non ancora girata) -->
+                  <!-- CSS 3D flip -->
                   <template v-else>
-                    <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(245,166,35,0.03) 8px,rgba(245,166,35,0.03) 9px);"/>
-                    <div style="width:100%;height:100%;display:grid;place-items:center;position:relative;">
-                      <img src="~/assets/images/New_Logo.png" alt="" :style="{width:'48%',opacity:pickPhase==='pick'&&selectedCardIndex===3?1:0.65,filter:pickPhase==='pick'&&selectedCardIndex===3?'drop-shadow(0 0 14px rgba(255,77,158,0.8))':'none',transition:'all 0.2s'}"/>
-                      <div v-if="pickPhase==='pick'&&selectedCardIndex===3" style="position:absolute;bottom:8px;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div>
+                    <div :style="{position:'absolute',inset:0,transformStyle:'preserve-3d',transition:'transform 0.55s cubic-bezier(0.4,0,0.2,1)',transform:(pickPhase==='revealing'||pickPhase==='revealed')&&inPlaceFlipped.has(3)?'rotateY(180deg)':'rotateY(0deg)'}">
+                      <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:13px;overflow:hidden;">
+                        <img src="~/assets/images/back_card.png" style="width:100%;height:100%;object-fit:cover;display:block;"/>
+                        <div v-if="pickPhase==='pick'&&selectedCardIndex===3" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div>
+                      </div>
+                      <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
+                        <img v-if="inPlaceCards[3]?.immagine" :src="inPlaceCards[3].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
+                        <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
+                        <div v-if="inPlaceNew[3]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">NEW</div>
+                        <div v-if="inPlaceCards[3]?.rarita" style="position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,0.6);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#fff;letter-spacing:0.06em;text-transform:capitalize;">{{ inPlaceCards[3].rarita }}</div>
+                      </div>
                     </div>
                   </template>
                   </div>
@@ -615,21 +605,19 @@ onUnmounted(() => {
                     <img v-if="selectedPack.cards?.[4]?.immagine" :src="selectedPack.cards[4].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
                     <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
                   </template>
-                  <!-- Carta girata (revealing/revealed) -->
-                  <template v-else-if="(pickPhase === 'revealing' || pickPhase === 'revealed') && inPlaceFlipped.has(4)">
-                    <img v-if="inPlaceCards[4]?.immagine" :src="inPlaceCards[4].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
-                    <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
-                    <!-- Badge NEW per carte nuove -->
-                    <div v-if="inPlaceNew[4]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">NEW</div>
-                    <!-- Rarità in basso -->
-                    <div v-if="inPlaceCards[4]?.rarita" style="position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,0.6);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#fff;letter-spacing:0.06em;text-transform:capitalize;">{{ inPlaceCards[4].rarita }}</div>
-                  </template>
-                  <!-- Carta face-down (pick / non ancora girata) -->
+                  <!-- CSS 3D flip -->
                   <template v-else>
-                    <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(245,166,35,0.03) 8px,rgba(245,166,35,0.03) 9px);"/>
-                    <div style="width:100%;height:100%;display:grid;place-items:center;position:relative;">
-                      <img src="~/assets/images/New_Logo.png" alt="" :style="{width:'48%',opacity:pickPhase==='pick'&&selectedCardIndex===4?1:0.65,filter:pickPhase==='pick'&&selectedCardIndex===4?'drop-shadow(0 0 14px rgba(255,77,158,0.8))':'none',transition:'all 0.2s'}"/>
-                      <div v-if="pickPhase==='pick'&&selectedCardIndex===4" style="position:absolute;bottom:8px;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div>
+                    <div :style="{position:'absolute',inset:0,transformStyle:'preserve-3d',transition:'transform 0.55s cubic-bezier(0.4,0,0.2,1)',transform:(pickPhase==='revealing'||pickPhase==='revealed')&&inPlaceFlipped.has(4)?'rotateY(180deg)':'rotateY(0deg)'}">
+                      <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:13px;overflow:hidden;">
+                        <img src="~/assets/images/back_card.png" style="width:100%;height:100%;object-fit:cover;display:block;"/>
+                        <div v-if="pickPhase==='pick'&&selectedCardIndex===4" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div>
+                      </div>
+                      <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
+                        <img v-if="inPlaceCards[4]?.immagine" :src="inPlaceCards[4].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
+                        <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
+                        <div v-if="inPlaceNew[4]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">NEW</div>
+                        <div v-if="inPlaceCards[4]?.rarita" style="position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,0.6);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#fff;letter-spacing:0.06em;text-transform:capitalize;">{{ inPlaceCards[4].rarita }}</div>
+                      </div>
                     </div>
                   </template>
                   </div>

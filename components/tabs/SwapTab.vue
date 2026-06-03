@@ -1,5 +1,9 @@
 <!-- Tab Swap: sistema di votazione waifu con guadagno Kisses e classifica settimanale -->
 <script setup lang="ts">
+import SwapCard from '~/components/swap/SwapCard.vue'
+import SwapRewardToast from '~/components/swap/SwapRewardToast.vue'
+import SwapMilestoneModal from '~/components/swap/SwapMilestoneModal.vue'
+import AdSlot from '~/components/swap/AdSlot.vue'
 import { listDropsAttivi } from '~/utils/firestoreService'
 
 const props = defineProps<{
@@ -172,7 +176,7 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
 
 <template>
   <!-- Caricamento iniziale -->
-  <div v-if="loading" style="display:flex;flex-direction:column;min-height:70vh;align-items:center;justify-content:center">
+  <div v-if="loading" style="display:flex;flex-direction:column;min-height:70vh;align-items:center;justify-content:center;">
     <div style="font-size:40px;color:#ff85b6;animation:pulse 1.2s ease-in-out infinite">🩷</div>
     <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.22em;color:rgba(174,156,255,0.5);margin-top:12px;text-transform:uppercase">Caricamento…</div>
   </div>
@@ -193,105 +197,30 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
     <button @click="$emit('setTab', 'home')" style="background:transparent;border:none;color:rgba(241,235,255,0.4);font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;cursor:pointer">← Torna alla Home</button>
   </div>
 
-  <!-- Contenuto principale -->
-  <div v-else style="position:relative;min-height:80vh;display:flex;flex-direction:column">
-    <!-- Header: navigazione + kisses -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <div style="display:flex;align-items:center;gap:12px">
-        <button @click="$emit('setTab', 'home')" style="background:rgba(255,255,255,0.06);border:1px solid rgba(174,156,255,0.2);border-radius:10px;color:rgba(241,235,255,0.7);padding:7px 12px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer">← Home</button>
-        <div>
-          <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;letter-spacing:0.22em;color:#ff85b6;text-transform:uppercase">🩷 SWAP</div>
-          <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:20px;color:#fff;font-weight:800">Waifu Swap</div>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
-        <div style="display:flex;align-items:center;gap:6px">
-          <KissesIcon :size="16" />
-          <span style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;color:#f5c560;font-weight:700">{{ profilo?.kisses ?? 0 }}</span>
-        </div>
-        <div v-if="swapStatus" :style="{ fontFamily:'var(--ff-label)', fontSize:'9px', letterSpacing:'0.1em', color: swapStatus.hasSwapPass ? 'rgba(6,214,160,0.8)' : swapStatus.votesRemaining === 0 ? 'rgba(255,91,108,0.8)' : 'rgba(241,235,255,0.4)' }">
-          {{ swapStatus.hasSwapPass ? '♾ voti illimitati' : `${swapStatus.dailyVotes}/${swapStatus.dailyLimit} voti oggi` }}
-        </div>
-      </div>
-    </div>
+  <!-- Card waifu centrata — SOLO card + ♥/✕ -->
+  <div v-else style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;">
 
-    <!-- Banner "Come funziona" -->
-    <div style="margin-bottom:14px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,133,182,0.15);background:linear-gradient(135deg,rgba(255,133,182,0.07),rgba(167,139,250,0.05))">
-      <button @click="howExpanded = !howExpanded" style="width:100%;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;background:none;border:none;cursor:pointer">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span>ℹ️</span>
-          <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.2em;color:#ff85b6;text-transform:uppercase">Come funziona</span>
-        </div>
-        <span :style="{ display:'inline-block', transition:'transform 0.2s', transform: howExpanded ? 'rotate(180deg)' : 'rotate(0)', color:'rgba(241,235,255,0.45)', fontSize:'9px' }">▼</span>
-      </button>
-      <div v-if="howExpanded" style="padding:0 16px 14px;display:flex;flex-direction:column;gap:8px">
-        <div v-for="item in [
-          { icon:'👆', text:'Scorri le carte e vota con ♥ o ✕' },
-          { icon:'🩷', text:'Ogni 10 voti guadagni Kisses' },
-          { icon:'🔥', text:'Streak giornalieri moltiplicano i Kisses' },
-          { icon:'🏆', text:'Le waifu più votate scalano la classifica settimanale' },
-        ]" :key="item.text" style="display:flex;align-items:flex-start;gap:8px">
-          <span style="font-size:14px;flex-shrink:0">{{ item.icon }}</span>
-          <span style="font-size:11px;color:rgba(241,235,255,0.65);line-height:1.4">{{ item.text }}</span>
-        </div>
-      </div>
-    </div>
+    <SwapCard
+      v-if="currentWaifu"
+      :key="currentWaifu?.id ?? currentIdx"
+      :waifu="currentWaifu"
+      :expansion-name="currentWaifu?.espansione_nome ?? null"
+      @vote="handleVote"
+    />
 
-    <!-- Streak -->
-    <div v-if="(profilo?.streakDays ?? 0) > 1" style="display:flex;align-items:center;gap:6px;margin-bottom:8px;background:rgba(108,240,224,0.08);border:1px solid rgba(108,240,224,0.2);border-radius:10px;padding:6px 12px;align-self:flex-start">
-      <span>🔥</span>
-      <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.15em;color:#6cf0e0;text-transform:uppercase">
-        {{ profilo.streakDays }} giorni · ×{{ Math.min(1 + (profilo.streakDays - 1) * 0.1, 3).toFixed(1) }}
-      </span>
-    </div>
-
-    <!-- Filtro espansione -->
-    <div v-if="dropsAttivi.length > 0" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
-      <button @click="filtroEspansione = null" :style="{ padding:'4px 12px', borderRadius:'999px', border:`1px solid ${!filtroEspansione ? '#ff85b6' : 'rgba(255,133,182,0.3)'}`, background: !filtroEspansione ? 'rgba(255,133,182,0.15)' : 'transparent', color: !filtroEspansione ? '#ff85b6' : 'rgba(241,235,255,0.5)', fontFamily:'var(--ff-label)', fontSize:'9px', cursor:'pointer' }">Tutte</button>
-      <button v-for="d in dropsAttivi" :key="d.id" @click="filtroEspansione = d.id === filtroEspansione ? null : d.id"
-        :style="{ padding:'4px 12px', borderRadius:'999px', border:`1px solid ${filtroEspansione === d.id ? '#f5c560' : 'rgba(245,197,96,0.25)'}`, background: filtroEspansione === d.id ? 'rgba(245,197,96,0.12)' : 'transparent', color: filtroEspansione === d.id ? '#f5c560' : 'rgba(241,235,255,0.4)', fontFamily:'var(--ff-label)', fontSize:'9px', cursor:'pointer' }">
-        {{ d.nome || d.id }}
-      </button>
-    </div>
-
-    <!-- Carta corrente -->
-    <div v-if="currentWaifu" style="flex:1;display:flex;flex-direction:column;align-items:center">
-      <div style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:10px;color:rgba(241,235,255,0.3);margin-bottom:12px">
-        #{{ seenIds.size + 1 }} — swipa per votare
-        <span v-if="remaining <= 3 && !exhausted" style="color:rgba(108,240,224,0.5);margin-left:8px">⟳ caricamento…</span>
-      </div>
-      <!-- Badge stato + espansione -->
-      <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:8px">
-        <div v-if="ownershipBadge" :style="{ background:BADGE_STYLE[ownershipBadge].bg, border:`1px solid ${BADGE_STYLE[ownershipBadge].border}`, color:BADGE_STYLE[ownershipBadge].color, borderRadius:'999px', padding:'4px 14px', fontFamily:'var(--ff-label)', fontSize:'10px', fontWeight:700, letterSpacing:'0.1em' }">
-          {{ BADGE_STYLE[ownershipBadge].label }}
-        </div>
-        <div v-if="currentWaifu?.espansione_nome" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);color:#f59e0b;border-radius:999px;padding:4px 12px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px">
-          📦 {{ currentWaifu.espansione_nome }}
-        </div>
-      </div>
-      <SwapSwapCard
-        :key="currentWaifu?.id ?? currentIdx"
-        :waifu="currentWaifu"
-        :expansion-name="currentWaifu?.espansione_nome ?? null"
-        @vote="handleVote"
-      />
-    </div>
-
-    <!-- Esaurite -->
-    <div v-else-if="exhausted" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+    <!-- Hai visto tutto -->
+    <div v-else-if="exhausted" style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px;text-align:center;">
       <div style="font-size:56px">✨</div>
-      <div style="font-size:15px;color:rgba(241,235,255,0.5);text-align:center">Hai visto tutte le waifu!<br/>Torna presto per nuove aggiunte.</div>
-      <button @click="resetQueue" style="padding:12px 24px;background:rgba(255,133,182,0.12);border:1px solid rgba(255,133,182,0.3);border-radius:12px;color:#ff85b6;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;cursor:pointer">↺ Ricarica</button>
+      <div style="font-size:15px;color:rgba(241,235,255,0.5);">Hai visto tutte le waifu!<br/>Torna presto.</div>
+      <button @click="resetQueue" style="padding:12px 24px;background:rgba(255,133,182,0.12);border:1px solid rgba(255,133,182,0.3);border-radius:12px;color:#ff85b6;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;cursor:pointer;">↺ Ricarica</button>
     </div>
 
-    <!-- Loading carta -->
-    <div v-else style="flex:1;display:flex;align-items:center;justify-content:center">
-      <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.22em;color:rgba(174,156,255,0.4);text-transform:uppercase">Caricamento waifu…</div>
-    </div>
+    <!-- Caricamento -->
+    <div v-else style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.22em;color:rgba(174,156,255,0.4);text-transform:uppercase;">Caricamento waifu…</div>
 
-    <!-- Overlays -->
-    <SwapSwapRewardToast v-if="toast" v-bind="toast" @done="toast = null" />
-    <SwapSwapMilestoneModal v-if="milestone" v-bind="milestone" @close="milestone = null" />
-    <SwapAdSlot v-if="showAd" @close="showAd = false" />
+    <!-- Overlays (reward toast, milestone, ad) -->
+    <SwapRewardToast v-if="toast" v-bind="toast" @done="toast = null" />
+    <SwapMilestoneModal v-if="milestone" v-bind="milestone" @close="milestone = null" />
+    <AdSlot v-if="showAd" @close="showAd = false" />
   </div>
 </template>
