@@ -53,6 +53,7 @@ let adjacentSet = new Set<string>()
 
 // ── effectiveLandSet: usa prop o LAND_SET globale ─────────────────────────────
 const effectiveLandSet = computed(() => props.landSet || LAND_SET)
+const canvasWidth = computed(() => (typeof window !== 'undefined' ? window.innerWidth : 412))
 
 // ── basePS: dimensione base pixel in funzione del dispositivo ─────────────────
 const basePS = isMobile() ? MOBILE_PIXEL_SIZE : BASE_PIXEL_SIZE
@@ -442,7 +443,7 @@ function centerOnEmpire() {
   <div style="position: relative; width: 100%; height: 100%;">
     <canvas
       ref="canvasRef"
-      :width="typeof window !== 'undefined' ? window.innerWidth : 412"
+      :width="canvasWidth"
       :height="380"
       style="display: block; cursor: crosshair; touch-action: none;"
       @pointerdown="onPointerDown"

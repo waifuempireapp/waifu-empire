@@ -652,7 +652,7 @@ const sortCombo = computed({
           <span :style="{ color: C.gold, fontFamily: FF.mono, fontWeight: 700 }">{{ tradeCountdownTxt }}</span>
           <br/>
           <button
-            @click="window.dispatchEvent(new Event('impero:apri-negozio'))"
+            @click="() => { if (typeof window !== 'undefined') window.dispatchEvent(new Event('impero:apri-negozio')) }"
             :style="{
               marginTop: '8px',
               background: `${C.gold}1f`, border: `1px solid ${C.gold}55`,

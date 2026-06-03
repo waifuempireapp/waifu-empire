@@ -115,7 +115,7 @@ watch(
 )
 
 // ── Reset scroll al cambio di tab principale ────────────────────────
-watch(tab, () => window.scrollTo({ top: 0, behavior: 'instant' }))
+watch(tab, () => { if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'instant' }) })
 
 async function caricaTutto(uid: string) {
   // Invalida cache catalogo localStorage se obsoleta
