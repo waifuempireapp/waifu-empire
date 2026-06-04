@@ -21,6 +21,7 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
     '@nuxtjs/i18n',
+    '@netlify/nuxt'
   ],
 
   // Percorso CSS globale (contiene @tailwind + variabili CSS legacy + animazioni)

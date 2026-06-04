@@ -1,7 +1,3 @@
 [build]
-  command = "nuxt build && cp -r .output/public/. .netlify/static/"
-  publish = ".netlify/static"
-
-[functions]
-  directory = ".netlify/functions-internal"
-  node_bundler = "nft"
+  command = "nuxt build"
+  publish = "dist"
