@@ -178,6 +178,14 @@ onUnmounted(() => {
 })
 </script>
 
+<style>
+/* Animazione apertura modale pixel — deve stare fuori dal template */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 12px)); }
+  to   { opacity: 1; transform: translate(-50%, -50%); }
+}
+</style>
+
 <template>
   <!-- Niente da mostrare se nessun pixel è selezionato -->
   <template v-if="pixel">
@@ -198,14 +206,6 @@ onUnmounted(() => {
       box-shadow: 0 24px 60px rgba(3,2,12,0.8), 0 0 0 1px rgba(255,255,255,0.04) inset;
       animation: fadeUp 0.22s ease-out; max-height: 90vh; overflow-y: auto;
     ">
-      <!-- Animazione apertura -->
-      <style>
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translate(-50%, calc(-50% + 12px)); }
-          to   { opacity: 1; transform: translate(-50%, -50%); }
-        }
-      </style>
-
       <!-- Pulsante chiudi -->
       <button
         style="position: absolute; top: 14px; right: 16px; background: none; border: none; color: rgba(241,235,255,0.35); font-size: 20px; cursor: pointer; padding: 0;"

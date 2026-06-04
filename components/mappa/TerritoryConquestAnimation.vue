@@ -1,7 +1,6 @@
 <template>
   <!-- Animazione conquista territorio: flip del pixel dal vecchio al nuovo colore -->
   <div :style="overlayStyle">
-    <style>{{ keyframes }}</style>
 
     <!-- Pixel animato con flip -->
     <div :style="pixelStyle">
@@ -66,11 +65,6 @@ const rotation = computed(() => {
   return 'rotateY(0deg)'
 })
 
-const keyframes = `
-  @keyframes fadeOutFast { to { opacity: 0; pointer-events: none; } }
-  @keyframes conquestGlow { 0%,100%{box-shadow:0 0 20px rgba(255,233,168,0.3)} 50%{box-shadow:0 0 50px rgba(255,233,168,0.8)} }
-`
-
 // Stili
 const overlayStyle = computed(() => ({
   position: 'fixed', inset: 0, zIndex: 500,
@@ -105,3 +99,14 @@ const loadingStyle = {
   color: 'rgba(241,235,255,0.35)', textTransform: 'uppercase',
 }
 </script>
+
+<style>
+/* Keyframe animazioni conquista — non possono usare template expressions */
+@keyframes fadeOutFast {
+  to { opacity: 0; pointer-events: none; }
+}
+@keyframes conquestGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(255,233,168,0.3); }
+  50%       { box-shadow: 0 0 50px rgba(255,233,168,0.8); }
+}
+</style>

@@ -317,7 +317,7 @@ function handleSetTab(t: string) {
     <LazyGiocoHeader :profilo="gameStore.profilo" :is-admin="isAdmin" @logout="authStore.logout()" />
 
     <!-- ── Area contenuto: padding-top 60px di default, 5px nella tab pacchetti (sbusta) ── -->
-    <div class="px-4 max-w-[1400px] mx-auto" :style="{ paddingTop: tab === 'pacchetti' ? '5px' : tab === 'community' ? '20px' : '60px' }">
+    <div class="px-4 max-w-[1400px] mx-auto" :style="{ paddingTop: tab === 'pacchetti' ? '5px' : tab === 'community' ? '20px' : tab === 'mappa' ? '30px' : '60px' }">
 
       <!-- ═══ TAB: HOME ════════════════════════════════════════════════ -->
       <LazyHomeTab v-if="tab === 'home'" :user="authStore.user" :profilo="gameStore.profilo"
@@ -457,8 +457,9 @@ function handleSetTab(t: string) {
       </button>
     </nav>
 
-    <!-- ── FAB Impostazioni: bottone rotondo hamburger fisso bottom-right ── -->
+    <!-- ── FAB Impostazioni: nascosto nella tab mappa ── -->
     <button
+      v-if="tab !== 'mappa'"
       style="
         position: fixed;
         bottom: 90px;

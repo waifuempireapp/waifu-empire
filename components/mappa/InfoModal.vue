@@ -6,7 +6,6 @@
 
     <!-- Contenuto modale -->
     <div :style="modalStyle">
-      <style>{{ fadeKeyframe }}</style>
 
       <!-- Pulsante chiudi -->
       <button :style="closeBtnStyle" @click="$emit('close')">✕</button>
@@ -98,8 +97,6 @@ const PAGES = [
 const page = ref(0)
 const p    = computed(() => PAGES[page.value])
 
-const fadeKeyframe = `@keyframes fadeUp { from{opacity:0;transform:translate(-50%,calc(-50%+12px))} to{opacity:1;transform:translate(-50%,-50%)} }`
-
 // Stili
 const backdropStyle = {
   position: 'fixed', inset: 0, zIndex: 250,
@@ -146,3 +143,11 @@ const navBtnStyle = (disabled: boolean, primary: boolean) => ({
   opacity: disabled ? 0.5 : 1,
 })
 </script>
+
+<style>
+/* Animazione apertura modale (non può essere definita con template expression) */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 12px)); }
+  to   { opacity: 1; transform: translate(-50%, -50%); }
+}
+</style>

@@ -179,7 +179,7 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
 <template>
   <!-- Caricamento iniziale -->
   <div v-if="loading" style="display:flex;flex-direction:column;min-height:70vh;align-items:center;justify-content:center;">
-    <div style="font-size:40px;color:#ff85b6;animation:pulse 1.2s ease-in-out infinite">🩷</div>
+    <img src="~/assets/images/New_Logo.png" alt="" style="width:80px;height:auto;animation:pulse 1.2s ease-in-out infinite;opacity:0.85;" />
     <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.22em;color:rgba(174,156,255,0.5);margin-top:12px;text-transform:uppercase">{{ $t('swap.loading') }}</div>
   </div>
 

@@ -206,12 +206,7 @@ const premiRiga2 = [
           textTransform: 'uppercase', fontWeight: 700,
         }"
       >
-        <span :style="{
-          display: 'inline-block', width: '18px', height: '18px',
-          borderRadius: '50%', border: `2px solid ${C.goldL}`,
-          borderTopColor: 'transparent', verticalAlign: 'middle',
-          marginRight: '10px', animation: 'spinSlow 1s linear infinite',
-        }"/>
+        <img src="~/assets/images/New_Logo.png" alt="" style="width:60px;height:auto;display:block;margin:0 auto 12px;animation:pulse 1.2s ease-in-out infinite;opacity:0.8;" />
         Caricamento classifica…
       </div>
 

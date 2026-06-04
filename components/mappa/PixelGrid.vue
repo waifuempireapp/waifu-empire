@@ -9,7 +9,7 @@ const MOBILE_PIXEL_SIZE = 10
 const MIN_SCALE         = 0.5
 const MAX_SCALE         = 4
 const GRID_SIZE         = 50
-const CPU_COLOR         = '#444455'
+const CPU_COLOR         = '#4a7c8a'
 const OCEAN_COLOR       = '#0a1428'
 const TAP_THRESHOLD     = 12
 const MISSION_COLOR     = '#e879f9'
@@ -38,7 +38,7 @@ function isMobile(): boolean {
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 
 // Stato pan/zoom — oggetto mutabile plain, non Vue ref
-let state   = { panX: 0, panY: 0, scale: 1 }
+let state   = { panX: 0, panY: 0, scale: 1.5 }
 let drag    = { active: false, startX: 0, startY: 0, panX: 0, panY: 0 }
 let pinch   = { active: false, dist: 0, midX: 0, midY: 0, panX: 0, panY: 0, scale: 1 }
 let pulseVal = 0
@@ -53,7 +53,9 @@ let adjacentSet = new Set<string>()
 
 // ── effectiveLandSet: usa prop o LAND_SET globale ─────────────────────────────
 const effectiveLandSet = computed(() => props.landSet || LAND_SET)
-const canvasWidth = computed(() => (typeof window !== 'undefined' ? window.innerWidth : 412))
+// Usa la larghezza effettiva del container per evitare coordinate mismatch
+const containerRef = ref<HTMLDivElement | null>(null)
+const canvasWidth  = ref(typeof window !== 'undefined' ? window.innerWidth : 412)
 
 // ── basePS: dimensione base pixel in funzione del dispositivo ─────────────────
 const basePS = isMobile() ? MOBILE_PIXEL_SIZE : BASE_PIXEL_SIZE
@@ -286,8 +288,21 @@ watch(() => props.focusPixel, (fp) => {
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 onMounted(() => {
+  // Leggi la larghezza reale del container per evitare coordinate mismatch
+  if (containerRef.value) {
+    canvasWidth.value = containerRef.value.offsetWidth || window.innerWidth
+  }
   rebuildPixelMaps()
   rebuildAdjacentSet()
+  // Centra PRIMA di startAnimation (così il primo frame è già posizionato)
+  const canvas = canvasRef.value
+  if (canvas) {
+    const fp = props.focusPixel ?? '25_22'
+    const [fx, fy] = fp.split('_').map(Number)
+    const ps = basePS * state.scale
+    state.panX = canvas.width  / 2 - fx * ps - ps / 2
+    state.panY = canvas.height / 2 - fy * ps - ps / 2
+  }
   startAnimation()
 })
 
@@ -440,7 +455,7 @@ function centerOnEmpire() {
 
 <template>
   <!-- Contenitore relativo che occupa tutto lo spazio disponibile -->
-  <div style="position: relative; width: 100%; height: 100%;">
+  <div ref="containerRef" style="position: relative; width: 100%; height: 100%;">
     <canvas
       ref="canvasRef"
       :width="canvasWidth"

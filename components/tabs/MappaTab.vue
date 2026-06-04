@@ -635,6 +635,26 @@ function getTerritoryColor(territoryId: string): string {
   return owner.ownerColor || '#f5c560'
 }
 
+// Chiave pixel selezionato per evidenziarlo nel PixelGrid
+const selectedPixelKey = computed(() =>
+  selectedPixel.value != null ? `${selectedPixel.value.x}_${selectedPixel.value.y}` : null
+)
+
+// Handler per il click sul PixelGrid canvas
+function onPixelGridSelect(pixelKey: string, data: Record<string, any>) {
+  const parts = pixelKey.split('_')
+  const x = Number(parts[0])
+  const y = Number(parts[1])
+  handlePixelSelect({
+    x,
+    y,
+    ownerId:    data.ownerId    ?? 'CPU',
+    ownerColor: data.ownerColor ?? '#888888',
+    ownerLevel: data.ownerLevel ?? 1,
+    ...data,
+  })
+}
+
 // Gestisce il click su un territorio: costruisce un pixel object e chiama handlePixelSelect
 async function onTerritoryClick(territoryId: string) {
   const terr = MAP_TERRITORIES.find(t => t.id === territoryId)
@@ -665,7 +685,7 @@ async function onTerritoryClick(territoryId: string) {
         height: '60vh', alignItems: 'center', justifyContent: 'center'
       }"
     >
-      <div :style="{ fontFamily: FF.display, fontSize: '32px', color: C.sakura, animation: 'pulse 1.2s ease-in-out infinite' }">♛</div>
+      <img src="~/assets/images/New_Logo.png" alt="" style="width:90px;height:auto;animation:pulse 1.2s ease-in-out infinite;opacity:0.85;" />
       <div :style="{ fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.22em', color: 'rgba(174,156,255,0.5)', marginTop: '12px', textTransform: 'uppercase' }">
         Caricamento mappa…
       </div>
@@ -674,44 +694,38 @@ async function onTerritoryClick(territoryId: string) {
     <!-- ── Contenuto principale (dopo il caricamento) ────────────────── -->
     <template v-else>
 
-      <!-- Header -->
-      <div :style="{ padding: '14px 16px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }">
-        <div>
-          <div :style="{ fontFamily: FF.label, fontSize: '9px', letterSpacing: '0.22em', color: C.sakura, textTransform: 'uppercase' }">◆ CONQUISTA</div>
-          <div :style="{ fontFamily: FF.display, fontSize: '20px', color: '#fff', fontWeight: 800 }">Mappa del Mondo</div>
+      <!-- Header: titolo in cima, poi conquista+bottoni sulla stessa riga -->
+      <div :style="{ padding: '16px 16px 14px' }">
+
+        <!-- Riga 1: "Mappa del Mondo" — centrata, in cima -->
+        <div :style="{ fontFamily: FF.display, fontSize: '22px', color: '#fff', fontWeight: 900, lineHeight: 1.1, marginBottom: '10px', textAlign: 'center' }">
+          Mappa del Mondo
         </div>
-        <!-- Pulsante offerte con badge contatore -->
-        <button
-          @click="showOffers = true"
-          :style="{
-            position: 'relative',
-            background: 'rgba(245,197,96,0.1)', border: '1px solid rgba(245,197,96,0.3)',
-            borderRadius: '10px', color: C.gold, fontFamily: FF.label, fontSize: '10px',
-            letterSpacing: '0.15em', textTransform: 'uppercase', padding: '6px 12px', cursor: 'pointer',
-          }"
-        >
-          💌 Offerte
-          <span
-            v-if="pendingOffersCount > 0"
-            :style="{
-              position: 'absolute', top: '-6px', right: '-6px',
-              background: '#ff5b6c', color: '#fff',
-              width: '16px', height: '16px', borderRadius: '50%',
-              display: 'grid', placeItems: 'center',
-              fontFamily: 'DM Sans, sans-serif', fontSize: '9px', fontWeight: 800,
-              border: '1px solid rgba(3,2,12,0.8)',
-            }"
-          >{{ pendingOffersCount }}</span>
-        </button>
-        <!-- Pulsante info mappa -->
-        <button
-          @click="showInfoModal = true"
-          :style="{
-            background: 'rgba(174,156,255,0.08)', border: '1px solid rgba(174,156,255,0.25)',
-            borderRadius: '10px', color: 'rgba(174,156,255,0.8)', fontFamily: FF.label, fontSize: '12px',
-            fontWeight: 700, padding: '6px 10px', cursor: 'pointer', minWidth: '32px',
-          }"
-        >?</button>
+
+        <!-- Riga 2: CONQUISTA a sinistra, bottoni a destra -->
+        <div :style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }">
+          <div :style="{ fontFamily: FF.label, fontSize: '14px', letterSpacing: '0.28em', color: C.sakura, textTransform: 'uppercase', fontWeight: 700 }">
+            ◆ CONQUISTA
+          </div>
+          <div :style="{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }">
+            <button
+              @click="showOffers = true"
+              :style="{
+                position: 'relative',
+                background: 'rgba(245,197,96,0.12)', border: '1.5px solid rgba(245,197,96,0.45)',
+                borderRadius: '12px', color: C.gold, fontFamily: FF.label, fontSize: '13px',
+                letterSpacing: '0.12em', textTransform: 'uppercase', padding: '9px 14px', cursor: 'pointer', fontWeight: 700,
+              }"
+            >
+              💌 OFFERTE
+              <span v-if="pendingOffersCount > 0" :style="{ position: 'absolute', top: '-7px', right: '-7px', background: '#ff5b6c', color: '#fff', width: '18px', height: '18px', borderRadius: '50%', display: 'grid', placeItems: 'center', fontFamily: FF.mono, fontSize: '10px', fontWeight: 800, border: '1.5px solid rgba(3,2,12,0.8)' }">{{ pendingOffersCount }}</span>
+            </button>
+            <button
+              @click="showInfoModal = true"
+              :style="{ background: 'rgba(174,156,255,0.1)', border: '1.5px solid rgba(174,156,255,0.35)', borderRadius: '12px', color: 'rgba(174,156,255,0.9)', fontFamily: FF.display, fontSize: '16px', fontWeight: 800, padding: '9px 14px', cursor: 'pointer', minWidth: '44px', lineHeight: 1 }"
+            >?</button>
+          </div>
+        </div>
       </div>
 
       <!-- ── Raid Widget (inline) — sopra la mappa ─────────────────────── -->
@@ -719,10 +733,11 @@ async function onTerritoryClick(territoryId: string) {
       <div
         @click="showRaidPanel = true"
         :style="{
-          margin: '0 16px 10px', padding: '10px 14px',
-          background: 'linear-gradient(135deg, rgba(236,72,153,0.12), rgba(10,7,38,0.9))',
-          border: '1px solid rgba(236,72,153,0.35)', borderRadius: '12px', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: '10px',
+          margin: '0 16px 12px', padding: '14px 18px',
+          background: 'linear-gradient(135deg, rgba(236,72,153,0.16), rgba(10,7,38,0.92))',
+          border: '1.5px solid rgba(236,72,153,0.45)', borderRadius: '16px', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: '14px',
+          boxShadow: '0 4px 24px rgba(236,72,153,0.15)',
         }"
       >
         <!-- Thumbnail waifu raid -->
@@ -730,116 +745,95 @@ async function onTerritoryClick(territoryId: string) {
           v-if="raidInfo?.waifuImage"
           :src="ikUrl(raidInfo.waifuImage, 'thumbnail') ?? undefined"
           :alt="raidInfo.waifuNome"
-          :style="{ width: '38px', height: '52px', objectFit: 'cover', objectPosition: 'top', borderRadius: '6px', border: '1px solid rgba(236,72,153,0.4)', flexShrink: 0 }"
+          :style="{ width: '58px', height: '80px', objectFit: 'cover', objectPosition: 'top', borderRadius: '10px', border: '2px solid rgba(236,72,153,0.5)', flexShrink: 0, boxShadow: '0 4px 16px rgba(236,72,153,0.3)' }"
         />
-        <div v-else :style="{ fontSize: '22px', flexShrink: 0 }">⚔</div>
+        <div v-else :style="{ fontSize: '36px', flexShrink: 0, lineHeight: 1 }">⚔</div>
 
         <div :style="{ flex: 1, minWidth: 0 }">
-          <div :style="{ fontFamily: FF.label, fontSize: '8px', color: 'rgba(236,72,153,0.6)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '1px' }">
+          <div :style="{ fontFamily: FF.label, fontSize: '11px', color: 'rgba(236,72,153,0.75)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '3px' }">
             ⚔ Raid Waifu
           </div>
-          <div :style="{ fontFamily: FF.display, fontSize: '11px', color: '#ec4899', fontWeight: 800, marginBottom: '2px' }">
+          <div :style="{ fontFamily: FF.display, fontSize: '16px', color: '#ec4899', fontWeight: 800, marginBottom: '6px' }">
             {{ raidInfo?.waifuNome ?? 'Raid Island' }}
           </div>
           <template v-if="raidInfo">
-            <!-- Barra HP raid -->
-            <div :style="{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', marginBottom: '3px', overflow: 'hidden' }">
-              <div :style="{ height: '100%', width: `${raidHpPct}%`, background: raidHpColor, borderRadius: '2px', transition: 'width 0.5s' }" />
+            <div :style="{ height: '6px', background: 'rgba(255,255,255,0.12)', borderRadius: '3px', marginBottom: '5px', overflow: 'hidden' }">
+              <div :style="{ height: '100%', width: `${raidHpPct}%`, background: raidHpColor, borderRadius: '3px', transition: 'width 0.5s' }" />
             </div>
             <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }">
-              <div :style="{ fontFamily: FF.mono, fontSize: '9px', color: raidHpColor }">
+              <div :style="{ fontFamily: FF.mono, fontSize: '12px', color: raidHpColor, fontWeight: 700 }">
                 {{ Math.max(0, raidInfo.currentHp).toLocaleString() }} / {{ raidInfo.totalHp.toLocaleString() }} HP
               </div>
-              <div v-if="raidCountdown" :style="{ fontFamily: FF.mono, fontSize: '9px', color: 'rgba(245,158,11,0.8)', fontVariantNumeric: 'tabular-nums' }">
+              <div v-if="raidCountdown" :style="{ fontFamily: FF.mono, fontSize: '12px', color: 'rgba(245,158,11,0.9)', fontVariantNumeric: 'tabular-nums', fontWeight: 700 }">
                 ⏱ {{ raidCountdown }}
               </div>
             </div>
           </template>
           <template v-else>
-            <div :style="{ fontFamily: FF.label, fontSize: '9px', color: 'rgba(241,235,255,0.5)', letterSpacing: '0.12em' }">
+            <div :style="{ fontFamily: FF.label, fontSize: '12px', color: 'rgba(241,235,255,0.55)', letterSpacing: '0.1em' }">
               Tocca per il Raid orario cooperativo ⚔
             </div>
           </template>
         </div>
-        <div :style="{ fontFamily: FF.label, fontSize: '10px', color: 'rgba(236,72,153,0.7)', flexShrink: 0 }">→</div>
+        <div :style="{ fontFamily: FF.display, fontSize: '18px', color: 'rgba(236,72,153,0.7)', flexShrink: 0 }">→</div>
       </div>
 
-      <!-- Mappa interattiva con immagine di sfondo e overlay esagonali -->
-      <div style="position: relative; margin: 0 16px 16px; border-radius: 16px; overflow: hidden; border: 1px solid rgba(245,197,96,0.15);">
-
-        <!-- Immagine mappa di sfondo -->
+      <!-- Mappa: immagine di sfondo sempre visibile + canvas interattivo sovrapposto -->
+      <div style="margin: 0 16px 16px; border-radius: 16px; border: 1px solid rgba(245,197,96,0.2); position: relative; min-height: 380px; overflow: hidden;">
+        <!-- Immagine mappa sempre visibile come base -->
         <img
           src="~/assets/world/Mappa_Del_Mondo_Waifu.jpeg"
           alt="Mappa del Mondo"
-          style="width: 100%; height: auto; display: block; user-select: none;"
+          style="width:100%;height:380px;object-fit:cover;display:block;user-select:none;"
           draggable="false"
         />
-
-        <!-- SVG overlay con territori cliccabili -->
-        <svg
-          style="position: absolute; inset: 0; width: 100%; height: 100%;"
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-        >
-          <g
-            v-for="t in MAP_TERRITORIES"
-            :key="t.id"
-            style="cursor: pointer;"
-            @click="onTerritoryClick(t.id)"
-          >
-            <polygon
-              :points="hexPoints(t.x, t.y, t.size * 0.45)"
-              :fill="getTerritoryColor(t.id)"
-              :fill-opacity="getTerritoryOwner(t.id) ? 0.55 : 0.18"
-              :stroke="getTerritoryOwner(t.id) ? getTerritoryColor(t.id) : 'rgba(245,197,96,0.35)'"
-              stroke-width="0.4"
-            />
-            <text
-              :x="t.x"
-              :y="t.y + t.size * 0.18"
-              text-anchor="middle"
-              font-size="1.8"
-              fill="white"
-              fill-opacity="0.85"
-              font-family="var(--ff-label, sans-serif)"
-              font-weight="700"
-              style="pointer-events: none; text-shadow: 0 1px 3px rgba(0,0,0,0.9);"
-            >{{ t.nome }}</text>
-          </g>
-        </svg>
-
+        <!-- Canvas pixel interattivo sopra l'immagine (pointer-events attivi) -->
+        <div style="position:absolute;inset:0;z-index:2;">
+          <PixelGrid
+            v-if="chunks"
+            :chunks="chunks"
+            :user-uid="authStore.user?.uid ?? ''"
+            :selected-pixel="selectedPixelKey"
+            :mission-pixel-set="missionPixelSet"
+            :focus-pixel="missionFocusPixel ?? '25_22'"
+            @pixel-select="onPixelGridSelect"
+          />
+        </div>
+        <!-- Loading overlay se chunks non ancora caricato -->
+        <div v-if="!chunks" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(10,20,40,0.7);">
+          <img src="~/assets/images/New_Logo.png" alt="" style="width:70px;height:auto;animation:pulse 1.2s ease-in-out infinite;opacity:0.85;" />
+          <span style="color:rgba(174,156,255,0.6);font-family:var(--ff-label);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;">Caricamento mappa…</span>
+        </div>
       </div>
 
-      <!-- ── Badge Missioni Mappa (inline) — sotto la mappa ────────────── -->
-      <!-- Badge compatto che mostra la missione mappa attiva con countdown -->
+      <!-- ── Sezione Missioni Mappa — sempre visibile ─────────────────── -->
+      <!-- Mostra missione attiva o countdown alla prossima -->
       <div
-        v-if="activeMission && missionPixelSet.size > 0"
-        @click="showMissionDetail = true"
+        @click="activeMission ? showMissionDetail = true : null"
         :style="{
-          margin: '8px 16px 4px', padding: '8px 14px',
-          background: 'rgba(232,121,249,0.08)',
-          border: '1px solid rgba(232,121,249,0.3)',
-          borderRadius: '10px', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: '10px',
+          margin: '10px 16px 6px', padding: '14px 18px',
+          background: activeMission && missionPixelSet.size > 0 ? 'rgba(232,121,249,0.1)' : 'rgba(232,121,249,0.04)',
+          border: `1.5px solid ${activeMission && missionPixelSet.size > 0 ? 'rgba(232,121,249,0.4)' : 'rgba(232,121,249,0.15)'}`,
+          borderRadius: '14px',
+          cursor: activeMission ? 'pointer' : 'default',
+          display: 'flex', alignItems: 'center', gap: '14px',
         }"
       >
-        <span :style="{ fontSize: '14px' }">🎯</span>
+        <span :style="{ fontSize: '22px' }">🎯</span>
         <div :style="{ flex: 1 }">
-          <span :style="{ fontFamily: FF.label, fontSize: '11px', color: '#e879f9', fontWeight: 700, letterSpacing: '0.08em' }">
-            Missioni Mappa in corso
-          </span>
-          <span
-            v-if="missionCountdown"
-            :style="{ fontFamily: FF.label, fontSize: '10px', color: 'rgba(232,121,249,0.65)', marginLeft: '8px', fontVariantNumeric: 'tabular-nums' }"
-          >
-            · ancora {{ missionCountdown }}
-          </span>
+          <div :style="{ fontFamily: FF.label, fontSize: '15px', fontWeight: 700, letterSpacing: '0.08em', marginBottom: '2px', color: activeMission && missionPixelSet.size > 0 ? '#e879f9' : 'rgba(232,121,249,0.45)' }">
+            {{ activeMission && missionPixelSet.size > 0 ? 'Missioni Mappa in corso' : 'Missioni Mappa' }}
+          </div>
+          <div :style="{ fontFamily: FF.mono, fontSize: '13px', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'rgba(232,121,249,0.65)' }">
+            <template v-if="activeMission && missionCountdown">· ancora {{ missionCountdown }}</template>
+            <template v-else>Nessuna missione attiva</template>
+          </div>
         </div>
-        <span :style="{ fontFamily: FF.label, fontSize: '10px', color: 'rgba(232,121,249,0.5)' }">→</span>
+        <span v-if="activeMission" :style="{ fontFamily: FF.display, fontSize: '18px', color: 'rgba(232,121,249,0.6)' }">→</span>
       </div>
 
       <!-- Mini leaderboard territori + kisses passivi -->
-      <MappaMiniLeaderboard
+      <MiniLeaderboard
         :chunks="chunks"
         :user-uid="authStore.user?.uid ?? ''"
         :profilo="profilo as any"
@@ -848,7 +842,7 @@ async function onTerritoryClick(territoryId: string) {
       />
 
       <!-- Pixel detail popup -->
-      <MappaPixelDetail
+      <PixelDetail
         v-if="selectedPixel"
         :pixel="selectedPixel"
         :waifu-cat="waifuCat"
@@ -886,7 +880,7 @@ async function onTerritoryClick(territoryId: string) {
       </div>
 
       <!-- ── Animazione conquista territorio ───────────────────────────── -->
-      <MappaTerritoryConquestAnimation
+      <TerritoryConquestAnimation
         v-if="conquestAnim"
         :pixel-name="conquestAnim.pixelName"
         :old-color="conquestAnim.oldColor"
@@ -896,13 +890,13 @@ async function onTerritoryClick(territoryId: string) {
       />
 
       <!-- ── Info Modal ─────────────────────────────────────────────────── -->
-      <MappaInfoModal v-if="showInfoModal" @close="showInfoModal = false" />
+      <InfoModal v-if="showInfoModal" @close="showInfoModal = false" />
 
       <!-- ── Tutorial (nuovo utente senza pixel) ───────────────────────── -->
-      <MappaTutorialOverlay v-if="showTutorial" @close="showTutorial = false" />
+      <TutorialOverlay v-if="showTutorial" @close="showTutorial = false" />
 
       <!-- ── BattleModal: selezione team offensivo pixel normale ────────── -->
-      <MappaBattleModal
+      <BattleModal
         v-if="showBattle && !raidAttackMode"
         :pixel="selectedPixel"
         :collezione="collezione as any"
@@ -912,7 +906,7 @@ async function onTerritoryClick(territoryId: string) {
       />
 
       <!-- ── BattleModal: selezione team offensivo Raid Island ──────────── -->
-      <MappaBattleModal
+      <BattleModal
         v-if="showBattle && raidAttackMode"
         :pixel="null"
         :collezione="collezione as any"
@@ -923,7 +917,7 @@ async function onTerritoryClick(territoryId: string) {
 
       <!-- ── RoundViewer: pick phase + arena battaglia ──────────────────── -->
       <!-- key cambia ad ogni round completato → rimonta il viewer con phase 'pre' -->
-      <MappaRoundViewer
+      <RoundViewer
         v-if="showRound && activeBattle"
         :key="activeBattle.id + '-' + (activeBattle.attackerWins + activeBattle.defenderWins)"
         :battle="activeBattle"
@@ -936,7 +930,7 @@ async function onTerritoryClick(territoryId: string) {
       />
 
       <!-- ── Raid Island full panel ─────────────────────────────────────── -->
-      <MappaRaidIslandPanel
+      <RaidIslandPanel
         v-if="showRaidPanel"
         :profilo="profilo as any"
         @chiudi="showRaidPanel = false"
@@ -944,7 +938,7 @@ async function onTerritoryClick(territoryId: string) {
       />
 
       <!-- ── Acquisto pixel ─────────────────────────────────────────────── -->
-      <MappaPurchaseModal
+      <PurchaseModal
         v-if="showPurchase && selectedPixel"
         :pixel="selectedPixel"
         :profilo="profilo as any"
@@ -953,7 +947,7 @@ async function onTerritoryClick(territoryId: string) {
       />
 
       <!-- ── Lista offerte ──────────────────────────────────────────────── -->
-      <MappaOffersPanel
+      <OffersPanel
         v-if="showOffers"
         @close="showOffers = false"
         @kisses-update="(k) => emit('updateProfilo', { kisses: k })"
@@ -961,7 +955,7 @@ async function onTerritoryClick(territoryId: string) {
       />
 
       <!-- ── Editor team difensore ──────────────────────────────────────── -->
-      <DifesaTeamDifesaEditor
+      <TeamDifesaEditor
         v-if="showDefenseEditor && selectedPixel"
         :pixel-key="`${selectedPixel.x}_${selectedPixel.y}`"
         :collezione="collezione as any"

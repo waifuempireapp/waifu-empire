@@ -174,10 +174,7 @@ onMounted(async () => {
         class="text-center py-8"
         style="color: rgba(241,235,255,0.45); font-family: var(--ff-label, 'Saira Condensed', sans-serif); font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; font-weight: 700;"
       >
-        <span
-          class="inline-block align-middle mr-2.5"
-          style="width: 18px; height: 18px; border-radius: 50%; border: 2px solid; border-color: #ff85b6 transparent #ff85b6 #ff85b6; animation: spin 1s linear infinite;"
-        />
+        <img src="~/assets/images/New_Logo.png" alt="" style="width:60px;height:auto;display:block;margin:0 auto 12px;animation:pulse 1.2s ease-in-out infinite;opacity:0.8;" />
         Caricamento amici…
       </div>
 
