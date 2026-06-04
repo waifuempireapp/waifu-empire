@@ -1,0 +1,7 @@
+[build]
+  command = "nuxt build"
+  publish = ".netlify/static"
+
+[functions]
+  directory = ".netlify/functions-internal"
+  node_bundler = "nft"
