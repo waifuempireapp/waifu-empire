@@ -1,5 +1,5 @@
 [build]
-  command = "nuxt build && mkdir -p .netlify/static"
+  command = "nuxt build && cp -r .output/public/. .netlify/static/"
   publish = ".netlify/static"
 
 [functions]
