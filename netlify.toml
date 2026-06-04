@@ -1,6 +1,6 @@
 [build]
   command = "nuxt build"
-  publish = ".netlify/static"
+  publish = ".nuxt/dist/client"
 
 [functions]
   directory = ".netlify/functions-internal"
