@@ -79,6 +79,7 @@ export default defineNuxtConfig({
   },
 
   nitro: {
+    preset: 'netlify',
     // firebase-admin usa moduli nativi che non possono essere bundlati da Nitro
     externals: {
       external: ['firebase-admin', '@google-cloud/firestore', '@grpc/grpc-js'],
