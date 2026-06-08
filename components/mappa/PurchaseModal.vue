@@ -54,6 +54,7 @@
 <script setup lang="ts">
 // Modale di acquisto territorio — prezzi fissi (CPU) o offerta libera (giocatori)
 import { PIXEL_NAMES } from '~/utils/worldMap'
+import type { CSSProperties } from 'vue'
 
 const authStore = useAuthStore()
 
@@ -119,41 +120,41 @@ const handleConfirm = async () => {
 }
 
 // Stili computati
-const overlayStyle = {
+const overlayStyle: CSSProperties = {
   position: 'fixed', inset: 0, zIndex: 200,
   background: 'rgba(3,2,12,0.92)', backdropFilter: 'blur(16px)',
   display: 'flex', alignItems: 'flex-end',
 }
-const sheetStyle = {
+const sheetStyle: CSSProperties = {
   width: '100%', background: 'rgba(13,10,38,0.98)',
   borderTop: '1px solid rgba(245,197,96,0.2)',
   borderRadius: '20px 20px 0 0',
   padding: '24px 24px 40px',
 }
-const cpuPriceBox = {
+const cpuPriceBox: CSSProperties = {
   display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center',
   padding: '16px', background: 'rgba(245,197,96,0.08)',
   border: '1px solid rgba(245,197,96,0.25)', borderRadius: '14px', marginBottom: '24px',
 }
-const offerLabelStyle = {
+const offerLabelStyle: CSSProperties = {
   fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.18em',
   color: 'rgba(174,156,255,0.7)', textTransform: 'uppercase',
   display: 'block', marginBottom: '8px',
 }
-const inputStyle = computed(() => ({
+const inputStyle = computed((): CSSProperties => ({
   flex: 1, background: 'rgba(255,255,255,0.05)',
   border: `1px solid ${canAfford.value ? 'rgba(245,197,96,0.3)' : 'rgba(255,91,108,0.5)'}`,
   borderRadius: '10px', color: '#fff',
   fontFamily: FF.mono, fontSize: '18px', padding: '10px 14px',
 }))
-const cancelBtnStyle = {
+const cancelBtnStyle: CSSProperties = {
   flex: 1, padding: '12px',
   background: 'rgba(255,255,255,0.04)',
   border: '1px solid rgba(174,156,255,0.2)', borderRadius: '12px',
   color: 'rgba(241,235,255,0.5)', fontFamily: FF.label, fontSize: '12px',
   letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer',
 }
-const confirmBtnStyle = computed(() => ({
+const confirmBtnStyle = computed((): CSSProperties => ({
   flex: 2, padding: '12px',
   background: canAfford.value && amount.value > 0 && !loading.value
     ? 'linear-gradient(135deg, #c08a1f, #f5c560)'

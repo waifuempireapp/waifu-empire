@@ -65,6 +65,7 @@ const saving     = ref(false)
 interface BonificaRisultato {
   nome: string
   ok: boolean
+  patch?: Record<string, number>
   dettagli?: Record<string, { prima: number; dopo: number }>
   errore?: string
 }

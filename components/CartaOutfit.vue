@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // CartaOutfit.vue — Carta outfit full-art con area immagine, slot, abilità e archetipo compatibile.
-import { RARITA } from '~/utils/constants'
+import { RARITA, type RaritaKey } from '~/utils/constants'
 import { ARCHETIPI } from '~/utils/promptGenerator'
 
 // ── Tipi ────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ const borderW     = computed(() => dimensione.value === 'piccola' ? 2 : 3)
 const evidenziato = computed(() => props.evidenziato ?? false)
 const quantita    = computed(() => props.quantita ?? 1)
 
-const rar = computed(() => RARITA[props.outfit.rarita] ?? RARITA.comune)
+const rar = computed(() => RARITA[props.outfit.rarita as RaritaKey] ?? RARITA.comune)
 const rb  = computed(() => RARITY_BORDER[props.outfit.rarita] ?? RARITY_BORDER.comune)
 const sc  = computed(() => SLOT_COLORS[props.outfit.slot] ?? SLOT_COLORS.petto)
 const bg  = computed(() => SLOT_BG[props.outfit.slot] ?? SLOT_BG.petto)

@@ -15,7 +15,7 @@ const router    = useRouter()
 const config    = useRuntimeConfig()
 
 const prezzi       = ref<Record<string, unknown> | null>(null)
-const kisses       = ref(gameStore.profilo?.kisses ?? 0)
+const kisses       = ref<number>(Number(gameStore.profilo?.kisses ?? 0))
 const caricato     = ref(false)
 const notif        = ref<{ testo: string; colore: string } | null>(null)
 
@@ -25,13 +25,13 @@ onMounted(async () => {
   if (!authStore.user) return
   const profilo = await getUserProfile(authStore.user.uid)
   if (!profilo) { router.replace('/onboarding'); return }
-  kisses.value = profilo.kisses ?? 0
+  kisses.value = (profilo.kisses as number) ?? 0
   // Carica prezzi dal server
   try {
     const token = await authStore.user.getIdToken()
-    const data  = await $fetch<{ prezzi: Record<string, unknown> }>('/api/negozio/config', {
+    const data  = await ($fetch('/api/negozio/config', {
       headers: { Authorization: `Bearer ${token}` },
-    })
+    })) as { prezzi: Record<string, unknown> }
     prezzi.value = data.prezzi
   } catch {
     // Usa default
@@ -73,10 +73,10 @@ async function acquistaBene(beneId: string) {
                    : beneId === 'trade_pass'  ? '/api/kisses/buy-tradepass'
                    : null
     if (!endpoint) return
-    const data = await $fetch<{ kissesCost: number; newKisses?: number }>(endpoint, {
+    const data = await ($fetch(endpoint, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
-    })
+    })) as { kissesCost: number; newKisses?: number }
     kisses.value -= data.kissesCost
     gameStore.setKisses(kisses.value)
     const label = (prezzi.value?.beni as Record<string, { label: string }>)?.[beneId]?.label ?? beneId

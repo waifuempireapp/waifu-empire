@@ -66,9 +66,9 @@ onMounted(async () => {
   try {
     const token = await props.user.getIdToken()
     const [rankRes, collData] = await Promise.all([
-      $fetch<any>('/api/waifu-ranking/current', {
+      ($fetch('/api/waifu-ranking/current', {
         headers: { Authorization: `Bearer ${token}` },
-      }),
+      })) as Promise<any>,
       getCollezione(props.user.uid),
     ])
     ranking.value     = rankRes.ranking

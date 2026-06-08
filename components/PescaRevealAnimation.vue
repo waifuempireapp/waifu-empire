@@ -225,7 +225,7 @@ const cardBackStyle = {
       <CartaWaifu
         v-if="fullWaifu"
         :waifu="fullWaifu"
-        :dati-collezione="null"
+        :dati-collezione="undefined"
         dimensione="piccola"
         :is-hot="isHotFinal"
       />

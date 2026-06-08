@@ -63,9 +63,9 @@ export default defineEventHandler(async (event) => {
         const aggiornamenti: Record<string, any> = { punteggiSettimana: 0 };
 
         if ((premio.energia ?? 0) > 0 || (premio.bustineSfida ?? 0) > 0 || (premio.kisses ?? 0) > 0) {
-          if (premio.energia > 0) aggiornamenti.energia = FieldValue.increment(premio.energia);
-          if (premio.bustineSfida > 0) aggiornamenti.pacchettiSfida = FieldValue.increment(premio.bustineSfida);
-          if (premio.kisses > 0) aggiornamenti.kisses = FieldValue.increment(premio.kisses);
+          if (((premio.energia as number) ?? 0) > 0) aggiornamenti.energia = FieldValue.increment((premio.energia as number) ?? 0);
+          if (((premio.bustineSfida as number) ?? 0) > 0) aggiornamenti.pacchettiSfida = FieldValue.increment((premio.bustineSfida as number) ?? 0);
+          if (((premio.kisses as number) ?? 0) > 0) aggiornamenti.kisses = FieldValue.increment((premio.kisses as number) ?? 0);
           assegnati++;
         }
 

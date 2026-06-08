@@ -24,11 +24,11 @@ const invia = async () => {
   stato.value = 'loading'
   try {
     const token = await authStore.user?.getIdToken()
-    const data = await $fetch<{ error?: string }>('/api/friends/send', {
+    const data = await ($fetch('/api/friends/send', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: { friendId: id },
-    })
+    })) as { error?: string }
     stato.value = 'ok'
     messaggio.value = 'Richiesta inviata!'
     friendId.value = ''

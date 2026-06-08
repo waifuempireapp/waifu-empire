@@ -145,20 +145,20 @@ async function onMangaFileChange(e: Event) {
   try {
     uploadMangaProgress.value = 0
     // Step 1: ottieni token di autenticazione
-    const auth = await $fetch<{
+    const auth = await ($fetch('/api/upload-sign', {
+      method: 'POST',
+      body: {
+        folder: 'manga',
+        publicId: `drop_${ed.value.id || Date.now()}_manga`,
+      },
+    })) as {
       token: string
       expire: number
       signature: string
       publicKey: string
       folder: string
       publicId: string | null
-    }>('/api/upload-sign', {
-      method: 'POST',
-      body: {
-        folder: 'manga',
-        publicId: `drop_${ed.value.id || Date.now()}_manga`,
-      },
-    })
+    }
     // Step 2: upload diretto a ImageKit via XMLHttpRequest per progress
     const url = await new Promise<string>((resolve, reject) => {
       const formData = new FormData()
@@ -212,10 +212,10 @@ async function onBustinaFileChange(e: Event) {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('folder', 'bustine')
-    const data = await $fetch<{ url: string }>('/api/upload', {
+    const data = await ($fetch('/api/upload', {
       method: 'POST',
       body: formData,
-    })
+    })) as { url: string }
     ed.value.asset_bustina = data.url
     emit('flash', 'Immagine bustina caricata!', '#06d6a0')
   } catch (err: any) {
@@ -413,7 +413,7 @@ async function onBustinaFileChange(e: Event) {
       <label style="display:block;font-size:10px;color:rgba(245,230,211,0.6);letter-spacing:1px;margin-bottom:4px;font-family:'Cinzel',serif;">PROMPT BUSTINA SUGGERITO (PER AI)</label>
       <div style="padding:12px;background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.3);border-radius:8px;">
         <div style="font-family:'Cinzel',serif;color:#06d6a0;letter-spacing:2px;font-size:11px;margin-bottom:8px;">🎨 PROMPT AUTOGENERATO</div>
-        <div style="font-size:11px;line-height:1.6;color:#d4c5b9;font-family:monospace;white-space:pre-wrap;">{{ buildPromptBustina(ed, waifu) }}</div>
+        <div style="font-size:11px;line-height:1.6;color:#d4c5b9;font-family:monospace;white-space:pre-wrap;">{{ buildPromptBustina(ed, waifu as Record<string, unknown>[]) }}</div>
       </div>
     </div>
 

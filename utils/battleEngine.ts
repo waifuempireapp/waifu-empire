@@ -41,6 +41,7 @@ export interface WaifuBattleStat {
   isKO:         boolean
   rarita:       string
   _battleStats: Record<string, unknown>
+  _hotBlurred?: boolean
 }
 
 export interface BattleTracker {
@@ -119,8 +120,8 @@ export function calculateDamage(
 
 /** Determina chi attacca per primo nel turno (jitter ±5 per evitare parità). */
 export function determineTurnOrder(playerWaifu: WaifuBattleStat, enemyWaifu: WaifuBattleStat): 'player' | 'enemy' {
-  const pSpeed = calculateSpeed(playerWaifu) + (Math.random() * 10 - 5)
-  const eSpeed = calculateSpeed(enemyWaifu)  + (Math.random() * 10 - 5)
+  const pSpeed = calculateSpeed(playerWaifu as unknown as Record<string, unknown>) + (Math.random() * 10 - 5)
+  const eSpeed = calculateSpeed(enemyWaifu  as unknown as Record<string, unknown>) + (Math.random() * 10 - 5)
   return pSpeed >= eSpeed ? 'player' : 'enemy'
 }
 

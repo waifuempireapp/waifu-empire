@@ -81,11 +81,12 @@ export default defineEventHandler(async (event) => {
 
   // Badge: azioni pendenti per questo utente
   const pendingCount = result.filter(t => {
-    if ((t.status === 'waifu_a_scelta' || t.status === 'pending_response') && t.toUid   === uid) return true
-    if ((t.status === 'waifu_b_scelta' || t.status === 'pending_confirm')  && t.fromUid === uid) return true
-    if (t.status === 'a_accettato' && t.toUid   === uid) return true
-    if (t.status === 'b_accettato' && t.toUid   === uid) return true
-    if (t.status === 'completato'  && t.fromUid === uid) return true
+    const tr = t as Record<string, unknown>
+    if ((tr.status === 'waifu_a_scelta' || tr.status === 'pending_response') && tr.toUid   === uid) return true
+    if ((tr.status === 'waifu_b_scelta' || tr.status === 'pending_confirm')  && tr.fromUid === uid) return true
+    if (tr.status === 'a_accettato' && tr.toUid   === uid) return true
+    if (tr.status === 'b_accettato' && tr.toUid   === uid) return true
+    if (tr.status === 'completato'  && tr.fromUid === uid) return true
     return false
   }).length
 

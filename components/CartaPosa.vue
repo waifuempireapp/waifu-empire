@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // CartaPosa.vue — Carta posa waifu con silhouette SVG, info nome e preview waifu associata.
-import { RARITA } from '~/utils/constants'
+import { RARITA, type RaritaKey } from '~/utils/constants'
 
 // ── Tipi ────────────────────────────────────────────────────
 interface WaifuPreview {
@@ -60,7 +60,7 @@ const borderW     = computed(() => dimensione.value === 'piccola' ? 2 : 3)
 const evidenziato = computed(() => props.evidenziato ?? false)
 const quantita    = computed(() => props.quantita ?? 1)
 
-const rar = computed(() => RARITA[props.posa.rarita] ?? RARITA.comune)
+const rar = computed(() => RARITA[props.posa.rarita as RaritaKey] ?? RARITA.comune)
 const rb  = computed(() => RARITY_BORDER[props.posa.rarita] ?? RARITY_BORDER.comune)
 
 const showFoil    = computed(() => ['epico', 'leggendario', 'immersivo'].includes(props.posa.rarita))

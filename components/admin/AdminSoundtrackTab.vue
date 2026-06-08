@@ -16,7 +16,7 @@ const saving  = ref(false)
 
 onMounted(async () => {
   try {
-    const data = await $fetch<any>('/api/admin/soundtrack')
+    const data = await ($fetch('/api/admin/soundtrack')) as any
     url.value = data.url ?? ''
   } catch (_) {
     // ignora errori di rete — url rimane vuoto
@@ -29,11 +29,11 @@ async function salva() {
   saving.value = true
   try {
     const token = await authStore.user?.getIdToken()
-    const data = await $fetch<any>('/api/admin/soundtrack', {
+    const data = await ($fetch('/api/admin/soundtrack', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: { url: url.value },
-    })
+    })) as any
     if (data.success) {
       emit('flash', 'Soundtrack salvata!', '')
     } else {

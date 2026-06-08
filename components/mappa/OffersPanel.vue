@@ -82,6 +82,7 @@
 <script setup lang="ts">
 // Pannello offerte: carica e gestisce accettazione/rifiuto offerte sui territori
 import { PIXEL_NAMES } from '~/utils/worldMap'
+import type { CSSProperties } from 'vue'
 
 const authStore = useAuthStore()
 
@@ -127,9 +128,9 @@ const pixelLabel = (o: Offer) => PIXEL_NAMES[`${o.pixelX}_${o.pixelY}`] ?? `(${o
 const loadOffers = async () => {
   try {
     const token = await authStore.user?.getIdToken()
-    const data = await $fetch<{ incoming: Offer[]; outgoing: Offer[] }>('/api/mappa/offers', {
+    const data = await ($fetch('/api/mappa/offers', {
       headers: { Authorization: `Bearer ${token}` },
-    })
+    })) as { incoming: Offer[]; outgoing: Offer[] }
     offers.value = data
   } finally {
     loading.value = false
@@ -143,11 +144,11 @@ const handleAction = async (offerId: string, action: 'accept' | 'reject') => {
   try {
     const token = await authStore.user?.getIdToken()
     const offer = [...offers.value.incoming, ...offers.value.outgoing].find(o => o.id === offerId)
-    const data = await $fetch<{ success: boolean }>(`/api/mappa/offers/${offerId}`, {
+    const data = await ($fetch(`/api/mappa/offers/${offerId}`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: { action },
-    })
+    })) as { success: boolean }
     if (data.success && action === 'accept' && offer) {
       emit('kissesUpdate', offer.amount)
       emit('mapUpdate')
@@ -159,23 +160,23 @@ const handleAction = async (offerId: string, action: 'accept' | 'reject') => {
 }
 
 // Stili
-const overlayStyle = {
+const overlayStyle: CSSProperties = {
   position: 'fixed', inset: 0, zIndex: 200,
   background: 'rgba(3,2,12,0.95)', backdropFilter: 'blur(16px)',
   display: 'flex', flexDirection: 'column',
 }
-const headerStyle = {
+const headerStyle: CSSProperties = {
   padding: '20px 20px 0',
   display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px',
 }
-const closeBtnStyle = {
+const closeBtnStyle: CSSProperties = {
   background: 'none', border: 'none', color: 'rgba(241,235,255,0.4)', fontSize: '22px', cursor: 'pointer',
 }
-const cardStyle = {
+const cardStyle: CSSProperties = {
   background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(174,156,255,0.15)',
   borderRadius: '14px', padding: '14px 16px',
 }
-const cardRowStyle = {
+const cardRowStyle: CSSProperties = {
   display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px',
 }
 
@@ -185,15 +186,15 @@ const statusColors: Record<string, string> = {
   rejected: '#ff5b6c',
   expired:  '#6b6390',
 }
-const statusStyle = (status: string) => ({
+const statusStyle = (status: string): CSSProperties => ({
   fontFamily: FF.label, fontSize: '9px', letterSpacing: '0.15em',
   textTransform: 'uppercase', color: statusColors[status] || '#ffe9a8',
 })
-const sectionTitleStyle = (color: string) => ({
+const sectionTitleStyle = (color: string): CSSProperties => ({
   fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.2em',
   color, textTransform: 'uppercase', marginBottom: '12px',
 })
-const actionBtnStyle = (color: string, bg: string) => ({
+const actionBtnStyle = (color: string, bg: string): CSSProperties => ({
   flex: 1, padding: '8px', background: bg,
   border: `1px solid ${color}55`, borderRadius: '10px', color,
   fontFamily: "'Saira Condensed', sans-serif", fontSize: '11px',

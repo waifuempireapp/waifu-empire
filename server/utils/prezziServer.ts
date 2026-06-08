@@ -54,7 +54,7 @@ export async function getPrezzi(): Promise<Prezzi> {
   try {
     const db   = getAdminDb()
     const snap = await db.collection('config').doc('prezzi').get()
-    const data = snap.exists ? mergeDeep(DEFAULT_PREZZI, snap.data() as Record<string, unknown>) : DEFAULT_PREZZI
+    const data = snap.exists ? mergeDeep(DEFAULT_PREZZI as unknown as Record<string, unknown>, snap.data() as Record<string, unknown>) : DEFAULT_PREZZI
     return cache.set('prezzi', data)
   } catch {
     return DEFAULT_PREZZI

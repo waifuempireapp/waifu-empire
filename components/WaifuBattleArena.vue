@@ -476,7 +476,7 @@ watch(phase, (p) => {
     isDraw:     false,
     waifuStats: { ...waifuStatsRef },
   }
-  emit('battleResult', { isVictory: won, ...risultatoFinale.value })
+  emit('battleResult', { ...risultatoFinale.value, isVictory: won })
   setTimeout(() => { phase.value = 'result' }, ANIM_RESULT_DELAY_MS)
 })
 

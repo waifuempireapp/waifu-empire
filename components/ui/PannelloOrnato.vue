@@ -4,6 +4,7 @@
   ============================================================ -->
 <script setup lang="ts">
 // Props: variant e glow personalizzabili, noCorners disabilita i bracket
+import type { CSSProperties } from 'vue'
 const props = withDefaults(defineProps<{
   variant?:   'default' | 'dark' | 'accent' | 'purple'
   glow?:      string
@@ -27,7 +28,7 @@ const VARIANTS = {
 const v = computed(() => VARIANTS[props.variant] ?? VARIANTS.default)
 
 // Stile del pannello composito
-const pannelloStyle = computed(() => ({
+const pannelloStyle = computed((): CSSProperties => ({
   position:              'relative',
   background:            v.value.bg,
   border:                `1px solid ${v.value.border}`,
@@ -40,7 +41,7 @@ const pannelloStyle = computed(() => ({
 }))
 
 // Le 4 posizioni degli angoli (top-left, top-right, bottom-right, bottom-left)
-const CORNERS = [
+const CORNERS: Array<{ style: CSSProperties; rotation: number }> = [
   { style: { top: '-1px', left: '-1px' },   rotation: 0   },
   { style: { top: '-1px', right: '-1px' },  rotation: 90  },
   { style: { bottom: '-1px', right: '-1px' }, rotation: 180 },
@@ -59,12 +60,12 @@ const CORNERS = [
         viewBox="0 0 16 16"
         width="14"
         height="14"
-        :style="{
+        :style="({
           position: 'absolute',
           transform: `rotate(${corner.rotation}deg)`,
           pointerEvents: 'none',
           ...corner.style,
-        }"
+        } as CSSProperties)"
       >
         <path d="M0,0 L16,0 L16,2 L2,2 L2,16 L0,16 Z" :fill="glow" opacity="0.55" />
       </svg>

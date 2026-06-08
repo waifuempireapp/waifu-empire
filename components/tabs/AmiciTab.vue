@@ -70,9 +70,9 @@ const caricaAmici = async () => {
 const caricaScambi = async () => {
   try {
     const token = await authStore.user?.getIdToken()
-    const data = await $fetch<{ trades: any[]; pendingCount: number }>('/api/trades/list', {
+    const data = await ($fetch('/api/trades/list', {
       headers: { Authorization: `Bearer ${token}` },
-    })
+    })) as { trades: any[]; pendingCount: number }
     tradesInitialData.value = {
       trades: data.trades || [],
       pendingCount: data.pendingCount || 0,

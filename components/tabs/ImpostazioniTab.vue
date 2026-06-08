@@ -31,7 +31,7 @@ const isAdmin = computed(() => {
 const langDropdownOpen = ref(false)
 
 async function switchLocale(code: string) {
-  await setLocale(code)
+  await setLocale(code as 'en' | 'it' | 'de' | 'es' | 'ja')
   if (typeof window !== 'undefined') localStorage.setItem('waifu_locale', code)
   langDropdownOpen.value = false
 }

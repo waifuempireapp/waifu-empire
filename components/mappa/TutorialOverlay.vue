@@ -36,6 +36,7 @@
 
 <script setup lang="ts">
 // Overlay tutorial interattivo: mostra i passi principali del gameplay sulla mappa
+import type { CSSProperties } from 'vue'
 const FF = {
   display: "'Cinzel', serif",
   label:   "'Saira Condensed', sans-serif",
@@ -62,29 +63,29 @@ const step    = ref(0)
 const isLast  = computed(() => step.value === STEPS.length - 1)
 const current = computed(() => STEPS[step.value])
 
-const dotStyle = (active: boolean) => ({
+const dotStyle = (active: boolean): CSSProperties => ({
   width: active ? '20px' : '6px', height: '6px', borderRadius: '3px',
   background: active ? C.sakura : 'rgba(174,156,255,0.2)',
   transition: 'all 0.3s',
 })
 
 // Stili
-const overlayStyle = {
+const overlayStyle: CSSProperties = {
   position: 'fixed', inset: 0, zIndex: 300,
   background: 'rgba(3,2,12,0.94)', backdropFilter: 'blur(16px)',
   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
   padding: '32px',
 }
-const contentStyle = {
+const contentStyle: CSSProperties = {
   textAlign: 'center', maxWidth: '320px', marginBottom: '48px',
 }
-const titleStyle = {
+const titleStyle: CSSProperties = {
   fontFamily: FF.display, fontSize: '22px', color: '#fff', fontWeight: 800, marginBottom: '14px',
 }
-const bodyStyle = {
+const bodyStyle: CSSProperties = {
   fontFamily: FF.body, fontSize: '14px', color: 'rgba(241,235,255,0.65)', lineHeight: 1.6,
 }
-const ghostBtn = {
+const ghostBtn: CSSProperties = {
   flex: 1, padding: '13px',
   background: 'rgba(255,255,255,0.04)',
   border: '1px solid rgba(174,156,255,0.2)', borderRadius: '14px',
@@ -92,7 +93,7 @@ const ghostBtn = {
   fontFamily: "'Saira Condensed', sans-serif", fontSize: '12px',
   letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer',
 }
-const primaryBtn = {
+const primaryBtn: CSSProperties = {
   flex: 2, padding: '13px',
   background: 'linear-gradient(135deg, #1aa899, #6cf0e0)',
   border: 'none', borderRadius: '14px', color: '#07051a',
@@ -100,7 +101,7 @@ const primaryBtn = {
   letterSpacing: '0.2em', textTransform: 'uppercase',
   fontWeight: 700, cursor: 'pointer',
 }
-const skipStyle = {
+const skipStyle: CSSProperties = {
   marginTop: '20px', background: 'none', border: 'none',
   color: 'rgba(241,235,255,0.3)', fontFamily: FF.label,
   fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase',

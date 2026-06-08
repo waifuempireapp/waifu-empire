@@ -4,6 +4,7 @@
   ============================================================ -->
 <script setup lang="ts">
 // Props: colore brand e flag glow; onClick viene emesso al click
+import type { CSSProperties } from 'vue'
 const props = withDefaults(defineProps<{
   colore?: string
   glow?:   boolean
@@ -15,7 +16,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{ click: [e: MouseEvent] }>()
 
 // Stile base della card
-const cardStyle = computed(() => ({
+const cardStyle = computed((): CSSProperties => ({
   position:       'relative',
   padding:        '14px',
   background:     `linear-gradient(180deg, ${props.colore}10, ${props.colore}04)`,

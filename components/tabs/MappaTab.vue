@@ -200,8 +200,8 @@ const loadChunks = async (forceRefresh = false) => {
   try {
     const token = await authStore.user?.getIdToken()
     const [chunksData, configData] = await Promise.all([
-      $fetch<{ chunks: any }>('/api/mappa/chunks', { headers: { Authorization: `Bearer ${token}` } }),
-      $fetch<any>('/api/swap/config',              { headers: { Authorization: `Bearer ${token}` } }),
+      ($fetch('/api/mappa/chunks', { headers: { Authorization: `Bearer ${token}` } })) as Promise<{ chunks: any }>,
+      ($fetch('/api/swap/config',  { headers: { Authorization: `Bearer ${token}` } })) as Promise<any>,
     ])
     sessionStorage.setItem('pixel_map_chunks',    JSON.stringify(chunksData.chunks))
     sessionStorage.setItem('pixel_map_chunks_at', String(Date.now()))
@@ -218,9 +218,9 @@ const loadChunks = async (forceRefresh = false) => {
 const loadMyDefenseConfig = async () => {
   try {
     const token = await authStore.user?.getIdToken()
-    const data = await $fetch<{ defenseMap: Record<string, any[]> }>('/api/difesa', {
+    const data = await ($fetch('/api/difesa', {
       headers: { Authorization: `Bearer ${token}` },
-    })
+    })) as { defenseMap: Record<string, any[]> }
     myDefenseMap.value = data.defenseMap ?? {}
   } catch { /* ignora */ }
 }
@@ -229,9 +229,9 @@ const loadMyDefenseConfig = async () => {
 const loadPendingOffers = async () => {
   try {
     const token = await authStore.user?.getIdToken()
-    const data = await $fetch<{ incoming: any[] }>('/api/mappa/offers', {
+    const data = await ($fetch('/api/mappa/offers', {
       headers: { Authorization: `Bearer ${token}` },
-    })
+    })) as { incoming: any[] }
     pendingOffersCount.value = (data.incoming || []).filter((o: any) => o.status === 'pending').length
   } catch { /* ignora */ }
 }
@@ -240,9 +240,9 @@ const loadPendingOffers = async () => {
 const loadActiveMission = async () => {
   try {
     const token = await authStore.user?.getIdToken()
-    const data = await $fetch<{ mission: any }>('/api/map-missions/current', {
+    const data = await ($fetch('/api/map-missions/current', {
       headers: { Authorization: `Bearer ${token}` },
-    })
+    })) as { mission: any }
     activeMission.value = data.mission ?? null
   } catch { /* ignora */ }
 }
@@ -251,9 +251,9 @@ const loadActiveMission = async () => {
 const loadRaidInfo = async () => {
   try {
     const token = await authStore.user?.getIdToken()
-    const data = await $fetch<{ raid: any }>('/api/raid/current', {
+    const data = await ($fetch('/api/raid/current', {
       headers: { Authorization: `Bearer ${token}` },
-    })
+    })) as { raid: any }
     raidInfo.value = data.raid ?? null
   } catch { /* ignora */ }
 }
@@ -315,9 +315,9 @@ const handlePixelSelect = async (pixel: any) => {
   if (pixel.ownerId !== 'CPU' && pixel.ownerId !== authStore.user?.uid) {
     try {
       const token = await authStore.user?.getIdToken()
-      const data = await $fetch<{ defenderTeam?: any[] }>(`/api/mappa/pixel/${pixel.x}/${pixel.y}`, {
+      const data = await ($fetch(`/api/mappa/pixel/${pixel.x}/${pixel.y}`, {
         headers: { Authorization: `Bearer ${token}` },
-      })
+      })) as { defenderTeam?: any[] }
       if (data.defenderTeam && selectedPixel.value) {
         selectedPixel.value = { ...selectedPixel.value, defenderTeam: data.defenderTeam }
       }
@@ -331,11 +331,11 @@ const handlePixelSelect = async (pixel: any) => {
 const handleAttack = async (attackerTeam: any[]) => {
   try {
     const token = await authStore.user?.getIdToken()
-    const data = await $fetch<any>('/api/mappa/attack', {
+    const data = await ($fetch('/api/mappa/attack', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: { targetX: selectedPixel.value.x, targetY: selectedPixel.value.y, attackerTeam },
-    })
+    })) as any
     if (data.battleId) {
       activeBattle.value = {
         id: data.battleId,
@@ -368,11 +368,11 @@ const handleAttack = async (attackerTeam: any[]) => {
 const handleRaidAttack = async (attackerTeam: any[]) => {
   try {
     const token = await authStore.user?.getIdToken()
-    const data = await $fetch<any>('/api/raid/attack', {
+    const data = await ($fetch('/api/raid/attack', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: { attackerTeam },
-    })
+    })) as any
     if (data.battleId) {
       activeBattle.value = {
         id: data.battleId,
@@ -410,11 +410,11 @@ const handleRoundComplete = async (
   const roundWinner = isVictory ? 'attacker' : 'defender'
   try {
     const token = await authStore.user?.getIdToken()
-    const data = await $fetch<any>(`/api/mappa/battle/${activeBattle.value.id}/round`, {
+    const data = await ($fetch(`/api/mappa/battle/${activeBattle.value.id}/round`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: { roundWinner },
-    })
+    })) as any
 
     if (data.status === 'attacker_wins' || data.status === 'defender_wins') {
       showRound.value     = false
@@ -494,7 +494,7 @@ const handlePurchase = async ({ amount }: { amount?: number }) => {
   try {
     const token  = await authStore.user?.getIdToken()
     const isCPU  = selectedPixel.value?.ownerId === 'CPU'
-    const data = await $fetch<{ success: boolean; type?: string; price?: number }>('/api/mappa/purchase', {
+    const data = await ($fetch('/api/mappa/purchase', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: {
@@ -502,7 +502,7 @@ const handlePurchase = async ({ amount }: { amount?: number }) => {
         targetY:     selectedPixel.value.y,
         offerAmount: isCPU ? undefined : amount,
       },
-    })
+    })) as { success: boolean; type?: string; price?: number }
     if (data.success) {
       showPurchase.value  = false
       await invalidateAndReload()

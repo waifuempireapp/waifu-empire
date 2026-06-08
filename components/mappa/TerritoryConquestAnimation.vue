@@ -25,6 +25,7 @@
 
 <script setup lang="ts">
 // Animazione flip territorio: mostra il passaggio di proprietà con effetto 3D
+import type { CSSProperties } from 'vue'
 const FF = {
   display: "'Cinzel', serif",
   label:   "'Saira Condensed', sans-serif",
@@ -66,13 +67,13 @@ const rotation = computed(() => {
 })
 
 // Stili
-const overlayStyle = computed(() => ({
+const overlayStyle = computed((): CSSProperties => ({
   position: 'fixed', inset: 0, zIndex: 500,
   background: 'rgba(3,2,12,0.9)', backdropFilter: 'blur(8px)',
   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
   animation: phase.value === 'done' ? 'fadeOutFast 0.3s forwards' : 'none',
 }))
-const pixelStyle = computed(() => ({
+const pixelStyle = computed((): CSSProperties => ({
   width: `${SIZE}px`, height: `${SIZE}px`, borderRadius: '16px', marginBottom: '24px',
   background: currentColor.value,
   transform: rotation.value,
@@ -81,20 +82,20 @@ const pixelStyle = computed(() => ({
   animation: phase.value === 'back' ? 'conquestGlow 1s ease-in-out infinite' : 'none',
   boxShadow: phase.value === 'back' ? `0 0 40px ${props.newColor}80` : 'none',
 }))
-const crownStyle = {
+const crownStyle: CSSProperties = {
   width: '100%', height: '100%', display: 'grid', placeItems: 'center', opacity: 0.5,
 }
-const conquestTitleStyle = {
+const conquestTitleStyle: CSSProperties = {
   fontFamily: FF.display, fontSize: '20px', color: '#ffd666', fontWeight: 800, marginBottom: '6px',
 }
-const pixelNameStyle = {
+const pixelNameStyle: CSSProperties = {
   fontFamily: FF.label, fontSize: '11px', letterSpacing: '0.2em',
   color: 'rgba(241,235,255,0.6)', textTransform: 'uppercase',
 }
-const empireNameStyle = {
+const empireNameStyle: CSSProperties = {
   fontFamily: FF.body, fontSize: '12px', color: 'rgba(241,235,255,0.4)', marginTop: '6px',
 }
-const loadingStyle = {
+const loadingStyle: CSSProperties = {
   fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.2em',
   color: 'rgba(241,235,255,0.35)', textTransform: 'uppercase',
 }

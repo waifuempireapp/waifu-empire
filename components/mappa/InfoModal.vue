@@ -40,6 +40,7 @@
 <script setup lang="ts">
 // X (Lucide) sostituisce il carattere ✕ nel pulsante chiudi
 import { X } from 'lucide-vue-next'
+import type { CSSProperties } from 'vue'
 // Modale informativa con regole e legenda della mappa mondo
 const FF = {
   display: "'Cinzel', serif",
@@ -100,11 +101,11 @@ const page = ref(0)
 const p    = computed(() => PAGES[page.value])
 
 // Stili
-const backdropStyle = {
+const backdropStyle: CSSProperties = {
   position: 'fixed', inset: 0, zIndex: 250,
   background: 'rgba(3,2,12,0.7)', backdropFilter: 'blur(6px)',
 }
-const modalStyle = {
+const modalStyle: CSSProperties = {
   position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
   zIndex: 260, width: 'min(92vw, 380px)',
   background: 'rgba(10,7,38,0.99)', backdropFilter: 'blur(20px)',
@@ -113,28 +114,28 @@ const modalStyle = {
   animation: 'fadeUp 0.22s ease-out',
   maxHeight: '80vh', display: 'flex', flexDirection: 'column',
 }
-const closeBtnStyle = {
+const closeBtnStyle: CSSProperties = {
   position: 'absolute', top: '14px', right: '16px',
   background: 'none', border: 'none', color: 'rgba(241,235,255,0.35)',
   fontSize: '20px', cursor: 'pointer', padding: 0,
 }
-const paginationStyle = {
+const paginationStyle: CSSProperties = {
   display: 'flex', gap: '5px', marginBottom: '18px', justifyContent: 'center',
 }
-const pageDotStyle = (active: boolean) => ({
+const pageDotStyle = (active: boolean): CSSProperties => ({
   width: active ? '20px' : '6px', height: '6px', borderRadius: '3px',
   background: active ? C.sakura : 'rgba(174,156,255,0.2)',
   transition: 'all 0.3s', cursor: 'pointer',
 })
-const pageTitleStyle = {
+const pageTitleStyle: CSSProperties = {
   fontFamily: FF.display, fontSize: '17px', color: '#fff', fontWeight: 800,
   marginBottom: '14px', textAlign: 'center',
 }
-const pageBodyStyle = {
+const pageBodyStyle: CSSProperties = {
   fontFamily: FF.body, fontSize: '13px', color: 'rgba(241,235,255,0.65)',
   lineHeight: 1.7, whiteSpace: 'pre-line',
 }
-const navBtnStyle = (disabled: boolean, primary: boolean) => ({
+const navBtnStyle = (disabled: boolean, primary: boolean): CSSProperties => ({
   flex: 1, padding: '11px',
   background: primary ? 'linear-gradient(135deg, #c54a86, #ff85b6)' : 'rgba(255,255,255,0.05)',
   border: primary ? 'none' : '1px solid rgba(174,156,255,0.2)',

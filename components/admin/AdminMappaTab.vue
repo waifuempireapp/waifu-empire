@@ -18,11 +18,11 @@ async function cleanup() {
   result.value  = null
   try {
     const token = await authStore.user?.getIdToken()
-    const data = await $fetch<any>('/api/admin/cleanup-battles', {
+    const data = await ($fetch('/api/admin/cleanup-battles', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: { maxAgeHours: Number(hours.value) },
-    })
+    })) as any
     result.value = data
     if (data.success) {
       emit('flash', `✅ Pulite ${data.cleaned} battaglie stale (su ${data.total} trovate)`, '')

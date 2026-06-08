@@ -107,7 +107,7 @@ const initialPhase: Phase =
 const phase = ref<Phase>(initialPhase)
 
 // ── Team giocatore (inizializzato se nextRoundChoice === 'same') ──────────────
-const playerTeam = ref<any[] | null>(() => {
+const playerTeam = ref<any[] | null>((() => {
   if (props.battle?.nextRoundChoice === 'same' && props.battle?.prevPlayerTeamIds?.length === 3) {
     const waifu = props.battle.prevPlayerTeamIds
       .map((id: string) => {
@@ -130,10 +130,10 @@ const playerTeam = ref<any[] | null>(() => {
     }))
   }
   return null
-})
+})())
 
 // ── Team nemico (inizializzato se nextRoundChoice === 'same') ─────────────────
-const enemyTeam = ref<any[] | null>(() => {
+const enemyTeam = ref<any[] | null>((() => {
   if (props.battle?.nextRoundChoice === 'same' && props.battle?.prevEnemyTeamIds?.length === 3) {
     const patchW = (w: any) => w ? ({ ...w, asset_statica: w.asset_statica || w.asset_immagine || null }) : null
     const waifu = props.battle.prevEnemyTeamIds
@@ -146,7 +146,7 @@ const enemyTeam = ref<any[] | null>(() => {
     return props.battle?.defenderUid === 'CPU' ? applyDifficultyScaling(team, mult) : team
   }
   return null
-})
+})())
 
 // Risultato battaglia corrente (sincrono, salvato prima di onExit)
 const battleResult = ref<boolean | null>(null)
@@ -237,7 +237,7 @@ const battleName = computed(() =>
 )
 
 // ── Gestori fasi ──────────────────────────────────────────────────────────────
-function onPickConfirm(pTeam: any[], eTeam: any[]) {
+function onPickConfirm({ playerPick3: pTeam, enemyPick3: eTeam }: { playerPick3: any[]; enemyPick3: any[] }) {
   battleResult.value = null
   playerTeam.value   = pTeam
 
@@ -257,11 +257,12 @@ function onPickConfirm(pTeam: any[], eTeam: any[]) {
   phase.value     = 'battle'
 }
 
-function onBattleResult(isVictory: boolean) {
+function onBattleResult(result: unknown) {
+  const isVictory = !!(result as { isVictory?: boolean })?.isVictory
   battleResult.value = isVictory
 }
 
-function onBattleExit(choice: string | null) {
+function onBattleExit(choice?: string | null) {
   const prevPlayerTeamIds = playerTeam.value?.map(w => w.id) ?? []
   const prevEnemyTeamIds  = enemyTeam.value?.map(w => w.id) ?? []
   // Emette un oggetto con tutti i dati necessari al parent per la chiamata API
@@ -343,11 +344,10 @@ const primaryBtn = {
     :isCpu="true"
     :isPvP="false"
     :forcedEnemyIndices="battle?.isRaid ? [0] : (battle?.defenderUid === 'CPU' && !battle?.defenderTeam?.length ? [0, 1, 2] : [])"
-    :battleCtx="{
+    :battleCtx="({
       nomeImperoAvversario: battleName,
-      sonoAttaccante: true,
       nomeImpero: profilo?.nomeImpero || 'Tu',
-    }"
+    } as any)"
     @confirm="onPickConfirm"
   />
 
@@ -357,8 +357,8 @@ const primaryBtn = {
     :style="{ position: 'fixed', top: `${topOffset}px`, left: 0, right: 0, bottom: 0, zIndex: 200, background: '#07051a' }"
   >
     <WaifuBattleArena
-      :playerTeam="playerTeam"
-      :enemyTeam="enemyTeam"
+      :playerTeam="(playerTeam as any)"
+      :enemyTeam="(enemyTeam as any)"
       :waifuCat="waifuCat"
       :battleCtx="{
         nomeImperoAvversario: battleName,

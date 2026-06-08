@@ -490,6 +490,10 @@ const sortCombo = computed({
 })
 
 const { t } = useI18n()
+
+function apriNegozio() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new window.Event('impero:apri-negozio'))
+}
 </script>
 
 <template>
@@ -657,7 +661,7 @@ const { t } = useI18n()
           <span :style="{ color: C.gold, fontFamily: FF.mono, fontWeight: 700 }">{{ tradeCountdownTxt }}</span>
           <br/>
           <button
-            @click="() => { if (typeof window !== 'undefined') window.dispatchEvent(new Event('impero:apri-negozio')) }"
+            @click="apriNegozio"
             :style="{
               marginTop: '8px',
               background: `${C.gold}1f`, border: `1px solid ${C.gold}55`,
@@ -1040,13 +1044,13 @@ const { t } = useI18n()
                 </div>
               </div>
               <div :style="{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }">
-                <CartaWaifu
-                  v-for="wId in (team as any).waifu"
-                  :key="wId"
-                  :waifu="waifuCat.find(x => x.id === wId)"
-                  v-if="waifuCat.find(x => x.id === wId)"
-                  dimensione="piccola"
-                />
+                <template v-for="wId in (team as any).waifu" :key="wId">
+                  <CartaWaifu
+                    v-if="waifuCat.find(x => x.id === wId)"
+                    :waifu="waifuCat.find(x => x.id === wId)!"
+                    dimensione="piccola"
+                  />
+                </template>
               </div>
             </UiPannelloOrnato>
           </div>

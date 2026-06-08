@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ProfiloUtente, Collezione } from '~/types/game'
+import type { CSSProperties } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 
@@ -100,9 +101,9 @@ async function caricaFeed() {
   error.value = null
   try {
     const token = await authStore.user.getIdToken()
-    const data = await $fetch<{ packs: Pack[] }>('/api/pesca/feed', {
+    const data = await ($fetch('/api/pesca/feed', {
       headers: { Authorization: `Bearer ${token}` },
-    })
+    })) as { packs: Pack[] }
     packs.value = data.packs ?? []
   } catch (e: any) {
     error.value = e?.message ?? 'Errore caricamento feed'
@@ -201,7 +202,7 @@ function aprePack(pack: Pack) {
 }
 
 // Helper stile carta — gestisce tutte le fasi incluso in-place reveal
-function cardStyle(uiIdx: number) {
+function cardStyle(uiIdx: number): CSSProperties {
   const isSel = selectedCardIndex.value === uiIdx && pickPhase.value === 'pick'
   const isChosen = inPlaceChosen.value === uiIdx
   const isFlipped = inPlaceFlipped.value.has(uiIdx)

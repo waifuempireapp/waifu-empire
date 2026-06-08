@@ -70,6 +70,7 @@
 <script setup lang="ts">
 // Trophy (Lucide) sostituisce l'emoji 🏆 nell'header della classifica
 import { Trophy } from 'lucide-vue-next'
+import type { CSSProperties } from 'vue'
 // Classifica mini mappa con kisses passivi, countdown e toggle espansione
 const authStore = useAuthStore()
 
@@ -162,9 +163,9 @@ const claim = async () => {
   claiming.value = true
   try {
     const token = await authStore.user?.getIdToken()
-    const data  = await $fetch<{ earned: number }>('/api/mappa/passive-kisses/claim', {
+    const data  = await ($fetch('/api/mappa/passive-kisses/claim', {
       method: 'POST', headers: { Authorization: `Bearer ${token}` },
-    })
+    })) as { earned: number }
     if (data.earned > 0) {
       const nowMs = Date.now()
       lastEarned.value = data.earned
@@ -188,7 +189,7 @@ const formatTime = (seconds: number): string => {
 }
 
 // ── Stili ─────────────────────────────────────────────────────────────────────
-const wrapperStyle = {
+const wrapperStyle: CSSProperties = {
   background: 'rgba(13,10,38,0.92)',
   borderTop: '1px solid rgba(174,156,255,0.12)',
   borderBottom: '1px solid rgba(174,156,255,0.12)',
@@ -196,30 +197,30 @@ const wrapperStyle = {
   borderRadius: '14px',
   overflow: 'hidden',
 }
-const headerStyle = {
+const headerStyle: CSSProperties = {
   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
   padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
 }
-const titleStyle = {
+const titleStyle: CSSProperties = {
   fontFamily: FF.label, fontSize: '16px', fontWeight: 700,
   letterSpacing: '0.18em', color: 'rgba(245,197,96,0.85)', textTransform: 'uppercase',
 }
-const badgeStyle = {
+const badgeStyle: CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: '4px',
   background: 'rgba(245,197,96,0.12)', border: '1px solid rgba(245,197,96,0.3)',
   borderRadius: '999px', padding: '2px 10px',
   fontFamily: FF.mono, fontSize: '12px', fontWeight: 700, color: '#f5c560',
 }
-const passiveRowStyle = {
+const passiveRowStyle: CSSProperties = {
   padding: '12px 16px',
   borderBottom: '1px solid rgba(174,156,255,0.08)',
   display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
 }
-const passiveSubStyle = {
+const passiveSubStyle: CSSProperties = {
   fontFamily: FF.label, fontSize: '11px', letterSpacing: '0.1em',
   color: 'rgba(241,235,255,0.4)', textTransform: 'uppercase', marginTop: '2px',
 }
-const claimBtnStyle = computed(() => ({
+const claimBtnStyle = computed((): CSSProperties => ({
   background: accumulated.value > 0 ? 'linear-gradient(135deg,rgba(245,197,96,0.22),rgba(245,197,96,0.1))' : 'rgba(255,255,255,0.04)',
   border: `1.5px solid ${accumulated.value > 0 ? 'rgba(245,197,96,0.55)' : 'rgba(174,156,255,0.1)'}`,
   borderRadius: '999px',
@@ -229,34 +230,34 @@ const claimBtnStyle = computed(() => ({
   fontWeight: 700, flexShrink: 0,
   boxShadow: accumulated.value > 0 ? '0 0 14px rgba(245,197,96,0.2)' : 'none',
 }))
-const rankTitleStyle = {
+const rankTitleStyle: CSSProperties = {
   fontFamily: FF.label, fontSize: '12px', letterSpacing: '0.22em',
   color: 'rgba(174,156,255,0.5)', textTransform: 'uppercase', marginBottom: '8px', fontWeight: 700,
 }
-const rankListStyle = {
+const rankListStyle: CSSProperties = {
   display: 'flex', flexDirection: 'column', gap: '3px',
 }
-const leaderRowStyle = (isMe: boolean) => ({
+const leaderRowStyle = (isMe: boolean): CSSProperties => ({
   display: 'flex', alignItems: 'center', gap: '10px',
   padding: '6px 8px', borderRadius: '9px',
   background: isMe ? 'rgba(245,197,96,0.07)' : 'transparent',
   border: isMe ? '1px solid rgba(245,197,96,0.18)' : '1px solid transparent',
 })
-const rankNumStyle = {
-  fontFamily: FF.mono, fontSize: '12px', color: 'rgba(174,156,255,0.55)', minWidth: '24px', textAlign: 'right' as const,
+const rankNumStyle: CSSProperties = {
+  fontFamily: FF.mono, fontSize: '12px', color: 'rgba(174,156,255,0.55)', minWidth: '24px', textAlign: 'right',
 }
-const dotStyle = (color: string, isMe: boolean) => ({
+const dotStyle = (color: string, isMe: boolean): CSSProperties => ({
   width: '10px', height: '10px', borderRadius: '50%',
   background: color || '#888', flexShrink: 0,
   border: isMe ? '1.5px solid #f5c560' : 'none',
   boxShadow: isMe ? `0 0 6px ${color}88` : 'none',
 })
-const leaderNameStyle = (isMe: boolean) => ({
+const leaderNameStyle = (isMe: boolean): CSSProperties => ({
   fontFamily: FF.label, fontSize: '14px', letterSpacing: '0.08em',
   color: isMe ? '#ffe9a8' : 'rgba(241,235,255,0.75)',
   flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
 })
-const leaderCountStyle = (isMe: boolean) => ({
+const leaderCountStyle = (isMe: boolean): CSSProperties => ({
   fontFamily: FF.mono, fontSize: '14px',
   color: isMe ? '#f5c560' : 'rgba(174,156,255,0.8)', fontWeight: 700,
 })

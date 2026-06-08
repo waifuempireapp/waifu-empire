@@ -20,6 +20,7 @@ import {
   computeCritChance,
 } from '~/utils/battleEngine'
 import { ikUrl } from '~/utils/imagekitUrl'
+import type { CSSProperties } from 'vue'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPI LOCALI
@@ -97,7 +98,7 @@ function getRarityStyle(rarita?: string) {
  * Definiti fuori dal setup perché non dipendono da props o state.
  */
 const C = {
-  root: (topOffset = 0, bottomOffset = 0): Record<string, unknown> => ({
+  root: (topOffset = 0, bottomOffset = 0): CSSProperties => ({
     position: 'fixed', top: `${topOffset}px`, left: 0, right: 0, bottom: `${bottomOffset}px`, zIndex: 40,
     background: 'linear-gradient(180deg,#080318 0%,#120528 50%,#080318 100%)',
     display: 'flex', flexDirection: 'column',
@@ -108,16 +109,16 @@ const C = {
     padding: '10px 14px 8px',
     borderBottom: '1px solid rgba(255,255,255,.07)',
     background: 'rgba(6,3,15,.55)',
-  } as Record<string, unknown>,
+  } as CSSProperties,
   body: {
     flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '10px 12px', WebkitOverflowScrolling: 'touch',
-  } as Record<string, unknown>,
-  section: { marginBottom: '16px' } as Record<string, unknown>,
+  } as CSSProperties,
+  section: { marginBottom: '16px' } as CSSProperties,
   label: {
     fontFamily: 'Orbitron', fontSize: '8px', letterSpacing: '2px',
     color: 'rgba(238,232,220,.4)', marginBottom: '6px',
-  } as Record<string, unknown>,
-  confirmBtn: (active: boolean): Record<string, unknown> => ({
+  } as CSSProperties,
+  confirmBtn: (active: boolean): CSSProperties => ({
     width: '100%', padding: '14px 0', marginTop: '10px',
     background: active ? 'linear-gradient(135deg,#00e676,#00b050)' : 'rgba(255,255,255,.06)',
     border: active ? 'none' : '1px solid rgba(255,255,255,.1)',
@@ -263,7 +264,7 @@ function buildTeam(roster: WaifuDoc[], picks: number[]): WaifuBattleStat[] {
       mosse_slot:   w.mosse_slot ?? null,
       _mosseData:   w._mosseData ?? null,
     }
-    return initBattleWaifu(w as Record<string, unknown>, collectionData) as WaifuBattleStat
+    return initBattleWaifu(w as Record<string, unknown>, collectionData) as unknown as WaifuBattleStat
   }).filter(Boolean) as WaifuBattleStat[]
 }
 
@@ -281,7 +282,7 @@ function handleP1Confirm() {
     // Modalità CPU: costruisce il team nemico con mosse da catalogo
     const enemyTeam: WaifuBattleStat[] = cpuPicks.value.map(w => {
       const cpuMoves = w._cpuMoves ?? null
-      const waifu = initBattleWaifu(w as Record<string, unknown>, { livello: (w.livello as number) ?? 1 }) as WaifuBattleStat
+      const waifu = initBattleWaifu(w as Record<string, unknown>, { livello: (w.livello as number) ?? 1 }) as unknown as WaifuBattleStat
       if (cpuMoves?.length) {
         return {
           ...waifu,
@@ -358,7 +359,7 @@ function getTypeColor(type?: string): string {
 }
 
 /** Colori del badge tipo elemento */
-function getTypeBadgeStyle(type?: string): Record<string, unknown> {
+function getTypeBadgeStyle(type?: string): CSSProperties {
   const c = (TYPE_COLORS[(type ?? 'Arcana')] ?? { border: '#555', bg: '#111' }) as { border: string; bg: string }
   return {
     background: `${c.bg}cc`, color: c.border,
@@ -383,7 +384,7 @@ function hpBarData(hp: number, maxHp: number) {
        Il giocatore ha meno di ROSTER_MIN waifu → errore + blocco draft.
        ───────────────────────────────────────────────────────────────── -->
   <div v-if="roster5P.length < ROSTER_MIN" :style="C.root(topOffset, bottomOffset)">
-    <div :style="{ ...C.header, textAlign: 'center' }">
+    <div :style="({ ...C.header, textAlign: 'center' } as CSSProperties)">
       <div style="font-family:Orbitron;font-size:13px;font-weight:700;color:#ff4d4d;letter-spacing:2px">
         ⚠ WAIFU INSUFFICIENTI
       </div>
@@ -407,7 +408,7 @@ function hpBarData(hp: number, maxHp: number) {
        ───────────────────────────────────────────────────────────────── -->
   <div
     v-else-if="pvpStep === 'reveal'"
-    :style="{ ...C.root(topOffset, bottomOffset), alignItems: 'center', justifyContent: 'center' }"
+    :style="({ ...C.root(topOffset, bottomOffset), alignItems: 'center', justifyContent: 'center' } as CSSProperties)"
   >
     <div
       v-if="terrSel"
@@ -516,7 +517,7 @@ function hpBarData(hp: number, maxHp: number) {
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">
           <template v-for="(w, idx) in activeRoster" :key="w.id ?? idx">
             <button
-              :style="{
+              :style="({
                 border: `2px solid ${cardBorderColor(getSlotNumber(idx) !== null, getRarityStyle(getWaifuRarita(w)))}`,
                 borderRadius: '12px',
                 background: cardBackground(getSlotNumber(idx) !== null, getRarityStyle(getWaifuRarita(w))),
@@ -528,7 +529,7 @@ function hpBarData(hp: number, maxHp: number) {
                 transition: 'border-color .15s, background .15s',
                 WebkitTapHighlightColor: 'transparent',
                 boxShadow: cardBoxShadow(getWaifuRarita(w), getRarityStyle(getWaifuRarita(w))),
-              }"
+              } as CSSProperties)"
               @click="handleTapRoster(idx)"
             >
               <!-- Badge slot numerico -->
@@ -544,21 +545,21 @@ function hpBarData(hp: number, maxHp: number) {
 
                 <!-- Thumbnail -->
                 <div
-                  :style="{
+                  :style="({
                     width: '52px', height: '78px', borderRadius: '8px', overflow: 'hidden',
                     background: 'rgba(255,255,255,.04)', flexShrink: 0,
                     border: `1.5px solid ${getRarityStyle(getWaifuRarita(w)).badge}66`,
                     position: 'relative',
-                  }"
+                  } as CSSProperties)"
                 >
                   <template v-if="getWaifuImgUrl(w)">
                     <img
                       :src="getWaifuImgUrl(w) ?? ''"
                       :alt="(w.nome ?? w.name ?? '') as string"
-                      :style="{
+                      :style="({
                         width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top',
                         filter: w._hotBlurred ? 'blur(5px)' : 'none',
-                      }"
+                      } as CSSProperties)"
                     />
                     <!-- Overlay HOT oscurata -->
                     <div
@@ -650,7 +651,7 @@ function hpBarData(hp: number, maxHp: number) {
           <template v-for="(w, idx) in opponentRoster" :key="w.id ?? idx">
             <!-- Card avversario: non selezionabile, stats nascoste -->
             <div
-              :style="{
+              :style="({
                 border: `2px solid ${getRarityStyle(getWaifuRarita(w)).badge}55`,
                 borderRadius: '12px',
                 background: getRarityStyle(getWaifuRarita(w)).cardBg,
@@ -660,26 +661,26 @@ function hpBarData(hp: number, maxHp: number) {
                 textAlign: 'left',
                 width: '100%',
                 boxShadow: cardBoxShadow(getWaifuRarita(w), getRarityStyle(getWaifuRarita(w))),
-              }"
+              } as CSSProperties)"
             >
               <div style="display:flex;gap:8px;align-items:flex-start">
                 <!-- Thumbnail avversario -->
                 <div
-                  :style="{
+                  :style="({
                     width: '52px', height: '78px', borderRadius: '8px', overflow: 'hidden',
                     background: 'rgba(255,255,255,.04)', flexShrink: 0,
                     border: `1.5px solid ${getRarityStyle(getWaifuRarita(w)).badge}66`,
                     position: 'relative',
-                  }"
+                  } as CSSProperties)"
                 >
                   <template v-if="getWaifuImgUrl(w)">
                     <img
                       :src="getWaifuImgUrl(w) ?? ''"
                       :alt="(w.nome ?? w.name ?? '') as string"
-                      :style="{
+                      :style="({
                         width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top',
                         filter: w._hotBlurred ? 'blur(5px)' : 'none',
-                      }"
+                      } as CSSProperties)"
                     />
                     <div
                       v-if="w._hotBlurred"

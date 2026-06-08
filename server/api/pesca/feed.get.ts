@@ -82,7 +82,7 @@ async function buildCatalogPools(): Promise<CatalogPools> {
   ])
   const allWaifu  = waifuSnap.docs.map(d => ({ id: d.id, ...d.data() }))
   const mossePool = mosseSnap.docs.map(d => ({ id: d.id, ...d.data() }))
-  const activeDrops = dropSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(d => {
+  const activeDrops = (dropSnap.docs.map(d => ({ id: d.id, ...d.data() } as any)) as Record<string, any>[]).filter(d => {
     if (d.inizio && new Date(d.inizio as string) > now) return false
     if (d.fine)   { const fine = new Date(d.fine as string); fine.setHours(23, 59, 59, 999); if (fine < now) return false }
     return true

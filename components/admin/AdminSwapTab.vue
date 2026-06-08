@@ -30,9 +30,9 @@ const showCloseConfirm = ref(false)
 onMounted(async () => {
   try {
     const token = await authStore.user?.getIdToken()
-    const cfgRes = await $fetch<any>('/api/swap/config', {
+    const cfgRes = await ($fetch('/api/swap/config', {
       headers: { Authorization: `Bearer ${token}` },
-    })
+    })) as any
     config.value = {
       rewardThreshold:  cfgRes.rewardThreshold  ?? 10,
       rewardKisses:     cfgRes.rewardKisses      ?? 50,
@@ -76,10 +76,10 @@ async function eseguiChiusura() {
   closeResult.value = null
   try {
     const token = await authStore.user?.getIdToken()
-    const data = await $fetch<any>('/api/admin/close-swap-ranking', {
+    const data = await ($fetch('/api/admin/close-swap-ranking', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
-    })
+    })) as any
     closeResult.value = data
     if (data.success) {
       emit('flash', `✅ Classifica chiusa! ${data.totalUsersUpdated} utenti aggiornati`, '')

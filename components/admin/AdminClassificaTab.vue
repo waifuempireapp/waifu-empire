@@ -67,11 +67,11 @@ async function azioneClassifica(action: 'winners' | 'close' | 'reset') {
 
   try {
     const token = await authStore.user?.getIdToken()
-    const data = await $fetch<any>('/api/admin/territory-ranking', {
+    const data = await ($fetch('/api/admin/territory-ranking', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: { action },
-    })
+    })) as any
     if (data.success) {
       if (action === 'winners') {
         winners.value = data.winners

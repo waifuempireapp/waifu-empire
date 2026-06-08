@@ -70,9 +70,9 @@ export default defineEventHandler(async (event) => {
           const premio = fasciaPremiPerPosizione(pos, premiConfig);
           const ref = adminDb.collection('users').doc(u.id);
           const updates: Record<string, any> = { punteggiSettimana: 0 };
-          if ((premio.energia ?? 0) > 0) { updates.energia = FieldValue.increment(premio.energia); assegnati++; }
-          if ((premio.bustineSfida ?? 0) > 0) updates.pacchettiSfida = FieldValue.increment(premio.bustineSfida);
-          if ((premio.kisses ?? 0) > 0) updates.kisses = FieldValue.increment(premio.kisses);
+          if ((premio.energia ?? 0) > 0) { updates.energia = FieldValue.increment((premio.energia as number) ?? 0); assegnati++; }
+          if ((premio.bustineSfida ?? 0) > 0) updates.pacchettiSfida = FieldValue.increment((premio.bustineSfida as number) ?? 0);
+          if ((premio.kisses ?? 0) > 0) updates.kisses = FieldValue.increment((premio.kisses as number) ?? 0);
           batch.update(ref, updates);
         }
         await batch.commit();

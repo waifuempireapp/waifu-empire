@@ -57,15 +57,15 @@ export default defineEventHandler(async (event) => {
     // Arricchisci i dati top5 con info catalogo
     let enrichedRanking = rankingData;
     if (rankingData?.top5?.length > 0) {
-      const waifuIds: string[] = rankingData.top5.map((w: any) => w.waifuId).filter(Boolean);
+      const waifuIds: string[] = (rankingData!.top5 as any[]).map((w: any) => w.waifuId).filter(Boolean);
       const waifuSnaps = await adminDb.getAll(...waifuIds.map((id: string) => adminDb.doc(`catalogo_waifu/${id}`)));
       const waifuMap: Record<string, any> = {};
       for (const s of waifuSnaps) {
         if (s.exists) waifuMap[s.id] = s.data();
       }
       enrichedRanking = {
-        ...rankingData,
-        top5: rankingData.top5
+        ...rankingData!,
+        top5: (rankingData!.top5 as any[])
           .map((item: any) => {
             const catalog = waifuMap[item.waifuId] ?? {};
             const isImmHard = catalog.rarita === 'immersivo' && catalog.asset_video_hard;

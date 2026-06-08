@@ -43,7 +43,6 @@ export default defineNuxtConfig({
       { code: 'es', name: 'Español',  file: 'es.json' },
       { code: 'ja', name: '日本語',    file: 'ja.json' },
     ],
-    lazy: false,
     langDir: 'locales/',
     // Disabilita rilevamento automatico lingua browser (bloccava il redirect auth)
     detectBrowserLanguage: false,

@@ -152,9 +152,9 @@ async function loadMapMission() {
   mapLoading.value = true
   try {
     const token = await authStore.user?.getIdToken()
-    const data  = await $fetch<{ mission: any; nextMissionIn?: number | null }>('/api/map-missions/current', {
+    const data  = await ($fetch('/api/map-missions/current', {
       headers: { Authorization: `Bearer ${token}` },
-    })
+    })) as { mission: any; nextMissionIn?: number | null }
     activeMission.value = data.mission ?? null
     if (activeMission.value?.endsAt) startMapCountdown()
     else if (data.nextMissionIn) startNextCountdown(data.nextMissionIn)

@@ -11,6 +11,7 @@
 
 import { TYPE_COLORS } from '~/utils/battleEngine'
 import { ikUrl } from '~/utils/imagekitUrl'
+import type { CSSProperties } from 'vue'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPI LOCALI
@@ -83,7 +84,7 @@ const myBs  = computed(() => props.myStarter?._battleStats  ?? props.myStarter?.
 const oppBs = computed(() => props.opponentStarter?._battleStats ?? props.opponentStarter?.battleStats ?? {})
 
 /** Stile badge tipo elemento */
-function getTypeBadgeStyle(type?: string): Record<string, unknown> {
+function getTypeBadgeStyle(type?: string): CSSProperties {
   const c = (TYPE_COLORS[(type ?? 'Arcana')] ?? { border: '#555', bg: '#111' }) as { border: string; bg: string }
   return {
     background: `${c.bg}cc`, color: c.border,
@@ -98,7 +99,7 @@ function getTypeBadgeStyle(type?: string): Record<string, unknown> {
 <template>
   <!-- Schermata di rivelazione fullscreen — sovrapposta all'header, z-index 45 -->
   <div
-    :style="{
+    :style="({
       position: 'fixed',
       top: `${topOffset}px`,
       left: 0, right: 0, bottom: 0,
@@ -111,7 +112,7 @@ function getTypeBadgeStyle(type?: string): Record<string, unknown> {
       justifyContent: 'center',
       padding: '24px',
       paddingBottom: 'env(safe-area-inset-bottom,0px)',
-    }"
+    } as CSSProperties)"
   >
     <!-- Sopratitolo -->
     <div style="font-family:Orbitron;font-size:11px;color:#f5a623;letter-spacing:3px;margin-bottom:10px">

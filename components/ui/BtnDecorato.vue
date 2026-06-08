@@ -4,6 +4,7 @@
   ============================================================ -->
 <script setup lang="ts">
 // Props: variante visiva, taglia, stato disabilitato e icona opzionale
+import type { CSSProperties } from 'vue'
 const props = withDefaults(defineProps<{
   variant?:  'primary' | 'secondary' | 'danger' | 'success'
   size?:     'sm' | 'md' | 'lg'
@@ -73,7 +74,7 @@ const s = computed(() => SIZES[props.size] ?? SIZES.md)
 const v = computed(() => VARIANTS[props.variant] ?? VARIANTS.primary)
 
 // Stile base del pulsante (background viene sovrascritta da hover via ref)
-const btnStyle = computed(() => ({
+const btnStyle = computed((): CSSProperties => ({
   position:        'relative',
   padding:         `${s.value.py}px ${s.value.px}px`,
   background:      v.value.bg,
@@ -136,7 +137,7 @@ function onClick(e: MouseEvent) {
     @mouseup="onMouseUp"
   >
     <!-- Riflesso obliquo decorativo -->
-    <span :style="{
+    <span :style="({
       position:    'absolute',
       inset:       0,
       borderRadius: 'inherit',
@@ -144,7 +145,7 @@ function onClick(e: MouseEvent) {
       opacity:     0.55,
       mixBlendMode: 'overlay',
       pointerEvents: 'none',
-    }" />
+    } as CSSProperties)" />
 
     <!-- Icona opzionale -->
     <span v-if="icon" :style="{ position: 'relative', fontSize: `${s.fs * 1.2}px`, lineHeight: 1 }">

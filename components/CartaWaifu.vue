@@ -11,7 +11,7 @@ import {
   Lock, Flame,
 } from 'lucide-vue-next'
 
-import { RARITA } from '~/utils/constants'
+import { RARITA, type RaritaKey } from '~/utils/constants'
 import { ARCHETIPI } from '~/utils/promptGenerator'
 import { ikUrl } from '~/utils/imagekitUrl'
 
@@ -120,7 +120,7 @@ const H     = computed(() => Math.round(330 * scale.value))
 const borderW = computed(() => dimensione.value === 'piccola' ? 2 : 3)
 const statSize = computed(() => Math.round(30 * scale.value))
 
-const rar = computed(() => RARITA[props.waifu.rarita] ?? RARITA.comune)
+const rar = computed(() => RARITA[props.waifu.rarita as RaritaKey] ?? RARITA.comune)
 const rb  = computed(() => RARITY_BORDER[props.waifu.rarita] ?? RARITY_BORDER.comune)
 
 const usaImmersiva = computed(() => {

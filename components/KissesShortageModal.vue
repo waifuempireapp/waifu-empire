@@ -48,21 +48,21 @@ async function renderPayPal() {
   ;(window as any).paypal.Buttons({
     style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'pay', height: 40 },
     createOrder: async () => {
-      const res = await $fetch<{ orderID: string }>('/api/paypal/create-order-kisses', {
+      const res = await ($fetch('/api/paypal/create-order-kisses', {
         method: 'POST',
         body: { taglioId: taglioScelto.value?.id },
-      })
+      })) as { orderID: string }
       return res.orderID
     },
     onApprove: async (data: any) => {
       stato.value = 'loading'
       try {
         const token = await authStore.user?.getIdToken()
-        const result = await $fetch<{ kissesAdded?: number }>('/api/paypal/capture-order-kisses', {
+        const result = await ($fetch('/api/paypal/capture-order-kisses', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           body: { orderID: data.orderID, uid: authStore.user?.uid, taglioId: taglioScelto.value?.id },
-        })
+        })) as { kissesAdded?: number }
         stato.value = 'success'
         const added = result.kissesAdded ?? taglioScelto.value?.kisses ?? 0
         emit('success', (props.currentKisses ?? 0) + added)

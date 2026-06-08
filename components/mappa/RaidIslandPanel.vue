@@ -55,9 +55,9 @@ function getPrize(pos: number, cfg: Record<string, any> = {}) {
 async function loadRaid() {
   try {
     const token = await authStore.user?.getIdToken()
-    const data = await $fetch<{ raid: any }>('/api/raid/current', {
+    const data = await ($fetch('/api/raid/current', {
       headers: { Authorization: `Bearer ${token}` },
-    })
+    })) as { raid: any }
     raid.value = data.raid
   } catch (e) {
     console.error('[RaidIslandPanel] caricamento raid:', e)
@@ -139,11 +139,11 @@ async function claimReward() {
   claiming.value = true
   try {
     const token = await authStore.user?.getIdToken()
-    const data = await $fetch<any>('/api/raid/claim', {
+    const data = await ($fetch('/api/raid/claim', {
       method:  'POST',
       headers: { Authorization: `Bearer ${token}` },
       body:    { eventId: raid.value.id },
-    })
+    })) as any
     if (data.success) {
       claimed.value = true
       alert(`✅ +${data.kisses} Kisses! Posizione #${data.position}${data.isTop3 ? ' · Waifu Raid sbloccata! 🎴' : ''}`)

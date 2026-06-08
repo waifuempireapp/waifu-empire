@@ -265,7 +265,7 @@ export async function listDropsAttivi(): Promise<Record<string, unknown>[]> {
   const snap = await getDocs(q)
   const now  = new Date()
   const data = snap.docs
-    .map(d => ({ id: d.id, ...d.data() }))
+    .map(d => ({ id: d.id, ...d.data() } as Record<string, any>))
     .filter(d => {
       if (d.inizio) { const i = new Date(d.inizio as string); if (i > now) return false }
       if (d.fine)   { const f = new Date(d.fine   as string); f.setHours(23,59,59,999); if (f < now) return false }
@@ -345,7 +345,7 @@ export async function getClassifica(limitN = 100): Promise<Record<string, unknow
   const db   = getDb()
   const q    = query(collection(db, 'users'), limit(200))
   const snap = await getDocs(q)
-  const utenti = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  const utenti = snap.docs.map(d => ({ id: d.id, ...d.data() } as Record<string, any>))
   const conScore = utenti.map(u => {
     const pixelCount = (u.pixelCount as number) ?? 0
     return {
@@ -838,7 +838,7 @@ export async function getClassificaSettimanale(limitN = 200): Promise<Record<str
   const q    = query(collection(db, 'users'), limit(500))
   const snap = await getDocs(q)
   const utenti = snap.docs.map(d => {
-    const data = d.data()
+    const data = d.data() as Record<string, any>
     return {
       id: d.id, ...data,
       _nomeDisplay: data.nomeImpero || data.nome || (data.email as string)?.split('@')[0] || 'Giocatore',
@@ -849,7 +849,7 @@ export async function getClassificaSettimanale(limitN = 200): Promise<Record<str
   utenti.sort((a, b) => {
     if (b._punteggi !== a._punteggi) return b._punteggi - a._punteggi
     if (b._territori !== a._territori) return b._territori - a._territori
-    return ((a.creato as any)?.toMillis?.() ?? 0) - ((b.creato as any)?.toMillis?.() ?? 0)
+    return (((a as any).creato as any)?.toMillis?.() ?? 0) - (((b as any).creato as any)?.toMillis?.() ?? 0)
   })
   return utenti.slice(0, limitN)
 }

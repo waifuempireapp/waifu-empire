@@ -124,9 +124,9 @@ const carica = async () => {
   errore.value = null
   try {
     const token = await authStore.user?.getIdToken()
-    const data = await $fetch<{ trades: any[]; error?: string }>('/api/trades/list', {
+    const data = await ($fetch('/api/trades/list', {
       headers: { Authorization: `Bearer ${token}` },
-    })
+    })) as { trades: any[]; error?: string }
     const fetchedTrades: any[] = (data as any).trades || []
     trades.value = fetchedTrades
 
@@ -427,11 +427,11 @@ const confirmConferma = async () => {
   confirmErrMsg.value = ''
   try {
     const token = await authStore.user?.getIdToken()
-    const data = await $fetch<any>('/api/trades/confirm', {
+    const data = await ($fetch('/api/trades/confirm', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: { tradeId: confirmTrade.value.id },
-    })
+    })) as any
     const received = (data as any).receivedByB || confirmFromCatalog.value || {
       id: confirmTrade.value.fromWaifuId,
       nome: confirmFromNome.value,
