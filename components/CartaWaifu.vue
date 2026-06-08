@@ -327,15 +327,15 @@ function onMouseLeave(e: MouseEvent) {
 
       <!-- Badge HOT -->
       <div v-if="isHot && !censurata" :style="{
-        position: 'absolute', top: `${Math.round(6 * scale)}px`, left: `${Math.round(6 * scale)}px`,
+        position: 'absolute', top: `${Math.round(6 * scale)}px`, right: `${Math.round(6 * scale)}px`,
         background: 'linear-gradient(135deg, rgba(255,69,0,0.92), rgba(255,140,0,0.92))',
         color: '#fff',
         fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
-        fontSize: `${Math.max(7, Math.round(8 * scale))}px`,
+        fontSize: `${Math.max(8, Math.round(10 * scale))}px`,
         fontWeight: '800', letterSpacing: '0.12em',
-        padding: `${Math.round(2 * scale)}px ${Math.round(7 * scale)}px`,
+        padding: `${Math.round(3 * scale)}px ${Math.round(8 * scale)}px`,
         borderRadius: '999px',
-        border: '1px solid rgba(255,255,255,0.4)',
+        border: '1.5px solid rgba(255,255,255,0.45)',
         boxShadow: '0 0 10px rgba(255,69,0,0.65)',
         pointerEvents: 'none', zIndex: '12', textTransform: 'uppercase',
       }"><Flame :size="12" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:3px;" />HOT</div>

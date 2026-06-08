@@ -587,7 +587,7 @@ function apriNegozio() {
       <div v-if="tabSub === 'waifu'">
 
         <!-- ── Barra filtri waifu — 2 select 50/50 ── -->
-        <div :style="{ marginBottom: '14px' }">
+        <div :style="{ marginBottom: '30px' }">
           <!-- Ricerca -->
           <div :style="{ display:'flex', alignItems:'center', gap:'8px', padding:'10px 14px', background:'rgba(7,5,26,0.8)', border:`1px solid ${C.inkLine}`, borderRadius:'12px', marginBottom:'10px' }">
             <Search :size="14" stroke-width="1.5" style="color:rgba(241,235,255,0.4);flex-shrink:0;" />
@@ -674,14 +674,14 @@ function apriNegozio() {
         </div>
 
         <!-- Griglia waifu 3 colonne: zoom riduce layout + dimensione visiva -->
-        <div style="display:flex;flex-wrap:wrap;gap:3px;">
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:16px;">
           <div
             v-for="({ id, dati, w }, idx) in waifuEntries.slice(0, visibiliWaifu)"
             :key="id"
             class="card-fade-up card-clickable collection-card-item"
-            :style="{ width:'calc(33.33% - 3px)', display:'flex', flexDirection:'column', alignItems:'center', animationDelay:`${idx * 30}ms` }"
+            :style="{ width:'calc(33.33% - 5px)', display:'flex', flexDirection:'column', alignItems:'center', animationDelay:`${idx * 30}ms` }"
           >
-            <div style="zoom:0.74;flex-shrink:0;position:relative;">
+            <div style="zoom:0.82;flex-shrink:0;position:relative;">
             <CartaWaifu
               :waifu="w"
               :datiCollezione="dati"
@@ -691,16 +691,26 @@ function apriNegozio() {
               :outfitCatalogo="outfitCat"
               :poseCatalogo="poseCat"
               :equip="collezione.equipaggiamento?.[id]"
-              :isHot="w.hot === true"
+              :isHot="false"
               :censurata="w.hot === true && !profilo?.hardPass"
             />
-            <!-- Chip LV — bottom-right della carta; font compensato per zoom:0.74 → 16px = ~12px visivi -->
+            <!-- Chip HOT — top-right fuori dal componente carta (overflow:visible del wrapper) -->
+            <div v-if="w.hot === true && (profilo?.hardPass || false)" :style="{
+              position:'absolute', top:'-8px', right:'-8px', zIndex:25,
+              background:'linear-gradient(135deg,rgba(255,69,0,0.92),rgba(255,140,0,0.92))',
+              color:'#fff', fontFamily:FF.label, fontSize:'16px', fontWeight:800,
+              letterSpacing:'0.12em', padding:'3px 10px', borderRadius:'999px',
+              border:'1.5px solid rgba(255,255,255,0.45)',
+              boxShadow:'0 0 10px rgba(255,69,0,0.65)', pointerEvents:'none',
+              textTransform:'uppercase', whiteSpace:'nowrap',
+            }">🔥 HOT</div>
+            <!-- Chip LV — bottom-right della carta; font compensato per zoom:0.82 -->
             <div :style="{
               position:'absolute', bottom:'10px', right:'6px', zIndex:20,
               background:'rgba(4,2,14,0.88)',
               border:`2px solid ${dati.levelup_pending ? C.ok : C.gold}bb`,
-              borderRadius:'999px', padding:'3px 12px',
-              fontFamily:FF.label, fontSize:'16px', fontWeight:800,
+              borderRadius:'999px', padding:'4px 13px',
+              fontFamily:FF.label, fontSize:'20px', fontWeight:800,
               color: dati.levelup_pending ? C.ok : C.gold,
               letterSpacing:'0.04em', whiteSpace:'nowrap',
               boxShadow: dati.levelup_pending ? `0 0 10px ${C.ok}55` : 'none',
