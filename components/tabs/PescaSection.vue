@@ -377,6 +377,15 @@ async function chiudiRiveal() {
   }
   mostraNotif('Carta aggiunta alla collezione! 🎉', '#00e676')
   emit('updateCollezione', null)
+  // Ricarica il feed dal server per avere la lista aggiornata — NON chiude PescaSection
+  caricaFeed()
+}
+
+// Click su carta durante il pick: seleziona e pesca automaticamente senza bottone
+function onPickCard(idx: number) {
+  if (pickPhase.value !== 'pick' || busy.value) return
+  selectedCardIndex.value = idx
+  confermaScelta()
 }
 
 async function onRivelazioneFine() {
@@ -434,7 +443,8 @@ onUnmounted(() => {
       display:flex; align-items:center; justify-content:space-between;
     ">
       <div style="display:flex;align-items:center;gap:14px;">
-        <button style="background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;"
+        <!-- ← torna indietro solo dalla lista drop, non dalla schermata di picking -->
+        <button v-if="!selectedPack" style="background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;"
           @click="$emit('indietro')">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
             <path d="M14 5L8 11L14 17" stroke="rgba(255,255,255,0.65)" stroke-width="2" stroke-linecap="round"
@@ -447,7 +457,7 @@ onUnmounted(() => {
               style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:#fff;letter-spacing:0.02em;">WAIFU
             </span>
             <span
-              style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:rgb(255, 77, 158);letter-spacing:0.02em;">DROP</span>
+              style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:rgb(255, 77, 158);letter-spacing:0.02em;">PESCA</span>
           </div>
         </div>
       </div>
@@ -508,7 +518,7 @@ onUnmounted(() => {
               <div style="display:flex; justify-content:center; gap:10px; transform-style:preserve-3d;">
                 <div
                   :style="{ ...cardStyle(0), width: 'calc((100% - 20px) / 3)', flexShrink: '0' }"
-                  @click="pickPhase === 'pick' && (selectedCardIndex = (selectedCardIndex === 0 ? null : 0))">
+                  @click="onPickCard(0)">
                   <template v-if="pickPhase === 'reveal'">
                     <img v-if="selectedPack.cards?.[0]?.immagine" :src="selectedPack.cards[0].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
                     <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
@@ -531,7 +541,7 @@ onUnmounted(() => {
                 </div>
                 <div
                   :style="{ ...cardStyle(1), width: 'calc((100% - 20px) / 3)', flexShrink: '0' }"
-                  @click="pickPhase === 'pick' && (selectedCardIndex = (selectedCardIndex === 1 ? null : 1))">
+                  @click="onPickCard(1)">
                   <template v-if="pickPhase === 'reveal'">
                     <img v-if="selectedPack.cards?.[1]?.immagine" :src="selectedPack.cards[1].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
                     <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
@@ -556,7 +566,7 @@ onUnmounted(() => {
 
               <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; transform-style:preserve-3d;">
                   <div :style="cardStyle(2)"
-                    @click="pickPhase === 'pick' && (selectedCardIndex = (selectedCardIndex === 2 ? null : 2))">
+                    @click="onPickCard(2)">
                   <template v-if="pickPhase === 'reveal'">
                     <img v-if="selectedPack.cards?.[2]?.immagine" :src="selectedPack.cards[2].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
                     <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
@@ -578,7 +588,7 @@ onUnmounted(() => {
                   </template>
                   </div>
                   <div :style="cardStyle(3)"
-                    @click="pickPhase === 'pick' && (selectedCardIndex = (selectedCardIndex === 3 ? null : 3))">
+                    @click="onPickCard(3)">
                   <template v-if="pickPhase === 'reveal'">
                     <img v-if="selectedPack.cards?.[3]?.immagine" :src="selectedPack.cards[3].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
                     <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
@@ -600,7 +610,7 @@ onUnmounted(() => {
                   </template>
                   </div>
                   <div :style="cardStyle(4)"
-                    @click="pickPhase === 'pick' && (selectedCardIndex = (selectedCardIndex === 4 ? null : 4))">
+                    @click="onPickCard(4)">
                   <template v-if="pickPhase === 'reveal'">
                     <img v-if="selectedPack.cards?.[4]?.immagine" :src="selectedPack.cards[4].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
                     <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
@@ -624,41 +634,21 @@ onUnmounted(() => {
               </div>
 
             </div>
-          </div>
-          <div style="flex-shrink:0; padding:10px 20px 0; display:flex; gap:10px; justify-content:center;">
-            <button
-              style="background:none;border:1px solid rgba(255,255,255,0.15);border-radius:999px;color:rgba(238,232,220,0.45);font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;padding:13px 28px;cursor:pointer;letter-spacing:0.12em;"
-              @click="selectedPack = null; selectedCardIndex = null; shuffledOrder = []; pickPhase = 'reveal';">ANNULLA</button>
 
-            <button v-if="pickPhase === 'pick'" :disabled="selectedCardIndex === null || busy" :style="{
-              background: selectedCardIndex !== null ? 'linear-gradient(135deg,rgba(255,77,158,0.25),rgba(255,77,158,0.12))' : 'rgba(255,255,255,0.03)',
-              border: `2px solid ${selectedCardIndex !== null ? 'rgba(255,77,158,0.6)' : 'rgba(255,255,255,0.08)'}`,
-              borderRadius: '999px', padding: '13px 28px',
-              color: selectedCardIndex !== null ? '#ff4d9e' : 'rgba(255,255,255,0.2)',
-              fontFamily: 'var(--ff-label,\'Saira Condensed\',sans-serif)', fontSize: '13px', fontWeight: 700,
-              letterSpacing: '0.14em', cursor: selectedCardIndex !== null && !busy ? 'pointer' : 'not-allowed',
-              display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s',
-              boxShadow: selectedCardIndex !== null ? '0 0 20px rgba(255,77,158,0.3)' : 'none',
-            }" @click="confermaScelta">
-              <KissesIcon :size="16" />
-              {{ busy ? 'PESCA IN CORSO…' : `PESCA (${KISSES_COST})` }}
-            </button>
+            <!-- CONTINUA — subito sotto le carte, centrato, visibile solo dopo il reveal -->
+            <div v-if="pickPhase === 'revealed'" style="display:flex;justify-content:center;margin-top:28px;padding:0 16px;">
+              <button
+                style="background:linear-gradient(135deg,rgba(0,230,118,0.22),rgba(0,200,83,0.12));border:2px solid rgba(0,230,118,0.55);border-radius:999px;padding:14px 48px;color:#00e676;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:15px;font-weight:800;letter-spacing:0.16em;cursor:pointer;transition:all 0.2s;box-shadow:0 0 24px rgba(0,230,118,0.3);"
+                @click="chiudiRiveal">
+                CONTINUA →
+              </button>
+            </div>
 
-            <!-- Fase revealing: nessun bottone, attendere -->
-            <div v-else-if="pickPhase === 'revealing'"
-              style="min-height:44px;display:flex;align-items:center;justify-content:center;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;color:rgba(255,255,255,0.2);letter-spacing:0.2em;">
+            <!-- Indicatore "in corso" durante il revealing -->
+            <div v-else-if="pickPhase === 'revealing'" style="display:flex;justify-content:center;margin-top:28px;height:52px;align-items:center;">
+              <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;color:rgba(255,255,255,0.25);letter-spacing:0.2em;text-transform:uppercase;">Rivelando…</span>
             </div>
-            <!-- Fase revealed: CONTINUA -->
-            <button v-else-if="pickPhase === 'revealed'"
-              style="background:linear-gradient(135deg,rgba(0,230,118,0.22),rgba(0,200,83,0.12));border:2px solid rgba(0,230,118,0.55);border-radius:999px;padding:13px 36px;color:#00e676;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:14px;font-weight:800;letter-spacing:0.16em;cursor:pointer;transition:all 0.2s;box-shadow:0 0 24px rgba(0,230,118,0.3);"
-              @click="chiudiRiveal">
-              CONTINUA →
-            </button>
-            <!-- Altre fasi -->
-            <div v-else
-              style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;color:rgba(255,255,255,0.22);letter-spacing:0.2em;display:flex;align-items:center;min-height:44px;text-transform:uppercase;">
-              {{ pickPhase === 'shuffle' ? '⟳' : '' }}
-            </div>
+
           </div>
         </div>
       </Teleport>

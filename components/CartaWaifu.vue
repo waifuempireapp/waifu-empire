@@ -2,6 +2,15 @@
 // CartaWaifu.vue — Carta premium full-art per le waifu del gioco.
 // Gestisce immagine statica/immersiva, video, overlay stats, badge Hot,
 // censura (Pass Hard), foil rarità e angoli decorativi.
+
+// Icone Lucide — sostituiscono emoji e simboli unicode negli archetip, badge HOT, lock e stelle
+import type { Component } from 'vue'
+import {
+  Swords, Sparkles, Crown, Pen, Sun, Star, Building2, Zap, Gem, Diamond,
+  Eye, Skull, Flower2, Moon, Command, Heart, Leaf, Shield,
+  Lock, Flame,
+} from 'lucide-vue-next'
+
 import { RARITA } from '~/utils/constants'
 import { ARCHETIPI } from '~/utils/promptGenerator'
 import { ikUrl } from '~/utils/imagekitUrl'
@@ -75,28 +84,29 @@ const RARITY_BORDER: Record<string, { outer: string; inner: string; glow: string
   immersivo:   { outer: '#ff7eb6', inner: '#ffc3da', glow: 'rgba(255,126,182,0.7)',  bg: 'linear-gradient(160deg, #4f1245 0%, #1e0420 100%)' },
 }
 
-// ── Simboli archetipo ────────────────────────────────────────
-const ARCHETIPO_SIMBOLI: Record<string, { sym: string; color: string }> = {
-  guerriera_stoica:    { sym: '⚔',  color: '#ff8b6f' },
-  maga_timida:         { sym: '✦',  color: '#c5a4ff' },
-  regina_imperiosa:    { sym: '♛',  color: '#ffd680' },
-  studiosa_pensosa:    { sym: '✎',  color: '#9fcaff' },
-  viaggiatrice_solare: { sym: '☀',  color: '#ffb86b' },
-  idol_radiante:       { sym: '★',  color: '#ff9ec6' },
-  sacerdotessa_etera:  { sym: '⛩',  color: '#94f0e3' },
-  spadaccina_audace:   { sym: '⚡',  color: '#ffe07a' },
-  principessa_drago:   { sym: '◈',  color: '#ff7a7a' },
-  ladra_furtiva:       { sym: '◇',  color: '#8af0d8' },
-  oracolo_mistico:     { sym: '◉',  color: '#b89dff' },
-  pirata_temeraria:    { sym: '☠',  color: '#9cb0c7' },
-  fata_giocosa:        { sym: '✿',  color: '#b9ed7a' },
-  ninja_letale:        { sym: '◆',  color: '#8da4c0' },
-  dea_celestiale:      { sym: '☽',  color: '#ffe7a8' },
-  cyber_hacker:        { sym: '⌘',  color: '#7af0ff' },
-  tsundere_classica:   { sym: '❤',  color: '#ff85a8' },
-  demone_seducente:    { sym: '♦',  color: '#ff6a8e' },
-  sciamana_natura:     { sym: '✼',  color: '#7be09b' },
-  samurai_onorata:     { sym: '⛧',  color: '#c8c0b0' },
+// ── Simboli archetipo — icone Lucide invece di caratteri Unicode ─────────────
+// Nota: ⛩→Building2 (tempio), ⛧→Shield (nessun pentagramma in Lucide)
+const ARCHETIPO_SIMBOLI: Record<string, { icon: Component; color: string }> = {
+  guerriera_stoica:    { icon: Swords,    color: '#ff8b6f' },
+  maga_timida:         { icon: Sparkles,  color: '#c5a4ff' },
+  regina_imperiosa:    { icon: Crown,     color: '#ffd680' },
+  studiosa_pensosa:    { icon: Pen,       color: '#9fcaff' },
+  viaggiatrice_solare: { icon: Sun,       color: '#ffb86b' },
+  idol_radiante:       { icon: Star,      color: '#ff9ec6' },
+  sacerdotessa_etera:  { icon: Building2, color: '#94f0e3' },
+  spadaccina_audace:   { icon: Zap,       color: '#ffe07a' },
+  principessa_drago:   { icon: Gem,       color: '#ff7a7a' },
+  ladra_furtiva:       { icon: Diamond,   color: '#8af0d8' },
+  oracolo_mistico:     { icon: Eye,       color: '#b89dff' },
+  pirata_temeraria:    { icon: Skull,     color: '#9cb0c7' },
+  fata_giocosa:        { icon: Flower2,   color: '#b9ed7a' },
+  ninja_letale:        { icon: Diamond,   color: '#8da4c0' },
+  dea_celestiale:      { icon: Moon,      color: '#ffe7a8' },
+  cyber_hacker:        { icon: Command,   color: '#7af0ff' },
+  tsundere_classica:   { icon: Heart,     color: '#ff85a8' },
+  demone_seducente:    { icon: Diamond,   color: '#ff6a8e' },
+  sciamana_natura:     { icon: Leaf,      color: '#7be09b' },
+  samurai_onorata:     { icon: Shield,    color: '#c8c0b0' },
 }
 
 // Mappa id → archetipo
@@ -146,7 +156,7 @@ const hasCombatStats = computed(() => hp.value != null || vel.value != null || c
 // Simbolo archetipo corrente
 const archetipoSym = computed(() => {
   if (!props.waifu.archetipo) return null
-  return ARCHETIPO_SIMBOLI[props.waifu.archetipo] ?? { sym: '◈', color: rb.value.inner }
+  return ARCHETIPO_SIMBOLI[props.waifu.archetipo] ?? { icon: Gem, color: rb.value.inner }
 })
 
 // Dimensioni angoli decorativi
@@ -261,7 +271,7 @@ function onMouseLeave(e: MouseEvent) {
           display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center', gap: '8px',
         }">
-          <span :style="{ fontSize: `${Math.round(32 * scale)}px`, filter: 'drop-shadow(0 0 8px rgba(255,140,0,0.8))' }">🔒</span>
+          <Lock :size="Math.round(32 * scale)" stroke-width="1.5" style="filter:drop-shadow(0 0 8px rgba(255,140,0,0.8));color:rgba(255,140,0,0.9);" />
           <div :style="{
             fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
             fontSize: `${Math.max(7, Math.round(8 * scale))}px`,
@@ -328,7 +338,7 @@ function onMouseLeave(e: MouseEvent) {
         border: '1px solid rgba(255,255,255,0.4)',
         boxShadow: '0 0 10px rgba(255,69,0,0.65)',
         pointerEvents: 'none', zIndex: '12', textTransform: 'uppercase',
-      }">🔥 HOT</div>
+      }"><Flame :size="12" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:3px;" />HOT</div>
     </div>
 
     <!-- VIDEO IMMERSIVO -->
@@ -403,11 +413,10 @@ function onMouseLeave(e: MouseEvent) {
             background: `radial-gradient(circle at 35% 30%, ${archetipoSym.color}55, rgba(7,5,26,0.85))`,
             border: `1.5px solid ${archetipoSym.color}aa`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: `${Math.round(26 * scale * 0.46)}px`,
             color: archetipoSym.color,
             boxShadow: `0 0 8px ${archetipoSym.color}66, inset 0 0 6px rgba(0,0,0,0.3)`,
             flexShrink: '0',
-          }">{{ archetipoSym.sym }}</div>
+          }"><component :is="archetipoSym.icon" :size="Math.round(12 * scale)" stroke-width="1.5" /></div>
         </div>
       </div>
 
@@ -592,7 +601,7 @@ function onMouseLeave(e: MouseEvent) {
               textShadow: '0 0 6px #a78bfa', letterSpacing: '-0.02em',
             }">{{ expEff }}</div>
           </div>
-          <div :style="{ fontSize: `${Math.max(8, statSize * 0.30)}px`, lineHeight: '1', color: '#a78bfa', filter: 'drop-shadow(0 0 3px #a78bfa)' }">⭐</div>
+          <Star :size="Math.max(8, Math.round(statSize * 0.30))" stroke-width="1.5" style="color:#a78bfa;filter:drop-shadow(0 0 3px #a78bfa);flex-shrink:0;" />
         </div>
       </div>
     </div>

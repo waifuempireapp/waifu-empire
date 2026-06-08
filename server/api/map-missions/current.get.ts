@@ -2,8 +2,9 @@
 import { defineEventHandler, getHeader, createError } from 'h3';
 import { getAdminAuth, getAdminDb } from '../../utils/firebaseAdmin';
 
-const MISSION_DURATION_MS = 30 * 60 * 1000;  // 30 minuti
-const MISSION_INTERVAL_MS = 2 * 60 * 60 * 1000; // ogni 2 ore
+// La missione dura l'intero ciclo di 2h → sempre una missione attiva
+const MISSION_INTERVAL_MS = 2 * 60 * 60 * 1000; // ciclo 2 ore
+const MISSION_DURATION_MS = MISSION_INTERVAL_MS; // durata = ciclo intero
 
 async function findAdjacentPixels(): Promise<any[] | null> {
   const adminDb = getAdminDb();

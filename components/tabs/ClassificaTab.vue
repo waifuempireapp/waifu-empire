@@ -5,6 +5,8 @@
   WaifuRankingList.
   ============================================================ -->
 <script setup lang="ts">
+// Icone Lucide — Trophy per il podio, Map per territori, Gift per premi
+import { Trophy, Map as MapIcon, Gift } from 'lucide-vue-next'
 import { getClassifica, premioPerPosizione } from '~/utils/firestoreService'
 
 // Prop: utente Firebase autenticato
@@ -157,7 +159,7 @@ const premiRiga2 = [
           fontFamily: FF.label, fontSize: '10px', color: C.goldL,
           letterSpacing: '0.28em', marginBottom: '10px', fontWeight: 700,
           textTransform: 'uppercase',
-        }">🎁 Premi settimanali</div>
+        }"><Gift :size="14" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:4px;" />Premi settimanali</div>
 
         <!-- Riga 1: 1°, 2°, 3° posto -->
         <div :style="{ display: 'flex', gap: '8px', marginBottom: '8px' }">
@@ -309,7 +311,7 @@ const premiRiga2 = [
               letterSpacing: '0.22em', marginTop: '4px',
               textTransform: 'uppercase', fontWeight: 600,
             }">
-              🗺️ {{ classifica[idx]._territori }}
+              {{ classifica[idx]._territori }}
               {{ classifica[idx]._territori === 1 ? 'territorio' : 'territori' }}
             </div>
           </div>
@@ -412,7 +414,7 @@ const premiRiga2 = [
                 v-else
                 :style="{
                   fontFamily: FF.mono, fontSize: '11px', fontWeight: (user && u.id === user.uid) ? 800 : 600,
-                  color: i < 3 ? podiumColors[i] : (user && u.id === user.uid) ? C.gold : 'rgba(241,235,255,0.4)',
+                  color: i <= 2 ? podiumColors[i] : (user && u.id === user.uid) ? C.gold : 'rgba(241,235,255,0.4)',
                 }"
               >#{{ i + 1 }}</span>
             </div>
@@ -421,8 +423,8 @@ const premiRiga2 = [
             <div :style="{ flex: 1, minWidth: 0 }">
               <div :style="{
                 fontFamily: FF.display, fontSize: '11px',
-                color: i < 3 ? podiumColors[i] : (user && u.id === user.uid) ? C.gold : 'rgba(241,235,255,0.85)',
-                fontWeight: (user && u.id === user.uid) || i < 3 ? 700 : 500,
+                color: i <= 2 ? podiumColors[i] : (user && u.id === user.uid) ? C.gold : 'rgba(241,235,255,0.85)',
+                fontWeight: (user && u.id === user.uid) || i <= 2 ? 700 : 500,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }">
                 {{ (u._nomeDisplay || u.nomeImpero || u.nome || u.email?.split('@')[0] || 'Giocatore').slice(0, 22) }}
@@ -440,8 +442,10 @@ const premiRiga2 = [
             <div :style="{
               minWidth: '60px', textAlign: 'center',
               fontFamily: FF.mono, fontSize: '11px', fontWeight: 600,
-              color: i < 3 ? podiumColors[i] : (user && u.id === user.uid) ? C.gold : 'rgba(241,235,255,0.55)',
-            }">🗺️ {{ u._territori }}</div>
+              color: i <= 2 ? podiumColors[i] : (user && u.id === user.uid) ? C.gold : 'rgba(241,235,255,0.55)',
+            }">
+              <MapIcon :size="12" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:3px;" />{{ u._territori }}
+            </div>
 
             <!-- Premio per posizione -->
             <div :style="{
@@ -479,7 +483,7 @@ const premiRiga2 = [
           v-if="classifica.length === 0"
           :style="{ padding: '40px', textAlign: 'center' }"
         >
-          <div :style="{ fontSize: '38px', marginBottom: '8px', filter: `drop-shadow(0 0 12px ${C.gold}88)` }">🏆</div>
+          <Trophy :size="38" stroke-width="1" style="margin-bottom:8px;filter:drop-shadow(0 0 12px rgba(245,197,96,0.5));color:#f5c560;" />
           <div :style="{
             fontFamily: FF.label, fontSize: '10px', color: C.gold,
             letterSpacing: '0.24em', marginBottom: '6px',

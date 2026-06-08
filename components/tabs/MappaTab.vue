@@ -806,31 +806,7 @@ async function onTerritoryClick(territoryId: string) {
         </div>
       </div>
 
-      <!-- ── Sezione Missioni Mappa — sempre visibile ─────────────────── -->
-      <!-- Mostra missione attiva o countdown alla prossima -->
-      <div
-        @click="activeMission ? showMissionDetail = true : null"
-        :style="{
-          margin: '10px 16px 6px', padding: '14px 18px',
-          background: activeMission && missionPixelSet.size > 0 ? 'rgba(232,121,249,0.1)' : 'rgba(232,121,249,0.04)',
-          border: `1.5px solid ${activeMission && missionPixelSet.size > 0 ? 'rgba(232,121,249,0.4)' : 'rgba(232,121,249,0.15)'}`,
-          borderRadius: '14px',
-          cursor: activeMission ? 'pointer' : 'default',
-          display: 'flex', alignItems: 'center', gap: '14px',
-        }"
-      >
-        <span :style="{ fontSize: '22px' }">🎯</span>
-        <div :style="{ flex: 1 }">
-          <div :style="{ fontFamily: FF.label, fontSize: '15px', fontWeight: 700, letterSpacing: '0.08em', marginBottom: '2px', color: activeMission && missionPixelSet.size > 0 ? '#e879f9' : 'rgba(232,121,249,0.45)' }">
-            {{ activeMission && missionPixelSet.size > 0 ? 'Missioni Mappa in corso' : 'Missioni Mappa' }}
-          </div>
-          <div :style="{ fontFamily: FF.mono, fontSize: '13px', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'rgba(232,121,249,0.65)' }">
-            <template v-if="activeMission && missionCountdown">· ancora {{ missionCountdown }}</template>
-            <template v-else>Nessuna missione attiva</template>
-          </div>
-        </div>
-        <span v-if="activeMission" :style="{ fontFamily: FF.display, fontSize: '18px', color: 'rgba(232,121,249,0.6)' }">→</span>
-      </div>
+      <!-- Sezione Missioni Mappa rimossa — le missioni sono accessibili dal FAB Target -->
 
       <!-- Mini leaderboard territori + kisses passivi -->
       <MiniLeaderboard
@@ -901,6 +877,7 @@ async function onTerritoryClick(territoryId: string) {
         :pixel="selectedPixel"
         :collezione="collezione as any"
         :waifu-cat="waifuCat"
+        :mosse-cat="mosseCat"
         @conferma="(team) => handleAttack(team)"
         @chiudi="showBattle = false"
       />
@@ -911,6 +888,7 @@ async function onTerritoryClick(territoryId: string) {
         :pixel="null"
         :collezione="collezione as any"
         :waifu-cat="waifuCat"
+        :mosse-cat="mosseCat"
         @conferma="(team) => { raidAttackMode = false; handleRaidAttack(team) }"
         @chiudi="showBattle = false; raidAttackMode = false"
       />

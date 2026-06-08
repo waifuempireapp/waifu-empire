@@ -6,6 +6,8 @@
   - Pills sx: kisses + energia | Dx: admin, campanella, exit
   ============================================================ -->
 <script setup lang="ts">
+// Icone Lucide — sostituiscono le emoji per consistenza cross-device
+import { Heart, Zap, Bell } from 'lucide-vue-next'
 import type { ProfiloUtente } from '~/types/game'
 
 const props = defineProps<{
@@ -62,7 +64,7 @@ const pendingFriendRequests = computed(() => {
         border-radius: 999px;
         height: 28px;
       ">
-        <span style="font-size:11px; line-height:1;">💋</span>
+        <Heart :size="14" stroke-width="1.5" style="color:#ff85b6;flex-shrink:0;" />
         <span style="
           font-family: var(--ff-mono,'JetBrains Mono',monospace);
           font-size: 12px; font-weight: 700;
@@ -78,7 +80,7 @@ const pendingFriendRequests = computed(() => {
         border-radius: 999px;
         height: 28px;
       ">
-        <span style="font-size:11px; line-height:1;">⚡</span>
+        <Zap :size="14" stroke-width="1.5" style="color:#6cf0e0;flex-shrink:0;" />
         <span style="
           font-family: var(--ff-mono,'JetBrains Mono',monospace);
           font-size: 12px; font-weight: 700;
@@ -135,7 +137,7 @@ const pendingFriendRequests = computed(() => {
           cursor: pointer; display: flex;
           align-items: center; justify-content: center;
         " @click="() => { }">
-        <span style="font-size:20px; line-height:1;">🔔</span>
+        <Bell :size="20" stroke-width="1.5" style="color:rgba(255,255,255,0.75);" />
         <span v-if="pendingFriendRequests > 0" style="
             position: absolute; top: 4px; right: 4px;
             background: #ff5b6c; color: #fff;

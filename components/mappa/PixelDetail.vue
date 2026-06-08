@@ -1,7 +1,8 @@
 <!-- Modal dettaglio pixel della mappa: mostra proprietario, team difensore e azioni. -->
 <!-- Porta PixelDetail.jsx (React/Next.js) → Vue 3 Composition API. -->
 <script setup lang="ts">
-import { PIXEL_NAMES } from '~/utils/worldMap'
+// Icone Lucide — X chiudi, Target difficoltà, Flame HOT, Swords attacca, Heart kisses
+import { X, Target, Flame, Swords, Heart } from 'lucide-vue-next'
 
 // ── Colori brand e famiglie font (da _shared.jsx) ────────────────────────────
 const C = {
@@ -69,13 +70,6 @@ const price = computed(() =>
   props.pixel?.buyPrice ?? pixelPrice(props.pixel?.ownerLevel ?? 1),
 )
 
-const pixelKey = computed(() =>
-  props.pixel ? `${props.pixel.x}_${props.pixel.y}` : '',
-)
-
-const pixelName = computed(() =>
-  props.pixel?.name || PIXEL_NAMES[pixelKey.value] || `(${props.pixel?.x}, ${props.pixel?.y})`,
-)
 
 // ── Flag di blocco azioni ─────────────────────────────────────────────────────
 const isAdj = computed(() => props.pixel?.isAdjacentToEmpire !== false)
@@ -102,18 +96,18 @@ const defenseWaifu = computed(() => {
     .filter(Boolean)
 })
 
-// Primo blocco: 3 card; secondo blocco: 2 card centrate
+// Primo blocco: 2 card centrate; secondo blocco: 3 card
 const row1 = computed(() => {
-  if (isCPU.value) return [null, null, null]
-  const base = defenseWaifu.value.length > 0 ? defenseWaifu.value.slice(0, 3) : []
-  while (base.length < 3) base.push(undefined)
+  if (isCPU.value) return [null, null]
+  const base = defenseWaifu.value.length > 0 ? defenseWaifu.value.slice(0, 2) : []
+  while (base.length < 2) base.push(undefined)
   return base
 })
 
 const row2 = computed(() => {
-  if (isCPU.value) return [null, null]
-  const base = defenseWaifu.value.length > 0 ? defenseWaifu.value.slice(3, 5) : []
-  while (base.length < 2) base.push(undefined)
+  if (isCPU.value) return [null, null, null]
+  const base = defenseWaifu.value.length > 0 ? defenseWaifu.value.slice(2, 5) : []
+  while (base.length < 3) base.push(undefined)
   return base
 })
 
@@ -128,18 +122,18 @@ function shouldBlur(w: any): boolean {
 function actionBtn(color: string, bg: string, disabled = false): Record<string, string | number> {
   return {
     flex: 1,
-    padding: '13px 8px',
+    padding: '15px 10px',
     background: disabled ? 'rgba(255,255,255,0.04)' : bg,
-    border: `1px solid ${disabled ? 'rgba(174,156,255,0.1)' : color + '55'}`,
-    borderRadius: '12px',
+    border: `1.5px solid ${disabled ? 'rgba(174,156,255,0.1)' : color + '66'}`,
+    borderRadius: '999px',
     color: disabled ? 'rgba(241,235,255,0.25)' : color,
     fontFamily: FF.label,
-    fontSize: '12px',
-    letterSpacing: '0.18em',
+    fontSize: '14px',
+    letterSpacing: '0.16em',
     textTransform: 'uppercase',
-    fontWeight: 700,
+    fontWeight: 800,
     cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled ? 0.6 : 1,
+    opacity: disabled ? 0.5 : 1,
   }
 }
 
@@ -208,48 +202,43 @@ onUnmounted(() => {
     ">
       <!-- Pulsante chiudi -->
       <button
-        style="position: absolute; top: 14px; right: 16px; background: none; border: none; color: rgba(241,235,255,0.35); font-size: 20px; cursor: pointer; padding: 0;"
+        style="position: absolute; top: 14px; right: 16px; background: none; border: none; color: rgba(241,235,255,0.35); cursor: pointer; padding: 0; display:flex; align-items:center;"
         @click="emit('chiudi')"
-      >✕</button>
+      ><X :size="20" stroke-width="1.5" /></button>
 
       <!-- Sezione proprietario -->
-      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-        <!-- Quadrato colore empire -->
+      <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 18px;">
+        <!-- Icona colore empire — grande con glow -->
         <div :style="{
-          width: '40px', height: '40px', borderRadius: '10px', flexShrink: 0,
+          width: '60px', height: '60px', borderRadius: '16px', flexShrink: 0,
           background: pixel.ownerColor || '#888888',
-          border: '2px solid rgba(255,255,255,0.15)',
+          border: `2.5px solid ${pixel.ownerColor || '#888'}88`,
+          boxShadow: `0 0 22px ${pixel.ownerColor || '#888'}55`,
         }" />
 
-        <div style="flex: 1;">
-          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <!-- Nome proprietario -->
+        <div style="flex: 1; min-width: 0;">
+          <!-- Nome proprietario — grande e prominente -->
+          <div :style="{
+            fontFamily: FF.display, fontSize: '22px', letterSpacing: '0.04em',
+            color: '#fff', fontWeight: 900, lineHeight: 1.1, marginBottom: '8px',
+          }">
+            {{ pixel.ownerName || 'CPU' }}
+            <span v-if="isOwn" :style="{ color: C.aqua, fontSize: '13px', fontWeight: 600 }"> · tuo</span>
+          </div>
+
+          <!-- Badge difficoltà — grande, full-rounded -->
+          <template v-if="pixel.difficulty && DIFF_STYLE[pixel.difficulty]">
             <div :style="{
-              fontFamily: FF.label, fontSize: '13px', letterSpacing: '0.15em',
-              color: '#fff', textTransform: 'uppercase', fontWeight: 700,
+              display: 'inline-flex', alignItems: 'center',
+              background: DIFF_STYLE[pixel.difficulty][0] + '22',
+              border: `1.5px solid ${DIFF_STYLE[pixel.difficulty][0]}77`,
+              borderRadius: '999px', padding: '4px 14px',
+              fontFamily: FF.label, fontSize: '13px', letterSpacing: '0.14em',
+              color: DIFF_STYLE[pixel.difficulty][0], fontWeight: 800,
             }">
-              {{ pixel.ownerName || 'CPU' }}
-              <span v-if="isOwn" :style="{ color: C.aqua, marginLeft: '8px', fontSize: '10px' }">· tuo</span>
+              {{ DIFF_STYLE[pixel.difficulty][1] }}
             </div>
-
-            <!-- Badge difficoltà -->
-            <template v-if="pixel.difficulty && DIFF_STYLE[pixel.difficulty]">
-              <div :style="{
-                background: DIFF_STYLE[pixel.difficulty][0] + '20',
-                border: `1px solid ${DIFF_STYLE[pixel.difficulty][0]}60`,
-                borderRadius: '6px', padding: '2px 8px',
-                fontFamily: `'Orbitron', sans-serif`, fontSize: '9px',
-                color: DIFF_STYLE[pixel.difficulty][0], fontWeight: 700,
-              }">
-                {{ DIFF_STYLE[pixel.difficulty][1] }}
-              </div>
-            </template>
-          </div>
-
-          <!-- Nome geografico pixel -->
-          <div :style="{ fontFamily: FF.mono, fontSize: '10px', color: 'rgba(241,235,255,0.4)', marginTop: '2px' }">
-            {{ pixelName }}
-          </div>
+          </template>
         </div>
       </div>
 
@@ -260,7 +249,7 @@ onUnmounted(() => {
         background: rgba(232,121,249,0.08);
         border: 1px solid rgba(232,121,249,0.3); border-radius: 8px;
       ">
-        <span style="font-size: 14px;">🎯</span>
+        <Target :size="14" stroke-width="1.5" style="color:#e879f9;flex-shrink:0;" />
         <div>
           <div style="font-family: 'Saira Condensed', sans-serif; font-size: 11px; color: #e879f9; font-weight: 700; letter-spacing: 0.06em;">
             Territorio Missione Mappa
@@ -274,21 +263,21 @@ onUnmounted(() => {
       <!-- Team difensore — layout 3+2 card -->
       <div style="margin-bottom: 16px;">
         <div :style="{
-          fontFamily: FF.label, fontSize: '9px', letterSpacing: '0.18em',
-          color: 'rgba(174,156,255,0.55)', textTransform: 'uppercase', marginBottom: '8px',
+          fontFamily: FF.label, fontSize: '12px', letterSpacing: '0.22em',
+          color: 'rgba(174,156,255,0.65)', textTransform: 'uppercase', marginBottom: '10px', fontWeight: 700,
         }">
           {{ isCPU ? 'Team difensore CPU' : isOwn ? 'Il tuo team difensore' : 'Team difensore' }}
         </div>
 
         <!-- Avviso team CPU nascosto -->
         <div v-if="isCPU" :style="{
-          marginBottom: '10px', padding: '7px 10px',
-          background: 'rgba(174,156,255,0.06)',
-          border: '1px solid rgba(174,156,255,0.15)',
-          borderRadius: '8px', fontFamily: FF.body, fontSize: '11px',
-          color: 'rgba(174,156,255,0.7)', lineHeight: 1.4,
+          marginBottom: '12px', padding: '10px 14px',
+          background: 'rgba(174,156,255,0.07)',
+          border: '1px solid rgba(174,156,255,0.18)',
+          borderRadius: '12px', fontFamily: FF.body, fontSize: '13px',
+          color: 'rgba(174,156,255,0.8)', lineHeight: 1.5,
         }">
-          🔍 Il team è nascosto! Sfida la CPU per scoprire quali waifu ti aspettano.
+          Il team è nascosto! Sfida la CPU per scoprire quali waifu ti aspettano.
         </div>
 
         <!-- Griglia card 3+2 -->
@@ -307,8 +296,8 @@ onUnmounted(() => {
                 <!-- Immagine -->
                 <div style="flex: 1; overflow: hidden; position: relative;">
                   <!-- Slot CPU nascosto -->
-                  <div v-if="isCPU" style="width: 100%; height: 100%; display: grid; place-items: center; background: rgba(136,136,136,0.1);">
-                    <span style="font-size: 20px; opacity: 0.3;">?</span>
+                  <div v-if="isCPU" style="width: 100%; height: 100%; display: grid; place-items: center; background: rgba(100,80,160,0.12);">
+                    <span style="font-size: 28px; opacity: 0.45; color: rgba(167,139,250,0.7);">?</span>
                   </div>
 
                   <!-- Waifu con immagine -->
@@ -329,7 +318,7 @@ onUnmounted(() => {
                       align-items: center; justify-content: center; gap: 3px;
                       background: rgba(3,2,12,0.4);
                     ">
-                      <span style="font-size: 12px;">🔥</span>
+                      <Flame :size="12" stroke-width="1.5" style="color:#ff6b35;flex-shrink:0;" />
                       <span style="font-family: 'Saira Condensed', sans-serif; font-size: 7px; color: #ff85b6; letter-spacing: 0.1em; text-transform: uppercase; text-align: center; line-height: 1.2;">HOT<br/>Pass Hard</span>
                     </div>
                   </template>
@@ -342,9 +331,9 @@ onUnmounted(() => {
 
                 <!-- Nome waifu -->
                 <div v-if="w && !isCPU" :style="{
-                  padding: '2px 4px', background: 'rgba(3,2,12,0.8)',
-                  fontFamily: FF.body, fontSize: '7px',
-                  color: 'rgba(241,235,255,0.7)',
+                  padding: '3px 5px', background: 'rgba(3,2,12,0.85)',
+                  fontFamily: FF.label, fontSize: '9px', letterSpacing: '0.04em',
+                  color: 'rgba(241,235,255,0.8)',
                   overflow: 'hidden', textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap', textAlign: 'center',
                 }">
@@ -365,8 +354,8 @@ onUnmounted(() => {
                 display: 'flex', flexDirection: 'column', position: 'relative',
               }">
                 <div style="flex: 1; overflow: hidden; position: relative;">
-                  <div v-if="isCPU" style="width: 100%; height: 100%; display: grid; place-items: center; background: rgba(136,136,136,0.1);">
-                    <span style="font-size: 20px; opacity: 0.3;">?</span>
+                  <div v-if="isCPU" style="width: 100%; height: 100%; display: grid; place-items: center; background: rgba(100,80,160,0.12);">
+                    <span style="font-size: 28px; opacity: 0.45; color: rgba(167,139,250,0.7);">?</span>
                   </div>
                   <template v-else-if="w && (w.asset_immagine || w.asset_statica || w.asset_immersiva)">
                     <img
@@ -384,7 +373,7 @@ onUnmounted(() => {
                       align-items: center; justify-content: center; gap: 3px;
                       background: rgba(3,2,12,0.4);
                     ">
-                      <span style="font-size: 12px;">🔥</span>
+                      <Flame :size="12" stroke-width="1.5" style="color:#ff6b35;flex-shrink:0;" />
                       <span style="font-family: 'Saira Condensed', sans-serif; font-size: 7px; color: #ff85b6; letter-spacing: 0.1em; text-transform: uppercase; text-align: center; line-height: 1.2;">HOT<br/>Pass Hard</span>
                     </div>
                   </template>
@@ -393,9 +382,9 @@ onUnmounted(() => {
                   </div>
                 </div>
                 <div v-if="w && !isCPU" :style="{
-                  padding: '2px 4px', background: 'rgba(3,2,12,0.8)',
-                  fontFamily: FF.body, fontSize: '7px',
-                  color: 'rgba(241,235,255,0.7)',
+                  padding: '3px 5px', background: 'rgba(3,2,12,0.85)',
+                  fontFamily: FF.label, fontSize: '9px', letterSpacing: '0.04em',
+                  color: 'rgba(241,235,255,0.8)',
                   overflow: 'hidden', textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap', textAlign: 'center',
                 }">
@@ -412,67 +401,81 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Descrizione azioni (solo per pixel non propri) -->
-      <div v-if="!isOwn" style="margin-bottom: 8px;">
-        <div :style="{
-          fontFamily: FF.label, fontSize: '11px', letterSpacing: '0.2em',
-          color: 'rgba(241,235,255,0.7)', textTransform: 'uppercase', marginBottom: '4px',
-        }">
-          Cosa vuoi fare con questo territorio?
-        </div>
-        <div :style="{ fontFamily: FF.body, fontSize: '11px', color: 'rgba(241,235,255,0.45)', lineHeight: 1.5 }">
-          <template v-if="isCPU">
-            ⚔ Attacca per conquistarlo con le tue waifu<br/>
-            🩷 Compra pagando Kisses per averlo subito
-          </template>
-          <template v-else>
-            ⚔ Sfida il team difensore in una lotta alla meglio di 3<br/>
-            🩷 Fai un'offerta in Kisses al proprietario
-          </template>
-        </div>
+      <!-- Pulsante modifica difesa (solo pixel proprio) -->
+      <div v-if="isOwn">
+        <button :style="actionBtn(C.violet, 'rgba(167,139,250,0.12)', false)" @click="emit('editDifesa')">
+          <Swords :size="16" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:6px;" />Modifica Difesa
+        </button>
       </div>
 
-      <!-- Avviso blocco azione -->
-      <div v-if="!isOwn && (attackBlockReason || buyBlockReason)" :style="{
-        marginBottom: '12px', padding: '8px 12px',
-        background: 'rgba(255,91,108,0.08)',
-        border: '1px solid rgba(255,91,108,0.2)',
-        borderRadius: '10px', fontFamily: FF.body,
-        fontSize: '11px', color: 'rgba(255,91,108,0.9)', lineHeight: 1.4,
-      }">
-        ⚠️ {{ attackBlockReason || buyBlockReason }}
-      </div>
+      <!-- Due card-azione per pixel altrui -->
+      <div v-if="!isOwn" style="display: flex; flex-direction: column; gap: 10px;">
 
-      <!-- Pulsanti azione -->
-      <div style="display: flex; gap: 10px;">
-        <!-- Proprio pixel: modifica difesa -->
+        <!-- Card ATTACCA -->
         <button
-          v-if="isOwn"
-          :style="actionBtn(C.violet, 'rgba(167,139,250,0.12)', false)"
-          @click="emit('editDifesa')"
+          :disabled="!!attackBlockReason"
+          @click="!attackBlockReason && emit('attacca')"
+          style="width: 100%; padding: 0; background: transparent; border: none; cursor: pointer; text-align: left;"
+          :style="{ opacity: attackBlockReason ? 0.45 : 1, cursor: attackBlockReason ? 'not-allowed' : 'pointer' }"
         >
-          ⚔ Modifica Difesa
+          <div :style="{
+            display: 'flex', alignItems: 'center', gap: '14px',
+            padding: '14px 16px', borderRadius: '14px',
+            background: attackBlockReason ? 'rgba(255,133,182,0.04)' : 'rgba(255,133,182,0.1)',
+            border: `1.5px solid ${attackBlockReason ? 'rgba(255,133,182,0.15)' : 'rgba(255,133,182,0.4)'}`,
+            boxShadow: attackBlockReason ? 'none' : '0 4px 18px rgba(255,133,182,0.12)',
+          }">
+            <Swords :size="28" stroke-width="1.5" style="flex-shrink:0;" />
+            <div style="flex: 1; min-width: 0;">
+              <div :style="{ fontFamily: FF.display, fontSize: '15px', fontWeight: 800, color: '#ff85b6', marginBottom: '3px' }">
+                Attacca
+              </div>
+              <div :style="{ fontFamily: FF.body, fontSize: '12px', color: 'rgba(241,235,255,0.55)', lineHeight: 1.4 }">
+                {{ isCPU ? 'Conquista il territorio battendo il team CPU' : 'Sfida il difensore al meglio di 3 round' }}
+              </div>
+              <div v-if="attackBlockReason" :style="{ fontFamily: FF.label, fontSize: '11px', color: 'rgba(255,91,108,0.8)', marginTop: '4px', letterSpacing: '0.06em' }">
+                ⚠ {{ attackBlockReason }}
+              </div>
+            </div>
+            <div :style="{ fontFamily: FF.label, fontSize: '20px', color: 'rgba(255,133,182,0.6)', flexShrink: 0 }">›</div>
+          </div>
         </button>
 
-        <!-- Pixel altrui: attacca e acquista/offri -->
-        <template v-else>
-          <button
-            :disabled="!!attackBlockReason"
-            :style="actionBtn(C.sakura, 'rgba(255,133,182,0.12)', !!attackBlockReason)"
-            @click="!attackBlockReason && emit('attacca')"
-          >⚔ Attacca</button>
-
-          <button
-            :disabled="!!buyBlockReason"
-            :style="actionBtn(C.gold, 'rgba(245,197,96,0.12)', !!buyBlockReason)"
-            @click="!buyBlockReason && emit('acquista', price)"
-          >
-            <span style="display: flex; align-items: center; gap: 5px; justify-content: center;">
-              <KissesIcon :size="14" />
-              {{ isCPU ? `Compra ${price}` : 'Offri' }}
-            </span>
-          </button>
-        </template>
+        <!-- Card COMPRA / OFFRI -->
+        <button
+          :disabled="!!buyBlockReason"
+          @click="!buyBlockReason && emit('acquista', price)"
+          style="width: 100%; padding: 0; background: transparent; border: none; cursor: pointer; text-align: left;"
+          :style="{ opacity: buyBlockReason ? 0.45 : 1, cursor: buyBlockReason ? 'not-allowed' : 'pointer' }"
+        >
+          <div :style="{
+            display: 'flex', alignItems: 'center', gap: '14px',
+            padding: '14px 16px', borderRadius: '14px',
+            background: buyBlockReason ? 'rgba(245,197,96,0.04)' : 'rgba(245,197,96,0.1)',
+            border: `1.5px solid ${buyBlockReason ? 'rgba(245,197,96,0.15)' : 'rgba(245,197,96,0.4)'}`,
+            boxShadow: buyBlockReason ? 'none' : '0 4px 18px rgba(245,197,96,0.1)',
+          }">
+            <Heart :size="28" stroke-width="1.5" style="flex-shrink:0;color:#ff85b6;" />
+            <div style="flex: 1; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 3px;">
+                <div :style="{ fontFamily: FF.display, fontSize: '15px', fontWeight: 800, color: '#f5c560' }">
+                  {{ isCPU ? 'Compra' : 'Offri' }}
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px; background: rgba(245,197,96,0.15); border: 1px solid rgba(245,197,96,0.4); border-radius: 999px; padding: 2px 10px;">
+                  <KissesIcon :size="12" />
+                  <span :style="{ fontFamily: FF.mono, fontSize: '13px', fontWeight: 800, color: '#f5c560' }">{{ price }}</span>
+                </div>
+              </div>
+              <div :style="{ fontFamily: FF.body, fontSize: '12px', color: 'rgba(241,235,255,0.55)', lineHeight: 1.4 }">
+                {{ isCPU ? 'Ottienilo subito pagando Kisses' : 'Fai un\'offerta al proprietario' }}
+              </div>
+              <div v-if="buyBlockReason" :style="{ fontFamily: FF.label, fontSize: '11px', color: 'rgba(255,91,108,0.8)', marginTop: '4px', letterSpacing: '0.06em' }">
+                ⚠ {{ buyBlockReason }}
+              </div>
+            </div>
+            <div :style="{ fontFamily: FF.label, fontSize: '20px', color: 'rgba(245,197,96,0.6)', flexShrink: 0 }">›</div>
+          </div>
+        </button>
       </div>
     </div>
   </template>

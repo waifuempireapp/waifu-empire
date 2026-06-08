@@ -6,6 +6,8 @@
   Ogni tab ha il proprio componente separato (SRP).
   ============================================================ -->
 <script setup lang="ts">
+// Icone Lucide — sostituiscono le emoji nella navigazione e nel FAB
+import { Home, Archive, Map as MapIcon, Trophy, Settings, Target } from 'lucide-vue-next'
 import { doc, getDoc } from 'firebase/firestore'
 import { useAuthStore } from '~/stores/auth'
 import { useGameStore } from '~/stores/game'
@@ -21,7 +23,7 @@ import {
 } from '~/utils/gameLogic'
 import { STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT } from '~/utils/constants'
 import { getDb } from '~/utils/firebase'
-import { ikUrl } from '~/utils/imagekitUrl'
+// ikUrl rimosso — non più usato nel template (carte acquisite rimosse dalla nav)
 
 definePageMeta({ middleware: 'auth' })
 
@@ -32,8 +34,12 @@ const router = useRouter()
 // ── Stato locale UI (non globale) ──────────────────────────────────────
 const tab = computed({ get: () => gameStore.tabAttiva, set: v => gameStore.setTab(v) })
 const negozioAperto = computed({ get: () => gameStore.negozioAperto, set: v => gameStore.toggleNegozio(v) })
-const pescaAperta = ref(false)
+// Tab precedente — usata dal back button di MissioniTab
+const tabPrimaDiMissioni = ref('home')
+const pescaAperta    = ref(false)
 const pescaPacksInitial = ref<unknown[] | null>(null)
+// Overlay sbusto — aperto dal bottone "APRI ORA" in HomeTab
+const sbustaAperta = ref(false)
 const notif = ref<{ testo: string; colore: string } | null>(null)
 const isAdmin = ref(false)
 const statConfig = ref({ ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT })
@@ -41,49 +47,16 @@ const godPackProb = ref(GOD_PACK_PROB_DEFAULT)
 const caricato = ref(false)
 // Contesto battaglia raid — passato a MappaTab come prop, poi reimpostato a null
 const raidBattleCtx = ref<unknown>(null)
-// Pannello impostazioni utente (FAB hamburger)
-const settingsAperte = ref(false)
-const langDropdownOpen = ref(false)
-const currentLocaleName = computed(() => {
-  const found = (availableLocales.value ?? []).find(l => l.code === currentLocale.value)
-  return found?.name ?? String(currentLocale.value)
-})
-
-// ── i18n: lingua corrente e switcher ──────────────────────────────────
-const { locale, locales, setLocale } = useI18n()
-const currentLocale = computed(() => locale.value)
-const availableLocales = computed(() =>
-  (locales.value as { code: string; name: string }[]).map(l => ({ code: l.code, name: l.name }))
-)
-
-async function switchLocale(code: string) {
-  await setLocale(code)
-  localStorage.setItem('waifu_locale', code)
-}
+// i18n — usato solo per ripristino lingua al mount
+const { setLocale } = useI18n()
 
 // ── Sub-navigazione per la tab "Pacchetti" (Sbusta | Pesca) ───────────
 const subTabPacchetti = ref<'sbusta' | 'pesca'>('sbusta')
 
-// ── Sub-navigazione per la tab "Community" (Amici | Classifica | Swap) ─
-const subTabCommunity = ref<'amici' | 'classifica' | 'swap'>('amici')
-
 // Cache catalogo in-sessione — evita riscrittura ad ogni tab-switch
 let catalogRef: { ws: unknown[]; ms: unknown[] } | null = null
 
-// Ultime carte acquisite (per il banner in cima a Pacchetti)
-const ultimeCarte = computed(() => {
-  const waifu = (gameStore.collezione?.waifu as Record<string, any>) ?? {}
-  const cat = (gameStore.catalogoWaifu as any[]) ?? []
-  return Object.entries(waifu)
-    .map(([id, d]) => ({ id, d, w: cat.find((x: any) => x.id === id) }))
-    .filter(x => x.w)
-    .sort((a, b) => {
-      const ta = a.d?.acquisito?.toMillis?.() ?? Number(a.d?.acquisito) ?? 0
-      const tb = b.d?.acquisito?.toMillis?.() ?? Number(b.d?.acquisito) ?? 0
-      return tb - ta
-    })
-    .slice(0, 12)
-})
+// ultimeCarte rimossa — non più necessaria (tab Pacchetti commentata)
 
 function chiudiPesca() {
   pescaAperta.value = false
@@ -98,7 +71,7 @@ onMounted(() => {
   })
   // Ripristina la lingua salvata
   const savedLocale = localStorage.getItem('waifu_locale')
-  if (savedLocale) setLocale(savedLocale)
+  if (savedLocale) setLocale(savedLocale as 'en' | 'it' | 'de' | 'es' | 'ja')
 })
 onUnmounted(() => {
   window.removeEventListener('impero:apri-negozio', () => gameStore.toggleNegozio(true))
@@ -224,45 +197,59 @@ function mostraNotif(testo: string, colore = '#00e676') {
   setTimeout(() => (notif.value = null), 2200)
 }
 
-// ── 5 tab principali (Pokémon TCG Pocket style) ───────────────────────
+// ── 5 tab principali: Home | Collezione | Mappa | Classifica | Missioni ──
+// Mappa ripristinata — è una feature core e non va mai rimossa
+// Impostazioni accessibili tramite profilo/header, non come tab dedicata
+// 5a tab: Impostazioni al posto di Missioni — Missioni diventa FAB flottante
+// Icone Lucide invece di emoji — componenti Vue, non stringhe
 const TABS = [
-  { id: 'home', label: 'Home', icon: '🏠' },
-  { id: 'pacchetti', label: 'Pacchetti', icon: '📦' },
-  { id: 'collezione', label: 'Collezione', icon: '🃏' },
-  { id: 'mappa', label: 'Mappa', icon: '🗺️' },
-  { id: 'community', label: 'Community', icon: '👥' },
+  { id: 'home',          label: 'Home',          icon: Home     },
+  { id: 'collezione',    label: 'Collezione',    icon: Archive  },
+  { id: 'mappa',         label: 'Mappa',         icon: MapIcon  },
+  { id: 'classifica',    label: 'Classifica',    icon: Trophy   },
+  { id: 'impostazioni',  label: 'Impostazioni',  icon: Settings },
 ]
 
-// ── Sub-tab Pacchetti: Sbusta e Pesca ─────────────────────────────────
-const SUB_PACCHETTI = [
-  { id: 'sbusta', label: 'Sbusta', icon: '🎴' },
-  { id: 'pesca', label: 'Pesca', icon: '🎣' },
-]
+// SUB_COMMUNITY rimossa — Community non è più una tab della nav principale
 
-// ── Sub-tab Community: Amici, Classifica, Swap ────────────────────────
-const SUB_COMMUNITY = [
-  { id: 'amici', label: 'Amici', icon: '👫' },
-  { id: 'classifica', label: 'Classifica', icon: '🏆' },
-  { id: 'swap', label: 'Swap', icon: '↔️' },
-]
-
-// ── Mappatura vecchie stringhe tab → nuova struttura a 5 tab ──────────
-// Utilizzato dagli emit @set-tab dei componenti figli (es. HomeTab → 'sbusta')
+// ── Mappatura emit @set-tab dai componenti figli ───────────────────────
 function handleSetTab(t: string) {
   switch (t) {
     case 'sbusta':
-      gameStore.setTab('pacchetti')
-      subTabPacchetti.value = 'sbusta'
+    case 'pacchetti':
+      // SbustaTab commentata — apre la Home dove avviene la selezione
+      gameStore.setTab('home')
       break
     case 'pesca':
-      gameStore.setTab('pacchetti')
-      subTabPacchetti.value = 'pesca'
+      // Pesca accessibile dalla Home tramite card "Pesca Misteriosa"
+      gameStore.setTab('home')
+      pescaAperta.value = true
+      break
+    case 'mappa':
+      gameStore.setTab('mappa')
+      break
+    case 'missioni':
+      // Missioni è ora il FAB flottante, non una tab — mappa il set-tab alla tab missioni comunque
+      gameStore.setTab('missioni')
+      break
+    case 'impostazioni':
+      // Impostazioni è ora la 5a tab della nav
+      gameStore.setTab('impostazioni')
+      break
+    case 'classifica':
+      // Classifica ora è tab diretta nella nav
+      gameStore.setTab('classifica')
+      break
+    case 'swap':
+      // SwapTab — votazione waifu stile Tinder, aperta dalla card Home
+      gameStore.setTab('swap')
+      break
+    case 'negozio':
+      // Negozio — aperto come overlay, non come tab
+      gameStore.toggleNegozio(true)
       break
     case 'amici':
-    case 'classifica':
-    case 'swap':
-      gameStore.setTab('community')
-      subTabCommunity.value = t as 'amici' | 'classifica' | 'swap'
+      gameStore.setTab('collezione')
       break
     default:
       gameStore.setTab(t)
@@ -299,6 +286,28 @@ function handleSetTab(t: string) {
       @profile-update="(patch: Record<string, unknown>) => gameStore.aggiornaProfilo(patch as never)"
       @close="gameStore.toggleNegozio(false)" />
 
+    <!-- Backdrop nero istantaneo — copre la homepage durante il lazy-load di LazySbustaTab
+         e durante tutti i loading interni (drops, animazioni). Appare senza ritardo
+         perché è un semplice div, non un componente lazy. z-index 199 < 200 di SbustaTab. -->
+    <div v-if="sbustaAperta"
+      style="position:fixed;inset:0;z-index:199;background:#060311;"
+      aria-hidden="true"
+    />
+
+    <!-- Sbusto: SbustaTab come overlay fixed, aperto da HomeTab "APRI ORA" -->
+    <LazySbustaTab
+      v-if="sbustaAperta"
+      :profilo="gameStore.profilo"
+      :collezione="gameStore.collezione as any"
+      :waifu-cat="gameStore.catalogoWaifu"
+      :mosse-cat="gameStore.catalogoMosse"
+      :god-pack-prob="godPackProb"
+      @notif="(t: string, c: string) => mostraNotif(t, c)"
+      @update-profilo="(p: unknown) => gameStore.aggiornaProfilo(p as never)"
+      @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)"
+      @indietro="sbustaAperta = false"
+    />
+
     <!-- Pesca Misteriosa: PescaSection gestisce il proprio overlay fixed -->
     <LazyPescaSection
       v-if="pescaAperta"
@@ -316,49 +325,27 @@ function handleSetTab(t: string) {
     <!-- Header Pokémon TCG Pocket: risorse sx, logo centro, campana dx -->
     <LazyGiocoHeader :profilo="gameStore.profilo" :is-admin="isAdmin" @logout="authStore.logout()" />
 
-    <!-- ── Area contenuto: padding-top 60px di default, 5px nella tab pacchetti (sbusta) ── -->
-    <div class="px-4 max-w-[1400px] mx-auto" :style="{ paddingTop: tab === 'pacchetti' ? '5px' : tab === 'community' ? '20px' : tab === 'mappa' ? '30px' : '60px' }">
+    <!-- ── Area contenuto tab ────────────────────────────────────────── -->
+    <div :class="['max-w-[1400px] mx-auto', tab === 'collezione' ? 'px-4' : 'px-4']"
+         :style="{ paddingTop: tab === 'mappa' ? '30px' : tab === 'classifica' || tab === 'impostazioni' || tab === 'missioni' || tab === 'swap' ? '0' : '60px' }">
 
       <!-- ═══ TAB: HOME ════════════════════════════════════════════════ -->
+      <!-- apri-sbusto: bottone "APRI ORA" → apre l'overlay SbustaTab -->
       <LazyHomeTab v-if="tab === 'home'" :user="authStore.user" :profilo="gameStore.profilo"
         :collezione="gameStore.collezione as any" :waifu-cat="gameStore.catalogoWaifu" @set-tab="handleSetTab"
         @apri-pesca="() => { pescaAperta = true }"
+        @apri-sbusto="() => { sbustaAperta = true }"
         @apri-negozio="gameStore.toggleNegozio(true)" />
 
-      <!-- ═══ TAB: PACCHETTI ════════════════════════════════════════════
-           Sub-nav interna: Sbusta (SbustaTab) | Pesca (PescaSection)
-      ════════════════════════════════════════════════════════════════════ -->
+      <!-- ═══ TAB: PACCHETTI — commentata, selezione espansione ora in Home ═══
       <div v-if="tab === 'pacchetti'">
-
-        <!-- Ultime carte acquisite — carousel orizzontale in cima -->
-        <div v-if="ultimeCarte.length > 0" style="margin-top: 12px; margin-bottom: 4px;">
-          <div
-            style="font-family: var(--ff-label,'Saira Condensed',sans-serif); font-size:9px; letter-spacing:0.22em; color:rgba(245,197,96,0.7); text-transform:uppercase; margin-bottom:8px; font-weight:700;">
-            ✦ Ultime Carte
-          </div>
-          <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; scrollbar-width:thin;">
-            <div v-for="item in ultimeCarte" :key="item.id"
-              style="width:80px; height:120px; border-radius:10px; flex-shrink:0; overflow:hidden; position:relative; background:linear-gradient(160deg,#1a0a35,#07051a); border:1px solid rgba(167,139,250,0.3);">
-              <img v-if="item.w?.asset_statica || item.w?.asset_immersiva"
-                :src="ikUrl(item.w.asset_statica || item.w.asset_immersiva, 'thumbnail') ?? undefined"
-                :alt="item.w.nome"
-                style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
-              <div v-else style="width:100%;height:100%;display:grid;place-items:center;font-size:24px;opacity:0.3;">♛
-              </div>
-              <div
-                style="position:absolute;bottom:0;left:0;right:0;padding:4px 4px 5px;background:linear-gradient(0deg,rgba(7,5,26,0.95),transparent);font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:7px;color:#fff;text-transform:uppercase;text-align:center;letter-spacing:0.08em;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
-                {{ item.w.nome }}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Sbusta: apertura pacchetti (Pesca separata nella Home) -->
         <LazySbustaTab :profilo="gameStore.profilo"
           :collezione="gameStore.collezione as any" :waifu-cat="gameStore.catalogoWaifu" :mosse-cat="gameStore.catalogoMosse"
           :god-pack-prob="godPackProb" @notif="(t: string, c: string) => mostraNotif(t, c)"
           @update-profilo="(p: unknown) => gameStore.aggiornaProfilo(p as never)"
           @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)" />
       </div>
+      ════════════════════════════════════════════════════════════════════ -->
 
       <!-- ═══ TAB: COLLEZIONE ════════════════════════════════════════════ -->
       <LazyCollezioneTab v-if="tab === 'collezione'" :profilo="gameStore.profilo" :collezione="gameStore.collezione as any"
@@ -375,35 +362,32 @@ function handleSetTab(t: string) {
         @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)"
         @raid-battle="(ctx: unknown) => { raidBattleCtx = ctx }" @raid-battle-end="() => { raidBattleCtx = null }" />
 
-      <!-- ═══ TAB: COMMUNITY ════════════════════════════════════════════
-           Sub-nav interna: Amici | Classifica | Swap
-      ════════════════════════════════════════════════════════════════════ -->
-      <div v-if="tab === 'community'">
+      <!-- ═══ TAB: MISSIONI ════════════════════════════════════════════ -->
+      <!-- ═══ TAB: CLASSIFICA — ranking globale giocatori ═══════════════ -->
+      <LazyClassificaTab v-if="tab === 'classifica'" :user="authStore.user" />
 
-        <!-- Pill sub-navigazione interna a Community — 1/3 ciascuno -->
-        <div style="display:flex;gap:0;margin-bottom:16px;">
-          <button v-for="s in SUB_COMMUNITY" :key="s.id" class="sub-nav-pill"
-            :class="subTabCommunity === s.id ? 'sub-nav-pill--active' : ''"
-            style="flex:1;min-height:44px;border-radius:0;"
-            :style="{ borderRadius: s.id === 'amici' ? '12px 0 0 12px' : s.id === 'swap' ? '0 12px 12px 0' : '0' }"
-            @click="subTabCommunity = s.id as 'amici' | 'classifica' | 'swap'">
-            <span class="text-base leading-none">{{ s.icon }}</span>
-            <span>{{ s.label }}</span>
-          </button>
-        </div>
+      <!-- ═══ TAB: MISSIONI — aperta dal FAB 🎯, notif + aggiorna profilo dalla tab -->
+      <MissioniTab
+        v-if="tab === 'missioni'"
+        :profilo="gameStore.profilo"
+        :prev-tab="tabPrimaDiMissioni"
+        @indietro="gameStore.setTab(tabPrimaDiMissioni)"
+        @set-tab="handleSetTab"
+        @notif="(t: string, c: string) => mostraNotif(t, c)"
+        @update-profilo="(p: unknown) => gameStore.aggiornaProfilo(p as never)"
+      />
 
-        <!-- Amici: lista amici e richieste di amicizia -->
-        <LazyAmiciTab v-if="subTabCommunity === 'amici'" :profilo="gameStore.profilo" :collezione="gameStore.collezione as any"
-          :waifu-cat="gameStore.catalogoWaifu"
-          @collection-refresh="getCollezione(authStore.user!.uid).then(c => gameStore.setCollezione(c as never)).catch(() => { })" />
+      <!-- ═══ TAB: SWAP — votazione waifu stile Tinder, aperta da "Swipe Waifu" in Home -->
+      <LazySwapTab
+        v-if="tab === 'swap'"
+        :user="authStore.user"
+        :profilo="gameStore.profilo"
+        @profilo-update="(p: Record<string, any>) => gameStore.aggiornaProfilo(p as never)"
+        @set-tab="handleSetTab"
+      />
 
-        <!-- Classifica: ranking globale giocatori -->
-        <LazyClassificaTab v-if="subTabCommunity === 'classifica'" :user="authStore.user" />
-
-        <!-- Swap: vota waifu e guadagna Kisses -->
-        <LazySwapTab v-if="subTabCommunity === 'swap'" :user="authStore.user" :profilo="gameStore.profilo"
-          @profilo-update="(p: Record<string, any>) => gameStore.aggiornaProfilo(p as never)" @set-tab="handleSetTab" />
-      </div>
+      <!-- ═══ TAB: IMPOSTAZIONI (5a tab nella nav) ═════════════════════ -->
+      <ImpostazioniTab v-if="tab === 'impostazioni'" />
 
     </div><!-- fine area contenuto tab -->
 
@@ -434,13 +418,14 @@ function handleSetTab(t: string) {
         <!-- Pallino indicatore attivo (4px, gold) posizionato sopra l'icona -->
         <span v-if="tab === t.id" class="nav-tab-active-dot" />
 
-        <!-- Icona: scala a 1.2x se tab attiva, con glow dorato -->
-        <span class="leading-none" style="transition: transform 0.2s ease, filter 0.2s ease;" :style="{
-          fontSize: '28px',
+        <!-- Icona Lucide: scala a 1.2x se tab attiva, glow dorato — usa component dinamico -->
+        <span class="leading-none" style="display:flex;align-items:center;justify-content:center;transition: transform 0.2s ease, filter 0.2s ease;" :style="{
           transform: tab === t.id ? 'scale(1.2)' : 'scale(1)',
           filter: tab === t.id ? 'drop-shadow(0 0 6px rgba(245,197,96,0.7))' : 'none',
           color: tab === t.id ? '#f5c560' : 'rgba(255,255,255,0.75)',
-        }">{{ t.icon }}</span>
+        }">
+          <component :is="t.icon" :size="24" stroke-width="1.5" />
+        </span>
 
         <!-- Label: 9px, tracking, Saira Condensed, oro se attiva -->
         <!-- <span
@@ -457,9 +442,9 @@ function handleSetTab(t: string) {
       </button>
     </nav>
 
-    <!-- ── FAB Impostazioni: nascosto nella tab mappa ── -->
+    <!-- FAB Missioni 🎯 — round, bottom-right, stesso stile del vecchio FAB ≡ -->
     <button
-      v-if="tab !== 'mappa'"
+      v-if="tab !== 'missioni' && tab !== 'swap'"
       style="
         position: fixed;
         bottom: 90px;
@@ -467,132 +452,19 @@ function handleSetTab(t: string) {
         width: 52px;
         height: 52px;
         border-radius: 50%;
-        background: linear-gradient(135deg, rgba(167,139,250,0.85), rgba(7,5,26,0.98));        
-        box-shadow: 0 4px 20px rgba(107,70,193,0.45), 0 0 0 4px rgba(167,139,250,0.08);
+        background: linear-gradient(135deg, rgba(232,121,249,0.85), rgba(7,5,26,0.98));
+        box-shadow: 0 4px 20px rgba(232,121,249,0.45), 0 0 0 4px rgba(232,121,249,0.08);
         display: flex; align-items: center; justify-content: center;
         cursor: pointer;
         z-index: 60;
         transition: all 0.2s;
         backdrop-filter: blur(8px);
-        "
-      @click="settingsAperte = true"
-    >
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-        <rect x="3" y="5" width="16" height="2" rx="1" fill="white"/>
-        <rect x="3" y="10" width="16" height="2" rx="1" fill="white"/>
-        <rect x="3" y="15" width="16" height="2" rx="1" fill="white"/>
-      </svg>
-    </button>
-
-    <!-- ── Pannello Impostazioni slide-up ─────────────────────────────── -->
-    <Transition name="settings-up">
-      <div
-        v-if="settingsAperte"
-        style="position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;"
-        @click.self="settingsAperte = false"
-      >
-        <!-- Backdrop -->
-        <div style="position:absolute;inset:0;background:rgba(0,6,18,0.88);backdrop-filter:blur(24px);" @click="settingsAperte = false" />
-
-        <!-- Card centrata -->
-        <div style="
-          position:relative; z-index:1;
-          width:100%; max-width:360px;
-          background:linear-gradient(165deg,#100820 0%,#080514 55%,#04030d 100%);
-          border:1.5px solid rgba(168,85,247,0.5);
-          border-radius:20px;
-          padding:32px 28px 28px;
-          box-shadow:0 0 60px rgba(124,58,237,0.2), 0 30px 60px rgba(0,0,0,0.8);
-        ">
-          <!-- Avatar + profilo centrato -->
-          <div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:28px;">
-            <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);box-shadow:0 0 28px rgba(124,58,237,0.55);display:grid;place-items:center;font-size:30px;margin-bottom:14px;">
-              👤
-            </div>
-            <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:18px;font-weight:800;color:#fff;margin-bottom:5px;">
-              {{ gameStore.profilo?.nomeImpero ?? '—' }}
-            </div>
-            <div style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:13px;color:rgba(255,255,255,0.45);margin-bottom:8px;">
-              {{ authStore.user?.email ?? '' }}
-            </div>
-            <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;letter-spacing:0.14em;background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(168,85,247,0.2));border:1px solid rgba(168,85,247,0.5);border-radius:999px;padding:4px 14px;color:rgba(245,197,96,0.9);text-transform:uppercase;display:inline-flex;align-items:center;gap:6px;">
-              LV. {{ gameStore.profilo?.livello ?? 1 }} · {{ gameStore.profilo?.kisses ?? 0 }} 💋
-            </div>
-          </div>
-
-          <!-- Language dropdown custom -->
-          <div style="margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid rgba(255,255,255,0.07);">
-            <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;letter-spacing:0.22em;color:rgba(245,197,96,0.7);text-transform:uppercase;font-weight:700;margin-bottom:12px;text-align:center;">
-              🌐 {{ $t('settings.language.title') }}
-            </div>
-
-            <!-- Overlay trasparente per chiudere cliccando fuori -->
-            <div v-if="langDropdownOpen" @click="langDropdownOpen = false" style="position:fixed;inset:0;z-index:499;" />
-
-            <div style="position:relative;z-index:500;">
-              <!-- Trigger -->
-              <button
-                @click="langDropdownOpen = !langDropdownOpen"
-                style="width:100%;background:rgba(20,10,40,0.95);border:1.5px solid rgba(168,85,247,0.6);color:#fff;border-radius:14px;padding:14px 48px 14px 18px;font-size:17px;font-family:var(--ff-body,'DM Sans',sans-serif);font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:space-between;box-shadow:0 0 12px rgba(124,58,237,0.2);text-align:left;transition:border-color 0.2s;"
-                :style="langDropdownOpen ? 'border-color:rgba(168,85,247,0.9);border-radius:14px 14px 0 0;' : ''"
-              >
-                <span>{{ currentLocaleName }}</span>
-                <span :style="{ display:'inline-block', transition:'transform 0.2s', transform: langDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', color:'rgba(168,85,247,0.85)', fontSize:'20px', lineHeight:1 }">▾</span>
-              </button>
-
-              <!-- Lista opzioni ancorata sotto il trigger -->
-              <div
-                v-if="langDropdownOpen"
-                style="position:absolute;top:100%;left:0;right:0;z-index:500;background:rgba(20,10,40,0.98);border:1.5px solid rgba(168,85,247,0.6);border-top:none;border-radius:0 0 14px 14px;overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,0.7);"
-              >
-                <button
-                  v-for="loc in availableLocales"
-                  :key="loc.code"
-                  @click="switchLocale(loc.code); langDropdownOpen = false"
-                  style="width:100%;padding:14px 18px;background:transparent;border:none;border-top:1px solid rgba(255,255,255,0.06);cursor:pointer;text-align:left;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:16px;font-weight:600;display:flex;align-items:center;gap:10px;transition:background 0.15s;"
-                  :style="{
-                    color: loc.code === currentLocale ? '#a855f7' : 'rgba(241,235,255,0.85)',
-                    background: loc.code === currentLocale ? 'rgba(124,58,237,0.18)' : 'transparent',
-                  }"
-                  @mouseenter="($event.target as HTMLElement).style.background = 'rgba(124,58,237,0.12)'"
-                  @mouseleave="($event.target as HTMLElement).style.background = loc.code === currentLocale ? 'rgba(124,58,237,0.18)' : 'transparent'"
-                >
-                  <span v-if="loc.code === currentLocale" style="font-size:14px;">✓</span>
-                  <span v-else style="width:14px;display:inline-block;"></span>
-                  {{ loc.name }}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Voci menu -->
-          <div style="display:flex;flex-direction:column;gap:2px;">
-            <button
-              v-if="isAdmin"
-              style="display:flex;align-items:center;gap:14px;padding:16px 4px;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer;color:#b573ff;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:16px;font-weight:600;width:100%;text-align:left;"
-              @click="settingsAperte=false; router.push('/admin')"
-            >
-              <span style="font-size:22px;width:28px;text-align:center;">⚙️</span>
-              {{ $t('settings.admin_panel') }}
-            </button>
-            <button
-              style="display:flex;align-items:center;gap:14px;padding:16px 4px;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer;color:rgba(241,235,255,0.85);font-family:var(--ff-body,'DM Sans',sans-serif);font-size:16px;font-weight:600;width:100%;text-align:left;"
-              @click="gameStore.toggleNegozio(true); settingsAperte=false"
-            >
-              <span style="font-size:22px;width:28px;text-align:center;">🛒</span>
-              {{ $t('settings.shop') }}
-            </button>
-            <button
-              style="display:flex;align-items:center;gap:14px;padding:16px 4px;background:transparent;border:none;cursor:pointer;color:#f87171;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:16px;font-weight:600;width:100%;text-align:left;margin-top:4px;"
-              @click="authStore.logout(); settingsAperte=false"
-            >
-              <span style="font-size:22px;width:28px;text-align:center;">🚪</span>
-              {{ $t('settings.logout') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Transition>
+        border: none;
+        font-size: 22px;
+        line-height: 1;
+      "
+      @click="() => { tabPrimaDiMissioni = tab; gameStore.setTab('missioni') }"
+    ><Target :size="28" stroke-width="1.5" /></button>
 
   </div><!-- fine .game-container -->
 </template>

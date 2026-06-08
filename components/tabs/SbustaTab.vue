@@ -52,10 +52,11 @@ const props = withDefaults(defineProps<{
 
 // ── Emits ────────────────────────────────────────────────────
 const emit = defineEmits<{
-  notif: [testo: string, colore: string]
-  updateProfilo: [p: unknown]
+  notif:            [testo: string, colore: string]
+  updateProfilo:    [p: unknown]
   updateCollezione: [c: unknown]
-  setTab: [tab: string]
+  setTab:           [tab: string]
+  indietro:         [] // chiude l'overlay quando aperto da HomeTab
 }>()
 
 const authStore = useAuthStore()
@@ -92,7 +93,7 @@ onMounted(async () => {
   try {
     const lista = await listDropsAttivi()
     dropsAttivi.value = lista
-    if (lista.length > 0) dropSelId.value = lista[0].id
+    if (lista.length > 0) dropSelId.value = lista[0].id as string
   } catch {
     // ignora
   } finally {
@@ -117,9 +118,20 @@ const dropColore2 = computed(() => dropAttivo.value?.colore2 || C.sakura)
 const SFIDA_COSTO_KISSES = 50
 const SFIDA_COSTO_10 = 450
 
-const nBenv = computed(() => props.profilo?.pacchettiBenvenuto ?? 0)
-const nOmag = computed(() => props.profilo?.pacchettiOmaggio ?? 0)
-const nSfid = computed(() => props.profilo?.pacchettiSfida ?? 0)
+const nBenv = computed(() => Number(props.profilo?.pacchettiBenvenuto ?? 0))
+const nOmag = computed(() => Number(props.profilo?.pacchettiOmaggio ?? 0))
+const nSfid = computed(() => Number(props.profilo?.pacchettiSfida ?? 0))
+
+// Totale pacchetti disponibili (somma di tutti i tipi — usato nella nuova idle page)
+const totalePacchetti = computed(() => nOmag.value + nBenv.value + nSfid.value)
+
+// Tipo da aprire: priorità omaggio → benvenuto → sfida
+const tipoDaAprire = computed<string>(() => {
+  if (nOmag.value > 0) return 'omaggio'
+  if (nBenv.value > 0) return 'benvenuto'
+  if (nSfid.value > 0) return 'sfida'
+  return 'omaggio'
+})
 
 const progDrop = computed(() => progressioneDrop(dropAttivo.value as any, props.collezione as any))
 const dropCompleto = computed(() => isDropCompleto(dropAttivo.value as any, props.collezione as any))
@@ -217,19 +229,27 @@ async function apri(tipoPacchetto: string) {
   bustaInAnimazione.value = false
   stato.value = 'reveal'
 
+  // Notifica il sistema missioni giornaliere: pacchetto aperto
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('mission:progress', { detail: { key: 'open_pack', amount: 1 } }))
+    // Controlla se ci sono carte leggendarie nel pacchetto appena aperto
+    const hasLegendary = carte.some((c: any) => c.tipo === 'waifu' && c.data?.rarita === 'leggendario')
+    if (hasLegendary) window.dispatchEvent(new CustomEvent('mission:progress', { detail: { key: 'legendary', amount: 1 } }))
+  }
+
   emit('updateCollezione', nuova)
   try {
     await saveCollezione(uid, nuova as any)
     if (tipoPacchetto === 'benvenuto') {
-      const n = (props.profilo?.pacchettiBenvenuto ?? 0) - 1
+      const n = Number(props.profilo?.pacchettiBenvenuto ?? 0) - 1
       emit('updateProfilo', { pacchettiBenvenuto: n })
       await updateUserProfile(uid, { pacchettiBenvenuto: n })
     } else if (tipoPacchetto === 'omaggio') {
-      const n = (props.profilo?.pacchettiOmaggio ?? 0) - 1
+      const n = Number(props.profilo?.pacchettiOmaggio ?? 0) - 1
       emit('updateProfilo', { pacchettiOmaggio: n })
       await updateUserProfile(uid, { pacchettiOmaggio: n })
     } else {
-      const n = (props.profilo?.pacchettiSfida ?? 0) - 1
+      const n = Number(props.profilo?.pacchettiSfida ?? 0) - 1
       emit('updateProfilo', { pacchettiSfida: n })
       await updateUserProfile(uid, { pacchettiSfida: n })
     }
@@ -249,10 +269,10 @@ async function apriMulti(tipoPacchetto: string) {
   const uid = authStore.user?.uid
   if (!uid || !props.collezione) return
   const disponibili = tipoPacchetto === 'benvenuto'
-    ? (props.profilo?.pacchettiBenvenuto ?? 0)
+    ? Number(props.profilo?.pacchettiBenvenuto ?? 0)
     : tipoPacchetto === 'omaggio'
-      ? (props.profilo?.pacchettiOmaggio ?? 0)
-      : (props.profilo?.pacchettiSfida ?? 0)
+      ? Number(props.profilo?.pacchettiOmaggio ?? 0)
+      : Number(props.profilo?.pacchettiSfida ?? 0)
   const quanti = Math.min(10, disponibili)
   if (quanti < 1) { emit('notif', 'Nessun pacchetto disponibile.', C.err); return }
 
@@ -276,19 +296,26 @@ async function apriMulti(tipoPacchetto: string) {
   bustaInAnimazione.value = false
   stato.value = 'reveal_multi'
 
+  // Notifica missioni giornaliere: N pacchetti aperti + eventuali leggendarie
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('mission:progress', { detail: { key: 'open_pack', amount: tuttiIPacchetti.length } }))
+    const legCount = tuttiIPacchetti.flat().filter((c: any) => c.tipo === 'waifu' && c.data?.rarita === 'leggendario').length
+    if (legCount > 0) window.dispatchEvent(new CustomEvent('mission:progress', { detail: { key: 'legendary', amount: legCount } }))
+  }
+
   emit('updateCollezione', nuova)
   try {
     await saveCollezione(uid, nuova as any)
     if (tipoPacchetto === 'benvenuto') {
-      const n = (props.profilo?.pacchettiBenvenuto ?? 0) - tuttiIPacchetti.length
+      const n = Number(props.profilo?.pacchettiBenvenuto ?? 0) - tuttiIPacchetti.length
       emit('updateProfilo', { pacchettiBenvenuto: n })
       await updateUserProfile(uid, { pacchettiBenvenuto: n })
     } else if (tipoPacchetto === 'omaggio') {
-      const n = (props.profilo?.pacchettiOmaggio ?? 0) - tuttiIPacchetti.length
+      const n = Number(props.profilo?.pacchettiOmaggio ?? 0) - tuttiIPacchetti.length
       emit('updateProfilo', { pacchettiOmaggio: n })
       await updateUserProfile(uid, { pacchettiOmaggio: n })
     } else {
-      const n = (props.profilo?.pacchettiSfida ?? 0) - tuttiIPacchetti.length
+      const n = Number(props.profilo?.pacchettiSfida ?? 0) - tuttiIPacchetti.length
       emit('updateProfilo', { pacchettiSfida: n })
       await updateUserProfile(uid, { pacchettiSfida: n })
     }
@@ -415,14 +442,14 @@ async function acquistaSfidaConKisses(qty = 1) {
   const token = await authStore.user?.getIdToken()
   const endpoint = qty === 10 ? '/api/kisses/buy-pack-10' : '/api/kisses/buy-pack'
   try {
-    const data = await $fetch<any>(endpoint, {
+    const data = await ($fetch as any)(endpoint, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
     })
     const spent = data.kissesCost ?? (qty === 10 ? SFIDA_COSTO_10 : SFIDA_COSTO_KISSES)
-    const newKisses = Math.max(0, (props.profilo?.kisses ?? 0) - spent)
+    const newKisses = Math.max(0, Number(props.profilo?.kisses ?? 0) - spent)
     const pAgg = data.pacchettiAggiunti ?? qty
-    const newSfid = (props.profilo?.pacchettiSfida ?? 0) + pAgg
+    const newSfid = Number(props.profilo?.pacchettiSfida ?? 0) + pAgg
     emit('updateProfilo', { kisses: newKisses, pacchettiSfida: newSfid })
     if (qty === 1) popupApertura.value = { tipoPacchetto: 'sfida' }
     else emit('notif', `+${pAgg} bustine sfida aggiunte!`, '#ff8c00')
@@ -536,9 +563,18 @@ const selectedDropIndex = computed(() =>
   Math.max(0, dropsAttivi.value.findIndex(d => d.id === dropSelId.value))
 )
 
+// Converte hex (#rrggbb) in rgba() — evita 8-digit hex non supportati da WebKit
+function hexRgba(hex: string, alpha: number): string {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
 function getCoverflowStyle(index: number): Record<string, string | number> {
   const dist = index - selectedDropIndex.value
-  const STEP = 84
+  const STEP = 112
   let rotY: number, scale: number, zOff: number, opacity: number
 
   if (dist === 0) {
@@ -571,22 +607,12 @@ function cfTouchEnd(e: TouchEvent) {
 </script>
 
 <template>
-  <!-- SKELETON LOADING INIZIALE -->
-  <div v-if="dropsLoading" class="fade-in" :style="{ padding: '10px 0', position: 'relative' }">
-    <div :style="{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }">
-      <span v-for="i in 4" :key="i"
-        :style="{ position: 'absolute', fontSize: '18px', opacity: 0.15, top: `${10 + i * 22}%`, left: `${5 + i * 23}%`, animation: 'float 4s ease-in-out infinite', animationDelay: `${i * 0.6}s` }">🌸</span>
-    </div>
-    <div :style="{ position: 'relative', zIndex: 1, padding: '0 8px' }">
-      <div
-        :style="{ height: '60px', borderRadius: '14px', background: 'rgba(255,255,255,0.04)', marginBottom: '20px', animation: 'pulse 1.2s ease-in-out infinite' }" />
-      <div :style="{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '20px' }">
-        <div v-for="i in 3" :key="i"
-          :style="{ width: '100px', height: '140px', borderRadius: '14px', background: 'rgba(255,255,255,0.04)', animation: `pulse 1.2s ease-in-out ${(i - 1) * 0.15}s infinite` }" />
-      </div>
-      <div
-        :style="{ textAlign: 'center', fontFamily: 'DM Sans,sans-serif', fontSize: '12px', color: 'rgba(241,235,255,0.3)' }">
-        Caricamento drop stagionale…</div>
+  <!-- SKELETON LOADING — full-screen fixed, usato quando SbustaTab è overlay -->
+  <div v-if="dropsLoading" class="fade-in"
+    style="position:fixed;inset:0;z-index:200;background:linear-gradient(180deg,#090514 0%,#110724 50%,#05030a 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+    <img src="~/assets/images/New_Logo.png" alt="" style="width:72px;height:auto;animation:pulse 1.2s ease-in-out infinite;opacity:0.75;" />
+    <div :style="{ fontFamily: FF.label, fontSize:'11px', letterSpacing:'0.24em', color:'rgba(174,156,255,0.4)', textTransform:'uppercase', fontWeight:700 }">
+      Caricamento espansioni…
     </div>
   </div>
 
@@ -851,76 +877,129 @@ function cfTouchEnd(e: TouchEvent) {
   </div>
 
   <!-- ══════════════════════════════════════════════════════════
-    IDLE VIEW — HUB SELEZIONE DROP & EMPIRE CAROUSEL (Invariato)
+    IDLE VIEW — Pagina apertura pacchetti (full-screen fixed).
+    Layout: header ←/titolo | carosello espansioni | bottoni APRI 1 / APRI 10 | contatore totale.
+    Le schede OMAGGIO/SFIDA/BENVENUTO sono eliminate: il totale è unico.
   ══════════════════════════════════════════════════════════════ -->
-  <div v-else class="fade-in" :style="{ padding: '10px 0', position: 'relative' }">
-    <div :style="{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }">
+  <div v-else class="fade-in"
+    style="position:fixed;inset:0;z-index:200;background:#06030f;display:flex;flex-direction:column;overflow:hidden;">
+
+    <!-- Layer colore espansione — rgba() garantisce supporto universale, stop finale a opacity 0 elimina qualsiasi bordo -->
+    <div
+      style="position:absolute;inset:0;pointer-events:none;z-index:0;"
+      :style="{
+        backgroundImage: dropAttivo
+          ? `radial-gradient(ellipse 500% 500% at 50% 50%, ${hexRgba(dropAttivo.colore||C.violet, 0.10)} 0%, ${hexRgba(dropAttivo.colore||C.violet, 0)} 100%)`
+          : 'none'
+      }"
+    />
+
+    <!-- Petali sakura decorativi sfondo -->
+    <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:1;">
       <span v-for="i in 4" :key="i"
-        :style="{ position: 'absolute', fontSize: `${16 + (i % 2) * 6}px`, opacity: 0.12, top: `${(i * 27) % 90}%`, left: `${(i * 26) % 95}%`, animation: `float ${3.5 + i * 0.5}s ease-in-out infinite`, animationDelay: `${i * 0.7}s` }">🌸</span>
+        :style="{ position:'absolute', fontSize:`${16+(i%2)*6}px`, opacity:0.08, top:`${(i*27)%90}%`, left:`${(i*26)%95}%`, animation:`float ${3.5+i*0.5}s ease-in-out infinite`, animationDelay:`${i*0.7}s` }">🌸</span>
     </div>
 
-    <div :style="{ position: 'relative', zIndex: 1 }">
-      <div v-if="dropsAttivi.length === 0"
-        :style="{ textAlign: 'center', padding: '10px 14px', marginBottom: '14px', background: 'rgba(255,255,255,0.02)', border: `1px dashed ${C.inkLine}`, borderRadius: '12px', fontSize: '10px', color: 'rgba(241,235,255,0.45)', fontFamily: FF.label, letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700 }">
-        Nessun drop attivo · tutte le carte disponibili</div>
+    <!-- Contenuto principale centrato verticalmente come gruppo -->
+    <div style="position:relative;z-index:2;display:flex;flex-direction:column;height:100%;padding:0 16px;">
 
-      <!-- CAROSELLO 3D COVERFLOW (Riferimento 5832325319367527884.jpg) -->
-      <div v-if="dropsAttivi.length > 0" style="margin-bottom: 20px; padding-top: 4px;">
-        <div
-          style="font-family: var(--ff-label); font-size: 15px; letter-spacing: 0.22em; color: rgba(245,197,96,0.9); text-transform: uppercase; font-weight: 800; text-align: center; margin-bottom: 20px;">
-          ◆ Scegli l'Espansione</div>
-        <div style="position: relative; height: 190px; perspective: 900px; overflow: hidden; touch-action: pan-y;"
+      <!-- Header: ← a sinistra, titolo centrato, spacer a destra -->
+      <div style="display:flex;align-items:center;padding:14px 0 10px;flex-shrink:0;">
+        <button @click="emit('indietro')"
+          style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:rgba(255,255,255,0.7);flex-shrink:0;line-height:1;">←</button>
+        <div :style="{ flex:1, textAlign:'center', fontFamily:FF.label, fontSize:'13px', letterSpacing:'0.24em', color:'rgba(245,197,96,0.9)', textTransform:'uppercase', fontWeight:800 }">
+          ◆ Scegli l'Espansione
+        </div>
+        <div style="width:38px;flex-shrink:0;"></div>
+      </div>
+
+      <!-- Messaggio nessun drop attivo -->
+      <div v-if="dropsAttivi.length === 0"
+        style="flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;"
+        :style="{ fontFamily:FF.label, fontSize:'11px', letterSpacing:'0.22em', color:'rgba(241,235,255,0.45)', textTransform:'uppercase', fontWeight:700 }">
+        Nessun drop attivo · tutte le carte disponibili
+      </div>
+
+      <!-- Blocco centrale: carosello + bottoni + contatore, centrato come gruppo -->
+      <div v-if="dropsAttivi.length > 0" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;min-height:0;">
+
+        <!-- Carosello 3D coverflow — carte più grandi -->
+        <div style="position:relative;width:100%;height:310px;perspective:1100px;overflow:visible;touch-action:pan-y;flex-shrink:0;"
           @touchstart.passive="cfTouchStart" @touchend.passive="cfTouchEnd">
           <div v-for="(d, i) in dropsAttivi" :key="d.id"
-            @click="() => { if (dropSelId === d.id) { if (nOmag > 0) popupApertura = { tipoPacchetto: 'omaggio' }; else if (nBenv > 0) popupApertura = { tipoPacchetto: 'benvenuto' }; else if (nSfid > 0) popupApertura = { tipoPacchetto: 'sfida' }; else sfidaConferma = true; } else { dropSelId = d.id; } }"
-            :style="{ position: 'absolute', left: '50%', top: '50%', width: '96px', height: '140px', borderRadius: '12px', cursor: 'pointer', transformStyle: 'preserve-3d', transition: 'transform 0.42s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.35s', background: `linear-gradient(165deg,${d.colore || C.violet}18 0%,#071428 45%,#050e1c 100%)`, border: `1.5px solid ${d.id === dropSelId ? (d.colore || C.violet) + 'ee' : (d.colore || C.violet) + '77'}`, boxShadow: d.id === dropSelId ? `0 0 32px ${d.colore || C.violet}44, 0 16px 40px rgba(0,0,0,0.7), inset 0 1px 0 ${d.colore || C.violet}22` : `0 8px 24px rgba(0,0,0,0.55), 0 0 12px ${d.colore || C.violet}18`, overflow: 'hidden', ...getCoverflowStyle(i) }">
-            <!-- Angoli decorativi colorati -->
-            <div :style="{position:'absolute',top:'7px',left:'7px',width:'14px',height:'14px',borderTop:`1.5px solid ${d.colore || C.violet}cc`,borderLeft:`1.5px solid ${d.colore || C.violet}cc`,borderRadius:'2px 0 0 0',zIndex:10,pointerEvents:'none'}" />
-            <div :style="{position:'absolute',top:'7px',right:'7px',width:'14px',height:'14px',borderTop:`1.5px solid ${d.colore || C.violet}cc`,borderRight:`1.5px solid ${d.colore || C.violet}cc`,borderRadius:'0 2px 0 0',zIndex:10,pointerEvents:'none'}" />
-            <div :style="{position:'absolute',bottom:'7px',left:'7px',width:'14px',height:'14px',borderBottom:`1.5px solid ${d.colore || C.violet}cc`,borderLeft:`1.5px solid ${d.colore || C.violet}cc`,borderRadius:'0 0 0 2px',zIndex:10,pointerEvents:'none'}" />
-            <div :style="{position:'absolute',bottom:'7px',right:'7px',width:'14px',height:'14px',borderBottom:`1.5px solid ${d.colore || C.violet}cc`,borderRight:`1.5px solid ${d.colore || C.violet}cc`,borderRadius:'0 0 2px 0',zIndex:10,pointerEvents:'none'}" />
-            <!-- Glow radiale dietro immagine -->
-            <div :style="{position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',width:'100%',height:'80px',background:`radial-gradient(ellipse at 50% 0%,${d.colore || C.violet}28 0%,transparent 70%)`,pointerEvents:'none',zIndex:1}" />
+            @click="() => dropSelId = d.id"
+            :style="{ position:'absolute', left:'50%', top:'50%', width:'160px', height:'230px', borderRadius:'16px', cursor:'pointer', transformStyle:'preserve-3d', transition:'transform 0.42s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.35s', background:`linear-gradient(165deg,${d.colore||C.violet}22 0%,#071428 45%,#050e1c 100%)`, border:`1.5px solid ${d.id===dropSelId?(d.colore||C.violet)+'ee':(d.colore||C.violet)+'66'}`, boxShadow:d.id===dropSelId?`0 0 50px ${d.colore||C.violet}66, 0 24px 60px rgba(0,0,0,0.85), inset 0 1px 0 ${d.colore||C.violet}22`:`0 8px 24px rgba(0,0,0,0.55), 0 0 14px ${d.colore||C.violet}18`, overflow:'hidden', ...getCoverflowStyle(i) }">
+            <!-- Angoli decorativi -->
+            <div :style="{position:'absolute',top:'10px',left:'10px',width:'18px',height:'18px',borderTop:`1.5px solid ${d.colore||C.violet}cc`,borderLeft:`1.5px solid ${d.colore||C.violet}cc`,borderRadius:'2px 0 0 0',zIndex:10,pointerEvents:'none'}" />
+            <div :style="{position:'absolute',top:'10px',right:'10px',width:'18px',height:'18px',borderTop:`1.5px solid ${d.colore||C.violet}cc`,borderRight:`1.5px solid ${d.colore||C.violet}cc`,borderRadius:'0 2px 0 0',zIndex:10,pointerEvents:'none'}" />
+            <div :style="{position:'absolute',bottom:'10px',left:'10px',width:'18px',height:'18px',borderBottom:`1.5px solid ${d.colore||C.violet}cc`,borderLeft:`1.5px solid ${d.colore||C.violet}cc`,borderRadius:'0 0 0 2px',zIndex:10,pointerEvents:'none'}" />
+            <div :style="{position:'absolute',bottom:'10px',right:'10px',width:'18px',height:'18px',borderBottom:`1.5px solid ${d.colore||C.violet}cc`,borderRight:`1.5px solid ${d.colore||C.violet}cc`,borderRadius:'0 0 2px 0',zIndex:10,pointerEvents:'none'}" />
+            <!-- Glow radiale top -->
+            <div :style="{position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',width:'100%',height:'120px',background:`radial-gradient(ellipse at 50% 0%,${d.colore||C.violet}35 0%,transparent 70%)`,pointerEvents:'none',zIndex:1}" />
             <!-- Immagine espansione -->
-            <div style="position:absolute;top:24px;left:8px;right:8px;bottom:40px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:8px;z-index:2;">
+            <div style="position:absolute;top:30px;left:12px;right:12px;bottom:52px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:10px;z-index:2;">
               <img v-if="d.asset_bustina" :src="d.asset_bustina" style="width:100%;height:100%;object-fit:cover;" />
               <img v-else src="~/assets/images/New_Logo.png" alt="" style="width:70%;height:auto;object-fit:contain;opacity:0.85;" />
             </div>
             <!-- Nome espansione in basso -->
-            <div :style="{position:'absolute',bottom:0,left:0,right:0,padding:'6px 8px 8px',background:'linear-gradient(0deg,rgba(4,6,20,0.95) 0%,transparent 100%)',zIndex:5,textAlign:'center'}">
-              <div :style="{fontFamily:FF.display,fontSize:'9px',fontWeight:800,color:'#e8c448',textAlign:'center',lineHeight:'1.25',overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',width:'100%',textShadow:'0 0 8px rgba(230,180,40,0.5)'}">{{ (d.nome || 'DROP').toUpperCase() }}</div>
+            <div :style="{position:'absolute',bottom:0,left:0,right:0,padding:'8px 10px 12px',background:'linear-gradient(0deg,rgba(4,6,20,0.97) 0%,transparent 100%)',zIndex:5,textAlign:'center'}">
+              <div :style="{fontFamily:FF.display,fontSize:'10px',fontWeight:800,color:'#e8c448',lineHeight:'1.25',overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',width:'100%',textShadow:'0 0 10px rgba(230,180,40,0.6)'}">{{ (d.nome||'DROP').toUpperCase() }}</div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- CARDS SELEZIONE PACK PROFILO (Omaggio, Sfida, Benvenuto) -->
-      <div
-        :style="{ display: 'grid', gridTemplateColumns: `repeat(${nBenv > 0 ? 3 : 2}, minmax(120px, 1fr))`, gap: '10px', justifyContent: 'center', marginBottom: '16px' }">
-        <SbustaPackCard tipo="omaggio" :count="nOmag" :max="2" :color="C.gold" :color2="C.goldL" icona="🎁"
-          label="OMAGGIO" sub="Gratis ogni 12h" :esaurito="nOmag <= 0" :asset="dropAttivo?.asset_bustina" :ff="FF"
-          @click="nOmag > 0 && (popupApertura = { tipoPacchetto: 'omaggio' })" />
-        <SbustaPackCard tipo="sfida" :count="nSfid" :max="null" :color="C.sakura" color2="#ff6b6b" icona="⚔"
-          label="SFIDA" sub="Vinci in battaglia" :esaurito="nSfid <= 0" :asset="dropAttivo?.asset_bustina" :ff="FF"
-          @click="nSfid > 0 && (popupApertura = { tipoPacchetto: 'sfida' })" />
-        <SbustaPackCard v-if="nBenv > 0" tipo="benvenuto" :count="nBenv" :max="null" :color="C.ok" color2="#00bfa5"
-          icona="⭐" label="BENVENUTO" sub="No doppioni" :esaurito="false" :asset="dropAttivo?.asset_bustina" :ff="FF"
-          @click="popupApertura = { tipoPacchetto: 'benvenuto' }" />
-      </div>
+        <!-- Bottoni APRI 1 / APRI 10 + contatore — subito sotto la carta -->
+        <div style="width:100%;flex-shrink:0;">
+          <div style="display:flex;gap:12px;margin-bottom:14px;">
 
-      <!-- MANGA BANNER COMPILATION STATE -->
-      <div v-if="dropAttivo?.asset_manga"
-        :style="{ margin: '4px 0 16px', borderRadius: '16px', overflow: 'hidden', position: 'relative', background: 'linear-gradient(135deg, rgba(27,22,56,0.85), rgba(13,10,38,0.92))', border: `1px solid ${C.inkLine}` }">
-        <div :style="{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }">
-          <div :style="{ flex: 1 }">
-            <div :style="{ fontFamily: FF.display, fontSize: '13px', fontWeight: 700, color: '#fff' }">{{
-              dropAttivo.nome
-              }}</div>
-            <div :style="{ fontFamily: FF.mono, fontSize: '9px', color: 'rgba(241,235,255,0.5)', marginTop: '4px' }">{{
-              progDrop.possedute }}/{{ progDrop.totale }} carte · {{ progDrop.percentuale }}%</div>
+            <!-- APRI 1 -->
+            <button
+              @click="totalePacchetti > 0 && apri(tipoDaAprire)"
+              :disabled="totalePacchetti === 0"
+              :style="{
+                flex:1, padding:'15px 8px', borderRadius:'999px', border:'none',
+                cursor: totalePacchetti > 0 ? 'pointer' : 'not-allowed',
+                background: totalePacchetti > 0 ? `linear-gradient(135deg,${C.sakura},#c54a86)` : 'rgba(255,255,255,0.06)',
+                boxShadow: totalePacchetti > 0 ? `0 6px 28px ${C.sakura}55` : 'none',
+                fontFamily: FF.display, fontSize:'15px', fontWeight:800,
+                color: totalePacchetti > 0 ? '#fff' : 'rgba(255,255,255,0.3)',
+                letterSpacing:'0.1em', textTransform:'uppercase',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                opacity: totalePacchetti > 0 ? 1 : 0.4, transition:'opacity 0.2s',
+              }">APRI 1</button>
+
+            <!-- APRI 10 -->
+            <button
+              @click="totalePacchetti > 0 && apriMulti(tipoDaAprire)"
+              :disabled="totalePacchetti === 0"
+              :style="{
+                flex:1, padding:'15px 8px', borderRadius:'999px', border:'none',
+                cursor: totalePacchetti > 0 ? 'pointer' : 'not-allowed',
+                background: totalePacchetti > 0 ? `linear-gradient(135deg,${C.violet},#6938e8)` : 'rgba(255,255,255,0.06)',
+                boxShadow: totalePacchetti > 0 ? `0 6px 28px ${C.violet}55` : 'none',
+                fontFamily: FF.display, fontSize:'14px', fontWeight:800,
+                color: totalePacchetti > 0 ? '#fff' : 'rgba(255,255,255,0.3)',
+                letterSpacing:'0.08em', textTransform:'uppercase',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                opacity: totalePacchetti > 0 ? 1 : 0.4, transition:'opacity 0.2s',
+              }">APRI 10</button>
+
+          </div>
+
+          <!-- Contatore totale -->
+          <div style="text-align:center;padding:2px 0;">
+            <template v-if="totalePacchetti > 0">
+              <span :style="{ fontFamily:FF.mono, fontSize:'20px', fontWeight:800, color:'rgba(245,197,96,0.95)' }">{{ totalePacchetti }}</span>
+              <span :style="{ fontFamily:FF.label, fontSize:'12px', letterSpacing:'0.16em', color:'rgba(241,235,255,0.4)', marginLeft:'8px', textTransform:'uppercase' }">pacchetti disponibili</span>
+            </template>
+            <template v-else>
+              <span :style="{ fontFamily:FF.label, fontSize:'12px', letterSpacing:'0.16em', color:'rgba(241,235,255,0.3)', textTransform:'uppercase' }">nessun pacchetto disponibile</span>
+            </template>
           </div>
         </div>
+
       </div>
+
     </div>
   </div>
 
@@ -971,7 +1050,7 @@ function cfTouchEnd(e: TouchEvent) {
         <button v-if="contaPackPopup >= 2"
           @click="() => { const t = popupApertura!.tipoPacchetto; popupApertura = null; apriMulti(t) }"
           :style="{width:'100%',padding:'15px 20px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',background:popupColor.btn2bg,border:`1.5px solid ${popupColor.btn2border}`,boxShadow:`0 4px 18px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.04)`,fontFamily:`var(--ff-display,'Unbounded',sans-serif)`,fontSize:'13px',fontWeight:800,color:popupColor.btn2txt,letterSpacing:'0.08em',textTransform:'uppercase',borderRadius:'8px',clipPath:'polygon(14px 0%,calc(100% - 14px) 0%,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0% calc(100% - 14px),0% 14px)'}">
-          <span style="font-size:18px;line-height:1;">🃏</span> ×10 APRI TUTTI (MAX 10)
+          <span style="font-size:18px;line-height:1;">🃏</span> ×10 APRI TUTTI
         </button>
       </div>
 

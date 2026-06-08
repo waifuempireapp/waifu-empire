@@ -14,6 +14,10 @@
  *   Action Panel → griglia mosse 2×2 + bottone cambio
  */
 
+// Icone Lucide — sostituiscono emoji negli stati battaglia, badge HOT e lock mosse
+// Nota: HeartCrack → sconfitta, Handshake → pareggio, Crown → vittoria
+import { Swords, Zap, Handshake, Crown, HeartCrack, Flame, Lock } from 'lucide-vue-next'
+
 import {
   TYPE_COLORS,
   getEffectiveness,
@@ -911,12 +915,18 @@ const timerSize = computed(() => timer.value <= 5 ? 20 : timer.value <= 10 ? 16 
 const timerAnim = computed(() => timer.value <= 5 ? 'timerUrg .5s ease-in-out infinite' : 'none')
 
 const turnLabel = computed(() => {
-  if (isChoose.value)        return `⚔ TURNO ${turn.value}`
-  if (isSwap.value || isVolSwap.value) return '⚡ SCEGLI WAIFU'
-  if (isWaitingKoRepl.value) return '⏳ ATTESA SOSTITUTA…'
-  if (props.isPvP && props.pvpWaiting) return '⏳ ATTESA…'
-  if (phase.value === 'entering')      return '◈ INIZIO'
-  return '⚡ RISOLUZIONE'
+  if (isChoose.value)        return `TURNO ${turn.value}`
+  if (isSwap.value || isVolSwap.value) return 'SCEGLI WAIFU'
+  if (isWaitingKoRepl.value) return 'ATTESA SOSTITUTA…'
+  if (props.isPvP && props.pvpWaiting) return 'ATTESA…'
+  if (phase.value === 'entering')      return 'INIZIO'
+  return 'RISOLUZIONE'
+})
+// Icona turno — affiancata al label (Lucide invece di emoji)
+const turnIcon = computed(() => {
+  if (isChoose.value)        return Swords
+  if (isSwap.value || isVolSwap.value) return Zap
+  return Zap
 })
 const turnCol = computed(() =>
   isChoose.value ? '#00e676' : (isSwap.value || isVolSwap.value) ? '#f5a623' : 'rgba(238,232,220,.38)',
@@ -977,9 +987,11 @@ const mvp = computed(() => {
         border:`1px solid ${!risultatoFinale.isDraw && risultatoFinale.isVictory ? 'rgba(245,197,96,0.5)' : risultatoFinale.isDraw ? 'rgba(167,139,250,0.35)' : 'rgba(255,133,182,0.35)'}`,
         borderRadius:'20px',padding:'22px 20px',maxWidth:'380px',width:'100%',textAlign:'center',margin:'auto',
       }">
-        <!-- Icona esito -->
-        <div :style="{ fontSize:'44px', marginBottom:'6px' }">
-          {{ risultatoFinale.isDraw ? '🤝' : risultatoFinale.isVictory ? '👑' : '💔' }}
+        <!-- Icona esito — Lucide: Handshake pareggio, Crown vittoria, HeartCrack sconfitta -->
+        <div :style="{ marginBottom:'6px', display:'flex', justifyContent:'center' }">
+          <Handshake v-if="risultatoFinale.isDraw"   :size="44" stroke-width="1.5" style="color:#a78bfa;" />
+          <Crown     v-else-if="risultatoFinale.isVictory" :size="44" stroke-width="1.5" style="color:#f5c560;" />
+          <HeartCrack v-else                         :size="44" stroke-width="1.5" style="color:#ff85b6;" />
         </div>
 
         <!-- Score Bo3 -->
@@ -1084,7 +1096,7 @@ const mvp = computed(() => {
                 :style="{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top' }"/>
               <span v-else :style="{ fontSize:'20px',opacity:.25 }">◈</span>
             </div>
-            <div :style="{ position:'absolute',top:'-10px',left:'50%',transform:'translateX(-50%)',fontSize:'16px',lineHeight:1 }">👑</div>
+            <Crown :size="16" stroke-width="1.5" style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);color:#f5c560;" />
           </div>
           <div :style="{ flex:1,minWidth:0,textAlign:'left' }">
             <div :style="{ fontFamily:'Orbitron',fontSize:'6px',color:'rgba(245,197,96,.7)',letterSpacing:'1.5px',marginBottom:'2px' }">
@@ -1180,7 +1192,7 @@ const mvp = computed(() => {
           fontFamily:'\'Unbounded\', sans-serif',
           fontSize: isMobile ? '11px' : '14px', fontWeight:700, color:turnCol,
           minWidth: isMobile ? '64px' : '80px',
-        }">{{ turnLabel }}</span>
+        }"><component :is="turnIcon" :size="isMobile ? 11 : 14" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:4px;" />{{ turnLabel }}</span>
 
         <!-- Score KO al centro -->
         <div :style="{
@@ -1238,7 +1250,7 @@ const mvp = computed(() => {
                     fontFamily:'Orbitron',fontSize:'11px',fontWeight:700,
                     color: enemy._hotBlurred ? 'rgba(255,133,182,0.5)' : '#eedcd4',
                     flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
-                  }">{{ enemy._hotBlurred ? '🔥 ???' : enemy.name }}</span>
+                  }"><Flame v-if="enemy._hotBlurred" :size="12" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:3px;" />{{ enemy._hotBlurred ? '???' : enemy.name }}</span>
                   <span :style="{ fontFamily:'Orbitron',fontSize:'8px',color:'rgba(255,90,110,.5)',flexShrink:0 }">Lv{{ enemy.level }}</span>
                 </div>
                 <!-- TypeBadge inline -->
@@ -1253,8 +1265,8 @@ const mvp = computed(() => {
                     display:'inline-block', whiteSpace:'nowrap',
                   }">{{ enemy.type }}</span>
                 </div>
-                <div v-else :style="{ marginBottom:'5px',fontFamily:'Orbitron',fontSize:'7px',color:'rgba(255,133,182,0.6)',letterSpacing:'0.5px' }">
-                  🔥 HOT · Pass Hard
+                <div v-else :style="{ marginBottom:'5px',fontFamily:'Orbitron',fontSize:'7px',color:'rgba(255,133,182,0.6)',letterSpacing:'0.5px',display:'flex',alignItems:'center',gap:'3px' }">
+                  <Flame :size="7" stroke-width="1.5" />HOT · Pass Hard
                 </div>
                 <!-- HpBar inline nemico -->
                 <div>
@@ -1328,7 +1340,7 @@ const mvp = computed(() => {
                   display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'4px',
                   pointerEvents:'none',
                 }">
-                  <span :style="{ fontSize:'20px' }">🔥</span>
+                  <Flame :size="20" stroke-width="1.5" style="color:#ff85b6;" />
                   <span :style="{ fontFamily:'Orbitron',fontSize:'8px',color:'#ff85b6',letterSpacing:'1px',fontWeight:700 }">HOT</span>
                   <span :style="{ fontFamily:'Orbitron',fontSize:'6px',color:'rgba(255,133,182,0.65)',letterSpacing:'0.5px' }">Pass Hard</span>
                 </div>
@@ -1365,7 +1377,7 @@ const mvp = computed(() => {
           background:'rgba(255,133,182,0.1)', borderBottom:'1px solid rgba(255,133,182,0.2)',
           display:'flex', alignItems:'center', gap:'6px',
         }">
-          <span :style="{ fontSize:'12px' }">🔥</span>
+          <Flame :size="12" stroke-width="1.5" style="color:#ff85b6;flex-shrink:0;" />
           <span :style="{ fontFamily:'Fredoka',fontSize:'10px',color:'rgba(255,133,182,0.85)',flex:1 }">
             Questa waifu è Hot e non puoi vederla. Acquista il Pass Hard per scoprirla.
           </span>
@@ -1730,7 +1742,7 @@ const mvp = computed(() => {
                         flex:1, wordBreak:'break-word',
                         textDecoration: (move.pp ?? 0) <= 0 ? 'line-through' : 'none',
                       }">{{ move.name }}</span>
-                      <span v-if="isMoveBlocked(lastPMove, i, move)" :style="{ fontSize:'11px',flexShrink:0 }">🔒</span>
+                      <Lock v-if="isMoveBlocked(lastPMove, i, move)" :size="11" stroke-width="1.5" style="flex-shrink:0;color:rgba(241,235,255,0.5);" />
                       <template v-else-if="(move.pp ?? 0) > 0">
                         <!-- TypeBadge sm inline -->
                         <span :style="{
@@ -1766,7 +1778,7 @@ const mvp = computed(() => {
                         <span v-if="isMoveBlocked(lastPMove, i, move)" :style="{
                           fontFamily:'Orbitron',fontSize:'7px',
                           color:`${(_TYPE_COLORS_UI[move.type]?.border ?? '#555')}88`,letterSpacing:'.5px',
-                        }">🔒 1 turno</span>
+                        }"><Lock :size="7" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:2px;" />1 turno</span>
                         <span v-else-if="(move.pp ?? 0) <= 0" :style="{
                           fontFamily:'Orbitron',fontSize:'7px',
                           color:_DISABLED_MOVE_STYLE.color,textDecoration:'line-through',

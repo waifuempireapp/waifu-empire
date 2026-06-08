@@ -197,8 +197,8 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
     <button @click="$emit('setTab', 'home')" style="background:transparent;border:none;color:rgba(241,235,255,0.4);font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;cursor:pointer">{{ $t('swap.back_to_home') }}</button>
   </div>
 
-  <!-- Card waifu centrata — SOLO card + ♥/✕ -->
-  <div v-else style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;">
+  <!-- Card waifu centrata verticalmente e orizzontalmente nel viewport disponibile -->
+  <div v-else style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:calc(100dvh - 175px);padding:0 16px;">
 
     <SwapCard
       v-if="currentWaifu"

@@ -5,7 +5,7 @@
     <!-- Header cliccabile per espandere/collassare -->
     <button :style="headerStyle" @click="expanded = !expanded">
       <div :style="{ display:'flex', alignItems:'center', gap:'10px' }">
-        <span :style="{ fontSize:'16px' }">🏆</span>
+        <Trophy :size="16" stroke-width="1.5" />
         <span :style="titleStyle">Classifica</span>
         <span v-if="pixelCount > 0 && accumulated > 0" :style="badgeStyle">
           <KissesIcon :size="12" /> +{{ accumulated }}
@@ -68,6 +68,8 @@
 </template>
 
 <script setup lang="ts">
+// Trophy (Lucide) sostituisce l'emoji 🏆 nell'header della classifica
+import { Trophy } from 'lucide-vue-next'
 // Classifica mini mappa con kisses passivi, countdown e toggle espansione
 const authStore = useAuthStore()
 

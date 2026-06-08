@@ -122,8 +122,10 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
 </script>
 
 <template>
-  <!-- Card principale con bordo colorato per stato -->
-  <div :style="{
+  <!-- Card principale — click sull'intera card avvia la pesca (bottone Drop rimosso) -->
+  <div
+    @click="!giaFiscata && !packBloccato && emit('pesca', pack)"
+    :style="{
     background:   'linear-gradient(160deg, rgba(10,6,28,0.98) 0%, rgba(6,3,18,0.99) 100%)',
     border:       `1.5px solid ${borderColor}`,
     borderRadius: '20px',
@@ -133,6 +135,7 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
     boxShadow:    `0 4px 32px ${glowColor}, 0 1px 0 rgba(255,255,255,0.04) inset`,
     transition:   'all 0.2s',
     opacity:      giaFiscata ? 0.55 : 1,
+    cursor:       giaFiscata || packBloccato ? 'default' : 'pointer',
   }">
 
     <!-- Inner wrapper: clip il contenuto rispettando border-radius senza bloccare il badge esterno -->
@@ -266,30 +269,7 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
 
       </div>
     </div>
-    <!-- ── FOOTER ── -->
-    <div v-if="!giaFiscata" style="padding:8px 16px 14px;display:flex;justify-content:center;">
-
-      <!-- Drop (N) button — always clickable, onClickPesca handles kiss check -->
-      <button
-        style="
-          display:flex; align-items:center; justify-content:center; gap:8px;
-          padding:11px 32px; border-radius:999px;
-          background:linear-gradient(135deg,rgba(255,80,160,0.22),rgba(245,166,35,0.18));
-          border:2px solid rgba(255,80,160,0.55);
-          cursor:pointer; transition:all 0.2s; width:100%;
-          box-shadow:0 0 20px rgba(255,80,160,0.25);
-        "
-        @click="emit('pesca', pack)"
-      >
-        <span style="font-size:18px;line-height:1;">💗</span>
-        <span :style="{
-          fontFamily:'var(--ff-display,Unbounded,sans-serif)',
-          fontSize:'13px', fontWeight:700,
-          color: '#ff4d9e',
-          letterSpacing:'0.05em',
-        }">Drop ({{ kissesCost }})</span>
-      </button>
-    </div>
+    <!-- Bottone Drop eliminato — il click sulla card avviene nel componente padre -->
 
     </div><!-- fine inner wrapper -->
   </div>

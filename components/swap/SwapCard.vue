@@ -100,13 +100,37 @@ function actionBtn(color: string, bg: string) {
         </div>
       </div>
 
-      <div :style="{ position:'absolute', top:'20px', left:'20px', opacity:likeOpacity, transform:'rotate(-20deg)', transition:'opacity 0.1s' }">
-        <div style="border:4px solid #58e0a3;color:#58e0a3;font-family:var(--ff-display);font-size:28px;font-weight:900;padding:4px 12px;border-radius:8px">LIKE</div>
-      </div>
-      <div :style="{ position:'absolute', top:'20px', right:'20px', opacity:dislikeOpacity, transform:'rotate(20deg)', transition:'opacity 0.1s' }">
-        <div style="border:4px solid #ff5b6c;color:#ff5b6c;font-family:var(--ff-display);font-size:28px;font-weight:900;padding:4px 12px;border-radius:8px">NOPE</div>
-      </div>
     </div>
+
+    <!-- ── Overlay FULL-SCREEN ✕ dislike — position:fixed, copre tutta la pagina -->
+    <Teleport to="body">
+      <div :style="{
+        position:'fixed', inset:0, zIndex:9999, pointerEvents:'none',
+        display:'flex', alignItems:'center', justifyContent:'center',
+        opacity: Math.max(dislikeOpacity, leaving === 'dislike' ? 1 : 0),
+        background:'linear-gradient(135deg, rgba(255,30,60,0.45) 0%, rgba(200,20,50,0.2) 50%, transparent 100%)',
+        transition: leaving ? 'opacity 0.15s' : 'opacity 0.06s',
+      }">
+        <svg width="220" height="220" viewBox="0 0 24 24" fill="none">
+          <g stroke="#ff4664" stroke-width="3" stroke-linecap="round" opacity="0.3">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </g>
+        </svg>
+      </div>
+
+      <!-- ── Overlay FULL-SCREEN ♥ like — position:fixed, copre tutta la pagina -->
+      <div :style="{
+        position:'fixed', inset:0, zIndex:9999, pointerEvents:'none',
+        display:'flex', alignItems:'center', justifyContent:'center',
+        opacity: Math.max(likeOpacity, leaving === 'like' ? 1 : 0),
+        background:'linear-gradient(135deg, rgba(20,200,130,0.45) 0%, rgba(10,160,100,0.2) 50%, transparent 100%)',
+        transition: leaving ? 'opacity 0.15s' : 'opacity 0.06s',
+      }">
+        <svg width="200" height="200" viewBox="0 0 24 24" fill="rgba(60,230,160,0.3)" stroke="none">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+      </div>
+    </Teleport>
 
     <div style="display:flex;justify-content:center;gap:32px;margin-top:24px">
       <button @click="vote('dislike')" :style="actionBtn('#ff5b6c','rgba(255,91,108,0.12)')">✕</button>

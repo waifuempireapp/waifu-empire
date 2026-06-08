@@ -9,6 +9,7 @@
   Script: INVARIATO (tutti i timer, watcher, computed e API calls originali).
   ============================================================ -->
 <script setup lang="ts">
+// Gift e Package rimossi — il bottone "APRI ORA" non mostra icone
 import { TIMER } from '~/utils/constants'
 import { ikUrl } from '~/utils/imagekitUrl'
 
@@ -31,6 +32,7 @@ const emit = defineEmits<{
   setTab:      [tab: string]
   apriPesca:   []
   apriNegozio: []
+  apriSbusto:  [] // bottone "APRI ORA" → overlay SbustaTab
 }>()
 
 // ── Runtime config (NEXT_PUBLIC_PESCA_ENABLED → public.pescaEnabled) ──
@@ -247,7 +249,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
           : '0 8px 32px rgba(124,58,237,0.15)',
         minHeight: '320px',
       }"
-      @click="emit('setTab', 'pacchetti')"
+      @click="totalPack > 0 ? emit('apriSbusto') : emit('setTab', 'pacchetti')"
     >
 
       <!-- Raggi decorativi in rotazione -->
@@ -311,8 +313,9 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
           </div>
         </div>
 
-        <!-- CTA button -->
+        <!-- CTA button — apriSbusto se ci sono bustine, altrimenti vai ai pacchetti -->
         <button
+          @click.stop="totalPack > 0 ? emit('apriSbusto') : emit('setTab', 'pacchetti')"
           :style="{
             background:    totalPack > 0
               ? `linear-gradient(135deg, ${C.sakura}, #c54a86)`
@@ -335,7 +338,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
             transition:    'all 0.2s',
           }"
         >
-          {{ totalPack > 0 ? '🎁 Apri ora' : '📦 Vai ai pacchetti' }}
+          {{ totalPack > 0 ? 'Apri ora' : 'Vai ai pacchetti' }}
         </button>
 
         <!-- Timer inferiore -->

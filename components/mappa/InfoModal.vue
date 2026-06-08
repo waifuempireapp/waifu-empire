@@ -8,7 +8,7 @@
     <div :style="modalStyle">
 
       <!-- Pulsante chiudi -->
-      <button :style="closeBtnStyle" @click="$emit('close')">✕</button>
+      <button :style="closeBtnStyle" @click="$emit('close')"><X :size="18" stroke-width="1.5" /></button>
 
       <!-- Paginazione top -->
       <div :style="paginationStyle">
@@ -38,6 +38,8 @@
 </template>
 
 <script setup lang="ts">
+// X (Lucide) sostituisce il carattere ✕ nel pulsante chiudi
+import { X } from 'lucide-vue-next'
 // Modale informativa con regole e legenda della mappa mondo
 const FF = {
   display: "'Cinzel', serif",

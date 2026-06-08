@@ -6,6 +6,8 @@
   ModaPersonalizzazione non renderizzata: emette 'apriModa'.
   ============================================================ -->
 <script setup lang="ts">
+// Icone Lucide — Swords mosse/battaglie, Shield team difesa, Search cerca, X chiudi, Zap levelup, Check conferma
+import { Swords, Shield, Search, X, Zap, Check } from 'lucide-vue-next'
 import {
   listDropsAttivi,
   setCollezione as saveCollezione,
@@ -178,8 +180,8 @@ async function handleScarta(tipo: string, id: string, rarita: string) {
 // ── Sub-tab config ────────────────────────────────────────────
 const subTabs = computed(() => [
   { k: 'waifu',  l: 'Waifu',  icon: '♛', n: Object.keys(props.collezione.waifu || {}).length,  c: C.gold   },
-  { k: 'mosse',  l: 'Mosse',  icon: '⚔', n: Object.keys(props.collezione.mosse || {}).length,  c: C.violet },
-  { k: 'team',   l: 'Team',   icon: '🛡', n: Object.keys(teams.value).length,                   c: C.ok     },
+  { k: 'mosse',  l: 'Mosse',  icon: Swords, n: Object.keys(props.collezione.mosse || {}).length,  c: C.violet },
+  { k: 'team',   l: 'Team',   icon: Shield, n: Object.keys(teams.value).length,                   c: C.ok     },
 ])
 
 // ── Computed: waifu entries filtrate e ordinate ───────────────
@@ -564,11 +566,12 @@ const { t } = useI18n()
               opacity: 0.55, mixBlendMode: 'overlay', pointerEvents: 'none',
             }"
           />
-          <!-- Icona grande -->
+          <!-- Icona Lucide (componente dinamico) -->
           <span :style="{
-            position: 'relative', fontSize: '22px', lineHeight: 1,
+            position: 'relative', lineHeight: 1,
             color: t.c, filter: `drop-shadow(0 0 6px ${t.c})`,
-          }">{{ t.icon }}</span>
+            display: 'flex', alignItems: 'center',
+          }"><component :is="t.icon" :size="22" stroke-width="1.5" /></span>
           <!-- Label -->
           <span :style="{ position: 'relative' }">{{ t.l }}</span>
         </button>
@@ -583,11 +586,11 @@ const { t } = useI18n()
         <div :style="{ marginBottom: '14px' }">
           <!-- Ricerca -->
           <div :style="{ display:'flex', alignItems:'center', gap:'8px', padding:'10px 14px', background:'rgba(7,5,26,0.8)', border:`1px solid ${C.inkLine}`, borderRadius:'12px', marginBottom:'10px' }">
-            <span style="color:rgba(241,235,255,0.4);font-size:14px;">🔍</span>
+            <Search :size="14" stroke-width="1.5" style="color:rgba(241,235,255,0.4);flex-shrink:0;" />
             <input v-model="filtroNome" @input="visibiliWaifu = 12" placeholder="Cerca per nome…"
               :style="{ flex:1, background:'transparent', border:'none', outline:'none', color:'#fff', fontSize:'14px', fontFamily:FF.body, padding:0 }" />
             <button v-if="filtroNome" @click="filtroNome = ''; visibiliWaifu = 12"
-              style="background:none;border:none;cursor:pointer;color:rgba(241,235,255,0.5);font-size:14px;line-height:1;padding:0;">✕</button>
+              style="background:none;border:none;cursor:pointer;color:rgba(241,235,255,0.5);padding:0;display:flex;align-items:center;"><X :size="14" stroke-width="1.5" /></button>
             <span :style="{ fontFamily:FF.mono, fontSize:'13px', color:'rgba(241,235,255,0.45)', fontWeight:700, flexShrink:0 }">{{ waifuEntries.length }}</span>
           </div>
 
@@ -698,7 +701,7 @@ const { t } = useI18n()
               letterSpacing:'0.04em', whiteSpace:'nowrap',
               boxShadow: dati.levelup_pending ? `0 0 10px ${C.ok}55` : 'none',
             }">
-              {{ dati.levelup_pending ? '⚡' : '' }}LV {{ dati.livello }}
+              <Zap v-if="dati.levelup_pending" :size="10" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:2px;" />LV {{ dati.livello }}
             </div>
             </div><!-- fine zoom wrapper -->
           </div>
@@ -709,7 +712,7 @@ const { t } = useI18n()
             :glow="C.gold"
             :style="{ width: '100%', textAlign: 'center', padding: '40px' }"
           >
-            <div :style="{ fontSize: '36px', marginBottom: '8px', filter: `drop-shadow(0 0 12px ${C.gold}88)`, color: C.gold }">🔍</div>
+            <Search :size="36" stroke-width="1" :style="{ marginBottom: '8px', filter: `drop-shadow(0 0 12px ${C.gold}88)`, color: C.gold }" />
             <div :style="{
               fontFamily: FF.label, fontSize: '10px', color: C.gold,
               letterSpacing: '0.28em', marginBottom: '6px',
@@ -794,7 +797,7 @@ const { t } = useI18n()
             :glow="C.violet"
             :style="{ width: '100%', textAlign: 'center', padding: '40px' }"
           >
-            <div :style="{ fontSize: '36px', marginBottom: '8px', filter: `drop-shadow(0 0 12px ${C.violet}88)`, color: C.violet }">⚔</div>
+            <Swords :size="36" stroke-width="1" :style="{ marginBottom: '8px', filter: `drop-shadow(0 0 12px ${C.violet}88)`, color: C.violet }" />
             <div :style="{
               fontFamily: FF.label, fontSize: '10px', color: C.violet,
               letterSpacing: '0.28em', marginBottom: '6px',
@@ -845,7 +848,7 @@ const { t } = useI18n()
                   border: `1px solid ${C.inkLine}`,
                   borderRadius: '999px',
                 }">
-                  <span :style="{ color: 'rgba(241,235,255,0.4)', fontSize: '13px' }">🔍</span>
+                  <Search :size="13" stroke-width="1.5" style="color:rgba(241,235,255,0.4);flex-shrink:0;" />
                   <input
                     v-model="teamFiltroNome"
                     placeholder="Cerca per nome…"
@@ -956,7 +959,7 @@ const { t } = useI18n()
                 :glow="C.ok"
                 :style="{ width: '100%', textAlign: 'center', padding: '40px' }"
               >
-                <div :style="{ fontSize: '36px', marginBottom: '8px', color: C.ok }">🔍</div>
+                <Search :size="36" stroke-width="1" :style="{ marginBottom: '8px', color: C.ok }" />
                 <div :style="{
                   fontFamily: FF.label, fontSize: '10px', color: C.ok,
                   letterSpacing: '0.28em', marginBottom: '6px',
@@ -1007,7 +1010,7 @@ const { t } = useI18n()
             :glow="C.ok"
             :style="{ width: '100%', textAlign: 'center', padding: '40px' }"
           >
-            <div :style="{ fontSize: '36px', marginBottom: '8px', filter: `drop-shadow(0 0 12px ${C.ok}88)`, color: C.ok }">⚔</div>
+            <Shield :size="36" stroke-width="1" :style="{ marginBottom: '8px', filter: `drop-shadow(0 0 12px ${C.ok}88)`, color: C.ok }" />
             <div :style="{
               fontFamily: FF.label, fontSize: '10px', color: C.ok,
               letterSpacing: '0.28em', marginBottom: '6px',
@@ -1033,7 +1036,7 @@ const { t } = useI18n()
                 }">{{ (team as any).nome }}</div>
                 <div :style="{ display: 'flex', gap: '4px' }">
                   <BtnDecorato variant="secondary" size="sm" @click="iniziaEditTeam(id)">✏</BtnDecorato>
-                  <BtnDecorato variant="danger" size="sm" @click="eliminaTeam(id)">✕</BtnDecorato>
+                  <BtnDecorato variant="danger" size="sm" @click="eliminaTeam(id)"><X :size="12" stroke-width="1.5" /></BtnDecorato>
                 </div>
               </div>
               <div :style="{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }">
@@ -1164,7 +1167,7 @@ const { t } = useI18n()
               cursor: lvlPreview && !lvlBusy ? 'pointer' : 'not-allowed',
               letterSpacing: '0.1em',
             }"
-          >{{ lvlBusy ? '⏳ Applicando…' : '✅ CONFERMA' }}</button>
+          ><Check v-if="!lvlBusy" :size="14" stroke-width="2" style="display:inline-block;vertical-align:middle;margin-right:4px;" />{{ lvlBusy ? 'Applicando…' : 'CONFERMA' }}</button>
           <button
             @click="waifuSel = null; lvlPreview = null"
             :style="{
