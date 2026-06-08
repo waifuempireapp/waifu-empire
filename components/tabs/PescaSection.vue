@@ -511,7 +511,7 @@ onUnmounted(() => {
           </div>
 
           <div
-            style="flex:1; display:flex; align-items:center; justify-content:center; min-height:0; padding:4px 14px; overflow:visible; position:relative; perspective:1200px;">
+            style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:0; padding:4px 14px; overflow:visible; position:relative; perspective:1200px;">
             <div
               style="width:100%; max-width:360px; display:flex; flex-direction:column; gap:10px; transform-style:preserve-3d;">
 
