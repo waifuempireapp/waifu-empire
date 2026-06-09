@@ -15,6 +15,7 @@ import {
   updateUserProfile,
 } from '~/utils/firestoreService'
 import { computeAndSaveStats, calcolaEnergiaScarto } from '~/utils/gameLogic'
+import { ikUrl } from '~/utils/imagekitUrl'
 import { TIMER, RARITA, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, RARITY_MULTIPLIERS_DEFAULT } from '~/utils/constants'
 import { useAuthStore } from '~/stores/auth'
 
@@ -126,6 +127,8 @@ const teamWaifu = ref<string[]>([])
 // ── Carica drop attivi al mount ───────────────────────────────
 onMounted(() => {
   listDropsAttivi().then(d => { drops.value = d }).catch(() => {})
+  // Preload iniziale dopo mount — fuori dalla fase di setup Vue
+  nextTick(() => _preload(waifuEntries.value))
 })
 
 // ── Computed: drop selezionato ────────────────────────────────
@@ -271,6 +274,19 @@ const totScambiabili = computed(() =>
     ? Object.values(props.collezione.waifu || {}).filter((d: any) => (d.copie ?? 0) >= 2).length
     : 0
 )
+
+// ── Preload immagini → cache HTTP prima che CartaGLB le richieda ─────────────
+function _preload(entries: typeof waifuEntries.value) {
+  if (typeof window === 'undefined') return
+  try {
+    entries.slice(0, visibiliWaifu.value + 6).forEach(({ w }) => {
+      const url = ikUrl(w?.asset_statica ?? null, 'card')
+      if (url) { const img = new Image(); img.src = url }
+    })
+  } catch { /* mai propagare errori di preload */ }
+}
+// Watch senza immediate (evita scheduler flush durante setup)
+watch(waifuEntries, (entries) => nextTick(() => _preload(entries)))
 
 // ── Computed: outfit entries filtrate ─────────────────────────
 const outfitEntries = computed(() => {

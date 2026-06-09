@@ -157,11 +157,51 @@ onUnmounted(() => {
     @touchmove.passive="onTouchMove"
     @touchend.passive="onTouchEnd"
   >
-    <!-- Canvas 3D — riempie il parent overflow:hidden di CartaWaifu -->
+    <!-- Skeleton shimmer — visibile finché la texture non è pronta -->
+    <div
+      :style="{
+        position: 'absolute', inset: '0', zIndex: 0,
+        borderRadius: 'inherit',
+        background: 'linear-gradient(160deg, #0d0a28 0%, #1a0f3c 100%)',
+        opacity: ready ? 0 : 1,
+        transition: 'opacity 0.45s ease',
+        pointerEvents: 'none',
+        overflow: 'hidden',
+      }"
+    >
+      <div class="glb-skeleton-shimmer" />
+    </div>
+
+    <!-- Canvas 3D — fade-in quando pronto -->
     <canvas
-      v-show="ready && !glError"
       ref="canvasRef"
-      :style="{ position:'absolute', inset:'0', width:'100%', height:'100%', zIndex:0 }"
+      :style="{
+        position: 'absolute', inset: '0', width: '100%', height: '100%', zIndex: 1,
+        opacity: ready && !glError ? 1 : 0,
+        transition: 'opacity 0.45s ease',
+      }"
     />
   </div>
 </template>
+
+<style scoped>
+.glb-skeleton-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(174, 156, 255, 0.07) 38%,
+    rgba(255, 133, 182, 0.11) 50%,
+    rgba(174, 156, 255, 0.07) 62%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: glbShimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes glbShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+</style>
