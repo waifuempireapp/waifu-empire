@@ -402,19 +402,10 @@ function onMouseLeave(e: MouseEvent) {
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }">{{ waifu.nome }}</div>
 
-        <!-- Livello dalla collezione -->
-        <div v-if="datiCollezione" :style="{
-          fontSize: `${Math.round(8.5 * scale)}px`,
-          color: rb.inner, letterSpacing: '0.22em',
-          fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
-          marginTop: '3px', textShadow: '0 1px 3px rgba(0,0,0,0.8)',
-          textTransform: 'uppercase',
-        }">Lv.{{ datiCollezione.livello ?? 1 }}</div>
-
         <!-- Tag archetipo con simbolo -->
-        <div v-if="waifu.archetipo && archetipoSym" :style="{ display: 'flex', alignItems: 'center', marginTop: `${Math.round(4 * scale)}px` }">
+        <div v-if="waifu.archetipo && archetipoSym" :style="{ display: 'flex', alignItems: 'center', marginTop: `${Math.round(2 * scale)}px` }">
           <div :style="{
-            width: `${Math.round(26 * scale)}px`, height: `${Math.round(26 * scale)}px`,
+            width: `${Math.round(35 * scale)}px`, height: `${Math.round(35 * scale)}px`,
             borderRadius: '50%',
             background: `radial-gradient(circle at 35% 30%, ${archetipoSym.color}55, rgba(7,5,26,0.85))`,
             border: `1.5px solid ${archetipoSym.color}aa`,
@@ -422,7 +413,7 @@ function onMouseLeave(e: MouseEvent) {
             color: archetipoSym.color,
             boxShadow: `0 0 8px ${archetipoSym.color}66, inset 0 0 6px rgba(0,0,0,0.3)`,
             flexShrink: '0',
-          }"><component :is="archetipoSym.icon" :size="Math.round(12 * scale)" stroke-width="1.5" /></div>
+          }"><component :is="archetipoSym.icon" :size="Math.round(16 * scale)" stroke-width="1.5" /></div>
         </div>
       </div>
 
@@ -476,32 +467,32 @@ function onMouseLeave(e: MouseEvent) {
         <!-- Velocità -->
         <div v-if="vel != null" :style="{
           fontFamily: `'JetBrains Mono', monospace`,
-          fontSize: `${Math.round(9 * scale)}px`, color: '#6cf0e0', textAlign: 'center',
+          fontSize: `${Math.round(12 * scale)}px`, color: '#6cf0e0', textAlign: 'center',
         }">
-          <div :style="{ fontSize: `${Math.round(11 * scale)}px` }">&#9889;</div>
-          <div style="font-weight: 700;">{{ Math.round(vel) }}</div>
+          <div :style="{ fontSize: `${Math.round(15 * scale)}px` }">&#9889;</div>
+          <div style="font-weight: 800;">{{ Math.round(vel) }}</div>
         </div>
         <div v-else />
 
         <!-- HP -->
         <div v-if="hp != null" :style="{
           fontFamily: `'JetBrains Mono', monospace`,
-          fontSize: `${Math.round(10.5 * scale)}px`, color: '#06d6a0', textAlign: 'center',
-          background: 'rgba(6,214,160,0.12)',
-          borderRadius: `${Math.round(5 * scale)}px`,
-          padding: `${Math.round(1 * scale)}px ${Math.round(5 * scale)}px`,
+          fontSize: `${Math.round(13 * scale)}px`, color: '#06d6a0', textAlign: 'center',
+          background: 'rgba(6,214,160,0.14)',
+          borderRadius: `${Math.round(6 * scale)}px`,
+          padding: `${Math.round(2 * scale)}px ${Math.round(7 * scale)}px`,
         }">
-          <div :style="{ fontSize: `${Math.round(12 * scale)}px` }">💚</div>
+          <div :style="{ fontSize: `${Math.round(16 * scale)}px` }">💚</div>
           <div style="font-weight: 800;">{{ Math.round(hp) }}</div>
         </div>
 
         <!-- Crit -->
         <div v-if="crit != null" :style="{
           fontFamily: `'JetBrains Mono', monospace`,
-          fontSize: `${Math.round(9 * scale)}px`, color: '#fbbf24', textAlign: 'center',
+          fontSize: `${Math.round(12 * scale)}px`, color: '#fbbf24', textAlign: 'center',
         }">
-          <div :style="{ fontSize: `${Math.round(11 * scale)}px` }">💥</div>
-          <div style="font-weight: 700;">{{ Math.round(crit * 100) }}%</div>
+          <div :style="{ fontSize: `${Math.round(15 * scale)}px` }">💥</div>
+          <div style="font-weight: 800;">{{ Math.round(crit * 100) }}%</div>
         </div>
         <div v-else />
       </div>

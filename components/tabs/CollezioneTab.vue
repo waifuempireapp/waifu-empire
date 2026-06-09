@@ -78,9 +78,14 @@ const emit = defineEmits<{
 const authStore = useAuthStore()
 
 // ── Stato principale ─────────────────────────────────────────
-const tabSub     = ref(props.initialSubTab)
-const waifuSel   = ref<string | null>(null)
-const teamInEdit = ref<string | null>(null)
+const tabSub           = ref(props.initialSubTab)
+const waifuSel         = ref<string | null>(null)   // usato solo per il panel level-up
+const waifuDettaglioId = ref<string | null>(null)   // apre WaifuDettaglio
+const teamInEdit       = ref<string | null>(null)
+
+// Computed per WaifuDettaglio
+const waifuDettaglioCat  = computed(() => waifuDettaglioId.value ? props.waifuCat.find((w: any) => w.id === waifuDettaglioId.value) : null)
+const waifuDettaglioDati = computed(() => waifuDettaglioId.value ? props.collezione.waifu?.[waifuDettaglioId.value] : null)
 
 // ── Filtri waifu ─────────────────────────────────────────────
 const filtroRarita      = ref('tutte')
@@ -177,6 +182,33 @@ async function handleScarta(tipo: string, id: string, rarita: string) {
   emit('notif', `+${guadagno} energia`, C.ok)
 }
 
+// ── Preferiti ─────────────────────────────────────────────────
+async function togglePreferita(id: string) {
+  const nuova = JSON.parse(JSON.stringify(props.collezione))
+  nuova.waifu[id].preferita = !nuova.waifu[id].preferita
+  emit('updateCollezione', nuova)
+  await saveCollezione(authStore.user!.uid, nuova)
+  emit('notif', nuova.waifu[id].preferita ? '❤ Aggiunta ai preferiti' : 'Rimossa dai preferiti', nuova.waifu[id].preferita ? '#ff85b6' : 'rgba(241,235,255,0.5)')
+}
+
+// ── Assegna / rimuovi mossa slot ──────────────────────────────
+async function assegnaMossa(waifuId: string, slot: string, mossaId: string) {
+  const nuova = JSON.parse(JSON.stringify(props.collezione))
+  if (!nuova.waifu[waifuId].mosse_slot) nuova.waifu[waifuId].mosse_slot = {}
+  nuova.waifu[waifuId].mosse_slot[slot] = mossaId
+  emit('updateCollezione', nuova)
+  await saveCollezione(authStore.user!.uid, nuova)
+  emit('notif', 'Mossa assegnata!', '#a78bfa')
+}
+
+async function rimuoviMossa(waifuId: string, slot: string) {
+  const nuova = JSON.parse(JSON.stringify(props.collezione))
+  if (nuova.waifu[waifuId].mosse_slot) delete nuova.waifu[waifuId].mosse_slot[slot]
+  emit('updateCollezione', nuova)
+  await saveCollezione(authStore.user!.uid, nuova)
+  emit('notif', 'Mossa rimossa', 'rgba(241,235,255,0.5)')
+}
+
 // ── Sub-tab config ────────────────────────────────────────────
 const subTabs = computed(() => [
   { k: 'waifu',  l: 'Waifu',  icon: '♛', n: Object.keys(props.collezione.waifu || {}).length,  c: C.gold   },
@@ -227,6 +259,9 @@ const waifuEntries = computed(() => {
       const vb = (b.w[sk] || 0) + (b.dati.stat_bonus?.[sk] || 0)
       return sd === 'desc' ? vb - va : va - vb
     })
+
+  // Preferite sempre prime (sort stabile: mantiene ordine relativo interno)
+  entries.sort((a, b) => (b.dati.preferita ? 1 : 0) - (a.dati.preferita ? 1 : 0))
 
   return entries
 })
@@ -673,21 +708,21 @@ function apriNegozio() {
           >🔓 Acquista Trade Pass</button>
         </div>
 
-        <!-- Griglia waifu 3 colonne: zoom riduce layout + dimensione visiva -->
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:16px;">
+        <!-- Griglia waifu 3 colonne -->
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:16px;">
           <div
             v-for="({ id, dati, w }, idx) in waifuEntries.slice(0, visibiliWaifu)"
             :key="id"
             class="card-fade-up card-clickable collection-card-item"
-            :style="{ width:'calc(33.33% - 5px)', display:'flex', flexDirection:'column', alignItems:'center', animationDelay:`${idx * 30}ms` }"
+            :style="{ width:'calc(33.33% - 3px)', display:'flex', flexDirection:'column', alignItems:'center', animationDelay:`${idx * 30}ms` }"
           >
-            <div style="zoom:0.82;flex-shrink:0;position:relative;">
+            <div style="zoom:0.92;flex-shrink:0;position:relative;">
             <CartaWaifu
               :waifu="w"
               :datiCollezione="dati"
               dimensione="piccola"
               tipo="auto"
-              @click="waifuSel = id"
+              @click="waifuDettaglioId = id"
               :outfitCatalogo="outfitCat"
               :poseCatalogo="poseCat"
               :equip="collezione.equipaggiamento?.[id]"
@@ -704,13 +739,13 @@ function apriNegozio() {
               boxShadow:'0 0 10px rgba(255,69,0,0.65)', pointerEvents:'none',
               textTransform:'uppercase', whiteSpace:'nowrap',
             }">🔥 HOT</div>
-            <!-- Chip LV — bottom-right della carta; font compensato per zoom:0.82 -->
+            <!-- Chip LV — bottom-right della carta; font compensato per zoom:0.92 -->
             <div :style="{
               position:'absolute', bottom:'10px', right:'6px', zIndex:20,
               background:'rgba(4,2,14,0.88)',
               border:`2px solid ${dati.levelup_pending ? C.ok : C.gold}bb`,
               borderRadius:'999px', padding:'4px 13px',
-              fontFamily:FF.label, fontSize:'20px', fontWeight:800,
+              fontFamily:FF.label, fontSize:'18px', fontWeight:800,
               color: dati.levelup_pending ? C.ok : C.gold,
               letterSpacing:'0.04em', whiteSpace:'nowrap',
               boxShadow: dati.levelup_pending ? `0 0 10px ${C.ok}55` : 'none',
@@ -737,10 +772,35 @@ function apriNegozio() {
         </div>
 
         <!-- Carica altre waifu -->
-        <div v-if="visibiliWaifu < waifuEntries.length" :style="{ textAlign: 'center', marginTop: '16px' }">
-          <BtnDecorato variant="secondary" size="sm" @click="visibiliWaifu += 12">
-            Carica altre ({{ waifuEntries.length - visibiliWaifu }} rimanenti)
-          </BtnDecorato>
+        <div v-if="visibiliWaifu < waifuEntries.length" :style="{ textAlign: 'center', marginTop: '0' }">
+          <button
+            @click="visibiliWaifu += 12"
+            :style="{
+              position: 'relative',
+              padding: '14px 28px',
+              background: 'linear-gradient(rgba(255,255,255,0.10), rgba(255,255,255,0.02))',
+              color: 'rgb(241,235,255)',
+              border: '1px solid rgba(255,255,255,0.16)',
+              borderRadius: '99px',
+              fontFamily: FF.label,
+              fontSize: '14px',
+              fontWeight: 700,
+              letterSpacing: '1.5px',
+              cursor: 'pointer',
+              boxShadow: 'rgba(255,255,255,0.12) 0px 1px 0px inset, rgba(0,0,0,0.40) 0px -8px 16px inset, rgba(0,0,0,0.45) 0px 6px 20px',
+              backdropFilter: 'blur(8px)',
+              transition: 'background 0.2s, transform 0.15s',
+              textTransform: 'uppercase',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '7px',
+              overflow: 'hidden',
+              marginBottom: '30px',
+            }"
+          >
+            <span style="position:relative;">CARICA ALTRE ({{ waifuEntries.length - visibiliWaifu }} RIMANENTI)</span>
+          </button>
         </div>
       </div>
 
@@ -1070,12 +1130,31 @@ function apriNegozio() {
     </div>
 
     <!-- ══════════════════════════════════════════════════════════
+         WAIFU DETTAGLIO (overlay fisso)
+    ══════════════════════════════════════════════════════════ -->
+    <WaifuDettaglio
+      v-if="waifuDettaglioId && waifuDettaglioCat && waifuDettaglioDati"
+      :waifu-id="waifuDettaglioId"
+      :waifu="waifuDettaglioCat"
+      :dati="waifuDettaglioDati"
+      :mosse-cat="mosseCat"
+      :mosse-collezione="collezione.mosse ?? {}"
+      :waifu-collezione="collezione.waifu ?? {}"
+      :waifu-cat="waifuCat"
+      @chiudi="waifuDettaglioId = null"
+      @toggle-preferita="togglePreferita(waifuDettaglioId!)"
+      @assegna-mossa="(slot, mossaId) => assegnaMossa(waifuDettaglioId!, slot, mossaId)"
+      @rimuovi-mossa="(slot) => rimuoviMossa(waifuDettaglioId!, slot)"
+      @level-up="waifuSel = waifuDettaglioId"
+    />
+
+    <!-- ══════════════════════════════════════════════════════════
          MODALE LEVEL UP PANEL (overlay fisso)
     ══════════════════════════════════════════════════════════ -->
     <div
       v-if="mostraLevelUp"
       :style="{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100,
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9500,
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
       }"
       @click.self="waifuSel = null; lvlPreview = null"

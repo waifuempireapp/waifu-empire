@@ -36,33 +36,12 @@ let clock:     import('three').Clock               | null = null
 let targetTiltX = 0, targetTiltY = 0
 let currentTiltX = 0, currentTiltY = 0
 
-// ── Rarità → proprietà materiale ─────────────────────────────
-function rarityProps(r: string | null | undefined) {
-  switch (r) {
-    case 'immersivo':   return { metalness: 0.88, roughness: 0.08, emissiveStr: 0.18 }
-    case 'leggendario': return { metalness: 0.72, roughness: 0.14, emissiveStr: 0.12 }
-    case 'epico':       return { metalness: 0.52, roughness: 0.22, emissiveStr: 0.07 }
-    case 'raro':        return { metalness: 0.32, roughness: 0.35, emissiveStr: 0.04 }
-    default:            return { metalness: 0.12, roughness: 0.55, emissiveStr: 0.0  }
-  }
-}
-
-function rarityEmissiveHex(r: string | null | undefined): number {
-  switch (r) {
-    case 'immersivo':   return 0xff7eb6
-    case 'leggendario': return 0xffc861
-    case 'epico':       return 0xb573ff
-    case 'raro':        return 0x5aa9ff
-    default:            return 0x000000
-  }
-}
 
 // ── Init ──────────────────────────────────────────────────────
 async function init() {
   if (!canvasRef.value) return
   try {
     const THREE = await import('three')
-    const { RoomEnvironment } = await import('three/examples/jsm/environments/RoomEnvironment.js')
     ;(window as any).__THREE__ = THREE
 
     const W = props.width, H = props.height
@@ -71,27 +50,15 @@ async function init() {
     renderer.setSize(W, H)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.setClearColor(0x000000, 0)
-    renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = 1.15
+    renderer.toneMapping = THREE.NoToneMapping
+    renderer.toneMappingExposure = 1.0
+    renderer.outputColorSpace = THREE.SRGBColorSpace
 
     scene  = new THREE.Scene()
     camera = new THREE.PerspectiveCamera(36, W / H, 0.1, 100)
     camera.position.set(0, 0, 3.0)
     clock  = new THREE.Clock()
-
-    // Environment per riflessioni metalliche
-    const pmrem = new THREE.PMREMGenerator(renderer)
-    scene.environment = pmrem.fromScene(new RoomEnvironment()).texture
-    pmrem.dispose()
-
-    // Luci
-    scene.add(new THREE.AmbientLight(0xffffff, 0.45))
-    const key = new THREE.DirectionalLight(0xffffff, 0.85)
-    key.position.set(1, 2, 4)
-    scene.add(key)
-    const rim = new THREE.DirectionalLight(0xa78bfa, 0.35)
-    rim.position.set(-1.5, -0.5, 2)
-    scene.add(rim)
+    // Nessuna luce: MeshBasicMaterial non la usa
 
     // Geometry dalla cache condivisa
     const geo = (await getCardGeometry()) as import('three').BufferGeometry
@@ -105,15 +72,10 @@ async function init() {
       } catch { /* fallback colore */ }
     }
 
-    const rp = rarityProps(props.rarita)
-    mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-      map:             tex ?? null,
-      color:           tex ? 0xffffff : 0x1a0a35,
-      metalness:       rp.metalness,
-      roughness:       rp.roughness,
-      envMapIntensity: 1.3,
-      emissive:        new THREE.Color(rarityEmissiveHex(props.rarita)),
-      emissiveIntensity: rp.emissiveStr,
+    // MeshBasicMaterial: mostra la texture 1:1, zero illuminazione, zero patina
+    mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      map:   tex ?? null,
+      color: tex ? 0xffffff : 0x1a0a35,
     }))
     scene.add(mesh)
     ready.value = true
@@ -149,7 +111,7 @@ watch(() => props.imageUrl, async (url) => {
     const THREE = (window as any).__THREE__ as typeof import('three')
     const tex   = await new THREE.TextureLoader().loadAsync(url)
     tex.colorSpace = THREE.SRGBColorSpace
-    const mat = mesh.material as import('three').MeshStandardMaterial
+    const mat = mesh.material as import('three').MeshBasicMaterial
     mat.map = tex
     mat.color.set(0xffffff)
     mat.needsUpdate = true
