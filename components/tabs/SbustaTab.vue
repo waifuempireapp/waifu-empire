@@ -5,18 +5,16 @@
   Equivalente di src/app/gioco/_redesign/Sbusta.jsx
   ============================================================ -->
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, nextTick, useTemplateRef } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, useTemplateRef } from 'vue'
 import type { ProfiloUtente, Collezione, WaifuCatalog, MossaCatalog } from '~/types/game'
 import {
   listDropsAttivi,
   updateUserProfile,
   setCollezione as saveCollezione,
   createPackSnapshot,
-  isDropCompleto,
-  progressioneDrop,
 } from '~/utils/firestoreService'
 import { generaPacchetto, GOD_PACK_PROB_DEFAULT } from '~/utils/gameLogic'
-import { TIMER, RARITA } from '~/utils/constants'
+import { TIMER } from '~/utils/constants'
 import { useAuthStore } from '~/stores/auth'
 import { ikUrl } from '~/utils/imagekitUrl'
 
@@ -79,7 +77,6 @@ const multiPackIndice = ref(0)
 const bustaAperta = ref(false)
 const bustaInAnimazione = ref(false)
 const transizioneCarta = ref(false)
-const YInizioSwipe = ref(0)
 
 // Stato video carta immersiva
 const sbusVideoAttivo = ref(false)
@@ -106,14 +103,7 @@ const dropAttivo = computed(() =>
   dropsAttivi.value.find((d: any) => d.id === dropSelId.value) || dropsAttivi.value[0] || null
 )
 
-const dropWaifu = computed(() =>
-  dropAttivo.value?.waifuIds
-    ? props.waifuCat.filter((w: any) => dropAttivo.value.waifuIds.includes(w.id))
-    : props.waifuCat
-)
-
 const dropColore = computed(() => dropAttivo.value?.colore || C.violet)
-const dropColore2 = computed(() => dropAttivo.value?.colore2 || C.sakura)
 
 const SFIDA_COSTO_KISSES = 50
 const SFIDA_COSTO_10 = 450
@@ -132,9 +122,6 @@ const tipoDaAprire = computed<string>(() => {
   if (nSfid.value > 0) return 'sfida'
   return 'omaggio'
 })
-
-const progDrop = computed(() => progressioneDrop(dropAttivo.value as any, props.collezione as any))
-const dropCompleto = computed(() => isDropCompleto(dropAttivo.value as any, props.collezione as any))
 
 // ── Generazione e aggiornamento pacchetto ────────────────────
 async function _generaEAggiorna(tipoPacchetto: string, nuovaCollezione: any) {
@@ -191,18 +178,7 @@ function avanzaCartaManuale() {
   }, 350) // Tempo coerente con l'animazione CSS d'uscita
 }
 
-// Gestione dello swipe della bustina (Dall'alto verso il basso per tagliare la linea)
-function onBustaTouchStart(e: TouchEvent) {
-  YInizioSwipe.value = e.touches[0].clientY
-}
 
-function onBustaTouchMove(e: TouchEvent) {
-  if (bustaAperta.value || bustaInAnimazione.value) return
-  const currentY = e.touches[0].clientY
-  if (currentY - YInizioSwipe.value > 60) {
-    eseguiTaglioBustina()
-  }
-}
 
 function eseguiTaglioBustina() {
   bustaInAnimazione.value = true
@@ -418,12 +394,6 @@ function getCopie(carta: any): number {
   return (props.collezione?.waifu as any)?.[carta.data?.id]?.copie ?? 0
 }
 
-function avviaVideoSbusto(carta: any) {
-  sbusCartaImmersiva.value = carta
-  sbusVideoFinito.value = false
-  sbusVideoAttivo.value = true
-  nextTick(() => sbusVideoRef.value?.play())
-}
 function rivediVideoSbusto() {
   sbusVideoFinito.value = false
   if (sbusVideoRef.value) {
@@ -493,10 +463,7 @@ const cartaCorrente = computed(() =>
   indiceRivelato.value >= 0 ? carteRivelate.value[indiceRivelato.value] : null
 )
 
-// Ritorna ESATTAMENTE le carte rimanenti dietro per calcolare lo spessore reale del mazzo
-const carteNelMazzo = computed(() =>
-  indiceRivelato.value >= 0 ? carteRivelate.value.slice(indiceRivelato.value + 1) : []
-)
+
 
 const RARITY_COLORS: Record<string, string> = {
   comune: '#b4bcc8', raro: '#5aa9ff', epico: '#b573ff',
@@ -536,28 +503,6 @@ function onRevealTouchEnd() {
   revealTilt.value = { x: 0, y: 0 }
 }
 
-const packTilts = ref<Record<string, string>>({})
-const packSheens = ref<Record<string, string>>({})
-const hoveredPack = ref<string | null>(null)
-
-function onPackHover(e: MouseEvent, id: string) {
-  hoveredPack.value = id
-  const el = (e.currentTarget as HTMLElement).querySelector('.pack-body') as HTMLElement
-  if (!el) return
-  const rect = el.getBoundingClientRect()
-  const x = (e.clientX - rect.left) / rect.width
-  const y = (e.clientY - rect.top) / rect.height
-  const rotY = (x - 0.5) * 22
-  const rotX = -(y - 0.5) * 16
-  packTilts.value = { ...packTilts.value, [id]: `rotateX(${rotX}deg) rotateY(${rotY}deg) scale(1.04)` }
-  packSheens.value = { ...packSheens.value, [id]: `radial-gradient(circle at ${x * 100}% ${y * 100}%, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.06) 40%, transparent 70%)` }
-}
-
-function onPackLeave(id: string) {
-  hoveredPack.value = null
-  packTilts.value = { ...packTilts.value, [id]: 'rotateX(0deg) rotateY(0deg) scale(1)' }
-  packSheens.value = { ...packSheens.value, [id]: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 70%)' }
-}
 
 const selectedDropIndex = computed(() =>
   Math.max(0, dropsAttivi.value.findIndex(d => d.id === dropSelId.value))
@@ -574,7 +519,7 @@ function hexRgba(hex: string, alpha: number): string {
 
 function getCoverflowStyle(index: number): Record<string, string | number> {
   const dist = index - selectedDropIndex.value
-  const STEP = 112
+  const STEP = 130
   let rotY: number, scale: number, zOff: number, opacity: number
 
   if (dist === 0) {
@@ -624,24 +569,31 @@ function cfTouchEnd(e: TouchEvent) {
 
     <!-- 1. FASE DI SBUSTO INTERATTIVA (Prima di mostrare le carte) -->
     <div v-if="!bustaAperta"
-      style="position: absolute; inset: 0; z-index: 250; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle at center, #180d36 0%, #06030d 100%); cursor: pointer;"
+      :style="{
+        position:'absolute', inset:0, zIndex:250,
+        display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+        background:`radial-gradient(circle at center, ${dropColore}22 0%, #06030d 100%)`,
+        cursor:'pointer',
+      }"
       @click="eseguiTaglioBustina">
-      <div style="text-align: center; margin-bottom: 40px; padding: 0 30px; animation: pulseSoft 2s infinite;">
+      <div style="text-align: center; margin-bottom: 32px; padding: 0 30px; animation: pulseSoft 2s infinite;">
         <p :style="{ fontFamily: FF.label, fontSize: '13px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '3px' }">
           ▶ Tocca per aprire
         </p>
       </div>
 
-      <!-- Corpo del Pacchetto Olografico -->
+      <!-- Corpo del Pacchetto 3D — colore dell'espansione selezionata, più grande -->
       <div :class="['booster-pack-wrapper', { 'rip-animation': bustaInAnimazione }]"
-        style="position: relative; width: 220px; height: 360px; border-radius: 8px; box-shadow: 0 30px 70px rgba(0,0,0,0.8); overflow: hidden; transition: transform 0.5s;">
-        <div style="position: absolute; inset: 0; background: linear-gradient(135deg, #185a9d 0%, #0c2540 100%);">
-          <img v-if="dropAttivo?.asset_bustina" :src="dropAttivo.asset_bustina"
-            style="width: 100%; height: 100%; object-fit: cover;" />
-        </div>
-        <!-- Linea Neon di Taglio Gimmick Pokémon Pocket -->
-        <div class="glow-line"
-          style="position: absolute; top: 75px; left: 0; right: 0; height: 3px; background: #00ffff; box-shadow: 0 0 15px #00ffff, 0 0 30px #00ffff; z-index: 10;" />
+        style="position: relative; display: inline-block;">
+        <BustinaGLB
+          :texture-url="dropAttivo?.asset_bustina ?? null"
+          :color="dropColore"
+          :ripping="bustaInAnimazione"
+          :width="280" :height="460"
+        />
+        <!-- Linea Neon di Taglio — commentata: apertura solo con tap, non swipe -->
+        <!-- <div class="glow-line"
+          style="position: absolute; top: 80px; left: 0; right: 0; height: 3px; background: #00ffff; box-shadow: 0 0 15px #00ffff, 0 0 30px #00ffff; z-index: 10; pointer-events:none;" /> -->
       </div>
     </div>
 
@@ -653,7 +605,7 @@ function cfTouchEnd(e: TouchEvent) {
       <!-- Top Header Progress -->
       <div style="position: relative; z-index: 10; padding: 20px 20px 0; text-align: center;">
         <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px;">
-          <div v-for="(c, i) in carteRivelate" :key="i" :style="{
+          <div v-for="(_, i) in carteRivelate" :key="i" :style="{
             width: i <= indiceRivelato ? '28px' : '8px',
             height: '6px',
             borderRadius: '999px',
@@ -923,28 +875,27 @@ function cfTouchEnd(e: TouchEvent) {
       <!-- Blocco centrale: carosello + bottoni + contatore, centrato come gruppo -->
       <div v-if="dropsAttivi.length > 0" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;min-height:0;">
 
-        <!-- Carosello 3D coverflow — carte più grandi -->
-        <div style="position:relative;width:100%;height:310px;perspective:1100px;overflow:visible;touch-action:pan-y;flex-shrink:0;"
+        <!-- Carosello 3D coverflow — bustine grandi senza card wrapper -->
+        <div style="position:relative;width:100%;height:420px;perspective:1400px;overflow:visible;touch-action:pan-y;flex-shrink:0;"
           @touchstart.passive="cfTouchStart" @touchend.passive="cfTouchEnd">
           <div v-for="(d, i) in dropsAttivi" :key="d.id"
             @click="() => dropSelId = d.id"
-            :style="{ position:'absolute', left:'50%', top:'50%', width:'160px', height:'230px', borderRadius:'16px', cursor:'pointer', transformStyle:'preserve-3d', transition:'transform 0.42s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.35s', background:`linear-gradient(165deg,${d.colore||C.violet}22 0%,#071428 45%,#050e1c 100%)`, border:`1.5px solid ${d.id===dropSelId?(d.colore||C.violet)+'ee':(d.colore||C.violet)+'66'}`, boxShadow:d.id===dropSelId?`0 0 50px ${d.colore||C.violet}66, 0 24px 60px rgba(0,0,0,0.85), inset 0 1px 0 ${d.colore||C.violet}22`:`0 8px 24px rgba(0,0,0,0.55), 0 0 14px ${d.colore||C.violet}18`, overflow:'hidden', ...getCoverflowStyle(i) }">
-            <!-- Angoli decorativi -->
-            <div :style="{position:'absolute',top:'10px',left:'10px',width:'18px',height:'18px',borderTop:`1.5px solid ${d.colore||C.violet}cc`,borderLeft:`1.5px solid ${d.colore||C.violet}cc`,borderRadius:'2px 0 0 0',zIndex:10,pointerEvents:'none'}" />
-            <div :style="{position:'absolute',top:'10px',right:'10px',width:'18px',height:'18px',borderTop:`1.5px solid ${d.colore||C.violet}cc`,borderRight:`1.5px solid ${d.colore||C.violet}cc`,borderRadius:'0 2px 0 0',zIndex:10,pointerEvents:'none'}" />
-            <div :style="{position:'absolute',bottom:'10px',left:'10px',width:'18px',height:'18px',borderBottom:`1.5px solid ${d.colore||C.violet}cc`,borderLeft:`1.5px solid ${d.colore||C.violet}cc`,borderRadius:'0 0 0 2px',zIndex:10,pointerEvents:'none'}" />
-            <div :style="{position:'absolute',bottom:'10px',right:'10px',width:'18px',height:'18px',borderBottom:`1.5px solid ${d.colore||C.violet}cc`,borderRight:`1.5px solid ${d.colore||C.violet}cc`,borderRadius:'0 0 2px 0',zIndex:10,pointerEvents:'none'}" />
-            <!-- Glow radiale top -->
-            <div :style="{position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',width:'100%',height:'120px',background:`radial-gradient(ellipse at 50% 0%,${d.colore||C.violet}35 0%,transparent 70%)`,pointerEvents:'none',zIndex:1}" />
-            <!-- Immagine espansione -->
-            <div style="position:absolute;top:30px;left:12px;right:12px;bottom:52px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:10px;z-index:2;">
-              <img v-if="d.asset_bustina" :src="d.asset_bustina" style="width:100%;height:100%;object-fit:cover;" />
-              <img v-else src="~/assets/images/New_Logo.png" alt="" style="width:70%;height:auto;object-fit:contain;opacity:0.85;" />
-            </div>
-            <!-- Nome espansione in basso -->
-            <div :style="{position:'absolute',bottom:0,left:0,right:0,padding:'8px 10px 12px',background:'linear-gradient(0deg,rgba(4,6,20,0.97) 0%,transparent 100%)',zIndex:5,textAlign:'center'}">
-              <div :style="{fontFamily:FF.display,fontSize:'10px',fontWeight:800,color:'#e8c448',lineHeight:'1.25',overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',width:'100%',textShadow:'0 0 10px rgba(230,180,40,0.6)'}">{{ (d.nome||'DROP').toUpperCase() }}</div>
-            </div>
+            :style="{
+              position:'absolute', left:'50%', top:'50%',
+              width:'185px', height:'300px',
+              cursor:'pointer',
+              transition:'transform 0.42s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.35s, filter 0.42s',
+              filter: d.id===dropSelId ? `drop-shadow(0 0 32px ${d.colore||C.violet}99)` : 'none',
+              ...getCoverflowStyle(i),
+            }">
+            <!-- Bustina 3D per TUTTE le espansioni — label orizzontale sotto -->
+            <BustinaGLB
+              :color="d.colore || C.violet"
+              :texture-url="null"
+              :label="(d.nome||'DROP').toUpperCase()"
+              :label-color="d.id===dropSelId ? (d.colore||'#e8c448') : 'rgba(255,255,255,0.45)'"
+              :width="185" :height="300"
+            />
           </div>
         </div>
 

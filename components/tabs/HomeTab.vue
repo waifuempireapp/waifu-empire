@@ -263,33 +263,12 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
       <!-- Contenuto pack centrato -->
       <div style="position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 32px 20px; min-height:320px; gap:16px;">
 
-        <!-- Icona pack grande -->
-        <div :style="{
-          width:        '100px',
-          height:       '140px',
-          borderRadius: '14px',
-          background:   totalPack > 0
-            ? `radial-gradient(circle at 40% 30%, ${C.sakura}50, ${C.violet}40 50%, ${C.ink} 100%)`
-            : `radial-gradient(circle at 40% 30%, ${C.gold}40, rgba(80,50,20,0.8) 50%, ${C.ink} 100%)`,
-          border:       totalPack > 0
-            ? `2px solid ${C.sakura}80`
-            : `2px solid ${C.gold}50`,
-          boxShadow:    totalPack > 0
-            ? `0 0 40px ${C.sakura}50, 0 8px 24px rgba(0,0,0,0.6), inset 0 1px 0 ${C.sakura}40`
-            : `0 0 24px ${C.gold}30, 0 8px 24px rgba(0,0,0,0.6), inset 0 1px 0 ${C.gold}20`,
-          display:      'flex',
-          alignItems:   'center',
-          justifyContent:'center',
-          position:     'relative',
-          overflow:     'hidden',
-        }">
-          <div class="foil foil--soft" />
-          <img
-            src="~/assets/images/New_Logo.png"
-            alt=""
-            style="width:70px; height:70px; object-fit:contain; position:relative; z-index:1; opacity:0.85;"
-          />
-        </div>
+        <!-- Bustina 3D — colore scuro specifico per tone-on-tone -->
+        <BustinaGLB
+          :color="totalPack > 0 ? '#6b1a3a' : '#5a3e0a'"
+          :texture-url="null"
+          :width="115" :height="185"
+        />
 
         <!-- Testo stato pack -->
         <div style="text-align:center;">

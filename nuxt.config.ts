@@ -108,6 +108,12 @@ export default defineNuxtConfig({
     },
   },
 
+  vite: {
+    optimizeDeps: {
+      include: ['three'],
+    },
+  },
+
   typescript: {
     strict: true,
     typeCheck: false,

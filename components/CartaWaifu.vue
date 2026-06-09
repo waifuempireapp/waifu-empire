@@ -296,9 +296,15 @@ function onMouseLeave(e: MouseEvent) {
         </div>
       </div>
 
-      <!-- Immagine statica/immersiva normale -->
-      <img v-else-if="imgSrc" :src="imgSrc" :alt="waifu.nome"
-        :style="{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%' }" />
+      <!-- Carta 3D via Three.js (normale, non censurata) -->
+      <CartaGLB
+        v-else-if="imgSrc"
+        :imageUrl="imgSrc"
+        :width="W"
+        :height="H"
+        :rarita="waifu.rarita"
+        :censurata="false"
+      />
 
       <!-- Placeholder senza asset -->
       <div v-else :style="{
