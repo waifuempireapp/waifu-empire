@@ -9,8 +9,12 @@
 </template>
 
 <script setup lang="ts">
-// Registra il Service Worker per la cache locale degli asset ImageKit
+const { initTheme } = useTheme()
+
 onMounted(() => {
+  // Applica il tema salvato prima di qualsiasi render
+  initTheme()
+
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker
       .register('/sw.js')

@@ -77,17 +77,17 @@ function traduciErrore(code?: string): string {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center p-4" style="background: #0a0a0f;">
-    <!-- Card glassmorphism -->
+  <div class="min-h-screen flex items-center justify-center p-4" style="background: var(--theme-bg);">
+    <!-- Card -->
     <div class="fade-up w-full max-w-md rounded-2xl p-7"
-         style="background:rgba(15,13,26,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-                border:1px solid rgba(168,85,247,0.2);border-radius:20px;
-                box-shadow:0 0 40px rgba(124,58,237,0.2)">
+         style="background:var(--theme-surface);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+                border:1px solid var(--theme-border);border-radius:20px;
+                box-shadow:0 0 40px var(--theme-shadow)">
 
       <!-- Header -->
       <div class="text-center mb-6">
         <img src="~/assets/images/New_Logo.png" alt="Impero delle Waifu" class="w-80 h-auto mx-auto mb-3" style="mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, black 68%, transparent 92%); -webkit-mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, black 68%, transparent 92%);" />
-        <div class="text-xs tracking-widest text-purple-400">
+        <div class="text-xs tracking-widest" style="color:var(--theme-accent);">
           {{ modo === 'login' ? $t('login.title_login') : $t('login.title_register') }}
         </div>
       </div>
@@ -97,7 +97,7 @@ function traduciErrore(code?: string): string {
         class="w-full py-3 px-4 rounded-lg flex items-center justify-center gap-2.5
                font-medium text-sm cursor-pointer
                transition-colors"
-        style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:12px;color:white;"
+        style="background:var(--theme-shimmer);border:1px solid var(--theme-border);border-radius:12px;color:var(--theme-text);"
         :disabled="busy"
         @click="loginGoogle"
       >
@@ -112,9 +112,9 @@ function traduciErrore(code?: string): string {
 
       <!-- Separatore -->
       <div class="flex items-center gap-3 my-5">
-        <div class="flex-1 h-px" style="background:rgba(245,158,11,0.2)" />
-        <span class="text-xs opacity-50 tracking-widest">{{ $t('login.or_separator') }}</span>
-        <div class="flex-1 h-px" style="background:rgba(245,158,11,0.2)" />
+        <div class="flex-1 h-px" style="background:var(--theme-border)" />
+        <span class="text-xs tracking-widest" style="color:var(--theme-text-3)">{{ $t('login.or_separator') }}</span>
+        <div class="flex-1 h-px" style="background:var(--theme-border)" />
       </div>
 
       <!-- Form email/password -->
@@ -123,20 +123,16 @@ function traduciErrore(code?: string): string {
           v-model="email"
           type="email" required
           placeholder="email"
-          class="w-full px-3 py-3 mb-2.5 rounded-lg text-sm font-sans
-                 text-white placeholder-white/30 outline-none
-                 focus:border-purple-400/60 transition-colors"
-          style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:white;"
+          class="w-full px-3 py-3 mb-2.5 rounded-lg text-sm font-sans outline-none transition-colors"
+          style="background:var(--theme-input-bg);border:1px solid var(--theme-border);border-radius:12px;color:var(--theme-text);"
         />
         <input
           v-model="password"
           type="password" required
           placeholder="password"
           minlength="6"
-          class="w-full px-3 py-3 mb-2.5 rounded-lg text-sm font-sans
-                 text-white placeholder-white/30 outline-none
-                 focus:border-purple-400/60 transition-colors"
-          style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:white;"
+          class="w-full px-3 py-3 mb-2.5 rounded-lg text-sm font-sans outline-none transition-colors"
+          style="background:var(--theme-input-bg);border:1px solid var(--theme-border);border-radius:12px;color:var(--theme-text);"
         />
 
         <div v-if="errore" class="text-red-400 text-xs py-1.5 text-center">
@@ -146,17 +142,15 @@ function traduciErrore(code?: string): string {
         <button
           type="submit"
           :disabled="busy"
-          class="w-full py-3 mt-1.5 font-semibold text-sm
-                 tracking-widest text-white cursor-pointer
-                 hover:opacity-90 transition-opacity disabled:opacity-50"
-          style="background:linear-gradient(135deg,#f5a623,#ff6b35);border-radius:50px;border:none;font-family:'Fredoka',sans-serif;letter-spacing:0.15em;box-shadow:0 8px 24px rgba(245,166,35,0.25);"
+          class="w-full py-3 mt-1.5 font-semibold text-sm tracking-widest cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50"
+          style="background:var(--theme-accent);color:#F0ECF8;border-radius:50px;border:none;font-family:'Fredoka',sans-serif;letter-spacing:0.15em;box-shadow:0 8px 24px var(--theme-shadow);"
         >
           {{ busy ? '…' : (modo === 'login' ? $t('login.submit_login') : $t('login.submit_register')) }}
         </button>
       </form>
 
       <!-- Cambio modalità -->
-      <div class="text-center mt-3 text-xs" style="color:#d4c5b9">
+      <div class="text-center mt-3 text-xs" style="color:var(--theme-text-2)">
         <span v-if="modo === 'login'">
           {{ $t('login.no_account') }}
           <button class="text-amber-400 underline cursor-pointer bg-transparent border-0 font-sans text-xs"

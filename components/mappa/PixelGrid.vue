@@ -476,11 +476,13 @@ function centerOnEmpire() {
       @click="centerOnEmpire"
       style="
         position: absolute; bottom: 12px; right: 12px;
-        background: rgba(6,3,15,0.92); backdrop-filter: blur(12px);
-        border: 1px solid rgba(174,156,255,0.3); color: #ffe9a8;
+        background: var(--theme-accent); backdrop-filter: blur(12px);
+        border: none; color: #F0ECF8;
         font-family: 'Saira Condensed', sans-serif; font-size: 10px;
         letter-spacing: 0.18em; text-transform: uppercase;
-        padding: 6px 12px; border-radius: 8px; cursor: pointer;
+        padding: 7px 14px; border-radius: 8px; cursor: pointer;
+        box-shadow: 0 4px 12px rgba(124,58,237,0.35);
+        font-weight: 600;
       "
     >◎ Il mio impero</button>
   </div>

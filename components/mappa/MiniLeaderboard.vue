@@ -11,7 +11,7 @@
           <KissesIcon :size="12" /> +{{ accumulated }}
         </span>
       </div>
-      <span :style="{ fontSize:'16px', color:'rgba(174,156,255,0.5)', transition:'transform 0.25s', transform: expanded ? 'rotate(180deg)' : 'rotate(0)' }">▾</span>
+      <span :style="{ fontSize:'16px', color:'var(--theme-text-3)', transition:'transform 0.25s', transform: expanded ? 'rotate(180deg)' : 'rotate(0)' }">▾</span>
     </button>
 
     <!-- Contenuto espandibile -->
@@ -39,7 +39,7 @@
       <div :style="{ padding:'10px 16px 14px' }">
         <div :style="rankTitleStyle">Classifica Territori</div>
         <div :style="rankListStyle">
-          <div v-if="leaders.length === 0" :style="{ fontFamily:FF.body, fontSize:'13px', color:'rgba(241,235,255,0.3)' }">
+          <div v-if="leaders.length === 0" :style="{ fontFamily:FF.body, fontSize:'13px', color:'var(--theme-text-3)' }">
             Nessun territorio conquistato ancora
           </div>
           <template v-else>
@@ -56,10 +56,10 @@
           </template>
           <!-- CPU row -->
           <div :style="{ display:'flex', alignItems:'center', gap:'10px', padding:'5px 8px' }">
-            <span :style="{ fontFamily:FF.mono, fontSize:'11px', color:'rgba(174,156,255,0.3)', minWidth:'24px' }" />
+            <span :style="{ fontFamily:FF.mono, fontSize:'11px', color:'var(--theme-text-3)', minWidth:'24px' }" />
             <div :style="{ width:'10px', height:'10px', borderRadius:'3px', background:'#888', flexShrink:0 }" />
-            <span :style="{ fontFamily:FF.label, fontSize:'13px', color:'rgba(241,235,255,0.3)', flex:1 }">CPU</span>
-            <span :style="{ fontFamily:FF.mono, fontSize:'13px', color:'rgba(174,156,255,0.4)' }">{{ cpuCount }}</span>
+            <span :style="{ fontFamily:FF.label, fontSize:'13px', color:'var(--theme-text-3)', flex:1 }">CPU</span>
+            <span :style="{ fontFamily:FF.mono, fontSize:'13px', color:'var(--theme-text-3)' }">{{ cpuCount }}</span>
           </div>
         </div>
       </div>
@@ -188,11 +188,11 @@ const formatTime = (seconds: number): string => {
   return `${s}s`
 }
 
-// ── Stili ─────────────────────────────────────────────────────────────────────
+// ── Stili — tutti con CSS variables per supporto light/dark ───────────────────
 const wrapperStyle: CSSProperties = {
-  background: 'rgba(13,10,38,0.92)',
-  borderTop: '1px solid rgba(174,156,255,0.12)',
-  borderBottom: '1px solid rgba(174,156,255,0.12)',
+  background: 'var(--theme-surface)',
+  borderTop: '1px solid var(--theme-border)',
+  borderBottom: '1px solid var(--theme-border)',
   margin: '0 16px 12px',
   borderRadius: '14px',
   overflow: 'hidden',
@@ -203,36 +203,36 @@ const headerStyle: CSSProperties = {
 }
 const titleStyle: CSSProperties = {
   fontFamily: FF.label, fontSize: '16px', fontWeight: 700,
-  letterSpacing: '0.18em', color: 'rgba(245,197,96,0.85)', textTransform: 'uppercase',
+  letterSpacing: '0.18em', color: 'var(--theme-text)', textTransform: 'uppercase',
 }
 const badgeStyle: CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: '4px',
-  background: 'rgba(245,197,96,0.12)', border: '1px solid rgba(245,197,96,0.3)',
+  background: 'var(--theme-tab-active)', border: '1px solid var(--theme-border)',
   borderRadius: '999px', padding: '2px 10px',
-  fontFamily: FF.mono, fontSize: '12px', fontWeight: 700, color: '#f5c560',
+  fontFamily: FF.mono, fontSize: '12px', fontWeight: 700, color: 'var(--theme-text)',
 }
 const passiveRowStyle: CSSProperties = {
   padding: '12px 16px',
-  borderBottom: '1px solid rgba(174,156,255,0.08)',
+  borderBottom: '1px solid var(--theme-border)',
   display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
 }
 const passiveSubStyle: CSSProperties = {
   fontFamily: FF.label, fontSize: '11px', letterSpacing: '0.1em',
-  color: 'rgba(241,235,255,0.4)', textTransform: 'uppercase', marginTop: '2px',
+  color: 'var(--theme-text-3)', textTransform: 'uppercase', marginTop: '2px',
 }
 const claimBtnStyle = computed((): CSSProperties => ({
-  background: accumulated.value > 0 ? 'linear-gradient(135deg,rgba(245,197,96,0.22),rgba(245,197,96,0.1))' : 'rgba(255,255,255,0.04)',
-  border: `1.5px solid ${accumulated.value > 0 ? 'rgba(245,197,96,0.55)' : 'rgba(174,156,255,0.1)'}`,
+  background: accumulated.value > 0 ? 'var(--theme-accent)' : 'var(--theme-shimmer)',
+  border: `1.5px solid ${accumulated.value > 0 ? 'var(--theme-accent)' : 'var(--theme-border)'}`,
   borderRadius: '999px',
-  color: accumulated.value > 0 ? '#f5c560' : 'rgba(241,235,255,0.25)',
+  color: accumulated.value > 0 ? '#F0ECF8' : 'var(--theme-text-3)',
   fontFamily: FF.label, fontSize: '13px', letterSpacing: '0.18em', textTransform: 'uppercase',
   padding: '9px 20px', cursor: accumulated.value > 0 ? 'pointer' : 'not-allowed',
   fontWeight: 700, flexShrink: 0,
-  boxShadow: accumulated.value > 0 ? '0 0 14px rgba(245,197,96,0.2)' : 'none',
+  boxShadow: accumulated.value > 0 ? '0 4px 12px var(--theme-shadow)' : 'none',
 }))
 const rankTitleStyle: CSSProperties = {
   fontFamily: FF.label, fontSize: '12px', letterSpacing: '0.22em',
-  color: 'rgba(174,156,255,0.5)', textTransform: 'uppercase', marginBottom: '8px', fontWeight: 700,
+  color: 'var(--theme-text-3)', textTransform: 'uppercase', marginBottom: '8px', fontWeight: 700,
 }
 const rankListStyle: CSSProperties = {
   display: 'flex', flexDirection: 'column', gap: '3px',
@@ -240,25 +240,25 @@ const rankListStyle: CSSProperties = {
 const leaderRowStyle = (isMe: boolean): CSSProperties => ({
   display: 'flex', alignItems: 'center', gap: '10px',
   padding: '6px 8px', borderRadius: '9px',
-  background: isMe ? 'rgba(245,197,96,0.07)' : 'transparent',
-  border: isMe ? '1px solid rgba(245,197,96,0.18)' : '1px solid transparent',
+  background: isMe ? 'var(--theme-tab-active)' : 'transparent',
+  border: isMe ? '1px solid var(--theme-accent)' : '1px solid transparent',
 })
 const rankNumStyle: CSSProperties = {
-  fontFamily: FF.mono, fontSize: '12px', color: 'rgba(174,156,255,0.55)', minWidth: '24px', textAlign: 'right',
+  fontFamily: FF.mono, fontSize: '12px', color: 'var(--theme-text-3)', minWidth: '24px', textAlign: 'right',
 }
 const dotStyle = (color: string, isMe: boolean): CSSProperties => ({
   width: '10px', height: '10px', borderRadius: '50%',
   background: color || '#888', flexShrink: 0,
-  border: isMe ? '1.5px solid #f5c560' : 'none',
+  border: isMe ? '1.5px solid var(--theme-accent)' : 'none',
   boxShadow: isMe ? `0 0 6px ${color}88` : 'none',
 })
 const leaderNameStyle = (isMe: boolean): CSSProperties => ({
   fontFamily: FF.label, fontSize: '14px', letterSpacing: '0.08em',
-  color: isMe ? '#ffe9a8' : 'rgba(241,235,255,0.75)',
+  color: isMe ? 'var(--theme-accent)' : 'var(--theme-text)',
   flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
 })
 const leaderCountStyle = (isMe: boolean): CSSProperties => ({
   fontFamily: FF.mono, fontSize: '14px',
-  color: isMe ? '#f5c560' : 'rgba(174,156,255,0.8)', fontWeight: 700,
+  color: isMe ? 'var(--theme-accent)' : 'var(--theme-text-2)', fontWeight: 700,
 })
 </script>

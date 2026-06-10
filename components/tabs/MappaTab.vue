@@ -694,38 +694,26 @@ async function onTerritoryClick(territoryId: string) {
     <!-- ── Contenuto principale (dopo il caricamento) ────────────────── -->
     <template v-else>
 
-      <!-- Header: titolo in cima, poi conquista+bottoni sulla stessa riga -->
-      <div :style="{ padding: '16px 16px 14px' }">
-
-        <!-- Riga 1: "Mappa del Mondo" — centrata, in cima -->
-        <div :style="{ fontFamily: FF.display, fontSize: '22px', color: '#fff', fontWeight: 900, lineHeight: 1.1, marginBottom: '10px', textAlign: 'center' }">
+      <!-- Header: titolo + bottone offerte sulla stessa riga -->
+      <div :style="{ padding: '16px 16px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }">
+        <div :style="{ fontFamily: FF.display, fontSize: '22px', color: 'var(--theme-text)', fontWeight: 900, lineHeight: 1.1 }">
           Mappa del Mondo
         </div>
-
-        <!-- Riga 2: CONQUISTA a sinistra, bottoni a destra -->
-        <div :style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }">
-          <div :style="{ fontFamily: FF.label, fontSize: '14px', letterSpacing: '0.28em', color: C.sakura, textTransform: 'uppercase', fontWeight: 700 }">
-            ◆ CONQUISTA
-          </div>
-          <div :style="{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }">
-            <button
-              @click="showOffers = true"
-              :style="{
-                position: 'relative',
-                background: 'rgba(245,197,96,0.12)', border: '1.5px solid rgba(245,197,96,0.45)',
-                borderRadius: '12px', color: C.gold, fontFamily: FF.label, fontSize: '13px',
-                letterSpacing: '0.12em', textTransform: 'uppercase', padding: '9px 14px', cursor: 'pointer', fontWeight: 700,
-              }"
-            >
-              💌 OFFERTE
-              <span v-if="pendingOffersCount > 0" :style="{ position: 'absolute', top: '-7px', right: '-7px', background: '#ff5b6c', color: '#fff', width: '18px', height: '18px', borderRadius: '50%', display: 'grid', placeItems: 'center', fontFamily: FF.mono, fontSize: '10px', fontWeight: 800, border: '1.5px solid rgba(3,2,12,0.8)' }">{{ pendingOffersCount }}</span>
-            </button>
-            <button
-              @click="showInfoModal = true"
-              :style="{ background: 'rgba(174,156,255,0.1)', border: '1.5px solid rgba(174,156,255,0.35)', borderRadius: '12px', color: 'rgba(174,156,255,0.9)', fontFamily: FF.display, fontSize: '16px', fontWeight: 800, padding: '9px 14px', cursor: 'pointer', minWidth: '44px', lineHeight: 1 }"
-            >?</button>
-          </div>
-        </div>
+        <!-- Bottone offerte: rotondo, solo emoji 💌 -->
+        <button
+          @click="showOffers = true"
+          :style="{
+            position: 'relative', flexShrink: 0,
+            width: '44px', height: '44px',
+            background: 'var(--theme-accent-pink)', border: 'none',
+            borderRadius: '50%', fontSize: '20px', lineHeight: 1,
+            cursor: 'pointer', display: 'grid', placeItems: 'center',
+            boxShadow: '0 4px 12px var(--theme-shadow)',
+          }"
+        >
+          💌
+          <span v-if="pendingOffersCount > 0" :style="{ position: 'absolute', top: '-5px', right: '-5px', background: '#ff5b6c', color: '#fff', width: '17px', height: '17px', borderRadius: '50%', display: 'grid', placeItems: 'center', fontFamily: FF.mono, fontSize: '9px', fontWeight: 800, border: '1.5px solid var(--theme-surface)' }">{{ pendingOffersCount }}</span>
+        </button>
       </div>
 
       <!-- ── Raid Widget (inline) — sopra la mappa ─────────────────────── -->
@@ -733,11 +721,11 @@ async function onTerritoryClick(territoryId: string) {
       <div
         @click="showRaidPanel = true"
         :style="{
-          margin: '0 16px 12px', padding: '14px 18px',
-          background: 'linear-gradient(135deg, rgba(236,72,153,0.16), rgba(10,7,38,0.92))',
+          margin: '0 16px 10px', padding: '8px 10px',
+          background: 'var(--theme-surface)',
           border: '1.5px solid rgba(236,72,153,0.45)', borderRadius: '16px', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: '14px',
-          boxShadow: '0 4px 24px rgba(236,72,153,0.15)',
+          display: 'flex', alignItems: 'center', gap: '10px',
+          boxShadow: '0 4px 16px var(--theme-shadow)',
         }"
       >
         <!-- Thumbnail waifu raid -->
@@ -750,36 +738,48 @@ async function onTerritoryClick(territoryId: string) {
         <div v-else :style="{ fontSize: '36px', flexShrink: 0, lineHeight: 1 }">⚔</div>
 
         <div :style="{ flex: 1, minWidth: 0 }">
-          <div :style="{ fontFamily: FF.label, fontSize: '11px', color: 'rgba(236,72,153,0.75)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '3px' }">
+          <div :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-accent-pink)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '3px' }">
             ⚔ Raid Waifu
           </div>
-          <div :style="{ fontFamily: FF.display, fontSize: '16px', color: '#ec4899', fontWeight: 800, marginBottom: '6px' }">
+          <div :style="{ fontFamily: FF.display, fontSize: '16px', color: 'var(--theme-text)', fontWeight: 700, marginBottom: '6px' }">
             {{ raidInfo?.waifuNome ?? 'Raid Island' }}
           </div>
           <template v-if="raidInfo">
-            <div :style="{ height: '6px', background: 'rgba(255,255,255,0.12)', borderRadius: '3px', marginBottom: '5px', overflow: 'hidden' }">
+            <div :style="{ height: '6px', background: 'var(--theme-border)', borderRadius: '3px', marginBottom: '5px', overflow: 'hidden' }">
               <div :style="{ height: '100%', width: `${raidHpPct}%`, background: raidHpColor, borderRadius: '3px', transition: 'width 0.5s' }" />
             </div>
             <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }">
-              <div :style="{ fontFamily: FF.mono, fontSize: '12px', color: raidHpColor, fontWeight: 700 }">
+              <div :style="{ fontFamily: FF.mono, fontSize: '12px', color: 'var(--theme-text-2)', fontWeight: 600 }">
                 {{ Math.max(0, raidInfo.currentHp).toLocaleString() }} / {{ raidInfo.totalHp.toLocaleString() }} HP
               </div>
-              <div v-if="raidCountdown" :style="{ fontFamily: FF.mono, fontSize: '12px', color: 'rgba(245,158,11,0.9)', fontVariantNumeric: 'tabular-nums', fontWeight: 700 }">
+              <div v-if="raidCountdown" :style="{ fontFamily: FF.mono, fontSize: '12px', color: 'var(--theme-accent-pink)', fontVariantNumeric: 'tabular-nums', fontWeight: 700 }">
                 ⏱ {{ raidCountdown }}
               </div>
             </div>
           </template>
           <template v-else>
-            <div :style="{ fontFamily: FF.label, fontSize: '12px', color: 'rgba(241,235,255,0.55)', letterSpacing: '0.1em' }">
+            <div :style="{ fontFamily: FF.label, fontSize: '12px', color: 'var(--theme-text-2)', letterSpacing: '0.1em' }">
               Tocca per il Raid orario cooperativo ⚔
             </div>
           </template>
         </div>
-        <div :style="{ fontFamily: FF.display, fontSize: '18px', color: 'rgba(236,72,153,0.7)', flexShrink: 0 }">→</div>
+        <div :style="{ fontFamily: FF.display, fontSize: '18px', color: 'var(--theme-text-2)', flexShrink: 0 }">→</div>
       </div>
 
       <!-- Mappa: immagine di sfondo sempre visibile + canvas interattivo sovrapposto -->
-      <div style="margin: 0 16px 16px; border-radius: 16px; border: 1px solid rgba(245,197,96,0.2); position: relative; min-height: 380px; overflow: hidden;">
+      <div style="margin: 0 16px 16px; border-radius: 16px; position: relative; min-height: 380px; overflow: hidden;" :style="{ border: '1px solid var(--theme-border)' }">
+        <!-- Chip "?" — angolo in alto a destra, come sui chip delle carte -->
+        <button
+          @click="showInfoModal = true"
+          :style="{
+            position: 'absolute', top: '10px', right: '10px', zIndex: 10,
+            width: '28px', height: '28px', borderRadius: '50%',
+            background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)',
+            border: '1.5px solid rgba(255,255,255,0.25)',
+            color: '#fff', fontFamily: FF.display, fontSize: '13px', fontWeight: 800,
+            cursor: 'pointer', display: 'grid', placeItems: 'center', lineHeight: 1,
+          }"
+        >?</button>
         <!-- Immagine mappa sempre visibile come base -->
         <img
           src="~/assets/world/Mappa_Del_Mondo_Waifu.jpeg"
@@ -952,21 +952,21 @@ async function onTerritoryClick(territoryId: string) {
       <!-- Backdrop -->
       <div
         @click="showMissionDetail = false"
-        :style="{ position: 'fixed', inset: 0, zIndex: 130, background: 'rgba(3,2,12,0.6)', backdropFilter: 'blur(4px)' }"
+        :style="{ position: 'fixed', inset: 0, zIndex: 130, background: 'var(--theme-overlay)', backdropFilter: 'blur(4px)' }"
       />
       <!-- Modale -->
       <div :style="{
         position: 'fixed', left: '50%', top: '50%',
         transform: 'translate(-50%,-50%)', zIndex: 140,
         width: 'min(92vw, 360px)',
-        background: 'rgba(13,10,38,0.99)', backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(232,121,249,0.35)', borderRadius: '18px',
-        padding: '22px 20px', boxShadow: '0 20px 60px rgba(3,2,12,0.9)',
+        background: 'var(--theme-surface)', backdropFilter: 'blur(20px)',
+        border: '1px solid var(--theme-border-2)', borderRadius: '18px',
+        padding: '22px 20px', boxShadow: '0 20px 60px var(--theme-shadow)',
       }">
         <!-- Pulsante chiudi -->
         <button
           @click="showMissionDetail = false"
-          :style="{ position: 'absolute', top: '14px', right: '16px', background: 'none', border: 'none', color: 'rgba(241,235,255,0.35)', fontSize: '20px', cursor: 'pointer', padding: 0 }"
+          :style="{ position: 'absolute', top: '14px', right: '16px', background: 'none', border: 'none', color: 'var(--theme-text-3)', fontSize: '20px', cursor: 'pointer', padding: 0 }"
         >✕</button>
 
         <div :style="{ fontFamily: FF.display, fontSize: '13px', color: '#e879f9', fontWeight: 800, marginBottom: '4px' }">

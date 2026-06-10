@@ -557,15 +557,15 @@ function apriNegozio() {
         textAlign: 'center', marginBottom: '18px', paddingTop: 8,
       }">
         <div :style="{
-          fontFamily: FF.label, fontSize: 12, color: `${C.goldL}bb`,
-          letterSpacing: '0.28em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 6,
+          fontFamily: FF.label, fontSize: 11, color: 'var(--theme-text-3)',
+          letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600, marginBottom: 6,
         }">{{ $t('collection.your_collection') }}</div>
         <div :style="{
-          fontFamily: FF.display, fontSize: 28, color: C.goldL,
-          textShadow: `0 0 28px ${C.gold}88`, fontWeight: 900,
-        }" class="shimmer-text">{{ $t('collection.my_cards') }}</div>
+          fontFamily: FF.display, fontSize: 28, color: 'var(--theme-text)',
+          fontWeight: 800,
+        }">{{ $t('collection.my_cards') }}</div>
         <div :style="{
-          fontFamily: FF.body, fontSize: 14, color: 'rgba(241,235,255,0.6)',
+          fontFamily: FF.body, fontSize: 14, color: 'var(--theme-text-2)',
           marginTop: 10, lineHeight: 1.5,
         }">{{ $t('collection.subtitle') }}</div>
       </div>
@@ -585,16 +585,16 @@ function apriNegozio() {
             flex: 1,
             padding: '14px 10px 12px', borderRadius: '14px', cursor: 'pointer',
             background: tabSub === t.k
-              ? `linear-gradient(180deg, ${t.c}40, ${t.c}1a)`
-              : 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))',
-            color: tabSub === t.k ? '#fff' : t.c,
-            border: `1px solid ${tabSub === t.k ? t.c : `${t.c}40`}`,
+              ? 'var(--theme-tab-active)'
+              : 'var(--theme-bg-secondary)',
+            color: tabSub === t.k ? 'var(--theme-accent)' : 'var(--theme-text-2)',
+            border: `1px solid ${tabSub === t.k ? 'var(--theme-accent)' : 'var(--theme-border)'}`,
             fontFamily: FF.label, fontSize: '15px',
             letterSpacing: '0.14em', fontWeight: 700,
             textTransform: 'uppercase',
             boxShadow: tabSub === t.k
-              ? `0 1px 0 rgba(255,255,255,0.18) inset, 0 0 22px ${t.c}55`
-              : 'none',
+              ? '0 2px 12px var(--theme-shadow)'
+              : '0 2px 6px var(--theme-shadow)',
             transition: 'all 0.2s',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
             overflow: 'visible',
@@ -603,12 +603,12 @@ function apriNegozio() {
           <!-- Chip count — top-right assoluto -->
           <span :style="{
             position: 'absolute', top: '-11px', right: '-6px', zIndex: 10,
-            background: tabSub === t.k ? t.c : `${t.c}22`,
-            border: `1.5px solid ${t.c}`,
+            background: tabSub === t.k ? 'var(--theme-accent-pink)' : 'var(--theme-bg-secondary)',
+            border: `1.5px solid ${tabSub === t.k ? 'var(--theme-accent-pink)' : 'var(--theme-border)'}`,
             padding: '2px 8px', borderRadius: '999px',
             fontSize: '12px', fontFamily: FF.mono, fontWeight: 800,
-            color: tabSub === t.k ? '#07051a' : t.c,
-            boxShadow: tabSub === t.k ? `0 2px 10px ${t.c}66` : 'none',
+            color: tabSub === t.k ? '#F0ECF8' : 'var(--theme-text-2)',
+            boxShadow: tabSub === t.k ? '0 2px 10px var(--theme-shadow)' : 'none',
             lineHeight: 1.4,
           }">{{ t.n }}</span>
 
@@ -640,22 +640,22 @@ function apriNegozio() {
         <!-- ── Barra filtri waifu — 2 select 50/50 ── -->
         <div :style="{ marginBottom: '30px' }">
           <!-- Ricerca -->
-          <div :style="{ display:'flex', alignItems:'center', gap:'8px', padding:'10px 14px', background:'rgba(7,5,26,0.8)', border:`1px solid ${C.inkLine}`, borderRadius:'12px', marginBottom:'10px' }">
-            <Search :size="14" stroke-width="1.5" style="color:rgba(241,235,255,0.4);flex-shrink:0;" />
+          <div :style="{ display:'flex', alignItems:'center', gap:'8px', padding:'10px 14px', background:'var(--theme-bg-secondary)', border:'1px solid var(--theme-border)', borderRadius:'12px', marginBottom:'10px', boxShadow:'0 2px 8px var(--theme-shadow)' }">
+            <Search :size="14" stroke-width="1.5" :style="{ color:'var(--theme-text-3)', flexShrink:0 }" />
             <input v-model="filtroNome" @input="visibiliWaifu = 12" placeholder="Cerca per nome…"
-              :style="{ flex:1, background:'transparent', border:'none', outline:'none', color:'#fff', fontSize:'14px', fontFamily:FF.body, padding:0 }" />
+              :style="{ flex:1, background:'transparent', border:'none', outline:'none', color:'var(--theme-text)', fontSize:'14px', fontFamily:FF.body, padding:0 }" />
             <button v-if="filtroNome" @click="filtroNome = ''; visibiliWaifu = 12"
-              style="background:none;border:none;cursor:pointer;color:rgba(241,235,255,0.5);padding:0;display:flex;align-items:center;"><X :size="14" stroke-width="1.5" /></button>
-            <span :style="{ fontFamily:FF.mono, fontSize:'13px', color:'rgba(241,235,255,0.45)', fontWeight:700, flexShrink:0 }">{{ waifuEntries.length }}</span>
+              :style="{ background:'none', border:'none', cursor:'pointer', color:'var(--theme-text-3)', padding:0, display:'flex', alignItems:'center' }"><X :size="14" stroke-width="1.5" /></button>
+            <span :style="{ fontFamily:FF.mono, fontSize:'13px', color:'var(--theme-text-3)', fontWeight:700, flexShrink:0 }">{{ waifuEntries.length }}</span>
           </div>
 
           <!-- Le 2 select 50/50 -->
           <div style="display:flex;gap:8px;">
             <!-- FILTRA -->
             <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
-              <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'rgba(241,235,255,0.65)' }">{{ $t('collection.filter_label') }}</div>
+              <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--theme-text-2)' }">{{ $t('collection.filter_label') }}</div>
               <select v-model="filtroCombo"
-                :style="{ width:'100%', background:'rgba(7,5,26,0.9)', border:`1.5px solid ${filtroCombo ? C.violet+'aa' : C.inkLine}`, color:filtroCombo ? '#fff' : 'rgba(241,235,255,0.6)', borderRadius:'10px', padding:'12px 14px', fontSize:'16px', fontFamily:FF.body, cursor:'pointer', fontWeight:600, outline:'none', appearance:'none', WebkitAppearance:'none' }">
+                :style="{ width:'100%', background:'var(--theme-input-bg)', border:`1.5px solid ${filtroCombo ? 'var(--theme-accent)' : 'var(--theme-border)'}`, color:'var(--theme-text)', borderRadius:'10px', padding:'12px 14px', fontSize:'16px', fontFamily:FF.body, cursor:'pointer', fontWeight:600, outline:'none', appearance:'none', WebkitAppearance:'none' }">
                 <option value="">{{ $t('collection.filter_all') }}</option>
                 <optgroup :label="$t('collection.filter_rarity_group')">
                   <option value="rarita:comune">{{ $t('collection.filter_common') }}</option>
@@ -679,9 +679,9 @@ function apriNegozio() {
 
             <!-- ORDINA -->
             <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
-              <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'rgba(241,235,255,0.65)' }">{{ $t('collection.sort_label') }}</div>
+              <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--theme-text-2)' }">{{ $t('collection.sort_label') }}</div>
               <select v-model="sortCombo"
-                :style="{ width:'100%', background:'rgba(7,5,26,0.9)', border:`1.5px solid ${sortCombo ? C.gold+'aa' : C.inkLine}`, color:sortCombo ? '#fff' : 'rgba(241,235,255,0.6)', borderRadius:'10px', padding:'12px 14px', fontSize:'16px', fontFamily:FF.body, cursor:'pointer', fontWeight:600, outline:'none', appearance:'none', WebkitAppearance:'none' }">
+                :style="{ width:'100%', background:'var(--theme-input-bg)', border:`1.5px solid ${sortCombo ? 'var(--theme-accent)' : 'var(--theme-border)'}`, color:'var(--theme-text)', borderRadius:'10px', padding:'12px 14px', fontSize:'16px', fontFamily:FF.body, cursor:'pointer', fontWeight:600, outline:'none', appearance:'none', WebkitAppearance:'none' }">
                 <option value="">{{ $t('collection.sort_default') }}</option>
                 <option value="rarita:desc">{{ $t('collection.sort_rarity_desc') }}</option>
                 <option value="rarita:asc">{{ $t('collection.sort_rarity_asc') }}</option>
@@ -705,7 +705,7 @@ function apriNegozio() {
           :style="{
             background: `${C.gold}14`, border: `1px solid ${C.gold}55`,
             borderRadius: '12px', padding: '12px 14px', marginBottom: '12px',
-            fontSize: '11px', fontFamily: FF.body, color: 'rgba(241,235,255,0.75)', lineHeight: 1.5,
+            fontSize: '11px', fontFamily: FF.body, color: 'var(--theme-text-2)', lineHeight: 1.5,
           }"
         >
           Avresti <strong :style="{ color: C.gold }">{{ totScambiabili }}</strong> waifu da poter scambiare ma hai esaurito gli scambi.
@@ -925,7 +925,7 @@ function apriNegozio() {
             <!-- Barra filtri team -->
             <div :style="{
               background: 'linear-gradient(180deg, rgba(27,22,56,0.55), rgba(13,10,38,0.7))',
-              border: `1px solid ${C.inkLine}`,
+              border: '1px solid var(--theme-border)',
               borderRadius: '14px', padding: '12px 14px', marginBottom: '14px',
               backdropFilter: 'blur(8px)',
             }">
@@ -934,22 +934,22 @@ function apriNegozio() {
                 <div :style="{
                   flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
                   padding: '8px 14px',
-                  background: 'rgba(7,5,26,0.8)',
-                  border: `1px solid ${C.inkLine}`,
+                  background: 'var(--theme-bg-secondary)',
+                  border: '1px solid var(--theme-border)',
                   borderRadius: '999px',
                 }">
-                  <Search :size="13" stroke-width="1.5" style="color:rgba(241,235,255,0.4);flex-shrink:0;" />
+                  <Search :size="13" stroke-width="1.5" style="color:var(--theme-text-3);flex-shrink:0;" />
                   <input
                     v-model="teamFiltroNome"
                     placeholder="Cerca per nome…"
                     :style="{
                       flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                      color: '#fff', fontSize: '12px', fontFamily: FF.body, padding: 0,
+                      color: 'var(--theme-text)', fontSize: '12px', fontFamily: FF.body, padding: 0,
                     }"
                   />
                 </div>
                 <span :style="{
-                  fontFamily: FF.mono, fontSize: '11px', color: 'rgba(241,235,255,0.5)',
+                  fontFamily: FF.mono, fontSize: '11px', color: 'var(--theme-text-3)',
                   fontWeight: 700, padding: '0 6px',
                 }">{{ teamListaFiltrata.length }}</span>
               </div>
@@ -958,8 +958,8 @@ function apriNegozio() {
                 <select
                   v-model="teamFiltroRar"
                   :style="{
-                    background: 'rgba(7,5,26,0.85)', border: `1px solid ${C.inkLine}`,
-                    color: '#fff', borderRadius: '9px', padding: '6px 10px', fontSize: '10px',
+                    background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)',
+                    color: 'var(--theme-text)', borderRadius: '9px', padding: '6px 10px', fontSize: '10px',
                     fontFamily: FF.label, cursor: 'pointer', letterSpacing: '0.08em', fontWeight: 600,
                   }"
                 >
@@ -972,8 +972,8 @@ function apriNegozio() {
                   v-if="drops.length > 0"
                   v-model="teamFiltroDropId"
                   :style="{
-                    background: 'rgba(7,5,26,0.85)', border: `1px solid ${C.inkLine}`,
-                    color: '#fff', borderRadius: '9px', padding: '6px 10px', fontSize: '10px',
+                    background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)',
+                    color: 'var(--theme-text)', borderRadius: '9px', padding: '6px 10px', fontSize: '10px',
                     fontFamily: FF.label, cursor: 'pointer', letterSpacing: '0.08em', fontWeight: 600,
                   }"
                 >
@@ -984,11 +984,11 @@ function apriNegozio() {
               <!-- Sort -->
               <div :style="{
                 display: 'flex', gap: '5px', flexWrap: 'wrap', alignItems: 'center',
-                paddingTop: '10px', borderTop: `1px solid ${C.inkLine}`,
+                paddingTop: '10px', borderTop: '1px solid var(--theme-border)',
               }">
                 <span :style="{
                   fontFamily: FF.label, fontSize: '8px',
-                  color: 'rgba(241,235,255,0.4)',
+                  color: 'var(--theme-text-3)',
                   letterSpacing: '0.24em', textTransform: 'uppercase', fontWeight: 700,
                 }">Ordina:</span>
                 <button
@@ -1001,9 +1001,9 @@ function apriNegozio() {
                   @click="teamToggleSort(s.k)"
                   :style="{
                     padding: '4px 10px', borderRadius: '999px', cursor: 'pointer',
-                    background: teamSortKey === s.k ? `${C.gold}26` : 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${teamSortKey === s.k ? C.gold : C.inkLine}`,
-                    color: teamSortKey === s.k ? C.goldL : 'rgba(241,235,255,0.5)',
+                    background: teamSortKey === s.k ? 'var(--theme-tab-active)' : 'var(--theme-shimmer)',
+                    border: `1px solid ${teamSortKey === s.k ? 'var(--theme-accent)' : 'var(--theme-border)'}`,
+                    color: teamSortKey === s.k ? 'var(--theme-accent)' : 'var(--theme-text-2)',
                     fontFamily: FF.label, fontSize: '8px', fontWeight: 700,
                     letterSpacing: '0.16em', textTransform: 'uppercase',
                     display: 'inline-flex', alignItems: 'center', gap: '4px',

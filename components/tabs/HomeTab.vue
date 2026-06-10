@@ -35,6 +35,9 @@ const emit = defineEmits<{
   apriSbusto:  [] // bottone "APRI ORA" → overlay SbustaTab
 }>()
 
+// Tema light/dark
+const { isDark } = useTheme()
+
 // ── Runtime config (NEXT_PUBLIC_PESCA_ENABLED → public.pescaEnabled) ──
 const config = useRuntimeConfig()
 // Pesca abilitata se non esplicitamente false
@@ -238,15 +241,19 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
     <div
       style="margin: 0 16px 40px; border-radius: 20px; overflow: hidden; position: relative; cursor: pointer;"
       :style="{
-        background: totalPack > 0
-          ? `radial-gradient(ellipse 80% 60% at 50% 0%, ${C.sakura}35 0%, transparent 60%), linear-gradient(160deg, rgba(124,58,237,0.25) 0%, rgba(15,13,26,0.98) 60%, #0a0a0f 100%)`
-          : 'linear-gradient(160deg, rgba(124,58,237,0.25) 0%, rgba(15,13,26,0.98) 60%, #0a0a0f 100%)',
-        border: totalPack > 0
-          ? `1px solid ${C.sakura}50`
-          : '1px solid rgba(168,85,247,0.2)',
-        boxShadow: totalPack > 0
-          ? `0 8px 40px ${C.sakura}25, 0 0 0 1px ${C.sakura}18 inset`
-          : '0 8px 32px rgba(124,58,237,0.15)',
+        background: isDark
+          ? (totalPack > 0
+              ? `radial-gradient(ellipse 80% 60% at 50% 0%, ${C.sakura}28 0%, transparent 60%), linear-gradient(160deg, rgba(40,38,45,0.9) 0%, rgba(22,20,26,0.98) 60%, #111 100%)`
+              : 'linear-gradient(160deg, rgba(35,33,40,0.9) 0%, rgba(22,20,26,0.98) 60%, #111 100%)')
+          : (totalPack > 0
+              ? `radial-gradient(ellipse 80% 60% at 50% 0%, ${C.sakura}18 0%, transparent 60%), linear-gradient(160deg, #eee8f2 0%, var(--theme-surface) 60%, var(--theme-surface) 100%)`
+              : 'linear-gradient(160deg, #e8e4f0 0%, var(--theme-surface) 60%, var(--theme-surface) 100%)'),
+        border: isDark
+          ? (totalPack > 0 ? `1px solid ${C.sakura}40` : '1px solid rgba(255,255,255,0.08)')
+          : (totalPack > 0 ? `1px solid ${C.sakura}40` : '1px solid rgba(0,0,0,0.08)'),
+        boxShadow: isDark
+          ? (totalPack > 0 ? `0 8px 40px ${C.sakura}20` : '0 4px 20px rgba(0,0,0,0.4)')
+          : (totalPack > 0 ? `0 8px 40px ${C.sakura}18` : '0 4px 20px rgba(0,0,0,0.06)'),
         minHeight: '320px',
       }"
       @click="totalPack > 0 ? emit('apriSbusto') : emit('setTab', 'pacchetti')"
@@ -255,7 +262,9 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
       <!-- Raggi decorativi in rotazione -->
       <div :style="{
         position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: `conic-gradient(from 0deg at 50% 40%, transparent 0%, ${totalPack > 0 ? C.sakura : C.gold}14 15%, transparent 30%, ${totalPack > 0 ? C.violet : C.gold}0a 45%, transparent 60%, ${totalPack > 0 ? C.sakura : C.gold}0f 75%, transparent 90%)`,
+        background: isDark
+          ? `conic-gradient(from 0deg at 50% 40%, transparent 0%, ${totalPack > 0 ? C.sakura : C.gold}14 15%, transparent 30%, rgba(200,200,200,0.04) 45%, transparent 60%, ${totalPack > 0 ? C.sakura : C.gold}0f 75%, transparent 90%)`
+          : `conic-gradient(from 0deg at 50% 40%, transparent 0%, ${totalPack > 0 ? C.sakura : C.gold}0e 15%, transparent 30%, rgba(0,0,0,0.03) 45%, transparent 60%, ${totalPack > 0 ? C.sakura : C.gold}0a 75%, transparent 90%)`,
         animation: 'spinSlow 20s linear infinite',
         opacity: 0.8,
       }" />
@@ -276,18 +285,26 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
             fontFamily: FF.display,
             fontSize:   'clamp(20px,5vw,26px)',
             fontWeight: 800,
-            color:      totalPack > 0 ? '#fff' : C.goldL,
-            textShadow: totalPack > 0
-              ? `0 0 24px ${C.sakura}aa`
-              : `0 0 16px ${C.gold}66`,
+            color:      isDark
+              ? (totalPack > 0 ? '#fff' : C.goldL)
+              : (totalPack > 0 ? '#3a006a' : '#4a3000'),
+            textShadow: isDark
+              ? (totalPack > 0 ? `0 0 24px ${C.sakura}aa` : `0 0 16px ${C.gold}66`)
+              : 'none',
             marginBottom: '6px',
           }">
             {{ totalPack > 0 ? 'SBUSTA ORA' : 'PACCHETTI' }}
           </div>
-          <div v-if="totalPack > 0" :style="{ fontFamily: FF.body, fontSize:'13px', color:'rgba(241,235,255,0.65)' }">
+          <div v-if="totalPack > 0" :style="{
+            fontFamily: FF.body, fontSize:'13px',
+            color: isDark ? 'rgba(241,235,255,0.65)' : 'rgba(60,0,80,0.65)',
+          }">
             Hai <b :style="{color: C.sakura}">{{ totalPack }}</b> {{ totalPack === 1 ? 'bustina' : 'bustine' }} da aprire
           </div>
-          <div v-else :style="{ fontFamily: FF.mono, fontSize:'12px', color: 'rgba(241,235,255,0.45)' }">
+          <div v-else :style="{
+            fontFamily: FF.mono, fontSize:'12px',
+            color: isDark ? 'rgba(241,235,255,0.45)' : 'rgba(60,40,80,0.5)',
+          }">
             {{ countdown ? `Prossima tra ${countdown}` : 'Visita il negozio' }}
           </div>
         </div>
@@ -334,7 +351,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
       <!-- Chip quantità — in alto a destra della card grande -->
       <div v-if="totalPack > 0" :style="{
         position: 'absolute', top: '14px', right: '14px',
-        background: C.sakura, color: '#fff',
+        background: C.sakura, color: isDark ? '#fff' : '#3a0050',
         fontFamily: FF.mono, fontSize: '16px', fontWeight: 900,
         padding: '4px 12px', borderRadius: '999px',
         border: '2px solid rgba(255,255,255,0.35)',
@@ -353,8 +370,8 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
       <!-- Card Pesca Misteriosa -->
       <div
         :style="{
-          background:    'rgba(255,255,255,0.05)',
-          border:        '1px solid rgba(255,255,255,0.08)',
+          background:    isDark ? 'rgba(255,255,255,0.05)' : 'var(--theme-surface)',
+          border:        isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid var(--theme-border)',
           borderRadius:  '20px',
           padding:       '22px 16px 20px',
           cursor:        'pointer',
@@ -378,7 +395,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
         <div>
           <div :style="{
             fontFamily: FF.display, fontSize: '16px', fontWeight: 700,
-            color: '#fff', lineHeight: 1.2, marginBottom: '6px',
+            color: isDark ? '#fff' : '#2a0040', lineHeight: 1.2, marginBottom: '6px',
           }">Pesca Misteriosa</div>
           <div :style="{
             fontFamily: FF.label, fontSize: '11px',
@@ -395,8 +412,8 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
       <!-- Card Swipe Waifu -->
       <div
         :style="{
-          background:    'rgba(255,255,255,0.05)',
-          border:        '1px solid rgba(255,255,255,0.08)',
+          background:    isDark ? 'rgba(255,255,255,0.05)' : 'var(--theme-surface)',
+          border:        isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid var(--theme-border)',
           borderRadius:  '20px',
           padding:       '22px 16px 20px',
           cursor:        'pointer',
@@ -420,7 +437,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
         <div>
           <div :style="{
             fontFamily: FF.display, fontSize: '16px', fontWeight: 700,
-            color: '#fff', lineHeight: 1.2, marginBottom: '6px',
+            color: isDark ? '#fff' : '#2a0040', lineHeight: 1.2, marginBottom: '6px',
           }">Swipe Waifu</div>
           <div :style="{
             fontFamily: FF.label, fontSize: '11px',

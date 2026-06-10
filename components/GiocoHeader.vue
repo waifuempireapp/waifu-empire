@@ -15,7 +15,18 @@ const props = defineProps<{
   isAdmin?: boolean
 }>()
 
-defineEmits<{ logout: [] }>()
+defineEmits<{ logout: []; goSettings: [] }>()
+
+const { avatarUrl } = useAvatar()
+const gameStore = useGameStore()
+
+// Determina se avatarUrl è un colore hex (preset) o un'immagine reale
+const isColorPreset = computed(() =>
+  !!avatarUrl.value && avatarUrl.value.startsWith('#')
+)
+const isImageUrl = computed(() =>
+  !!avatarUrl.value && (avatarUrl.value.startsWith('http') || avatarUrl.value.startsWith('/'))
+)
 
 const pendingFriendRequests = computed(() => {
   const received = (props.profilo as Record<string, unknown> | null)?.friendRequestsReceived
@@ -29,10 +40,11 @@ const pendingFriendRequests = computed(() => {
   <header class="sticky top-0 z-40 px-4" style="
       height: 100px;
       overflow: visible;
-      background: rgba(10,10,15,0.85);
+      background: var(--theme-header);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--theme-border);
+      box-shadow: 0 2px 8px var(--theme-shadow);
       position: sticky;
       display: flex;
       align-items: center;
@@ -59,58 +71,72 @@ const pendingFriendRequests = computed(() => {
       <div style="
         display: flex; align-items: center; gap: 4px;
         padding: 0 8px;
-        background: rgba(255,255,255,0.07);
-        border: 1px solid var(--border-subtle);
+        background: var(--theme-surface);
+        border: 1px solid var(--theme-border);
         border-radius: 999px;
         height: 28px;
+        box-shadow: 0 1px 4px var(--theme-shadow);
       ">
-        <Heart :size="14" stroke-width="1.5" style="color:#ff85b6;flex-shrink:0;" />
+        <Heart :size="14" stroke-width="1.5" style="color:#D946A8;flex-shrink:0;" />
         <span style="
           font-family: var(--ff-mono,'JetBrains Mono',monospace);
           font-size: 12px; font-weight: 700;
-          color: #ff85b6; letter-spacing: -0.02em;
+          color: var(--theme-text); letter-spacing: -0.02em;
         ">{{ profilo?.kisses ?? 0 }}</span>
       </div>
 
       <div style="
         display: flex; align-items: center; gap: 4px;
         padding: 0 8px;
-        background: rgba(255,255,255,0.07);
-        border: 1px solid var(--border-subtle);
+        background: var(--theme-surface);
+        border: 1px solid var(--theme-border);
         border-radius: 999px;
         height: 28px;
+        box-shadow: 0 1px 4px var(--theme-shadow);
       ">
         <Zap :size="14" stroke-width="1.5" style="color:#6cf0e0;flex-shrink:0;" />
         <span style="
           font-family: var(--ff-mono,'JetBrains Mono',monospace);
           font-size: 12px; font-weight: 700;
-          color: #6cf0e0; letter-spacing: -0.02em;
+          color: var(--theme-text); letter-spacing: -0.02em;
         ">{{ profilo?.energia ?? 0 }}</span>
       </div>
     </div>
 
-    <!-- ── CENTRO: logo 110px che sborda sotto l'header ──────── -->
-    <div style="
-      position: absolute;
-      left: 50%; transform: translateX(-50%);
-      top: 0;
-      display: flex; flex-direction: column;
-      align-items: center;
-      z-index: 50;
-    ">
-      <img src="~/assets/images/New_Logo.png" alt="Impero delle Waifu"
-        style="height: 110px; width: auto; display: block;" />
-      <!-- Nome impero sotto il logo, fuori dall'header -->
-      <span v-if="profilo?.nomeImpero" style="
-          font-family: var(--ff-label,'Saira Condensed',sans-serif);
-          font-size: 11px; letter-spacing: 0.2em;
-          text-transform: uppercase;
-          color: rgba(245,197,96,0.85);
-          font-weight: 700;
-          margin-top: 2px;
-          white-space: nowrap;
-        ">{{ profilo.nomeImpero }}</span>
-    </div>
+    <!-- ── CENTRO: avatar utente circolare ──────────────────── -->
+    <button @click="gameStore.setTab('impostazioni')" style="
+        position: absolute;
+        left: 50%; transform: translateX(-50%);
+        top: auto; bottom: -10px;
+        width: 85px; height: 85px;
+        border-radius: 50%;
+        border: 2.5px solid var(--theme-accent-pink);
+        box-shadow: 0 2px 12px var(--theme-shadow);
+        overflow: hidden;
+        cursor: pointer;
+        z-index: 50;
+        display: flex; align-items: center; justify-content: center;
+        padding: 0;
+        transition: transform 0.15s, box-shadow 0.15s;
+        flex-shrink: 0;
+      " :style="{
+        background: isColorPreset
+          ? avatarUrl!
+          : isImageUrl
+            ? 'transparent'
+            : 'var(--theme-accent)',
+      }">
+      <!-- Immagine reale -->
+      <img v-if="isImageUrl" :src="avatarUrl!" alt="Avatar"
+        style="width:100%;height:100%;object-fit:cover;display:block;" />
+      <!-- Cerchio colorato preset — nessun testo sopra il colore -->
+      <!-- Iniziali "WE" se nessun avatar impostato -->
+      <span v-else-if="!isColorPreset" style="
+          font-family: var(--ff-display,'Unbounded',sans-serif);
+          font-size: 18px; font-weight: 800; color: #F0ECF8;
+          user-select: none; line-height: 1;
+        ">WE</span>
+    </button>
 
     <!-- ── DESTRA: admin + campanella + EXIT ─────────────────── -->
     <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
@@ -118,9 +144,10 @@ const pendingFriendRequests = computed(() => {
       <NuxtLink v-if="isAdmin" to="/admin" style="
           font-size: 13px;
           font-family: var(--ff-label,'Saira Condensed',sans-serif);
-          color: #a855f7;
-          background: rgba(124,58,237,0.2);
-          border: 1px solid rgba(168,85,247,0.35);
+          color: var(--theme-accent);
+          background: var(--theme-surface);
+          border: 1px solid var(--theme-accent);
+          box-shadow: 0 1px 4px var(--theme-shadow);
           border-radius: 99px;
           padding: 6px 10px;
           letter-spacing: 0.12em;
@@ -137,7 +164,7 @@ const pendingFriendRequests = computed(() => {
           cursor: pointer; display: flex;
           align-items: center; justify-content: center;
         " @click="() => { }">
-        <Bell :size="20" stroke-width="1.5" style="color:rgba(255,255,255,0.75);" />
+        <Bell :size="20" stroke-width="1.5" style="color:var(--theme-text-2);" />
         <span v-if="pendingFriendRequests > 0" style="
             position: absolute; top: 4px; right: 4px;
             background: #ff5b6c; color: #fff;
@@ -147,7 +174,7 @@ const pendingFriendRequests = computed(() => {
             border-radius: 999px;
             display: flex; align-items: center; justify-content: center;
             padding: 0 0 0 2px;
-            border: 1.5px solid rgba(3,2,12,0.9);
+            border: 1.5px solid var(--theme-surface);
           ">{{ pendingFriendRequests > 9 ? '9+' : pendingFriendRequests }}</span>
       </button>
 
@@ -155,16 +182,14 @@ const pendingFriendRequests = computed(() => {
           font-family: var(--ff-label,'Saira Condensed',sans-serif);
           font-size: 12px; letter-spacing: 0.13em;
           text-transform: uppercase;
-          color: rgba(245,197,96,0.45);
-          background: transparent; border: none;
-          border: 1px solid rgba(245,197,96,0.45);
+          color: var(--theme-text-2);
+          background: var(--theme-surface);
+          border: 1px solid var(--theme-border-2);
           border-radius: 99px;
           cursor: pointer; padding: 0 8px;
           min-height: 35px; font-weight: 700;
-          transition: color 0.2s;
-        " @mouseenter="($event.target as HTMLElement).style.color = 'rgba(245,197,96,0.9)'"
-        @mouseleave="($event.target as HTMLElement).style.color = 'rgba(245,197,96,0.45)'"
-        @click="$emit('logout')">{{ $t('header.exit') }}</button>
+          transition: color 0.2s, background 0.2s;
+        " @click="$emit('logout')">{{ $t('header.exit') }}</button>
 
     </div>
   </header>

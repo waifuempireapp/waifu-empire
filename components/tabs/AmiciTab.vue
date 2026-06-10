@@ -103,14 +103,14 @@ onMounted(async () => {
       </div>
       <h1
         class="m-0 font-extrabold"
-        style="font-family: var(--ff-display, 'Unbounded', sans-serif); font-size: clamp(22px, 5vw, 32px); letter-spacing: -0.01em; line-height: 0.95; color: #fff;"
+        style="font-family: var(--ff-display, 'Unbounded', sans-serif); font-size: clamp(22px, 5vw, 32px); letter-spacing: -0.01em; line-height: 0.95; color: var(--theme-text);"
       >
         <span :style="{ color: C.sakura }">♥</span>
         <span class="shimmer-text"> Amici & Scambi</span>
       </h1>
       <div
         class="mt-1.5 leading-snug"
-        style="font-family: var(--ff-body, 'DM Sans', sans-serif); font-size: 12px; color: rgba(241,235,255,0.6);"
+        style="font-family: var(--ff-body, 'DM Sans', sans-serif); font-size: 12px; color: var(--theme-text-2);"
       >
         <template v-if="tradeEnabled">
           Connetti il tuo impero, scambia carte e cresci insieme.
@@ -132,11 +132,9 @@ onMounted(async () => {
         @click="subTab = tab.value as 'amici' | 'scambi'"
         class="relative flex-1 py-[9px] overflow-hidden"
         :style="{
-          background: subTab === tab.value
-            ? 'linear-gradient(180deg, rgba(245,197,96,0.32), rgba(245,197,96,0.10))'
-            : 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))',
-          color: subTab === tab.value ? '#2a1f00' : 'var(--text-dim, #b6aed6)',
-          border: `1px solid ${subTab === tab.value ? 'rgba(255,233,168,0.6)' : 'rgba(255,255,255,0.12)'}`,
+          background: subTab === tab.value ? 'var(--theme-tab-active)' : 'var(--theme-shimmer)',
+          color: subTab === tab.value ? 'var(--theme-accent)' : 'var(--theme-text-2)',
+          border: `1px solid ${subTab === tab.value ? 'var(--theme-accent)' : 'var(--theme-border)'}`,
           borderRadius: '11px',
           fontFamily: 'var(--ff-label, \'Saira Condensed\', sans-serif)',
           fontSize: '10px',
@@ -145,9 +143,7 @@ onMounted(async () => {
           textTransform: 'uppercase',
           cursor: 'pointer',
           transition: 'all 0.2s',
-          boxShadow: subTab === tab.value
-            ? '0 1px 0 rgba(255,255,255,0.55) inset, 0 -10px 20px rgba(192,138,31,0.45) inset, 0 8px 24px rgba(245,197,96,0.35)'
-            : 'none',
+          boxShadow: subTab === tab.value ? '0 2px 8px var(--theme-shadow)' : 'none',
         }"
       >
         <!-- Riflesso gloss sul tab attivo -->
@@ -172,7 +168,7 @@ onMounted(async () => {
       <div
         v-if="amici === null"
         class="text-center py-8"
-        style="color: rgba(241,235,255,0.45); font-family: var(--ff-label, 'Saira Condensed', sans-serif); font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; font-weight: 700;"
+        style="color: var(--theme-text-3); font-family: var(--ff-label, 'Saira Condensed', sans-serif); font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; font-weight: 700;"
       >
         <img src="~/assets/images/New_Logo.png" alt="" style="width:60px;height:auto;display:block;margin:0 auto 12px;animation:pulse 1.2s ease-in-out infinite;opacity:0.8;" />
         Caricamento amici…

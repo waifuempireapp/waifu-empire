@@ -1,13 +1,19 @@
 <!-- ImpostazioniTab.vue — Tab impostazioni con layout full-page (specchio estetico delle vecchie missioni) -->
 <script setup lang="ts">
-// Icone Lucide — User, Heart, Globe, Settings, ShoppingCart, LogOut
-import { User, Heart, Globe, Settings, ShoppingCart, LogOut } from 'lucide-vue-next'
+// Icone Lucide — User, Heart, Globe, Settings, ShoppingCart, LogOut, Check
+import { User, Heart, Globe, Settings, ShoppingCart, LogOut, Check } from 'lucide-vue-next'
 import { useAuthStore } from '~/stores/auth'
 import { useGameStore } from '~/stores/game'
+import { useAvatar, AVATAR_PRESETS } from '~/composables/useAvatar'
 
 const authStore = useAuthStore()
 const gameStore = useGameStore()
 const router    = useRouter()
+
+// Avatar
+const { avatarUrl, setAvatar } = useAvatar()
+const isColorPreset = computed(() => !!avatarUrl.value && avatarUrl.value.startsWith('#'))
+const isImageUrl    = computed(() => !!avatarUrl.value && (avatarUrl.value.startsWith('http') || avatarUrl.value.startsWith('/')))
 
 // i18n
 const { locale, locales, setLocale } = useI18n()
@@ -27,6 +33,9 @@ const isAdmin = computed(() => {
   return emails.includes(authStore.user?.email?.toLowerCase() ?? '')
 })
 
+// Dark mode toggle
+const { isDark, toggleTheme } = useTheme()
+
 // Dropdown lingua
 const langDropdownOpen = ref(false)
 
@@ -39,57 +48,139 @@ async function switchLocale(code: string) {
 
 <template>
   <!-- Impostazioni — layout full-page verticale, specchio estetico delle vecchie missioni -->
-  <div style="display:flex;flex-direction:column;height:100%;padding:16px;gap:14px;overflow:hidden;">
+  <div style="display:flex;flex-direction:column;height:100%;padding:16px;gap:14px;overflow-y:auto;overflow-x:visible;">
 
     <!-- Header -->
     <div style="text-align:center;flex-shrink:0;">
-      <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;letter-spacing:0.28em;color:rgba(168,85,247,0.7);text-transform:uppercase;font-weight:700;margin-bottom:4px;">
+      <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;letter-spacing:0.28em;text-transform:uppercase;font-weight:700;margin-bottom:4px;color:var(--theme-accent);">
         Impostazioni
       </div>
-      <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:24px;font-weight:900;color:#fff;">
+      <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:24px;font-weight:900;color:var(--theme-text);">
         Il tuo profilo
       </div>
     </div>
 
     <!-- Profilo centrato (avatar + nome + email + lv) -->
-    <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px;background:linear-gradient(135deg,rgba(124,58,237,0.08),rgba(168,85,247,0.04));border:1px solid rgba(168,85,247,0.2);border-radius:16px;">
-      <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);box-shadow:0 0 22px rgba(124,58,237,0.5);display:grid;place-items:center;">
-        <User :size="28" stroke-width="1.5" style="color:#fff;" />
+    <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px;background:var(--theme-shimmer);border:1px solid var(--theme-border);border-radius:16px;">
+      <!-- Avatar circolare (specchia logica GiocoHeader) -->
+      <div
+        style="width:64px;height:64px;border-radius:50%;border:2.5px solid var(--theme-accent-pink);box-shadow:0 2px 12px var(--theme-shadow);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;"
+        :style="{
+          background: isColorPreset
+            ? avatarUrl!
+            : isImageUrl
+              ? 'transparent'
+              : 'var(--theme-accent)',
+        }"
+      >
+        <img v-if="isImageUrl" :src="avatarUrl!" alt="Avatar" style="width:100%;height:100%;object-fit:cover;display:block;" />
+        <span
+          v-else-if="!isColorPreset"
+          style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:18px;font-weight:800;color:#F0ECF8;user-select:none;line-height:1;"
+        >WE</span>
       </div>
-      <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:#fff;margin-top:4px;">
+      <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:var(--theme-text);margin-top:4px;">
         {{ gameStore.profilo?.nomeImpero ?? '—' }}
       </div>
-      <div style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:11px;color:rgba(255,255,255,0.35);">
+      <div style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:11px;color:var(--theme-text-3);">
         {{ authStore.user?.email ?? '' }}
       </div>
-      <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;letter-spacing:0.14em;background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(168,85,247,0.2));border:1px solid rgba(168,85,247,0.5);border-radius:999px;padding:4px 14px;color:rgba(245,197,96,0.9);text-transform:uppercase;display:inline-flex;align-items:center;gap:6px;margin-top:2px;">
-        LV. {{ gameStore.profilo?.livello ?? 1 }} · {{ gameStore.profilo?.kisses ?? 0 }} <Heart :size="12" stroke-width="1.5" style="color:#ff85b6;" />
+      <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;letter-spacing:0.14em;background:var(--theme-tab-active);border:1px solid var(--theme-border-2);border-radius:999px;padding:4px 14px;color:var(--theme-accent);text-transform:uppercase;display:inline-flex;align-items:center;gap:6px;margin-top:2px;">
+        LV. {{ gameStore.profilo?.livello ?? 1 }} · {{ gameStore.profilo?.kisses ?? 0 }} <Heart :size="12" stroke-width="1.5" :style="{ color: 'var(--theme-accent-pink)' }" />
+      </div>
+    </div>
+
+    <!-- Sezione: Immagine Profilo -->
+    <div style="flex-shrink:0;padding-bottom:14px;border-bottom:1px solid var(--theme-border);">
+      <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px;color:var(--theme-text-2);">
+        <User :size="13" stroke-width="1.5" /> Immagine Profilo
+      </div>
+      <!-- Carosello orizzontale preset -->
+      <div style="display:flex;gap:12px;overflow-x:auto;padding:4px 4px 12px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
+        <button
+          v-for="preset in AVATAR_PRESETS"
+          :key="preset.id"
+          @click="setAvatar(preset.color ?? preset.image!)"
+          :title="preset.label"
+          style="position:relative;flex-shrink:0;width:68px;height:68px;border-radius:50%;cursor:pointer;padding:0;overflow:hidden;scroll-snap-align:start;transition:border-color 0.15s,box-shadow 0.15s;"
+          :style="{
+            background: preset.color ?? 'var(--theme-surface)',
+            border: avatarUrl === (preset.color ?? preset.image)
+              ? '3px solid var(--theme-accent)'
+              : '3px solid transparent',
+            boxShadow: avatarUrl === (preset.color ?? preset.image)
+              ? 'inset 0 0 0 2px var(--theme-surface), 0 0 0 1px var(--theme-accent)'
+              : 'none',
+          }"
+        >
+          <img
+            v-if="preset.image"
+            :src="preset.image"
+            :alt="preset.label"
+            style="width:100%;height:100%;object-fit:cover;display:block;"
+          />
+          <span
+            v-if="avatarUrl === (preset.color ?? preset.image)"
+            style="position:absolute;bottom:2px;right:2px;width:18px;height:18px;border-radius:50%;background:var(--theme-accent);display:flex;align-items:center;justify-content:center;border:1.5px solid var(--theme-surface);"
+          >
+            <Check :size="10" stroke-width="3" style="color:#fff;" />
+          </span>
+        </button>
+      </div>
+      <!-- Reset avatar -->
+      <button
+        @click="setAvatar(null)"
+        style="background:none;border:none;cursor:pointer;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:12px;font-weight:600;padding:0;text-decoration:underline;text-underline-offset:3px;"
+        :style="{ color: avatarUrl ? 'var(--theme-text-2)' : 'var(--theme-text-3)', opacity: avatarUrl ? 1 : 0.4, pointerEvents: avatarUrl ? 'auto' : 'none' }"
+      >Rimuovi immagine</button>
+    </div>
+
+    <!-- Dark Mode Toggle -->
+    <div style="flex-shrink:0;padding-bottom:14px;border-bottom:1px solid var(--theme-border);">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:6px;"
+            :style="{ color: isDark ? 'rgba(200,200,210,0.7)' : 'rgba(80,80,120,0.7)' }">
+            {{ isDark ? '🌙 Dark Mode' : '☀️ Light Mode' }}
+          </div>
+          <div style="font-family:var(--ff-body,'DM Sans',sans-serif);font-size:12px;"
+            :style="{ color: 'var(--theme-text-2)' }">
+            {{ isDark ? 'Tema scuro' : 'Tema chiaro' }}
+          </div>
+        </div>
+        <!-- Toggle switch iOS-style -->
+        <div
+          :class="['theme-toggle-track', isDark ? 'theme-toggle-track--on' : 'theme-toggle-track--off']"
+          @click="toggleTheme"
+        >
+          <div :class="['theme-toggle-thumb', isDark ? 'theme-toggle-thumb--on' : 'theme-toggle-thumb--off']" />
+        </div>
       </div>
     </div>
 
     <!-- Selezione lingua -->
-    <div style="flex-shrink:0;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.06);">
-      <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;letter-spacing:0.22em;color:rgba(245,197,96,0.6);text-transform:uppercase;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+    <div style="flex-shrink:0;padding-bottom:14px;border-bottom:1px solid var(--theme-border);">
+      <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px;color:var(--theme-text-2);">
         <Globe :size="13" stroke-width="1.5" /> {{ $t('settings.language.title') }}
       </div>
-      <!-- Overlay chiudi dropdown -->
-      <div v-if="langDropdownOpen" @click="langDropdownOpen = false" style="position:fixed;inset:0;z-index:499;" />
-      <div style="position:relative;z-index:500;">
+      <!-- Overlay chiudi dropdown — z-index 45: sopra il contenuto tab, sotto navbar (z-50) e FAB (z-60) -->
+      <div v-if="langDropdownOpen" @click="langDropdownOpen = false" style="position:fixed;inset:0;z-index:45;" />
+      <div style="position:relative;z-index:46;">
         <button
           @click="langDropdownOpen = !langDropdownOpen"
-          style="width:100%;background:rgba(20,10,40,0.95);border:1.5px solid rgba(168,85,247,0.5);color:#fff;border-radius:14px;padding:12px 44px 12px 18px;font-size:15px;font-family:var(--ff-body,'DM Sans',sans-serif);font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:space-between;"
+          style="width:100%;background:var(--theme-input-bg);border:1.5px solid var(--theme-border-2);color:var(--theme-text);border-radius:14px;padding:12px 44px 12px 18px;font-size:15px;font-family:var(--ff-body,'DM Sans',sans-serif);font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:space-between;"
           :style="langDropdownOpen ? 'border-radius:14px 14px 0 0;' : ''"
         >
           <span>{{ currentLocaleName }}</span>
-          <span :style="{ transition:'transform 0.2s', transform:langDropdownOpen?'rotate(180deg)':'rotate(0)', color:'rgba(168,85,247,0.85)', fontSize:'18px', lineHeight:1 }">▾</span>
+          <span :style="{ transition:'transform 0.2s', transform:langDropdownOpen?'rotate(180deg)':'rotate(0)', color:'var(--theme-accent)', fontSize:'18px', lineHeight:1 }">▾</span>
         </button>
-        <div v-if="langDropdownOpen" style="position:absolute;top:100%;left:0;right:0;z-index:500;background:rgba(20,10,40,0.98);border:1.5px solid rgba(168,85,247,0.5);border-top:none;border-radius:0 0 14px 14px;overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,0.7);">
+        <div v-if="langDropdownOpen" style="position:absolute;top:100%;left:0;right:0;z-index:46;background:var(--theme-surface);border:1.5px solid var(--theme-border-2);border-top:none;border-radius:0 0 14px 14px;overflow:hidden;box-shadow:0 12px 32px var(--theme-shadow);">
           <button
             v-for="loc in availableLocales"
             :key="loc.code"
             @click="switchLocale(loc.code)"
-            style="width:100%;padding:12px 18px;background:transparent;border:none;border-top:1px solid rgba(255,255,255,0.05);cursor:pointer;text-align:left;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:14px;font-weight:600;display:flex;align-items:center;gap:10px;"
-            :style="{ color:loc.code===currentLocale?'#a855f7':'rgba(241,235,255,0.85)', background:loc.code===currentLocale?'rgba(124,58,237,0.18)':'transparent' }"
+            style="width:100%;padding:12px 18px;border:none;border-top:1px solid var(--theme-border);cursor:pointer;text-align:left;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:14px;font-weight:600;display:flex;align-items:center;gap:10px;"
+            :style="{ color:loc.code===currentLocale?'var(--theme-accent)':'var(--theme-text)', background:loc.code===currentLocale?'var(--theme-tab-active)':'transparent' }"
           >
             <span v-if="loc.code===currentLocale" style="font-size:12px;">✓</span>
             <span v-else style="width:12px;display:inline-block;"></span>
@@ -100,22 +191,25 @@ async function switchLocale(code: string) {
     </div>
 
     <!-- Voci menu — stile full-page, non dentro una card -->
-    <div style="flex:1;display:flex;flex-direction:column;gap:2px;overflow:hidden;">
+    <div style="flex-shrink:0;display:flex;flex-direction:column;gap:2px;">
       <button
         v-if="isAdmin"
-        style="display:flex;align-items:center;gap:14px;padding:14px 4px;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer;color:#b573ff;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:15px;font-weight:600;width:100%;text-align:left;"
+        style="display:flex;align-items:center;gap:14px;padding:14px 4px;background:transparent;border:none;cursor:pointer;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:15px;font-weight:600;width:100%;text-align:left;"
+        :style="{ color:'var(--theme-accent)', borderBottom:'1px solid var(--theme-border)' }"
         @click="router.push('/admin')"
       >
         <Settings :size="20" stroke-width="1.5" style="width:26px;flex-shrink:0;" /> {{ $t('settings.admin_panel') }}
       </button>
       <button
-        style="display:flex;align-items:center;gap:14px;padding:14px 4px;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer;color:rgba(241,235,255,0.85);font-family:var(--ff-body,'DM Sans',sans-serif);font-size:15px;font-weight:600;width:100%;text-align:left;"
+        style="display:flex;align-items:center;gap:14px;padding:14px 4px;background:transparent;border:none;cursor:pointer;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:15px;font-weight:600;width:100%;text-align:left;"
+        :style="{ color:'var(--theme-text)', borderBottom:'1px solid var(--theme-border)' }"
         @click="gameStore.toggleNegozio(true)"
       >
         <ShoppingCart :size="20" stroke-width="1.5" style="width:26px;flex-shrink:0;" /> {{ $t('settings.shop') }}
       </button>
       <button
-        style="display:flex;align-items:center;gap:14px;padding:14px 4px;background:transparent;border:none;cursor:pointer;color:#f87171;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:15px;font-weight:600;width:100%;text-align:left;margin-top:4px;"
+        style="display:flex;align-items:center;gap:14px;padding:14px 4px;background:transparent;border:none;cursor:pointer;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:15px;font-weight:700;width:100%;text-align:left;margin-top:4px;"
+        :style="{ color: isDark ? '#E74C3C' : '#C0392B' }"
         @click="authStore.logout()"
       >
         <LogOut :size="20" stroke-width="1.5" style="width:26px;flex-shrink:0;" /> {{ $t('settings.logout') }}

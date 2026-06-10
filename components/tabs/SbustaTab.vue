@@ -694,7 +694,7 @@ function cfTouchEnd(e: TouchEvent) {
           ⚡ Aumento di livello disponibile
         </div>
         <div v-if="indiceRivelato >= carteRivelate.length - 1"
-          style="margin-top:18px;font-family:var(--ff-label);font-size:11px;letter-spacing:0.22em;color:rgba(241,235,255,0.4);text-transform:uppercase;animation:pulseSoft 1.6s ease-in-out infinite;pointer-events:none;">
+          style="margin-top:18px;font-family:var(--ff-label);font-size:11px;letter-spacing:0.22em;color:var(--theme-text-3);text-transform:uppercase;animation:pulseSoft 1.6s ease-in-out infinite;pointer-events:none;">
           Tocca per il riepilogo →
         </div>
       </div>
@@ -902,7 +902,7 @@ function cfTouchEnd(e: TouchEvent) {
       <!-- Messaggio nessun drop attivo -->
       <div v-if="dropsAttivi.length === 0"
         style="flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;"
-        :style="{ fontFamily:FF.label, fontSize:'11px', letterSpacing:'0.22em', color:'rgba(241,235,255,0.45)', textTransform:'uppercase', fontWeight:700 }">
+        :style="{ fontFamily:FF.label, fontSize:'11px', letterSpacing:'0.22em', color:'var(--theme-text-3)', textTransform:'uppercase', fontWeight:700 }">
         Nessun drop attivo · tutte le carte disponibili
       </div>
 
@@ -975,7 +975,7 @@ function cfTouchEnd(e: TouchEvent) {
           <div style="text-align:center;padding:2px 0;">
             <template v-if="totalePacchetti > 0">
               <span :style="{ fontFamily:FF.mono, fontSize:'20px', fontWeight:800, color:'rgba(245,197,96,0.95)' }">{{ totalePacchetti }}</span>
-              <span :style="{ fontFamily:FF.label, fontSize:'12px', letterSpacing:'0.16em', color:'rgba(241,235,255,0.4)', marginLeft:'8px', textTransform:'uppercase' }">pacchetti disponibili</span>
+              <span :style="{ fontFamily:FF.label, fontSize:'12px', letterSpacing:'0.16em', color:'var(--theme-text-3)', marginLeft:'8px', textTransform:'uppercase' }">pacchetti disponibili</span>
             </template>
             <template v-else>
               <span :style="{ fontFamily:FF.label, fontSize:'12px', letterSpacing:'0.16em', color:'rgba(241,235,255,0.3)', textTransform:'uppercase' }">nessun pacchetto disponibile</span>

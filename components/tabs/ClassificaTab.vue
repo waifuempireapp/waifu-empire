@@ -14,6 +14,8 @@ const props = defineProps<{
   user: any
 }>()
 
+const { isDark } = useTheme()
+
 // ---- Token visivi (design system condiviso) ----
 const C = {
   ink:     '#03020c',
@@ -97,7 +99,7 @@ const premiRiga2 = [
     <!-- Tab bar: Giocatori / Classifica Waifu -->
     <div :style="{
       display: 'flex', gap: 0,
-      background: 'rgba(255,255,255,0.04)',
+      background: 'var(--theme-shimmer)', border: '1px solid var(--theme-border)',
       borderRadius: '12px', padding: '3px', marginBottom: '20px',
     }">
       <button
@@ -107,12 +109,12 @@ const premiRiga2 = [
         :style="{
           flex: 1, padding: '9px 8px', borderRadius: '10px',
           border: 'none', cursor: 'pointer',
-          background: subTab === t.id ? 'rgba(245,197,96,0.18)' : 'transparent',
-          color: subTab === t.id ? C.goldL : 'rgba(241,235,255,0.45)',
+          background: subTab === t.id ? 'var(--theme-tab-active)' : 'transparent',
+          color: subTab === t.id ? 'var(--theme-accent)' : 'var(--theme-text-2)',
           fontFamily: FF.label, fontSize: '11px', letterSpacing: '0.15em',
           fontWeight: subTab === t.id ? 700 : 500,
           textTransform: 'uppercase', transition: 'all 0.18s',
-          boxShadow: subTab === t.id ? '0 0 12px rgba(245,197,96,0.2)' : 'none',
+          boxShadow: subTab === t.id ? '0 2px 8px var(--theme-shadow)' : 'none',
         }"
       >{{ t.label }}</button>
     </div>
@@ -128,8 +130,9 @@ const premiRiga2 = [
         <!-- Kicker: stagione e countdown -->
         <div :style="{
           fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.42em',
-          color: C.goldL, textTransform: 'uppercase', marginBottom: '6px',
-          fontWeight: 700,
+          color: isDark ? '#E0A030' : 'var(--theme-accent)',
+          textTransform: 'uppercase', marginBottom: '6px',
+          fontWeight: 600, opacity: 1,
         }">◆ Stagione 7 · reset in {{ prossimoLunedi }}</div>
 
         <!-- Titolo principale -->
@@ -137,23 +140,23 @@ const premiRiga2 = [
           fontFamily: FF.display,
           fontSize: 'clamp(22px, 5vw, 32px)',
           fontWeight: 800, margin: 0,
-          letterSpacing: '-0.01em', lineHeight: 0.95, color: '#fff',
-        }" class="shimmer-text">Classifica Globale</h1>
+          letterSpacing: '-0.01em', lineHeight: 0.95, color: 'var(--theme-accent)',
+        }">Classifica Globale</h1>
 
         <!-- Sottotitolo descrittivo -->
         <div :style="{
           fontFamily: FF.body, fontSize: '12px',
-          color: 'rgba(241,235,255,0.6)', marginTop: '6px',
+          color: 'var(--theme-text-2)', marginTop: '6px',
           lineHeight: 1.4, marginBottom: '18px',
         }">Conquista più territori, sali di livello mappa, vinci più premi.</div>
       </div>
 
       <!-- Premio settimanale: due righe di box colorati -->
       <div :style="{
-        background: 'linear-gradient(135deg, rgba(245,197,96,0.10), rgba(255,126,182,0.08))',
-        border: `1px solid ${C.gold}44`,
+        background: 'var(--theme-surface)',
+        border: '1px solid var(--theme-border)',
         borderRadius: '16px', padding: '14px 16px', marginBottom: '16px',
-        boxShadow: `0 0 20px ${C.gold}1a`,
+        boxShadow: '0 4px 16px var(--theme-shadow)',
       }">
         <div :style="{
           fontFamily: FF.label, fontSize: '10px', color: C.goldL,
@@ -168,14 +171,15 @@ const premiRiga2 = [
             :key="p.label"
             :style="{
               flex: 1,
-              background: `${p.col}10`,
-              border: `1px solid ${p.col}45`,
+              background: 'var(--theme-bg-secondary)',
+              border: '1px solid var(--theme-border)',
               borderRadius: '11px', padding: '8px 10px', textAlign: 'center',
+              boxShadow: '0 2px 6px var(--theme-shadow)',
             }"
           >
             <div :style="{ fontSize: '11px', color: p.col, fontWeight: 700, fontFamily: FF.label, letterSpacing: '0.12em' }">{{ p.label }}</div>
-            <div :style="{ fontSize: '18px', color: '#fff', fontFamily: FF.mono, fontWeight: 800, marginTop: '2px', textShadow: `0 0 8px ${p.col}55` }">{{ p.pack }}</div>
-            <div :style="{ fontSize: '8px', color: 'rgba(241,235,255,0.45)', fontFamily: FF.label, letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: '2px' }">🎴 PREMIO</div>
+            <div :style="{ fontSize: '18px', color: 'var(--theme-text)', fontFamily: FF.mono, fontWeight: 800, marginTop: '2px' }">{{ p.pack }}</div>
+            <div :style="{ fontSize: '8px', color: 'var(--theme-text-3)', fontFamily: FF.label, letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: '2px' }">🎴 PREMIO</div>
           </div>
         </div>
 
@@ -186,14 +190,15 @@ const premiRiga2 = [
             :key="p.label"
             :style="{
               flex: 1,
-              background: `${p.col}10`,
-              border: `1px solid ${p.col}45`,
+              background: 'var(--theme-bg-secondary)',
+              border: '1px solid var(--theme-border)',
               borderRadius: '11px', padding: '8px 10px', textAlign: 'center',
+              boxShadow: '0 2px 6px var(--theme-shadow)',
             }"
           >
             <div :style="{ fontSize: '11px', color: p.col, fontWeight: 700, fontFamily: FF.label, letterSpacing: '0.12em' }">{{ p.label }}</div>
-            <div :style="{ fontSize: '18px', color: '#fff', fontFamily: FF.mono, fontWeight: 800, marginTop: '2px', textShadow: `0 0 8px ${p.col}55` }">{{ p.pack }}</div>
-            <div :style="{ fontSize: '8px', color: 'rgba(241,235,255,0.45)', fontFamily: FF.label, letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: '2px' }">🎴 PREMIO</div>
+            <div :style="{ fontSize: '18px', color: 'var(--theme-text)', fontFamily: FF.mono, fontWeight: 800, marginTop: '2px' }">{{ p.pack }}</div>
+            <div :style="{ fontSize: '8px', color: 'var(--theme-text-3)', fontFamily: FF.label, letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: '2px' }">🎴 PREMIO</div>
           </div>
         </div>
       </div>
@@ -203,7 +208,7 @@ const premiRiga2 = [
         v-if="loading"
         :style="{
           textAlign: 'center', padding: '32px 16px',
-          color: 'rgba(241,235,255,0.45)', fontFamily: FF.label,
+          color: 'var(--theme-text-3)', fontFamily: FF.label,
           fontSize: '10px', letterSpacing: '0.22em',
           textTransform: 'uppercase', fontWeight: 700,
         }"
@@ -239,12 +244,14 @@ const premiRiga2 = [
           <div :style="{
             width: '60px', height: '60px', borderRadius: '16px',
             margin: '0 auto -16px',
-            background: `linear-gradient(135deg, ${podiumColors[idx]}, ${C.violet})`,
+            background: idx === 0
+              ? 'linear-gradient(135deg, var(--theme-accent), var(--theme-accent-pink))'
+              : 'var(--theme-bg-secondary)',
             border: `2.5px solid ${podiumColors[idx]}`,
-            boxShadow: `0 0 20px ${podiumColors[idx]}66`,
+            boxShadow: idx === 0 ? '0 0 20px var(--theme-shadow)' : 'none',
             display: 'grid', placeItems: 'center',
             position: 'relative', zIndex: 2,
-            color: '#fff', fontFamily: FF.display, fontSize: '22px', fontWeight: 800,
+            color: idx === 0 ? '#F0ECF8' : 'var(--theme-text)', fontFamily: FF.display, fontSize: '22px', fontWeight: 800,
           }">
             <!-- Iniziale del nome -->
             {{ (classifica[idx]._nomeDisplay || classifica[idx].nomeImpero || classifica[idx].email || '?')[0].toUpperCase() }}
@@ -298,7 +305,7 @@ const premiRiga2 = [
             <!-- Nome giocatore -->
             <div :style="{
               fontFamily: FF.display, fontSize: '12px',
-              color: '#fff', fontWeight: 700, padding: '0 6px',
+              color: 'var(--theme-text)', fontWeight: 700, padding: '0 6px',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }">
               {{ (classifica[idx]._nomeDisplay || classifica[idx].nomeImpero || classifica[idx].nome || classifica[idx].email?.split('@')[0] || '—').slice(0, 14) }}
@@ -307,7 +314,7 @@ const premiRiga2 = [
             <!-- Numero di territori -->
             <div :style="{
               fontFamily: FF.label, fontSize: '8px',
-              color: 'rgba(241,235,255,0.55)',
+              color: 'var(--theme-text-2)',
               letterSpacing: '0.22em', marginTop: '4px',
               textTransform: 'uppercase', fontWeight: 600,
             }">
@@ -322,7 +329,7 @@ const premiRiga2 = [
       <div
         v-if="!loading && mioIndice >= 3"
         :style="{
-          background: `linear-gradient(135deg, ${C.sakura}22, rgba(13,10,38,0.92))`,
+          background: `linear-gradient(135deg, ${C.sakura}22, var(--theme-surface))`,
           border: `1px solid ${C.sakura}66`,
           borderRadius: '14px', padding: '14px', marginBottom: '14px',
           display: 'flex', alignItems: 'center', gap: '12px',
@@ -348,7 +355,7 @@ const premiRiga2 = [
           </div>
           <div :style="{
             fontFamily: FF.mono, fontSize: '10px',
-            color: 'rgba(241,235,255,0.55)', marginTop: '2px',
+            color: 'var(--theme-text-2)', marginTop: '2px',
             letterSpacing: '-0.01em',
           }">
             {{ classifica[mioIndice]._territori }}
@@ -362,7 +369,7 @@ const premiRiga2 = [
             {{ premioPerPosizione(mioIndice + 1) }} 🎴
           </div>
           <div :style="{
-            fontSize: '7px', color: 'rgba(241,235,255,0.4)',
+            fontSize: '7px', color: 'var(--theme-text-3)',
             fontFamily: FF.label, letterSpacing: '0.18em',
             textTransform: 'uppercase', marginTop: '2px',
           }">Premio</div>
@@ -382,7 +389,7 @@ const premiRiga2 = [
           padding: '10px 14px',
           borderBottom: `1px solid ${C.inkLine}`,
           fontFamily: FF.label, fontSize: '8px', letterSpacing: '0.22em',
-          color: 'rgba(241,235,255,0.4)', textTransform: 'uppercase', fontWeight: 700,
+          color: 'var(--theme-text-3)', textTransform: 'uppercase', fontWeight: 700,
         }">
           <div :style="{ minWidth: '30px' }">#</div>
           <div :style="{ flex: 1 }">Giocatore</div>
@@ -403,7 +410,7 @@ const premiRiga2 = [
                 : i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)',
               borderLeft: (user && u.id === user.uid)
                 ? `3px solid ${C.gold}` : '3px solid transparent',
-              borderBottom: '1px solid rgba(174,156,255,0.06)',
+              borderBottom: '1px solid var(--theme-border)',
               transition: 'background 0.15s',
             }"
           >
@@ -414,7 +421,7 @@ const premiRiga2 = [
                 v-else
                 :style="{
                   fontFamily: FF.mono, fontSize: '11px', fontWeight: (user && u.id === user.uid) ? 800 : 600,
-                  color: i <= 2 ? podiumColors[i] : (user && u.id === user.uid) ? C.gold : 'rgba(241,235,255,0.4)',
+                  color: i <= 2 ? podiumColors[i] : (user && u.id === user.uid) ? C.gold : 'var(--theme-text-3)',
                 }"
               >#{{ i + 1 }}</span>
             </div>
@@ -423,7 +430,7 @@ const premiRiga2 = [
             <div :style="{ flex: 1, minWidth: 0 }">
               <div :style="{
                 fontFamily: FF.display, fontSize: '11px',
-                color: i <= 2 ? podiumColors[i] : (user && u.id === user.uid) ? C.gold : 'rgba(241,235,255,0.85)',
+                color: i <= 2 ? podiumColors[i] : (user && u.id === user.uid) ? C.gold : 'var(--theme-text)',
                 fontWeight: (user && u.id === user.uid) || i <= 2 ? 700 : 500,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }">
@@ -442,7 +449,7 @@ const premiRiga2 = [
             <div :style="{
               minWidth: '60px', textAlign: 'center',
               fontFamily: FF.mono, fontSize: '11px', fontWeight: 600,
-              color: i <= 2 ? podiumColors[i] : (user && u.id === user.uid) ? C.gold : 'rgba(241,235,255,0.55)',
+              color: i <= 2 ? podiumColors[i] : (user && u.id === user.uid) ? C.gold : 'var(--theme-text-2)',
             }">
               <MapIcon :size="12" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:3px;" />{{ u._territori }}
             </div>
@@ -451,7 +458,7 @@ const premiRiga2 = [
             <div :style="{
               minWidth: '38px', textAlign: 'right',
               fontFamily: FF.mono, fontSize: '10px',
-              color: premioPerPosizione(i + 1) >= 3 ? C.goldL : 'rgba(241,235,255,0.4)',
+              color: premioPerPosizione(i + 1) >= 3 ? C.goldL : 'var(--theme-text-3)',
               fontWeight: premioPerPosizione(i + 1) >= 3 ? 700 : 500,
             }">{{ premioPerPosizione(i + 1) }} 🎴</div>
           </div>
@@ -498,7 +505,7 @@ const premiRiga2 = [
       <!-- Nota sui criteri di ordinamento -->
       <div :style="{
         textAlign: 'center', marginTop: '14px',
-        fontSize: '8px', color: 'rgba(241,235,255,0.3)',
+        fontSize: '8px', color: 'var(--theme-text-3)',
         fontFamily: FF.label, letterSpacing: '0.22em',
         textTransform: 'uppercase', fontWeight: 600,
       }">

@@ -53,11 +53,11 @@ async function conferma() {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center p-4" style="background: #0a0a0f;">
+  <div class="min-h-screen flex items-center justify-center p-4" style="background: var(--theme-bg);">
     <div class="fade-up w-full max-w-[460px] rounded-2xl p-7"
-         style="background:rgba(15,13,26,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-                border:1px solid rgba(168,85,247,0.2);border-radius:20px;
-                box-shadow:0 0 40px rgba(124,58,237,0.2)">
+         style="background:var(--theme-surface);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+                border:1px solid var(--theme-border);border-radius:20px;
+                box-shadow:0 0 40px var(--theme-shadow)">
 
       <!-- Header -->
       <div class="text-center mb-5">
@@ -67,7 +67,7 @@ async function conferma() {
                    bg-clip-text text-transparent">
           FONDA IL TUO IMPERO
         </h2>
-        <p class="text-sm leading-relaxed mt-3" style="color:#d4c5b9">
+        <p class="text-sm leading-relaxed mt-3" style="color:var(--theme-text-2)">
           Benvenuta/o nell'Impero delle Waifu. Inizia scegliendo il nome del tuo dominio
           e riceverai
           <strong class="text-amber-400">5 pacchetti di benvenuto</strong> senza doppioni.
@@ -75,21 +75,19 @@ async function conferma() {
       </div>
 
       <!-- Nome -->
-      <label class="text-xs tracking-widest font-cinzel text-purple-400">
+      <label class="text-xs tracking-widest font-cinzel" style="color:var(--theme-accent)">
         NOME IMPERO
       </label>
       <input
         v-model="nomeImpero"
         maxlength="30"
         placeholder="Es. Impero del Sol Levante"
-        class="w-full px-3 py-3 mt-1.5 mb-4 rounded-lg text-sm text-amber-50
-               placeholder-amber-50/30 outline-none box-border
-               focus:border-amber-400/60 transition-colors"
-        style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:white;"
+        class="w-full px-3 py-3 mt-1.5 mb-4 rounded-lg text-sm outline-none box-border transition-colors"
+        style="background:var(--theme-input-bg);border:1px solid var(--theme-border);border-radius:12px;color:var(--theme-text);"
       />
 
       <!-- Colore bandiera -->
-      <label class="text-xs tracking-widest font-cinzel text-purple-400 block">
+      <label class="text-xs tracking-widest font-cinzel block" style="color:var(--theme-accent)">
         COLORE BANDIERA
       </label>
       <div class="flex gap-1.5 mt-2 flex-wrap">
@@ -109,10 +107,8 @@ async function conferma() {
       <!-- CTA -->
       <button
         :disabled="!nomeImpero.trim() || busy"
-        class="w-full py-3 mt-5 font-cinzel font-semibold text-sm
-               tracking-widest text-white cursor-pointer
-               hover:opacity-90 transition-opacity disabled:opacity-40"
-        style="background:linear-gradient(135deg,#f5a623,#ff6b35);border-radius:50px;border:none;box-shadow:0 8px 24px rgba(245,166,35,0.25);"
+        class="w-full py-3 mt-5 font-cinzel font-semibold text-sm tracking-widest cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-40"
+        style="background:var(--theme-accent);color:#F0ECF8;border-radius:50px;border:none;box-shadow:0 8px 24px var(--theme-shadow);"
         @click="conferma"
       >
         {{ busy ? 'CREAZIONE...' : "FONDA L'IMPERO" }}

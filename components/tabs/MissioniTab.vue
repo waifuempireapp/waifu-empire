@@ -215,7 +215,7 @@ onUnmounted(() => {
       <!-- Bottone back — torna alla tab precedente -->
       <button
         @click="emit('indietro')"
-        style="position:absolute;left:16px;top:16px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.65);"
+        style="position:absolute;left:16px;top:16px;background:var(--theme-shimmer);border:1px solid var(--theme-border);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--theme-text-2);"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -225,33 +225,33 @@ onUnmounted(() => {
       <!--<div :style="{ fontFamily:FF.label, fontSize:'13px', letterSpacing:'0.28em', color:`${C.mission}bb`, textTransform:'uppercase', fontWeight:700, marginBottom:'4px' }">
         Missioni
       </div> -->
-      <div :style="{ fontFamily:FF.display, fontSize:'22px', fontWeight:900, color:'#fff', marginBottom:'16px' }">
+      <div :style="{ fontFamily:FF.display, fontSize:'22px', fontWeight:900, color:'var(--theme-text)', marginBottom:'16px' }">
         Missioni Giornaliere
       </div>
     </div>
 
     <!-- ── SUB-TAB SELECTOR ────────────────────────────────────────────── -->
-    <div style="flex-shrink:0;display:flex;gap:0;margin:0 16px 14px;background:rgba(255,255,255,0.05);border-radius:12px;padding:4px;">
+    <div style="flex-shrink:0;display:flex;gap:0;margin:0 16px 14px;background:var(--theme-shimmer);border:1px solid var(--theme-border);border-radius:12px;padding:4px;">
       <button
         @click="subTab = 'giornaliere'"
         :style="{
           flex:1, padding:'10px 8px', borderRadius:'9px', border:'none', cursor:'pointer',
-          background: subTab === 'giornaliere' ? 'linear-gradient(135deg,rgba(232,121,249,0.25),rgba(168,85,247,0.2))' : 'transparent',
+          background: subTab === 'giornaliere' ? 'var(--theme-tab-active)' : 'transparent',
           fontFamily: FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.1em',
-          color: subTab === 'giornaliere' ? '#fff' : 'rgba(255,255,255,0.45)',
+          color: subTab === 'giornaliere' ? 'var(--theme-accent)' : 'var(--theme-text-3)',
           textTransform:'uppercase', transition:'all 0.2s',
-          borderBottom: subTab === 'giornaliere' ? `2px solid ${C.mission}` : '2px solid transparent',
+          borderBottom: subTab === 'giornaliere' ? `2px solid var(--theme-accent)` : '2px solid transparent',
         }"
       >Giornaliere</button>
       <button
         @click="subTab = 'mappa'; if (!activeMission && !mapLoading) loadMapMission()"
         :style="{
           flex:1, padding:'10px 8px', borderRadius:'9px', border:'none', cursor:'pointer',
-          background: subTab === 'mappa' ? 'linear-gradient(135deg,rgba(232,121,249,0.25),rgba(168,85,247,0.2))' : 'transparent',
+          background: subTab === 'mappa' ? 'var(--theme-tab-active)' : 'transparent',
           fontFamily: FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.1em',
-          color: subTab === 'mappa' ? '#fff' : 'rgba(255,255,255,0.45)',
+          color: subTab === 'mappa' ? 'var(--theme-accent)' : 'var(--theme-text-3)',
           textTransform:'uppercase', transition:'all 0.2s',
-          borderBottom: subTab === 'mappa' ? `2px solid ${C.mission}` : '2px solid transparent',
+          borderBottom: subTab === 'mappa' ? `2px solid var(--theme-accent)` : '2px solid transparent',
         }"
       >Mappa</button>
     </div>
@@ -270,11 +270,11 @@ onUnmounted(() => {
             @click="filterView = 'corso'"
             :style="{
               flex:1, padding:'9px 8px', borderRadius:'999px', border:'none', cursor:'pointer',
-              background: filterView === 'corso' ? 'rgba(255,255,255,0.12)' : 'transparent',
+              background: filterView === 'corso' ? 'var(--theme-tab-active)' : 'transparent',
               fontFamily: FF.label, fontSize:'14px', fontWeight:700,
-              color: filterView === 'corso' ? '#fff' : 'rgba(255,255,255,0.4)',
+              color: filterView === 'corso' ? 'var(--theme-accent)' : 'var(--theme-text-3)',
               letterSpacing:'0.08em', textTransform:'uppercase', transition:'all 0.2s',
-              outline: filterView === 'corso' ? '1px solid rgba(255,255,255,0.15)' : 'none',
+              outline: filterView === 'corso' ? '1px solid var(--theme-border-2)' : 'none',
               display:'flex', alignItems:'center', justifyContent:'center', gap:'6px',
             }"
           >
@@ -286,7 +286,7 @@ onUnmounted(() => {
               flex:1, padding:'9px 8px', borderRadius:'999px', border:'none', cursor:'pointer',
               background: filterView === 'completate' ? 'rgba(88,224,163,0.12)' : 'transparent',
               fontFamily: FF.label, fontSize:'14px', fontWeight:700,
-              color: filterView === 'completate' ? C.ok : 'rgba(255,255,255,0.4)',
+              color: filterView === 'completate' ? C.ok : 'var(--theme-text-3)',
               letterSpacing:'0.08em', textTransform:'uppercase', transition:'all 0.2s',
               outline: filterView === 'completate' ? `1px solid rgba(88,224,163,0.2)` : 'none',
               display:'flex', alignItems:'center', justifyContent:'center', gap:'6px',
@@ -298,7 +298,7 @@ onUnmounted(() => {
 
         <!-- Reset countdown — sotto, tutta la larghezza, centrato -->
         <div style="display:flex;align-items:center;justify-content:center;gap:5px;width:100%;"
-          :style="{ fontFamily:FF.mono, fontSize:'12px', color:'rgba(255,255,255,0.3)' }">
+          :style="{ fontFamily:FF.mono, fontSize:'12px', color:'var(--theme-text-3)' }">
           <Clock :size="12" stroke-width="1.5" />Reset tra {{ resetCountdown }}
         </div>
 
@@ -307,11 +307,11 @@ onUnmounted(() => {
       <!-- Counter completate -->
       <div style="flex-shrink:0;margin-bottom:14px;">
         <div style="display:flex;align-items:center;gap:8px;">
-          <div :style="{ fontFamily:FF.label, fontSize:'15px', color:'rgba(255,255,255,0.55)', letterSpacing:'0.06em', fontWeight:600 }">
+          <div :style="{ fontFamily:FF.label, fontSize:'15px', color:'var(--theme-text-2)', letterSpacing:'0.06em', fontWeight:600 }">
             {{ completedCount }}/{{ DAILY_MISSIONS.length }} completate
           </div>
           <!-- Barra progresso totale -->
-          <div style="flex:1;height:4px;background:rgba(255,255,255,0.08);border-radius:999px;overflow:hidden;">
+          <div style="flex:1;height:4px;background:var(--theme-border);border-radius:999px;overflow:hidden;">
             <div :style="{
               height:'100%', borderRadius:'999px',
               background:`linear-gradient(90deg,${C.mission},${C.violet})`,
@@ -329,7 +329,7 @@ onUnmounted(() => {
         <div v-if="visibleMissions.length === 0"
           style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;text-align:center;">
           <CheckCircle :size="36" stroke-width="1" style="color:#58e0a3;opacity:0.5;" />
-          <div :style="{ fontFamily:FF.body, fontSize:'15px', color:'rgba(255,255,255,0.4)' }">
+          <div :style="{ fontFamily:FF.body, fontSize:'15px', color:'var(--theme-text-3)' }">
             {{ filterView === 'completate' ? 'Nessuna missione completata ancora' : 'Tutte le missioni completate!' }}
           </div>
         </div>
@@ -443,7 +443,7 @@ onUnmounted(() => {
         <!-- Countdown scadenza -->
         <div style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 18px;background:rgba(232,121,249,0.08);border:1px solid rgba(232,121,249,0.25);border-radius:16px;margin-bottom:14px;">
           <Timer :size="20" stroke-width="1.5" style="color:#e879f9;flex-shrink:0;" />
-          <span :style="{ fontFamily:FF.mono, fontSize:'26px', color:'rgba(241,235,255,0.9)', fontWeight:800, fontVariantNumeric:'tabular-nums', letterSpacing:'0.04em' }">
+          <span :style="{ fontFamily:FF.mono, fontSize:'26px', color:'var(--theme-text)', fontWeight:800, fontVariantNumeric:'tabular-nums', letterSpacing:'0.04em' }">
             {{ mapCountdown }}
           </span>
         </div>
@@ -451,7 +451,7 @@ onUnmounted(() => {
         <!-- Reward -->
         <div style="flex-shrink:0;display:flex;align-items:center;gap:10px;padding:12px 16px;background:rgba(232,121,249,0.06);border:1px solid rgba(232,121,249,0.18);border-radius:14px;margin-bottom:16px;">
           <CheckCircle :size="18" stroke-width="1.5" style="color:#58e0a3;flex-shrink:0;" />
-          <div :style="{ fontFamily:FF.body, fontSize:'14px', color:'rgba(241,235,255,0.8)', lineHeight:1.45 }">
+          <div :style="{ fontFamily:FF.body, fontSize:'14px', color:'var(--theme-text)', lineHeight:1.45 }">
             Possiedi i territori alla scadenza:
             <strong :style="{ color:C.gold }">+{{ activeMission.rewardPerPixel ?? 100 }} Kisses</strong> ciascuno
           </div>
@@ -492,14 +492,14 @@ onUnmounted(() => {
       <div v-else style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:20px;">
         <Target :size="44" stroke-width="1" style="opacity:0.4;color:#e879f9;" />
         <template v-if="nextCountdown">
-          <div :style="{ fontFamily:FF.display, fontSize:'15px', fontWeight:800, color:'rgba(241,235,255,0.45)' }">Prossima missione tra</div>
+          <div :style="{ fontFamily:FF.display, fontSize:'15px', fontWeight:800, color:'var(--theme-text-2)' }">Prossima missione tra</div>
           <div :style="{ fontFamily:FF.mono, fontSize:'28px', fontWeight:800, color:'#e879f9', letterSpacing:'0.05em', fontVariantNumeric:'tabular-nums' }">
             {{ nextCountdown }}
           </div>
         </template>
         <template v-else>
-          <div :style="{ fontFamily:FF.display, fontSize:'15px', fontWeight:800, color:'rgba(241,235,255,0.45)' }">Nessuna missione attiva</div>
-          <div :style="{ fontFamily:FF.body, fontSize:'13px', color:'rgba(241,235,255,0.3)', lineHeight:1.5 }">
+          <div :style="{ fontFamily:FF.display, fontSize:'15px', fontWeight:800, color:'var(--theme-text-2)' }">Nessuna missione attiva</div>
+          <div :style="{ fontFamily:FF.body, fontSize:'13px', color:'var(--theme-text-3)', lineHeight:1.5 }">
             Le missioni si rinnovano ogni 2 ore.
           </div>
         </template>

@@ -289,7 +289,7 @@ function handleSetTab(t: string) {
     <Transition name="slide-down">
       <div v-if="notif" class="fixed top-4 left-1/2 -translate-x-1/2 z-[200] px-6 py-2.5 rounded-xl
                text-xs tracking-widest font-orbitron" :style="{
-                background: 'rgba(6,3,15,0.95)',
+                background: 'var(--theme-surface)',
                 backdropFilter: 'blur(12px)',
                 border: `1px solid ${notif.colore}80`,
                 color: notif.colore,
@@ -309,7 +309,7 @@ function handleSetTab(t: string) {
          e durante tutti i loading interni (drops, animazioni). Appare senza ritardo
          perché è un semplice div, non un componente lazy. z-index 199 < 200 di SbustaTab. -->
     <div v-if="sbustaAperta"
-      style="position:fixed;inset:0;z-index:199;background:#060311;"
+      style="position:fixed;inset:0;z-index:199;background:var(--theme-loading);"
       aria-hidden="true"
     />
 
@@ -346,7 +346,7 @@ function handleSetTab(t: string) {
 
     <!-- ── Area contenuto tab ────────────────────────────────────────── -->
     <div :class="['max-w-[1400px] mx-auto', tab === 'collezione' ? 'px-4' : 'px-4']"
-         :style="{ paddingTop: tab === 'mappa' ? '30px' : tab === 'classifica' || tab === 'impostazioni' || tab === 'missioni' || tab === 'swap' ? '0' : '60px' }">
+         :style="{ paddingTop: '20px' }">
 
       <!-- ═══ TAB: HOME ════════════════════════════════════════════════ -->
       <!-- apri-sbusto: bottone "APRI ORA" → apre l'overlay SbustaTab -->
@@ -416,19 +416,17 @@ function handleSetTab(t: string) {
          Tab inattiva: opacity 0.55.
          Touch target minimo 44px per accessibilità mobile.
     ──────────────────────────────────────────────────────────────────── -->
-    <nav class="fixed bottom-0 left-0 right-0 z-50 flex" style="
-        background: rgba(10,10,15,0.92);
+    <nav class="fixed bottom-0 left-0 right-0 z-50 flex theme-nav" style="
         backdrop-filter: blur(24px);
         -webkit-backdrop-filter: blur(24px);
-        border-top: 1px solid rgba(255,255,255,0.06);
         height: 75px;
       ">
       <button v-for="t in TABS" :key="t.id" class="flex-1 flex flex-col items-center justify-center gap-0.5 cursor-pointer
                border-0 bg-transparent relative"
         style="transition: all 0.2s ease; min-height:44px; padding-top:8px; padding-bottom:6px;" :style="{
           opacity: tab === t.id ? '1' : '0.45',
-          background: tab === t.id ? 'rgba(124,58,237,0.18)' : 'transparent',
-          border: tab === t.id ? '1px solid rgba(168,85,247,0.3)' : '1px solid transparent',
+          background: tab === t.id ? 'var(--theme-tab-active)' : 'transparent',
+          border: tab === t.id ? '1px solid var(--theme-tab-border)' : '1px solid transparent',
           borderRadius: '4px',
         }" @click="() => {
           if (t.id === 'home') { gameStore.toggleNegozio(false); chiudiPesca() }
@@ -440,8 +438,8 @@ function handleSetTab(t: string) {
         <!-- Icona Lucide: scala a 1.2x se tab attiva, glow dorato — usa component dinamico -->
         <span class="leading-none" style="display:flex;align-items:center;justify-content:center;transition: transform 0.2s ease, filter 0.2s ease;" :style="{
           transform: tab === t.id ? 'scale(1.2)' : 'scale(1)',
-          filter: tab === t.id ? 'drop-shadow(0 0 6px rgba(245,197,96,0.7))' : 'none',
-          color: tab === t.id ? '#f5c560' : 'rgba(255,255,255,0.75)',
+          filter: tab === t.id ? 'drop-shadow(0 0 6px rgba(245,197,96,0.5))' : 'none',
+          color: tab === t.id ? 'var(--theme-nav-icon-active)' : 'var(--theme-nav-icon)',
         }">
           <component :is="t.icon" :size="24" stroke-width="1.5" />
         </span>
@@ -471,14 +469,15 @@ function handleSetTab(t: string) {
         width: 52px;
         height: 52px;
         border-radius: 50%;
-        background: linear-gradient(135deg, rgba(232,121,249,0.85), rgba(7,5,26,0.98));
-        box-shadow: 0 4px 20px rgba(232,121,249,0.45), 0 0 0 4px rgba(232,121,249,0.08);
+        background: var(--theme-accent);
+        box-shadow: 0 4px 14px rgba(124,58,237,0.45), 0 0 0 3px var(--theme-shimmer);
         display: flex; align-items: center; justify-content: center;
         cursor: pointer;
         z-index: 60;
         transition: all 0.2s;
         backdrop-filter: blur(8px);
         border: none;
+        color: #F0ECF8;
         font-size: 22px;
         line-height: 1;
       "
