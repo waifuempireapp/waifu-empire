@@ -275,7 +275,7 @@ const totScambiabili = computed(() =>
     : 0
 )
 
-// ── Preload immagini → cache HTTP prima che CartaGLB le richieda ─────────────
+// ── Preload immagini → warm HTTP cache prima del render delle carte ───────────
 function _preload(entries: typeof waifuEntries.value) {
   if (typeof window === 'undefined') return
   try {

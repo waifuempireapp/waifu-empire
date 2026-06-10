@@ -98,6 +98,7 @@ function fisherYates(arr: number[]): number[] {
 async function caricaFeed() {
   if (!authStore.user) return
   loading.value = true
+  immaginiCaricate.value = false
   error.value = null
   try {
     const token = await authStore.user.getIdToken()
@@ -105,16 +106,51 @@ async function caricaFeed() {
       headers: { Authorization: `Bearer ${token}` },
     })) as { packs: Pack[] }
     packs.value = data.packs ?? []
+    await preloadAllImages(packs.value)
   } catch (e: any) {
     error.value = e?.message ?? 'Errore caricamento feed'
+    immaginiCaricate.value = true  // sblocca anche su errore
   } finally {
     loading.value = false
   }
 }
 
-onMounted(() => {
-  if (props.initialPacks === null) caricaFeed()
+// Precarica tutte le thumbnail dei pack e aspetta che siano nella cache HTTP.
+// Timeout 6s: non blocca l'UI se la rete è lenta.
+const immaginiCaricate = ref(false)
+
+async function preloadAllImages(packList: typeof packs.value): Promise<void> {
+  if (typeof window === 'undefined') { immaginiCaricate.value = true; return }
+  const { ikUrl: iku } = await import('~/utils/imagekitUrl')
+  const urls = packList
+    .flatMap(p => (p.cards ?? []).map(c => c.immagine ? (iku(c.immagine, 'thumbnail') || null) : null))
+    .filter((u): u is string => !!u)
+
+  await Promise.race([
+    Promise.all(urls.map(url => new Promise<void>(resolve => {
+      const img = new Image()
+      img.onload = img.onerror = () => resolve()
+      img.src = url
+    }))),
+    new Promise<void>(resolve => setTimeout(resolve, 6000)),
+  ])
+  immaginiCaricate.value = true
+}
+
+onMounted(async () => {
+  if (props.initialPacks === null) {
+    await caricaFeed()
+  } else {
+    packs.value = props.initialPacks as Pack[]
+    await preloadAllImages(packs.value)
+  }
 })
+
+// Aggiorna il feed (es. pull-to-refresh): ricarica e ripreloada
+async function ricaricaFeed() {
+  immaginiCaricate.value = false
+  await caricaFeed()
+}
 
 // ── Coreografia Shuffle 3D Stile Pokémon Pocket ────────────────
 const pickPhase = ref<'reveal' | 'shuffle' | 'pick' | 'revealing' | 'revealed'>('reveal')
@@ -654,14 +690,24 @@ onUnmounted(() => {
         </div>
       </Teleport>
 
-      <div v-if="loading" style="text-align:center;padding:24px;
-               color:rgba(238,232,220,0.35);font-family:'Orbitron',sans-serif;
-               font-size:9px;letter-spacing:2px">CARICAMENTO…</div>
+      <!-- Overlay blur: copre tutto finché le immagini non sono in cache -->
+      <Transition name="pesca-fade">
+        <div
+          v-if="!immaginiCaricate"
+          style="position:fixed;inset:0;z-index:200;
+                 background:rgba(6,3,15,0.9);
+                 backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+                 display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;"
+        >
+          <div style="width:36px;height:36px;border:2.5px solid rgba(255,77,158,0.2);border-top-color:#ff4d9e;border-radius:50%;animation:pesca-spin 0.85s linear infinite;" />
+          <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;letter-spacing:0.28em;color:rgba(255,77,158,0.55);text-transform:uppercase;">Caricamento carte...</div>
+        </div>
+      </Transition>
 
       <div v-if="error" style="text-align:center;padding:16px;color:#ff4d4d;
                font-family:'Orbitron',sans-serif;font-size:10px">{{ error }}</div>
 
-      <div style="display:flex;flex-direction:column;gap:28px;padding-top:20px;overflow:visible;">
+      <div v-show="immaginiCaricate" style="display:flex;flex-direction:column;gap:28px;padding-top:20px;overflow:visible;">
         <div v-for="(pack, idx) in packs" :key="pack.id" style="position:relative;">
           <div
             v-if="(pack.createdAt && (Date.now() - new Date(pack.createdAt).getTime() < 3 * 60 * 60 * 1000) || pack.hasHot) && !pack.alreadyFished"
@@ -682,3 +728,13 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
+
+<style>
+/* non-scoped: @keyframes non può essere scoped in Vue */
+@keyframes pesca-spin { to { transform: rotate(360deg); } }
+</style>
+
+<style scoped>
+.pesca-fade-leave-active { transition: opacity 0.4s ease; }
+.pesca-fade-leave-to     { opacity: 0; }
+</style>

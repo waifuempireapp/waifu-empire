@@ -222,11 +222,11 @@ onUnmounted(() => {
         </svg>
       </button>
 
-      <div :style="{ fontFamily:FF.label, fontSize:'13px', letterSpacing:'0.28em', color:`${C.mission}bb`, textTransform:'uppercase', fontWeight:700, marginBottom:'4px' }">
+      <!--<div :style="{ fontFamily:FF.label, fontSize:'13px', letterSpacing:'0.28em', color:`${C.mission}bb`, textTransform:'uppercase', fontWeight:700, marginBottom:'4px' }">
         Missioni
-      </div>
+      </div> -->
       <div :style="{ fontFamily:FF.display, fontSize:'22px', fontWeight:900, color:'#fff', marginBottom:'16px' }">
-        Le tue sfide
+        Missioni Giornaliere
       </div>
     </div>
 

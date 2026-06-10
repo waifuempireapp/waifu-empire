@@ -159,6 +159,32 @@ async function _generaEAggiorna(tipoPacchetto: string, nuovaCollezione: any) {
   return carte
 }
 
+// Precaricare tutte le immagini delle carte prima che l'utente inizi
+// a rivelare. Viene chiamato subito dopo aver generato i pacchetti, così
+// durante l'animazione del pack (800ms) + il delay iniziale (500ms) le
+// immagini sono già nella cache HTTP e appaiono istantaneamente.
+function preloadCarteImages(pacchetti: any[][]) {
+  if (typeof window === 'undefined') return
+  try {
+    const urls = new Set<string>()
+    for (const carte of pacchetti) {
+      for (const c of carte) {
+        if (c.tipo !== 'waifu') continue
+        const w = c.data
+        // preset 'normal' → dimensione CartaWaifu di default nel reveal
+        const s = ikUrl(w?.asset_statica ?? null, 'normal')
+        if (s) urls.add(s)
+        // leggendario/immersivo usano anche asset_immersiva
+        if ((w?.rarita === 'leggendario' || w?.rarita === 'immersivo') && w?.asset_immersiva) {
+          const i = ikUrl(w.asset_immersiva, 'normal')
+          if (i) urls.add(i)
+        }
+      }
+    }
+    urls.forEach(url => { const img = new Image(); img.src = url })
+  } catch { /* mai propagare errori di preload */ }
+}
+
 function avviaRivelazione(_carte: any[]) {
   setTimeout(() => { indiceRivelato.value = 0 }, 500)
 }
@@ -204,6 +230,9 @@ async function apri(tipoPacchetto: string) {
   bustaAperta.value = false
   bustaInAnimazione.value = false
   stato.value = 'reveal'
+
+  // Preload immediato: le immagini arrivano durante l'animazione del pack (≥1.3s)
+  preloadCarteImages([carte])
 
   // Notifica il sistema missioni giornaliere: pacchetto aperto
   if (typeof window !== 'undefined') {
@@ -263,6 +292,11 @@ async function apriMulti(tipoPacchetto: string) {
 
   multiPackCarte.value = tuttiIPacchetti
   multiPackIndice.value = 0
+
+  // Preload di TUTTE le immagini dei pack (fino a 10×5=50 carte)
+  // Il browser le carica in parallelo mentre l'utente guarda il primo pack
+  preloadCarteImages(tuttiIPacchetti)
+
   const prime = tuttiIPacchetti[0]
   const gp = prime.length === 5 && prime.every((c: any) => c.tipo === 'waifu' && c.isGodPack)
   isGodPackAperto.value = gp

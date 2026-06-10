@@ -44,7 +44,8 @@ const notif = ref<{ testo: string; colore: string } | null>(null)
 const isAdmin = ref(false)
 const statConfig = ref({ ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT })
 const godPackProb = ref(GOD_PACK_PROB_DEFAULT)
-const caricato = ref(false)
+const caricato = ref(false)   // dati Firestore pronti
+const appReady = ref(false)   // pack 3D pronto → nasconde la loading screen
 // Contesto battaglia raid — passato a MappaTab come prop, poi reimpostato a null
 const raidBattleCtx = ref<unknown>(null)
 // i18n — usato solo per ripristino lingua al mount
@@ -72,6 +73,7 @@ onMounted(() => {
   // Ripristina la lingua salvata
   const savedLocale = localStorage.getItem('waifu_locale')
   if (savedLocale) setLocale(savedLocale as 'en' | 'it' | 'de' | 'es' | 'ja')
+
 })
 onUnmounted(() => {
   window.removeEventListener('impero:apri-negozio', () => gameStore.toggleNegozio(true))
@@ -190,6 +192,17 @@ async function caricaTutto(uid: string) {
   }
 
   caricato.value = true
+
+  // Aspetta che il DOM monti il game container (e BustinaGLB avvii Three.js)
+  await nextTick()
+
+  // Poi aspetta bustina pronta o fallback 5s — non blocca l'app se WebGL è lento
+  await new Promise<void>(resolve => {
+    window.addEventListener('bustina:ready', () => resolve(), { once: true })
+    setTimeout(resolve, 5000)
+  })
+
+  appReady.value = true
 }
 
 function mostraNotif(testo: string, colore = '#00e676') {
@@ -258,13 +271,19 @@ function handleSetTab(t: string) {
 </script>
 
 <template>
-  <!-- Schermata di caricamento: logo centrato mentre si caricano i dati -->
-  <div v-if="!caricato" class="min-h-screen flex items-center justify-center">
-    <img src="~/assets/images/New_Logo.png" alt="Impero delle Waifu" style="width:70dvw; max-width:420px; height:auto;" />
-  </div>
+  <!-- Overlay di caricamento — position:fixed z-index:9999, copre tutto finché
+       i dati Firestore E il pack 3D non sono pronti. Fallback 8s. -->
+  <Transition name="loading-fade">
+    <div v-if="!caricato || !appReady" class="gioco-loading-screen">
+      <img src="~/assets/images/New_Logo.png" alt="Impero delle Waifu" class="gioco-loading-logo" />
+      <div class="gioco-loading-spinner" />
+      <div class="gioco-loading-text">Caricamento...</div>
+    </div>
+  </Transition>
 
-  <!-- Contenuto principale del gioco -->
-  <div v-else class="game-container min-h-screen" style="padding-bottom:80px">
+  <!-- Game container — montato non appena i dati sono pronti (così BustinaGLB
+       può inizializzare Three.js in background mentre l'overlay è ancora visibile) -->
+  <div v-if="caricato" class="game-container min-h-screen" style="padding-bottom:80px">
 
     <!-- Notifica flottante (toast slide-down) -->
     <Transition name="slide-down">
@@ -410,7 +429,7 @@ function handleSetTab(t: string) {
           opacity: tab === t.id ? '1' : '0.45',
           background: tab === t.id ? 'rgba(124,58,237,0.18)' : 'transparent',
           border: tab === t.id ? '1px solid rgba(168,85,247,0.3)' : '1px solid transparent',
-          borderRadius: '12px',
+          borderRadius: '4px',
         }" @click="() => {
           if (t.id === 'home') { gameStore.toggleNegozio(false); chiudiPesca() }
           gameStore.setTab(t.id)
@@ -470,6 +489,43 @@ function handleSetTab(t: string) {
 </template>
 
 <style scoped>
+/* Loading screen */
+.gioco-loading-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: radial-gradient(ellipse 140% 100% at 50% -10%, rgba(124,58,237,0.3) 0%, #06030d 55%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px;
+}
+.gioco-loading-logo {
+  width: min(62vw, 300px); height: auto;
+  animation: loadingPulse 1.8s ease-in-out infinite;
+  filter: drop-shadow(0 0 28px rgba(168,85,247,0.45));
+}
+.gioco-loading-spinner {
+  width: 32px; height: 32px;
+  border: 2.5px solid rgba(255,255,255,0.1);
+  border-top-color: #a78bfa;
+  border-radius: 50%;
+  animation: loadingSpin 0.85s linear infinite;
+}
+.gioco-loading-text {
+  font-family: var(--ff-label,'Saira Condensed',sans-serif);
+  font-size: 11px; letter-spacing: 0.3em;
+  color: rgba(174,156,255,0.45); text-transform: uppercase;
+}
+@keyframes loadingPulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.04); }
+}
+@keyframes loadingSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Loading screen fade-out */
+.loading-fade-leave-active { transition: opacity 0.5s ease; }
+.loading-fade-leave-to     { opacity: 0; }
+
 /* Pesca Misteriosa: slide-in da destra */
 .pesca-slide-enter-active, .pesca-slide-leave-active { transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); }
 .pesca-slide-enter-from, .pesca-slide-leave-to { transform: translateX(100%); }

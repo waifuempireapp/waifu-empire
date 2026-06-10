@@ -12,7 +12,7 @@ const config: CapacitorConfig = {
   // Nome visualizzato sul dispositivo mobile
   appName: 'Impero delle Waifu',
   // Cartella output di `nuxt build` → usata da `cap sync`
-  webDir: '.output/public',
+  webDir: 'dist',
   server: {
     // Usa HTTPS per Android (necessario per Firebase Auth)
     androidScheme: 'https',

@@ -296,14 +296,17 @@ function onMouseLeave(e: MouseEvent) {
         </div>
       </div>
 
-      <!-- Carta 3D via Three.js (normale, non censurata) -->
-      <CartaGLB
+      <!-- Immagine carta -->
+      <img
         v-else-if="imgSrc"
-        :imageUrl="imgSrc"
-        :width="W"
-        :height="H"
-        :rarita="waifu.rarita"
-        :censurata="false"
+        :src="imgSrc"
+        :alt="waifu.nome"
+        loading="lazy"
+        :style="{
+          position: 'absolute', inset: '0',
+          width: '100%', height: '100%',
+          objectFit: 'cover', objectPosition: 'center 15%',
+        }"
       />
 
       <!-- Placeholder senza asset -->

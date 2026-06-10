@@ -21,7 +21,9 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
     '@nuxtjs/i18n',
-    '@netlify/nuxt'
+    // @netlify/nuxt solo in produzione su Netlify — in locale causa il middleware
+    // Netlify che applica dist/_redirects e rompe la risoluzione dei chunk JS
+    ...(process.env.NETLIFY ? ['@netlify/nuxt'] : []) as [],
   ],
 
   // Percorso CSS globale (contiene @tailwind + variabili CSS legacy + animazioni)
@@ -79,7 +81,8 @@ export default defineNuxtConfig({
   },
 
   nitro: {
-    preset: 'netlify',
+    // preset netlify solo su Netlify CI/CD — in locale usa il default (node-server)
+    ...(process.env.NETLIFY ? { preset: 'netlify' } : {}),
     // firebase-admin usa moduli nativi che non possono essere bundlati da Nitro
     externals: {
       external: ['firebase-admin', '@google-cloud/firestore', '@grpc/grpc-js'],
@@ -108,11 +111,7 @@ export default defineNuxtConfig({
     },
   },
 
-  vite: {
-    optimizeDeps: {
-      include: ['three'],
-    },
-  },
+  vite: {},
 
   typescript: {
     strict: true,
