@@ -856,10 +856,10 @@ function apriNegozio() {
                 <div :style="{ fontFamily: FF.label, fontSize: '9px', color: C.goldL, textAlign: 'center', lineHeight: 1.3 }">
                   {{ mosseCat.find(m => m.id === moveId)!.nome }}
                 </div>
-                <div :style="{ fontFamily: FF.label, fontSize: '8px', color: C.violet, opacity: 0.8 }">
+                <div :style="{ fontFamily: FF.label, fontSize: '13px', color: C.violet, opacity: 0.8 }">
                   {{ mosseCat.find(m => m.id === moveId)!.tipologia }} · Lv{{ (dati as any).livello ?? 1 }}
                 </div>
-                <div :style="{ fontFamily: FF.label, fontSize: '8px', color: '#f5e6d3' }">
+                <div :style="{ fontFamily: FF.label, fontSize: '13px', color: '#f5e6d3' }">
                   PP:{{ mosseCat.find(m => m.id === moveId)!.pp }} · Danno:{{ (dati as any).danno ?? mosseCat.find(m => m.id === moveId)!.danno }}
                 </div>
                 <!-- Badge livello up mossa -->
@@ -875,7 +875,7 @@ function apriNegozio() {
                   {{ (dati as any).copie % 5 === 0 && (dati as any).livello < 10 ? '⬆ LVL UP' : `${(5 - ((dati as any).copie ?? 0) % 5) % 5 || 5} al lv` }}
                 </div>
               </div>
-              <span :style="{ fontFamily: FF.label, fontSize: '8px', color: C.violet }">
+              <span :style="{ fontFamily: FF.label, fontSize: '13px', color: C.violet }">
                 ×<strong :style="{ color: C.goldL }">{{ (dati as any).copie ?? 0 }}</strong> copie
               </span>
             </div>
@@ -917,14 +917,14 @@ function apriNegozio() {
           <!-- ── SelezioneWaifuTeam (inline) ── -->
           <div :style="{ position: 'relative' }">
             <div :style="{
-              fontFamily: FF.label, fontSize: '10px', color: C.ok,
+              fontFamily: FF.label, fontSize: '14px', color: C.ok,
               letterSpacing: '0.24em', marginBottom: '10px', textAlign: 'center',
               textTransform: 'uppercase', fontWeight: 700,
             }">Seleziona waifu (max 5) ({{ teamWaifu.length }}/5)</div>
 
             <!-- Barra filtri team -->
             <div :style="{
-              background: 'linear-gradient(180deg, rgba(27,22,56,0.55), rgba(13,10,38,0.7))',
+              background: 'var(--theme-surface)',
               border: '1px solid var(--theme-border)',
               borderRadius: '14px', padding: '12px 14px', marginBottom: '14px',
               backdropFilter: 'blur(8px)',
@@ -949,7 +949,7 @@ function apriNegozio() {
                   />
                 </div>
                 <span :style="{
-                  fontFamily: FF.mono, fontSize: '11px', color: 'var(--theme-text-3)',
+                  fontFamily: FF.label, fontSize: '14px', color: 'var(--theme-text-3)',
                   fontWeight: 700, padding: '0 6px',
                 }">{{ teamListaFiltrata.length }}</span>
               </div>
@@ -987,7 +987,7 @@ function apriNegozio() {
                 paddingTop: '10px', borderTop: '1px solid var(--theme-border)',
               }">
                 <span :style="{
-                  fontFamily: FF.label, fontSize: '8px',
+                  fontFamily: FF.label, fontSize: '13px',
                   color: 'var(--theme-text-3)',
                   letterSpacing: '0.24em', textTransform: 'uppercase', fontWeight: 700,
                 }">Ordina:</span>
@@ -1004,7 +1004,7 @@ function apriNegozio() {
                     background: teamSortKey === s.k ? 'var(--theme-tab-active)' : 'var(--theme-shimmer)',
                     border: `1px solid ${teamSortKey === s.k ? 'var(--theme-accent)' : 'var(--theme-border)'}`,
                     color: teamSortKey === s.k ? 'var(--theme-accent)' : 'var(--theme-text-2)',
-                    fontFamily: FF.label, fontSize: '8px', fontWeight: 700,
+                    fontFamily: FF.label, fontSize: '13px', fontWeight: 700,
                     letterSpacing: '0.16em', textTransform: 'uppercase',
                     display: 'inline-flex', alignItems: 'center', gap: '4px',
                   }"
@@ -1051,7 +1051,7 @@ function apriNegozio() {
               >
                 <Search :size="36" stroke-width="1" :style="{ marginBottom: '8px', color: C.ok }" />
                 <div :style="{
-                  fontFamily: FF.label, fontSize: '10px', color: C.ok,
+                  fontFamily: FF.label, fontSize: '14px', color: C.ok,
                   letterSpacing: '0.28em', marginBottom: '6px',
                   textTransform: 'uppercase', fontWeight: 700,
                 }">Nessuna waifu</div>
@@ -1069,7 +1069,7 @@ function apriNegozio() {
             <!-- Footer sticky azioni team -->
             <div :style="{
               position: 'sticky', bottom: 0,
-              background: 'linear-gradient(180deg, transparent, rgba(7,5,26,0.95) 35%)',
+              background: 'linear-gradient(180deg, transparent, var(--theme-surface) 35%)',
               padding: '20px 0 8px', marginTop: '-40px',
               display: 'flex', gap: '10px', justifyContent: 'center', zIndex: 5,
             }">
@@ -1102,7 +1102,7 @@ function apriNegozio() {
           >
             <Shield :size="36" stroke-width="1" :style="{ marginBottom: '8px', filter: `drop-shadow(0 0 12px ${C.ok}88)`, color: C.ok }" />
             <div :style="{
-              fontFamily: FF.label, fontSize: '10px', color: C.ok,
+              fontFamily: FF.label, fontSize: '14px', color: C.ok,
               letterSpacing: '0.28em', marginBottom: '6px',
               textTransform: 'uppercase', fontWeight: 700,
             }">Nessun team</div>
@@ -1198,11 +1198,11 @@ function apriNegozio() {
             background: 'rgba(174,156,255,0.08)', borderRadius: '10px',
             border: '1px solid rgba(174,156,255,0.2)',
           }">
-            <div :style="{ fontFamily: FF.label, fontSize: '8px', color: 'rgba(174,156,255,0.6)', marginBottom: '4px' }">VELOCITÀ</div>
+            <div :style="{ fontFamily: FF.label, fontSize: '13px', color: 'rgba(174,156,255,0.6)', marginBottom: '4px' }">VELOCITÀ</div>
             <div :style="{ fontFamily: FF.mono, fontSize: '16px', color: lvlPreview ? '#aef0d8' : '#f5e6d3' }">
               {{ lvlPreview ? lvlCalcPreview(lvlPreview.stat, lvlPreview.delta).velocita : lvlCurrentVel }}
             </div>
-            <div v-if="lvlPreview" :style="{ fontFamily: FF.label, fontSize: '8px', color: 'rgba(245,158,11,0.5)' }">
+            <div v-if="lvlPreview" :style="{ fontFamily: FF.label, fontSize: '13px', color: 'rgba(245,158,11,0.5)' }">
               era {{ lvlCurrentVel }}
             </div>
           </div>
@@ -1211,11 +1211,11 @@ function apriNegozio() {
             background: 'rgba(255,126,182,0.08)', borderRadius: '10px',
             border: '1px solid rgba(255,126,182,0.2)',
           }">
-            <div :style="{ fontFamily: FF.label, fontSize: '8px', color: 'rgba(255,126,182,0.6)', marginBottom: '4px' }">CRITICO</div>
+            <div :style="{ fontFamily: FF.label, fontSize: '13px', color: 'rgba(255,126,182,0.6)', marginBottom: '4px' }">CRITICO</div>
             <div :style="{ fontFamily: FF.mono, fontSize: '16px', color: lvlPreview ? '#aef0d8' : '#f5e6d3' }">
               {{ lvlPreview ? lvlCalcPreview(lvlPreview.stat, lvlPreview.delta).crit_chance : lvlCurrentCrit }}%
             </div>
-            <div v-if="lvlPreview" :style="{ fontFamily: FF.label, fontSize: '8px', color: 'rgba(245,158,11,0.5)' }">
+            <div v-if="lvlPreview" :style="{ fontFamily: FF.label, fontSize: '13px', color: 'rgba(245,158,11,0.5)' }">
               era {{ lvlCurrentCrit }}%
             </div>
           </div>

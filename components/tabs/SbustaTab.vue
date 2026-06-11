@@ -542,14 +542,6 @@ const selectedDropIndex = computed(() =>
   Math.max(0, dropsAttivi.value.findIndex(d => d.id === dropSelId.value))
 )
 
-// Converte hex (#rrggbb) in rgba() — evita 8-digit hex non supportati da WebKit
-function hexRgba(hex: string, alpha: number): string {
-  const h = hex.replace('#', '')
-  const r = parseInt(h.slice(0, 2), 16)
-  const g = parseInt(h.slice(2, 4), 16)
-  const b = parseInt(h.slice(4, 6), 16)
-  return `rgba(${r},${g},${b},${alpha})`
-}
 
 function getCoverflowStyle(index: number): Record<string, string | number> {
   const dist = index - selectedDropIndex.value
@@ -588,9 +580,9 @@ function cfTouchEnd(e: TouchEvent) {
 <template>
   <!-- SKELETON LOADING — full-screen fixed, usato quando SbustaTab è overlay -->
   <div v-if="dropsLoading" class="fade-in"
-    style="position:fixed;inset:0;z-index:200;background:linear-gradient(180deg,#090514 0%,#110724 50%,#05030a 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+    style="position:fixed;inset:0;z-index:200;background:var(--theme-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
     <img src="~/assets/images/New_Logo.png" alt="" style="width:72px;height:auto;animation:pulse 1.2s ease-in-out infinite;opacity:0.75;" />
-    <div :style="{ fontFamily: FF.label, fontSize:'11px', letterSpacing:'0.24em', color:'rgba(174,156,255,0.4)', textTransform:'uppercase', fontWeight:700 }">
+    <div :style="{ fontFamily: FF.label, fontSize:'13px', letterSpacing:'0.24em', color:'var(--theme-text-3)', textTransform:'uppercase', fontWeight:700 }">
       Caricamento espansioni…
     </div>
   </div>
@@ -599,19 +591,19 @@ function cfTouchEnd(e: TouchEvent) {
     REVEAL VIEW — Pokémon Pocket Style Pack Opening & 3D Stack
   ══════════════════════════════════════════════════════════════ -->
   <div v-else-if="stato === 'reveal' || stato === 'reveal_multi'"
-    style="position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; overflow: hidden; background: linear-gradient(180deg, #090514 0%, #110724 50%, #05030a 100%); perspective: 1200px;">
+    style="position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; overflow: hidden; background:var(--theme-bg); perspective: 1200px;">
 
     <!-- 1. FASE DI SBUSTO INTERATTIVA (Prima di mostrare le carte) -->
     <div v-if="!bustaAperta"
       :style="{
         position:'absolute', inset:0, zIndex:250,
         display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-        background:`radial-gradient(circle at center, ${dropColore}22 0%, #06030d 100%)`,
+        background:`radial-gradient(circle at center, ${dropColore}28 0%, transparent 100%)`,
         cursor:'pointer',
       }"
       @click="eseguiTaglioBustina">
       <div style="text-align: center; margin-bottom: 32px; padding: 0 30px; animation: pulseSoft 2s infinite;">
-        <p :style="{ fontFamily: FF.label, fontSize: '13px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '3px' }">
+        <p :style="{ fontFamily: FF.label, fontSize: '15px', color: 'var(--theme-text-2)', textTransform: 'uppercase', letterSpacing: '3px', fontWeight: 700 }">
           ▶ Tocca per aprire
         </p>
       </div>
@@ -649,7 +641,7 @@ function cfTouchEnd(e: TouchEvent) {
           }" />
         </div>
         <div
-          :style="{ fontFamily: FF.label, fontSize: '13px', color: '#f5c560', letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700 }">
+          :style="{ fontFamily: FF.label, fontSize: '16px', color: C.violet, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 800 }">
           <template v-if="stato === 'reveal_multi'">Pacchetto {{ multiPackIndice + 1 }}/{{ multiPackCarte.length }} ·
           </template>
           Carta {{ Math.max(1, indiceRivelato + 1) }} di {{ carteRivelate.length }}
@@ -690,7 +682,7 @@ function cfTouchEnd(e: TouchEvent) {
 
         <!-- Feedback UI (fuori dall'overflow:hidden) -->
         <div v-if="levelUpDisponibile && indiceRivelato >= 0"
-          style="margin-top:14px;padding:5px 18px;border-radius:999px;background:rgba(0,200,83,0.15);border:1.5px solid rgba(89,224,163,0.6);font-family:var(--ff-label);font-size:11px;font-weight:700;color:#58e0a3;letter-spacing:0.14em;text-transform:uppercase;pointer-events:none;">
+          style="margin-top:14px;padding:8px 22px;border-radius:999px;background:#ffffff;border:1.5px solid rgba(89,224,163,0.5);font-family:var(--ff-label);font-size:14px;font-weight:800;color:#16a34a;letter-spacing:0.14em;text-transform:uppercase;pointer-events:none;box-shadow:0 2px 12px rgba(0,0,0,0.15);">
           ⚡ Aumento di livello disponibile
         </div>
         <div v-if="indiceRivelato >= carteRivelate.length - 1"
@@ -702,7 +694,7 @@ function cfTouchEnd(e: TouchEvent) {
 
     <!-- Overlay Video Immersivo Sezione Sblocchi -->
     <div v-if="sbusVideoAttivo && sbusCartaImmersiva" @click="sbusVideoFinito ? chiudiVideoSbusto() : undefined"
-      style="position: fixed; inset: 0; background: rgba(4,2,10,0.97); backdrop-filter: blur(20px); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+      style="position: fixed; inset: 0; background: var(--theme-surface); backdrop-filter: blur(20px); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center;">
       <div @click.stop style="animation: scaleIn 0.25s ease-out">
         <CartaWaifu :waifu="sbusCartaImmersiva" dimensione="grande" tipo="auto" :video-attivo="sbusVideoAttivo"
           @video-end="sbusVideoFinito = true" />
@@ -720,14 +712,14 @@ function cfTouchEnd(e: TouchEvent) {
     SUMMARY SINGLE PACK (Griglia delle 5 Carte Ottenute)
   ══════════════════════════════════════════════════════════════ -->
   <div v-else-if="stato === 'summary'" class="fade-in"
-    style="position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;overflow:hidden;background:linear-gradient(180deg,#080318 0%,#120528 50%,#080318 100%);">
+    style="position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;overflow:hidden;background:var(--theme-bg);">
     <div
       :style="{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, background: `radial-gradient(ellipse 80% 50% at 50% 30%,${C.violet}18 0%,transparent 65%)` }" />
     <div style="flex-shrink:0;padding:24px 20px 12px;text-align:center;position:relative;z-index:10;">
       <div
-        :style="{ fontFamily: FF.label, fontSize: '9px', letterSpacing: '0.3em', color: `rgba(245,197,96,0.7)`, textTransform: 'uppercase', fontWeight: 700, marginBottom: '6px' }">
+        :style="{ fontFamily: FF.label, fontSize: '13px', letterSpacing: '0.3em', color: C.violet, textTransform: 'uppercase', fontWeight: 700, marginBottom: '6px' }">
         CARTE OTTENUTE</div>
-      <div :style="{ fontFamily: FF.display, fontSize: '20px', fontWeight: 900, color: '#eedcd4', letterSpacing: '2px' }">
+      <div :style="{ fontFamily: FF.display, fontSize: '22px', fontWeight: 900, color: 'var(--theme-text)', letterSpacing: '2px' }">
         Pack
         Aperto!</div>
     </div>
@@ -743,7 +735,7 @@ function cfTouchEnd(e: TouchEvent) {
             :style="{ position: 'absolute', top: '-10px', right: '-4px', zIndex: 20, background: getCopie(carta) >= 3 ? 'linear-gradient(135deg,#00c853,#58e0a3)' : 'linear-gradient(135deg,#1a0a35,#2a1255)', border: getCopie(carta) >= 3 ? '2px solid rgba(89,224,163,0.8)' : '2px solid rgba(245,197,96,0.8)', borderRadius: '999px', minWidth: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--ff-mono)', fontSize: '10px', fontWeight: 900, color: '#fff', padding: '0 4px' }">
             {{ getCopie(carta) }}</div>
           <div
-            :style="{ borderRadius: '10px', overflow: 'hidden', aspectRatio: '2/3', background: 'linear-gradient(160deg,#16082e,#08041a)', position: 'relative', border: carta.isNuova ? '1.5px solid rgba(0,200,255,0.5)' : '1.5px solid rgba(255,255,255,0.08)' }">
+            :style="{ borderRadius: '10px', overflow: 'hidden', aspectRatio: '2/3', background: 'var(--theme-bg-secondary)', position: 'relative', border: carta.isNuova ? '1.5px solid rgba(0,200,255,0.5)' : '1.5px solid rgba(255,255,255,0.08)' }">
             <img v-if="carta.tipo === 'waifu' && carta.data?.asset_statica"
               :src="ikUrl(carta.data.asset_statica, 'thumbnail') ?? undefined" :alt="carta.data?.nome"
               style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
@@ -757,7 +749,7 @@ function cfTouchEnd(e: TouchEvent) {
               {{ carta.data.rarita }}</div>
           </div>
           <div
-            style="padding:3px 1px 0;text-align:center;font-family:var(--ff-label);font-size:9px;color:#fff;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            style="padding:3px 1px 0;text-align:center;font-family:var(--ff-label);font-size:12px;color:var(--theme-text);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
             {{ carta.data?.nome || '—' }}</div>
         </div>
       </div>
@@ -771,7 +763,7 @@ function cfTouchEnd(e: TouchEvent) {
             :style="{ position: 'absolute', top: '-10px', right: '-4px', zIndex: 20, background: getCopie(carta) >= 3 ? 'linear-gradient(135deg,#00c853,#58e0a3)' : 'linear-gradient(135deg,#1a0a35,#2a1255)', border: getCopie(carta) >= 3 ? '2px solid rgba(89,224,163,0.8)' : '2px solid rgba(245,197,96,0.8)', borderRadius: '999px', minWidth: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--ff-mono)', fontSize: '10px', fontWeight: 900, color: '#fff', padding: '0 4px' }">
             {{ getCopie(carta) }}</div>
           <div
-            :style="{ borderRadius: '10px', overflow: 'hidden', aspectRatio: '2/3', background: 'linear-gradient(160deg,#16082e,#08041a)', position: 'relative', border: carta.isNuova ? '1.5px solid rgba(0,200,255,0.5)' : '1.5px solid rgba(255,255,255,0.08)' }">
+            :style="{ borderRadius: '10px', overflow: 'hidden', aspectRatio: '2/3', background: 'var(--theme-bg-secondary)', position: 'relative', border: carta.isNuova ? '1.5px solid rgba(0,200,255,0.5)' : '1.5px solid rgba(255,255,255,0.08)' }">
             <img v-if="carta.tipo === 'waifu' && carta.data?.asset_statica"
               :src="ikUrl(carta.data.asset_statica, 'thumbnail') ?? undefined" :alt="carta.data?.nome"
               style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
@@ -785,14 +777,14 @@ function cfTouchEnd(e: TouchEvent) {
               {{ carta.data.rarita }}</div>
           </div>
           <div
-            style="padding:3px 1px 0;text-align:center;font-family:var(--ff-label);font-size:9px;color:#fff;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            style="padding:3px 1px 0;text-align:center;font-family:var(--ff-label);font-size:12px;color:var(--theme-text);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
             {{ carta.data?.nome || '—' }}</div>
         </div>
       </div>
     </div>
     <div style="flex-shrink:0;padding:14px 20px 40px;text-align:center;position:relative;z-index:10;">
       <button @click="tornaIdle"
-        :style="{ padding: '13px 40px', borderRadius: '999px', background: `linear-gradient(135deg,${C.violet},#6938e8)`, border: 'none', color: '#fff', fontFamily: FF.label, fontSize: '13px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer', boxShadow: `0 4px 20px ${C.violet}55` }">✅
+        :style="{ padding: '16px', width: '100%', borderRadius: '999px', background: 'linear-gradient(135deg,#16a34a,#22c55e)', border: 'none', color: '#fff', fontFamily: FF.label, fontSize: '17px', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer', boxShadow: '0 6px 24px rgba(34,197,94,0.45)' }">
         CONTINUA</button>
     </div>
   </div>
@@ -801,12 +793,12 @@ function cfTouchEnd(e: TouchEvent) {
     SUMMARY MULTI PACK
   ══════════════════════════════════════════════════════════════ -->
   <div v-else-if="stato === 'summary_multi'" class="fade-in"
-    style="position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;overflow:hidden;background:linear-gradient(180deg,#080318 0%,#120528 50%,#080318 100%);">
+    style="position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;overflow:hidden;background:var(--theme-bg);">
     <div style="flex-shrink:0;padding:20px 20px 10px;text-align:center;position:relative;z-index:10;">
       <div
-        :style="{ fontFamily: FF.label, fontSize: '9px', letterSpacing: '0.3em', color: `rgba(245,197,96,0.7)`, textTransform: 'uppercase', fontWeight: 700, marginBottom: '4px' }">
+        :style="{ fontFamily: FF.label, fontSize: '13px', letterSpacing: '0.3em', color: C.gold, textTransform: 'uppercase', fontWeight: 700, marginBottom: '4px' }">
         RIEPILOGO APERTURA</div>
-      <div :style="{ fontFamily: FF.display, fontSize: '18px', fontWeight: 900, color: '#eedcd4', letterSpacing: '2px' }">{{
+      <div :style="{ fontFamily: FF.display, fontSize: '18px', fontWeight: 900, color: 'var(--theme-text)', letterSpacing: '2px' }">{{
         multiPackCarte.length }} Pack Aperti</div>
     </div>
     <div
@@ -814,7 +806,7 @@ function cfTouchEnd(e: TouchEvent) {
       <div v-for="(pack, pi) in multiPackCarte" :key="pi"
         :style="{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.inkLine}`, borderRadius: '16px', padding: '14px 12px', position: 'relative' }">
         <div
-          :style="{ fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.22em', color: `rgba(245,197,96,0.75)`, textTransform: 'uppercase', fontWeight: 700, marginBottom: '10px' }">
+          :style="{ fontFamily: FF.label, fontSize: '13px', letterSpacing: '0.22em', color: C.gold, textTransform: 'uppercase', fontWeight: 700, marginBottom: '10px' }">
           Pack {{ pi + 1 }}/{{ multiPackCarte.length }}
           <span :style="{ marginLeft: '8px', color: C.ok, fontSize: '9px' }">+{{pack.filter((c: any) => c.isNuova).length}}
             nuove</span>
@@ -826,7 +818,7 @@ function cfTouchEnd(e: TouchEvent) {
               style="position:absolute;top:-8px;left:-3px;z-index:20;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:1px 6px;font-family:var(--ff-label);font-size:9px;font-weight:900;color:#000;">
               NEW</div>
             <div
-              :style="{ borderRadius: '8px', overflow: 'hidden', aspectRatio: '2/3', background: 'linear-gradient(160deg,#16082e,#08041a)', position: 'relative' }">
+              :style="{ borderRadius: '8px', overflow: 'hidden', aspectRatio: '2/3', background: 'var(--theme-bg-secondary)', position: 'relative' }">
               <img v-if="carta.tipo === 'waifu' && carta.data?.asset_statica"
                 :src="ikUrl(carta.data.asset_statica, 'thumbnail') ?? undefined" :alt="carta.data?.nome"
                 style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
@@ -843,7 +835,7 @@ function cfTouchEnd(e: TouchEvent) {
               style="position:absolute;top:-8px;left:-3px;z-index:20;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:1px 6px;font-family:var(--ff-label);font-size:9px;font-weight:900;color:#000;">
               NEW</div>
             <div
-              :style="{ borderRadius: '8px', overflow: 'hidden', aspectRatio: '2/3', background: 'linear-gradient(160deg,#16082e,#08041a)', position: 'relative' }">
+              :style="{ borderRadius: '8px', overflow: 'hidden', aspectRatio: '2/3', background: 'var(--theme-bg-secondary)', position: 'relative' }">
               <img v-if="carta.tipo === 'waifu' && carta.data?.asset_statica"
                 :src="ikUrl(carta.data.asset_statica, 'thumbnail') ?? undefined" :alt="carta.data?.nome"
                 style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
@@ -868,15 +860,13 @@ function cfTouchEnd(e: TouchEvent) {
     Le schede OMAGGIO/SFIDA/BENVENUTO sono eliminate: il totale è unico.
   ══════════════════════════════════════════════════════════════ -->
   <div v-else class="fade-in"
-    style="position:fixed;inset:0;z-index:200;background:#06030f;display:flex;flex-direction:column;overflow:hidden;">
+    style="position:fixed;inset:0;z-index:200;background:var(--theme-bg);display:flex;flex-direction:column;overflow:hidden;">
 
     <!-- Layer colore espansione — rgba() garantisce supporto universale, stop finale a opacity 0 elimina qualsiasi bordo -->
     <div
       style="position:absolute;inset:0;pointer-events:none;z-index:0;"
       :style="{
-        backgroundImage: dropAttivo
-          ? `radial-gradient(ellipse 500% 500% at 50% 50%, ${hexRgba(dropAttivo.colore||C.violet, 0.10)} 0%, ${hexRgba(dropAttivo.colore||C.violet, 0)} 100%)`
-          : 'none'
+        backgroundImage: `radial-gradient(ellipse 500% 500% at 50% 50%, rgba(167,139,250,0.18) 0%, rgba(167,139,250,0) 100%)`
       }"
     />
 
@@ -892,8 +882,8 @@ function cfTouchEnd(e: TouchEvent) {
       <!-- Header: ← a sinistra, titolo centrato, spacer a destra -->
       <div style="display:flex;align-items:center;padding:14px 0 10px;flex-shrink:0;">
         <button @click="emit('indietro')"
-          style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:rgba(255,255,255,0.7);flex-shrink:0;line-height:1;">←</button>
-        <div :style="{ flex:1, textAlign:'center', fontFamily:FF.label, fontSize:'13px', letterSpacing:'0.24em', color:'rgba(245,197,96,0.9)', textTransform:'uppercase', fontWeight:800 }">
+          style="background:transparent;border:1.5px solid #a78bfa;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:#a78bfa;flex-shrink:0;line-height:1;">←</button>
+        <div :style="{ flex:1, textAlign:'center', fontFamily:FF.label, fontSize:'16px', letterSpacing:'0.24em', color:C.violet, textTransform:'uppercase', fontWeight:800 }">
           ◆ Scegli l'Espansione
         </div>
         <div style="width:38px;flex-shrink:0;"></div>
@@ -947,7 +937,7 @@ function cfTouchEnd(e: TouchEvent) {
                 background: totalePacchetti > 0 ? `linear-gradient(135deg,${C.sakura},#c54a86)` : 'rgba(255,255,255,0.06)',
                 boxShadow: totalePacchetti > 0 ? `0 6px 28px ${C.sakura}55` : 'none',
                 fontFamily: FF.display, fontSize:'15px', fontWeight:800,
-                color: totalePacchetti > 0 ? '#fff' : 'rgba(255,255,255,0.3)',
+                color: totalePacchetti > 0 ? '#fff' : 'var(--theme-text-3)',
                 letterSpacing:'0.1em', textTransform:'uppercase',
                 display:'flex', alignItems:'center', justifyContent:'center',
                 opacity: totalePacchetti > 0 ? 1 : 0.4, transition:'opacity 0.2s',
@@ -963,7 +953,7 @@ function cfTouchEnd(e: TouchEvent) {
                 background: totalePacchetti > 0 ? `linear-gradient(135deg,${C.violet},#6938e8)` : 'rgba(255,255,255,0.06)',
                 boxShadow: totalePacchetti > 0 ? `0 6px 28px ${C.violet}55` : 'none',
                 fontFamily: FF.display, fontSize:'14px', fontWeight:800,
-                color: totalePacchetti > 0 ? '#fff' : 'rgba(255,255,255,0.3)',
+                color: totalePacchetti > 0 ? '#fff' : 'var(--theme-text-3)',
                 letterSpacing:'0.08em', textTransform:'uppercase',
                 display:'flex', alignItems:'center', justifyContent:'center',
                 opacity: totalePacchetti > 0 ? 1 : 0.4, transition:'opacity 0.2s',
@@ -974,11 +964,11 @@ function cfTouchEnd(e: TouchEvent) {
           <!-- Contatore totale -->
           <div style="text-align:center;padding:2px 0;">
             <template v-if="totalePacchetti > 0">
-              <span :style="{ fontFamily:FF.mono, fontSize:'20px', fontWeight:800, color:'rgba(245,197,96,0.95)' }">{{ totalePacchetti }}</span>
+              <span :style="{ fontFamily:FF.label, fontSize:'22px', fontWeight:900, color:C.gold }">{{ totalePacchetti }}</span>
               <span :style="{ fontFamily:FF.label, fontSize:'12px', letterSpacing:'0.16em', color:'var(--theme-text-3)', marginLeft:'8px', textTransform:'uppercase' }">pacchetti disponibili</span>
             </template>
             <template v-else>
-              <span :style="{ fontFamily:FF.label, fontSize:'12px', letterSpacing:'0.16em', color:'rgba(241,235,255,0.3)', textTransform:'uppercase' }">nessun pacchetto disponibile</span>
+              <span :style="{ fontFamily:FF.label, fontSize:'12px', letterSpacing:'0.16em', color:'var(--theme-text-3)', textTransform:'uppercase' }">nessun pacchetto disponibile</span>
             </template>
           </div>
         </div>
@@ -990,7 +980,7 @@ function cfTouchEnd(e: TouchEvent) {
 
   <!-- ── Modale apertura pack — stile game premium ───────────── -->
   <div v-if="popupApertura" @click="popupApertura = null"
-    style="position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,6,18,0.88);backdrop-filter:blur(24px);">
+    style="position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,0.72);backdrop-filter:blur(24px);">
     <div @click.stop :style="{position:'relative',maxWidth:'310px',width:'100%',textAlign:'center',padding:'36px 26px 26px',borderRadius:'18px',background:popupColor.bg,border:`1.5px solid ${popupColor.border}`,boxShadow:`0 0 80px ${popupColor.glow},0 30px 70px rgba(0,0,0,0.85),inset 0 1px 0 rgba(255,255,255,0.05)`,overflow:'hidden'}">
 
       <!-- Stelle di sfondo animate colorate -->
@@ -1050,7 +1040,7 @@ function cfTouchEnd(e: TouchEvent) {
   <!-- ── Modale conferma acquisto bustina sfida ─────────────── -->
   <div v-if="sfidaConferma" @click="sfidaConferma = false" :style="{
     position: 'fixed', inset: 0, zIndex: 400,
-    background: 'rgba(3,2,12,0.94)', backdropFilter: 'blur(18px)',
+    background: 'var(--theme-surface)', backdropFilter: 'blur(18px)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
   }">
     <div @click.stop :style="{
@@ -1060,7 +1050,7 @@ function cfTouchEnd(e: TouchEvent) {
       boxShadow: `0 24px 50px rgba(3,2,12,0.85), 0 0 36px ${C.sakura}33`,
     }">
       <div :style="{ fontFamily: FF.label, fontSize: '11px', color: C.sakura, letterSpacing: '0.32em', marginBottom: '10px', textTransform: 'uppercase', fontWeight: 700 }">Acquista Bustina</div>
-      <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'rgba(241,235,255,0.8)', marginBottom: '18px' }">Scegli quante bustine Sfida acquistare:</div>
+      <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', marginBottom: '18px' }">Scegli quante bustine Sfida acquistare:</div>
       <div :style="{ display: 'flex', flexDirection: 'column', gap: '9px', marginBottom: '16px' }">
         <button @click="acquistaSfidaConKisses(1)" :style="{
           background: `${C.sakura}1f`, border: `1px solid ${C.sakura}66`, borderRadius: '10px', color: C.sakuraL,

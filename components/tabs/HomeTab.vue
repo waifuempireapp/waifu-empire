@@ -249,11 +249,11 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
               ? `radial-gradient(ellipse 80% 60% at 50% 0%, ${C.sakura}18 0%, transparent 60%), linear-gradient(160deg, #eee8f2 0%, var(--theme-surface) 60%, var(--theme-surface) 100%)`
               : 'linear-gradient(160deg, #e8e4f0 0%, var(--theme-surface) 60%, var(--theme-surface) 100%)'),
         border: isDark
-          ? (totalPack > 0 ? `1px solid ${C.sakura}40` : '1px solid rgba(255,255,255,0.08)')
-          : (totalPack > 0 ? `1px solid ${C.sakura}40` : '1px solid rgba(0,0,0,0.08)'),
+          ? (totalPack > 0 ? `1.5px solid ${C.violet}66` : '1px solid rgba(255,255,255,0.08)')
+          : (totalPack > 0 ? `1.5px solid ${C.violet}66` : '1px solid rgba(0,0,0,0.08)'),
         boxShadow: isDark
-          ? (totalPack > 0 ? `0 8px 40px ${C.sakura}20` : '0 4px 20px rgba(0,0,0,0.4)')
-          : (totalPack > 0 ? `0 8px 40px ${C.sakura}18` : '0 4px 20px rgba(0,0,0,0.06)'),
+          ? (totalPack > 0 ? `0 8px 40px ${C.violet}25` : '0 4px 20px rgba(0,0,0,0.4)')
+          : (totalPack > 0 ? `0 8px 40px ${C.violet}22` : '0 4px 20px rgba(0,0,0,0.06)'),
         minHeight: '320px',
       }"
       @click="totalPack > 0 ? emit('apriSbusto') : emit('setTab', 'pacchetti')"

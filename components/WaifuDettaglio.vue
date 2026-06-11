@@ -192,19 +192,19 @@ onUnmounted(() => {
 <template>
   <Teleport to="body">
     <!-- Outer: flex-column, touch-action:none blocca iOS scroll passthrough -->
-    <div style="position:fixed;inset:0;z-index:9000;background:rgba(6,3,15,0.99);backdrop-filter:blur(24px);display:flex;flex-direction:column;overflow:hidden;touch-action:none;">
+    <div style="position:fixed;inset:0;z-index:9000;background:var(--theme-bg);backdrop-filter:blur(24px);display:flex;flex-direction:column;overflow:hidden;touch-action:none;">
 
       <!-- Header fisso: non scorre mai -->
-      <div style="flex-shrink:0;background:rgba(6,3,15,0.97);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,0.06);padding:15px 18px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="flex-shrink:0;background:var(--theme-surface);backdrop-filter:blur(16px);border-bottom:1px solid var(--theme-border);padding:15px 18px;display:flex;align-items:center;justify-content:space-between;">
         <div style="display:flex;align-items:center;gap:12px;min-width:0;">
-          <span :style="{ fontFamily: FF.display, fontSize: '21px', fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ waifu.nome }}</span>
+          <span :style="{ fontFamily: FF.display, fontSize: '21px', fontWeight: 800, color: 'var(--theme-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ waifu.nome }}</span>
           <span :style="{ color: rarColor, fontSize: '17px', letterSpacing: '3px', filter: `drop-shadow(0 0 6px ${rarColor})`, flexShrink: 0 }">{{ STELLE[waifu.rarita] ?? '★' }}</span>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
           <button @click="emit('togglePreferita')" :style="{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', display: 'flex', alignItems: 'center', filter: pref ? `drop-shadow(0 0 8px ${C.sakura})` : 'none' }">
             <Heart :size="28" :fill="pref ? C.sakura : 'none'" :color="pref ? C.sakura : 'rgba(255,255,255,0.45)'" stroke-width="1.5" />
           </button>
-          <button @click="emit('chiudi')" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.14);cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:999px;color:rgba(255,255,255,0.75);">
+          <button @click="emit('chiudi')" style="background:var(--theme-shimmer);border:1px solid var(--theme-border);cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:999px;color:var(--theme-text-2);">
             <X :size="15" stroke-width="2" />
             <span :style="{ fontFamily: FF.label, fontSize: '13px', letterSpacing: '0.18em', fontWeight: 700 }">CHIUDI</span>
           </button>
@@ -243,7 +243,7 @@ onUnmounted(() => {
           <!-- Chip LV — bottom-left angolo -->
           <div :style="{
             position: 'absolute', bottom: '-20px', left: '-30px', zIndex: 20,
-            background: dati.levelup_pending ? 'rgba(88,224,163,0.15)' : 'rgba(4,2,14,0.95)',
+            background: dati.levelup_pending ? 'rgba(88,224,163,0.15)' : 'var(--theme-surface)',
             border: `2px solid ${dati.levelup_pending ? C.ok : C.gold}cc`,
             borderRadius: '999px', padding: '7px 18px',
             fontFamily: FF.label, fontSize: '16px', fontWeight: 900,
@@ -254,10 +254,10 @@ onUnmounted(() => {
           <!-- Chip copie — bottom-right angolo -->
           <div :style="{
             position: 'absolute', bottom: '-20px', right: '-30px', zIndex: 20,
-            background: 'rgba(4,2,14,0.95)', border: '2px solid rgba(255,255,255,0.16)',
+            background: 'var(--theme-surface)', border: '2px solid var(--theme-border)',
             borderRadius: '999px', padding: '7px 18px',
             fontFamily: FF.label, fontSize: '16px', fontWeight: 900,
-            color: 'rgba(241,235,255,0.65)', letterSpacing: '0.06em',
+            color: 'var(--theme-text-2)', letterSpacing: '0.06em',
             boxShadow: '0 2px 10px rgba(0,0,0,0.6)',
             whiteSpace: 'nowrap', pointerEvents: 'none',
           }">{{ copie }} / 3</div>
@@ -282,7 +282,7 @@ onUnmounted(() => {
           <div style="display:flex;flex-direction:column;gap:10px;">
 
             <!-- ── STATISTICHE collapsible ── -->
-            <div :style="{ background: 'rgba(7,5,26,0.8)', border: '1px solid rgba(174,156,255,0.14)', borderRadius: '14px', overflow: 'hidden' }">
+            <div :style="{ background: 'var(--theme-surface)', border: '1px solid var(--theme-border)', borderRadius: '14px', overflow: 'hidden' }">
               <button @click="statsOpen = !statsOpen" style="width:100%;background:none;border:none;cursor:pointer;padding:18px 18px;display:flex;align-items:center;justify-content:space-between;">
                 <div style="display:flex;align-items:center;gap:10px;">
                   <span style="font-size:17px">📊</span>
@@ -293,10 +293,10 @@ onUnmounted(() => {
               <div v-if="statsOpen" style="padding:4px 18px 20px;">
                 <div v-for="s in STAT_DEFS" :key="s.key" style="margin-bottom:16px;">
                   <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-                    <span :style="{ fontFamily: FF.label, fontSize: '13px', color: 'rgba(241,235,255,0.65)', letterSpacing: '0.14em', fontWeight: 700, textTransform: 'uppercase' }">{{ s.icon }} {{ s.label }}</span>
-                    <span :style="{ fontFamily: FF.mono, fontSize: '15px', color: '#f5e6d3', fontWeight: 700 }">{{ statVal(s.key) }}</span>
+                    <span :style="{ fontFamily: FF.label, fontSize: '13px', color: 'var(--theme-text-2)', letterSpacing: '0.14em', fontWeight: 700, textTransform: 'uppercase' }">{{ s.icon }} {{ s.label }}</span>
+                    <span :style="{ fontFamily: FF.label, fontSize: '15px', color: 'var(--theme-text)', fontWeight: 700 }">{{ statVal(s.key) }}</span>
                   </div>
-                  <div style="height:5px;background:rgba(255,255,255,0.07);border-radius:99px;overflow:hidden;">
+                  <div style="height:5px;background:var(--theme-border);border-radius:99px;overflow:hidden;">
                     <div :style="{ height: '100%', borderRadius: '99px', width: statPct(s.key, s.max) + '%', background: 'linear-gradient(90deg,#a78bfa,#ff85b6)', transition: 'width 0.65s cubic-bezier(0.25,1,0.5,1)' }" />
                   </div>
                 </div>
@@ -304,7 +304,7 @@ onUnmounted(() => {
             </div>
 
             <!-- ── BATTAGLIA & MOSSE collapsible ── -->
-            <div :style="{ background: 'rgba(7,5,26,0.8)', border: '1px solid rgba(245,197,96,0.14)', borderRadius: '14px', overflow: 'hidden' }">
+            <div :style="{ background: 'var(--theme-surface)', border: '1px solid var(--theme-border)', borderRadius: '14px', overflow: 'hidden' }">
               <button @click="battleOpen = !battleOpen" style="width:100%;background:none;border:none;cursor:pointer;padding:18px 18px;display:flex;align-items:center;justify-content:space-between;">
                 <div style="display:flex;align-items:center;gap:10px;">
                   <Swords :size="18" :color="C.gold" stroke-width="1.5" />
@@ -319,17 +319,17 @@ onUnmounted(() => {
                   <div :style="{ flex:1, textAlign:'center', padding:'12px 4px', background:'rgba(108,240,224,0.06)', border:`1px solid ${C.aqua}22`, borderRadius:'12px' }">
                     <div :style="{ fontSize: '20px', marginBottom: '2px' }">⚡</div>
                     <div :style="{ fontFamily: FF.label, fontSize: '10px', color: `${C.aqua}88`, letterSpacing: '0.2em', marginBottom: '4px' }">VEL</div>
-                    <div :style="{ fontFamily: FF.mono, fontSize: '22px', color: C.aqua, fontWeight: 800 }">{{ Math.round(vel) }}</div>
+                    <div :style="{ fontFamily: FF.label, fontSize: '22px', color: C.aqua, fontWeight: 800 }">{{ Math.round(vel) }}</div>
                   </div>
                   <div :style="{ flex:1, textAlign:'center', padding:'12px 4px', background:'rgba(6,214,160,0.06)', border:`1px solid ${C.ok}22`, borderRadius:'12px' }">
                     <div :style="{ fontSize: '20px', marginBottom: '2px' }">💚</div>
                     <div :style="{ fontFamily: FF.label, fontSize: '10px', color: `${C.ok}88`, letterSpacing: '0.2em', marginBottom: '4px' }">HP</div>
-                    <div :style="{ fontFamily: FF.mono, fontSize: '22px', color: C.ok, fontWeight: 800 }">{{ Math.round(hp) }}</div>
+                    <div :style="{ fontFamily: FF.label, fontSize: '22px', color: C.ok, fontWeight: 800 }">{{ Math.round(hp) }}</div>
                   </div>
                   <div :style="{ flex:1, textAlign:'center', padding:'12px 4px', background:'rgba(251,191,36,0.06)', border:`1px solid #fbbf2422`, borderRadius:'12px' }">
                     <div :style="{ fontSize: '20px', marginBottom: '2px' }">💥</div>
                     <div :style="{ fontFamily: FF.label, fontSize: '10px', color: '#fbbf2488', letterSpacing: '0.2em', marginBottom: '4px' }">CRIT</div>
-                    <div :style="{ fontFamily: FF.mono, fontSize: '22px', color: '#fbbf24', fontWeight: 800 }">{{ Math.round(crit * 100) }}%</div>
+                    <div :style="{ fontFamily: FF.label, fontSize: '22px', color: '#fbbf24', fontWeight: 800 }">{{ Math.round(crit * 100) }}%</div>
                   </div>
                 </div>
                 <!-- Slot mosse -->
@@ -338,18 +338,18 @@ onUnmounted(() => {
                     <div :style="{
                       display: 'flex', alignItems: 'center', gap: '10px',
                       padding: '12px 14px', borderRadius: '11px',
-                      background: mossaInSlot(slot) ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.01)',
-                      border: `1px solid ${mossaInSlot(slot) ? 'rgba(174,156,255,0.18)' : 'rgba(255,255,255,0.05)'}`,
+                      background: 'var(--theme-shimmer)',
+                      border: '1px solid var(--theme-border)',
                     }">
-                      <span :style="{ fontFamily: FF.label, fontSize: '11px', color: 'rgba(241,235,255,0.25)', letterSpacing: '0.1em', flexShrink: 0, minWidth: '14px' }">{{ slot }}</span>
+                      <span :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-text-3)', letterSpacing: '0.1em', flexShrink: 0, minWidth: '14px' }">{{ slot }}</span>
                       <div v-if="mossaInSlot(slot)" style="flex:1;min-width:0;">
-                        <div :style="{ fontFamily: FF.label, fontSize: '14px', color: '#f5e6d3', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ mossaInSlot(slot)!.nome }}</div>
-                        <div :style="{ fontFamily: FF.label, fontSize: '11px', color: 'rgba(174,156,255,0.55)', marginTop: '2px' }">
+                        <div :style="{ fontFamily: FF.label, fontSize: '14px', color: 'var(--theme-text)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ mossaInSlot(slot)!.nome }}</div>
+                        <div :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-text-2)', marginTop: '2px' }">
                           {{ mossaInSlot(slot)!.tipologia ?? mossaInSlot(slot)!.tipo }} · {{ mossaInSlot(slot)!.rarita }} · PP:{{ mossaInSlot(slot)!.pp }} · ×{{ mossaInSlot(slot)!.danno }}
                         </div>
                       </div>
                       <div v-else style="flex:1;">
-                        <span :style="{ fontFamily: FF.label, fontSize: '12px', color: 'rgba(255,255,255,0.2)', letterSpacing: '0.1em' }">— vuoto —</span>
+                        <span :style="{ fontFamily: FF.label, fontSize: '12px', color: 'var(--theme-text-3)', letterSpacing: '0.1em' }">— vuoto —</span>
                       </div>
                       <div style="display:flex;gap:5px;flex-shrink:0;">
                         <button @click="slotPicker = slot" :style="{
@@ -383,13 +383,13 @@ onUnmounted(() => {
         @click.self="slotPicker = null"
         style="position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,0.55);"
       >
-        <div style="position:fixed;bottom:0;left:0;right:0;max-height:72vh;background:rgba(9,6,28,0.99);border-top:1px solid rgba(174,156,255,0.2);border-radius:20px 20px 0 0;overflow-y:auto;padding:16px 16px calc(20px + env(safe-area-inset-bottom));">
+        <div style="position:fixed;bottom:0;left:0;right:0;max-height:72vh;background:var(--theme-surface);border-top:1px solid var(--theme-border);border-radius:20px 20px 0 0;overflow-y:auto;padding:16px 16px calc(20px + env(safe-area-inset-bottom));">
 
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
             <span :style="{ fontFamily: FF.label, fontSize: '16px', color: C.violet, letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 800 }">
               SLOT {{ slotPicker }} — Scegli mossa
             </span>
-            <button @click="slotPicker = null" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.4);padding:6px;">
+            <button @click="slotPicker = null" style="background:none;border:none;cursor:pointer;color:var(--theme-text-3);padding:6px;">
               <X :size="20" stroke-width="2" />
             </button>
           </div>
@@ -415,7 +415,7 @@ onUnmounted(() => {
               >
                 <div style="min-width:0;flex:1;">
                   <div :style="{ fontFamily: FF.label, fontSize: '18px', color: tc(m.cat.tipologia ?? m.cat.tipo).txt, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ m.cat.nome }}</div>
-                  <div :style="{ fontFamily: FF.label, fontSize: '13px', color: 'rgba(241,235,255,0.55)', marginTop: '4px' }">
+                  <div :style="{ fontFamily: FF.label, fontSize: '13px', color: 'var(--theme-text-2)', marginTop: '4px' }">
                     {{ m.cat.tipologia ?? m.cat.tipo }} · {{ m.cat.rarita }} · PP:{{ m.cat.pp }} · ×{{ m.cat.danno }} · {{ m.cat.danno_critico }}%+
                   </div>
                 </div>
@@ -439,16 +439,16 @@ onUnmounted(() => {
               <div
                 v-for="m in pickerMosse.filter(x => !x.ok)"
                 :key="m.id"
-                style="padding:12px 14px;background:rgba(255,255,255,0.015);border:1px solid rgba(255,255,255,0.05);border-radius:10px;opacity:0.65;"
+                style="padding:12px 14px;background:var(--theme-shimmer);border:1px solid var(--theme-border);border-radius:10px;opacity:0.65;"
               >
-                <div :style="{ fontFamily: FF.label, fontSize: '16px', color: 'rgba(241,235,255,0.45)', fontWeight: 600 }">{{ m.cat.nome }}</div>
+                <div :style="{ fontFamily: FF.label, fontSize: '16px', color: 'var(--theme-text-2)', fontWeight: 600 }">{{ m.cat.nome }}</div>
                 <div :style="{ fontFamily: FF.label, fontSize: '14px', color: C.err, marginTop: '4px', fontWeight: 600 }">{{ m.motivo }}</div>
               </div>
             </div>
           </template>
 
           <!-- Empty -->
-          <div v-if="!pickerMosse.length" style="text-align:center;padding:36px 0;color:rgba(255,255,255,0.22);">
+          <div v-if="!pickerMosse.length" style="text-align:center;padding:36px 0;color:var(--theme-text-3);">
             <Swords :size="32" stroke-width="1" style="margin:0 auto 10px;" />
             <div :style="{ fontFamily: FF.label, fontSize: '13px', letterSpacing: '0.2em' }">Nessuna mossa in collezione</div>
           </div>

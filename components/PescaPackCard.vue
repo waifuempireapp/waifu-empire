@@ -75,14 +75,14 @@ function isNew(carta: CartaPack): boolean {
 
 // Colore bordo basato sullo stato del pack
 const borderColor = computed(() => {
-  if (giaFiscata.value) return 'rgba(255,255,255,0.08)'
+  if (giaFiscata.value) return 'rgba(167,139,250,0.12)'
   if (isNuovo.value) return 'rgba(255,165,30,0.7)'
-  return 'rgba(56,230,200,0.45)'
+  return 'rgba(167,139,250,0.65)'
 })
 const glowColor = computed(() => {
   if (giaFiscata.value) return 'transparent'
   if (isNuovo.value) return 'rgba(255,165,30,0.20)'
-  return 'rgba(56,230,200,0.12)'
+  return 'rgba(167,139,250,0.22)'
 })
 const avatarGradient = computed(() => {
   if (isNuovo.value) return 'linear-gradient(135deg, #ff8c00, #ff4500)'
@@ -126,13 +126,13 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
   <div
     @click="!giaFiscata && !packBloccato && emit('pesca', pack)"
     :style="{
-    background:   'linear-gradient(160deg, rgba(10,6,28,0.98) 0%, rgba(6,3,18,0.99) 100%)',
+    background:'var(--theme-surface)',
     border:       `1.5px solid ${borderColor}`,
     borderRadius: '20px',
     overflow:     'visible',
     position:     'relative',
     zIndex:       1,
-    boxShadow:    `0 4px 32px ${glowColor}, 0 1px 0 rgba(255,255,255,0.04) inset`,
+    boxShadow:    `0 4px 32px ${glowColor}, 0 1px 0 rgba(167,139,250,0.06) inset`,
     transition:   'all 0.2s',
     opacity:      giaFiscata ? 0.55 : 1,
     cursor:       giaFiscata || packBloccato ? 'default' : 'pointer',
@@ -156,7 +156,7 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
 
     <!-- Overlay PESCATA -->
     <div v-if="giaFiscata" style="position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);pointer-events:none">
-      <div style="background:rgba(6,3,15,0.88);border:1px solid rgba(255,255,255,0.14);border-radius:20px;padding:7px 20px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;letter-spacing:2px;color:rgba(255,255,255,0.5);font-weight:700">
+      <div style="background:var(--theme-surface);border:1px solid var(--theme-border);border-radius:20px;padding:7px 20px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;letter-spacing:2px;color:var(--theme-text-2);font-weight:700">
         🎣 GIÀ PESCATA
       </div>
     </div>
@@ -175,10 +175,10 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
 
       <!-- Nome + timer -->
       <div style="flex:1;min-width:0;">
-        <div style="font-family:var(--ff-display,Unbounded,sans-serif);font-size:14px;font-weight:700;color:#fff;letter-spacing:0.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+        <div style="font-family:var(--ff-display,Unbounded,sans-serif);font-size:14px;font-weight:700;color:var(--theme-text);letter-spacing:0.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
           {{ pack.ownerName }}
         </div>
-        <div v-if="pack.expiresAt && !giaFiscata" style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:11px;color:rgba(255,255,255,0.45);display:flex;align-items:center;gap:4px;margin-top:3px;">
+        <div v-if="pack.expiresAt && !giaFiscata" style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:12px;color:var(--theme-text-3);display:flex;align-items:center;gap:4px;margin-top:3px;">
           <span>⏱</span> TEMPO RIMANENTE: {{ remaining }}
         </div>
       </div>
@@ -190,14 +190,14 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
     }">
       <div :style="{
         display:'flex', alignItems:'center', justifyContent:'center', gap:'6px',
-        background: isNuovo ? 'rgba(255,165,30,0.18)' : 'rgba(56,230,200,0.12)',
-        border: `1px solid ${isNuovo ? 'rgba(255,165,30,0.55)' : 'rgba(56,230,200,0.45)'}`,
+        background: isNuovo ? 'rgba(255,165,30,0.18)' : 'rgba(167,139,250,0.12)',
+        border: `1px solid ${isNuovo ? 'rgba(255,165,30,0.55)' : 'rgba(167,139,250,0.55)'}`,
         borderRadius:'999px', padding:'7px 16px', width:'100%', boxSizing:'border-box',
         fontFamily:'var(--ff-label,\'Saira Condensed\',sans-serif)',
         fontSize:'12px',
-        color: isNuovo ? '#ffa020' : '#38e6c8',
+        color: isNuovo ? '#ffa020' : '#a78bfa',
         fontWeight:700, letterSpacing:'0.1em',
-        boxShadow: isNuovo ? '0 0 14px rgba(255,165,30,0.2)' : '0 0 14px rgba(56,230,200,0.15)',
+        boxShadow: isNuovo ? '0 0 14px rgba(255,165,30,0.2)' : '0 0 14px rgba(167,139,250,0.2)',
       }">★ {{ pack.dropName }}</div>
     </div>
 
@@ -211,8 +211,8 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
         <!-- Carta 0 -->
         <div v-if="cards[0]" style="width:calc((100% - 24px) / 3); position:relative; flex-shrink:0;">
           <div v-if="isNew(cards[0])" style="position:absolute;top:-12px;left:-4px;z-index:20;"><div style="background:linear-gradient(135deg,#00b4ff,#00e676);border:2px solid rgba(255,255,255,0.45);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;font-weight:900;color:#000;letter-spacing:0.06em;box-shadow:0 3px 12px rgba(0,180,255,0.55);white-space:nowrap;line-height:1;">NEW</div></div>
-          <div v-if="(true)&&getCopie(cards[0])>0" :style="{position:'absolute',top:'-12px',right:'-4px',zIndex:20,background:getCopie(cards[0])>=3?'linear-gradient(135deg,#00c853,#58e0a3)':'linear-gradient(135deg,#1a0a35,#2a1255)',border:getCopie(cards[0])>=3?'2px solid rgba(89,224,163,0.8)':'2px solid rgba(245,197,96,0.8)',borderRadius:'999px',minWidth:'22px',height:'22px',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--ff-mono,JetBrains Mono,monospace)',fontSize:'11px',fontWeight:900,color:'#fff',padding:'0 4px'}">{{ getCopie(cards[0])>=3?'C':getCopie(cards[0]) }}</div>
-          <div :style="{borderRadius:'10px',border:true?rarityBorder(cards[0].rarita):'1.5px solid rgba(255,255,255,0.08)',background:'linear-gradient(160deg,#16082e,#08041a)',boxShadow:true?rarityGlow(cards[0].rarita):'none',overflow:'hidden',transition:'all 0.25s',position:'relative'}">
+          <div v-if="(true)&&getCopie(cards[0])>0" :style="{position:'absolute',top:'-12px',right:'-4px',zIndex:20,background:getCopie(cards[0])>=3?'linear-gradient(135deg,#00c853,#58e0a3)':'linear-gradient(135deg,#1a0a35,#2a1255)',border:getCopie(cards[0])>=3?'2px solid rgba(89,224,163,0.8)':'2px solid rgba(245,197,96,0.8)',borderRadius:'999px',minWidth:'22px',height:'22px',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--ff-label)',fontSize:'11px',fontWeight:900,color:'#fff',padding:'0 4px'}">{{ getCopie(cards[0])>=3?'C':getCopie(cards[0]) }}</div>
+          <div :style="{borderRadius:'10px',border:true?rarityBorder(cards[0].rarita):'1.5px solid rgba(167,139,250,0.2)',background:'var(--theme-bg-secondary)',boxShadow:true?rarityGlow(cards[0].rarita):'none',overflow:'hidden',transition:'all 0.25s',position:'relative'}">
             <div style="aspect-ratio:2/3;position:relative;overflow:hidden;">
               <template v-if="true">
                 <img v-if="cards[0].immagine" :src="ikUrl(cards[0].immagine,'thumbnail')??undefined" :alt="cards[0].nome" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
@@ -226,14 +226,14 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
               <div v-if="true" :style="{position:'absolute',bottom:'4px',left:'4px',background:rarityColor(cards[0].rarita)+'33',border:'1px solid '+rarityColor(cards[0].rarita)+'88',borderRadius:'999px',padding:'2px 6px',fontFamily:'var(--ff-label,\'Saira Condensed\',sans-serif)',fontSize:'10px',fontWeight:800,color:rarityColor(cards[0].rarita),letterSpacing:'0.05em',textTransform:'capitalize',backdropFilter:'blur(4px)',zIndex:2}">{{ cards[0].rarita||'?' }}</div>
             </div>
           </div>
-          <div style="padding:4px 1px 0;text-align:center;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;color:#fff;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:0.03em;">{{ cards[0].nome||'—' }}</div>
+          <div style="padding:4px 1px 0;text-align:center;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;color:var(--theme-text);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:0.03em;">{{ cards[0].nome||'—' }}</div>
         </div>
 
         <!-- Carta 1 -->
         <div v-if="cards[1]" style="width:calc((100% - 24px) / 3); position:relative; flex-shrink:0;">
           <div v-if="isNew(cards[1])" style="position:absolute;top:-12px;left:-4px;z-index:20;"><div style="background:linear-gradient(135deg,#00b4ff,#00e676);border:2px solid rgba(255,255,255,0.45);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;font-weight:900;color:#000;letter-spacing:0.06em;box-shadow:0 3px 12px rgba(0,180,255,0.55);white-space:nowrap;line-height:1;">NEW</div></div>
-          <div v-if="(true)&&getCopie(cards[1])>0" :style="{position:'absolute',top:'-12px',right:'-4px',zIndex:20,background:getCopie(cards[1])>=3?'linear-gradient(135deg,#00c853,#58e0a3)':'linear-gradient(135deg,#1a0a35,#2a1255)',border:getCopie(cards[1])>=3?'2px solid rgba(89,224,163,0.8)':'2px solid rgba(245,197,96,0.8)',borderRadius:'999px',minWidth:'22px',height:'22px',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--ff-mono,JetBrains Mono,monospace)',fontSize:'11px',fontWeight:900,color:'#fff',padding:'0 4px'}">{{ getCopie(cards[1])>=3?'C':getCopie(cards[1]) }}</div>
-          <div :style="{borderRadius:'10px',border:true?rarityBorder(cards[1].rarita):'1.5px solid rgba(255,255,255,0.08)',background:'linear-gradient(160deg,#16082e,#08041a)',boxShadow:true?rarityGlow(cards[1].rarita):'none',overflow:'hidden',transition:'all 0.25s',position:'relative'}">
+          <div v-if="(true)&&getCopie(cards[1])>0" :style="{position:'absolute',top:'-12px',right:'-4px',zIndex:20,background:getCopie(cards[1])>=3?'linear-gradient(135deg,#00c853,#58e0a3)':'linear-gradient(135deg,#1a0a35,#2a1255)',border:getCopie(cards[1])>=3?'2px solid rgba(89,224,163,0.8)':'2px solid rgba(245,197,96,0.8)',borderRadius:'999px',minWidth:'22px',height:'22px',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--ff-label)',fontSize:'11px',fontWeight:900,color:'#fff',padding:'0 4px'}">{{ getCopie(cards[1])>=3?'C':getCopie(cards[1]) }}</div>
+          <div :style="{borderRadius:'10px',border:true?rarityBorder(cards[1].rarita):'1.5px solid rgba(167,139,250,0.2)',background:'var(--theme-bg-secondary)',boxShadow:true?rarityGlow(cards[1].rarita):'none',overflow:'hidden',transition:'all 0.25s',position:'relative'}">
             <div style="aspect-ratio:2/3;position:relative;overflow:hidden;">
               <template v-if="true">
                 <img v-if="cards[1].immagine" :src="ikUrl(cards[1].immagine,'thumbnail')??undefined" :alt="cards[1].nome" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
@@ -242,7 +242,7 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
               <div v-if="true" :style="{position:'absolute',bottom:'4px',left:'4px',background:rarityColor(cards[1].rarita)+'33',border:'1px solid '+rarityColor(cards[1].rarita)+'88',borderRadius:'999px',padding:'2px 6px',fontFamily:'var(--ff-label,\'Saira Condensed\',sans-serif)',fontSize:'10px',fontWeight:800,color:rarityColor(cards[1].rarita),letterSpacing:'0.05em',textTransform:'capitalize',backdropFilter:'blur(4px)',zIndex:2}">{{ cards[1].rarita||'?' }}</div>
             </div>
           </div>
-          <div style="padding:4px 1px 0;text-align:center;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;color:#fff;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:0.03em;">{{ cards[1].nome||'—' }}</div>
+          <div style="padding:4px 1px 0;text-align:center;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;color:var(--theme-text);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:0.03em;">{{ cards[1].nome||'—' }}</div>
         </div>
 
         </div><!-- fine wrapper riga 1 -->
@@ -254,8 +254,8 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
           :style="{gridColumn: String(i+1), gridRow:'2', position:'relative', marginTop:'14px'}"
         >
           <div v-if="isNew(carta)" style="position:absolute;top:-12px;left:-4px;z-index:20;"><div style="background:linear-gradient(135deg,#00b4ff,#00e676);border:2px solid rgba(255,255,255,0.45);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;font-weight:900;color:#000;letter-spacing:0.06em;box-shadow:0 3px 12px rgba(0,180,255,0.55);white-space:nowrap;line-height:1;">NEW</div></div>
-          <div v-if="(true)&&getCopie(carta)>0" :style="{position:'absolute',top:'-12px',right:'-4px',zIndex:20,background:getCopie(carta)>=3?'linear-gradient(135deg,#00c853,#58e0a3)':'linear-gradient(135deg,#1a0a35,#2a1255)',border:getCopie(carta)>=3?'2px solid rgba(89,224,163,0.8)':'2px solid rgba(245,197,96,0.8)',borderRadius:'999px',minWidth:'22px',height:'22px',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--ff-mono,JetBrains Mono,monospace)',fontSize:'11px',fontWeight:900,color:'#fff',padding:'0 4px'}">{{ getCopie(carta)>=3?'C':getCopie(carta) }}</div>
-          <div :style="{borderRadius:'10px',border:true?rarityBorder(carta.rarita):'1.5px solid rgba(255,255,255,0.08)',background:'linear-gradient(160deg,#16082e,#08041a)',boxShadow:true?rarityGlow(carta.rarita):'none',overflow:'hidden',transition:'all 0.25s',position:'relative'}">
+          <div v-if="(true)&&getCopie(carta)>0" :style="{position:'absolute',top:'-12px',right:'-4px',zIndex:20,background:getCopie(carta)>=3?'linear-gradient(135deg,#00c853,#58e0a3)':'linear-gradient(135deg,#1a0a35,#2a1255)',border:getCopie(carta)>=3?'2px solid rgba(89,224,163,0.8)':'2px solid rgba(245,197,96,0.8)',borderRadius:'999px',minWidth:'22px',height:'22px',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--ff-label)',fontSize:'11px',fontWeight:900,color:'#fff',padding:'0 4px'}">{{ getCopie(carta)>=3?'C':getCopie(carta) }}</div>
+          <div :style="{borderRadius:'10px',border:true?rarityBorder(carta.rarita):'1.5px solid rgba(167,139,250,0.2)',background:'var(--theme-bg-secondary)',boxShadow:true?rarityGlow(carta.rarita):'none',overflow:'hidden',transition:'all 0.25s',position:'relative'}">
             <div style="aspect-ratio:2/3;position:relative;overflow:hidden;">
               <template v-if="true">
                 <img v-if="carta.immagine" :src="ikUrl(carta.immagine,'thumbnail')??undefined" :alt="carta.nome" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
@@ -264,7 +264,7 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
               <div v-if="true" :style="{position:'absolute',bottom:'4px',left:'4px',background:rarityColor(carta.rarita)+'33',border:'1px solid '+rarityColor(carta.rarita)+'88',borderRadius:'999px',padding:'2px 6px',fontFamily:'var(--ff-label,\'Saira Condensed\',sans-serif)',fontSize:'10px',fontWeight:800,color:rarityColor(carta.rarita),letterSpacing:'0.05em',textTransform:'capitalize',backdropFilter:'blur(4px)',zIndex:2}">{{ carta.rarita||'?' }}</div>
             </div>
           </div>
-          <div style="padding:4px 1px 0;text-align:center;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;color:#fff;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:0.03em;">{{ carta.nome||'—' }}</div>
+          <div style="padding:4px 1px 0;text-align:center;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;color:var(--theme-text);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:0.03em;">{{ carta.nome||'—' }}</div>
         </div>
 
       </div>

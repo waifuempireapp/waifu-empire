@@ -270,7 +270,7 @@ function cardStyle(uiIdx: number): CSSProperties {
       boxShadow: isChosen && isFlipped
         ? '0 0 32px rgba(255,77,158,0.7), 0 0 0 1px rgba(255,77,158,0.3) inset'
         : isFlipped ? '0 6px 20px rgba(0,0,0,0.5)' : '0 3px 10px rgba(0,0,0,0.4)',
-      background: 'linear-gradient(145deg,#160830,#0d0520)',
+      background: 'var(--theme-bg-secondary)',
       zIndex, transform, transition,
     }
   }
@@ -324,7 +324,7 @@ function cardStyle(uiIdx: number): CSSProperties {
     boxShadow: isSel
       ? '0 0 28px rgba(255,77,158,0.6), 0 0 0 1px rgba(255,77,158,0.25) inset'
       : '0 6px 20px rgba(0,0,0,0.6)',
-    background: 'linear-gradient(145deg,#160830,#0d0520)',
+    background: 'var(--theme-bg-secondary)',
     zIndex,
     transform,
     transition,
@@ -470,28 +470,28 @@ onUnmounted(() => {
 
 <template>
   <div style="position:fixed;inset:0;z-index:9999;
-           background:rgba(6,3,15,0.98);backdrop-filter:blur(20px);
+           background:var(--theme-bg);backdrop-filter:blur(20px);
            overflow-y:auto;display:flex;flex-direction:column">
     <div style="
       position:sticky; top:0; z-index:100;
-      background:rgba(6,3,15,0.97); backdrop-filter:blur(20px);
-      border-bottom:1px solid rgba(255,255,255,0.05);
+      background:var(--theme-surface);backdrop-filter:blur(20px);
+      border-bottom:1px solid var(--theme-border);
       padding:14px 18px;
       display:flex; align-items:center; justify-content:space-between;
     ">
       <div style="display:flex;align-items:center;gap:14px;">
         <!-- ← torna indietro solo dalla lista drop, non dalla schermata di picking -->
-        <button v-if="!selectedPack" style="background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;"
+        <button v-if="!selectedPack" style="background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;color:var(--theme-text-2);"
           @click="$emit('indietro')">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-            <path d="M14 5L8 11L14 17" stroke="rgba(255,255,255,0.65)" stroke-width="2" stroke-linecap="round"
+            <path d="M14 5L8 11L14 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"
               stroke-linejoin="round" />
           </svg>
         </button>
         <div style="display:flex;align-items:center;gap:8px;">
           <div>
             <span
-              style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:#fff;letter-spacing:0.02em;">WAIFU
+              style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:var(--theme-text);letter-spacing:0.02em;">WAIFU
             </span>
             <span
               style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:rgb(255, 77, 158);letter-spacing:0.02em;">PESCA</span>
@@ -504,10 +504,10 @@ onUnmounted(() => {
         <span style="font-size:16px;line-height:1">💎</span>
         <div>
           <div
-            style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:7px;color:rgba(255,80,160,0.6);letter-spacing:0.2em;text-transform:uppercase;line-height:1;font-weight:700;">
+            style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;color:rgba(255,80,160,0.75);letter-spacing:0.2em;text-transform:uppercase;line-height:1;font-weight:700;">
             GEMME</div>
           <div
-            style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:14px;font-weight:800;color:#ff4d9e;line-height:1.2;">
+            style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:16px;font-weight:800;color:#ff4d9e;line-height:1.2;">
             {{ kissesAttuali }}</div>
         </div>
       </div>
@@ -517,10 +517,10 @@ onUnmounted(() => {
 
       <div v-if="notif" :style="{
         position: 'fixed', top: '16px', left: '50%', transform: 'translateX(-50%)',
-        background: 'rgba(6,3,15,0.97)', backdropFilter: 'blur(12px)',
+        background: 'var(--theme-surface)', backdropFilter: 'blur(12px)',
         border: `1px solid ${notif.colore}80`, color: notif.colore,
         padding: '10px 24px', borderRadius: '10px',
-        fontFamily: 'Orbitron,sans-serif', letterSpacing: '2px', fontSize: '11px', zIndex: 500,
+        fontFamily: 'var(--ff-label)', letterSpacing: '2px', fontSize: '11px', zIndex: 500,
       }">{{ notif.testo }}</div>
 
       <KissesShortageModal v-if="kissesShortage" :missing-kisses="KISSES_COST - kissesAttuali"
@@ -531,7 +531,7 @@ onUnmounted(() => {
       <Teleport to="body">
         <div v-if="selectedPack" style="
           position:fixed; inset:0; z-index:99999;
-          background:linear-gradient(160deg, #08041a 0%, #0d0520 50%, #07051a 100%);
+          background:var(--theme-bg);
           display:flex; flex-direction:column; overflow:hidden;
           padding-top:max(16px,env(safe-area-inset-top));
           padding-bottom:max(16px,env(safe-area-inset-bottom));
@@ -675,7 +675,7 @@ onUnmounted(() => {
             <!-- CONTINUA — subito sotto le carte, centrato, visibile solo dopo il reveal -->
             <div v-if="pickPhase === 'revealed'" style="display:flex;justify-content:center;margin-top:28px;padding:0 16px;">
               <button
-                style="background:linear-gradient(135deg,rgba(0,230,118,0.22),rgba(0,200,83,0.12));border:2px solid rgba(0,230,118,0.55);border-radius:999px;padding:14px 48px;color:#00e676;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:15px;font-weight:800;letter-spacing:0.16em;cursor:pointer;transition:all 0.2s;box-shadow:0 0 24px rgba(0,230,118,0.3);"
+                style="background:#fff;border:2px solid rgba(0,230,118,0.4);border-radius:999px;padding:14px 48px;color:#16a34a;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:15px;font-weight:800;letter-spacing:0.16em;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 16px rgba(0,0,0,0.12);"
                 @click="chiudiRiveal">
                 CONTINUA →
               </button>
@@ -683,7 +683,7 @@ onUnmounted(() => {
 
             <!-- Indicatore "in corso" durante il revealing -->
             <div v-else-if="pickPhase === 'revealing'" style="display:flex;justify-content:center;margin-top:28px;height:52px;align-items:center;">
-              <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;color:rgba(255,255,255,0.25);letter-spacing:0.2em;text-transform:uppercase;">Rivelando…</span>
+              <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;color:var(--theme-text-3);letter-spacing:0.2em;text-transform:uppercase;">Rivelando…</span>
             </div>
 
           </div>
@@ -695,7 +695,7 @@ onUnmounted(() => {
         <div
           v-if="!immaginiCaricate"
           style="position:fixed;inset:0;z-index:200;
-                 background:rgba(6,3,15,0.9);
+                 background:var(--theme-surface);
                  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
                  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;"
         >
@@ -705,7 +705,7 @@ onUnmounted(() => {
       </Transition>
 
       <div v-if="error" style="text-align:center;padding:16px;color:#ff4d4d;
-               font-family:'Orbitron',sans-serif;font-size:10px">{{ error }}</div>
+               font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px">{{ error }}</div>
 
       <div v-show="immaginiCaricate" style="display:flex;flex-direction:column;gap:28px;padding-top:20px;overflow:visible;">
         <div v-for="(pack, idx) in packs" :key="pack.id" style="position:relative;">
