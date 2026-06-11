@@ -101,7 +101,7 @@ const ANIM_RESULT_DELAY_MS     = 400
 /** Override colore Ferro in UI (grigio chiaro per distinguerlo dalle mosse disabilitate) */
 const _TYPE_COLORS_UI: Record<string, { bg: string; text: string; border: string }> = {
   ...TYPE_COLORS,
-  Ferro: { bg: 'rgba(185,183,175,0.22)', text: '#6b6a66', border: '#9b9a94' },
+  Ferro: { bg: 'rgba(71,85,105,0.82)', text: '#f1f5f9', border: '#94a3b8' },
 }
 
 /** Stile mosse disabilitate (PP esauriti / cooldown): grigio scuro opaco */
@@ -288,6 +288,9 @@ let pvpOpMoveLocal: number | null = null
 
 /** Blocca lo scroll del body durante la battaglia */
 useScrollLock(true)
+
+// Tema — colori adattivi per light/dark mode
+const { isDark } = useTheme()
 
 // ─── LIFECYCLE ────────────────────────────────────────────────────────────────
 
@@ -902,17 +905,47 @@ const isVolSwap       = computed(() => phase.value === 'voluntarySwap')
 const isWaitingKoRepl = computed(() => phase.value === 'pvpWaitingKoReplacement')
 const allPPOut        = computed(() => (player.value?.moves ?? []).every(m => (m.pp ?? 0) <= 0))
 
-const sEnemy  = computed(() => isMobile.value ? 102 : 138)
-const sPlayer = computed(() => isMobile.value ? 118 : 158)
+const sEnemy  = computed(() => isMobile.value ? 145 : 185)
+const sPlayer = computed(() => isMobile.value ? 162 : 210)
 
 const playerGlow = computed(() => isChoose.value && !isAnim.value
   ? '0 12px 40px rgba(0,0,0,.75), 0 0 0 2px #00C8FF, 0 0 22px rgba(0,200,255,.38)'
   : '0 12px 40px rgba(0,0,0,.75)',
 )
 
-const timerCol  = computed(() => timer.value <= 5 ? '#ff2d2d' : timer.value <= 10 ? '#ff8800' : '#ffd666')
-const timerSize = computed(() => timer.value <= 5 ? 20 : timer.value <= 10 ? 16 : 13)
+// Colori adattivi light/dark
+const c = computed(() => isDark.value ? {
+  teal:      '#6cf0e0',
+  tealMid:   'rgba(108,240,224,0.6)',
+  tealFaint: 'rgba(108,240,224,0.5)',
+  pink:      '#ff85b6',
+  pinkFaint: 'rgba(255,133,182,0.5)',
+  gold:      '#f5c560',
+  goldFaint: 'rgba(245,197,96,0.7)',
+  green:     '#00e676',
+  orange:    '#f5a623',
+  yellow:    '#ffd666',
+  neutral:   'rgba(238,232,220,.38)',
+} : {
+  teal:      '#0891b2',
+  tealMid:   '#0891b2',
+  tealFaint: '#0891b2',
+  pink:      '#db2777',
+  pinkFaint: '#db2777',
+  gold:      '#B07D00',
+  goldFaint: '#B07D00',
+  green:     '#16a34a',
+  orange:    '#c2410c',
+  yellow:    '#B07D00',
+  neutral:   'var(--theme-text-3)',
+})
+
+const timerCol  = computed(() => timer.value <= 5 ? '#ff2d2d' : timer.value <= 10 ? '#ff8800' : c.value.yellow)
+const timerSize = computed(() => timer.value <= 5 ? 26 : timer.value <= 10 ? 22 : 18)
 const timerAnim = computed(() => timer.value <= 5 ? 'timerUrg .5s ease-in-out infinite' : 'none')
+const timerBg   = computed(() => timer.value <= 5
+  ? 'rgba(255,45,45,0.15)' : timer.value <= 10
+  ? 'rgba(255,136,0,0.12)' : 'rgba(0,0,0,0.08)')
 
 const turnLabel = computed(() => {
   if (isChoose.value)        return `TURNO ${turn.value}`
@@ -929,8 +962,12 @@ const turnIcon = computed(() => {
   return Zap
 })
 const turnCol = computed(() =>
-  isChoose.value ? '#00e676' : (isSwap.value || isVolSwap.value) ? '#f5a623' : 'rgba(238,232,220,.38)',
+  isChoose.value ? c.value.green : (isSwap.value || isVolSwap.value) ? c.value.orange : c.value.neutral,
 )
+
+// Colori HP adattivi
+function hpPlayerCol() { return isDark.value ? '#6cf0e0' : '#0891b2' }
+function hpEnemyCol()  { return isDark.value ? '#ff85b6' : '#db2777' }
 
 // ─── HELPER: HP BAR COLORI ────────────────────────────────────────────────────
 
@@ -940,25 +977,24 @@ function hpBarBg(pct: number, side: 'player' | 'enemy' | 'neutral'): string {
   return pct > 50 ? '#00e676' : pct > 25 ? '#ffd666' : '#ff4d4d'
 }
 function hpNumCol(pct: number, side: 'player' | 'enemy' | 'neutral'): string {
-  if (side === 'player') return '#6cf0e0'
-  if (side === 'enemy')  return '#ff85b6'
-  return pct > 50 ? '#00e676' : pct > 25 ? '#ffd666' : '#ff4d4d'
+  if (side === 'player') return hpPlayerCol()
+  if (side === 'enemy')  return hpEnemyCol()
+  return pct > 50 ? c.value.green : pct > 25 ? c.value.yellow : '#ff4d4d'
 }
 
 // ─── HELPER: EFFICACIA MOSSA ─────────────────────────────────────────────────
 
 interface EffDisplay { col: string; lbl: string; bold: boolean }
 const _HIGHLIGHT_COLORS: Record<string, string> = {
-  Arcana: '#C5BFFF', Natura: '#A8E84A', Abisso: '#FF80AA', Ferro: '#D8D6D0', Fuoco: '#FF8C50',
+  Arcana: '#C5BFFF', Natura: '#A8E84A', Abisso: '#FF80AA', Ferro: '#64748b', Fuoco: '#FF8C50',
 }
 
 function getEffDisplay(moveType: string, enemyType: string, playerType: string): EffDisplay {
   const { label } = getEffectiveness(moveType, playerType, enemyType)
-  const hi = _HIGHLIGHT_COLORS[moveType] ?? '#ffffff'
-  // Il Nuxt battleEngine restituisce label in italiano ('Super efficace!', 'Poco efficace…', 'Normale')
-  if (label === 'Super efficace!') return { col: hi, lbl: 'Super efficace!', bold: true }
-  if (label === 'Poco efficace…')  return { col: '#9ca3af', lbl: 'Poco efficace', bold: true }
-  return { col: TYPE_COLORS[moveType]?.border ?? 'rgba(238,232,220,0.7)', lbl: 'Efficace', bold: false }
+  const col = (_TYPE_COLORS_UI[moveType] ?? TYPE_COLORS[moveType])?.border ?? '#9ca3af'
+  if (label === 'Super efficace!') return { col, lbl: 'Super efficace!', bold: true }
+  if (label === 'Poco efficace…')  return { col, lbl: 'Poco efficace',   bold: true }
+  return { col, lbl: 'Efficace', bold: false }
 }
 
 // ─── MVP (risultato) ──────────────────────────────────────────────────────────
@@ -983,7 +1019,7 @@ const mvp = computed(() => {
       }"
     >
       <div class="wba-fm" :style="{
-        background:'rgba(10,7,38,0.97)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)',
+        background:'var(--theme-surface)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)',
         border:`1px solid ${!risultatoFinale.isDraw && risultatoFinale.isVictory ? 'rgba(245,197,96,0.5)' : risultatoFinale.isDraw ? 'rgba(167,139,250,0.35)' : 'rgba(255,133,182,0.35)'}`,
         borderRadius:'20px',padding:'22px 20px',maxWidth:'380px',width:'100%',textAlign:'center',margin:'auto',
       }">
@@ -997,24 +1033,24 @@ const mvp = computed(() => {
         <!-- Score Bo3 -->
         <template v-if="battleCtx?.bo3">
           <div :style="{ marginBottom:'8px' }">
-            <div :style="{ fontFamily:'\'Saira Condensed\',sans-serif',fontSize:'9px',letterSpacing:'0.2em',color:'rgba(108,240,224,0.5)',textTransform:'uppercase',marginBottom:'4px' }">
+            <div :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',letterSpacing:'0.2em',color:'var(--theme-text-2)',textTransform:'uppercase',marginBottom:'4px' }">
               Al meglio di 3
             </div>
             <div :style="{ display:'flex',alignItems:'center',justifyContent:'center',gap:'16px' }">
               <div>
-                <div :style="{ fontFamily:'\'Saira Condensed\',sans-serif',fontSize:'8px',color:'rgba(108,240,224,0.5)',textTransform:'uppercase',marginBottom:'2px' }">
+                <div :style="{ fontFamily:'var(--ff-label)',fontSize:'13px',color:c.teal,textTransform:'uppercase',marginBottom:'2px',fontWeight:700 }">
                   {{ (battleCtx.nomeImpero as string) || 'Tu' }}
                 </div>
-                <div :style="{ fontFamily:'\'Unbounded\',sans-serif',fontSize:'24px',fontWeight:900,color:'#6cf0e0',lineHeight:1 }">
+                <div :style="{ fontFamily:'var(--ff-display)',fontSize:'28px',fontWeight:900,color:c.teal,lineHeight:1 }">
                   {{ ((battleCtx.bo3 as any).attackerWins ?? 0) + (risultatoFinale.isVictory ? 1 : 0) }}
                 </div>
               </div>
-              <div :style="{ fontFamily:'\'Saira Condensed\',sans-serif',fontSize:'16px',color:'rgba(241,235,255,0.2)',fontWeight:700 }">—</div>
+              <div :style="{ fontFamily:'var(--ff-label)',fontSize:'20px',color:'var(--theme-text-3)',fontWeight:700 }">—</div>
               <div>
-                <div :style="{ fontFamily:'\'Saira Condensed\',sans-serif',fontSize:'8px',color:'rgba(255,133,182,0.5)',textTransform:'uppercase',marginBottom:'2px' }">
+                <div :style="{ fontFamily:'var(--ff-label)',fontSize:'13px',color:c.pink,textTransform:'uppercase',marginBottom:'2px',fontWeight:700 }">
                   {{ (battleCtx.nomeImperoAvversario as string) || 'CPU' }}
                 </div>
-                <div :style="{ fontFamily:'\'Unbounded\',sans-serif',fontSize:'24px',fontWeight:900,color:'#ff85b6',lineHeight:1 }">
+                <div :style="{ fontFamily:'var(--ff-display)',fontSize:'28px',fontWeight:900,color:c.pink,lineHeight:1 }">
                   {{ ((battleCtx.bo3 as any).defenderWins ?? 0) + (risultatoFinale.isVictory ? 0 : 1) }}
                 </div>
               </div>
@@ -1024,8 +1060,8 @@ const mvp = computed(() => {
 
         <!-- VITTORIA / SCONFITTA / PAREGGIO -->
         <div :style="{
-          fontFamily:'\'Unbounded\',sans-serif',fontSize:'20px',fontWeight:700,
-          color: risultatoFinale.isDraw ? '#a78bfa' : risultatoFinale.isVictory ? '#f5c560' : '#ff85b6',
+          fontFamily:'var(--ff-display)',fontSize:'22px',fontWeight:900,
+          color: risultatoFinale.isDraw ? '#a78bfa' : risultatoFinale.isVictory ? c.gold : c.pink,
           letterSpacing:'2px',marginBottom:'8px',
         }">
           {{ risultatoFinale.isDraw ? 'PAREGGIO' : risultatoFinale.isVictory ? 'VITTORIA!' : 'SCONFITTA' }}
@@ -1039,43 +1075,43 @@ const mvp = computed(() => {
         }">
           <div :style="{ display:'flex',alignItems:'center',justifyContent:'center',gap:'14px',marginBottom:'8px' }">
             <div :style="{ textAlign:'center' }">
-              <div :style="{ fontFamily:'\'Unbounded\',sans-serif',fontSize:'24px',fontWeight:900,color:'#6cf0e0',lineHeight:1 }">
+              <div :style="{ fontFamily:'var(--ff-display)',fontSize:'28px',fontWeight:900,color:c.teal,lineHeight:1 }">
                 {{ risultatoFinale.statsP.ko }}
               </div>
-              <div :style="{ fontFamily:'\'Saira Condensed\',sans-serif',fontSize:'8px',color:'rgba(108,240,224,.6)',textTransform:'uppercase',marginTop:'2px',letterSpacing:'1px' }">
+              <div :style="{ fontFamily:'var(--ff-label)',fontSize:'13px',color:c.teal,textTransform:'uppercase',marginTop:'2px',fontWeight:700 }">
                 {{ (battleCtx?.nomeImpero as string) || 'Tu' }}
               </div>
             </div>
-            <div :style="{ fontFamily:'Orbitron',fontSize:'14px',color:'rgba(241,235,255,0.2)',fontWeight:700 }">–</div>
+            <div :style="{ fontFamily:'var(--ff-label)',fontSize:'20px',color:'var(--theme-text-3)',fontWeight:700 }">–</div>
             <div :style="{ textAlign:'center' }">
-              <div :style="{ fontFamily:'\'Unbounded\',sans-serif',fontSize:'24px',fontWeight:900,color:'#ff85b6',lineHeight:1 }">
+              <div :style="{ fontFamily:'var(--ff-display)',fontSize:'28px',fontWeight:900,color:c.pink,lineHeight:1 }">
                 {{ risultatoFinale.statsE.ko }}
               </div>
-              <div :style="{ fontFamily:'\'Saira Condensed\',sans-serif',fontSize:'8px',color:'rgba(255,133,182,.6)',textTransform:'uppercase',marginTop:'2px',letterSpacing:'1px' }">
+              <div :style="{ fontFamily:'var(--ff-label)',fontSize:'13px',color:c.pink,textTransform:'uppercase',marginTop:'2px',fontWeight:700 }">
                 {{ (battleCtx?.nomeImperoAvversario as string) || 'CPU' }}
               </div>
             </div>
           </div>
-          <div :style="{ fontFamily:'Fredoka',fontSize:'11px',color:'rgba(238,232,220,.75)',textAlign:'center',lineHeight:1.4 }">
-            <span :style="{ color: risultatoFinale.isVictory ? '#6cf0e0' : '#ff85b6', fontWeight:700 }">
+          <div :style="{ fontFamily:'var(--ff-body)',fontSize:'12px',color:'var(--theme-text)',textAlign:'center',lineHeight:1.4 }">
+            <span :style="{ color: risultatoFinale.isVictory ? c.teal : c.pink, fontWeight:700 }">
               {{ risultatoFinale.isVictory ? ((battleCtx?.nomeImpero as string) || 'Tu') : ((battleCtx?.nomeImperoAvversario as string) || 'CPU') }}
             </span>
             {{ ' ' }}ha sconfitto{{ ' ' }}
-            <span :style="{ color: risultatoFinale.isVictory ? '#ff85b6' : '#6cf0e0', fontWeight:700 }">
+            <span :style="{ color: risultatoFinale.isVictory ? c.pink : c.teal, fontWeight:700 }">
               {{ risultatoFinale.isVictory ? ((battleCtx?.nomeImperoAvversario as string) || 'CPU') : ((battleCtx?.nomeImpero as string) || 'Tu') }}
             </span>
           </div>
         </div>
 
         <!-- Info partita -->
-        <div :style="{ textAlign:'left',padding:'6px 4px',marginBottom:'10px',borderTop:'1px solid rgba(255,255,255,.05)',borderBottom:'1px solid rgba(255,255,255,.05)' }">
+        <div :style="{ textAlign:'left',padding:'8px 4px',marginBottom:'12px',borderTop:'1px solid var(--theme-border)',borderBottom:'1px solid var(--theme-border)' }">
           <div v-for="row in [
-            { l:'Turni', v: turn, c:'#f5a623' },
-            { l:'Danno tuoi', v: risultatoFinale.statsP.dmg, c:'#6cf0e0' },
-            { l:'Danno avv.', v: risultatoFinale.statsE.dmg, c:'#ff85b6' },
-          ]" :key="row.l" :style="{ display:'flex',justifyContent:'space-between',padding:'3px 0' }">
-            <span :style="{ fontFamily:'Fredoka',fontSize:'10px',color:'rgba(238,232,220,.45)' }">{{ row.l }}</span>
-            <span :style="{ fontFamily:'Orbitron',fontSize:'10px',fontWeight:700,color:row.c }">{{ row.v }}</span>
+            { l:'Turni', v: turn, c: c.orange },
+            { l:'Danno tuoi', v: risultatoFinale.statsP.dmg, c: c.teal },
+            { l:'Danno Avversario', v: risultatoFinale.statsE.dmg, c: c.pink },
+          ]" :key="row.l" :style="{ display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0' }">
+            <span :style="{ fontFamily:'var(--ff-body)',fontSize:'15px',fontWeight:600,color:'var(--theme-text-2)' }">{{ row.l }}</span>
+            <span :style="{ fontFamily:'var(--ff-label)',fontSize:'18px',fontWeight:800,color:row.c }">{{ row.v }}</span>
           </div>
         </div>
 
@@ -1088,9 +1124,9 @@ const mvp = computed(() => {
         }">
           <div :style="{ position:'relative',flexShrink:0 }">
             <div :style="{
-              width:'48px',height:'70px',borderRadius:'8px',overflow:'hidden',
-              background:'rgba(6,3,15,.8)',display:'flex',alignItems:'center',justifyContent:'center',
-              border:`1.5px solid ${mvp.side === 'player' ? 'rgba(245,197,96,0.5)' : 'rgba(255,133,182,0.4)'}`,
+              width:'68px',height:'96px',borderRadius:'10px',overflow:'hidden',
+              background:'var(--theme-bg-secondary)',display:'flex',alignItems:'center',justifyContent:'center',
+              border:`2px solid ${mvp.side === 'player' ? 'rgba(245,197,96,0.6)' : 'rgba(255,133,182,0.5)'}`,
             }">
               <img v-if="mvp.imgUrl" :src="ikUrl(mvp.imgUrl, 'thumbnail') ?? ''" :alt="mvp.name"
                 :style="{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top' }"/>
@@ -1099,14 +1135,14 @@ const mvp = computed(() => {
             <Crown :size="16" stroke-width="1.5" style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);color:#f5c560;" />
           </div>
           <div :style="{ flex:1,minWidth:0,textAlign:'left' }">
-            <div :style="{ fontFamily:'Orbitron',fontSize:'6px',color:'rgba(245,197,96,.7)',letterSpacing:'1.5px',marginBottom:'2px' }">
+            <div :style="{ fontFamily:'var(--ff-label)',fontSize:'13px',color:c.goldFaint,letterSpacing:'1.5px',marginBottom:'3px',fontWeight:700 }">
               MVP · {{ mvp.side === 'player' ? ((battleCtx?.nomeImpero as string) || 'TU') : ((battleCtx?.nomeImperoAvversario as string) || 'CPU') }}
             </div>
-            <div :style="{ fontFamily:'\'Unbounded\',sans-serif',fontSize:'10px',fontWeight:700,color:'#ffd666',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginBottom:'4px' }">
+            <div :style="{ fontFamily:'var(--ff-display)',fontSize:'18px',fontWeight:900,color:c.gold,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginBottom:'5px' }">
               {{ mvp.name }}
             </div>
-            <div :style="{ fontFamily:'Orbitron',fontSize:'11px',fontWeight:900,color:'#f5c560' }">
-              {{ mvp.dmg.toLocaleString() }} <span :style="{ fontSize:'7px',color:'rgba(245,197,96,.5)' }">DMG</span>
+            <div :style="{ fontFamily:'var(--ff-label)',fontSize:'18px',fontWeight:900,color:c.gold }">
+              {{ mvp.dmg.toLocaleString() }} <span :style="{ fontSize:'13px',color:c.goldFaint,fontFamily:'var(--ff-label)' }">DMG</span>
             </div>
           </div>
         </div>
@@ -1116,13 +1152,13 @@ const mvp = computed(() => {
           <button
             @click="handleResultContinue(null)"
             :style="{
-              padding:'11px 10px',flex:1,borderRadius:'12px',cursor:'pointer',
-              fontFamily:'\'Saira Condensed\', Saira, sans-serif',
-              fontSize:'13px',fontWeight:700,letterSpacing:'1.4px',textTransform:'uppercase',
+              padding:'14px 10px',flex:1,borderRadius:'999px',cursor:'pointer',
+              fontFamily:'var(--ff-label)',
+              fontSize:'15px',fontWeight:700,letterSpacing:'1.4px',textTransform:'uppercase',
               width:'100%',
-              background:'linear-gradient(rgba(245,197,96,0.32),rgba(245,197,96,0.1))',
-              border:'0.8px solid rgba(255,233,168,0.6)',
-              color:'rgb(42,31,0)',
+              background:'var(--theme-accent)',
+              border:'none',
+              color:'#fff',
               boxShadow:'rgba(245,197,96,0.35) 0px 6px 20px 0px',
             }"
           >
@@ -1139,7 +1175,7 @@ const mvp = computed(() => {
       position:'fixed',
       top: `${topOffset}px`, left:0, right:0, bottom: `${bottomOffset}px`,
       zIndex:40, overflowY:'auto',
-      background:'radial-gradient(60% 40% at 50% 30%, rgba(108,240,224,0.18), transparent 70%), radial-gradient(60% 40% at 50% 80%, rgba(255,126,182,0.2), transparent 70%), linear-gradient(#060418 0%, #0e0827 100%)',
+      background:'var(--theme-bg)',
       display:'flex', flexDirection:'column',
       paddingBottom:'env(safe-area-inset-bottom,12px)',
     }">
@@ -1167,7 +1203,7 @@ const mvp = computed(() => {
         }"
       >
         <span :style="{
-          fontFamily:'Orbitron', fontWeight:900,
+          fontFamily:'var(--ff-label)', fontWeight:900,
           fontSize: `${Math.min(34, Math.max(18, Math.round(f.dmg / 9) + 14))}px`,
           color: f.isCrit ? '#f5a623' : '#fff',
           textShadow: f.isCrit
@@ -1176,7 +1212,7 @@ const mvp = computed(() => {
           letterSpacing:'1px',
         }">-{{ f.dmg }}</span>
         <span v-if="f.isCrit" :style="{
-          fontFamily:'Orbitron', fontWeight:700, fontSize:'9px',
+          fontFamily:'var(--ff-label)', fontWeight:700, fontSize:'12px',
           color:'#f5a623', letterSpacing:'1.5px', marginTop:'2px',
         }">CRITICAL HIT!</span>
       </div>
@@ -1185,31 +1221,31 @@ const mvp = computed(() => {
       <div :style="{
         flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between',
         padding:'4px 10px',
-        background:'rgba(10,7,38,0.85)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)',
+        background:'var(--theme-surface)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)',
         borderBottom:'0.8px solid rgba(167,139,250,0.2)', minHeight:'36px',
       }">
         <span :style="{
           fontFamily:'\'Unbounded\', sans-serif',
-          fontSize: isMobile ? '11px' : '14px', fontWeight:700, color:turnCol,
+          fontSize: isMobile ? '13px' : '16px', fontWeight:700, color:turnCol,
           minWidth: isMobile ? '64px' : '80px',
         }"><component :is="turnIcon" :size="isMobile ? 11 : 14" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:4px;" />{{ turnLabel }}</span>
 
         <!-- Score KO al centro -->
         <div :style="{
           display:'flex', alignItems:'center', gap: isMobile ? '6px' : '10px',
-          background:'rgba(0,0,0,.3)', borderRadius:'8px',
+          background:'var(--theme-shimmer)', borderRadius:'8px',
           padding: isMobile ? '2px 8px' : '3px 12px',
         }">
           <div :style="{ textAlign:'center' }">
             <div :class="koAnimP ? 'wba-score-pop' : ''"
-              :style="{ fontFamily:'Orbitron',fontWeight:900,fontSize: isMobile ? '16px' : '20px',color:'#6cf0e0',lineHeight:1 }">
+              :style="{ fontFamily:'var(--ff-label)',fontWeight:900,fontSize: isMobile ? '16px' : '20px',color:c.teal,lineHeight:1 }">
               {{ statsP.ko }}
             </div>
           </div>
-          <div :style="{ fontFamily:'Orbitron',fontSize: isMobile ? '9px' : '11px',color:'rgba(238,232,220,.25)',fontWeight:700 }">—</div>
+          <div :style="{ fontFamily:'var(--ff-label)',fontSize: isMobile ? '13px' : '13px',color:'rgba(238,232,220,.25)',fontWeight:700 }">—</div>
           <div :style="{ textAlign:'center' }">
             <div :class="koAnimE ? 'wba-score-pop' : ''"
-              :style="{ fontFamily:'Orbitron',fontWeight:900,fontSize: isMobile ? '16px' : '20px',color:'#ff85b6',lineHeight:1 }">
+              :style="{ fontFamily:'var(--ff-label)',fontWeight:900,fontSize: isMobile ? '16px' : '20px',color:c.pink,lineHeight:1 }">
               {{ statsE.ko }}
             </div>
           </div>
@@ -1217,15 +1253,20 @@ const mvp = computed(() => {
 
         <!-- Badge PvP -->
         <span v-if="isPvP" :style="{
-          fontFamily:'Orbitron',fontSize:'7px',color:'rgba(155,89,255,.55)',letterSpacing:'1px',
+          fontFamily:'var(--ff-label)',fontSize:'12px',color:'rgba(155,89,255,.55)',letterSpacing:'1px',
           border:'1px solid rgba(155,89,255,.25)',borderRadius:'4px',padding:'2px 6px',
         }">PVP</span>
 
         <!-- Timer -->
         <div v-if="isChoose" :style="{
-          fontFamily:'Orbitron', fontWeight:700,
+          fontFamily:'var(--ff-display)', fontWeight:900,
           fontSize: `${timerSize}px`, color:timerCol,
           animation:timerAnim, transformOrigin:'center',
+          background:timerBg,
+          borderRadius:'999px', padding:'4px 12px',
+          border:`1.5px solid ${timerCol}55`,
+          minWidth:'72px', textAlign:'center',
+          transition:'color 0.3s, background 0.3s',
         }">
           ⏱ {{ timer }}s
         </div>
@@ -1234,74 +1275,68 @@ const mvp = computed(() => {
       <!-- ── ZONE 2+3+4: Arene di battaglia ── -->
       <div :style="{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative', minHeight:0 }">
 
-        <!-- Enemy Zone (top ~40% mobile, 46% desktop) -->
-        <div :style="{ flex: isMobile ? '0 0 40%' : '0 0 46%', position:'relative', overflow:'hidden' }">
+        <!-- Enemy Zone (top ~47% mobile, 52% desktop) -->
+        <div :style="{ flex: isMobile ? '0 0 47%' : '0 0 52%', position:'relative', overflow:'hidden' }">
           <!-- HUD nemico: top-left -->
-          <div :style="{ position:'absolute', top:'10px', left:'12px', zIndex:3 }">
+          <div :style="{ position:'absolute', top:'15px', left:'12px', zIndex:3 }">
             <template v-if="enemy">
-              <!-- EnemyHud inline -->
+              <!-- EnemyHud inline — specchia il layout del player HUD -->
               <div :style="{
-                background:'rgba(200,20,45,.09)', backdropFilter:'blur(12px)',
-                border:'1px solid rgba(255,50,80,.26)', borderRadius:'10px',
-                padding:'8px 11px', maxWidth:'56%', minWidth:'140px',
+                background:'var(--theme-surface)', backdropFilter:'blur(12px)',
+                border:'1.5px solid rgba(255,50,80,.5)', borderRadius:'14px',
+                padding:'10px 14px', maxWidth:'56%', minWidth:'150px',
+                boxShadow:'0 2px 12px var(--theme-shadow)', position:'relative',
               }">
-                <div :style="{ display:'flex',alignItems:'center',gap:'6px',marginBottom:'4px' }">
-                  <span :style="{
-                    fontFamily:'Orbitron',fontSize:'11px',fontWeight:700,
-                    color: enemy._hotBlurred ? 'rgba(255,133,182,0.5)' : '#eedcd4',
-                    flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
-                  }"><Flame v-if="enemy._hotBlurred" :size="12" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:3px;" />{{ enemy._hotBlurred ? '???' : enemy.name }}</span>
-                  <span :style="{ fontFamily:'Orbitron',fontSize:'8px',color:'rgba(255,90,110,.5)',flexShrink:0 }">Lv{{ enemy.level }}</span>
+                <!-- Chip tipo — top-right assoluto, full-round -->
+                <div v-if="!enemy._hotBlurred" :style="{
+                  position:'absolute', top:'-12px', right:'-8px',
+                  background:'var(--theme-surface)',
+                  color:(_TYPE_COLORS_UI[enemy.type] ?? { border:'#555' }).border,
+                  border:`1.5px solid ${(_TYPE_COLORS_UI[enemy.type] ?? { border:'#555' }).border}`,
+                  borderRadius:'999px', padding:'3px 12px',
+                  fontSize:'13px', fontWeight:800,
+                  fontFamily:'var(--ff-label)',
+                  backdropFilter:'blur(4px)',
+                }">{{ enemy.type }}</div>
+                <div v-else :style="{
+                  position:'absolute', top:'-12px', right:'-8px',
+                  background:'var(--theme-surface)',
+                  color:'#ff85b6', border:'1.5px solid #ff85b6',
+                  borderRadius:'999px', padding:'3px 10px',
+                  fontSize:'13px', fontWeight:800,
+                  fontFamily:'var(--ff-label)',
+                  display:'flex', alignItems:'center', gap:'4px',
+                }"><Flame :size="12" stroke-width="1.5" />HOT</div>
+
+                <!-- Nome grande -->
+                <div :style="{
+                  fontFamily:'var(--ff-display)', fontSize:'18px', fontWeight:900,
+                  color: enemy._hotBlurred ? 'rgba(255,133,182,0.7)' : 'var(--theme-text)',
+                  overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginBottom:'6px', paddingRight:'4px',
+                }">{{ enemy._hotBlurred ? '???' : enemy.name }}</div>
+
+                <!-- HpBar -->
+                <div :style="{ height:'8px',background:'var(--theme-border)',borderRadius:'8px',overflow:'hidden',marginBottom:'5px' }">
+                  <div :class="enemy.maxHp > 0 && (enemy.hp / enemy.maxHp) * 100 <= 25 && enemy.hp > 0 ? 'wba-hp-crit' : ''"
+                    :style="{
+                      width:`${enemy.maxHp > 0 ? Math.max(0, Math.min(100, (enemy.hp / enemy.maxHp) * 100)) : 0}%`,
+                      height:'100%',
+                      background:hpBarBg(enemy.maxHp > 0 ? (enemy.hp / enemy.maxHp) * 100 : 0, 'enemy'),
+                      borderRadius:'8px', transition:'width .6s cubic-bezier(.25,.8,.25,1)',
+                    }"
+                  />
                 </div>
-                <!-- TypeBadge inline -->
-                <div v-if="!enemy._hotBlurred" :style="{ marginBottom:'5px' }">
-                  <span :style="{
-                    background:`rgba(${hexToRgb((_TYPE_COLORS_UI[enemy.type] ?? { border:'#555' }).border)},.15)`,
-                    color:(_TYPE_COLORS_UI[enemy.type] ?? { border:'#555' }).border,
-                    border:`1px solid ${(_TYPE_COLORS_UI[enemy.type] ?? { border:'#555' }).border}99`,
-                    borderRadius:'4px', padding:'1px 5px',
-                    fontSize:'8px', fontWeight:700,
-                    fontFamily:'Orbitron,monospace', letterSpacing:.5,
-                    display:'inline-block', whiteSpace:'nowrap',
-                  }">{{ enemy.type }}</span>
-                </div>
-                <div v-else :style="{ marginBottom:'5px',fontFamily:'Orbitron',fontSize:'7px',color:'rgba(255,133,182,0.6)',letterSpacing:'0.5px',display:'flex',alignItems:'center',gap:'3px' }">
-                  <Flame :size="7" stroke-width="1.5" />HOT · Pass Hard
-                </div>
-                <!-- HpBar inline nemico -->
-                <div>
-                  <div :style="{ height:'5px',background:'rgba(0,0,0,.5)',borderRadius:'5px',overflow:'hidden' }">
-                    <div :class="enemy.maxHp > 0 && (enemy.hp / enemy.maxHp) * 100 <= 25 && enemy.hp > 0 ? 'wba-hp-crit' : ''"
-                      :style="{
-                        width: `${enemy.maxHp > 0 ? Math.max(0, Math.min(100, (enemy.hp / enemy.maxHp) * 100)) : 0}%`,
-                        height:'100%',
-                        background:hpBarBg(enemy.maxHp > 0 ? (enemy.hp / enemy.maxHp) * 100 : 0, 'enemy'),
-                        borderRadius:'5px', transition:'width .6s cubic-bezier(.25,.8,.25,1)',
-                      }"
-                    />
-                  </div>
-                  <div :style="{ textAlign:'right',marginTop:'2px' }">
-                    <span :style="{ fontFamily:'Orbitron',fontSize:'9px',fontWeight:700,color:'rgba(255,90,110,0.7)' }">
-                      {{ enemy.maxHp > 0 ? Math.round((enemy.hp / enemy.maxHp) * 100) : 0 }}%
-                    </span>
-                  </div>
+
+                <!-- HP% bottom-left, grande -->
+                <div :style="{ display:'flex',alignItems:'baseline',gap:'2px' }">
+                  <span :style="{ fontFamily:'var(--ff-label)',fontSize:'20px',fontWeight:900,color:c.pink }">
+                    {{ enemy.maxHp > 0 ? Math.round((enemy.hp / enemy.maxHp) * 100) : 0 }}%
+                  </span>
                 </div>
               </div>
             </template>
           </div>
 
-          <!-- Pallini bench nemico: top-right -->
-          <div :style="{ position:'absolute', top:'14px', right:'14px', display:'flex', gap:'5px', zIndex:3, alignItems:'center' }">
-            <template v-for="(w, i) in eTeam" :key="i">
-              <div v-if="i !== eActive" :style="{
-                width:'9px', height:'9px', borderRadius:'50%',
-                background: w.isKO ? 'rgba(255,255,255,.12)' : (TYPE_COLORS[w.type]?.border ?? '#444'),
-                border:'1px solid rgba(255,255,255,.12)',
-                filter: w.isKO ? 'grayscale(1)' : 'none',
-                boxShadow: w.isKO ? 'none' : `0 0 5px ${TYPE_COLORS[w.type]?.border ?? '#444'}66`,
-              }"/>
-            </template>
-          </div>
 
           <!-- Sprite nemico: bottom-right -->
           <div :style="{ position:'absolute', right:'14px', bottom:0, zIndex:2 }">
@@ -1319,7 +1354,7 @@ const mvp = computed(() => {
                   :style="{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top', filter: enemy._hotBlurred ? 'blur(6px)' : 'none' }"/>
                 <div v-else :style="{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100%',gap:'6px' }">
                   <div :style="{ fontSize:'28px',opacity:.2 }">◈</div>
-                  <div :style="{ fontFamily:'Orbitron',fontSize:'7px',color:'rgba(238,232,220,.28)',textAlign:'center',padding:'0 6px',lineHeight:1.3 }">{{ enemy.name }}</div>
+                  <div :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'var(--theme-text-3)',textAlign:'center',padding:'0 6px',lineHeight:1.3 }">{{ enemy.name }}</div>
                 </div>
                 <!-- Foil epico/leggendario/immersivo -->
                 <div v-if="FOIL_RARITIES.includes(enemy.rarita?.toLowerCase())" :style="{
@@ -1332,7 +1367,7 @@ const mvp = computed(() => {
                   position:'absolute',inset:0,background:'rgba(0,0,0,.72)',
                   display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(2px)',
                 }">
-                  <span :style="{ fontFamily:'Orbitron',fontSize:'20px',color:'#ff4d4d',fontWeight:900,letterSpacing:'2px',textShadow:'0 0 16px #ff4d4d88' }">KO</span>
+                  <span :style="{ fontFamily:'var(--ff-label)',fontSize:'20px',color:'#ff4d4d',fontWeight:900,letterSpacing:'2px',textShadow:'0 0 16px #ff4d4d88' }">KO</span>
                 </div>
                 <!-- Overlay Hot -->
                 <div v-if="enemy._hotBlurred && !enemy.isKO" :style="{
@@ -1341,8 +1376,8 @@ const mvp = computed(() => {
                   pointerEvents:'none',
                 }">
                   <Flame :size="20" stroke-width="1.5" style="color:#ff85b6;" />
-                  <span :style="{ fontFamily:'Orbitron',fontSize:'8px',color:'#ff85b6',letterSpacing:'1px',fontWeight:700 }">HOT</span>
-                  <span :style="{ fontFamily:'Orbitron',fontSize:'6px',color:'rgba(255,133,182,0.65)',letterSpacing:'0.5px' }">Pass Hard</span>
+                  <span :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'#ff85b6',letterSpacing:'1px',fontWeight:700 }">HOT</span>
+                  <span :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'rgba(255,133,182,0.65)',letterSpacing:'0.5px' }">Pass Hard</span>
                 </div>
               </div>
             </template>
@@ -1360,12 +1395,12 @@ const mvp = computed(() => {
         <div :style="{
           flexShrink:0, minHeight: isMobile ? '28px' : '40px', maxHeight:'40px',
           display:'flex', alignItems:'center', padding:'0 12px',
-          background:'rgba(4,2,12,.78)',
-          borderTop:'1px solid rgba(255,255,255,.05)',
-          borderBottom:'1px solid rgba(255,255,255,.05)',
+          background:'var(--theme-surface)',
+          borderTop:'1px solid var(--theme-border)',
+          borderBottom:'1px solid var(--theme-border)',
         }">
           <p :key="message" class="wba-fm" :style="{
-            fontFamily:'Fredoka', fontSize: isMobile ? '11px' : '13px', color:'#eedcd4',
+            fontFamily:'var(--ff-body)', fontSize: isMobile ? '14px' : '15px', color:'var(--theme-text)',
             margin:0, lineHeight:1.3, overflow:'hidden',
             display:'-webkit-box', WebkitLineClamp:'1', WebkitBoxOrient:'vertical',
           }">{{ message }}</p>
@@ -1378,7 +1413,7 @@ const mvp = computed(() => {
           display:'flex', alignItems:'center', gap:'6px',
         }">
           <Flame :size="12" stroke-width="1.5" style="color:#ff85b6;flex-shrink:0;" />
-          <span :style="{ fontFamily:'Fredoka',fontSize:'10px',color:'rgba(255,133,182,0.85)',flex:1 }">
+          <span :style="{ fontFamily:'var(--ff-body)',fontSize:'12px',color:'rgba(255,133,182,0.85)',flex:1 }">
             Questa waifu è Hot e non puoi vederla. Acquista il Pass Hard per scoprirla.
           </span>
         </div>
@@ -1407,7 +1442,7 @@ const mvp = computed(() => {
                   :style="{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top' }"/>
                 <div v-else :style="{ display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100%',gap:'6px' }">
                   <div :style="{ fontSize:'28px',opacity:.2 }">◈</div>
-                  <div :style="{ fontFamily:'Orbitron',fontSize:'7px',color:'rgba(238,232,220,.28)',textAlign:'center',padding:'0 6px',lineHeight:1.3 }">{{ player.name }}</div>
+                  <div :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'var(--theme-text-3)',textAlign:'center',padding:'0 6px',lineHeight:1.3 }">{{ player.name }}</div>
                 </div>
                 <div v-if="FOIL_RARITIES.includes(player.rarita?.toLowerCase())" :style="{
                   position:'absolute',inset:0,borderRadius:'inherit',
@@ -1418,7 +1453,7 @@ const mvp = computed(() => {
                   position:'absolute',inset:0,background:'rgba(0,0,0,.72)',
                   display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(2px)',
                 }">
-                  <span :style="{ fontFamily:'Orbitron',fontSize:'20px',color:'#ff4d4d',fontWeight:900,letterSpacing:'2px',textShadow:'0 0 16px #ff4d4d88' }">KO</span>
+                  <span :style="{ fontFamily:'var(--ff-label)',fontSize:'20px',color:'#ff4d4d',fontWeight:900,letterSpacing:'2px',textShadow:'0 0 16px #ff4d4d88' }">KO</span>
                 </div>
               </div>
             </template>
@@ -1428,43 +1463,45 @@ const mvp = computed(() => {
           <div :style="{ position:'absolute', right:'12px', bottom:'10px', zIndex:3 }">
             <template v-if="player">
               <div :style="{
-                background:'rgba(0,120,200,.09)', backdropFilter:'blur(12px)',
-                border:'1px solid rgba(0,180,255,.24)', borderRadius:'10px',
-                padding:'9px 12px', maxWidth:'56%', minWidth:'155px',
+                background:'var(--theme-surface)', backdropFilter:'blur(12px)',
+                border:'1.5px solid rgba(0,180,255,.5)', borderRadius:'14px',
+                padding:'10px 14px', maxWidth:'60%', minWidth:'165px',
+                boxShadow:'0 2px 12px var(--theme-shadow)', position:'relative',
               }">
-                <div :style="{ display:'flex',alignItems:'center',gap:'6px',marginBottom:'4px' }">
-                  <span :style="{ fontFamily:'Orbitron',fontSize:'12px',fontWeight:700,color:'#eedcd4',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }">{{ player.name }}</span>
-                  <span :style="{ fontFamily:'Orbitron',fontSize:'8px',color:'rgba(0,200,255,.5)',flexShrink:0 }">Lv{{ player.level }}</span>
+                <!-- Chip tipo — top-right assoluto, full-round -->
+                <div :style="{
+                  position:'absolute', top:'-12px', right:'-8px',
+                  background:'var(--theme-surface)',
+                  color:(_TYPE_COLORS_UI[player.type] ?? { border:'#555' }).border,
+                  border:`1.5px solid ${(_TYPE_COLORS_UI[player.type] ?? { border:'#555' }).border}`,
+                  borderRadius:'999px', padding:'3px 12px',
+                  fontSize:'13px', fontWeight:800,
+                  fontFamily:'var(--ff-label)',
+                  backdropFilter:'blur(4px)',
+                }">{{ player.type }}</div>
+
+                <!-- Nome grande -->
+                <div :style="{ fontFamily:'var(--ff-display)',fontSize:'18px',fontWeight:900,color:'var(--theme-text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginBottom:'6px',paddingRight:'4px' }">
+                  {{ player.name }}
                 </div>
-                <!-- TypeBadge giocatore inline -->
-                <div :style="{ marginBottom:'5px' }">
-                  <span :style="{
-                    background:`rgba(${hexToRgb((_TYPE_COLORS_UI[player.type] ?? { border:'#555' }).border)},.15)`,
-                    color:(_TYPE_COLORS_UI[player.type] ?? { border:'#555' }).border,
-                    border:`1px solid ${(_TYPE_COLORS_UI[player.type] ?? { border:'#555' }).border}99`,
-                    borderRadius:'4px', padding:'2px 8px',
-                    fontSize:'10px', fontWeight:700,
-                    fontFamily:'Orbitron,monospace', letterSpacing:.5,
-                    display:'inline-block', whiteSpace:'nowrap',
-                  }">{{ player.type }}</span>
+
+                <!-- HpBar -->
+                <div :style="{ height:'8px',background:'var(--theme-border)',borderRadius:'8px',overflow:'hidden',marginBottom:'5px' }">
+                  <div
+                    :class="player.maxHp > 0 && (player.hp / player.maxHp) * 100 <= 25 && player.hp > 0 ? 'wba-hp-crit' : ''"
+                    :style="{
+                      width:`${player.maxHp > 0 ? Math.max(0, Math.min(100, (player.hp / player.maxHp) * 100)) : 0}%`,
+                      height:'100%',
+                      background: hpBarBg(player.maxHp > 0 ? (player.hp / player.maxHp) * 100 : 0, 'player'),
+                      borderRadius:'8px', transition:'width .6s cubic-bezier(.25,.8,.25,1)',
+                    }"
+                  />
                 </div>
-                <!-- HpBar giocatore inline -->
-                <div>
-                  <div :style="{ height:'8px',background:'rgba(0,0,0,.5)',borderRadius:'8px',overflow:'hidden' }">
-                    <div
-                      :class="player.maxHp > 0 && (player.hp / player.maxHp) * 100 <= 25 && player.hp > 0 ? 'wba-hp-crit' : ''"
-                      :style="{
-                        width:`${player.maxHp > 0 ? Math.max(0, Math.min(100, (player.hp / player.maxHp) * 100)) : 0}%`,
-                        height:'100%',
-                        background: hpBarBg(player.maxHp > 0 ? (player.hp / player.maxHp) * 100 : 0, 'player'),
-                        borderRadius:'8px', transition:'width .6s cubic-bezier(.25,.8,.25,1)',
-                      }"
-                    />
-                  </div>
-                  <div :style="{ display:'flex',justifyContent:'flex-end',marginTop:'2px',gap:'2px' }">
-                    <span :style="{ fontFamily:'Orbitron',fontSize:'11px',fontWeight:700,color:'#6cf0e0' }">{{ Math.max(0, player.hp) }}</span>
-                    <span :style="{ fontFamily:'Orbitron',fontSize:'9px',color:'rgba(238,220,212,.28)',alignSelf:'flex-end',marginBottom:'1px' }">/{{ player.maxHp }}</span>
-                  </div>
+
+                <!-- HP bottom-left, grande -->
+                <div :style="{ display:'flex',alignItems:'baseline',gap:'2px' }">
+                  <span :style="{ fontFamily:'var(--ff-label)',fontSize:'20px',fontWeight:900,color:c.teal }">{{ Math.max(0, player.hp) }}</span>
+                  <span :style="{ fontFamily:'var(--ff-label)',fontSize:'13px',color:'var(--theme-text-3)' }">/{{ player.maxHp }}</span>
                 </div>
               </div>
             </template>
@@ -1478,13 +1515,13 @@ const mvp = computed(() => {
         minHeight: isMobile ? 'min(210px, 44dvh)' : 'clamp(188px, 37dvh, 252px)',
         maxHeight: isMobile ? '50dvh' : 'clamp(220px, 45dvh, 300px)',
         display:'flex', flexDirection:'column',
-        background:'rgba(4,2,10,.92)',
-        borderTop:'1px solid rgba(255,255,255,.07)',
+        background:'var(--theme-surface)',
+        borderTop:'1px solid var(--theme-border)',
         overflowY:'auto', WebkitOverflowScrolling:'touch',
       }">
 
         <!-- Timer progress bar -->
-        <div v-if="isChoose" :style="{ height:'3px',background:'rgba(255,255,255,.07)' }">
+        <div v-if="isChoose" :style="{ height:'3px',background:'var(--theme-border)' }">
           <div :style="{
             height:'100%', background:timerCol,
             width:`${(timer/30)*100}%`, transition:'width 1s linear,background .5s',
@@ -1497,7 +1534,7 @@ const mvp = computed(() => {
           display:'flex',flexDirection:'column',justifyContent:'center',
         }">
           <div :style="{
-            fontFamily:'Orbitron',fontSize:'9px',letterSpacing:'1.8px',textAlign:'center',marginBottom:'12px',
+            fontFamily:'var(--ff-label)',fontSize:'12px',letterSpacing:'1.8px',textAlign:'center',marginBottom:'12px',
             color: isSwap ? '#ff4d4d' : '#f5a623',
           }">
             {{ isSwap ? '⚠ SCEGLI LA PROSSIMA WAIFU' : '↻ SCEGLI LA WAIFU DA MANDARE IN CAMPO' }}
@@ -1509,10 +1546,10 @@ const mvp = computed(() => {
                 <button class="wba-bench-slot"
                   @click="isSwap ? handlePlayerSwap(i) : handleVoluntarySwap(i)"
                   :style="{
-                    width:'64px',height:'64px',borderRadius:'50%',overflow:'hidden',flexShrink:0,
+                    width:'106px',height:'106px',borderRadius:'50%',overflow:'hidden',flexShrink:0,
                     border:'2.5px solid #00e676',
                     boxShadow:'0 0 14px rgba(0,230,118,.38),0 0 0 1px rgba(0,230,118,.18)',
-                    background:'rgba(6,3,15,.7)', position:'relative',
+                    background:'var(--theme-bg-secondary)', position:'relative',
                     cursor:'pointer',padding:0,
                     filter: w.isKO ? 'grayscale(1) brightness(.36)' : 'none',
                     animation:'benchPop .22s ease-out',
@@ -1521,7 +1558,7 @@ const mvp = computed(() => {
                   <img v-if="w.image" :src="ikUrl(w.image, 'thumbnail') ?? ''" :alt="w.name"
                     :style="{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top' }"/>
                   <div v-else :style="{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:'13px',opacity:.22 }">◈</div>
-                  <div :style="{ position:'absolute',bottom:0,left:0,right:0,height:'3px',background:'rgba(0,0,0,.55)' }">
+                  <div :style="{ position:'absolute',bottom:0,left:0,right:0,height:'3px',background:'var(--theme-border)' }">
                     <div :style="{
                       width:`${w.maxHp > 0 ? Math.max(0, Math.min(100, (w.hp / w.maxHp) * 100)) : 0}%`,
                       height:'100%',
@@ -1529,12 +1566,12 @@ const mvp = computed(() => {
                     }"/>
                   </div>
                 </button>
-                <span :style="{ fontFamily:'Orbitron',fontSize:'7px',color:'rgba(238,232,220,.4)',textAlign:'center',maxWidth:'64px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }">
+                <span :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'var(--theme-text-3)',textAlign:'center',maxWidth:'64px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }">
                   {{ w.name }}
                 </span>
                 <!-- HpBar mini -->
                 <div :style="{ width:'64px' }">
-                  <div :style="{ height:'3px',background:'rgba(0,0,0,.5)',borderRadius:'3px',overflow:'hidden' }">
+                  <div :style="{ height:'3px',background:'var(--theme-border)',borderRadius:'3px',overflow:'hidden' }">
                     <div :style="{
                       width:`${w.maxHp > 0 ? Math.max(0, Math.min(100, (w.hp / w.maxHp) * 100)) : 0}%`,
                       height:'100%', background:'#00e676', borderRadius:'3px',
@@ -1551,7 +1588,7 @@ const mvp = computed(() => {
           flex:1,padding:'10px 14px',overflowY:'auto',
           display:'flex',flexDirection:'column',justifyContent:'center',
         }">
-          <div :style="{ fontFamily:'Orbitron',fontSize:'9px',color:'#ff4d4d',letterSpacing:'1.8px',textAlign:'center',marginBottom:'12px' }">
+          <div :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'#ff4d4d',letterSpacing:'1.8px',textAlign:'center',marginBottom:'12px' }">
             ⚠ PP ESAURITI — SOSTITUISCI LA WAIFU
           </div>
           <div :style="{ display:'flex',gap:'12px',justifyContent:'center',flexWrap:'wrap' }">
@@ -1560,10 +1597,10 @@ const mvp = computed(() => {
                 <button class="wba-bench-slot"
                   @click="handleVoluntarySwap(i, { isPPExhausted: true })"
                   :style="{
-                    width:'64px',height:'64px',borderRadius:'50%',overflow:'hidden',flexShrink:0,
+                    width:'106px',height:'106px',borderRadius:'50%',overflow:'hidden',flexShrink:0,
                     border:'2.5px solid #00e676',
                     boxShadow:'0 0 14px rgba(0,230,118,.38),0 0 0 1px rgba(0,230,118,.18)',
-                    background:'rgba(6,3,15,.7)', position:'relative',
+                    background:'var(--theme-bg-secondary)', position:'relative',
                     cursor:'pointer',padding:0,
                     animation:'benchPop .22s ease-out',
                   }"
@@ -1571,7 +1608,7 @@ const mvp = computed(() => {
                   <img v-if="w.image" :src="ikUrl(w.image, 'thumbnail') ?? ''" :alt="w.name"
                     :style="{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top' }"/>
                   <div v-else :style="{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:'13px',opacity:.22 }">◈</div>
-                  <div :style="{ position:'absolute',bottom:0,left:0,right:0,height:'3px',background:'rgba(0,0,0,.55)' }">
+                  <div :style="{ position:'absolute',bottom:0,left:0,right:0,height:'3px',background:'var(--theme-border)' }">
                     <div :style="{
                       width:`${w.maxHp > 0 ? Math.max(0, Math.min(100, (w.hp / w.maxHp) * 100)) : 0}%`,
                       height:'100%',
@@ -1579,11 +1616,11 @@ const mvp = computed(() => {
                     }"/>
                   </div>
                 </button>
-                <span :style="{ fontFamily:'Orbitron',fontSize:'7px',color:'rgba(238,232,220,.4)',textAlign:'center',maxWidth:'64px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }">
+                <span :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'var(--theme-text-3)',textAlign:'center',maxWidth:'64px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }">
                   {{ w.name }}
                 </span>
                 <div :style="{ width:'64px' }">
-                  <div :style="{ height:'3px',background:'rgba(0,0,0,.5)',borderRadius:'3px',overflow:'hidden' }">
+                  <div :style="{ height:'3px',background:'var(--theme-border)',borderRadius:'3px',overflow:'hidden' }">
                     <div :style="{
                       width:`${w.maxHp > 0 ? Math.max(0, Math.min(100, (w.hp / w.maxHp) * 100)) : 0}%`,
                       height:'100%', background:'#00e676', borderRadius:'3px',
@@ -1605,12 +1642,12 @@ const mvp = computed(() => {
                 :disabled="!isChoose || isAnim || (isPvP && pvpWaiting) || !pTeam.some((w, i) => i !== pActive && !w.isKO) || turn <= 1"
                 @click="startVoluntarySwap"
                 :style="{
-                  fontFamily:'Orbitron',fontSize:'7px',letterSpacing:'.6px',
+                  fontFamily:'var(--ff-label)',fontSize:'12px',letterSpacing:'.6px',
                   background: (!isChoose || isAnim || (isPvP && pvpWaiting) || !pTeam.some((w, i) => i !== pActive && !w.isKO) || turn <= 1)
-                    ? 'rgba(255,255,255,0.03)'
+                    ? 'var(--theme-shimmer)'
                     : 'linear-gradient(rgba(167,139,250,0.25), rgba(167,139,250,0.08))',
                   border: (!isChoose || isAnim || (isPvP && pvpWaiting) || !pTeam.some((w, i) => i !== pActive && !w.isKO) || turn <= 1)
-                    ? '0.8px solid rgba(255,255,255,0.06)'
+                    ? '0.8px solid var(--theme-border)'
                     : '0.8px solid rgba(167,139,250,0.4)',
                   borderRadius:'12px',
                   color: (!isChoose || isAnim || (isPvP && pvpWaiting) || !pTeam.some((w, i) => i !== pActive && !w.isKO) || turn <= 1)
@@ -1632,10 +1669,10 @@ const mvp = computed(() => {
               <template v-for="(w, i) in pTeam" :key="w.id">
                 <button v-if="i !== pActive" disabled class="wba-bench-slot"
                   :style="{
-                    width:'40px',height:'40px',borderRadius:'50%',overflow:'hidden',flexShrink:0,
+                    width:'72px',height:'72px',borderRadius:'50%',overflow:'hidden',flexShrink:0,
                     border:`2.5px solid ${w.isKO ? 'rgba(255,255,255,.1)' : (TYPE_COLORS[w.type]?.border ?? '#444')}`,
-                    boxShadow:'0 2px 8px rgba(0,0,0,.5)',
-                    background:'rgba(6,3,15,.7)', position:'relative',
+                    boxShadow:'0 2px 8px var(--theme-shadow)',
+                    background:'var(--theme-bg-secondary)', position:'relative',
                     cursor:'default',padding:0,
                     filter: w.isKO ? 'grayscale(1) brightness(.36)' : 'none',
                   }"
@@ -1643,7 +1680,7 @@ const mvp = computed(() => {
                   <img v-if="w.image" :src="ikUrl(w.image, 'thumbnail') ?? ''" :alt="w.name"
                     :style="{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top' }"/>
                   <div v-else :style="{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:'13px',opacity:.22 }">◈</div>
-                  <div v-if="!w.isKO" :style="{ position:'absolute',bottom:0,left:0,right:0,height:'3px',background:'rgba(0,0,0,.55)' }">
+                  <div v-if="!w.isKO" :style="{ position:'absolute',bottom:0,left:0,right:0,height:'3px',background:'var(--theme-border)' }">
                     <div :style="{
                       width:`${w.maxHp > 0 ? Math.max(0, Math.min(100, (w.hp / w.maxHp) * 100)) : 0}%`,
                       height:'100%',
@@ -1651,7 +1688,7 @@ const mvp = computed(() => {
                     }"/>
                   </div>
                   <div v-if="w.isKO" :style="{ position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center' }">
-                    <span :style="{ fontFamily:'Orbitron',fontSize:'9px',color:'#ff4d4d',fontWeight:900 }">KO</span>
+                    <span :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'#ff4d4d',fontWeight:900 }">KO</span>
                   </div>
                 </button>
               </template>
@@ -1660,7 +1697,7 @@ const mvp = computed(() => {
             <!-- PvP waiting indicator -->
             <div :style="{ flexShrink:0,width:'52px',textAlign:'center' }">
               <template v-if="isPvP && pvpWaiting">
-                <div :style="{ fontFamily:'Orbitron',fontSize:'6px',color:'rgba(0,200,255,.4)',letterSpacing:'.5px' }">ATTESA</div>
+                <div :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'rgba(0,200,255,.4)',letterSpacing:'.5px' }">ATTESA</div>
                 <div :style="{ display:'flex',gap:'3px',justifyContent:'center',marginTop:'3px' }">
                   <div v-for="k in [0,1,2]" :key="k" :style="{
                     width:'4px',height:'4px',borderRadius:'50%',background:'rgba(0,200,255,.4)',
@@ -1671,15 +1708,6 @@ const mvp = computed(() => {
             </div>
           </div>
 
-          <!-- Titolo action panel -->
-          <div v-if="isChoose && !isAnim && !(isPvP && pvpWaiting)" :style="{
-            fontFamily:'\'Saira Condensed\', Saira, sans-serif',
-            fontSize:'11px',fontWeight:700,color:'#6cf0e0',
-            letterSpacing:'1.5px',textTransform:'uppercase',
-            padding:'2px 12px 0', flexShrink:0,
-          }">
-            SCEGLI L'AZIONE — {{ player?.name ?? '' }}
-          </div>
 
           <!-- Griglia mosse 2×2 -->
           <div :style="{ flex:1,position:'relative',padding:'2px 10px 6px',display:'flex',flexDirection:'column',minHeight:0 }">
@@ -1691,8 +1719,8 @@ const mvp = computed(() => {
               display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'7px',
               pointerEvents:'none',
             }">
-              <div :style="{ fontFamily:'Orbitron',fontSize:'10px',color:'rgba(0,200,255,.75)',letterSpacing:'1.5px' }">MOSSA INVIATA ✓</div>
-              <div :style="{ fontFamily:'Fredoka',fontSize:'11px',color:'rgba(238,232,220,.38)' }">Attendo la mossa avversaria…</div>
+              <div :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'rgba(0,200,255,.75)',letterSpacing:'1.5px' }">MOSSA INVIATA ✓</div>
+              <div :style="{ fontFamily:'var(--ff-body)',fontSize:'12px',color:'var(--theme-text-3)' }">Attendo la mossa avversaria…</div>
             </div>
 
             <div :style="{
@@ -1734,7 +1762,7 @@ const mvp = computed(() => {
                   <template v-if="move">
                     <div :style="{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',width:'100%',gap:'4px' }">
                       <span :style="{
-                        fontFamily:'Orbitron',fontSize:'10px',fontWeight:700,lineHeight:1.3,
+                        fontFamily:'var(--ff-label)',fontSize:'14px',fontWeight:700,lineHeight:1.3,
                         color: (move.pp ?? 0) <= 0
                           ? _DISABLED_MOVE_STYLE.color
                           : isMoveBlocked(lastPMove, i, move) ? `${(_TYPE_COLORS_UI[move.type]?.border ?? '#555')}99`
@@ -1742,7 +1770,7 @@ const mvp = computed(() => {
                         flex:1, wordBreak:'break-word',
                         textDecoration: (move.pp ?? 0) <= 0 ? 'line-through' : 'none',
                       }">{{ move.name }}</span>
-                      <Lock v-if="isMoveBlocked(lastPMove, i, move)" :size="11" stroke-width="1.5" style="flex-shrink:0;color:rgba(241,235,255,0.5);" />
+                      <Lock v-if="isMoveBlocked(lastPMove, i, move)" :size="11" stroke-width="1.5" style="flex-shrink:0;color:var(--theme-text-2);" />
                       <template v-else-if="(move.pp ?? 0) > 0">
                         <!-- TypeBadge sm inline -->
                         <span :style="{
@@ -1750,8 +1778,8 @@ const mvp = computed(() => {
                           color:(_TYPE_COLORS_UI[move.type] ?? { border:'#555' }).border,
                           border:`1px solid ${(_TYPE_COLORS_UI[move.type] ?? { border:'#555' }).border}99`,
                           borderRadius:'4px', padding:'1px 5px',
-                          fontSize:'8px', fontWeight:700,
-                          fontFamily:'Orbitron,monospace', letterSpacing:.5,
+                          fontSize:'12px', fontWeight:700,
+                          fontFamily:'var(--ff-label)', letterSpacing:.5,
                           display:'inline-block', whiteSpace:'nowrap',
                         }">{{ move.type }}</span>
                       </template>
@@ -1768,7 +1796,7 @@ const mvp = computed(() => {
                           }"/>
                         </template>
                         <span :style="{
-                          fontFamily:'Orbitron', fontSize:'7px',
+                          fontFamily:'var(--ff-label)', fontSize:'12px',
                           color: (move.pp ?? 0) <= 0 ? _DISABLED_MOVE_STYLE.color : (_TYPE_COLORS_UI[move.type]?.border ?? '#555'),
                           marginLeft:'3px',opacity:0.85,flexShrink:0,
                         }">{{ move.pp ?? 0 }}/{{ move.maxPp ?? 8 }}</span>
@@ -1776,15 +1804,15 @@ const mvp = computed(() => {
                       <!-- Efficacia / cooldown label -->
                       <div :style="{ display:'flex',alignItems:'center',gap:'4px' }">
                         <span v-if="isMoveBlocked(lastPMove, i, move)" :style="{
-                          fontFamily:'Orbitron',fontSize:'7px',
+                          fontFamily:'var(--ff-label)',fontSize:'12px',
                           color:`${(_TYPE_COLORS_UI[move.type]?.border ?? '#555')}88`,letterSpacing:'.5px',
                         }"><Lock :size="7" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:2px;" />1 turno</span>
                         <span v-else-if="(move.pp ?? 0) <= 0" :style="{
-                          fontFamily:'Orbitron',fontSize:'7px',
+                          fontFamily:'var(--ff-label)',fontSize:'12px',
                           color:_DISABLED_MOVE_STYLE.color,textDecoration:'line-through',
                         }">PP 0</span>
                         <span v-else :style="{
-                          fontFamily:'Fredoka',fontSize:'9px',
+                          fontFamily:'var(--ff-body)',fontSize:'12px',
                           fontWeight: getEffDisplay(move.type, enemy?.type ?? 'Arcana', player?.type ?? 'Arcana').bold ? 700 : 500,
                           color: getEffDisplay(move.type, enemy?.type ?? 'Arcana', player?.type ?? 'Arcana').col,
                           letterSpacing:'.3px',whiteSpace:'nowrap',

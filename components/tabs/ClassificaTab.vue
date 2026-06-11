@@ -37,8 +37,10 @@ const FF = {
   mono:    "var(--ff-mono, 'JetBrains Mono', monospace)",
 }
 
-// Colori podio: oro, argento, bronzo
+// Colori podio: oro, argento, bronzo (usati per bordi/gradienti visivi)
 const podiumColors = [C.gold, '#cfd8e3', '#ff9b6b']
+// Colori testo nella lista classifica (più leggibili su sfondi chiari)
+const rankTextColors = [C.violet, '#5a7a96', '#ff9b6b']
 
 // ---- Stato reattivo ----
 const subTab    = ref<'giocatori' | 'waifu'>('giocatori')
@@ -81,15 +83,18 @@ const PODIO_INDICES = [1, 0, 2]
 const PODIO_HEIGHTS = [180, 150, 120] // altezza colonna in px
 
 // ---- Premi settimanali statici ----
-const premiRiga1 = [
-  { label: '🥇 1°', pack: 10, col: C.gold     },
-  { label: '🥈 2°', pack: 5,  col: '#cfd8e3'  },
-  { label: '🥉 3°', pack: 3,  col: '#ff9b6b'  },
-]
+const premiTop = { label: '1°',      medal: '🥇', pack: 10, col: C.violet  }
 const premiRiga2 = [
-  { label: '🏅 Top 100', pack: 2, col: C.violet  },
-  { label: '✦ Tutti',    pack: 1, col: '#5aa9ff' },
+  { label: '2°',      medal: '🥈', pack: 5,  col: '#5a7a96' },
+  { label: '3°',      medal: '🥉', pack: 3,  col: '#ff9b6b' },
 ]
+const premiRiga3 = [
+  { label: 'Top 100', medal: '🏅', pack: 2,  col: C.violet  },
+  { label: 'Tutti',   medal: '✦',  pack: 1,  col: C.violet  },
+]
+
+// ---- Stato collasso lista completa ----
+const listExpanded = ref(false)
 </script>
 
 <template>
@@ -129,7 +134,7 @@ const premiRiga2 = [
       <div :style="{ textAlign: 'center' }">
         <!-- Kicker: stagione e countdown -->
         <div :style="{
-          fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.42em',
+          fontFamily: FF.label, fontSize: '13px', letterSpacing: '0.28em',
           color: isDark ? '#E0A030' : 'var(--theme-accent)',
           textTransform: 'uppercase', marginBottom: '6px',
           fontWeight: 600, opacity: 1,
@@ -155,50 +160,82 @@ const premiRiga2 = [
       <div :style="{
         background: 'var(--theme-surface)',
         border: '1px solid var(--theme-border)',
-        borderRadius: '16px', padding: '14px 16px', marginBottom: '16px',
-        boxShadow: '0 4px 16px var(--theme-shadow)',
+        borderRadius: '16px', padding: '14px 16px 16px', marginBottom: '16px',
+        boxShadow: '0 4px 16px var(--theme-shadow)', overflow: 'visible',
       }">
         <div :style="{
-          fontFamily: FF.label, fontSize: '10px', color: C.goldL,
-          letterSpacing: '0.28em', marginBottom: '10px', fontWeight: 700,
+          fontFamily: FF.label, fontSize: '13px', color: 'var(--theme-text)',
+          letterSpacing: '0.2em', marginBottom: '12px', fontWeight: 700,
           textTransform: 'uppercase',
         }"><Gift :size="14" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:4px;" />Premi settimanali</div>
 
-        <!-- Riga 1: 1°, 2°, 3° posto -->
-        <div :style="{ display: 'flex', gap: '8px', marginBottom: '8px' }">
-          <div
-            v-for="p in premiRiga1"
-            :key="p.label"
-            :style="{
-              flex: 1,
-              background: 'var(--theme-bg-secondary)',
-              border: '1px solid var(--theme-border)',
-              borderRadius: '11px', padding: '8px 10px', textAlign: 'center',
-              boxShadow: '0 2px 6px var(--theme-shadow)',
-            }"
-          >
-            <div :style="{ fontSize: '11px', color: p.col, fontWeight: 700, fontFamily: FF.label, letterSpacing: '0.12em' }">{{ p.label }}</div>
-            <div :style="{ fontSize: '18px', color: 'var(--theme-text)', fontFamily: FF.mono, fontWeight: 800, marginTop: '2px' }">{{ p.pack }}</div>
-            <div :style="{ fontSize: '8px', color: 'var(--theme-text-3)', fontFamily: FF.label, letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: '2px' }">🎴 PREMIO</div>
+        <!-- Riga 1: solo 1° posto, centrato -->
+        <div :style="{ display:'flex', justifyContent:'center', marginBottom:'12px', paddingTop:'14px' }">
+          <div :style="{
+            width:'55%', position:'relative',
+            background:'var(--theme-bg-secondary)',
+            border:`1.5px solid ${premiTop.col}88`,
+            borderRadius:'14px', padding:'14px 14px 12px',
+            boxShadow:`0 6px 20px ${premiTop.col}33`,
+          }">
+            <span :style="{ position:'absolute', top:'-16px', left:'-14px', fontSize:'34px', zIndex:2, filter:`drop-shadow(0 2px 10px ${premiTop.col}99)` }">{{ premiTop.medal }}</span>
+            <div :style="{ position:'absolute', top:'8px', right:'10px', fontFamily:FF.label, fontSize:'20px', fontWeight:800, color:premiTop.col, lineHeight:1 }">{{ premiTop.label }}</div>
+            <div :style="{ display:'flex', alignItems:'center', gap:'12px', marginTop:'6px' }">
+              <img src="~/assets/images/back_card.png" alt="" :style="{ width:'42px', height:'auto', borderRadius:'5px', flexShrink:0, filter:`drop-shadow(0 3px 8px ${premiTop.col}66)` }" />
+              <div>
+                <div :style="{ fontFamily:FF.label, fontSize:'11px', color:'var(--theme-text-2)', letterSpacing:'0.2em', textTransform:'uppercase', marginBottom:'3px' }">PREMIO</div>
+                <div :style="{ fontFamily:FF.label, fontSize:'16px', fontWeight:800, color:premiTop.col, lineHeight:1.15, whiteSpace:'nowrap' }">{{ premiTop.pack }} carte waifu</div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Riga 2: Top 100 e tutti i partecipanti -->
-        <div :style="{ display: 'flex', gap: '8px' }">
+        <!-- Riga 2: 2° e 3° affiancati -->
+        <div :style="{ display:'flex', gap:'12px', marginBottom:'12px' }">
           <div
             v-for="p in premiRiga2"
             :key="p.label"
             :style="{
-              flex: 1,
-              background: 'var(--theme-bg-secondary)',
-              border: '1px solid var(--theme-border)',
-              borderRadius: '11px', padding: '8px 10px', textAlign: 'center',
-              boxShadow: '0 2px 6px var(--theme-shadow)',
+              flex:1, position:'relative',
+              background:'var(--theme-bg-secondary)',
+              border:`1.5px solid ${p.col}77`,
+              borderRadius:'14px', padding:'14px 12px 12px',
+              boxShadow:`0 4px 14px ${p.col}22`,
             }"
           >
-            <div :style="{ fontSize: '11px', color: p.col, fontWeight: 700, fontFamily: FF.label, letterSpacing: '0.12em' }">{{ p.label }}</div>
-            <div :style="{ fontSize: '18px', color: 'var(--theme-text)', fontFamily: FF.mono, fontWeight: 800, marginTop: '2px' }">{{ p.pack }}</div>
-            <div :style="{ fontSize: '8px', color: 'var(--theme-text-3)', fontFamily: FF.label, letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: '2px' }">🎴 PREMIO</div>
+            <span :style="{ position:'absolute', top:'-14px', left:'-12px', fontSize:'28px', zIndex:2, filter:`drop-shadow(0 2px 8px ${p.col}88)` }">{{ p.medal }}</span>
+            <div :style="{ position:'absolute', top:'7px', right:'9px', fontFamily:FF.label, fontSize:'17px', fontWeight:800, color:p.col, lineHeight:1 }">{{ p.label }}</div>
+            <div :style="{ display:'flex', alignItems:'center', gap:'10px', marginTop:'6px' }">
+              <img src="~/assets/images/back_card.png" alt="" :style="{ width:'36px', height:'auto', borderRadius:'4px', flexShrink:0, filter:`drop-shadow(0 2px 6px ${p.col}55)` }" />
+              <div>
+                <div :style="{ fontFamily:FF.label, fontSize:'11px', color:'var(--theme-text-2)', letterSpacing:'0.2em', textTransform:'uppercase', marginBottom:'3px' }">PREMIO</div>
+                <div :style="{ fontFamily:FF.label, fontSize:'14px', fontWeight:800, color:p.col, lineHeight:1.15, whiteSpace:'nowrap' }">{{ p.pack }} carte waifu</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Riga 3: Top 100 e Tutti (senza icone floating) -->
+        <div :style="{ display:'flex', gap:'12px' }">
+          <div
+            v-for="p in premiRiga3"
+            :key="p.label"
+            :style="{
+              flex:1, position:'relative',
+              background:'var(--theme-bg-secondary)',
+              border:`1.5px solid ${p.col}66`,
+              borderRadius:'14px', padding:'14px 12px 12px',
+              boxShadow:`0 4px 14px ${p.col}22`,
+            }"
+          >
+            <div :style="{ position:'absolute', top:'7px', right:'9px', fontFamily:FF.label, fontSize:'14px', fontWeight:800, color:p.col, lineHeight:1 }">{{ p.label }}</div>
+            <div :style="{ display:'flex', alignItems:'center', gap:'10px', marginTop:'6px' }">
+              <img src="~/assets/images/back_card.png" alt="" :style="{ width:'32px', height:'auto', borderRadius:'4px', flexShrink:0, filter:`drop-shadow(0 2px 6px ${p.col}55)` }" />
+              <div>
+                <div :style="{ fontFamily:FF.label, fontSize:'11px', color:'var(--theme-text-2)', letterSpacing:'0.2em', textTransform:'uppercase', marginBottom:'3px' }">PREMIO</div>
+                <div :style="{ fontFamily:FF.label, fontSize:'14px', fontWeight:800, color:p.col, lineHeight:1.15, whiteSpace:'nowrap' }">{{ p.pack }} carte waifu</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -274,7 +311,7 @@ const premiRiga2 = [
                 position: 'absolute', bottom: '-12px', left: '50%',
                 transform: 'translateX(-50%)',
                 background: podiumColors[idx], color: '#1a0e00',
-                fontFamily: FF.label, fontSize: '8px', fontWeight: 800,
+                fontFamily: FF.label, fontSize: '11px', fontWeight: 800,
                 padding: '2px 8px', borderRadius: '999px',
                 border: `1px solid ${C.ink}`, letterSpacing: '0.18em',
                 textTransform: 'uppercase', whiteSpace: 'nowrap',
@@ -313,9 +350,9 @@ const premiRiga2 = [
 
             <!-- Numero di territori -->
             <div :style="{
-              fontFamily: FF.label, fontSize: '8px',
+              fontFamily: FF.label, fontSize: '12px',
               color: 'var(--theme-text-2)',
-              letterSpacing: '0.22em', marginTop: '4px',
+              letterSpacing: '0.15em', marginTop: '4px',
               textTransform: 'uppercase', fontWeight: 600,
             }">
               {{ classifica[idx]._territori }}
@@ -354,7 +391,7 @@ const premiRiga2 = [
             <span :style="{ color: C.sakura }">· TU</span>
           </div>
           <div :style="{
-            fontFamily: FF.mono, fontSize: '10px',
+            fontFamily: FF.label, fontSize: '10px',
             color: 'var(--theme-text-2)', marginTop: '2px',
             letterSpacing: '-0.01em',
           }">
@@ -365,7 +402,7 @@ const premiRiga2 = [
 
         <!-- Premio per la propria posizione -->
         <div :style="{ textAlign: 'right' }">
-          <div :style="{ fontFamily: FF.mono, fontSize: '13px', color: C.goldL, fontWeight: 700 }">
+          <div :style="{ fontFamily: FF.label, fontSize: '13px', color: C.goldL, fontWeight: 700 }">
             {{ premioPerPosizione(mioIndice + 1) }} 🎴
           </div>
           <div :style="{
@@ -376,140 +413,129 @@ const premiRiga2 = [
         </div>
       </div>
 
-      <!-- ===== LISTA COMPLETA ===== -->
-      <UiPannelloOrnato
-        v-if="!loading && classifica.length > 0"
-        :glow="C.gold"
-        variant="default"
-        :extra-style="{ padding: '0', overflow: 'hidden' }"
+      <!-- ===== CLASSIFICA COMPLETA — card collassabile ===== -->
+      <div
+        v-if="!loading"
+        :style="{
+          background: 'var(--theme-surface)', border: '1px solid var(--theme-border)',
+          borderRadius: '16px', marginBottom: '14px',
+          boxShadow: '0 4px 16px var(--theme-shadow)', overflow: 'hidden',
+        }"
       >
-        <!-- Intestazione colonne -->
-        <div :style="{
-          display: 'flex', alignItems: 'center', gap: '10px',
-          padding: '10px 14px',
-          borderBottom: `1px solid ${C.inkLine}`,
-          fontFamily: FF.label, fontSize: '8px', letterSpacing: '0.22em',
-          color: 'var(--theme-text-3)', textTransform: 'uppercase', fontWeight: 700,
-        }">
-          <div :style="{ minWidth: '30px' }">#</div>
-          <div :style="{ flex: 1 }">Giocatore</div>
-          <div :style="{ minWidth: '60px', textAlign: 'center' }">Territori</div>
-          <div :style="{ minWidth: '38px', textAlign: 'right' }">Premio</div>
+        <!-- Header cliccabile -->
+        <div
+          @click="listExpanded = !listExpanded"
+          :style="{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '16px 18px', cursor: 'pointer',
+          }"
+        >
+          <div :style="{ display:'flex', alignItems:'center', gap:'10px' }">
+            <Trophy :size="18" stroke-width="1.5" :style="{ color: C.gold }" />
+            <span :style="{ fontFamily:FF.label, fontSize:'16px', fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--theme-text)' }">Classifica Completa</span>
+          </div>
+          <div :style="{ display:'flex', alignItems:'center', gap:'10px' }">
+            <span v-if="classifica.length" :style="{ fontFamily:FF.label, fontSize:'13px', color:'var(--theme-text-3)' }">{{ classifica.length }} giocatori</span>
+            <span :style="{ fontFamily:FF.label, fontSize:'16px', color:'var(--theme-text-3)', transition:'transform 0.25s', display:'inline-block', transform: listExpanded ? 'rotate(180deg)' : 'none' }">▾</span>
+          </div>
         </div>
 
-        <!-- Righe classifica con scroll interno -->
-        <div :style="{ maxHeight: '440px', overflowY: 'auto' }">
-          <div
-            v-for="(u, i) in classifica.slice(0, visibili)"
-            :key="u.id"
-            :style="{
-              display: 'flex', alignItems: 'center', gap: '10px',
-              padding: '10px 14px',
-              background: (user && u.id === user.uid)
-                ? `linear-gradient(90deg, ${C.gold}1a, transparent)`
-                : i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)',
-              borderLeft: (user && u.id === user.uid)
-                ? `3px solid ${C.gold}` : '3px solid transparent',
-              borderBottom: '1px solid var(--theme-border)',
-              transition: 'background 0.15s',
-            }"
-          >
-            <!-- Posizione: medaglia per top 3, numero per gli altri -->
-            <div :style="{ minWidth: '30px', textAlign: 'center' }">
-              <span v-if="i < 3" :style="{ fontSize: '18px' }">{{ ['🥇','🥈','🥉'][i] }}</span>
-              <span
-                v-else
-                :style="{
-                  fontFamily: FF.mono, fontSize: '11px', fontWeight: (user && u.id === user.uid) ? 800 : 600,
-                  color: i <= 2 ? podiumColors[i] : (user && u.id === user.uid) ? C.gold : 'var(--theme-text-3)',
-                }"
-              >#{{ i + 1 }}</span>
+        <!-- Contenuto espandibile -->
+        <div v-if="listExpanded">
+          <!-- Stato vuoto -->
+          <div v-if="classifica.length === 0" :style="{ padding: '40px', textAlign: 'center' }">
+            <Trophy :size="38" stroke-width="1" style="margin-bottom:8px;filter:drop-shadow(0 0 12px rgba(245,197,96,0.5));color:#f5c560;" />
+            <div :style="{ fontFamily:FF.label, fontSize:'13px', color:C.gold, letterSpacing:'0.24em', marginBottom:'6px', textTransform:'uppercase', fontWeight:700 }">Classifica vuota</div>
+            <div :style="{ fontFamily:FF.body, fontSize:'13px', color:'var(--theme-text-2)', lineHeight:1.6 }">Sii il primo a conquistare territori<br/>e scalare la classifica!</div>
+          </div>
+
+          <template v-else>
+            <!-- Intestazione colonne -->
+            <div :style="{
+              display:'flex', alignItems:'center', gap:'10px',
+              padding:'10px 18px', borderTop:'1px solid var(--theme-border)',
+              fontFamily:FF.label, fontSize:'12px', letterSpacing:'0.2em',
+              color:'var(--theme-text-2)', textTransform:'uppercase', fontWeight:700,
+            }">
+              <div :style="{ minWidth:'34px' }">#</div>
+              <div :style="{ flex:1 }">Giocatore</div>
+              <div :style="{ minWidth:'72px', textAlign:'center' }">Territori</div>
+              <div :style="{ minWidth:'44px', textAlign:'right' }">Premio</div>
             </div>
 
-            <!-- Nome giocatore con indicatore "TU" -->
-            <div :style="{ flex: 1, minWidth: 0 }">
-              <div :style="{
-                fontFamily: FF.display, fontSize: '11px',
-                color: i <= 2 ? podiumColors[i] : (user && u.id === user.uid) ? C.gold : 'var(--theme-text)',
-                fontWeight: (user && u.id === user.uid) || i <= 2 ? 700 : 500,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }">
-                {{ (u._nomeDisplay || u.nomeImpero || u.nome || u.email?.split('@')[0] || 'Giocatore').slice(0, 22) }}
-                <span
-                  v-if="user && u.id === user.uid"
-                  :style="{
-                    marginLeft: '6px', fontSize: '8px', color: C.gold,
-                    fontFamily: FF.label, letterSpacing: '0.18em',
-                  }"
-                >← TU</span>
+            <!-- Righe classifica -->
+            <div :style="{ maxHeight: '440px', overflowY: 'auto' }">
+              <div
+                v-for="(u, i) in classifica.slice(0, visibili)"
+                :key="u.id"
+                :style="{
+                  display:'flex', alignItems:'center', gap:'10px',
+                  padding:'12px 18px',
+                  background: (user && u.id === user.uid)
+                    ? `linear-gradient(90deg, ${C.gold}1a, transparent)`
+                    : i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)',
+                  borderLeft: (user && u.id === user.uid) ? `3px solid ${C.gold}` : '3px solid transparent',
+                  borderBottom:'1px solid var(--theme-border)',
+                }"
+              >
+                <!-- Posizione -->
+                <div :style="{ minWidth:'34px', textAlign:'center' }">
+                  <span v-if="i < 3" :style="{ fontSize:'20px' }">{{ ['🥇','🥈','🥉'][i] }}</span>
+                  <span v-else :style="{ fontFamily:FF.label, fontSize:'14px', fontWeight:(user && u.id === user.uid) ? 800 : 600, color:(user && u.id === user.uid) ? C.gold : 'var(--theme-text-3)' }">#{{ i + 1 }}</span>
+                </div>
+
+                <!-- Nome -->
+                <div :style="{ flex:1, minWidth:0 }">
+                  <div :style="{
+                    fontFamily:FF.label, fontSize:'15px', fontWeight:(user && u.id === user.uid) || i <= 2 ? 800 : 600,
+                    color: i <= 2 ? rankTextColors[i] : (user && u.id === user.uid) ? C.violet : 'var(--theme-text)',
+                    overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                  }">
+                    {{ (u._nomeDisplay || u.nomeImpero || u.nome || u.email?.split('@')[0] || 'Giocatore').slice(0, 22) }}
+                    <span v-if="user && u.id === user.uid" :style="{ marginLeft:'6px', fontSize:'12px', color:C.gold, fontFamily:FF.label, letterSpacing:'0.12em' }">← TU</span>
+                  </div>
+                </div>
+
+                <!-- Territori -->
+                <div :style="{
+                  minWidth:'72px', textAlign:'center',
+                  fontFamily:FF.label, fontSize:'14px', fontWeight:600,
+                  color: i <= 2 ? rankTextColors[i] : (user && u.id === user.uid) ? C.violet : 'var(--theme-text-2)',
+                }">
+                  <MapIcon :size="13" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:3px;" />{{ u._territori }}
+                </div>
+
+                <!-- Premio -->
+                <div :style="{ minWidth:'44px', textAlign:'right', display:'flex', alignItems:'center', justifyContent:'flex-end', gap:'4px' }">
+                  <span :style="{ fontFamily:FF.label, fontSize:'14px', fontWeight:700, color: premioPerPosizione(i + 1) >= 1 ? C.violet : 'var(--theme-text-3)' }">{{ premioPerPosizione(i + 1) }}</span>
+                  <img src="~/assets/images/back_card.png" alt="" :style="{ width:'18px', height:'auto', borderRadius:'2px', opacity: premioPerPosizione(i + 1) >= 1 ? 1 : 0.3 }" />
+                </div>
               </div>
             </div>
 
-            <!-- Conteggio territori -->
-            <div :style="{
-              minWidth: '60px', textAlign: 'center',
-              fontFamily: FF.mono, fontSize: '11px', fontWeight: 600,
-              color: i <= 2 ? podiumColors[i] : (user && u.id === user.uid) ? C.gold : 'var(--theme-text-2)',
-            }">
-              <MapIcon :size="12" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:3px;" />{{ u._territori }}
+            <!-- Carica altri -->
+            <div v-if="visibili < classifica.length" :style="{ padding:'14px 18px', textAlign:'center', borderTop:`1px solid ${C.inkLine}` }">
+              <button
+                @click="visibili += 20"
+                :style="{
+                  background:'rgba(245,197,96,0.08)', border:`1px solid ${C.gold}40`,
+                  borderRadius:'10px', color:C.goldL,
+                  fontFamily:FF.label, fontSize:'13px', letterSpacing:'0.15em',
+                  textTransform:'uppercase', padding:'10px 24px', cursor:'pointer',
+                }"
+              >Carica altri 20 ({{ classifica.length - visibili }} rimanenti)</button>
             </div>
-
-            <!-- Premio per posizione -->
-            <div :style="{
-              minWidth: '38px', textAlign: 'right',
-              fontFamily: FF.mono, fontSize: '10px',
-              color: premioPerPosizione(i + 1) >= 3 ? C.goldL : 'var(--theme-text-3)',
-              fontWeight: premioPerPosizione(i + 1) >= 3 ? 700 : 500,
-            }">{{ premioPerPosizione(i + 1) }} 🎴</div>
-          </div>
+          </template>
         </div>
+      </div>
 
-        <!-- Pulsante "Carica altri 20" per paginazione incrementale -->
-        <div
-          v-if="visibili < classifica.length"
-          :style="{
-            padding: '12px 16px', textAlign: 'center',
-            borderTop: `1px solid ${C.inkLine}`,
-          }"
-        >
-          <button
-            @click="visibili += 20"
-            :style="{
-              background: 'rgba(245,197,96,0.08)',
-              border: `1px solid ${C.gold}40`,
-              borderRadius: '10px', color: C.goldL,
-              fontFamily: FF.label, fontSize: '10px',
-              letterSpacing: '0.15em', textTransform: 'uppercase',
-              padding: '8px 20px', cursor: 'pointer',
-            }"
-          >Carica altri 20 ({{ classifica.length - visibili }} rimanenti)</button>
-        </div>
-
-        <!-- Stato vuoto (nessun giocatore) -->
-        <div
-          v-if="classifica.length === 0"
-          :style="{ padding: '40px', textAlign: 'center' }"
-        >
-          <Trophy :size="38" stroke-width="1" style="margin-bottom:8px;filter:drop-shadow(0 0 12px rgba(245,197,96,0.5));color:#f5c560;" />
-          <div :style="{
-            fontFamily: FF.label, fontSize: '10px', color: C.gold,
-            letterSpacing: '0.24em', marginBottom: '6px',
-            textTransform: 'uppercase', fontWeight: 700,
-          }">Classifica vuota</div>
-          <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">
-            Sii il primo a conquistare territori<br/>e scalare la classifica!
-          </div>
-        </div>
-      </UiPannelloOrnato>
-
-      <!-- Nota sui criteri di ordinamento -->
+      <!-- Nota criteri -->
       <div :style="{
-        textAlign: 'center', marginTop: '14px',
-        fontSize: '8px', color: 'var(--theme-text-3)',
-        fontFamily: FF.label, letterSpacing: '0.22em',
-        textTransform: 'uppercase', fontWeight: 600,
+        textAlign:'center', marginTop:'10px',
+        fontFamily:FF.label, fontSize:'11px', color:'var(--theme-text-3)',
+        letterSpacing:'0.18em', textTransform:'uppercase', fontWeight:600,
       }">
-        Criteri · Territori conquistati → Pass Hard (spareggio) → Data iscrizione
+        Criteri · Territori → Pass Hard (spareggio) → Iscrizione
       </div>
 
     </template>

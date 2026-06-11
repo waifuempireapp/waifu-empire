@@ -10,9 +10,10 @@ import { getDb } from '~/utils/firebase'
 
 // ── Costanti tipografiche locali ──────────────────────────────────────────────
 const FF = {
-  label:   "'Saira Condensed', sans-serif",
-  mono:    "'JetBrains Mono', monospace",
-  display: "'Unbounded', sans-serif",
+  label:   "var(--ff-label, 'Saira Condensed', sans-serif)",
+  mono:    "var(--ff-mono, 'JetBrains Mono', monospace)",
+  display: "var(--ff-display, 'Unbounded', sans-serif)",
+  body:    "var(--ff-body, 'DM Sans', sans-serif)",
 }
 
 // ── Props ed emits ────────────────────────────────────────────────────────────
@@ -159,6 +160,12 @@ async function claimReward() {
   }
 }
 
+// ── Stato collasso card partecipazione ────────────────────────────────────────
+const partExpanded = ref(false)
+
+// ── Popup info raid ───────────────────────────────────────────────────────────
+const showInfo = ref(false)
+
 // ── Computed ──────────────────────────────────────────────────────────────────
 const hpPct       = computed(() => raid.value ? Math.max(0, (raid.value.currentHp / raid.value.totalHp) * 100) : 0)
 const isActive    = computed(() => raid.value?.status === 'active')
@@ -205,26 +212,27 @@ const MEDAL = ['🥇', '🥈', '🥉']
 <template>
   <!-- Overlay con chiusura al click sfondo ────────────────────────── -->
   <div
-    style="position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:200;overflow-y:auto;padding:16px"
+    style="position:fixed;inset:0;background:rgba(3,2,12,0.75);backdrop-filter:blur(6px);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;"
     @click.self="emit('chiudi')"
   >
     <!-- Loading ──────────────────────────────────────────────────── -->
     <div
       v-if="loading"
-      style="position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:200;display:flex;align-items:center;justify-content:center"
-    >
-      <div style="color:#ec4899;font-size:40px;animation:pulse 1s ease-in-out infinite">⚔</div>
-    </div>
+      style="color:#ec4899;font-size:40px;animation:pulse 1s ease-in-out infinite"
+    >⚔</div>
 
     <!-- Pannello ─────────────────────────────────────────────────── -->
     <div
       v-else
-      style="max-width:480px;margin:0 auto;background:rgba(10,7,38,0.98);border-radius:20px;border:1px solid rgba(236,72,153,0.3);padding:24px"
+      :style="{ fontFamily: FF.body, width:'min(92vw,480px)', maxHeight:'90vh', overflowY:'auto', background:'var(--theme-surface)', borderRadius:'20px', border:'1px solid rgba(236,72,153,0.3)', padding:'24px', boxShadow:'0 24px 60px var(--theme-shadow)' }"
     >
       <!-- Header -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <div :style="{ fontFamily: FF.display, fontSize: '18px', color: '#ec4899', fontWeight: 800 }">⚔ Raid Island</div>
-        <button @click="emit('chiudi')" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:20px;cursor:pointer">✕</button>
+        <div>
+          <div :style="{ fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.28em', color: 'var(--theme-accent-pink)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '2px' }">Evento</div>
+          <div :style="{ fontFamily: FF.display, fontSize: '22px', color: 'var(--theme-text)', fontWeight: 900 }">Raid Island</div>
+        </div>
+        <button @click="emit('chiudi')" :style="{ background:'none', border:'none', color:'var(--theme-text-2)', fontSize:'20px', cursor:'pointer', fontFamily: FF.label }">✕</button>
       </div>
 
       <!-- Tabs -->
@@ -234,12 +242,12 @@ const MEDAL = ['🥇', '🥈', '🥉']
           :key="t"
           @click="tab = t as 'dettaglio' | 'classifica'"
           :style="{
-            flex: 1, padding: '8px 0',
-            background: tab === t ? 'rgba(236,72,153,0.2)' : 'rgba(255,255,255,0.04)',
-            border: `1px solid ${tab === t ? 'rgba(236,72,153,0.5)' : 'rgba(255,255,255,0.1)'}`,
-            borderRadius: '8px', color: tab === t ? '#ec4899' : 'rgba(255,255,255,0.5)',
+            flex: 1, padding: '9px 0',
+            background: tab === t ? 'var(--theme-tab-active)' : 'var(--theme-shimmer)',
+            border: `1px solid ${tab === t ? 'rgba(236,72,153,0.5)' : 'var(--theme-border)'}`,
+            borderRadius: '999px', color: tab === t ? 'var(--theme-accent-pink)' : 'var(--theme-text-2)',
             fontFamily: FF.label, fontSize: '11px', fontWeight: 700, cursor: 'pointer',
-            letterSpacing: '0.1em', textTransform: 'uppercase',
+            letterSpacing: '0.12em', textTransform: 'uppercase',
           }"
         >{{ t === 'dettaglio' ? '⚔ Dettaglio' : '🏆 Classifica' }}</button>
       </div>
@@ -247,14 +255,14 @@ const MEDAL = ['🥇', '🥈', '🥉']
       <!-- Nessun raid attivo -->
       <div
         v-if="!raid"
-        style="text-align:center;padding:40px;color:rgba(255,255,255,0.4)"
+        :style="{ textAlign:'center', padding:'40px', color:'var(--theme-text-3)', fontFamily: FF.body, fontSize:'14px' }"
       >Nessun raid attivo al momento</div>
 
       <!-- ── TAB DETTAGLIO ─────────────────────────────────────────── -->
       <template v-else-if="tab === 'dettaglio'">
         <!-- Nome waifu -->
         <div style="text-align:center;margin-bottom:12px">
-          <div :style="{ fontFamily: FF.display, fontSize: '18px', color: '#fff', fontWeight: 800 }">{{ raid.waifuNome }}</div>
+          <div :style="{ fontFamily: FF.display, fontSize: '20px', color: 'var(--theme-text)', fontWeight: 900 }">{{ raid.waifuNome }}</div>
         </div>
 
         <!-- Immagine -->
@@ -267,19 +275,19 @@ const MEDAL = ['🥇', '🥈', '🥉']
         </div>
 
         <!-- Label -->
-        <div :style="{ textAlign: 'center', fontFamily: FF.label, fontSize: '10px', color: 'rgba(236,72,153,0.7)', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '12px' }">
+        <div :style="{ textAlign: 'center', fontFamily: FF.label, fontSize: '10px', color: 'rgba(236,72,153,0.7)', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '6px' }">
           WAIFU RAID
         </div>
 
         <!-- HP numerici -->
-        <div :style="{ textAlign: 'center', fontFamily: FF.mono, fontSize: '16px', fontWeight: 700, color: hpBarColor, marginBottom: '8px' }">
+        <div :style="{ textAlign: 'center', fontFamily: FF.label, fontSize: '20px', fontWeight: 700, color: hpBarColor, marginBottom: '8px' }">
           {{ Math.max(0, raid.currentHp).toLocaleString() }}
-          <span style="color:rgba(255,255,255,0.3);font-weight:400">/</span>
+          <span :style="{ color:'var(--theme-text-3)', fontWeight:400 }">/</span>
           {{ raid.totalHp.toLocaleString() }} HP
         </div>
 
         <!-- Barra HP -->
-        <div style="height:12px;background:rgba(255,255,255,0.08);border-radius:6px;margin-bottom:14px;overflow:hidden">
+        <div :style="{ height:'12px', background:'var(--theme-border)', borderRadius:'6px', marginBottom:'14px', overflow:'hidden' }">
           <div :style="{
             height: '100%', width: `${hpPct}%`,
             background: `linear-gradient(90deg, ${hpBarColor}cc, ${hpBarColor})`,
@@ -290,49 +298,73 @@ const MEDAL = ['🥇', '🥈', '🥉']
         <!-- Status + countdown -->
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
           <div :style="{
-            fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.1em',
-            color: isActive ? '#06d6a0' : isCompleted ? '#f59e0b' : 'rgba(255,255,255,0.4)',
+            fontFamily: FF.label, fontSize: '15px', letterSpacing: '0.12em',
+            color: isActive ? '#059669' : isCompleted ? '#d97706' : 'var(--theme-text-3)',
           }">
             {{ isActive ? '🟢 RAID ATTIVO' : isCompleted ? '✅ COMPLETATO' : '❌ SCADUTO' }}
           </div>
           <div
             v-if="isActive && raid.endsAt"
-            :style="{ fontFamily: FF.mono, fontSize: '13px', color: '#f59e0b', fontVariantNumeric: 'tabular-nums' }"
+            :style="{ fontFamily: FF.label, fontSize: '15px', color: '#f59e0b' }"
           >
             ⏱ {{ countdownHMS }}
           </div>
         </div>
 
-        <!-- La mia partecipazione -->
+        <!-- La mia partecipazione — card collassabile -->
         <div
           v-if="myParticipation && myParticipation.damageDealt > 0"
-          style="background:rgba(6,214,160,0.08);border:1px solid rgba(6,214,160,0.2);border-radius:10px;padding:12px 14px;margin-bottom:16px"
+          :style="{
+            background:'rgba(6,214,160,0.08)', border:'1px solid rgba(6,214,160,0.2)',
+            borderRadius:'12px', marginBottom:'16px', overflow:'hidden',
+          }"
         >
-          <div :style="{ fontFamily: FF.label, fontSize: '9px', color: 'rgba(6,214,160,0.7)', marginBottom: '6px' }">LA TUA PARTECIPAZIONE</div>
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-            <div :style="{ fontFamily: FF.mono, fontSize: '14px', color: '#06d6a0', fontWeight: 700 }">
-              -{{ myParticipation.damageDealt.toLocaleString() }} HP inflitti
+          <!-- Header sempre visibile — click per espandere -->
+          <div
+            @click="partExpanded = !partExpanded"
+            :style="{
+              display:'flex', justifyContent:'space-between', alignItems:'center',
+              padding:'14px 16px', cursor:'pointer', gap:'10px',
+            }"
+          >
+            <div>
+              <div :style="{ fontFamily: FF.label, fontSize: '11px', color: '#06d6a0', letterSpacing:'0.18em', textTransform:'uppercase', marginBottom:'4px' }">
+                La tua partecipazione
+              </div>
+              <div :style="{ fontFamily: FF.label, fontSize: '18px', color: '#06d6a0', fontWeight: 800 }">
+                -{{ myParticipation.damageDealt.toLocaleString() }} HP inflitti
+              </div>
             </div>
-            <div v-if="myRankPos > 0" :style="{ fontFamily: FF.label, fontSize: '11px', color: '#f59e0b' }">
-              #{{ myRankPos }} in classifica
+            <div :style="{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'4px', flexShrink:0 }">
+              <div v-if="myRankPos > 0" :style="{ fontFamily: FF.label, fontSize: '14px', color: '#f59e0b', fontWeight: 700 }">
+                #{{ myRankPos }} in classifica
+              </div>
+              <div :style="{ fontFamily: FF.label, fontSize: '12px', color: 'rgba(6,214,160,0.5)', letterSpacing:'0.05em' }">
+                {{ partExpanded ? '▲ chiudi' : '▼ dettagli' }}
+              </div>
             </div>
           </div>
 
-          <!-- Premio atteso -->
-          <div
-            v-if="myPrize"
-            style="margin-top:8px;padding:6px 10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:7px"
-          >
-            <div :style="{ fontFamily: FF.label, fontSize: '9px', color: 'rgba(245,158,11,0.7)', marginBottom: '3px' }">
-              {{ isCompleted ? 'PREMIO DA RISCUOTERE' : 'PREMIO ATTESO (se il raid si completa)' }}
+          <!-- Contenuto espandibile -->
+          <div v-if="partExpanded && myPrize" :style="{
+            padding:'0 16px 14px', borderTop:'1px solid rgba(6,214,160,0.15)',
+          }">
+            <div :style="{ fontFamily: FF.label, fontSize: '11px', color: '#f59e0b', letterSpacing:'0.18em', textTransform:'uppercase', margin:'12px 0 8px' }">
+              {{ isCompleted ? 'Premio da riscuotere' : 'Premio atteso' }}
             </div>
-            <div style="display:flex;align-items:center;gap:10px">
-              <span :style="{ fontFamily: FF.mono, fontSize: '13px', color: '#f5c560', fontWeight: 700 }">
-                +{{ myPrize.kisses.toLocaleString() }} <KissesIcon :size="13" />
+            <div :style="{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'10px' }">
+              <span :style="{ fontFamily: FF.label, fontSize: '18px', color: '#f5c560', fontWeight: 800 }">
+                +{{ myPrize.kisses.toLocaleString() }} <KissesIcon :size="15" />
               </span>
               <span
                 v-if="myPrize.waifu"
-                style="font-family:'Saira Condensed',sans-serif;font-size:10px;color:#ec4899;background:rgba(236,72,153,0.12);border:1px solid rgba(236,72,153,0.3);border-radius:5px;padding:2px 8px"
+                :style="{
+                  fontFamily: FF.label, fontSize:'14px', fontWeight:700,
+                  color:'var(--theme-accent-pink)',
+                  background:'rgba(236,72,153,0.14)', border:'1.5px solid rgba(236,72,153,0.4)',
+                  borderRadius:'999px', padding:'6px 16px',
+                  letterSpacing:'0.05em',
+                }"
               >🎴 +{{ raid.waifuNome }}</span>
             </div>
           </div>
@@ -340,14 +372,71 @@ const MEDAL = ['🥇', '🥈', '🥉']
 
         <!-- CTA Combatti (raid attivo) -->
         <template v-if="isActive">
-          <button
-            @click="emit('battle', { ...raid, cpuDifficulty: myParticipation?.cpuDifficulty ?? 'medium' })"
-            style="width:100%;padding:14px;background:linear-gradient(135deg,#ec4899,#a855f7);border:none;border-radius:12px;color:#fff;font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px;letter-spacing:0.1em;box-shadow:0 4px 20px rgba(236,72,153,0.4)"
-          >⚔ COMBATTI</button>
-          <div :style="{ textAlign: 'center', fontFamily: FF.label, fontSize: '10px', color: 'rgba(241,235,255,0.4)', lineHeight: 1.6, marginBottom: '16px', letterSpacing: '0.05em' }">
-            Porta gli HP della Waifu Raid a 0 collaborando con altri giocatori per sbloccare le ricompense. Ogni vittoria in battaglia toglie HP, ogni sconfitta ne aggiunge.
+          <div :style="{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'10px' }">
+            <button
+              @click="emit('battle', { ...raid, cpuDifficulty: myParticipation?.cpuDifficulty ?? 'medium' })"
+              :style="{ flex:1, padding:'14px', background:'linear-gradient(135deg,#ec4899,#a855f7)', border:'none', borderRadius:'999px', color:'#fff', fontFamily:FF.label, fontSize:'13px', fontWeight:700, cursor:'pointer', letterSpacing:'0.12em', boxShadow:'0 4px 20px rgba(236,72,153,0.4)', textTransform:'uppercase' }"
+            >⚔ Combatti</button>
+            <!-- Chip info -->
+            <button
+              @click="showInfo = true"
+              :style="{
+                width:'38px', height:'38px', borderRadius:'50%', border:'1.5px solid rgba(167,139,250,0.4)',
+                background:'rgba(167,139,250,0.1)', color:'rgba(167,139,250,0.8)',
+                fontFamily:FF.label, fontSize:'16px', fontWeight:800,
+                cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center',
+              }"
+            >?</button>
           </div>
         </template>
+
+        <!-- Popup info raid -->
+        <div
+          v-if="showInfo"
+          @click.self="showInfo = false"
+          :style="{
+            position:'fixed', inset:0, zIndex:300,
+            background:'rgba(3,2,12,0.75)', backdropFilter:'blur(6px)',
+            display:'flex', alignItems:'center', justifyContent:'center', padding:'20px',
+          }"
+        >
+          <div :style="{
+            background:'var(--theme-surface)', borderRadius:'18px',
+            border:'1px solid rgba(167,139,250,0.3)',
+            padding:'24px 22px', maxWidth:'340px', width:'100%',
+            boxShadow:'0 24px 60px var(--theme-shadow)',
+          }">
+            <div :style="{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }">
+              <div :style="{ fontFamily:FF.display, fontSize:'18px', fontWeight:900, color:'var(--theme-text)' }">Come funziona</div>
+              <button @click="showInfo = false" :style="{ background:'none', border:'none', color:'var(--theme-text-2)', fontSize:'20px', cursor:'pointer', fontFamily:FF.label }">✕</button>
+            </div>
+            <div :style="{ display:'flex', flexDirection:'column', gap:'12px' }">
+              <div
+                v-for="row in [
+                  { icon:'⚔', text:'Unisciti agli altri giocatori per portare gli HP della Waifu Raid a 0.' },
+                  { icon:'🛡', text:'Dovrai sconfiggere la Waifu Raid e il suo team in battaglia.' },
+                  { icon:'💥', text:'Ogni vittoria riduce la vita della Waifu Raid di 100 HP. Ogni sconfitta la ripristina di 100 HP.' },
+                  { icon:'🏆', text:'I primi 3 classificati per danno inflitto si aggiudicheranno la carta esclusiva della Waifu Raid.' },
+                ]"
+                :key="row.icon"
+                :style="{ display:'flex', gap:'12px', alignItems:'flex-start' }"
+              >
+                <span :style="{ fontSize:'18px', flexShrink:0, marginTop:'1px' }">{{ row.icon }}</span>
+                <span :style="{ fontFamily:FF.body, fontSize:'13px', color:'var(--theme-text-2)', lineHeight:1.6 }">{{ row.text }}</span>
+              </div>
+            </div>
+            <button
+              @click="showInfo = false"
+              :style="{
+                width:'100%', marginTop:'20px', padding:'12px',
+                background:'rgba(167,139,250,0.12)', border:'1.5px solid rgba(167,139,250,0.3)',
+                borderRadius:'999px', color:'rgba(167,139,250,0.9)',
+                fontFamily:FF.label, fontSize:'12px', fontWeight:700,
+                letterSpacing:'0.15em', textTransform:'uppercase', cursor:'pointer',
+              }"
+            >Capito!</button>
+          </div>
+        </div>
 
         <!-- CTA Riscuoti premi -->
         <button
@@ -357,9 +446,9 @@ const MEDAL = ['🥇', '🥈', '🥉']
           :style="{
             width: '100%', padding: '12px',
             background: claiming ? 'rgba(245,158,11,0.3)' : 'linear-gradient(135deg,#f59e0b,#ef4444)',
-            border: 'none', borderRadius: '12px', color: '#000',
+            border: 'none', borderRadius: '999px', color: '#000',
             fontFamily: FF.label, fontSize: '12px', fontWeight: 700,
-            cursor: claiming ? 'not-allowed' : 'pointer', letterSpacing: '0.1em',
+            cursor: claiming ? 'not-allowed' : 'pointer', letterSpacing: '0.12em', textTransform: 'uppercase',
           }"
         >
           <template v-if="claiming">⏳ Riscossione…</template>
@@ -376,39 +465,36 @@ const MEDAL = ['🥇', '🥈', '🥉']
       <!-- ── TAB CLASSIFICA ────────────────────────────────────────── -->
       <template v-else-if="tab === 'classifica'">
         <!-- Indice in costruzione -->
-        <div v-if="rankingError === 'building'" style="text-align:center;padding:32px 16px">
-          <div style="font-size:28px;margin-bottom:10px">⏳</div>
-          <div :style="{ fontFamily: FF.label, fontSize: '12px', color: 'rgba(245,158,11,0.8)', marginBottom: '6px' }">
+        <div v-if="rankingError === 'building'" :style="{ textAlign:'center', padding:'32px 16px' }">
+          <div :style="{ fontSize:'28px', marginBottom:'10px' }">⏳</div>
+          <div :style="{ fontFamily:FF.label, fontSize:'14px', color:'#f59e0b', marginBottom:'6px', letterSpacing:'0.12em', textTransform:'uppercase' }">
             Classifica in preparazione
           </div>
-          <div :style="{ fontFamily: FF.label, fontSize: '10px', color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }">
+          <div :style="{ fontFamily:FF.body, fontSize:'13px', color:'var(--theme-text-3)', lineHeight:1.6 }">
             L'indice del database è ancora in build.<br>Riprova tra qualche minuto.
           </div>
         </div>
 
         <!-- Errore generico -->
-        <div
-          v-else-if="rankingError === 'error'"
-          style="text-align:center;padding:32px 0"
-          :style="{ color: 'rgba(255,91,108,0.7)', fontFamily: FF.label, fontSize: '11px' }"
+        <div v-else-if="rankingError === 'error'"
+          :style="{ textAlign:'center', padding:'32px 0', color:'#ff5b6c', fontFamily:FF.label, fontSize:'14px' }"
         >Errore nel caricamento della classifica</div>
 
         <!-- Nessun partecipante -->
-        <div
-          v-else-if="ranking.length === 0"
-          style="text-align:center;padding:32px 0"
-          :style="{ color: 'rgba(255,255,255,0.3)', fontFamily: FF.label, fontSize: '11px' }"
+        <div v-else-if="ranking.length === 0"
+          :style="{ textAlign:'center', padding:'32px 0', color:'var(--theme-text-3)', fontFamily:FF.label, fontSize:'14px' }"
         >Nessun partecipante ancora</div>
 
         <!-- Lista classifica -->
-        <div v-else style="display:flex;flex-direction:column;gap:8px">
+        <div v-else :style="{ display:'flex', flexDirection:'column', gap:'8px' }">
           <!-- Header premi -->
-          <div style="padding:10px 12px;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);border-radius:10px;margin-bottom:4px">
-            <div :style="{ fontFamily: FF.label, fontSize: '9px', color: 'rgba(245,158,11,0.7)', marginBottom: '6px', letterSpacing: '0.1em' }">
-              {{ isCompleted ? 'PREMI ASSEGNATI — Vai nel tab Dettaglio per riscuotere' : 'PREMI (riscuotibili al termine del raid)' }}
+          <div :style="{ padding:'12px 14px', background:'rgba(245,158,11,0.07)', border:'1px solid rgba(245,158,11,0.2)', borderRadius:'12px', marginBottom:'4px' }">
+            <div :style="{ fontFamily:FF.label, fontSize:'11px', color:'#f59e0b', marginBottom:'10px', letterSpacing:'0.18em', textTransform:'uppercase', fontWeight:700 }">
+              {{ isCompleted ? 'Premi assegnati — riscuoti nel tab Dettaglio' : 'Premi (riscuotibili al termine del raid)' }}
             </div>
-            <div style="display:flex;flex-direction:column;gap:3px">
-              <div
+            <!-- 3 colonne: posizione | kisses | waifu -->
+            <div :style="{ display:'grid', gridTemplateColumns:'70px 1fr auto', alignItems:'center', gap:'8px 10px' }">
+              <template
                 v-for="row in [
                   { pos: '🥇 1°', kisses: raidCfg.kisses1st ?? 1000, waifu: true },
                   { pos: '🥈 2°', kisses: raidCfg.kisses2nd ?? 400,  waifu: true },
@@ -416,15 +502,15 @@ const MEDAL = ['🥇', '🥈', '🥉']
                   { pos: '🎖 Altri', kisses: raidCfg.kissesBase ?? 100, waifu: false },
                 ]"
                 :key="row.pos"
-                style="display:flex;align-items:center;gap:8px"
               >
-                <span :style="{ fontFamily: FF.label, fontSize: '11px', color: 'rgba(255,255,255,0.6)', minWidth: '60px' }">{{ row.pos }}</span>
-                <span :style="{ fontFamily: FF.mono, fontSize: '11px', color: '#f5c560' }">+{{ row.kisses.toLocaleString() }} <KissesIcon :size="11" /></span>
+                <span :style="{ fontFamily:FF.label, fontSize:'16px', fontWeight:700, color:'var(--theme-text-2)' }">{{ row.pos }}</span>
+                <span :style="{ fontFamily:FF.label, fontSize:'16px', fontWeight:800, color:'#f5c560' }">+{{ row.kisses.toLocaleString() }} <KissesIcon :size="14" /></span>
                 <span
                   v-if="row.waifu"
-                  style="font-family:'Saira Condensed',sans-serif;font-size:9px;color:#ec4899;background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.25);border-radius:4px;padding:1px 6px"
+                  :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:700, color:'var(--theme-accent-pink)', background:'rgba(236,72,153,0.1)', border:'1px solid rgba(236,72,153,0.3)', borderRadius:'999px', padding:'4px 12px', whiteSpace:'nowrap' }"
                 >🎴 {{ raid?.waifuNome }}</span>
-              </div>
+                <span v-else />
+              </template>
             </div>
           </div>
 
@@ -433,41 +519,40 @@ const MEDAL = ['🥇', '🥈', '🥉']
             v-for="(p, i) in ranking"
             :key="p.uid"
             :style="{
-              display: 'flex', alignItems: 'center', gap: '12px',
-              padding: '10px 14px',
-              background: p.uid === authStore.uid ? 'rgba(6,214,160,0.08)' : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${p.uid === authStore.uid ? 'rgba(6,214,160,0.25)' : 'rgba(255,255,255,0.07)'}`,
-              borderRadius: '10px',
+              display:'flex', alignItems:'center', gap:'14px',
+              padding:'14px 16px',
+              background: p.uid === authStore.uid ? 'rgba(6,214,160,0.08)' : 'var(--theme-shimmer)',
+              border:`1px solid ${p.uid === authStore.uid ? 'rgba(6,214,160,0.25)' : 'var(--theme-border)'}`,
+              borderRadius:'12px',
             }"
           >
-            <!-- Posizione / medaglia -->
-            <div :style="{ width: '28px', textAlign: 'center', fontFamily: FF.display, fontSize: '16px' }">
-              <template v-if="i < 3">{{ MEDAL[i] }}</template>
-              <span v-else :style="{ fontFamily: FF.mono, fontSize: '11px', color: 'rgba(255,255,255,0.4)' }">#{{ p.pos }}</span>
+            <!-- Medaglia / posizione -->
+            <div :style="{ width:'36px', textAlign:'center', flexShrink:0 }">
+              <span v-if="i < 3" :style="{ fontSize:'28px', lineHeight:1 }">{{ MEDAL[i] }}</span>
+              <span v-else :style="{ fontFamily:FF.label, fontSize:'16px', fontWeight:800, color:'var(--theme-text-3)' }">#{{ p.pos }}</span>
             </div>
 
-            <!-- Colore impero -->
-            <div :style="{ width: '10px', height: '10px', borderRadius: '50%', background: p.coloreImpero ?? '#888', flexShrink: 0 }" />
-
-            <!-- Nome -->
-            <div style="flex:1">
-              <div :style="{ fontFamily: FF.label, fontSize: '12px', color: p.uid === authStore.uid ? '#06d6a0' : '#fff', fontWeight: 700 }">
-                {{ p.nomeImpero ?? 'Ignoto' }}{{ p.uid === authStore.uid ? ' (tu)' : '' }}
+            <!-- Nome + riga premio -->
+            <div :style="{ flex:1, minWidth:0 }">
+              <!-- Riga 1: nome | danno HP -->
+              <div :style="{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:'8px', marginBottom:'4px' }">
+                <div :style="{ fontFamily:FF.label, fontSize:'18px', fontWeight:800, color:p.uid === authStore.uid ? '#06d6a0' : 'var(--theme-text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }">
+                  {{ p.nomeImpero ?? 'Ignoto' }}<span v-if="p.uid === authStore.uid" :style="{ fontWeight:400, opacity:.55, fontSize:'14px' }"> (tu)</span>
+                </div>
+                <div :style="{ fontFamily:FF.label, fontSize:'14px', fontWeight:700, color:(p.damageDealt ?? 0) > 0 ? '#ff5b6c' : 'var(--theme-text-3)', flexShrink:0 }">
+                  {{ (p.damageDealt ?? 0) > 0 ? `-${(p.damageDealt).toLocaleString()} HP` : '—' }}
+                </div>
               </div>
-              <div :style="{ fontFamily: FF.mono, fontSize: '10px', color: (p.damageDealt ?? 0) > 0 ? '#ff5b6c' : 'rgba(255,255,255,0.35)' }">
-                {{ (p.damageDealt ?? 0) > 0 ? `-${(p.damageDealt).toLocaleString()} HP` : 'Nessun danno inflitto' }}
+              <!-- Riga 2: kisses | waifu -->
+              <div :style="{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'8px' }">
+                <span :style="{ fontFamily:FF.label, fontSize:'15px', fontWeight:800, color:'#f5c560' }">
+                  +{{ getPrize(p.pos, raidCfg).kisses.toLocaleString() }} <KissesIcon :size="13" />
+                </span>
+                <span
+                  v-if="getPrize(p.pos, raidCfg).waifu"
+                  :style="{ fontFamily:FF.label, fontSize:'12px', fontWeight:700, color:'#ec4899', background:'rgba(236,72,153,0.1)', border:'1px solid rgba(236,72,153,0.3)', borderRadius:'999px', padding:'3px 10px', whiteSpace:'nowrap' }"
+                >🎴 Waifu</span>
               </div>
-            </div>
-
-            <!-- Premio -->
-            <div style="text-align:right">
-              <div :style="{ fontFamily: FF.mono, fontSize: '11px', color: '#f5c560' }">
-                +{{ getPrize(p.pos, raidCfg).kisses.toLocaleString() }} <KissesIcon :size="11" />
-              </div>
-              <div
-                v-if="getPrize(p.pos, raidCfg).waifu"
-                :style="{ fontFamily: FF.label, fontSize: '8px', color: '#ec4899', marginTop: '2px' }"
-              >🎴 Waifu</div>
             </div>
           </div>
         </div>

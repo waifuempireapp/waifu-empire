@@ -4,15 +4,15 @@
     <!-- Header -->
     <div :style="headerStyle">
       <div>
-        <div :style="{ fontFamily: FF.label, fontSize: '9px', letterSpacing: '0.22em', color: C.gold, textTransform: 'uppercase' }">Territorio</div>
-        <div :style="{ fontFamily: FF.display, fontSize: '18px', color: '#fff', fontWeight: 800 }">Offerte</div>
+        <div :style="{ fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.28em', color: 'var(--theme-accent)', textTransform: 'uppercase', fontWeight: 700 }">Territorio</div>
+        <div :style="{ fontFamily: FF.display, fontSize: '22px', color: 'var(--theme-text)', fontWeight: 900 }">Offerte</div>
       </div>
       <button :style="closeBtnStyle" @click="$emit('close')">✕</button>
     </div>
 
     <!-- Lista offerte -->
     <div :style="{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }">
-      <div v-if="loading" :style="{ textAlign: 'center', color: 'rgba(241,235,255,0.3)', padding: '40px' }">
+      <div v-if="loading" :style="{ textAlign: 'center', color: 'var(--theme-text-3)', padding: '40px', fontFamily: FF.body, fontSize: '14px' }">
         Caricamento…
       </div>
       <template v-else>
@@ -26,7 +26,7 @@
               :style="cardStyle"
             >
               <div :style="cardRowStyle">
-                <div :style="{ fontFamily: FF.mono, fontSize: '12px', color: 'rgba(241,235,255,0.7)' }">
+                <div :style="{ fontFamily: FF.mono, fontSize: '12px', color: 'var(--theme-text-2)' }">
                   {{ pixelLabel(o) }}
                 </div>
                 <span :style="statusStyle(o.status)">{{ o.status }}</span>
@@ -34,7 +34,7 @@
               <div :style="{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: o.status === 'pending' ? '12px' : '0' }">
                 <KissesIcon :size="14" />
                 <span :style="{ fontFamily: FF.display, fontSize: '16px', color: '#f5c560', fontWeight: 700 }">{{ o.amount }}</span>
-                <span :style="{ fontFamily: FF.label, fontSize: '10px', color: 'rgba(241,235,255,0.4)' }">kisses</span>
+                <span :style="{ fontFamily: FF.label, fontSize: '10px', color: 'var(--theme-text-3)' }">kisses</span>
               </div>
               <div v-if="o.status === 'pending'" style="display:flex;gap:8px">
                 <button :disabled="acting === o.id" :style="actionBtnStyle('#58e0a3','rgba(88,224,163,0.12)')" @click="handleAction(o.id,'accept')">✓ Accetta</button>
@@ -54,7 +54,7 @@
               :style="cardStyle"
             >
               <div :style="cardRowStyle">
-                <div :style="{ fontFamily: FF.mono, fontSize: '12px', color: 'rgba(241,235,255,0.7)' }">
+                <div :style="{ fontFamily: FF.mono, fontSize: '12px', color: 'var(--theme-text-2)' }">
                   {{ pixelLabel(o) }}
                 </div>
                 <span :style="statusStyle(o.status)">{{ o.status }}</span>
@@ -62,7 +62,7 @@
               <div style="display:flex;align-items:center;gap:6px">
                 <KissesIcon :size="14" />
                 <span :style="{ fontFamily: FF.display, fontSize: '16px', color: '#f5c560', fontWeight: 700 }">{{ o.amount }}</span>
-                <span :style="{ fontFamily: FF.label, fontSize: '10px', color: 'rgba(241,235,255,0.4)' }">kisses</span>
+                <span :style="{ fontFamily: FF.label, fontSize: '10px', color: 'var(--theme-text-3)' }">kisses</span>
               </div>
             </div>
           </div>
@@ -70,7 +70,7 @@
 
         <div
           v-if="offers.incoming.length === 0 && offers.outgoing.length === 0"
-          :style="{ textAlign: 'center', color: 'rgba(241,235,255,0.3)', padding: '60px', fontFamily: FF.body, fontSize: '14px' }"
+          :style="{ textAlign: 'center', color: 'var(--theme-text-3)', padding: '60px', fontFamily: FF.body, fontSize: '14px' }"
         >
           Nessuna offerta in corso
         </div>
@@ -103,10 +103,10 @@ const C = {
   err:    '#ff5b6c',
 }
 const FF = {
-  display: "'Cinzel', serif",
-  label:   "'Saira Condensed', sans-serif",
-  body:    "'Inter', sans-serif",
-  mono:    "'JetBrains Mono', monospace",
+  display: "var(--ff-display, 'Unbounded', sans-serif)",
+  label:   "var(--ff-label, 'Saira Condensed', sans-serif)",
+  body:    "var(--ff-body, 'DM Sans', sans-serif)",
+  mono:    "var(--ff-mono, 'JetBrains Mono', monospace)",
 }
 
 interface Offer {
@@ -162,7 +162,7 @@ const handleAction = async (offerId: string, action: 'accept' | 'reject') => {
 // Stili
 const overlayStyle: CSSProperties = {
   position: 'fixed', inset: 0, zIndex: 200,
-  background: 'rgba(3,2,12,0.95)', backdropFilter: 'blur(16px)',
+  background: 'var(--theme-surface)', backdropFilter: 'blur(16px)',
   display: 'flex', flexDirection: 'column',
 }
 const headerStyle: CSSProperties = {
@@ -170,10 +170,10 @@ const headerStyle: CSSProperties = {
   display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px',
 }
 const closeBtnStyle: CSSProperties = {
-  background: 'none', border: 'none', color: 'rgba(241,235,255,0.4)', fontSize: '22px', cursor: 'pointer',
+  background: 'none', border: 'none', color: 'var(--theme-text-2)', fontSize: '22px', cursor: 'pointer',
 }
 const cardStyle: CSSProperties = {
-  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(174,156,255,0.15)',
+  background: 'var(--theme-shimmer)', border: '1px solid var(--theme-border)',
   borderRadius: '14px', padding: '14px 16px',
 }
 const cardRowStyle: CSSProperties = {
@@ -195,9 +195,9 @@ const sectionTitleStyle = (color: string): CSSProperties => ({
   color, textTransform: 'uppercase', marginBottom: '12px',
 })
 const actionBtnStyle = (color: string, bg: string): CSSProperties => ({
-  flex: 1, padding: '8px', background: bg,
-  border: `1px solid ${color}55`, borderRadius: '10px', color,
-  fontFamily: "'Saira Condensed', sans-serif", fontSize: '11px',
+  flex: 1, padding: '10px', background: bg,
+  border: `1px solid ${color}55`, borderRadius: '999px', color,
+  fontFamily: FF.label, fontSize: '11px',
   letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer',
 })
 </script>

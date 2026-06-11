@@ -111,7 +111,7 @@ const row2 = computed(() => {
   return base
 })
 
-const cardSize = 62
+const cardSize = 76
 
 // ── Helper: blur waifu hot senza pass ────────────────────────────────────────
 function shouldBlur(w: any): boolean {
@@ -123,10 +123,10 @@ function actionBtn(color: string, bg: string, disabled = false): Record<string, 
   return {
     flex: 1,
     padding: '15px 10px',
-    background: disabled ? 'rgba(255,255,255,0.04)' : bg,
-    border: `1.5px solid ${disabled ? 'rgba(174,156,255,0.1)' : color + '66'}`,
+    background: disabled ? 'var(--theme-shimmer)' : bg,
+    border: `1.5px solid ${disabled ? 'var(--theme-border)' : color + '66'}`,
     borderRadius: '999px',
-    color: disabled ? 'rgba(241,235,255,0.25)' : color,
+    color: disabled ? 'var(--theme-text-3)' : color,
     fontFamily: FF.label,
     fontSize: '14px',
     letterSpacing: '0.16em',
@@ -194,15 +194,15 @@ onUnmounted(() => {
       position: fixed; left: 50%; top: 50%;
       transform: translate(-50%, -50%); z-index: 120;
       width: min(92vw, 380px);
-      background: rgba(13,10,38,0.98); backdrop-filter: blur(20px);
-      border: 1px solid rgba(174,156,255,0.25); border-radius: 20px;
-      padding: 22px 20px;
-      box-shadow: 0 24px 60px rgba(3,2,12,0.8), 0 0 0 1px rgba(255,255,255,0.04) inset;
+      background: var(--theme-surface); backdrop-filter: blur(20px);
+      border: 1px solid var(--theme-border-2); border-radius: 20px;
+      padding: 40px 15px 15px;
+      box-shadow: 0 24px 60px var(--theme-shadow);
       animation: fadeUp 0.22s ease-out; max-height: 90vh; overflow-y: auto;
     ">
       <!-- Pulsante chiudi -->
       <button
-        style="position: absolute; top: 14px; right: 16px; background: none; border: none; color: rgba(241,235,255,0.35); cursor: pointer; padding: 0; display:flex; align-items:center;"
+        style="position: absolute; top: 14px; right: 16px; background: none; border: none; color: var(--theme-text-3); cursor: pointer; padding: 0; display:flex; align-items:center;"
         @click="emit('chiudi')"
       ><X :size="20" stroke-width="1.5" /></button>
 
@@ -210,7 +210,7 @@ onUnmounted(() => {
       <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 18px;">
         <!-- Icona colore empire — grande con glow -->
         <div :style="{
-          width: '60px', height: '60px', borderRadius: '16px', flexShrink: 0,
+          width: '60px', height: '60px', borderRadius: '50%', flexShrink: 0,
           background: pixel.ownerColor || '#888888',
           border: `2.5px solid ${pixel.ownerColor || '#888'}88`,
           boxShadow: `0 0 22px ${pixel.ownerColor || '#888'}55`,
@@ -219,8 +219,8 @@ onUnmounted(() => {
         <div style="flex: 1; min-width: 0;">
           <!-- Nome proprietario — grande e prominente -->
           <div :style="{
-            fontFamily: FF.display, fontSize: '22px', letterSpacing: '0.04em',
-            color: '#fff', fontWeight: 900, lineHeight: 1.1, marginBottom: '8px',
+            fontFamily: FF.display, fontSize: '20px', letterSpacing: '0.04em',
+            color: 'var(--theme-text)', fontWeight: 900, lineHeight: 1.1, marginBottom: '8px',
           }">
             {{ pixel.ownerName || 'CPU' }}
             <span v-if="isOwn" :style="{ color: C.aqua, fontSize: '13px', fontWeight: 600 }"> · tuo</span>
@@ -264,21 +264,21 @@ onUnmounted(() => {
       <div style="margin-bottom: 16px;">
         <div :style="{
           fontFamily: FF.label, fontSize: '12px', letterSpacing: '0.22em',
-          color: 'rgba(174,156,255,0.65)', textTransform: 'uppercase', marginBottom: '10px', fontWeight: 700,
+          color: 'var(--theme-text-2)', textTransform: 'uppercase', marginBottom: '10px', fontWeight: 700,
         }">
           {{ isCPU ? 'Team difensore CPU' : isOwn ? 'Il tuo team difensore' : 'Team difensore' }}
         </div>
 
         <!-- Avviso team CPU nascosto -->
-        <div v-if="isCPU" :style="{
+        <!--<div v-if="isCPU" :style="{
           marginBottom: '12px', padding: '10px 14px',
-          background: 'rgba(174,156,255,0.07)',
-          border: '1px solid rgba(174,156,255,0.18)',
+          background: 'var(--theme-shimmer)',
+          border: '1px solid var(--theme-border)',
           borderRadius: '12px', fontFamily: FF.body, fontSize: '13px',
-          color: 'rgba(174,156,255,0.8)', lineHeight: 1.5,
+          color: 'var(--theme-text-2)', lineHeight: 1.5,
         }">
           Il team è nascosto! Sfida la CPU per scoprire quali waifu ti aspettano.
-        </div>
+        </div>-->
 
         <!-- Griglia card 3+2 -->
         <template v-if="isCPU || defenseWaifu.length > 0">
@@ -290,7 +290,7 @@ onUnmounted(() => {
                 width: cardSize + 'px', flexShrink: 0,
                 borderRadius: '10px', overflow: 'hidden',
                 border: `1px solid ${w ? (w.hot ? 'rgba(255,133,182,0.4)' : 'rgba(174,156,255,0.25)') : 'rgba(174,156,255,0.1)'}`,
-                background: '#12102a', aspectRatio: '3/4',
+                background: 'var(--theme-bg-secondary)', aspectRatio: '3/4',
                 display: 'flex', flexDirection: 'column', position: 'relative',
               }">
                 <!-- Immagine -->
@@ -331,9 +331,9 @@ onUnmounted(() => {
 
                 <!-- Nome waifu -->
                 <div v-if="w && !isCPU" :style="{
-                  padding: '3px 5px', background: 'rgba(3,2,12,0.85)',
-                  fontFamily: FF.label, fontSize: '9px', letterSpacing: '0.04em',
-                  color: 'rgba(241,235,255,0.8)',
+                  padding: '4px 5px', background: 'var(--theme-surface)',
+                  fontFamily: FF.label, fontSize: '11px', letterSpacing: '0.04em',
+                  color: 'var(--theme-text)',
                   overflow: 'hidden', textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap', textAlign: 'center',
                 }">
@@ -350,7 +350,7 @@ onUnmounted(() => {
                 width: cardSize + 'px', flexShrink: 0,
                 borderRadius: '10px', overflow: 'hidden',
                 border: `1px solid ${w ? (w.hot ? 'rgba(255,133,182,0.4)' : 'rgba(174,156,255,0.25)') : 'rgba(174,156,255,0.1)'}`,
-                background: '#12102a', aspectRatio: '3/4',
+                background: 'var(--theme-bg-secondary)', aspectRatio: '3/4',
                 display: 'flex', flexDirection: 'column', position: 'relative',
               }">
                 <div style="flex: 1; overflow: hidden; position: relative;">
@@ -382,9 +382,9 @@ onUnmounted(() => {
                   </div>
                 </div>
                 <div v-if="w && !isCPU" :style="{
-                  padding: '3px 5px', background: 'rgba(3,2,12,0.85)',
-                  fontFamily: FF.label, fontSize: '9px', letterSpacing: '0.04em',
-                  color: 'rgba(241,235,255,0.8)',
+                  padding: '4px 5px', background: 'var(--theme-surface)',
+                  fontFamily: FF.label, fontSize: '11px', letterSpacing: '0.04em',
+                  color: 'var(--theme-text)',
                   overflow: 'hidden', textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap', textAlign: 'center',
                 }">
@@ -396,7 +396,7 @@ onUnmounted(() => {
         </template>
 
         <!-- Nessun team impostato / caricamento -->
-        <div v-else :style="{ fontFamily: FF.body, fontSize: '12px', color: 'rgba(241,235,255,0.3)', paddingTop: '4px' }">
+        <div v-else :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-3)', paddingTop: '4px' }">
           {{ isOwn ? 'Nessun team difensore impostato' : 'Caricamento team…' }}
         </div>
       </div>
@@ -420,17 +420,17 @@ onUnmounted(() => {
         >
           <div :style="{
             display: 'flex', alignItems: 'center', gap: '14px',
-            padding: '14px 16px', borderRadius: '14px',
-            background: attackBlockReason ? 'rgba(255,133,182,0.04)' : 'rgba(255,133,182,0.1)',
-            border: `1.5px solid ${attackBlockReason ? 'rgba(255,133,182,0.15)' : 'rgba(255,133,182,0.4)'}`,
-            boxShadow: attackBlockReason ? 'none' : '0 4px 18px rgba(255,133,182,0.12)',
+            padding: '16px 16px', borderRadius: '14px',
+            background: attackBlockReason ? 'var(--theme-shimmer)' : 'rgba(255,133,182,0.12)',
+            border: `2px solid ${attackBlockReason ? 'var(--theme-border)' : 'rgba(255,133,182,0.6)'}`,
+            boxShadow: attackBlockReason ? 'none' : '0 4px 18px rgba(255,133,182,0.18)',
           }">
-            <Swords :size="28" stroke-width="1.5" style="flex-shrink:0;" />
+            <Swords :size="28" stroke-width="1.5" style="flex-shrink:0;color:#ff85b6;" />
             <div style="flex: 1; min-width: 0;">
-              <div :style="{ fontFamily: FF.display, fontSize: '15px', fontWeight: 800, color: '#ff85b6', marginBottom: '3px' }">
+              <div :style="{ fontFamily: FF.label, fontSize: '18px', fontWeight: 800, color: '#ff85b6', marginBottom: '3px', letterSpacing: '0.08em' }">
                 Attacca
               </div>
-              <div :style="{ fontFamily: FF.body, fontSize: '12px', color: 'rgba(241,235,255,0.55)', lineHeight: 1.4 }">
+              <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.4 }">
                 {{ isCPU ? 'Conquista il territorio battendo il team CPU' : 'Sfida il difensore al meglio di 3 round' }}
               </div>
               <div v-if="attackBlockReason" :style="{ fontFamily: FF.label, fontSize: '11px', color: 'rgba(255,91,108,0.8)', marginTop: '4px', letterSpacing: '0.06em' }">
@@ -450,23 +450,23 @@ onUnmounted(() => {
         >
           <div :style="{
             display: 'flex', alignItems: 'center', gap: '14px',
-            padding: '14px 16px', borderRadius: '14px',
-            background: buyBlockReason ? 'rgba(245,197,96,0.04)' : 'rgba(245,197,96,0.1)',
-            border: `1.5px solid ${buyBlockReason ? 'rgba(245,197,96,0.15)' : 'rgba(245,197,96,0.4)'}`,
-            boxShadow: buyBlockReason ? 'none' : '0 4px 18px rgba(245,197,96,0.1)',
+            padding: '16px 16px', borderRadius: '14px',
+            background: buyBlockReason ? 'var(--theme-shimmer)' : 'rgba(245,197,96,0.12)',
+            border: `2px solid ${buyBlockReason ? 'var(--theme-border)' : 'rgba(245,197,96,0.65)'}`,
+            boxShadow: buyBlockReason ? 'none' : '0 4px 18px rgba(245,197,96,0.15)',
           }">
             <Heart :size="28" stroke-width="1.5" style="flex-shrink:0;color:#ff85b6;" />
             <div style="flex: 1; min-width: 0;">
               <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 3px;">
-                <div :style="{ fontFamily: FF.display, fontSize: '15px', fontWeight: 800, color: '#f5c560' }">
+                <div :style="{ fontFamily: FF.label, fontSize: '18px', fontWeight: 800, color: '#d4a000', letterSpacing: '0.08em' }">
                   {{ isCPU ? 'Compra' : 'Offri' }}
                 </div>
-                <div style="display: flex; align-items: center; gap: 4px; background: rgba(245,197,96,0.15); border: 1px solid rgba(245,197,96,0.4); border-radius: 999px; padding: 2px 10px;">
-                  <KissesIcon :size="12" />
-                  <span :style="{ fontFamily: FF.mono, fontSize: '13px', fontWeight: 800, color: '#f5c560' }">{{ price }}</span>
+                <div style="display: flex; align-items: center; gap: 4px; background: rgba(245,197,96,0.18); border: 1.5px solid rgba(245,197,96,0.6); border-radius: 999px; padding: 3px 12px;">
+                  <KissesIcon :size="13" />
+                  <span :style="{ fontFamily: FF.label, fontSize: '14px', fontWeight: 800, color: '#d4a000' }">{{ price }}</span>
                 </div>
               </div>
-              <div :style="{ fontFamily: FF.body, fontSize: '12px', color: 'rgba(241,235,255,0.55)', lineHeight: 1.4 }">
+              <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.4 }">
                 {{ isCPU ? 'Ottienilo subito pagando Kisses' : 'Fai un\'offerta al proprietario' }}
               </div>
               <div v-if="buyBlockReason" :style="{ fontFamily: FF.label, fontSize: '11px', color: 'rgba(255,91,108,0.8)', marginTop: '4px', letterSpacing: '0.06em' }">

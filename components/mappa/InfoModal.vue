@@ -43,9 +43,9 @@ import { X } from 'lucide-vue-next'
 import type { CSSProperties } from 'vue'
 // Modale informativa con regole e legenda della mappa mondo
 const FF = {
-  display: "'Cinzel', serif",
-  label:   "'Saira Condensed', sans-serif",
-  body:    "'Inter', sans-serif",
+  display: "var(--ff-display, 'Unbounded', sans-serif)",
+  label:   "var(--ff-label, 'Saira Condensed', sans-serif)",
+  body:    "var(--ff-body, 'DM Sans', sans-serif)",
 }
 const C = {
   sakura: '#ff85b6',
@@ -107,12 +107,12 @@ const backdropStyle: CSSProperties = {
 }
 const modalStyle: CSSProperties = {
   position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
-  zIndex: 260, width: 'min(92vw, 380px)',
-  background: 'rgba(10,7,38,0.99)', backdropFilter: 'blur(20px)',
-  border: '1px solid rgba(174,156,255,0.25)', borderRadius: '20px',
-  padding: '24px 22px', boxShadow: '0 24px 60px rgba(3,2,12,0.9)',
+  zIndex: 260, width: 'min(92vw, 380px)', height: 'min(85vh, 560px)',
+  background: 'var(--theme-surface)', backdropFilter: 'blur(20px)',
+  border: '1px solid var(--theme-border-2)', borderRadius: '20px',
+  padding: '24px 22px', boxShadow: '0 24px 60px var(--theme-shadow)',
   animation: 'fadeUp 0.22s ease-out',
-  maxHeight: '80vh', display: 'flex', flexDirection: 'column',
+  display: 'flex', flexDirection: 'column',
 }
 const closeBtnStyle: CSSProperties = {
   position: 'absolute', top: '14px', right: '16px',
@@ -128,22 +128,22 @@ const pageDotStyle = (active: boolean): CSSProperties => ({
   transition: 'all 0.3s', cursor: 'pointer',
 })
 const pageTitleStyle: CSSProperties = {
-  fontFamily: FF.display, fontSize: '17px', color: '#fff', fontWeight: 800,
-  marginBottom: '14px', textAlign: 'center',
+  fontFamily: FF.display, fontSize: '20px', color: 'var(--theme-text)', fontWeight: 900,
+  marginBottom: '14px', textAlign: 'center', textTransform: 'uppercase',
 }
 const pageBodyStyle: CSSProperties = {
-  fontFamily: FF.body, fontSize: '13px', color: 'rgba(241,235,255,0.65)',
+  fontFamily: FF.body, fontSize: '14px', color: 'var(--theme-text-2)',
   lineHeight: 1.7, whiteSpace: 'pre-line',
 }
 const navBtnStyle = (disabled: boolean, primary: boolean): CSSProperties => ({
-  flex: 1, padding: '11px',
-  background: primary ? 'linear-gradient(135deg, #c54a86, #ff85b6)' : 'rgba(255,255,255,0.05)',
-  border: primary ? 'none' : '1px solid rgba(174,156,255,0.2)',
-  borderRadius: '12px', cursor: disabled ? 'not-allowed' : 'pointer',
-  color: disabled ? 'rgba(241,235,255,0.2)' : primary ? '#fff' : 'rgba(241,235,255,0.6)',
-  fontFamily: "'Saira Condensed', sans-serif", fontSize: '12px',
+  flex: 1, padding: '12px',
+  background: primary ? 'var(--theme-accent-pink)' : 'var(--theme-shimmer)',
+  border: primary ? 'none' : '1px solid var(--theme-border-2)',
+  borderRadius: '999px', cursor: disabled ? 'not-allowed' : 'pointer',
+  color: disabled ? 'var(--theme-text-3)' : primary ? '#fff' : 'var(--theme-text-2)',
+  fontFamily: FF.label, fontSize: '12px',
   letterSpacing: '0.18em', textTransform: 'uppercase',
-  opacity: disabled ? 0.5 : 1,
+  opacity: disabled ? 0.4 : 1,
 })
 </script>
 

@@ -44,6 +44,18 @@ let pinch   = { active: false, dist: 0, midX: 0, midY: 0, panX: 0, panY: 0, scal
 let pulseVal = 0
 let rafId: number | null = null
 
+// ── Avatar utente — sovrapposto sui pixel conquistati ─────────────────────────
+const { avatarUrl } = useAvatar()
+let avatarImg: HTMLImageElement | null = null
+
+watch(avatarUrl, (url) => {
+  if (!url || url.startsWith('#')) { avatarImg = null; return }
+  const img = new Image()
+  img.onload = () => { avatarImg = img; drawCanvas(pulseVal) }
+  img.crossOrigin = 'anonymous'
+  img.src = url
+}, { immediate: true })
+
 // Mappe colore/owner dei pixel (aggiornate da chunks)
 let pixelColors: Record<string, string> = {}
 let pixelOwners: Record<string, string> = {}
@@ -151,6 +163,11 @@ function drawCanvas(pulse = 0) {
         ctx.fillStyle = color
         ctx.globalAlpha = 1
         ctx.fillRect(sx, sy, ps - 1, ps - 1)
+        // Sovrappone avatar utente se disponibile e pixel abbastanza grande
+        if (avatarImg && ps >= 12) {
+          const pad = ps * 0.08
+          ctx.drawImage(avatarImg, sx + pad, sy + pad, ps - 1 - pad * 2, ps - 1 - pad * 2)
+        }
       } else {
         ctx.fillStyle = color
         ctx.globalAlpha = 0.85

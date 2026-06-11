@@ -17,10 +17,10 @@ const C = {
   err:    '#ff5b6c',
 }
 const FF = {
-  label:   "'Saira Condensed', sans-serif",
-  display: "'Unbounded', sans-serif",
-  body:    "'DM Sans', sans-serif",
-  mono:    "'JetBrains Mono', monospace",
+  label:   "var(--ff-label, 'Saira Condensed', sans-serif)",
+  display: "var(--ff-display, 'Unbounded', sans-serif)",
+  body:    "var(--ff-body, 'DM Sans', sans-serif)",
+  mono:    "var(--ff-mono, 'JetBrains Mono', monospace)",
 }
 
 // ── Schema rarità per deck CPU basato sulla difficoltà ───────────────────────
@@ -95,8 +95,9 @@ const emit = defineEmits<{
   chiudi: []
 }>()
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
-const authStore = useAuthStore()
+// ── Auth + tema ───────────────────────────────────────────────────────────────
+const authStore  = useAuthStore()
+const { isDark } = useTheme()
 
 // ── Fase iniziale basata su nextRoundChoice ───────────────────────────────────
 type Phase = 'pre' | 'pick' | 'battle'
@@ -274,22 +275,23 @@ function onBattleExit(choice?: string | null) {
   })
 }
 
-// ── Stili bottoni ─────────────────────────────────────────────────────────────
-const ghostBtn = {
-  flex: 1, padding: '13px',
-  background: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(174,156,255,0.2)',
-  borderRadius: '14px', color: 'rgba(241,235,255,0.5)',
-  fontFamily: "'Saira Condensed', sans-serif",
-  fontSize: '12px', letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer',
-}
-const primaryBtn = {
-  flex: 2, padding: '13px',
+// ── Stili bottoni — calcolati come computed per reagire a isDark ──────────────
+const ghostBtn = computed(() => ({
+  flex: 1, padding: '14px',
+  background: 'var(--theme-shimmer)',
+  border: '1px solid var(--theme-border)',
+  borderRadius: '999px', color: 'var(--theme-text-2)',
+  fontFamily: FF.label,
+  fontSize: '14px', letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer',
+}))
+const primaryBtn = computed(() => ({
+  flex: 2, padding: '14px',
   background: 'linear-gradient(135deg, #c54a86, #ff85b6)',
-  border: 'none', borderRadius: '14px', color: '#fff',
-  fontFamily: "'Saira Condensed', sans-serif",
-  fontSize: '13px', letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer',
-}
+  border: 'none', borderRadius: '999px', color: '#fff',
+  fontFamily: FF.label,
+  fontSize: '14px', letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, cursor: 'pointer',
+  boxShadow: '0 4px 20px rgba(197,74,134,0.4)',
+}))
 </script>
 
 <template>
@@ -298,38 +300,38 @@ const primaryBtn = {
     v-if="phase === 'pre'"
     :style="{
       position: 'fixed', inset: 0, zIndex: 200,
-      background: 'rgba(3,2,12,0.96)', backdropFilter: 'blur(16px)',
+      background: 'var(--theme-bg)', backdropFilter: 'blur(16px)',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       padding: '24px',
     }"
   >
-    <div :style="{ fontFamily: FF.label, fontSize: '11px', letterSpacing: '0.22em', color: C.sakura, textTransform: 'uppercase', marginBottom: '4px' }">
+    <div :style="{ fontFamily: FF.label, fontSize: '23px', letterSpacing: '0.28em', color: C.sakura, textTransform: 'uppercase', marginBottom: '4px', fontWeight: 700 }">
       Round {{ roundNum }}
     </div>
-    <div :style="{ fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(174,156,255,0.7)', textTransform: 'uppercase', marginBottom: '8px' }">
+    <div :style="{ fontFamily: FF.label, fontSize: '14px', letterSpacing: '0.18em', color: 'var(--theme-text-2)', textTransform: 'uppercase', marginBottom: '12px' }">
       Al meglio delle 3
     </div>
-    <div :style="{ fontFamily: FF.display, fontSize: '22px', color: '#fff', fontWeight: 800, marginBottom: '4px' }">
+    <div :style="{ fontFamily: FF.display, fontSize: '28px', color: 'var(--theme-text)', fontWeight: 900, marginBottom: '6px', textAlign: 'center' }">
       Inizia battaglia!
     </div>
-    <div :style="{ fontFamily: FF.body, fontSize: '12px', color: 'rgba(241,235,255,0.5)', marginBottom: '6px' }">
-      Difficoltà CPU: <span :style="{ color: C.aqua, textTransform: 'uppercase' }">{{ cpuDifficultyLabel }}</span>
+    <div :style="{ fontFamily: FF.body, fontSize: '14px', color: 'var(--theme-text-2)', marginBottom: '32px' }">
+      Difficoltà CPU: <strong :style="{ color: isDark ? C.aqua : '#0891b2', textTransform: 'uppercase' }">{{ cpuDifficultyLabel }}</strong>
     </div>
 
     <!-- Punteggio Bo3 -->
-    <div :style="{ display: 'flex', gap: '32px', marginBottom: '40px' }">
+    <div :style="{ display: 'flex', gap: '40px', marginBottom: '48px', alignItems: 'center' }">
       <div style="text-align:center">
-        <div :style="{ fontFamily: FF.label, fontSize: '9px', color: C.gold, letterSpacing: '0.2em', marginBottom: '6px' }">TU</div>
-        <div :style="{ fontFamily: FF.display, fontSize: '44px', color: C.aqua, fontWeight: 900, lineHeight: 1 }">{{ battle?.attackerWins ?? 0 }}</div>
+        <div :style="{ fontFamily: FF.label, fontSize: '18px', color: isDark ? C.aqua : '#0891b2', letterSpacing: '0.28em', marginBottom: '8px', fontWeight: 800, textTransform: 'uppercase' }">TU</div>
+        <div :style="{ fontFamily: FF.display, fontSize: '52px', color: isDark ? C.aqua : '#0891b2', fontWeight: 900, lineHeight: 1 }">{{ battle?.attackerWins ?? 0 }}</div>
       </div>
-      <div :style="{ fontFamily: FF.display, fontSize: '28px', color: 'rgba(241,235,255,0.2)', alignSelf: 'center' }">—</div>
+      <div :style="{ fontFamily: FF.display, fontSize: '32px', color: 'var(--theme-text-3)', alignSelf: 'center' }">—</div>
       <div style="text-align:center">
-        <div :style="{ fontFamily: FF.label, fontSize: '9px', color: C.sakura, letterSpacing: '0.2em', marginBottom: '6px' }">CPU</div>
-        <div :style="{ fontFamily: FF.display, fontSize: '44px', color: C.err, fontWeight: 900, lineHeight: 1 }">{{ battle?.defenderWins ?? 0 }}</div>
+        <div :style="{ fontFamily: FF.label, fontSize: '18px', color: C.sakura, letterSpacing: '0.28em', marginBottom: '8px', fontWeight: 800, textTransform: 'uppercase' }">CPU</div>
+        <div :style="{ fontFamily: FF.display, fontSize: '52px', color: C.err, fontWeight: 900, lineHeight: 1 }">{{ battle?.defenderWins ?? 0 }}</div>
       </div>
     </div>
 
-    <div :style="{ display: 'flex', gap: '12px', width: '100%', maxWidth: '320px' }">
+    <div :style="{ display: 'flex', gap: '12px', width: '100%', maxWidth: '340px' }">
       <button @click="emit('chiudi')" :style="ghostBtn">← Indietro</button>
       <button @click="phase = 'pick'" :style="primaryBtn">⚔ Combatti</button>
     </div>

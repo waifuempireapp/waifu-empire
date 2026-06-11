@@ -353,11 +353,11 @@ const handleAttack = async (attackerTeam: any[]) => {
       showBattle.value = false
       showRound.value  = true
     } else {
-      attackError.value = data.error || 'Errore nel tentativo di attacco. Riprova.'
+      attackError.value = data.message || (typeof data.error === 'string' ? data.error : null) || 'Errore nel tentativo di attacco. Riprova.'
       showBattle.value  = false
     }
   } catch (e: any) {
-    attackError.value = e?.data?.error || 'Errore nel tentativo di attacco. Riprova.'
+    attackError.value = e?.data?.message || (typeof e?.data?.error === 'string' ? e.data.error : null) || 'Errore nel tentativo di attacco. Riprova.'
     showBattle.value  = false
   }
 }
@@ -388,11 +388,11 @@ const handleRaidAttack = async (attackerTeam: any[]) => {
       showBattle.value = false
       showRound.value  = true
     } else {
-      attackError.value = data.error || 'Errore attacco raid. Riprova.'
+      attackError.value = data.message || (typeof data.error === 'string' ? data.error : null) || 'Errore attacco raid. Riprova.'
       showBattle.value  = false
     }
   } catch (e: any) {
-    attackError.value = e?.data?.error || 'Errore attacco raid. Riprova.'
+    attackError.value = e?.data?.message || (typeof e?.data?.error === 'string' ? e.data.error : null) || 'Errore attacco raid. Riprova.'
     showBattle.value  = false
   }
 }
@@ -449,6 +449,7 @@ const handleRoundComplete = async (
           pixelName: battSnap?.name || `(${battSnap?.pixelX}, ${battSnap?.pixelY})`,
           oldColor, newColor,
           empireName: (props.profilo?.nomeImpero as string) || 'Tu',
+          oldEmpireName: battSnap?.defenderUid === 'CPU' ? 'CPU' : (battSnap?.defenderName || '?'),
         }
         emit('updateProfilo', {
           ...props.profilo,
@@ -696,7 +697,7 @@ async function onTerritoryClick(territoryId: string) {
 
       <!-- Header: titolo + bottone offerte sulla stessa riga -->
       <div :style="{ padding: '16px 16px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }">
-        <div :style="{ fontFamily: FF.display, fontSize: '22px', color: 'var(--theme-text)', fontWeight: 900, lineHeight: 1.1 }">
+        <div :style="{ fontFamily: FF.display, fontSize: '20px', color: 'var(--theme-text)', fontWeight: 900, lineHeight: 1.1 }">
           Mappa del Mondo
         </div>
         <!-- Bottone offerte: rotondo, solo emoji 💌 -->
@@ -704,9 +705,9 @@ async function onTerritoryClick(territoryId: string) {
           @click="showOffers = true"
           :style="{
             position: 'relative', flexShrink: 0,
-            width: '44px', height: '44px',
+            width: '38px', height: '38px',
             background: 'var(--theme-accent-pink)', border: 'none',
-            borderRadius: '50%', fontSize: '20px', lineHeight: 1,
+            borderRadius: '50%', fontSize: '22px', lineHeight: 1,
             cursor: 'pointer', display: 'grid', placeItems: 'center',
             boxShadow: '0 4px 12px var(--theme-shadow)',
           }"
@@ -767,17 +768,18 @@ async function onTerritoryClick(territoryId: string) {
       </div>
 
       <!-- Mappa: immagine di sfondo sempre visibile + canvas interattivo sovrapposto -->
-      <div style="margin: 0 16px 16px; border-radius: 16px; position: relative; min-height: 380px; overflow: hidden;" :style="{ border: '1px solid var(--theme-border)' }">
+      <div style="margin: 20px 16px 16px; border-radius: 16px; position: relative; min-height: 380px;" :style="{ border: '1px solid var(--theme-border)' }">
         <!-- Chip "?" — angolo in alto a destra, come sui chip delle carte -->
         <button
           @click="showInfoModal = true"
           :style="{
-            position: 'absolute', top: '10px', right: '10px', zIndex: 10,
-            width: '28px', height: '28px', borderRadius: '50%',
-            background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)',
-            border: '1.5px solid rgba(255,255,255,0.25)',
-            color: '#fff', fontFamily: FF.display, fontSize: '13px', fontWeight: 800,
+            position: 'absolute', top: '-15px', right: '-15px', zIndex: 20,
+            width: '38px', height: '38px', borderRadius: '50%',
+            background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)',
+            border: '1.5px solid rgba(255,255,255,0.3)',
+            color: '#fff', fontFamily: FF.display, fontSize: '18px', fontWeight: 800,
             cursor: 'pointer', display: 'grid', placeItems: 'center', lineHeight: 1,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
           }"
         >?</button>
         <!-- Immagine mappa sempre visibile come base -->
@@ -819,7 +821,7 @@ async function onTerritoryClick(territoryId: string) {
 
       <!-- Pixel detail popup -->
       <PixelDetail
-        v-if="selectedPixel"
+        v-if="selectedPixel && !showBattle && !showRound && !showPurchase && !showDefenseEditor"
         :pixel="selectedPixel"
         :waifu-cat="waifuCat"
         @chiudi="selectedPixel = null"
@@ -836,21 +838,21 @@ async function onTerritoryClick(territoryId: string) {
         :style="{
           position: 'fixed', top: '80px', left: '50%', transform: 'translateX(-50%)',
           zIndex: 500, maxWidth: '320px', width: '90vw',
-          background: 'rgba(255,91,108,0.95)', color: '#fff',
-          borderRadius: '14px', padding: '14px 18px',
-          fontFamily: FF.body, fontSize: '13px', lineHeight: 1.5, textAlign: 'center',
+          background: 'rgba(255,91,108,0.97)', color: '#fff',
+          borderRadius: '16px', padding: '18px 20px',
+          fontFamily: FF.label, lineHeight: 1.5, textAlign: 'center',
           boxShadow: '0 8px 32px rgba(255,91,108,0.4)',
           animation: 'slideDown 0.3s ease-out',
         }"
       >
-        <div :style="{ marginBottom: '8px', fontWeight: 700 }">⚠️ Attacco non riuscito</div>
-        <div :style="{ opacity: 0.9, fontSize: '12px' }">{{ attackError }}</div>
+        <div :style="{ marginBottom: '10px', fontWeight: 800, fontSize: '16px', letterSpacing: '0.08em' }">⚠️ Attacco non riuscito</div>
+        <div :style="{ fontSize: '15px', fontWeight: 600, lineHeight: 1.5, opacity: 0.95 }">{{ attackError }}</div>
         <button
           @click="attackError = null"
           :style="{
-            marginTop: '10px', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.4)',
-            borderRadius: '8px', color: '#fff', fontFamily: FF.label, fontSize: '10px',
-            letterSpacing: '0.15em', textTransform: 'uppercase', padding: '5px 14px', cursor: 'pointer',
+            marginTop: '14px', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.4)',
+            borderRadius: '999px', color: '#fff', fontFamily: FF.label, fontSize: '13px',
+            letterSpacing: '0.15em', textTransform: 'uppercase', padding: '7px 20px', cursor: 'pointer',
           }"
         >OK</button>
       </div>
@@ -862,6 +864,7 @@ async function onTerritoryClick(territoryId: string) {
         :old-color="conquestAnim.oldColor"
         :new-color="conquestAnim.newColor"
         :empire-name="conquestAnim.empireName"
+        :old-empire-name="conquestAnim.oldEmpireName"
         @done="conquestAnim = null"
       />
 
@@ -903,6 +906,7 @@ async function onTerritoryClick(territoryId: string) {
         :mosse-cat="mosseCat"
         :collezione="collezione as any"
         :profilo="profilo as any"
+        :has-hard-pass="!!(profilo?.hardPass)"
         @conquista="(r) => handleRoundComplete(r.isVictory, r.choice, r.prevPlayerTeamIds, r.prevEnemyTeamIds)"
         @chiudi="showRound = false; activeBattle = null"
       />
@@ -912,7 +916,7 @@ async function onTerritoryClick(territoryId: string) {
         v-if="showRaidPanel"
         :profilo="profilo as any"
         @chiudi="showRaidPanel = false"
-        @battle="(data) => { raidInfo = data; raidAttackMode = true; showBattle = true }"
+        @battle="(data) => { raidInfo = data; raidAttackMode = true; showBattle = true; showRaidPanel = false }"
       />
 
       <!-- ── Acquisto pixel ─────────────────────────────────────────────── -->

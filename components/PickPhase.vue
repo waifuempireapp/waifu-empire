@@ -98,41 +98,41 @@ function getRarityStyle(rarita?: string) {
  * Definiti fuori dal setup perché non dipendono da props o state.
  */
 const C = {
-  root: (topOffset = 0, bottomOffset = 0): CSSProperties => ({
-    position: 'fixed', top: `${topOffset}px`, left: 0, right: 0, bottom: `${bottomOffset}px`, zIndex: 40,
-    background: 'linear-gradient(180deg,#080318 0%,#120528 50%,#080318 100%)',
+  root: (topOffset = 0): CSSProperties => ({
+    position: 'fixed', top: `${topOffset}px`, left: 0, right: 0, bottom: 0, zIndex: 60,
+    background: 'var(--theme-bg)',
     display: 'flex', flexDirection: 'column',
     overflow: 'hidden',
   }),
   header: {
     flexShrink: 0,
-    padding: '10px 14px 8px',
-    borderBottom: '1px solid rgba(255,255,255,.07)',
-    background: 'rgba(6,3,15,.55)',
+    padding: '14px 16px 10px',
+    borderBottom: '1px solid var(--theme-border)',
+    background: 'var(--theme-surface)',
   } as CSSProperties,
   body: {
-    flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '10px 12px', WebkitOverflowScrolling: 'touch',
+    flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '14px 16px', WebkitOverflowScrolling: 'touch',
   } as CSSProperties,
-  section: { marginBottom: '16px' } as CSSProperties,
+  section: { marginBottom: '20px' } as CSSProperties,
   label: {
-    fontFamily: 'Orbitron', fontSize: '8px', letterSpacing: '2px',
-    color: 'rgba(238,232,220,.4)', marginBottom: '6px',
+    fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)", fontSize: '11px', letterSpacing: '0.22em',
+    color: 'var(--theme-text-2)', marginBottom: '10px', fontWeight: 700, textTransform: 'uppercase' as const,
   } as CSSProperties,
   confirmBtn: (active: boolean): CSSProperties => ({
-    width: '100%', padding: '14px 0', marginTop: '10px',
-    background: active ? 'linear-gradient(135deg,#00e676,#00b050)' : 'rgba(255,255,255,.06)',
-    border: active ? 'none' : '1px solid rgba(255,255,255,.1)',
-    borderRadius: '12px', cursor: active ? 'pointer' : 'not-allowed', opacity: active ? 1 : 0.45,
-    fontFamily: 'Orbitron', fontSize: '12px', fontWeight: 700,
-    color: active ? '#000' : 'rgba(238,232,220,.4)', letterSpacing: '2px',
+    width: '100%', padding: '16px 0', marginTop: '10px',
+    background: active ? 'linear-gradient(135deg,#00b050,#00e676)' : 'var(--theme-shimmer)',
+    border: active ? 'none' : '1px solid var(--theme-border)',
+    borderRadius: '999px', cursor: active ? 'pointer' : 'not-allowed', opacity: active ? 1 : 0.45,
+    fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)", fontSize: '15px', fontWeight: 700,
+    color: active ? '#fff' : 'var(--theme-text-3)', letterSpacing: '0.18em', textTransform: 'uppercase',
   }),
 }
 
-// Alias per retro-compatibilità con il sorgente React (FF non usato nel template,
-// ma definito per chiarezza durante la migrazione)
 const FF = {
-  Orbitron: 'Orbitron,monospace',
-  Fredoka: 'Fredoka,sans-serif',
+  label:   "var(--ff-label, 'Saira Condensed', sans-serif)",
+  display: "var(--ff-display, 'Unbounded', sans-serif)",
+  body:    "var(--ff-body, 'DM Sans', sans-serif)",
+  mono:    "var(--ff-mono, 'JetBrains Mono', monospace)",
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -169,6 +169,11 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   confirm: [{ playerPick3: WaifuBattleStat[]; enemyPick3: WaifuBattleStat[] }]
 }>()
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEMA
+// ─────────────────────────────────────────────────────────────────────────────
+const { isDark } = useTheme()
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SCROLL LOCK — blocca lo scroll del body mentre la pick phase è attiva
@@ -341,9 +346,10 @@ function cardBorderColor(isSelected: boolean, rs: ReturnType<typeof getRaritySty
   return isSelected ? '#00e676' : `${rs.badge}55`
 }
 
-/** Stile background della card */
+/** Stile background della card — usa surface in light mode, gradient scuro in dark */
 function cardBackground(isSelected: boolean, rs: ReturnType<typeof getRarityStyle>): string {
-  return isSelected ? 'rgba(0,230,118,.08)' : rs.cardBg
+  if (isSelected) return isDark.value ? 'rgba(0,230,118,.10)' : 'rgba(0,160,80,.07)'
+  return isDark.value ? rs.cardBg : 'var(--theme-surface)'
 }
 
 /** Stile box-shadow per rarità alte */
@@ -363,10 +369,10 @@ function getTypeBadgeStyle(type?: string): CSSProperties {
   const c = (TYPE_COLORS[(type ?? 'Arcana')] ?? { border: '#555', bg: '#111' }) as { border: string; bg: string }
   return {
     background: `${c.bg}cc`, color: c.border,
-    border: `1px solid ${c.border}88`,
-    borderRadius: '4px', padding: '1px 6px', fontSize: '8px',
-    fontWeight: 700, fontFamily: 'Orbitron,monospace',
-    letterSpacing: '0.5px', display: 'inline-block', whiteSpace: 'nowrap',
+    border: `1px solid ${c.border}`,
+    borderRadius: '999px', padding: '3px 10px', fontSize: '12px',
+    fontWeight: 700, fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+    letterSpacing: '0.06em', display: 'inline-block', whiteSpace: 'nowrap',
   }
 }
 
@@ -383,19 +389,19 @@ function hpBarData(hp: number, maxHp: number) {
        GUARD: roster insufficiente
        Il giocatore ha meno di ROSTER_MIN waifu → errore + blocco draft.
        ───────────────────────────────────────────────────────────────── -->
-  <div v-if="roster5P.length < ROSTER_MIN" :style="C.root(topOffset, bottomOffset)">
+  <div v-if="roster5P.length < ROSTER_MIN" :style="C.root(topOffset)">
     <div :style="({ ...C.header, textAlign: 'center' } as CSSProperties)">
-      <div style="font-family:Orbitron;font-size:13px;font-weight:700;color:#ff4d4d;letter-spacing:2px">
+      <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;font-weight:700;color:#ff4d4d;letter-spacing:2px">
         ⚠ WAIFU INSUFFICIENTI
       </div>
     </div>
     <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center">
       <div>
         <div style="font-size:40px;margin-bottom:16px">😔</div>
-        <div style="font-family:Fredoka;font-size:14px;color:#eedcd4;line-height:1.6">
+        <div style="font-family:var(--ff-body,'DM Sans',sans-serif);font-size:14px;color:var(--theme-text);line-height:1.6">
           Hai bisogno di almeno {{ ROSTER_MIN }} waifu per partecipare alla pick phase.
         </div>
-        <div style="font-family:Orbitron;font-size:9px;color:rgba(238,232,220,.4);margin-top:8px;letter-spacing:1px">
+        <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;color:var(--theme-text-3);margin-top:8px;letter-spacing:1px">
           Apri bustine nella sezione Sbusta per ottenerne di più.
         </div>
       </div>
@@ -408,22 +414,22 @@ function hpBarData(hp: number, maxHp: number) {
        ───────────────────────────────────────────────────────────────── -->
   <div
     v-else-if="pvpStep === 'reveal'"
-    :style="({ ...C.root(topOffset, bottomOffset), alignItems: 'center', justifyContent: 'center' } as CSSProperties)"
+    :style="({ ...C.root(topOffset), alignItems: 'center', justifyContent: 'center' } as CSSProperties)"
   >
     <div
       v-if="terrSel"
-      style="font-family:Orbitron;font-size:9px;color:#f5a623;letter-spacing:2px;margin-bottom:12px"
+      style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;color:#f5a623;letter-spacing:2px;margin-bottom:12px"
     >
       ⚔ {{ terrSel.nome }}
     </div>
-    <div style="font-family:Orbitron;font-size:16px;font-weight:700;color:#eedcd4;letter-spacing:3px;margin-bottom:20px;text-align:center">
+    <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:16px;font-weight:700;color:var(--theme-text);letter-spacing:3px;margin-bottom:20px;text-align:center">
       RIVELAZIONE!
     </div>
 
     <div style="display:flex;gap:24px;align-items:flex-end;justify-content:center">
       <!-- Starter del giocatore -->
       <div style="text-align:center">
-        <div style="font-family:Orbitron;font-size:8px;color:#00C8FF;letter-spacing:2px;margin-bottom:6px">TU</div>
+        <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:8px;color:#00C8FF;letter-spacing:2px;margin-bottom:6px">TU</div>
         <div style="width:90px;height:135px;border-radius:10px;overflow:hidden;border:2px solid rgba(0,200,255,.4);background:rgba(6,3,15,.8)">
           <img
             v-if="p1ActiveStarter?.asset_statica"
@@ -433,7 +439,7 @@ function hpBarData(hp: number, maxHp: number) {
           />
           <div v-else style="display:flex;align-items:center;justify-content:center;height:100%;font-size:28px;opacity:.2">◈</div>
         </div>
-        <div style="font-family:Orbitron;font-size:9px;color:#eedcd4;margin-top:6px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;color:var(--theme-text);margin-top:6px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
           {{ p1ActiveStarter?.nome ?? '—' }}
         </div>
         <!-- TypeBadge inline -->
@@ -442,11 +448,11 @@ function hpBarData(hp: number, maxHp: number) {
         </span>
       </div>
 
-      <div style="font-family:Orbitron;font-size:22px;font-weight:900;color:#ff2d78;margin-bottom:30px">VS</div>
+      <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:22px;font-weight:900;color:#ff2d78;margin-bottom:30px">VS</div>
 
       <!-- Starter avversario/CPU -->
       <div style="text-align:center">
-        <div style="font-family:Orbitron;font-size:8px;color:#FF3355;letter-spacing:2px;margin-bottom:6px">
+        <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:8px;color:#FF3355;letter-spacing:2px;margin-bottom:6px">
           {{ opponentLabel }}
         </div>
         <div style="width:90px;height:135px;border-radius:10px;overflow:hidden;border:2px solid rgba(255,50,80,.4);background:rgba(6,3,15,.8)">
@@ -458,7 +464,7 @@ function hpBarData(hp: number, maxHp: number) {
           />
           <div v-else style="display:flex;align-items:center;justify-content:center;height:100%;font-size:28px;opacity:.2">◈</div>
         </div>
-        <div style="font-family:Orbitron;font-size:9px;color:#eedcd4;margin-top:6px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;color:var(--theme-text);margin-top:6px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
           {{ cpuActiveStarter?.nome ?? '—' }}
         </div>
         <!-- TypeBadge inline -->
@@ -468,7 +474,7 @@ function hpBarData(hp: number, maxHp: number) {
       </div>
     </div>
 
-    <div style="font-family:Fredoka;font-size:11px;color:rgba(238,232,220,.4);margin-top:20px">
+    <div style="font-family:var(--ff-body,'DM Sans',sans-serif);font-size:11px;color:var(--theme-text-3);margin-top:20px">
       La battaglia sta per cominciare…
     </div>
   </div>
@@ -478,33 +484,31 @@ function hpBarData(hp: number, maxHp: number) {
        Un solo giocatore per dispositivo. Ogni giocatore vede il proprio
        roster (selezionabile) e quello dell'avversario (sola lettura).
        ───────────────────────────────────────────────────────────────── -->
-  <div v-else :style="C.root(topOffset, bottomOffset)">
+  <div v-else :style="C.root(topOffset)">
 
     <!-- ── Header fisso ─────────────────────────────────────────────── -->
     <div :style="C.header">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-family:Orbitron;font-size:11px;font-weight:700;color:#f5a623;letter-spacing:2px">
-            ⚔ SCELTA TEAM
+          <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:18px;font-weight:900;color:var(--theme-text)">
+            Scelta Team
           </div>
           <div
             v-if="terrSel"
-            style="font-family:Orbitron;font-size:8px;color:rgba(238,232,220,.4);margin-top:2px;letter-spacing:1px"
+            style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:8px;color:var(--theme-text-3);margin-top:2px;letter-spacing:1px"
           >
             {{ terrSel.nome }} · {{ opponentLabel }}
           </div>
         </div>
         <!-- Badge "TU" — giocatore corrente su questo dispositivo -->
-        <div style="font-family:Orbitron;font-size:10px;font-weight:700;color:#00C8FF;background:rgba(0,200,255,.10);border:1px solid rgba(0,200,255,.3);border-radius:8px;padding:4px 10px">
+        <!--<div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:16px;font-weight:800;color:#0891b2;background:rgba(8,145,178,.12);border:1.5px solid rgba(8,145,178,.4);border-radius:999px;padding:6px 16px;letter-spacing:0.14em;">
           TU
-        </div>
+        </div>-->
       </div>
       <!-- Istruzione + contatore selezioni -->
-      <div style="font-family:Fredoka;font-size:11px;color:rgba(238,232,220,.5);margin-top:6px">
-        Scegli {{ PICKS_RICHIESTI }} waifu strategicamente in base ai
-        <span style="color:#a78bfa">tipi</span> delle tue waifu e di quelle che l'avversario potrebbe schierare.
-        La prima scelta entra subito in campo.<br/>
-        <span style="color:#00e676;font-weight:700">{{ activeSlots.length }}/{{ PICKS_RICHIESTI }} selezionate</span>
+      <div style="font-family:var(--ff-body,'DM Sans',sans-serif);font-size:14px;color:var(--theme-text-2);margin-top:8px;line-height:1.5">
+        Scegli <strong style="color:#a78bfa">{{ PICKS_RICHIESTI }} waifu</strong> in base ai tipi. La prima entra subito in campo.
+        <span :style="{ color: activeSlots.length === PICKS_RICHIESTI ? '#16a34a' : 'var(--theme-accent)', fontWeight: 700, marginLeft: '4px' }">{{ activeSlots.length }}/{{ PICKS_RICHIESTI }}</span>
       </div>
     </div>
 
@@ -514,118 +518,72 @@ function hpBarData(hp: number, maxHp: number) {
       <!-- Sezione: roster del giocatore (selezionabile) -->
       <div :style="C.section">
         <div :style="C.label">IL TUO ROSTER</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">
+        <!-- Griglia 2 colonne -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 8px;">
           <template v-for="(w, idx) in activeRoster" :key="w.id ?? idx">
             <button
               :style="({
                 border: `2px solid ${cardBorderColor(getSlotNumber(idx) !== null, getRarityStyle(getWaifuRarita(w)))}`,
-                borderRadius: '12px',
+                borderRadius: '16px',
                 background: cardBackground(getSlotNumber(idx) !== null, getRarityStyle(getWaifuRarita(w))),
-                padding: '8px 10px',
-                cursor: 'pointer',
-                position: 'relative',
-                textAlign: 'left',
-                width: '100%',
+                padding: '0 0 20px',
+                cursor: 'pointer', position: 'relative', textAlign: 'left',
+                width: '100%', overflow: 'visible',
                 transition: 'border-color .15s, background .15s',
                 WebkitTapHighlightColor: 'transparent',
                 boxShadow: cardBoxShadow(getWaifuRarita(w), getRarityStyle(getWaifuRarita(w))),
+                display: 'flex', flexDirection: 'column',
               } as CSSProperties)"
               @click="handleTapRoster(idx)"
             >
-              <!-- Badge slot numerico -->
-              <div
-                v-if="getSlotNumber(idx) !== null"
-                style="position:absolute;top:-8px;right:-8px;width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#00e676,#00b050);display:flex;align-items:center;justify-content:center;font-family:Orbitron;font-size:10px;font-weight:900;color:#000;border:2px solid rgba(0,230,118,.6)"
-              >
+              <!-- Badge slot top-left -->
+              <div v-if="getSlotNumber(idx) !== null"
+                style="position:absolute;top:-12px;left:-12px;width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#00b050,#00e676);display:flex;align-items:center;justify-content:center;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;font-weight:900;color:#fff;border:2px solid var(--theme-surface);z-index:4">
                 {{ getSlotNumber(idx) }}
               </div>
+              <!-- Chip tipo bottom-right della card -->
+              <div style="position:absolute;bottom:-10px;right:-10px;z-index:4;"
+                :style="getTypeBadgeStyle((getBattleStats(w).type as string) ?? 'Arcana')">
+                {{ (getBattleStats(w).type as string) ?? 'Arcana' }}
+              </div>
 
-              <!-- Card layout: thumbnail + info -->
-              <div style="display:flex;gap:8px;align-items:flex-start">
-
-                <!-- Thumbnail -->
-                <div
-                  :style="({
-                    width: '52px', height: '78px', borderRadius: '8px', overflow: 'hidden',
-                    background: 'rgba(255,255,255,.04)', flexShrink: 0,
-                    border: `1.5px solid ${getRarityStyle(getWaifuRarita(w)).badge}66`,
-                    position: 'relative',
-                  } as CSSProperties)"
-                >
-                  <template v-if="getWaifuImgUrl(w)">
-                    <img
-                      :src="getWaifuImgUrl(w) ?? ''"
-                      :alt="(w.nome ?? w.name ?? '') as string"
-                      :style="({
-                        width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top',
-                        filter: w._hotBlurred ? 'blur(5px)' : 'none',
-                      } as CSSProperties)"
-                    />
-                    <!-- Overlay HOT oscurata -->
-                    <div
-                      v-if="w._hotBlurred"
-                      style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(3,2,12,0.35)"
-                    >
-                      <span style="font-size:14px">🔥</span>
-                      <span style="font-family:Orbitron;font-size:7px;color:#ff85b6;letter-spacing:.5px;text-align:center;font-weight:700">HOT</span>
-                      <span style="font-family:Orbitron;font-size:6px;color:rgba(255,133,182,0.7);text-align:center">Pass Hard</span>
-                    </div>
-                  </template>
-                  <div
-                    v-else
-                    :style="{
-                      display:'flex',alignItems:'center',justifyContent:'center',
-                      height:'100%',fontSize:'20px',
-                      color: getRarityStyle(getWaifuRarita(w)).badge, opacity: 0.3,
-                    }"
-                  >◈</div>
-
-                  <!-- Pill rarità sovrapposto in basso -->
-                  <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.8));padding:8px 4px 3px;text-align:center">
-                    <span :style="{
-                      fontFamily:'Orbitron',fontSize:'6px',fontWeight:900,
-                      color:getRarityStyle(getWaifuRarita(w)).badge,
-                      letterSpacing:'.5px',
-                      textShadow:`0 0 6px ${getRarityStyle(getWaifuRarita(w)).glow}`,
-                    }">{{ getWaifuRarita(w).toUpperCase() }}</span>
+              <!-- Immagine full-width -->
+              <div :style="({ width:'100%', height:'160px', borderRadius:'14px 14px 0 0', overflow:'hidden', background:'var(--theme-bg-secondary)', border:`2px solid ${getRarityStyle(getWaifuRarita(w)).badge}`, borderBottom:'none' } as CSSProperties)">
+                <template v-if="getWaifuImgUrl(w)">
+                  <img :src="getWaifuImgUrl(w) ?? ''" :alt="(w.nome ?? w.name ?? '') as string"
+                    :style="({ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top', filter: w._hotBlurred ? 'blur(5px)' : 'none' } as CSSProperties)" />
+                  <div v-if="w._hotBlurred" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(3,2,12,0.4)">
+                    <span style="font-size:20px">🔥</span>
+                    <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;color:#ff85b6;font-weight:700">HOT</span>
                   </div>
+                </template>
+                <div v-else :style="{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:'32px',color:getRarityStyle(getWaifuRarita(w)).badge,opacity:0.3 }">◈</div>
+              </div>
+
+              <!-- Nome + stats sotto l'immagine -->
+              <div style="padding:8px 10px 0;display:flex;flex-direction:column;gap:6px;">
+                <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:13px;font-weight:900;color:var(--theme-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                  {{ w.nome ?? w.name ?? '—' }}
                 </div>
-
-                <!-- Info testo -->
-                <div style="flex:1;min-width:0">
-                  <!-- Nome -->
-                  <div style="font-family:Orbitron;font-size:10px;font-weight:700;color:#eedcd4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                    {{ w.nome ?? w.name ?? '—' }}
-                  </div>
-                  <!-- Tipo badge -->
-                  <div style="display:flex;gap:4px;align-items:center;margin-top:4px;flex-wrap:wrap">
-                    <span :style="getTypeBadgeStyle((getBattleStats(w).type as string) ?? 'Arcana')">
-                      {{ (getBattleStats(w).type as string) ?? 'Arcana' }}
+                <!-- Stats: ⚡ VEL  💚 HP(grande)  💥 CRIT -->
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <div style="display:flex;align-items:center;gap:1px;">
+                    <span style="font-size:14px;line-height:1">⚡</span>
+                    <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;font-weight:900;color:#0891b2;line-height:1;">
+                      {{ Math.round((w.speed ?? w.velocita ?? w.velocita_base ?? computeSpeed(w as Record<string,unknown>)) as number) }}
                     </span>
                   </div>
-                  <!-- Statistiche (roster giocatore: sempre visibili) -->
-                  <div style="font-family:Orbitron;font-size:8px;color:rgba(238,232,220,.5);margin-top:4px">
-                    HP: {{ (getBattleStats(w).maxHp as number) ?? 300 }}
-                  </div>
-                  <div style="font-family:Orbitron;font-size:7px;color:rgba(238,232,220,.55);margin-top:2px">
-                    <span style="color:#00C8FF">
-                      ⚡ {{ Math.round((w.speed ?? w.velocita ?? w.velocita_base ?? computeSpeed(w as Record<string,unknown>)) as number) }}
-                    </span>
-                    &nbsp;&nbsp;
-                    <span style="color:#f5a623">
-                      💥 {{ Math.round(((w.critChance ?? w.crit_chance ?? w.crit_chance_base ?? computeCritChance(w as Record<string,unknown>)) as number) * 100) }}%
+                  <div style="display:flex;align-items:center;gap:1px;">
+                    <span style="font-size:18px;line-height:1">💚</span>
+                    <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:16px;font-weight:900;color:#06d6a0;line-height:1;">
+                      {{ (getBattleStats(w).maxHp as number) ?? 300 }}
                     </span>
                   </div>
-                  <!-- MiniHpBar inline -->
-                  <div style="height:4px;background:rgba(0,0,0,.4);border-radius:4px;overflow:hidden;margin-top:3px">
-                    <div
-                      :style="{
-                        width: `${hpBarData((getBattleStats(w).maxHp as number) ?? 300, (getBattleStats(w).maxHp as number) ?? 300).pct}%`,
-                        height:'100%',
-                        background: hpBarData((getBattleStats(w).maxHp as number) ?? 300, (getBattleStats(w).maxHp as number) ?? 300).col,
-                        borderRadius:'4px',
-                      }"
-                    />
+                  <div style="display:flex;align-items:center;gap:1px;">
+                    <span style="font-size:14px;line-height:1">💥</span>
+                    <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;font-weight:900;color:var(--theme-accent);line-height:1;">
+                      {{ Math.round(((w.critChance ?? w.crit_chance ?? w.crit_chance_base ?? computeCritChance(w as Record<string,unknown>)) as number) * 100) }}%
+                    </span>
                   </div>
                 </div>
               </div>
@@ -635,92 +593,54 @@ function hpBarData(hp: number, maxHp: number) {
       </div>
 
       <!-- Sezione: roster avversario (sola lettura, statistiche nascoste) -->
-      <div :style="C.section">
+      <div :style="{ ...C.section, marginTop: '40px' }">
         <div :style="C.label">ROSTER AVVERSARIO — {{ opponentLabel }}</div>
 
         <!-- Avviso waifu hot oscurate -->
         <div
           v-if="opponentRoster.some(w => w._hotBlurred)"
-          style="margin-bottom:8px;padding:8px 12px;background:rgba(255,133,182,0.08);border:1px solid rgba(255,133,182,0.25);border-radius:10px;font-family:Fredoka;font-size:11px;color:rgba(255,133,182,0.85);line-height:1.5"
+          style="margin-bottom:8px;padding:8px 12px;background:rgba(255,133,182,0.08);border:1px solid rgba(255,133,182,0.25);border-radius:10px;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:11px;color:rgba(255,133,182,0.85);line-height:1.5"
         >
           🔥 Alcune waifu di <strong>{{ opponentLabel }}</strong> sono Hot e non puoi vederle.
           Acquista il Pass Hard per scoprirle e vederle senza censura.
         </div>
 
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">
+        <!-- Griglia 2 colonne avversario -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 8px;">
           <template v-for="(w, idx) in opponentRoster" :key="w.id ?? idx">
-            <!-- Card avversario: non selezionabile, stats nascoste -->
             <div
               :style="({
-                border: `2px solid ${getRarityStyle(getWaifuRarita(w)).badge}55`,
-                borderRadius: '12px',
-                background: getRarityStyle(getWaifuRarita(w)).cardBg,
-                padding: '8px 10px',
-                cursor: 'default',
-                position: 'relative',
-                textAlign: 'left',
-                width: '100%',
+                border: `2px solid ${getRarityStyle(getWaifuRarita(w)).badge}88`,
+                borderRadius: '16px',
+                background: cardBackground(false, getRarityStyle(getWaifuRarita(w))),
+                padding: '0 0 20px',
+                cursor: 'default', position: 'relative', textAlign: 'left',
+                width: '100%', overflow: 'visible',
+                display: 'flex', flexDirection: 'column',
                 boxShadow: cardBoxShadow(getWaifuRarita(w), getRarityStyle(getWaifuRarita(w))),
               } as CSSProperties)"
             >
-              <div style="display:flex;gap:8px;align-items:flex-start">
-                <!-- Thumbnail avversario -->
-                <div
-                  :style="({
-                    width: '52px', height: '78px', borderRadius: '8px', overflow: 'hidden',
-                    background: 'rgba(255,255,255,.04)', flexShrink: 0,
-                    border: `1.5px solid ${getRarityStyle(getWaifuRarita(w)).badge}66`,
-                    position: 'relative',
-                  } as CSSProperties)"
-                >
-                  <template v-if="getWaifuImgUrl(w)">
-                    <img
-                      :src="getWaifuImgUrl(w) ?? ''"
-                      :alt="(w.nome ?? w.name ?? '') as string"
-                      :style="({
-                        width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top',
-                        filter: w._hotBlurred ? 'blur(5px)' : 'none',
-                      } as CSSProperties)"
-                    />
-                    <div
-                      v-if="w._hotBlurred"
-                      style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(3,2,12,0.35)"
-                    >
-                      <span style="font-size:14px">🔥</span>
-                      <span style="font-family:Orbitron;font-size:7px;color:#ff85b6;letter-spacing:.5px;text-align:center;font-weight:700">HOT</span>
-                      <span style="font-family:Orbitron;font-size:6px;color:rgba(255,133,182,0.7);text-align:center">Pass Hard</span>
-                    </div>
-                  </template>
-                  <div
-                    v-else
-                    :style="{
-                      display:'flex',alignItems:'center',justifyContent:'center',
-                      height:'100%',fontSize:'20px',
-                      color: getRarityStyle(getWaifuRarita(w)).badge, opacity: 0.3,
-                    }"
-                  >◈</div>
-
-                  <!-- Pill rarità -->
-                  <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.8));padding:8px 4px 3px;text-align:center">
-                    <span :style="{
-                      fontFamily:'Orbitron',fontSize:'6px',fontWeight:900,
-                      color:getRarityStyle(getWaifuRarita(w)).badge,
-                      letterSpacing:'.5px',
-                      textShadow:`0 0 6px ${getRarityStyle(getWaifuRarita(w)).glow}`,
-                    }">{{ getWaifuRarita(w).toUpperCase() }}</span>
+              <div style="position:absolute;bottom:-10px;right:-10px;z-index:4;"
+                :style="getTypeBadgeStyle((getBattleStats(w).type as string) ?? 'Arcana')">
+                {{ (getBattleStats(w).type as string) ?? 'Arcana' }}
+              </div>
+              <div :style="({ width:'100%', height:'160px', borderRadius:'14px 14px 0 0', overflow:'hidden', background:'var(--theme-bg-secondary)', border:`2px solid ${getRarityStyle(getWaifuRarita(w)).badge}`, borderBottom:'none' } as CSSProperties)">
+                <template v-if="getWaifuImgUrl(w)">
+                  <img :src="getWaifuImgUrl(w) ?? ''" :alt="(w.nome ?? w.name ?? '') as string"
+                    :style="({ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top', filter: w._hotBlurred ? 'blur(5px)' : 'none' } as CSSProperties)" />
+                  <div v-if="w._hotBlurred" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(3,2,12,0.4)">
+                    <span style="font-size:20px">🔥</span>
+                    <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;color:#ff85b6;font-weight:700">HOT</span>
                   </div>
+                </template>
+                <div v-else :style="{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:'32px',color:getRarityStyle(getWaifuRarita(w)).badge,opacity:0.3 }">◈</div>
+              </div>
+              <div style="padding:8px 10px 0;">
+                <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:13px;font-weight:900;color:var(--theme-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                  {{ w.nome ?? w.name ?? '—' }}
                 </div>
-
-                <!-- Info testo (solo nome e tipo — stats nascoste per segretezza) -->
-                <div style="flex:1;min-width:0">
-                  <div style="font-family:Orbitron;font-size:10px;font-weight:700;color:#eedcd4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                    {{ w.nome ?? w.name ?? '—' }}
-                  </div>
-                  <div style="display:flex;gap:4px;align-items:center;margin-top:4px;flex-wrap:wrap">
-                    <span :style="getTypeBadgeStyle((getBattleStats(w).type as string) ?? 'Arcana')">
-                      {{ (getBattleStats(w).type as string) ?? 'Arcana' }}
-                    </span>
-                  </div>
+                <div style="font-family:var(--ff-body,'DM Sans',sans-serif);font-size:11px;color:var(--theme-text-3);margin-top:4px;">
+                  ? ? ?
                 </div>
               </div>
             </div>
@@ -730,27 +650,24 @@ function hpBarData(hp: number, maxHp: number) {
         <!-- Nota CPU -->
         <div
           v-if="isCpu"
-          style="font-family:Fredoka;font-size:10px;color:rgba(238,232,220,.35);margin-top:6px;text-align:center"
+          style="font-family:var(--ff-body,'DM Sans',sans-serif);font-size:10px;color:rgba(238,232,220,.35);margin-top:6px;text-align:center"
         >
           La CPU ha già scelto il suo team — vedrai quale solo all'inizio della battaglia.
         </div>
       </div>
 
-      <!-- ── Bottone CONFERMA sticky in fondo al body scrollabile ──────
-           Sticky dentro il contenitore scroll: più affidabile di un
-           footer esterno su iOS Safari e Android con gesture bar.
-           ─────────────────────────────────────────────────────────── -->
-      <div style="position:sticky;bottom:0;padding:10px 0 12px;background:rgba(6,3,15,.96);border-top:1px solid rgba(255,255,255,.07);margin-top:8px">
-        <button
-          :style="C.confirmBtn(activeSlots.length === PICKS_RICHIESTI)"
-          @click="activeSlots.length === PICKS_RICHIESTI ? handleP1Confirm() : undefined"
-        >
-          {{ activeSlots.length === PICKS_RICHIESTI
-            ? '⚔ CONFERMA TEAM'
-            : `SCEGLI ANCORA ${PICKS_RICHIESTI - activeSlots.length} WAIFU` }}
-        </button>
-      </div>
+    </div>
 
+    <!-- ── Bottone CONFERMA fisso fuori dal body scrollabile ── -->
+    <div style="flex-shrink:0;padding:12px 16px 28px;background:var(--theme-surface);border-top:1px solid var(--theme-border);z-index:100;box-shadow:0 -4px 20px var(--theme-shadow);">
+      <button
+        :style="C.confirmBtn(activeSlots.length === PICKS_RICHIESTI)"
+        @click="activeSlots.length === PICKS_RICHIESTI ? handleP1Confirm() : undefined"
+      >
+        {{ activeSlots.length === PICKS_RICHIESTI
+          ? '⚔ CONFERMA TEAM'
+          : `SCEGLI ANCORA ${PICKS_RICHIESTI - activeSlots.length} WAIFU` }}
+      </button>
     </div>
   </div>
 </template>
