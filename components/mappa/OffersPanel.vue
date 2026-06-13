@@ -12,9 +12,7 @@
 
     <!-- Lista offerte -->
     <div :style="{ flex: 1, overflowY: 'auto', padding: '0 20px 20px' }">
-      <div v-if="loading" :style="{ textAlign: 'center', color: 'var(--theme-text-3)', padding: '40px', fontFamily: FF.body, fontSize: '14px' }">
-        Caricamento…
-      </div>
+      <AppLoading v-if="loading" />
       <template v-else>
         <!-- Offerte in entrata -->
         <div v-if="offers.incoming.length > 0" style="margin-bottom:24px">

@@ -274,11 +274,7 @@ function handleSetTab(t: string) {
   <!-- Overlay di caricamento — position:fixed z-index:9999, copre tutto finché
        i dati Firestore E il pack 3D non sono pronti. Fallback 8s. -->
   <Transition name="loading-fade">
-    <div v-if="!caricato || !appReady" class="gioco-loading-screen">
-      <img src="~/assets/images/New_Logo.png" alt="Impero delle Waifu" class="gioco-loading-logo" />
-      <div class="gioco-loading-spinner" />
-      <div class="gioco-loading-text">Caricamento...</div>
-    </div>
+    <AppLoading v-if="!caricato || !appReady" fullscreen />
   </Transition>
 
   <!-- Game container — montato non appena i dati sono pronti (così BustinaGLB
@@ -458,38 +454,7 @@ function handleSetTab(t: string) {
 </template>
 
 <style scoped>
-/* ── Loading screen (tema-aware via tokens.css, qui solo struttura) ── */
-.gioco-loading-screen {
-  position: fixed; inset: 0; z-index: 9999;
-  background: var(--bg-hero-gradient);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px;
-}
-.gioco-loading-logo {
-  width: min(62vw, 300px); height: auto;
-  animation: loadingPulse 1.8s ease-in-out infinite;
-  filter: drop-shadow(0 0 28px rgba(139,111,216,0.45));
-}
-.gioco-loading-spinner {
-  width: 32px; height: 32px;
-  border: 2.5px solid var(--border-subtle);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: loadingSpin 0.85s linear infinite;
-}
-.gioco-loading-text {
-  font-family: var(--ff-body, 'Nunito', sans-serif);
-  font-size: 11px; letter-spacing: 0.3em;
-  color: var(--text-secondary); text-transform: uppercase;
-}
-@keyframes loadingPulse {
-  0%, 100% { opacity: 0.7; transform: scale(1); }
-  50%       { opacity: 1;   transform: scale(1.04); }
-}
-@keyframes loadingSpin {
-  to { transform: rotate(360deg); }
-}
-
-/* Loading screen fade-out */
+/* Loading screen fade-out (AppLoading è avvolto da <Transition name="loading-fade">) */
 .loading-fade-leave-active { transition: opacity 0.5s ease; }
 .loading-fade-leave-to     { opacity: 0; }
 

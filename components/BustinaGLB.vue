@@ -3,7 +3,7 @@
      Layer 2 (quando pronto): canvas Three.js sopra con opacity 0→1.
      Emette 'bustina:ready' globale quando il 3D è inizializzato (o fallisce). -->
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 
 const props = withDefaults(defineProps<{
   textureUrl?: string | null
@@ -21,6 +21,7 @@ const emit = defineEmits<{ done: [] }>()
 const canvasRef  = ref<HTMLCanvasElement | null>(null)
 const wrapperRef = ref<HTMLDivElement | null>(null)
 const glReady    = ref(false)  // canvas 3D pronto → aumenta opacity sopra il 2D
+const failed     = ref(false)  // init fallito o context perso → mostra fallback 2D
 
 const XMIN = -0.5768, XMAX = 0.5731
 const YMIN = -1.0038, YMAX = 1.0008
@@ -34,6 +35,7 @@ let timer:       import('three').Timer               | null = null
 let ripStartTime = -1, ripDone = false
 let targetTiltX  = 0, targetTiltY  = 0
 let currentTiltX = 0, currentTiltY = 0
+let ctxListenersAttached = false
 
 function applyPlanarUVs(geo: import('three').BufferGeometry) {
   const THREE = (window as any).__THREE__
@@ -52,6 +54,13 @@ function applyPlanarUVs(geo: import('three').BufferGeometry) {
 
 async function init() {
   if (!canvasRef.value) return
+  // Se un renderer esiste già (es. re-init dopo context restored), distruggilo
+  // prima di crearne uno nuovo → evita di accumulare contesti WebGL.
+  if (renderer) {
+    if (animId !== null) { cancelAnimationFrame(animId); animId = null }
+    try { renderer.dispose(); renderer.forceContextLoss() } catch { /* noop */ }
+    renderer = null
+  }
   try {
     const THREE = await import('three')
     const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
@@ -65,6 +74,24 @@ async function init() {
     renderer.setClearColor(0x000000, 0)
     renderer.toneMapping = THREE.ACESFilmicToneMapping
     renderer.toneMappingExposure = 1.1
+
+    // Context lost/restored: attacca i listener UNA sola volta (init() può ri-girare)
+    if (!ctxListenersAttached) {
+      ctxListenersAttached = true
+      canvasRef.value!.addEventListener('webglcontextlost', (e) => {
+        e.preventDefault()  // permette il recovery
+        console.warn('[BustinaGLB] WebGL context lost')
+        if (animId !== null) { cancelAnimationFrame(animId); animId = null }
+        glReady.value = false
+        failed.value = true
+      }, { passive: false })
+      canvasRef.value!.addEventListener('webglcontextrestored', () => {
+        console.log('[BustinaGLB] WebGL context restored, re-init')
+        failed.value = false
+        glReady.value = false
+        init()
+      })
+    }
 
     scene  = new THREE.Scene()
     camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 100)
@@ -105,12 +132,14 @@ async function init() {
     }))
     scene.add(mesh)
     glReady.value = true
+    failed.value = false
     window.dispatchEvent(new Event('bustina:ready'))
     animate(THREE)
   } catch (e) {
     console.warn('[BustinaGLB] WebGL non disponibile, uso fallback 2D', e)
+    glReady.value = false
+    failed.value = true   // → mostra il fallback 2D
     window.dispatchEvent(new Event('bustina:ready'))
-    // glReady rimane false → il layer 2D fallback resta visibile
   }
 }
 
@@ -172,9 +201,35 @@ function onTouchMove(e: TouchEvent) {
 function onTouchEnd() { targetTiltX = 0; targetTiltY = 0 }
 
 onMounted(() => { init() })
-onUnmounted(() => {
-  if (animId !== null) cancelAnimationFrame(animId)
-  renderer?.dispose()
+
+onBeforeUnmount(() => {
+  // 1. Ferma il loop di animazione
+  if (animId !== null) { cancelAnimationFrame(animId); animId = null }
+
+  // 2. Distruggi geometrie, materiali e texture della scena
+  if (scene) {
+    scene.traverse((obj: any) => {
+      if (obj.isMesh) {
+        obj.geometry?.dispose?.()
+        const mat = obj.material
+        if (Array.isArray(mat)) mat.forEach((m: any) => m?.dispose?.())
+        else mat?.dispose?.()
+      }
+    })
+    scene.environment?.dispose?.()
+    scene.clear()
+    scene = null
+  }
+  mesh = null
+  camera = null
+  timer = null
+
+  // 3. Distruggi il renderer e libera FORZATAMENTE il contesto WebGL
+  if (renderer) {
+    renderer.dispose()
+    renderer.forceContextLoss()
+    renderer = null
+  }
 })
 </script>
 
@@ -197,8 +252,8 @@ onUnmounted(() => {
     @touchend.passive="onTouchEnd"
   >
 
-    <!-- ── Layer 1: CSS 2D — fallback finché il 3D non è pronto (coperto dall'overlay di pagina) ── -->
-    <div v-show="!glReady" :style="{
+    <!-- ── Layer 1: CSS 2D — fallback finché il 3D non è pronto O se il WebGL fallisce/perde il contesto ── -->
+    <div v-show="!glReady || failed" :style="{
       position: 'absolute', inset: '0',
       borderRadius: '10px',
       background: color
@@ -246,9 +301,9 @@ onUnmounted(() => {
         position: 'absolute', inset: '0',
         width: width + 'px', height: height + 'px',
         zIndex: 4,
-        opacity: glReady ? 1 : 0,
+        opacity: (glReady && !failed) ? 1 : 0,
         transition: 'opacity 0.4s ease',
-        pointerEvents: (props.passive || !glReady) ? 'none' : 'auto',
+        pointerEvents: (props.passive || !glReady || failed) ? 'none' : 'auto',
       }"
     />
 

@@ -285,12 +285,7 @@ const btnSecondario = {
     <!-- ══════════════════════════════════════════════════════════ -->
     <template v-if="activeTab === 'config'">
       <!-- Loading -->
-      <div
-        v-if="loading"
-        :style="{ textAlign: 'center', padding: '40px', color: '#f59e0b', fontFamily: 'Cinzel, serif' }"
-      >
-        ⏳ Caricamento configurazione...
-      </div>
+      <AppLoading v-if="loading" />
 
       <div v-else :style="{ maxWidth: '800px', margin: '0 auto' }">
         <h2 :style="{ fontFamily: 'Cinzel, serif', color: '#f59e0b', letterSpacing: '3px', margin: '0 0 6px' }">⚙ CONFIGURAZIONE</h2>

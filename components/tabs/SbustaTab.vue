@@ -61,10 +61,18 @@ const authStore = useAuthStore()
 
 // ── Anti-FOUC: overlay full-page finché la bustina 3D non ha renderizzato ──
 // Aspetta che un <canvas> Three.js compaia e abbia dimensioni reali.
-const { isPageReady } = usePageReady('canvas')
+// recheck() ri-mostra l'overlay quando si entra nella schermata di apertura
+// ("Tocca per aprire") che monta una NUOVA bustina 3D più grande.
+const { isPageReady, recheck: recheckPageReady } = usePageReady('canvas')
 
 // ── Stato principale ─────────────────────────────────────────
 const stato = ref<'idle' | 'reveal' | 'reveal_multi' | 'summary' | 'summary_multi'>('idle')
+
+// Entrando nello stato di apertura ("Tocca per aprire") viene montata una nuova
+// BustinaGLB: ri-mostra l'overlay anti-FOUC finché il nuovo canvas non è renderizzato.
+watch(stato, (s) => {
+  if (s === 'reveal' || s === 'reveal_multi') recheckPageReady()
+})
 const carteRivelate = ref<any[]>([])
 const indiceRivelato = ref(-1)
 const dropsAttivi = ref<any[]>([])
@@ -585,14 +593,8 @@ function cfTouchEnd(e: TouchEvent) {
   <!-- Overlay anti-FOUC: copre tutto finché la bustina 3D non è renderizzata -->
   <PageLoadingOverlay :ready="isPageReady" />
 
-  <!-- SKELETON LOADING — full-screen fixed, usato quando SbustaTab è overlay -->
-  <div v-if="dropsLoading" class="fade-in"
-    style="position:fixed;inset:0;z-index:200;background:var(--theme-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
-    <img src="~/assets/images/New_Logo.png" alt="" style="width:72px;height:auto;animation:pulse 1.2s ease-in-out infinite;opacity:0.75;" />
-    <div :style="{ fontFamily: FF.label, fontSize:'13px', letterSpacing:'0.24em', color:'var(--theme-text-3)', textTransform:'uppercase', fontWeight:700 }">
-      Caricamento espansioni…
-    </div>
-  </div>
+  <!-- LOADING — full-screen fixed, usato quando SbustaTab è overlay -->
+  <AppLoading v-if="dropsLoading" fullscreen />
 
   <!-- ══════════════════════════════════════════════════════════
     REVEAL VIEW — Pokémon Pocket Style Pack Opening & 3D Stack

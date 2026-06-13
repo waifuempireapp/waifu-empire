@@ -679,18 +679,7 @@ async function onTerritoryClick(territoryId: string) {
   <div :style="{ position: 'relative', margin: '-12px -16px' }">
 
     <!-- ── Loading state ─────────────────────────────────────────────── -->
-    <div
-      v-if="loading"
-      :style="{
-        display: 'flex', flexDirection: 'column',
-        height: '60vh', alignItems: 'center', justifyContent: 'center'
-      }"
-    >
-      <img src="~/assets/images/New_Logo.png" alt="" style="width:90px;height:auto;animation:pulse 1.2s ease-in-out infinite;opacity:0.85;" />
-      <div :style="{ fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.22em', color: 'rgba(174,156,255,0.5)', marginTop: '12px', textTransform: 'uppercase' }">
-        Caricamento mappa…
-      </div>
-    </div>
+    <AppLoading v-if="loading" />
 
     <!-- ── Contenuto principale (dopo il caricamento) ────────────────── -->
     <template v-else>
@@ -802,9 +791,8 @@ async function onTerritoryClick(territoryId: string) {
           />
         </div>
         <!-- Loading overlay se chunks non ancora caricato -->
-        <div v-if="!chunks" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(10,20,40,0.7);">
-          <img src="~/assets/images/New_Logo.png" alt="" style="width:70px;height:auto;animation:pulse 1.2s ease-in-out infinite;opacity:0.85;" />
-          <span style="color:rgba(174,156,255,0.6);font-family:var(--ff-label);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;">Caricamento mappa…</span>
+        <div v-if="!chunks" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--theme-overlay);">
+          <AppLoading />
         </div>
       </div>
 

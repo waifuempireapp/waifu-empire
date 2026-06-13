@@ -22,8 +22,5 @@ watch(
 
 <template>
   <!-- Schermata di caricamento durante l'inizializzazione di Firebase Auth -->
-  <div class="min-h-screen flex flex-col items-center justify-center gap-5">
-    <img src="~/assets/images/New_Logo.png" alt="Impero delle Waifu" style="width: min(90vw, 440px); height: auto;" />
-    <div class="text-xs opacity-60 tracking-widest">caricamento...</div>
-  </div>
+  <AppLoading fullscreen />
 </template>

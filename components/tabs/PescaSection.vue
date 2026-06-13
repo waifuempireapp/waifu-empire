@@ -690,18 +690,9 @@ onUnmounted(() => {
         </div>
       </Teleport>
 
-      <!-- Overlay blur: copre tutto finché le immagini non sono in cache -->
+      <!-- Overlay: copre tutto finché le immagini non sono in cache -->
       <Transition name="pesca-fade">
-        <div
-          v-if="!immaginiCaricate"
-          style="position:fixed;inset:0;z-index:200;
-                 background:var(--theme-surface);
-                 backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-                 display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;"
-        >
-          <div style="width:36px;height:36px;border:2.5px solid rgba(255,77,158,0.2);border-top-color:#ff4d9e;border-radius:50%;animation:pesca-spin 0.85s linear infinite;" />
-          <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;letter-spacing:0.28em;color:rgba(255,77,158,0.55);text-transform:uppercase;">Caricamento carte...</div>
-        </div>
+        <AppLoading v-if="!immaginiCaricate" fullscreen />
       </Transition>
 
       <div v-if="error" style="text-align:center;padding:16px;color:#ff4d4d;
@@ -728,11 +719,6 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
-
-<style>
-/* non-scoped: @keyframes non può essere scoped in Vue */
-@keyframes pesca-spin { to { transform: rotate(360deg); } }
-</style>
 
 <style scoped>
 .pesca-fade-leave-active { transition: opacity 0.4s ease; }

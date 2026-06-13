@@ -105,9 +105,7 @@ const numInputStyle = {
 </script>
 
 <template>
-  <div v-if="loading" :style="{ padding: '40px', textAlign: 'center', color: '#f5e6d3', fontFamily: 'Orbitron' }">
-    Caricamento…
-  </div>
+  <AppLoading v-if="loading" />
 
   <div v-else :style="{ padding: '20px', maxWidth: '700px', margin: '0 auto' }">
     <div :style="{ fontFamily: 'Cinzel, serif', fontSize: '18px', color: '#f5a623', marginBottom: '6px' }">

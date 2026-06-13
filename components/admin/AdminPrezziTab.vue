@@ -72,9 +72,7 @@ const sectionStyle = {
 </script>
 
 <template>
-  <div v-if="!prezzi" :style="{ padding: '20px', color: 'rgba(238,232,220,0.4)', fontFamily: 'Orbitron', fontSize: '10px' }">
-    Caricamento prezzi…
-  </div>
+  <AppLoading v-if="!prezzi" />
 
   <div v-else :style="{ maxWidth: '600px' }">
     <div :style="{ fontFamily: 'Orbitron', fontSize: '14px', color: '#f5a623', marginBottom: '16px', fontWeight: '700' }">

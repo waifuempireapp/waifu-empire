@@ -153,9 +153,7 @@ function tipoEventoLabel(v: string) {
 </script>
 
 <template>
-  <div v-if="loading" :style="{ textAlign: 'center', padding: '40px', opacity: '0.5' }">
-    Caricamento…
-  </div>
+  <AppLoading v-if="loading" />
 
   <div v-else>
     <!-- Intestazione -->

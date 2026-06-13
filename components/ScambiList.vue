@@ -946,13 +946,7 @@ onUnmounted(() => {
        ====================================================== -->
   <div v-else>
     <!-- Stato caricamento -->
-    <div
-      v-if="loading"
-      class="text-center p-8"
-      style="color: rgba(238,232,220,0.35); font-family: 'Orbitron', sans-serif; font-size: 10px;"
-    >
-      Caricamento scambi…
-    </div>
+    <AppLoading v-if="loading" />
 
     <!-- Stato errore -->
     <div

@@ -430,12 +430,7 @@ onUnmounted(() => {
     <div v-else style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding:0 16px 16px;">
 
       <!-- Loading -->
-      <div v-if="mapLoading" style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;">
-        <img src="~/assets/images/New_Logo.png" alt="" style="width:60px;height:auto;animation:pulse 1.2s ease-in-out infinite;opacity:0.7;" />
-        <div :style="{ fontFamily:FF.label, fontSize:'11px', letterSpacing:'0.2em', color:'rgba(174,156,255,0.4)', textTransform:'uppercase' }">
-          Caricamento…
-        </div>
-      </div>
+      <AppLoading v-if="mapLoading" />
 
       <!-- Missione mappa attiva -->
       <template v-else-if="activeMission">

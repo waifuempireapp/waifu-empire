@@ -164,15 +164,8 @@ onMounted(async () => {
 
     <!-- ---- Contenuto tab Amici ---- -->
     <template v-if="subTab === 'amici'">
-      <!-- Spinner caricamento -->
-      <div
-        v-if="amici === null"
-        class="text-center py-8"
-        style="color: var(--theme-text-3); font-family: var(--ff-label, 'Saira Condensed', sans-serif); font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; font-weight: 700;"
-      >
-        <img src="~/assets/images/New_Logo.png" alt="" style="width:60px;height:auto;display:block;margin:0 auto 12px;animation:pulse 1.2s ease-in-out infinite;opacity:0.8;" />
-        Caricamento amici…
-      </div>
+      <!-- Caricamento -->
+      <AppLoading v-if="amici === null" />
 
       <!-- Lista amici e form -->
       <div v-else class="flex flex-col gap-[14px]">

@@ -129,9 +129,7 @@ const boxTitleStyle = {
 </script>
 
 <template>
-  <div v-if="loading" :style="{ padding: '40px', color: '#f5e6d3', textAlign: 'center' }">
-    Caricamento…
-  </div>
+  <AppLoading v-if="loading" />
 
   <div v-else :style="{ color: '#f5e6d3', maxWidth: '600px' }">
     <h2 :style="{ fontFamily: 'Cinzel', fontSize: '18px', color: '#f59e0b', marginBottom: '24px' }">

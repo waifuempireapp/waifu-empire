@@ -178,10 +178,7 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
 
 <template>
   <!-- Caricamento iniziale -->
-  <div v-if="loading" class="swap-state-screen">
-    <img src="~/assets/images/New_Logo.png" alt="" style="width:80px;height:auto;animation:pulse 1.2s ease-in-out infinite;opacity:0.85;" />
-    <div class="swap-label">{{ $t('swap.loading') }}</div>
-  </div>
+  <AppLoading v-if="loading" fullscreen />
 
   <!-- Schermata limite voti giornalieri -->
   <div v-else-if="isLimitReached" class="swap-state-screen swap-state-screen--limit">
@@ -214,7 +211,7 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
     </div>
 
     <!-- Caricamento batch -->
-    <div v-else class="swap-label">Caricamento waifu…</div>
+    <AppLoading v-else />
 
     <!-- Overlays -->
     <SwapRewardToast v-if="toast" v-bind="toast" @done="toast = null" />
@@ -231,12 +228,6 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
 }
 .swap-state-screen--limit { min-height: 80vh; }
 
-.swap-label {
-  font-family: var(--ff-body, 'Nunito', sans-serif);
-  font-size: 11px; letter-spacing: 0.22em;
-  color: var(--text-secondary);
-  margin-top: 12px; text-transform: uppercase;
-}
 .swap-limit-title {
   font-family: var(--ff-body, 'Nunito', sans-serif);
   font-size: 20px; font-weight: 800;

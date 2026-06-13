@@ -57,9 +57,7 @@ const TABS_ADMIN = [
 
 <template>
   <!-- Caricamento -->
-  <div v-if="authorized === null" class="min-h-screen flex items-center justify-center" style="background:var(--bg-base)">
-    <img src="~/assets/images/New_Logo.png" alt="Impero delle Waifu" class="w-16 h-auto" />
-  </div>
+  <AppLoading v-if="authorized === null" fullscreen />
 
   <!-- Accesso negato -->
   <div v-else-if="!authorized" class="min-h-screen flex flex-col items-center justify-center gap-4 p-4">

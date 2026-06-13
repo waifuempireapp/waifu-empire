@@ -240,19 +240,8 @@ const listExpanded = ref(false)
         </div>
       </div>
 
-      <!-- Spinner di caricamento -->
-      <div
-        v-if="loading"
-        :style="{
-          textAlign: 'center', padding: '32px 16px',
-          color: 'var(--theme-text-3)', fontFamily: FF.label,
-          fontSize: '10px', letterSpacing: '0.22em',
-          textTransform: 'uppercase', fontWeight: 700,
-        }"
-      >
-        <img src="~/assets/images/New_Logo.png" alt="" style="width:60px;height:auto;display:block;margin:0 auto 12px;animation:pulse 1.2s ease-in-out infinite;opacity:0.8;" />
-        Caricamento classifica…
-      </div>
+      <!-- Caricamento -->
+      <AppLoading v-if="loading" />
 
       <!-- Messaggio di errore -->
       <div

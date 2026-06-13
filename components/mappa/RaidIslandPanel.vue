@@ -216,10 +216,7 @@ const MEDAL = ['🥇', '🥈', '🥉']
     @click.self="emit('chiudi')"
   >
     <!-- Loading ──────────────────────────────────────────────────── -->
-    <div
-      v-if="loading"
-      style="color:#ec4899;font-size:40px;animation:pulse 1s ease-in-out infinite"
-    >⚔</div>
+    <AppLoading v-if="loading" />
 
     <!-- Pannello ─────────────────────────────────────────────────── -->
     <div

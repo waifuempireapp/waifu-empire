@@ -104,14 +104,8 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
       >{{ t.label }}</button>
     </div>
 
-    <!-- Scheletri di caricamento -->
-    <div v-if="loading" :style="{ display: 'flex', flexDirection: 'column', gap: '10px' }">
-      <div v-for="i in 5" :key="i" :style="{
-        height: '80px', borderRadius: '14px',
-        background: 'var(--theme-shimmer)',
-        animation: `pulse 1.2s ease-in-out ${(i - 1) * 0.1}s infinite`,
-      }" />
-    </div>
+    <!-- Caricamento -->
+    <AppLoading v-if="loading" />
 
     <!-- ===== TOP 50 ===== -->
     <div v-else-if="subTab === 'top5'">

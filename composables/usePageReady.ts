@@ -11,7 +11,11 @@ import { ref, onMounted, nextTick } from 'vue'
 export function usePageReady(waitForSelector?: string, minDelay = 600) {
   const isPageReady = ref(false)
 
-  onMounted(async () => {
+  // Esegue (o ri-esegue) il check di readiness. `recheck()` è utile quando,
+  // nella stessa pagina/componente, un NUOVO canvas 3D viene montato (es. la
+  // transizione "Scegli espansione" → "Tocca per aprire" in SbustaTab).
+  async function runCheck() {
+    isPageReady.value = false
     await nextTick()
 
     const checks: Promise<void>[] = []
@@ -74,7 +78,9 @@ export function usePageReady(waitForSelector?: string, minDelay = 600) {
 
     await Promise.all(checks)
     isPageReady.value = true
-  })
+  }
 
-  return { isPageReady }
+  onMounted(() => { runCheck() })
+
+  return { isPageReady, recheck: runCheck }
 }

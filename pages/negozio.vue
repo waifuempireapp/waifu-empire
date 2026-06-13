@@ -91,9 +91,7 @@ async function acquistaBene(beneId: string) {
   <div class="negozio-root">
 
     <!-- Caricamento -->
-    <div v-if="!caricato" class="negozio-loading">
-      <div style="font-size:32px;color:var(--theme-accent-pink)">♥</div>
-    </div>
+    <AppLoading v-if="!caricato" fullscreen />
 
     <template v-else>
       <!-- Header Pocket-style -->
@@ -184,10 +182,6 @@ async function acquistaBene(beneId: string) {
   min-height: 100vh;
   background: var(--bg-base);
   padding-bottom: 40px;
-}
-.negozio-loading {
-  min-height: 100vh;
-  display: flex; align-items: center; justify-content: center;
 }
 
 /* Header */

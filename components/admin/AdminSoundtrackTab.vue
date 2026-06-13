@@ -48,9 +48,7 @@ async function salva() {
 </script>
 
 <template>
-  <div v-if="loading" :style="{ padding: '40px', textAlign: 'center', color: 'rgba(245,230,211,0.5)', fontFamily: 'Orbitron' }">
-    Caricamento...
-  </div>
+  <AppLoading v-if="loading" />
 
   <div v-else :style="{ padding: '20px', maxWidth: '600px', margin: '0 auto' }">
     <div :style="{ fontFamily: 'Cinzel, serif', fontSize: '18px', color: '#f5a623', marginBottom: '8px' }">
