@@ -88,111 +88,91 @@ async function acquistaBene(beneId: string) {
 </script>
 
 <template>
-  <div class="min-h-screen" style="background:rgb(6,3,15);padding-bottom:40px">
+  <div class="negozio-root">
 
     <!-- Caricamento -->
-    <div v-if="!caricato" class="min-h-screen flex items-center justify-center">
-      <div class="text-4xl text-pink-400 font-orbitron">♥</div>
+    <div v-if="!caricato" class="negozio-loading">
+      <div style="font-size:32px;color:var(--theme-accent-pink)">♥</div>
     </div>
 
     <template v-else>
-      <!-- Header -->
-      <header class="sticky top-0 z-50 flex items-center justify-between px-4 py-3"
-              style="background:rgba(6,3,15,0.95);backdrop-filter:blur(20px);
-                     border-bottom:1px solid rgba(245,166,35,0.12)">
-        <div class="flex items-center gap-3">
-          <button
-            class="border rounded-lg text-amber-400 font-orbitron text-[9px] px-3 py-1.5 cursor-pointer bg-transparent"
-            style="border-color:rgba(245,166,35,0.3)"
-            @click="router.push('/gioco')"
-          >← GIOCO</button>
-          <span class="font-orbitron text-sm font-black text-amber-400 tracking-widest">🛒 NEGOZIO</span>
+      <!-- Header Pocket-style -->
+      <header class="negozio-header">
+        <div class="negozio-header__left">
+          <button class="negozio-btn-back" @click="router.push('/gioco')">← Gioco</button>
+          <span class="negozio-title">🛒 Negozio</span>
         </div>
-        <div class="flex items-center gap-1">
-          <span class="text-pink-400 text-sm">💋</span>
-          <span class="font-orbitron text-sm font-black text-pink-400">{{ kisses }}</span>
+        <div class="negozio-kisses-pill">
+          <span style="color:var(--theme-accent-pink)">💋</span>
+          <span class="negozio-kisses-val">{{ kisses }}</span>
         </div>
       </header>
 
-      <!-- Notifica -->
+      <!-- Toast notifica -->
       <Transition name="fade">
-        <div v-if="notif" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg text-xs font-orbitron tracking-wider"
-             :style="{ background: `${notif.colore}15`, border: `1px solid ${notif.colore}40`, color: notif.colore }">
+        <div v-if="notif" class="negozio-toast"
+             :style="{ background: `${notif.colore}18`, border: `1px solid ${notif.colore}40`, color: notif.colore }">
           {{ notif.testo }}
         </div>
       </Transition>
 
-      <div class="max-w-[480px] mx-auto px-4 py-5 flex flex-col gap-6">
+      <div class="negozio-content">
 
         <!-- Beni con Kisses -->
         <section>
-          <div class="font-orbitron text-[11px] tracking-widest mb-3" style="color:rgba(238,232,220,0.4)">
-            ACQUISTA CON KISSES
-          </div>
-          <div class="flex flex-col gap-2.5">
+          <SectionTitle>Acquista con Kisses</SectionTitle>
+          <div class="negozio-beni-list">
             <div
               v-for="(bene, id) in (prezzi?.beni as Record<string, {kisses: number; label: string; descrizione?: string}>)"
               :key="id"
-              class="flex items-center justify-between gap-3 rounded-xl px-4 py-3.5"
-              style="background:rgba(6,3,15,0.6);border:1px solid rgba(245,166,35,0.18)"
+              class="negozio-bene-row"
             >
-              <div class="flex items-center gap-3">
-                <span class="text-2xl">{{ id === 'pack_sfida' ? '🎁' : id === 'energia' ? '⚡' : id === 'pass_hard' ? '🔞' : '🔄' }}</span>
+              <div class="negozio-bene-info">
+                <span class="negozio-bene-emoji">{{ id === 'pack_sfida' ? '🎁' : id === 'energia' ? '⚡' : id === 'pass_hard' ? '🔞' : '🔄' }}</span>
                 <div>
-                  <div class="font-orbitron text-xs font-bold text-amber-400">{{ bene.label }}</div>
-                  <div class="font-fredoka text-[10px] mt-0.5" style="color:rgba(238,232,220,0.45)">{{ bene.descrizione }}</div>
+                  <div class="negozio-bene-label">{{ bene.label }}</div>
+                  <div class="negozio-bene-desc">{{ bene.descrizione }}</div>
                 </div>
               </div>
-              <div class="flex items-center gap-2 shrink-0">
-                <span class="font-orbitron text-xs text-pink-400 font-bold">💋 {{ bene.kisses }}</span>
+              <div class="negozio-bene-cta">
+                <span class="negozio-bene-price">💋 {{ bene.kisses }}</span>
                 <button
-                  class="font-orbitron text-[9px] px-3 py-1.5 rounded-lg cursor-pointer transition-all"
-                  :class="kisses >= bene.kisses
-                    ? 'text-amber-400 hover:opacity-80'
-                    : 'opacity-30 cursor-not-allowed'"
-                  :style="kisses >= bene.kisses
-                    ? 'background:rgba(245,166,35,0.15);border:1px solid rgba(245,166,35,0.4)'
-                    : 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.25)'"
+                  class="negozio-btn-buy"
+                  :class="kisses >= bene.kisses ? '' : 'negozio-btn-buy--disabled'"
+                  :disabled="kisses < bene.kisses"
                   @click="acquistaBene(id)"
                 >
-                  {{ kisses >= bene.kisses ? 'ACQUISTA' : `MANCANO ${bene.kisses - kisses}` }}
+                  {{ kisses >= bene.kisses ? 'Acquista' : `Mancano ${bene.kisses - kisses}` }}
                 </button>
               </div>
             </div>
           </div>
         </section>
 
-        <div class="h-px" style="background:linear-gradient(90deg,transparent,rgba(255,77,158,0.3),transparent)" />
+        <!-- Divider rainbow -->
+        <div class="negozio-divider" />
 
-        <!-- Ricarica Kisses con PayPal -->
+        <!-- Ricarica Kisses -->
         <section>
-          <div class="font-orbitron text-[11px] tracking-widest mb-1" style="color:rgba(238,232,220,0.4)">
-            RICARICA KISSES
-          </div>
-          <div class="font-fredoka text-xs mb-4" style="color:rgba(238,232,220,0.35)">
-            Acquista Kisses con PayPal e usali per beni di gioco e Pesca Misteriosa
-          </div>
+          <SectionTitle>Ricarica Kisses</SectionTitle>
+          <p class="negozio-section-desc">Acquista Kisses con PayPal e usali per beni di gioco e Pesca Misteriosa</p>
 
-          <!-- Taglie Kisses -->
-          <div class="grid grid-cols-2 gap-2.5 mb-4">
+          <div class="negozio-tagli-grid">
             <div
               v-for="taglio in (prezzi?.tagli_kisses as any[])"
               :key="taglio.id"
-              class="p-3 rounded-xl text-center cursor-pointer transition-all"
-              style="background:rgba(6,3,15,0.6);border:2px solid rgba(255,77,158,0.2)"
+              class="negozio-taglio-card"
             >
-              <div class="flex items-center justify-center gap-1 mb-1">
-                <span class="text-pink-400 text-sm">💋</span>
-                <span class="font-orbitron text-sm text-amber-50 font-black">{{ taglio.kisses }}</span>
+              <div class="negozio-taglio-kisses">
+                <span style="color:var(--theme-accent-pink)">💋</span>
+                <span class="negozio-taglio-num">{{ taglio.kisses }}</span>
               </div>
-              <div class="font-orbitron text-xs text-amber-400 font-bold">€{{ taglio.price_eur }}</div>
-              <div v-if="taglio.bonus" class="text-[9px] text-green-400 mt-0.5 font-fredoka">{{ taglio.bonus }}</div>
+              <div class="negozio-taglio-price">€{{ taglio.price_eur }}</div>
+              <div v-if="taglio.bonus" class="negozio-taglio-bonus">{{ taglio.bonus }}</div>
             </div>
           </div>
 
-          <div class="font-fredoka text-xs text-center" style="color:rgba(238,232,220,0.4)">
-            Pagamento sicuro via PayPal
-          </div>
+          <p class="negozio-paypal-note">Pagamento sicuro via PayPal</p>
         </section>
       </div>
     </template>
@@ -200,6 +180,173 @@ async function acquistaBene(beneId: string) {
 </template>
 
 <style scoped>
+.negozio-root {
+  min-height: 100vh;
+  background: var(--bg-base);
+  padding-bottom: 40px;
+}
+.negozio-loading {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Header */
+.negozio-header {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--theme-header);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-float);
+}
+.negozio-header__left { display: flex; align-items: center; gap: 12px; }
+.negozio-btn-back {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 12px; font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-pill);
+  padding: 6px 12px; cursor: pointer;
+  transition: background 0.15s;
+}
+.negozio-btn-back:hover { background: var(--surface-raised); }
+.negozio-title {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 15px; font-weight: 900;
+  color: var(--text-primary); letter-spacing: -0.01em;
+}
+.negozio-kisses-pill {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 6px 12px;
+  box-shadow: var(--shadow-float);
+}
+.negozio-kisses-val {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 14px; font-weight: 900;
+  color: var(--theme-accent-pink);
+}
+
+/* Toast */
+.negozio-toast {
+  position: fixed; top: 68px; left: 50%; transform: translateX(-50%);
+  z-index: 50; padding: 8px 16px; border-radius: 12px;
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* Content */
+.negozio-content {
+  max-width: 480px; margin: 0 auto;
+  padding: 20px 16px;
+  display: flex; flex-direction: column; gap: 24px;
+}
+
+/* Beni list */
+.negozio-beni-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.negozio-bene-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow-float);
+}
+.negozio-bene-info { display: flex; align-items: center; gap: 12px; }
+.negozio-bene-emoji { font-size: 22px; }
+.negozio-bene-label {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 13px; font-weight: 800;
+  color: var(--text-primary);
+}
+.negozio-bene-desc {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 11px; color: var(--text-secondary);
+  margin-top: 2px;
+}
+.negozio-bene-cta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.negozio-bene-price {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 12px; font-weight: 800;
+  color: var(--theme-accent-pink);
+}
+.negozio-btn-buy {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 11px; font-weight: 800; letter-spacing: 0.04em;
+  color: var(--text-on-accent);
+  background: var(--accent);
+  border: none; border-radius: var(--radius-pill);
+  padding: 7px 14px; cursor: pointer;
+  box-shadow: var(--shadow-float);
+  transition: transform 0.15s, background 0.15s;
+}
+.negozio-btn-buy:hover:not(:disabled) { background: var(--accent-strong); transform: translateY(-1px); }
+.negozio-btn-buy--disabled {
+  background: var(--surface-sunken);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Divider */
+.negozio-divider {
+  height: 2px;
+  background: var(--rainbow-line);
+  opacity: 0.5;
+  border-radius: 999px;
+}
+
+/* Sezione Kisses */
+.negozio-section-desc {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 12px; color: var(--text-secondary);
+  margin: 8px 0 16px; line-height: 1.5;
+}
+.negozio-tagli-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; margin-bottom: 16px;
+}
+.negozio-taglio-card {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 14px 12px; text-align: center;
+  box-shadow: var(--shadow-float);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.negozio-taglio-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-card-p); }
+.negozio-taglio-kisses {
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  margin-bottom: 4px;
+}
+.negozio-taglio-num {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 18px; font-weight: 900;
+  color: var(--text-primary);
+}
+.negozio-taglio-price {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 14px; font-weight: 800;
+  color: var(--accent);
+}
+.negozio-taglio-bonus {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 10px; color: var(--success);
+  margin-top: 3px; font-weight: 700;
+}
+.negozio-paypal-note {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 11px; color: var(--text-tertiary);
+  text-align: center;
+}
+
+/* Transitions */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

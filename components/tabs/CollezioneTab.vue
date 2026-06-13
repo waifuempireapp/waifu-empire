@@ -496,7 +496,18 @@ onMounted(() => {
   aggiornaTradeCountdown()
   tradeCountdownIv = setInterval(aggiornaTradeCountdown, 30000)
 })
-onUnmounted(() => { if (tradeCountdownIv) clearInterval(tradeCountdownIv) })
+onUnmounted(() => {
+  if (tradeCountdownIv) clearInterval(tradeCountdownIv)
+  // Safety: se WaifuDettaglio era aperto e non si è chiuso correttamente,
+  // ripristina lo scroll del body al dismount del tab
+  if (typeof document !== 'undefined') {
+    document.documentElement.style.overflow = ''
+    document.body.style.overflow = ''
+    document.body.style.position = ''
+    document.body.style.top = ''
+    document.body.style.width = ''
+  }
+})
 
 // ── Select unificata FILTRA ───────────────────────────────────
 const filtroCombo = computed({
@@ -772,7 +783,7 @@ function apriNegozio() {
           </div>
 
           <!-- Empty state waifu -->
-          <UiPannelloOrnato
+          <PannelloOrnato
             v-if="waifuEntries.length === 0"
             :glow="C.gold"
             :style="{ width: '100%', textAlign: 'center', padding: '40px' }"
@@ -784,7 +795,7 @@ function apriNegozio() {
               textTransform: 'uppercase', fontWeight: 700,
             }">Nessuna waifu trovata</div>
             <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">Cambia filtri o sbusta nuovi pacchetti!</div>
-          </UiPannelloOrnato>
+          </PannelloOrnato>
         </div>
 
         <!-- Carica altre waifu -->
@@ -792,30 +803,27 @@ function apriNegozio() {
           <button
             @click="visibiliWaifu += 12"
             :style="{
-              position: 'relative',
-              padding: '14px 28px',
-              background: 'linear-gradient(rgba(255,255,255,0.10), rgba(255,255,255,0.02))',
-              color: 'rgb(241,235,255)',
-              border: '1px solid rgba(255,255,255,0.16)',
+              padding: '13px 28px',
+              background: 'var(--surface)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-medium)',
               borderRadius: '99px',
               fontFamily: FF.label,
-              fontSize: '14px',
+              fontSize: '13px',
               fontWeight: 700,
               letterSpacing: '1.5px',
               cursor: 'pointer',
-              boxShadow: 'rgba(255,255,255,0.12) 0px 1px 0px inset, rgba(0,0,0,0.40) 0px -8px 16px inset, rgba(0,0,0,0.45) 0px 6px 20px',
-              backdropFilter: 'blur(8px)',
+              boxShadow: 'var(--shadow-float)',
               transition: 'background 0.2s, transform 0.15s',
               textTransform: 'uppercase',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '7px',
-              overflow: 'hidden',
               marginBottom: '30px',
             }"
           >
-            <span style="position:relative;">CARICA ALTRE ({{ waifuEntries.length - visibiliWaifu }} RIMANENTI)</span>
+            Carica altre ({{ waifuEntries.length - visibiliWaifu }} rimanenti)
           </button>
         </div>
       </div>
@@ -824,65 +832,38 @@ function apriNegozio() {
            TAB MOSSE
       ══════════════════════════════════════════════════════ -->
       <div v-if="tabSub === 'mosse'">
-        <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }">
+        <!-- Griglia mosse 3 colonne — identica alla tab waifu -->
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:16px;">
           <template v-for="([moveId, dati], idx) in Object.entries(collezione.mosse || {})" :key="moveId">
             <div
               v-if="mosseCat.find(m => m.id === moveId)"
-              class="card-fade-up collection-card-item"
-              :style="{
-                width: '130px', display: 'flex', flexDirection: 'column',
-                alignItems: 'center', gap: '6px',
-                animationDelay: `${idx * 40}ms`,
-              }"
+              class="card-fade-up card-clickable collection-card-item"
+              :style="{ width:'calc(33.33% - 3px)', display:'flex', flexDirection:'column', alignItems:'center', animationDelay:`${idx * 30}ms` }"
             >
-              <div :style="{
-                width: '120px', height: '160px',
-                background: 'rgba(0,0,0,0.6)',
-                border: `1px solid ${C.violet}44`, borderRadius: '12px',
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center',
-                gap: '4px', position: 'relative', padding: '8px',
-              }">
-                <img
-                  v-if="mosseCat.find(m => m.id === moveId)?.immagine_url && mosseCat.find(m => m.id === moveId)?.immagine_url !== '/images/mosse/placeholder.png'"
-                  :src="mosseCat.find(m => m.id === moveId)!.immagine_url"
-                  :alt="mosseCat.find(m => m.id === moveId)!.nome"
-                  :style="{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px' }"
+              <div style="zoom:0.92;flex-shrink:0;position:relative;">
+                <CartaMossa
+                  :mossa="mosseCat.find(m => m.id === moveId)!"
+                  :datiUtente="dati as any"
+                  dimensione="piccola"
                 />
-                <div
-                  v-if="!mosseCat.find(m => m.id === moveId)?.immagine_url || mosseCat.find(m => m.id === moveId)?.immagine_url === '/images/mosse/placeholder.png'"
-                  :style="{ fontSize: '28px', marginBottom: '4px' }"
-                >⚔</div>
-                <div :style="{ fontFamily: FF.label, fontSize: '9px', color: C.goldL, textAlign: 'center', lineHeight: 1.3 }">
-                  {{ mosseCat.find(m => m.id === moveId)!.nome }}
-                </div>
-                <div :style="{ fontFamily: FF.label, fontSize: '13px', color: C.violet, opacity: 0.8 }">
-                  {{ mosseCat.find(m => m.id === moveId)!.tipologia }} · Lv{{ (dati as any).livello ?? 1 }}
-                </div>
-                <div :style="{ fontFamily: FF.label, fontSize: '13px', color: '#f5e6d3' }">
-                  PP:{{ mosseCat.find(m => m.id === moveId)!.pp }} · Danno:{{ (dati as any).danno ?? mosseCat.find(m => m.id === moveId)!.danno }}
-                </div>
-                <!-- Badge livello up mossa -->
-                <div
-                  v-if="(dati as any).livello < 10"
-                  :style="{
-                    position: 'absolute', top: '4px', right: '4px',
-                    background: `${C.ok}22`, border: `1px solid ${C.ok}66`,
-                    borderRadius: '6px', padding: '2px 5px',
-                    fontFamily: FF.label, fontSize: '7px', color: C.ok,
-                  }"
-                >
-                  {{ (dati as any).copie % 5 === 0 && (dati as any).livello < 10 ? '⬆ LVL UP' : `${(5 - ((dati as any).copie ?? 0) % 5) % 5 || 5} al lv` }}
+                <!-- Badge copie -->
+                <div :style="{
+                  position:'absolute', bottom:'10px', right:'6px', zIndex:20,
+                  background:'rgba(4,2,14,0.88)',
+                  border:`2px solid ${(dati as any).levelup_pending ? C.ok : C.violet}bb`,
+                  borderRadius:'999px', padding:'4px 10px',
+                  fontFamily:FF.label, fontSize:'16px', fontWeight:800,
+                  color: (dati as any).levelup_pending ? C.ok : C.gold,
+                  letterSpacing:'0.04em', whiteSpace:'nowrap',
+                }">
+                  LV {{ (dati as any).livello ?? 1 }}
                 </div>
               </div>
-              <span :style="{ fontFamily: FF.label, fontSize: '13px', color: C.violet }">
-                ×<strong :style="{ color: C.goldL }">{{ (dati as any).copie ?? 0 }}</strong> copie
-              </span>
             </div>
           </template>
 
           <!-- Empty state mosse -->
-          <UiPannelloOrnato
+          <PannelloOrnato
             v-if="Object.keys(collezione.mosse || {}).length === 0"
             :glow="C.violet"
             :style="{ width: '100%', textAlign: 'center', padding: '40px' }"
@@ -894,7 +875,7 @@ function apriNegozio() {
               textTransform: 'uppercase', fontWeight: 700,
             }">Nessuna mossa trovata</div>
             <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">Apri bustine per trovare mosse attacco!</div>
-          </UiPannelloOrnato>
+          </PannelloOrnato>
         </div>
       </div>
 
@@ -904,10 +885,10 @@ function apriNegozio() {
       <div v-if="tabSub === 'team'" :style="{ position: 'relative' }">
 
         <!-- Editor team -->
-        <UiPannelloOrnato v-if="teamInEdit" :glow="C.ok" :style="{ padding: '20px' }">
-          <UiTitoloOrnato :livello="3" :colore="C.ok">
+        <PannelloOrnato v-if="teamInEdit" :glow="C.ok" :style="{ padding: '20px' }">
+          <TitoloOrnato :livello="3" :colore="C.ok">
             {{ teamInEdit === 'new' ? 'Crea Team' : 'Modifica Team' }}
-          </UiTitoloOrnato>
+          </TitoloOrnato>
           <input
             v-model="teamNome"
             placeholder="Nome del team…"
@@ -1044,7 +1025,7 @@ function apriNegozio() {
                 >⚔ 0/4 mosse</div>
               </div>
               <!-- Empty state team picker -->
-              <UiPannelloOrnato
+              <PannelloOrnato
                 v-if="teamListaFiltrata.length === 0"
                 :glow="C.ok"
                 :style="{ width: '100%', textAlign: 'center', padding: '40px' }"
@@ -1056,7 +1037,7 @@ function apriNegozio() {
                   textTransform: 'uppercase', fontWeight: 700,
                 }">Nessuna waifu</div>
                 <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">Cambia i filtri.</div>
-              </UiPannelloOrnato>
+              </PannelloOrnato>
             </div>
 
             <!-- Carica altre team -->
@@ -1084,7 +1065,7 @@ function apriNegozio() {
               >SALVA ({{ teamWaifu.length }}/5)</BtnDecorato>
             </div>
           </div>
-        </UiPannelloOrnato>
+        </PannelloOrnato>
 
         <!-- Lista team esistenti -->
         <template v-else>
@@ -1095,7 +1076,7 @@ function apriNegozio() {
           </div>
 
           <!-- Empty state team -->
-          <UiPannelloOrnato
+          <PannelloOrnato
             v-if="Object.keys(teams).length === 0"
             :glow="C.ok"
             :style="{ width: '100%', textAlign: 'center', padding: '40px' }"
@@ -1107,10 +1088,10 @@ function apriNegozio() {
               textTransform: 'uppercase', fontWeight: 700,
             }">Nessun team</div>
             <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">Crea il tuo primo team per la battaglia!</div>
-          </UiPannelloOrnato>
+          </PannelloOrnato>
 
           <div :style="{ display: 'flex', flexDirection: 'column', gap: '12px' }">
-            <UiPannelloOrnato
+            <PannelloOrnato
               v-for="([id, team]) in Object.entries(teams)"
               :key="id"
               :glow="C.ok"
@@ -1138,7 +1119,7 @@ function apriNegozio() {
                   />
                 </template>
               </div>
-            </UiPannelloOrnato>
+            </PannelloOrnato>
           </div>
         </template>
       </div>
@@ -1292,3 +1273,37 @@ function apriNegozio() {
 
   </div>
 </template>
+
+<style scoped>
+/* ── Titolo sezione "Le mie carte" stile Pocket ── */
+:deep(.section-title__text),
+.collez-title {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+/* ── Contenitore principale con BG base del tema ── */
+.fade-in {
+  background: transparent;
+}
+
+/* ── Sub-tab Pocket neumorphic ── */
+/* I bottoni usano var(--theme-tab-active) che è ora viola chiaro */
+
+/* ── Input ricerca ── */
+input {
+  background: transparent;
+  color: var(--theme-text);
+}
+input::placeholder { color: var(--text-tertiary); }
+
+/* ── Empty state ── */
+.collez-empty {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text-secondary);
+}
+</style>

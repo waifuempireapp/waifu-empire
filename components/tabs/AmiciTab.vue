@@ -202,3 +202,7 @@ onMounted(async () => {
     />
   </div>
 </template>
+
+<style scoped>
+div { font-family: var(--ff-body, 'Nunito', sans-serif); }
+</style>

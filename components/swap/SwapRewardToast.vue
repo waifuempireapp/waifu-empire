@@ -24,7 +24,7 @@ onMounted(() => {
     position:'fixed', top:'80px', left:'50%',
     transform:`translateX(-50%) ${visible ? 'translateY(0)' : 'translateY(-24px)'}`,
     opacity: visible ? 1 : 0, transition:'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
-    background:'rgba(6,3,15,0.96)', backdropFilter:'blur(16px)',
+    background:'var(--theme-overlay)', backdropFilter:'blur(16px)',
     border:`1px solid ${type === 'limit' ? 'rgba(255,91,108,0.4)' : 'rgba(245,197,96,0.4)'}`,
     borderRadius:'16px', padding:'12px 20px',
     display:'flex', alignItems:'center', gap:'10px',

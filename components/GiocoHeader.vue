@@ -50,19 +50,13 @@ const pendingFriendRequests = computed(() => {
       align-items: center;
       justify-content: space-between;
     ">
-    <!-- ── LINEA SFUMATA separatore in basso ──────────────────── -->
+    <!-- ── LINEA RAINBOW separatore in basso (stile Pocket "rainbow line") ── -->
     <div aria-hidden="true" style="
         position: absolute;
         bottom: 0; left: 0; right: 0;
-        height: 1px;
-        background: linear-gradient(
-          to right,
-          transparent 0%,
-          rgba(245,197,96,0.25) 20%,
-          rgba(245,197,96,0.45) 50%,
-          rgba(245,197,96,0.25) 80%,
-          transparent 100%
-        );
+        height: 2px;
+        background: var(--rainbow-line);
+        opacity: 0.5;
       " />
 
     <!-- ── SINISTRA: pills Kisses + Energia ───────────────────── -->
@@ -75,11 +69,11 @@ const pendingFriendRequests = computed(() => {
         border: 1px solid var(--theme-border);
         border-radius: 999px;
         height: 28px;
-        box-shadow: 0 1px 4px var(--theme-shadow);
+        box-shadow: var(--shadow-float);
       ">
         <Heart :size="14" stroke-width="1.5" style="color:#D946A8;flex-shrink:0;" />
         <span style="
-          font-family: var(--ff-mono,'JetBrains Mono',monospace);
+          font-family: var(--ff-body);
           font-size: 12px; font-weight: 700;
           color: var(--theme-text); letter-spacing: -0.02em;
         ">{{ profilo?.kisses ?? 0 }}</span>
@@ -92,11 +86,11 @@ const pendingFriendRequests = computed(() => {
         border: 1px solid var(--theme-border);
         border-radius: 999px;
         height: 28px;
-        box-shadow: 0 1px 4px var(--theme-shadow);
+        box-shadow: var(--shadow-float);
       ">
-        <Zap :size="14" stroke-width="1.5" style="color:#6cf0e0;flex-shrink:0;" />
+        <Zap :size="14" stroke-width="1.5" style="color:var(--accent);flex-shrink:0;" />
         <span style="
-          font-family: var(--ff-mono,'JetBrains Mono',monospace);
+          font-family: var(--ff-body);
           font-size: 12px; font-weight: 700;
           color: var(--theme-text); letter-spacing: -0.02em;
         ">{{ profilo?.energia ?? 0 }}</span>
@@ -110,7 +104,7 @@ const pendingFriendRequests = computed(() => {
         top: auto; bottom: -10px;
         width: 85px; height: 85px;
         border-radius: 50%;
-        border: 2.5px solid var(--theme-accent-pink);
+        border: 2.5px solid var(--accent);
         box-shadow: 0 2px 12px var(--theme-shadow);
         overflow: hidden;
         cursor: pointer;
@@ -147,7 +141,7 @@ const pendingFriendRequests = computed(() => {
           color: var(--theme-accent);
           background: var(--theme-surface);
           border: 1px solid var(--theme-accent);
-          box-shadow: 0 1px 4px var(--theme-shadow);
+          box-shadow: var(--shadow-float);
           border-radius: 99px;
           padding: 6px 10px;
           letter-spacing: 0.12em;
@@ -169,7 +163,7 @@ const pendingFriendRequests = computed(() => {
             position: absolute; top: 4px; right: 4px;
             background: #ff5b6c; color: #fff;
             font-size: 7px; font-weight: 800;
-            font-family: var(--ff-mono,'JetBrains Mono',monospace);
+            font-family: var(--ff-body);
             min-width: 14px; height: 14px;
             border-radius: 999px;
             display: flex; align-items: center; justify-content: center;

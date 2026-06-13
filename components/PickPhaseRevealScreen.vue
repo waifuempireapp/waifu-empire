@@ -132,7 +132,7 @@ function getTypeBadgeStyle(type?: string): CSSProperties {
         <div style="font-family:Orbitron;font-size:8px;color:#00C8FF;letter-spacing:2px;margin-bottom:6px">
           {{ myName }}
         </div>
-        <div style="width:100px;height:148px;border-radius:10px;overflow:hidden;border:2px solid rgba(0,200,255,.4);background:rgba(6,3,15,.8)">
+        <div style="width:100px;height:148px;border-radius:10px;overflow:hidden;border:2px solid rgba(0,200,255,.4);background:var(--surface)">
           <img
             v-if="myStarter?.asset_statica"
             :src="ikUrl(myStarter.asset_statica ?? null, 'normal') ?? ''"
@@ -158,7 +158,7 @@ function getTypeBadgeStyle(type?: string): CSSProperties {
         <div style="font-family:Orbitron;font-size:8px;color:#FF3355;letter-spacing:2px;margin-bottom:6px">
           {{ opponentName }}
         </div>
-        <div style="width:100px;height:148px;border-radius:10px;overflow:hidden;border:2px solid rgba(255,50,80,.4);background:rgba(6,3,15,.8)">
+        <div style="width:100px;height:148px;border-radius:10px;overflow:hidden;border:2px solid rgba(255,50,80,.4);background:var(--surface)">
           <img
             v-if="opponentStarter?.asset_statica"
             :src="ikUrl(opponentStarter.asset_statica ?? null, 'normal') ?? ''"

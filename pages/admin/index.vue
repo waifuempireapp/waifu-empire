@@ -57,7 +57,7 @@ const TABS_ADMIN = [
 
 <template>
   <!-- Caricamento -->
-  <div v-if="authorized === null" class="min-h-screen flex items-center justify-center">
+  <div v-if="authorized === null" class="min-h-screen flex items-center justify-center" style="background:var(--bg-base)">
     <img src="~/assets/images/New_Logo.png" alt="Impero delle Waifu" class="w-16 h-auto" />
   </div>
 
@@ -79,7 +79,7 @@ const TABS_ADMIN = [
   </div>
 
   <!-- Pannello admin -->
-  <div v-else class="min-h-screen">
+  <div v-else class="min-h-screen" style="background:var(--bg-base)">
     <!-- Notifica -->
     <Transition name="fade">
       <div
@@ -93,8 +93,8 @@ const TABS_ADMIN = [
 
     <!-- Header -->
     <header class="sticky top-0 z-40 flex items-center justify-between px-4 py-3"
-            style="background:rgba(6,3,15,0.97);backdrop-filter:blur(20px);
-                   border-bottom:1px solid rgba(245,158,11,0.15)">
+            style="background:var(--theme-header);backdrop-filter:blur(20px);
+                   border-bottom:1px solid var(--border-subtle)">
       <div class="flex items-center gap-3">
         <button
           class="font-orbitron text-[9px] px-3 py-1.5 rounded-lg text-amber-400 bg-transparent cursor-pointer"

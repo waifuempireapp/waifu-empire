@@ -411,107 +411,75 @@ function handleSetTab(t: string) {
     </div><!-- fine area contenuto tab -->
 
     <!-- ── Bottom Navigation (5 tab, stile Pokémon TCG Pocket) ─────────
-         Altezza 70px, sfondo scuro rgba con blur, bordo gold/15.
-         Tab attiva: pallino gold + icona scalata 1.2x + label oro.
-         Tab inattiva: opacity 0.55.
-         Touch target minimo 44px per accessibilità mobile.
+         Glass panel con backdrop-blur, token-aware.
+         Tab attiva: dot viola + icona piena colore accent.
+         Tab inattiva: outline sottile, opacity ridotta.
     ──────────────────────────────────────────────────────────────────── -->
-    <nav class="fixed bottom-0 left-0 right-0 z-50 flex theme-nav" style="
-        backdrop-filter: blur(24px);
-        -webkit-backdrop-filter: blur(24px);
-        height: 75px;
-      ">
-      <button v-for="t in TABS" :key="t.id" class="flex-1 flex flex-col items-center justify-center gap-0.5 cursor-pointer
-               border-0 bg-transparent relative"
-        style="transition: all 0.2s ease; min-height:44px; padding-top:8px; padding-bottom:6px;" :style="{
-          opacity: tab === t.id ? '1' : '0.45',
-          background: tab === t.id ? 'var(--theme-tab-active)' : 'transparent',
-          border: tab === t.id ? '1px solid var(--theme-tab-border)' : '1px solid transparent',
-          borderRadius: '4px',
-        }" @click="() => {
+    <nav class="fixed bottom-0 left-0 right-0 z-50 flex bnav-pocket">
+      <button
+        v-for="t in TABS" :key="t.id"
+        class="bnav-pocket__btn"
+        :class="{ 'bnav-pocket__btn--active': tab === t.id }"
+        :aria-label="t.label"
+        @click="() => {
           if (t.id === 'home') { gameStore.toggleNegozio(false); chiudiPesca() }
           gameStore.setTab(t.id)
-        }">
-        <!-- Pallino indicatore attivo (4px, gold) posizionato sopra l'icona -->
-        <span v-if="tab === t.id" class="nav-tab-active-dot" />
+        }"
+      >
+        <!-- Dot indicatore sopra l'icona -->
+        <span v-if="tab === t.id" class="bnav-pocket__dot" />
 
-        <!-- Icona Lucide: scala a 1.2x se tab attiva, glow dorato — usa component dinamico -->
-        <span class="leading-none" style="display:flex;align-items:center;justify-content:center;transition: transform 0.2s ease, filter 0.2s ease;" :style="{
-          transform: tab === t.id ? 'scale(1.2)' : 'scale(1)',
-          filter: tab === t.id ? 'drop-shadow(0 0 6px rgba(245,197,96,0.5))' : 'none',
-          color: tab === t.id ? 'var(--theme-nav-icon-active)' : 'var(--theme-nav-icon)',
-        }">
-          <component :is="t.icon" :size="24" stroke-width="1.5" />
+        <!-- Icona Lucide outline — filled quando attiva via filter -->
+        <component
+          :is="t.icon"
+          :size="24"
+          stroke-width="1.5"
+          class="bnav-pocket__icon"
+          :class="{ 'bnav-pocket__icon--active': tab === t.id }"
+        />
+
+        <!-- Label sotto l'icona -->
+        <span class="bnav-pocket__label" :class="{ 'bnav-pocket__label--active': tab === t.id }">
+          {{ t.label }}
         </span>
-
-        <!-- Label: 9px, tracking, Saira Condensed, oro se attiva -->
-        <!-- <span
-          style="
-            font-size: 12px;
-            letter-spacing: 0.12em;
-            font-family: var(--ff-label, 'Saira Condensed', sans-serif);
-            text-transform: uppercase;
-            font-weight: 700;
-            margin-top: 2px;
-          "
-          :style="{ color: tab === t.id ? '#f5c560' : 'rgba(255,255,255,0.55)' }"
-        >{{ t.label }}</span> -->
       </button>
     </nav>
 
-    <!-- FAB Missioni 🎯 — round, bottom-right, stesso stile del vecchio FAB ≡ -->
+    <!-- FAB Missioni — cerchio Pocket-style con shadow float -->
     <button
       v-if="tab !== 'missioni' && tab !== 'swap'"
-      style="
-        position: fixed;
-        bottom: 90px;
-        right: 16px;
-        width: 52px;
-        height: 52px;
-        border-radius: 50%;
-        background: var(--theme-accent);
-        box-shadow: 0 4px 14px rgba(124,58,237,0.45), 0 0 0 3px var(--theme-shimmer);
-        display: flex; align-items: center; justify-content: center;
-        cursor: pointer;
-        z-index: 60;
-        transition: all 0.2s;
-        backdrop-filter: blur(8px);
-        border: none;
-        color: #F0ECF8;
-        font-size: 22px;
-        line-height: 1;
-      "
+      class="missioni-fab-pocket"
       @click="() => { tabPrimaDiMissioni = tab; gameStore.setTab('missioni') }"
-    ><Target :size="28" stroke-width="1.5" /></button>
+    >
+      <Target :size="24" stroke-width="1.5" />
+    </button>
 
   </div><!-- fine .game-container -->
 </template>
 
 <style scoped>
-/* Loading screen */
+/* ── Loading screen (tema-aware via tokens.css, qui solo struttura) ── */
 .gioco-loading-screen {
   position: fixed; inset: 0; z-index: 9999;
-  background: radial-gradient(ellipse 140% 100% at 50% -10%, rgba(124,58,237,0.3) 0%, #06030d 55%);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--bg-hero-gradient);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px;
 }
 .gioco-loading-logo {
   width: min(62vw, 300px); height: auto;
   animation: loadingPulse 1.8s ease-in-out infinite;
-  filter: drop-shadow(0 0 28px rgba(168,85,247,0.45));
+  filter: drop-shadow(0 0 28px rgba(139,111,216,0.45));
 }
 .gioco-loading-spinner {
   width: 32px; height: 32px;
-  border: 2.5px solid rgba(255,255,255,0.1);
-  border-top-color: #a78bfa;
+  border: 2.5px solid var(--border-subtle);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: loadingSpin 0.85s linear infinite;
 }
 .gioco-loading-text {
-  font-family: var(--ff-label,'Saira Condensed',sans-serif);
+  font-family: var(--ff-body, 'Nunito', sans-serif);
   font-size: 11px; letter-spacing: 0.3em;
-  color: rgba(174,156,255,0.45); text-transform: uppercase;
+  color: var(--text-secondary); text-transform: uppercase;
 }
 @keyframes loadingPulse {
   0%, 100% { opacity: 0.7; transform: scale(1); }
@@ -539,4 +507,82 @@ function handleSetTab(t: string) {
 .settings-up-enter-from .settings-up-leave-to { opacity: 0; }
 .settings-up-enter-from > div:last-child,
 .settings-up-leave-to  > div:last-child { transform: translateY(100%); }
+
+/* ── Bottom Nav Pocket ────────────────────────────────────────────── */
+.bnav-pocket {
+  background: var(--theme-nav);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid var(--border-subtle);
+  box-shadow: 0 -4px 20px rgba(110,79,196,0.06);
+  height: 72px;
+  transform: translateZ(0); /* prevent iOS jank */
+}
+[data-theme="dark"] .bnav-pocket {
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+}
+
+.bnav-pocket__btn {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 3px;
+  border: none; background: transparent;
+  cursor: pointer; position: relative;
+  padding: 8px 4px 10px;
+  min-height: 44px;
+  transition: opacity 0.18s;
+}
+.bnav-pocket__btn:active { transform: scale(0.94); }
+
+/* Dot sopra l'icona */
+.bnav-pocket__dot {
+  position: absolute;
+  top: 6px; left: 50%;
+  transform: translateX(-50%);
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(139,111,216,0.8), 0 0 12px rgba(139,111,216,0.4);
+}
+
+/* Icona */
+.bnav-pocket__icon {
+  color: var(--theme-nav-icon);
+  transition: color 0.18s, transform 0.18s, filter 0.18s;
+}
+.bnav-pocket__icon--active {
+  color: var(--theme-nav-icon-active);
+  transform: scale(1.15);
+  filter: drop-shadow(0 0 5px rgba(139,111,216,0.45));
+}
+
+/* Label */
+.bnav-pocket__label {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-tertiary);
+  transition: color 0.18s;
+}
+.bnav-pocket__label--active {
+  color: var(--theme-nav-icon-active);
+}
+
+/* FAB Missioni */
+.missioni-fab-pocket {
+  position: fixed;
+  bottom: 88px; right: 16px;
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 60;
+  box-shadow: var(--shadow-float), 0 4px 16px rgba(110,79,196,0.35);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.missioni-fab-pocket:hover { transform: scale(1.08); }
+.missioni-fab-pocket:active { transform: scale(0.94); }
 </style>

@@ -541,3 +541,10 @@ const listExpanded = ref(false)
     </template>
   </div>
 </template>
+
+<style scoped>
+/* Pocket-style: background del container trasparente (ereditato da game-container) */
+.fade-in { background: transparent; }
+/* Testo primario via token */
+* { font-family: var(--ff-body, 'Nunito', sans-serif); }
+</style>

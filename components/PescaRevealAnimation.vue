@@ -111,7 +111,7 @@ const cardBackStyle = {
   <!-- Overlay a tutto schermo — z-index 300 come il sorgente React -->
   <div
     style="position:fixed;inset:0;z-index:300;
-           background:rgba(6,3,15,0.98);
+           background:var(--theme-overlay);
            display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px"
   >
     <!-- Titolo fase -->

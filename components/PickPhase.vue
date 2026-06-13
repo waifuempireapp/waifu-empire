@@ -430,7 +430,7 @@ function hpBarData(hp: number, maxHp: number) {
       <!-- Starter del giocatore -->
       <div style="text-align:center">
         <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:8px;color:#00C8FF;letter-spacing:2px;margin-bottom:6px">TU</div>
-        <div style="width:90px;height:135px;border-radius:10px;overflow:hidden;border:2px solid rgba(0,200,255,.4);background:rgba(6,3,15,.8)">
+        <div style="width:90px;height:135px;border-radius:10px;overflow:hidden;border:2px solid rgba(0,200,255,.4);background:var(--surface)">
           <img
             v-if="p1ActiveStarter?.asset_statica"
             :src="ikUrl(p1ActiveStarter.asset_statica ?? null, 'normal') ?? ''"
@@ -455,7 +455,7 @@ function hpBarData(hp: number, maxHp: number) {
         <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:8px;color:#FF3355;letter-spacing:2px;margin-bottom:6px">
           {{ opponentLabel }}
         </div>
-        <div style="width:90px;height:135px;border-radius:10px;overflow:hidden;border:2px solid rgba(255,50,80,.4);background:rgba(6,3,15,.8)">
+        <div style="width:90px;height:135px;border-radius:10px;overflow:hidden;border:2px solid rgba(255,50,80,.4);background:var(--surface)">
           <img
             v-if="cpuActiveStarter?.asset_statica"
             :src="ikUrl(cpuActiveStarter.asset_statica ?? null, 'normal') ?? ''"

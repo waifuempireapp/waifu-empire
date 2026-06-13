@@ -218,3 +218,8 @@ async function switchLocale(code: string) {
 
   </div>
 </template>
+
+<style scoped>
+/* Impostazioni: container trasparente, token per tutto */
+div { font-family: var(--ff-body, 'Nunito', sans-serif); }
+</style>

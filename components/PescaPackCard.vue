@@ -201,76 +201,63 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
       }">★ {{ pack.dropName }}</div>
     </div>
 
-    <!-- ── CARTE: grid 3 colonne, row 1 = col 1-2, row 2 = col 1-2-3 ── -->
-    <div style="padding:16px 12px 8px; overflow:visible;">
-      <div style="display:grid; grid-template-columns:repeat(3,1fr); grid-auto-rows:auto; gap:12px;">
+    <!-- ── CARTE: 2 centrate sopra + 3 sotto ── -->
+    <div style="padding:16px 12px 20px;">
 
-        <!-- Riga 1: 2 carte centrate — wrapper flex su 3 colonne -->
-        <div style="grid-column:1/-1; grid-row:1; display:flex; justify-content:center; gap:12px; margin-top:14px;">
-
-        <!-- Carta 0 -->
-        <div v-if="cards[0]" style="width:calc((100% - 24px) / 3); position:relative; flex-shrink:0;">
-          <div v-if="isNew(cards[0])" style="position:absolute;top:-12px;left:-4px;z-index:20;"><div style="background:linear-gradient(135deg,#00b4ff,#00e676);border:2px solid rgba(255,255,255,0.45);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;font-weight:900;color:#000;letter-spacing:0.06em;box-shadow:0 3px 12px rgba(0,180,255,0.55);white-space:nowrap;line-height:1;">NEW</div></div>
-          <div v-if="(true)&&getCopie(cards[0])>0" :style="{position:'absolute',top:'-12px',right:'-4px',zIndex:20,background:getCopie(cards[0])>=3?'linear-gradient(135deg,#00c853,#58e0a3)':'linear-gradient(135deg,#1a0a35,#2a1255)',border:getCopie(cards[0])>=3?'2px solid rgba(89,224,163,0.8)':'2px solid rgba(245,197,96,0.8)',borderRadius:'999px',minWidth:'22px',height:'22px',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--ff-label)',fontSize:'11px',fontWeight:900,color:'#fff',padding:'0 4px'}">{{ getCopie(cards[0])>=3?'C':getCopie(cards[0]) }}</div>
-          <div :style="{borderRadius:'10px',border:true?rarityBorder(cards[0].rarita):'1.5px solid rgba(167,139,250,0.2)',background:'var(--theme-bg-secondary)',boxShadow:true?rarityGlow(cards[0].rarita):'none',overflow:'hidden',transition:'all 0.25s',position:'relative'}">
-            <div style="aspect-ratio:2/3;position:relative;overflow:hidden;">
-              <template v-if="true">
-                <img v-if="cards[0].immagine" :src="ikUrl(cards[0].immagine,'thumbnail')??undefined" :alt="cards[0].nome" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
-                <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.82;" /></div>
-              </template>
-              <template v-else>
-                <!-- unreachable --><img v-if="false" :src="ikUrl(cards[0].immagine,'thumbnail')??undefined" :alt="cards[0].nome" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;filter:blur(12px) brightness(0.5);" />
-                <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.3;" /></div>
-                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;z-index:3;"><span style="font-size:22px;">🔒</span><div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:8px;color:rgba(255,140,0,0.9);letter-spacing:0.12em;text-transform:uppercase;font-weight:800;text-align:center;">Hard Pass</div></div>
-              </template>
-              <div v-if="true" :style="{position:'absolute',bottom:'4px',left:'4px',background:rarityColor(cards[0].rarita)+'33',border:'1px solid '+rarityColor(cards[0].rarita)+'88',borderRadius:'999px',padding:'2px 6px',fontFamily:'var(--ff-label,\'Saira Condensed\',sans-serif)',fontSize:'10px',fontWeight:800,color:rarityColor(cards[0].rarita),letterSpacing:'0.05em',textTransform:'capitalize',backdropFilter:'blur(4px)',zIndex:2}">{{ cards[0].rarita||'?' }}</div>
+      <!-- riga 1: 2 carte, ciascuna larga 1/3, centrate -->
+      <div style="display:flex; justify-content:center; gap:12px; margin-bottom:12px;">
+        <template v-for="carta in cards.slice(0,2)" :key="carta.id">
+          <!-- slot card: larghezza fissa = 1/3 container -->
+          <div style="width:calc((100% - 24px) / 3); flex-shrink:0; position:relative;">
+            <div v-if="isNew(carta)" style="position:absolute;top:-10px;left:-4px;z-index:20;background:linear-gradient(135deg,#00b4ff,#00e676);border:2px solid rgba(255,255,255,0.5);border-radius:999px;padding:2px 7px;font-size:10px;font-weight:900;color:#000;line-height:1;white-space:nowrap;">NEW</div>
+            <div v-if="getCopie(carta)>0" style="position:absolute;top:-10px;right:-4px;z-index:20;min-width:20px;height:20px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#fff;padding:0 4px;" :style="getCopie(carta)>=3?{background:'linear-gradient(135deg,#00c853,#58e0a3)',border:'2px solid rgba(89,224,163,0.8)'}:{background:'linear-gradient(135deg,#3b1fa8,#6d28d9)',border:'2px solid rgba(139,111,216,0.8)'}">{{ getCopie(carta)>=3?'C':getCopie(carta) }}</div>
+            <!-- CONTENITORE IMMAGINE: padding-bottom:150% = ratio 2:3 FISSO — impossibile da sovrascrivere -->
+            <div style="position:relative; width:100%; padding-bottom:150%; border-radius:10px; overflow:hidden;"
+                 :style="{border:rarityBorder(carta.rarita), boxShadow:rarityGlow(carta.rarita), background:'var(--theme-bg-secondary)'}">
+              <img v-if="carta.immagine"
+                   :src="ikUrl(carta.immagine,'thumbnail')??undefined" :alt="carta.nome"
+                   style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
+              <div v-else style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--surface-sunken);">
+                <img src="~/assets/images/New_Logo.png" alt="" style="width:50%;height:auto;display:block;" />
+              </div>
+              <div style="position:absolute;bottom:4px;left:4px;z-index:3;border-radius:999px;padding:2px 6px;font-size:10px;font-weight:800;text-transform:capitalize;backdrop-filter:blur(4px);"
+                   :style="{background:rarityColor(carta.rarita)+'33',border:'1px solid '+rarityColor(carta.rarita)+'88',color:rarityColor(carta.rarita)}">{{ carta.rarita||'?' }}</div>
             </div>
+            <div style="padding:4px 0 0;text-align:center;font-size:11px;font-weight:700;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ carta.nome||'—' }}</div>
           </div>
-          <div style="padding:4px 1px 0;text-align:center;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;color:var(--theme-text);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:0.03em;">{{ cards[0].nome||'—' }}</div>
-        </div>
-
-        <!-- Carta 1 -->
-        <div v-if="cards[1]" style="width:calc((100% - 24px) / 3); position:relative; flex-shrink:0;">
-          <div v-if="isNew(cards[1])" style="position:absolute;top:-12px;left:-4px;z-index:20;"><div style="background:linear-gradient(135deg,#00b4ff,#00e676);border:2px solid rgba(255,255,255,0.45);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;font-weight:900;color:#000;letter-spacing:0.06em;box-shadow:0 3px 12px rgba(0,180,255,0.55);white-space:nowrap;line-height:1;">NEW</div></div>
-          <div v-if="(true)&&getCopie(cards[1])>0" :style="{position:'absolute',top:'-12px',right:'-4px',zIndex:20,background:getCopie(cards[1])>=3?'linear-gradient(135deg,#00c853,#58e0a3)':'linear-gradient(135deg,#1a0a35,#2a1255)',border:getCopie(cards[1])>=3?'2px solid rgba(89,224,163,0.8)':'2px solid rgba(245,197,96,0.8)',borderRadius:'999px',minWidth:'22px',height:'22px',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--ff-label)',fontSize:'11px',fontWeight:900,color:'#fff',padding:'0 4px'}">{{ getCopie(cards[1])>=3?'C':getCopie(cards[1]) }}</div>
-          <div :style="{borderRadius:'10px',border:true?rarityBorder(cards[1].rarita):'1.5px solid rgba(167,139,250,0.2)',background:'var(--theme-bg-secondary)',boxShadow:true?rarityGlow(cards[1].rarita):'none',overflow:'hidden',transition:'all 0.25s',position:'relative'}">
-            <div style="aspect-ratio:2/3;position:relative;overflow:hidden;">
-              <template v-if="true">
-                <img v-if="cards[1].immagine" :src="ikUrl(cards[1].immagine,'thumbnail')??undefined" :alt="cards[1].nome" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
-                <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.82;" /></div>
-              </template>
-              <div v-if="true" :style="{position:'absolute',bottom:'4px',left:'4px',background:rarityColor(cards[1].rarita)+'33',border:'1px solid '+rarityColor(cards[1].rarita)+'88',borderRadius:'999px',padding:'2px 6px',fontFamily:'var(--ff-label,\'Saira Condensed\',sans-serif)',fontSize:'10px',fontWeight:800,color:rarityColor(cards[1].rarita),letterSpacing:'0.05em',textTransform:'capitalize',backdropFilter:'blur(4px)',zIndex:2}">{{ cards[1].rarita||'?' }}</div>
-            </div>
-          </div>
-          <div style="padding:4px 1px 0;text-align:center;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;color:var(--theme-text);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:0.03em;">{{ cards[1].nome||'—' }}</div>
-        </div>
-
-        </div><!-- fine wrapper riga 1 -->
-
-        <!-- Carte 2-4: row2, col 1-2-3 -->
-        <div
-          v-for="(carta, i) in cards.slice(2,5)"
-          :key="i+2"
-          :style="{gridColumn: String(i+1), gridRow:'2', position:'relative', marginTop:'14px'}"
-        >
-          <div v-if="isNew(carta)" style="position:absolute;top:-12px;left:-4px;z-index:20;"><div style="background:linear-gradient(135deg,#00b4ff,#00e676);border:2px solid rgba(255,255,255,0.45);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;font-weight:900;color:#000;letter-spacing:0.06em;box-shadow:0 3px 12px rgba(0,180,255,0.55);white-space:nowrap;line-height:1;">NEW</div></div>
-          <div v-if="(true)&&getCopie(carta)>0" :style="{position:'absolute',top:'-12px',right:'-4px',zIndex:20,background:getCopie(carta)>=3?'linear-gradient(135deg,#00c853,#58e0a3)':'linear-gradient(135deg,#1a0a35,#2a1255)',border:getCopie(carta)>=3?'2px solid rgba(89,224,163,0.8)':'2px solid rgba(245,197,96,0.8)',borderRadius:'999px',minWidth:'22px',height:'22px',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--ff-label)',fontSize:'11px',fontWeight:900,color:'#fff',padding:'0 4px'}">{{ getCopie(carta)>=3?'C':getCopie(carta) }}</div>
-          <div :style="{borderRadius:'10px',border:true?rarityBorder(carta.rarita):'1.5px solid rgba(167,139,250,0.2)',background:'var(--theme-bg-secondary)',boxShadow:true?rarityGlow(carta.rarita):'none',overflow:'hidden',transition:'all 0.25s',position:'relative'}">
-            <div style="aspect-ratio:2/3;position:relative;overflow:hidden;">
-              <template v-if="true">
-                <img v-if="carta.immagine" :src="ikUrl(carta.immagine,'thumbnail')??undefined" :alt="carta.nome" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
-                <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.82;" /></div>
-              </template>
-              <div v-if="true" :style="{position:'absolute',bottom:'4px',left:'4px',background:rarityColor(carta.rarita)+'33',border:'1px solid '+rarityColor(carta.rarita)+'88',borderRadius:'999px',padding:'2px 6px',fontFamily:'var(--ff-label,\'Saira Condensed\',sans-serif)',fontSize:'10px',fontWeight:800,color:rarityColor(carta.rarita),letterSpacing:'0.05em',textTransform:'capitalize',backdropFilter:'blur(4px)',zIndex:2}">{{ carta.rarita||'?' }}</div>
-            </div>
-          </div>
-          <div style="padding:4px 1px 0;text-align:center;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;color:var(--theme-text);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:0.03em;">{{ carta.nome||'—' }}</div>
-        </div>
-
+        </template>
       </div>
+
+      <!-- riga 2: 3 carte grid, stessa larghezza 1fr -->
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;">
+        <template v-for="carta in cards.slice(2,5)" :key="carta.id">
+          <div style="position:relative;">
+            <div v-if="isNew(carta)" style="position:absolute;top:-10px;left:-4px;z-index:20;background:linear-gradient(135deg,#00b4ff,#00e676);border:2px solid rgba(255,255,255,0.5);border-radius:999px;padding:2px 7px;font-size:10px;font-weight:900;color:#000;line-height:1;white-space:nowrap;">NEW</div>
+            <div v-if="getCopie(carta)>0" style="position:absolute;top:-10px;right:-4px;z-index:20;min-width:20px;height:20px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#fff;padding:0 4px;" :style="getCopie(carta)>=3?{background:'linear-gradient(135deg,#00c853,#58e0a3)',border:'2px solid rgba(89,224,163,0.8)'}:{background:'linear-gradient(135deg,#3b1fa8,#6d28d9)',border:'2px solid rgba(139,111,216,0.8)'}">{{ getCopie(carta)>=3?'C':getCopie(carta) }}</div>
+            <!-- STESSO CONTENITORE: padding-bottom:150% fisso inline -->
+            <div style="position:relative; width:100%; padding-bottom:150%; border-radius:10px; overflow:hidden;"
+                 :style="{border:rarityBorder(carta.rarita), boxShadow:rarityGlow(carta.rarita), background:'var(--theme-bg-secondary)'}">
+              <img v-if="carta.immagine"
+                   :src="ikUrl(carta.immagine,'thumbnail')??undefined" :alt="carta.nome"
+                   style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
+              <div v-else style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--surface-sunken);">
+                <img src="~/assets/images/New_Logo.png" alt="" style="width:50%;height:auto;display:block;" />
+              </div>
+              <div style="position:absolute;bottom:4px;left:4px;z-index:3;border-radius:999px;padding:2px 6px;font-size:10px;font-weight:800;text-transform:capitalize;backdrop-filter:blur(4px);"
+                   :style="{background:rarityColor(carta.rarita)+'33',border:'1px solid '+rarityColor(carta.rarita)+'88',color:rarityColor(carta.rarita)}">{{ carta.rarita||'?' }}</div>
+            </div>
+            <div style="padding:4px 0 0;text-align:center;font-size:11px;font-weight:700;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ carta.nome||'—' }}</div>
+          </div>
+        </template>
+      </div>
+
     </div>
     <!-- Bottone Drop eliminato — il click sulla card avviene nel componente padre -->
 
     </div><!-- fine inner wrapper -->
   </div>
 </template>
+
+<style scoped>
+/* Nessuna regola di sizing qui — tutto è inline nel template per massima priorità */
+</style>

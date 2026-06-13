@@ -102,7 +102,7 @@ onUnmounted(() => { document.getElementById('paypal-sdk-modal')?.remove() })
 
 <template>
   <div
-    style="position:fixed;inset:0;z-index:400;background:rgba(6,3,15,0.97);backdrop-filter:blur(20px);
+    style="position:fixed;inset:0;z-index:400;background:var(--theme-overlay);backdrop-filter:blur(20px);
            display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:20px"
   >
     <!-- Stato successo -->
@@ -137,7 +137,7 @@ onUnmounted(() => { document.getElementById('paypal-sdk-modal')?.remove() })
           @click="selectedId = t.id"
           :style="{
             width: '90px', padding: '10px 8px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center',
-            background: selectedId === t.id ? 'rgba(255,77,158,0.18)' : 'rgba(6,3,15,0.7)',
+            background: selectedId === t.id ? 'rgba(255,77,158,0.18)' : 'var(--surface)',
             border: `2px solid ${selectedId === t.id ? '#ff4d9e' : t.kisses >= missingKisses ? 'rgba(255,77,158,0.25)' : 'rgba(255,255,255,0.1)'}`,
             transition: 'all 0.2s',
             boxShadow: selectedId === t.id ? '0 0 14px rgba(255,77,158,0.4)' : 'none',

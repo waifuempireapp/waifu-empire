@@ -50,7 +50,7 @@ const onInput = (e: Event) => {
   <div
     class="rounded-xl px-[18px] py-[14px]"
     :style="{
-      background: 'rgba(6,3,15,0.6)',
+      background: 'var(--surface)',
       border: '1px solid rgba(245,166,35,0.15)',
     }"
   >

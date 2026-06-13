@@ -30,7 +30,7 @@ let scene:     import('three').Scene               | null = null
 let camera:    import('three').PerspectiveCamera   | null = null
 let mesh:      import('three').Mesh                | null = null
 let animId:    number                              | null = null
-let clock:     import('three').Clock               | null = null
+let timer:     import('three').Timer               | null = null
 
 // ── Tilt state ────────────────────────────────────────────────
 let targetTiltX = 0, targetTiltY = 0
@@ -57,7 +57,7 @@ async function init() {
     scene  = new THREE.Scene()
     camera = new THREE.PerspectiveCamera(36, W / H, 0.1, 100)
     camera.position.set(0, 0, 3.0)
-    clock  = new THREE.Clock()
+    timer  = new THREE.Timer()
     // Nessuna luce: MeshBasicMaterial non la usa
 
     // Geometry dalla cache condivisa
@@ -79,7 +79,6 @@ async function init() {
     }))
     scene.add(mesh)
     ready.value = true
-    clock.start()
     animate(THREE)
 
   } catch (e) {
@@ -90,10 +89,11 @@ async function init() {
 
 // ── Loop ──────────────────────────────────────────────────────
 function animate(THREE: typeof import('three')) {
-  if (!renderer || !scene || !camera || !mesh || !clock) return
+  if (!renderer || !scene || !camera || !mesh || !timer) return
   animId = requestAnimationFrame(() => animate(THREE))
 
-  const t = clock.getElapsedTime()
+  timer.update()
+  const t = timer.getElapsed()
   currentTiltX += (targetTiltX - currentTiltX) * 0.09
   currentTiltY += (targetTiltY - currentTiltY) * 0.09
 

@@ -528,7 +528,7 @@ onUnmounted(() => {
   <div
     v-if="animazione"
     class="fixed inset-0 z-[300] flex flex-col items-center justify-center gap-7"
-    style="background: rgba(6,3,15,0.98);"
+    style="background: var(--theme-overlay);"
   >
     <div
       style="font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: 4px; color: #ff4d9e; opacity: 0.8;"
@@ -599,7 +599,7 @@ onUnmounted(() => {
   <div
     v-else-if="tradeAperto?.tipo === 'incoming'"
     class="fixed inset-0 z-[400] flex flex-col items-center overflow-y-auto px-4 py-6 gap-4"
-    style="background: rgba(6,3,15,0.97); backdrop-filter: blur(20px);"
+    style="background: var(--theme-overlay); backdrop-filter: blur(20px);"
   >
     <!-- Feedback: risposta inviata -->
     <div
@@ -780,7 +780,7 @@ onUnmounted(() => {
   <div
     v-else-if="tradeAperto?.tipo === 'accept' || tradeAperto?.tipo === 'confirm'"
     class="fixed inset-0 z-[400] flex flex-col items-center justify-center overflow-y-auto px-4 py-6 gap-5"
-    style="background: rgba(6,3,15,0.97); backdrop-filter: blur(20px);"
+    style="background: var(--theme-overlay); backdrop-filter: blur(20px);"
   >
     <div
       v-if="acceptStato === 'success'"
@@ -849,7 +849,7 @@ onUnmounted(() => {
   <div
     v-else-if="tradeAperto?.tipo === 'confirm_b'"
     class="fixed inset-0 z-[400] flex flex-col items-center justify-center overflow-y-auto px-4 py-6 gap-5"
-    style="background: rgba(6,3,15,0.97); backdrop-filter: blur(20px);"
+    style="background: var(--theme-overlay); backdrop-filter: blur(20px);"
   >
     <!-- Animazione ricezione waifu per B dopo conferma -->
     <div
@@ -1007,7 +1007,7 @@ onUnmounted(() => {
             v-for="t in attivi"
             :key="t.id"
             :style="{
-              background: getStatusLabel(t, uid).action ? 'rgba(255,77,158,0.06)' : 'rgba(6,3,15,0.5)',
+              background: getStatusLabel(t, uid).action ? 'rgba(255,77,158,0.06)' : 'var(--surface)',
               border: `1px solid ${getStatusLabel(t, uid).action ? 'rgba(255,77,158,0.3)' : `${RARITA_COLORI[t.rarita] || '#f5a623'}20`}`,
               borderRadius: '12px',
               padding: '12px 14px',
@@ -1081,7 +1081,7 @@ onUnmounted(() => {
             v-for="t in terminatiPagina"
             :key="t.id"
             :style="{
-              background: getStatusLabel(t, uid).action ? 'rgba(255,77,158,0.06)' : 'rgba(6,3,15,0.5)',
+              background: getStatusLabel(t, uid).action ? 'rgba(255,77,158,0.06)' : 'var(--surface)',
               border: `1px solid ${getStatusLabel(t, uid).action ? 'rgba(255,77,158,0.3)' : `${RARITA_COLORI[t.rarita] || '#f5a623'}20`}`,
               borderRadius: '12px',
               padding: '12px 14px',

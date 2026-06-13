@@ -1,0 +1,450 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   WAIFU EMPIRE — Design Tokens (Pokémon TCG Pocket style, viola/lavanda)
+   Questo file è la fonte canonica dei token di design.
+   Viene caricato DOPO main.css e sovrascrive dove necessario.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─── LIGHT MODE ─────────────────────────────────────────────────────── */
+:root {
+  /* Background — quasi bianco con punta lavanda, come Pocket */
+  --bg-base:              #F3F1F8;
+  --bg-gradient-top:      #E9E4F5;
+  --bg-gradient-bottom:   #F7F6FB;
+  --bg-hero-gradient:     linear-gradient(170deg, #B9A6E8 0%, #D5C8F0 35%, #F3F1F8 70%);
+  --bg-accent-warm:       linear-gradient(160deg, #E8956D 0%, #F3F1F8 65%);
+
+  /* Superfici flottanti */
+  --surface:              #FBFAFD;
+  --surface-raised:       #FFFFFF;
+  --surface-sunken:       #ECE8F4;
+  --surface-glass:        rgba(251, 250, 253, 0.78);
+
+  /* Testo — mai nero puro */
+  --text-primary:         #3D3A4E;
+  --text-secondary:       #8B86A3;
+  --text-tertiary:        #B5B0C8;
+  --text-on-accent:       #FFFFFF;
+
+  /* Accenti viola */
+  --accent:               #8B6FD8;
+  --accent-strong:        #6E4FC4;
+  --accent-soft:          #E5DCF7;
+  --accent-gold:          #F5C242;
+  --danger:               #E85D75;
+  --success:              #5FC48E;
+
+  /* Bordi */
+  --border-subtle:        rgba(139, 111, 216, 0.12);
+  --border-medium:        rgba(139, 111, 216, 0.22);
+
+  /* Ombre neumorfiche — tinta viola, mai nere in light mode */
+  --shadow-float:         0 8px 24px rgba(110,79,196,0.12), 0 2px 6px rgba(110,79,196,0.07);
+  --shadow-card-p:        0 12px 32px rgba(80,60,140,0.18), 0 4px 10px rgba(80,60,140,0.10);
+  --shadow-neu-out:       -5px -5px 12px rgba(255,255,255,0.90), 5px 5px 12px rgba(139,111,216,0.22);
+  --shadow-neu-in:        inset -4px -4px 10px rgba(255,255,255,0.80), inset 4px 4px 10px rgba(139,111,216,0.20);
+  --shadow-pack-3d:       0 30px 60px rgba(60,40,110,0.30), 0 10px 20px rgba(60,40,110,0.15);
+
+  /* Rainbow line */
+  --rainbow-line:         linear-gradient(90deg, #7FD8A4, #F5E27A, #F0A86E, #E87FA0, #9B7FE8);
+
+  /* Raggi */
+  --radius-panel:         28px;
+  --radius-card-p:        14px;
+  --radius-pill:          9999px;
+
+  /* ── Alias verso --theme-* (per compatibilità col codice esistente) ── */
+  --theme-bg:             #F3F1F8;
+  --theme-bg-secondary:   #E9E4F5;
+  --theme-surface:        #FBFAFD;
+  --theme-surface-2:      #ECE8F4;
+  --theme-loading:        #EDE9F5;
+
+  --theme-text:           #3D3A4E;
+  --theme-text-2:         #6B6690;
+  --theme-text-3:         #B5B0C8;
+
+  --theme-accent:         #8B6FD8;
+  --theme-accent-hover:   #6E4FC4;
+  --theme-accent-pink:    #D946A8;
+  --theme-accent-pink-hover: #C0358F;
+
+  --theme-border:         rgba(139,111,216,0.18);
+  --theme-border-2:       rgba(139,111,216,0.28);
+  --theme-shadow:         rgba(110,79,196,0.10);
+
+  --theme-nav:            rgba(243,241,248,0.92);
+  --theme-header:         rgba(251,250,253,0.90);
+  --theme-nav-icon:       rgba(61,58,78,0.45);
+  --theme-nav-icon-active:#6E4FC4;
+
+  --theme-tab-active:     rgba(139,111,216,0.10);
+  --theme-tab-border:     rgba(139,111,216,0.22);
+
+  --theme-input-bg:       #FBFAFD;
+  --theme-input-border:   rgba(139,111,216,0.22);
+
+  --theme-scrollbar:      rgba(139,111,216,0.30);
+  --theme-overlay:        rgba(61,58,78,0.45);
+  --theme-shimmer:        rgba(139,111,216,0.07);
+
+  /* Alias Pocket */
+  --surface-p:            var(--surface);
+  --accent-p:             var(--accent);
+  --accent-soft-p:        var(--accent-soft);
+}
+
+/* ─── DARK MODE ───────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg-base:              #17161B;
+  --bg-gradient-top:      #211F28;
+  --bg-gradient-bottom:   #141318;
+  --bg-hero-gradient:     linear-gradient(170deg, #2E2840 0%, #221E30 40%, #17161B 75%);
+  --bg-accent-warm:       linear-gradient(160deg, #3A2A22 0%, #17161B 65%);
+
+  --surface:              #211F26;
+  --surface-raised:       #2A2830;
+  --surface-sunken:       #121116;
+  --surface-glass:        rgba(33, 31, 38, 0.80);
+
+  --text-primary:         #E8E6EE;
+  --text-secondary:       #9C99A8;
+  --text-tertiary:        #5E5B68;
+  --text-on-accent:       #FFFFFF;
+
+  --accent:               #9B7FE8;
+  --accent-strong:        #B49AF5;
+  --accent-soft:          #2E2840;
+  --accent-gold:          #E0B23E;
+
+  --border-subtle:        rgba(255,255,255,0.07);
+  --border-medium:        rgba(255,255,255,0.13);
+
+  --shadow-float:         0 8px 24px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.30);
+  --shadow-card-p:        0 12px 32px rgba(0,0,0,0.55), 0 4px 10px rgba(0,0,0,0.35);
+  --shadow-neu-out:       -4px -4px 10px rgba(255,255,255,0.03), 6px 6px 14px rgba(0,0,0,0.50);
+  --shadow-neu-in:        inset -3px -3px 8px rgba(255,255,255,0.03), inset 4px 4px 10px rgba(0,0,0,0.50);
+  --shadow-pack-3d:       0 30px 60px rgba(0,0,0,0.70), 0 10px 20px rgba(0,0,0,0.40);
+
+  --rainbow-line:         linear-gradient(90deg, #5FA87E, #C4B45E, #C08456, #B86380, #7E64C4);
+
+  /* ── Alias --theme-* per dark mode ── */
+  --theme-bg:             #17161B;
+  --theme-bg-secondary:   #211F28;
+  --theme-surface:        #211F26;
+  --theme-surface-2:      #2A2830;
+  --theme-loading:        #17161B;
+
+  --theme-text:           #E8E6EE;
+  --theme-text-2:         #9C99A8;
+  --theme-text-3:         #5E5B68;
+
+  --theme-accent:         #9B7FE8;
+  --theme-accent-hover:   #B49AF5;
+  --theme-accent-pink:    #F062C0;
+  --theme-accent-pink-hover: #FF7DD1;
+
+  --theme-border:         rgba(255,255,255,0.09);
+  --theme-border-2:       rgba(255,255,255,0.14);
+  --theme-shadow:         rgba(0,0,0,0.40);
+
+  --theme-nav:            rgba(23,22,27,0.96);
+  --theme-header:         rgba(33,31,38,0.95);
+  --theme-nav-icon:       rgba(156,153,168,0.55);
+  --theme-nav-icon-active:#B49AF5;
+
+  --theme-tab-active:     rgba(155,127,232,0.18);
+  --theme-tab-border:     rgba(155,127,232,0.30);
+
+  --theme-input-bg:       #2A2830;
+  --theme-input-border:   rgba(255,255,255,0.12);
+
+  --theme-scrollbar:      rgba(155,127,232,0.35);
+  --theme-overlay:        rgba(0,0,0,0.70);
+  --theme-shimmer:        rgba(255,255,255,0.05);
+
+  /* Alias Pocket dark */
+  --surface-p:            var(--surface);
+  --accent-p:             var(--accent);
+  --accent-soft-p:        var(--accent-soft);
+}
+
+/* ─── TRANSIZIONE GLOBALE LIGHT↔DARK ─────────────────────────────────── */
+*, *::before, *::after {
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+/* Esclude elementi animati frequentemente dalla transizione colore */
+.sakura-petal,
+.sb-card-3d,
+.sb-pack-closed__pack--idle,
+[style*="animation"] {
+  transition: none;
+}
+
+/* ─── BODY BASE ───────────────────────────────────────────────────────── */
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+}
+
+/* ─── GAME CONTAINER ──────────────────────────────────────────────────── */
+.game-container {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* ─── LOADING SCREEN (adatta a light mode) ────────────────────────────── */
+.gioco-loading-screen {
+  background: var(--bg-hero-gradient) !important;
+}
+.gioco-loading-spinner {
+  border-color: var(--border-subtle) !important;
+  border-top-color: var(--accent) !important;
+}
+.gioco-loading-text { color: var(--text-secondary) !important; }
+
+/* ─── BOTTOM NAV (tema-aware) ─────────────────────────────────────────── */
+.theme-nav {
+  background: var(--theme-nav) !important;
+  border-top: 1px solid var(--border-subtle) !important;
+  box-shadow: 0 -4px 20px rgba(110,79,196,0.06);
+}
+[data-theme="dark"] .theme-nav {
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+}
+
+/* ─── HEADER (tema-aware) ─────────────────────────────────────────────── */
+.hdr-root {
+  background: var(--theme-header) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  box-shadow: 0 2px 12px var(--theme-shadow) !important;
+}
+
+/* ─── INPUT / TEXTAREA / SELECT (tema-aware) ──────────────────────────── */
+input, textarea, select {
+  background: var(--theme-input-bg);
+  border-color: var(--theme-input-border);
+  color: var(--theme-text);
+}
+input::placeholder, textarea::placeholder {
+  color: var(--text-tertiary);
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* ─── SCROLLBAR (tema-aware) ──────────────────────────────────────────── */
+::-webkit-scrollbar-track { background: var(--theme-shimmer); }
+::-webkit-scrollbar-thumb {
+  background: var(--theme-scrollbar);
+  border-radius: 3px;
+}
+
+/* ─── LINK RAINBOW INDICATOR (attiva tab nav) ─────────────────────────── */
+.nav-tab-active-dot {
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(139,111,216,0.8), 0 0 12px rgba(139,111,216,0.4);
+}
+
+/* ─── UTILITY CLASSES POCKET ──────────────────────────────────────────── */
+
+/* Pannello flottante generico */
+.pocket-panel {
+  background: var(--surface);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-float);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Pannello neumorfico */
+.pocket-panel-neu {
+  background: var(--bg-base);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-neu-out);
+}
+
+/* Glass panel */
+.pocket-panel-glass {
+  background: var(--surface-glass);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-float);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Hero gradient page background */
+.pocket-bg-hero {
+  background: var(--bg-hero-gradient);
+}
+
+/* Pill accent */
+.pocket-pill-accent {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border-radius: var(--radius-pill);
+  padding: 8px 20px;
+  font-weight: 800;
+  box-shadow: var(--shadow-float);
+}
+
+/* Pill soft (dominante in Pocket) */
+.pocket-pill-soft {
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 8px 18px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-float);
+}
+
+/* Section title con rainbow line */
+.pocket-section-title {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+/* ─── OVERRIDE PER VECCHIE CLASSI (legacy glass-panel, hdr, ecc.) ─────── */
+.glass-panel {
+  background: var(--surface-glass);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+/* sub-nav pill in light mode */
+.sub-nav-pill {
+  background: var(--surface-glass);
+  border-color: var(--border-subtle);
+  color: var(--text-secondary);
+}
+.sub-nav-pill:hover {
+  background: var(--accent-soft);
+  border-color: var(--border-medium);
+  color: var(--accent);
+}
+.sub-nav-pill--active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 14px rgba(139,111,216,0.15);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   EFFETTO 3D NEUMORPHIC GLOBALE
+   Applicato a tutti i bottoni, input, select e card-panel.
+   Light mode: ombra chiara in alto-sx + ombra viola in basso-dx (effetto rilievo).
+   Dark mode: ombre nere.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─── BOTTONI — full rounded + 3D neumorphic ──────────────────────────── */
+button {
+  border-radius: var(--radius-pill) !important;
+}
+
+button:not([class*="app-btn"]):not([class*="bnav"]):not([class*="missioni-fab"]):not([class*="ntabs"]):not([class*="adslot"]):not([class*="swap-btn"]):not([class*="negozio-btn"]):not([class*="ht-hero-cta"]):not([class*="sb-"]):not([class*="btn-premium"]):not([class*="ht-drop__cta"]) {
+  box-shadow: var(--shadow-neu-out);
+  transition: box-shadow 0.12s ease, transform 0.1s ease, background-color 0.2s ease;
+}
+button:not([class*="app-btn"]):not([class*="bnav"]):not([class*="missioni-fab"]):not([class*="ntabs"]):not([class*="adslot"]):not([class*="swap-btn"]):not([class*="negozio-btn"]):not([class*="ht-hero-cta"]):not([class*="sb-"]):not([class*="btn-premium"]):not([class*="ht-drop__cta"]):active:not(:disabled) {
+  box-shadow: var(--shadow-neu-in);
+  /* NO transform:scale — su mobile può interferire con gli event handler click */
+}
+
+/* AppButton — tutte le varianti */
+.app-btn {
+  box-shadow: var(--shadow-neu-out) !important;
+}
+.app-btn:active:not(:disabled) {
+  box-shadow: var(--shadow-neu-in) !important;
+  /* NO transform su mobile */
+}
+/* Variante primary: mantieni il colore ma aggiungi profondità */
+.app-btn--primary {
+  box-shadow: var(--shadow-neu-out), 0 4px 16px rgba(110,79,196,0.25) !important;
+}
+
+/* ─── INPUT & TEXTAREA ────────────────────────────────────────────────── */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+textarea {
+  box-shadow: var(--shadow-neu-in);
+  border: 1px solid var(--border-subtle) !important;
+  background: var(--surface-sunken) !important;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):focus,
+textarea:focus {
+  box-shadow: var(--shadow-neu-in), 0 0 0 2px rgba(139,111,216,0.22);
+  border-color: var(--accent) !important;
+}
+
+/* ─── SELECT ──────────────────────────────────────────────────────────── */
+select {
+  box-shadow: var(--shadow-neu-in);
+  border: 1px solid var(--border-subtle) !important;
+  background: var(--surface-sunken) !important;
+  transition: box-shadow 0.18s ease;
+}
+select:focus {
+  box-shadow: var(--shadow-neu-in), 0 0 0 2px rgba(139,111,216,0.22);
+  border-color: var(--accent) !important;
+}
+
+/* ─── CARD PANELS ─────────────────────────────────────────────────────── */
+/* Pannelli flottanti generici */
+.app-panel--float,
+.pocket-panel,
+.glass-panel,
+.pocket-panel-glass {
+  box-shadow: var(--shadow-neu-out) !important;
+}
+
+/* Pannelli incassati */
+.app-panel--sunken,
+.pocket-panel-neu {
+  box-shadow: var(--shadow-neu-in) !important;
+}
+
+/* Card colección (CartaWaifu, CartaMossa ecc.) */
+.carta-waifu-root,
+.carta-mossa-root {
+  box-shadow: var(--shadow-neu-out) !important;
+  transition: box-shadow 0.18s ease, transform 0.15s ease !important;
+}
+.carta-waifu-root:active,
+.carta-mossa-root:active {
+  box-shadow: var(--shadow-neu-in) !important;
+  transform: scale(0.97) !important;
+}
+
+/* ─── DARK MODE: ombre più decise ─────────────────────────────────────── */
+[data-theme="dark"] button:not([class*="app-btn"]):not([class*="bnav"]):not([class*="missioni-fab"]):not([class*="sb-"]):not([class*="btn-premium"]) {
+  box-shadow: var(--shadow-neu-out);
+}
+[data-theme="dark"] .app-btn {
+  box-shadow: var(--shadow-neu-out) !important;
+}
+[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  box-shadow: var(--shadow-neu-in);
+}
+
+/* ─── REDUCED MOTION ──────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

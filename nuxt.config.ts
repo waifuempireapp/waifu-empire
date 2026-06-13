@@ -26,8 +26,9 @@ export default defineNuxtConfig({
     ...(process.env.NETLIFY ? ['@netlify/nuxt'] : []) as [],
   ],
 
-  // Percorso CSS globale (contiene @tailwind + variabili CSS legacy + animazioni)
-  css: ['~/assets/css/main.css'],
+  // main.css: @tailwind + variabili legacy + animazioni
+  // tokens.css: design token canonici Pokémon TCG Pocket (caricato dopo → sovrascrive)
+  css: ['~/assets/css/main.css', '~/assets/css/tokens.css'],
 
   tailwindcss: {
     configPath: '~/tailwind.config.ts',

@@ -356,7 +356,7 @@ const primaryBtn = computed(() => ({
   <!-- ── FASE BATTLE ──────────────────────────────────────────────────── -->
   <div
     v-else-if="phase === 'battle'"
-    :style="{ position: 'fixed', top: `${topOffset}px`, left: 0, right: 0, bottom: 0, zIndex: 200, background: '#07051a' }"
+    :style="{ position: 'fixed', top: `${topOffset}px`, left: 0, right: 0, bottom: 0, zIndex: 200, background: 'var(--bg-base)' }"
   >
     <WaifuBattleArena
       :playerTeam="(playerTeam as any)"

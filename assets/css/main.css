@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700;800;900&family=Saira+Condensed:wght@500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Cinzel:wght@400;600;700;900&family=Fredoka:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Unbounded:wght@500;600;700;800;900&family=Saira+Condensed:wght@500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -126,11 +126,11 @@
   --text-mute:    #6b6390;
   --text-faint:   #3e3760;
 
-  /* Tipografia */
-  --ff-display:  'Unbounded', 'Cinzel', system-ui, sans-serif;
-  --ff-label:    'Saira Condensed', 'Orbitron', sans-serif;
-  --ff-body:     'DM Sans', 'Fredoka', system-ui, sans-serif;
-  --ff-mono:     'JetBrains Mono', 'Orbitron', ui-monospace, monospace;
+  /* Tipografia — Nunito come primario body/label (stile Pokémon Pocket) */
+  --ff-display:  'Unbounded', system-ui, sans-serif;
+  --ff-label:    'Nunito', 'Saira Condensed', sans-serif;
+  --ff-body:     'Nunito', 'DM Sans', system-ui, sans-serif;
+  --ff-mono:     'JetBrains Mono', ui-monospace, monospace;
 
   /* ---------- ALIAS LEGACY (mantengono il codice esistente funzionante) ---------- */
   --bg-deep:       var(--ink-void);
@@ -179,6 +179,55 @@
   --radius-card: 20px;
   --radius-btn: 50px;
   --radius-input: 12px;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   POKÉMON TCG POCKET DESIGN SYSTEM — WAIFU EMPIRE EDITION
+   (lavanda al posto dell'azzurrino)
+══════════════════════════════════════════════════════════════════ */
+:root {
+  /* ── BG HERO ── */
+  --bg-hero:            linear-gradient(170deg, #B9A6E8 0%, #D5C8F0 35%, #F3F1F8 70%);
+  --bg-hero-warm:       linear-gradient(160deg, #E8956D 0%, #F3F1F8 65%);
+  --bg-hero-dark:       linear-gradient(170deg, #2E2840 0%, #221E30 40%, #17161B 75%);
+
+  /* ── OMBRE NEUMORFICHE LIGHT ── */
+  --shadow-float:   0 8px 24px rgba(110,79,196,0.10), 0 2px 6px rgba(110,79,196,0.06);
+  --shadow-card-p:  0 12px 32px rgba(80,60,140,0.16), 0 4px 10px rgba(80,60,140,0.08);
+  --shadow-neu-out: -6px -6px 14px rgba(255,255,255,0.85), 6px 6px 14px rgba(150,130,200,0.18);
+  --shadow-neu-in:  inset -4px -4px 10px rgba(255,255,255,0.70), inset 4px 4px 10px rgba(150,130,200,0.16);
+  --shadow-pack-3d: 0 30px 60px rgba(60,40,110,0.30), 0 10px 20px rgba(60,40,110,0.15);
+
+  /* ── RAINBOW LINE ── */
+  --rainbow-line: linear-gradient(90deg, #7FD8A4, #F5E27A, #F0A86E, #E87FA0, #9B7FE8);
+
+  /* ── POCKET RADIUS ── */
+  --radius-panel:  28px;
+  --radius-card-p: 14px;
+  --radius-pill:   9999px;
+
+  /* ── POCKET SURFACE ── */
+  --surface-p:       #FBFAFD;
+  --surface-raised:  #FFFFFF;
+  --surface-sunken:  #ECE8F4;
+  --surface-glass:   rgba(251,250,253,0.78);
+  --accent-p:        #8B6FD8;
+  --accent-soft-p:   #E5DCF7;
+}
+
+[data-theme="dark"] {
+  --shadow-float:   0 8px 24px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.30);
+  --shadow-card-p:  0 12px 32px rgba(0,0,0,0.55), 0 4px 10px rgba(0,0,0,0.35);
+  --shadow-neu-out: -4px -4px 10px rgba(255,255,255,0.03), 6px 6px 14px rgba(0,0,0,0.50);
+  --shadow-neu-in:  inset -3px -3px 8px rgba(255,255,255,0.03), inset 4px 4px 10px rgba(0,0,0,0.50);
+  --shadow-pack-3d: 0 30px 60px rgba(0,0,0,0.70), 0 10px 20px rgba(0,0,0,0.40);
+  --rainbow-line:   linear-gradient(90deg, #5FA87E, #C4B45E, #C08456, #B86380, #7E64C4);
+  --surface-p:      #211F26;
+  --surface-raised: #2A2830;
+  --surface-sunken: #121116;
+  --surface-glass:  rgba(33,31,38,0.80);
+  --accent-p:       #9B7FE8;
+  --accent-soft-p:  #2E2840;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

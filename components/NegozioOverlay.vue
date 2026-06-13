@@ -14,7 +14,7 @@ defineEmits<{
 </script>
 <template>
   <div class="fixed inset-0 z-[100] flex items-center justify-center"
-       style="background:rgba(6,3,15,0.95);backdrop-filter:blur(20px)">
+       style="background:var(--theme-overlay);backdrop-filter:blur(20px)">
     <div class="text-center">
       <div class="font-orbitron text-amber-400/50 text-xs tracking-widest mb-4">
         NEGOZIO OVERLAY — in migrazione

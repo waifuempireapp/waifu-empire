@@ -13,7 +13,8 @@ const props = withDefaults(defineProps<{
   color?:      string | null
   label?:      string | null
   labelColor?: string | null
-}>(), { width: 220, height: 360 })
+  passive?:    boolean  // se true, il canvas non intercetta click (decorativo)
+}>(), { width: 220, height: 360, passive: false })
 
 const emit = defineEmits<{ done: [] }>()
 
@@ -29,7 +30,7 @@ let scene:       import('three').Scene               | null = null
 let camera:      import('three').PerspectiveCamera   | null = null
 let mesh:        import('three').Mesh                | null = null
 let animId:      number                              | null = null
-let clock:       import('three').Clock               | null = null
+let timer:       import('three').Timer               | null = null
 let ripStartTime = -1, ripDone = false
 let targetTiltX  = 0, targetTiltY  = 0
 let currentTiltX = 0, currentTiltY = 0
@@ -68,7 +69,7 @@ async function init() {
     scene  = new THREE.Scene()
     camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 100)
     camera.position.set(0, 0, 3.2)
-    clock  = new THREE.Clock()
+    timer  = new THREE.Timer()
 
     const pmrem = new THREE.PMREMGenerator(renderer)
     scene.environment = pmrem.fromScene(new RoomEnvironment()).texture
@@ -103,21 +104,21 @@ async function init() {
       emissive: props.color ? new THREE.Color(props.color).multiplyScalar(0.12) : new THREE.Color(0x000000),
     }))
     scene.add(mesh)
-    clock.start()
     glReady.value = true
     window.dispatchEvent(new Event('bustina:ready'))
     animate(THREE)
   } catch (e) {
     console.warn('[BustinaGLB] WebGL non disponibile, uso fallback 2D', e)
     window.dispatchEvent(new Event('bustina:ready'))
-    // glReady rimane false → il layer 2D è già visibile, nessun problema
+    // glReady rimane false → il layer 2D fallback resta visibile
   }
 }
 
 function animate(THREE: typeof import('three')) {
-  if (!renderer || !scene || !camera || !mesh || !clock) return
+  if (!renderer || !scene || !camera || !mesh || !timer) return
   animId = requestAnimationFrame(() => animate(THREE))
-  const t = clock.getElapsedTime()
+  timer.update()
+  const t = timer.getElapsed()
   const LERP = 0.08
   currentTiltX += (targetTiltX - currentTiltX) * LERP
   currentTiltY += (targetTiltY - currentTiltY) * LERP
@@ -151,7 +152,7 @@ watch(() => props.textureUrl, async (url) => {
 })
 
 watch(() => props.ripping, (val) => {
-  if (val && ripStartTime < 0 && clock) ripStartTime = clock.getElapsedTime()
+  if (val && ripStartTime < 0 && timer) ripStartTime = timer.getElapsed()
   if (val && !glReady.value) setTimeout(() => emit('done'), 700)
 })
 
@@ -180,6 +181,7 @@ onUnmounted(() => {
 <template>
   <div
     ref="wrapperRef"
+    class="bustina-glb-root"
     :style="{
       position: 'relative',
       width: width + 'px',
@@ -195,7 +197,7 @@ onUnmounted(() => {
     @touchend.passive="onTouchEnd"
   >
 
-    <!-- ── Layer 1: CSS 2D — visibile solo se 3D non è ancora pronto (fallback) ── -->
+    <!-- ── Layer 1: CSS 2D — fallback finché il 3D non è pronto (coperto dall'overlay di pagina) ── -->
     <div v-show="!glReady" :style="{
       position: 'absolute', inset: '0',
       borderRadius: '10px',
@@ -246,7 +248,7 @@ onUnmounted(() => {
         zIndex: 4,
         opacity: glReady ? 1 : 0,
         transition: 'opacity 0.4s ease',
-        pointerEvents: glReady ? 'auto' : 'none',
+        pointerEvents: (props.passive || !glReady) ? 'none' : 'auto',
       }"
     />
 

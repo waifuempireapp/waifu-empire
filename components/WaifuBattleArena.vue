@@ -1013,7 +1013,7 @@ const mvp = computed(() => {
     <div
       :style="{
         position:'fixed',inset:0,zIndex:50,
-        background:'rgba(0,0,0,.92)',backdropFilter:'blur(8px)',
+        background:'var(--theme-overlay)',backdropFilter:'blur(8px)',
         display:'flex',alignItems:'center',justifyContent:'center',
         padding:'16px',overflowY:'auto',
       }"

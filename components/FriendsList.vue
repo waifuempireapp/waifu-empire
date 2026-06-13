@@ -61,7 +61,7 @@ const rimuovi = async (amicoUid: string) => {
         :key="a.id"
         class="flex items-center justify-between rounded-[10px] px-[14px] py-[10px]"
         :style="{
-          background: 'rgba(6,3,15,0.5)',
+          background: 'var(--surface)',
           border: '1px solid rgba(245,166,35,0.15)',
         }"
       >

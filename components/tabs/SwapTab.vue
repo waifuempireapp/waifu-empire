@@ -178,27 +178,25 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
 
 <template>
   <!-- Caricamento iniziale -->
-  <div v-if="loading" style="display:flex;flex-direction:column;min-height:70vh;align-items:center;justify-content:center;">
+  <div v-if="loading" class="swap-state-screen">
     <img src="~/assets/images/New_Logo.png" alt="" style="width:80px;height:auto;animation:pulse 1.2s ease-in-out infinite;opacity:0.85;" />
-    <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.22em;color:rgba(174,156,255,0.5);margin-top:12px;text-transform:uppercase">{{ $t('swap.loading') }}</div>
+    <div class="swap-label">{{ $t('swap.loading') }}</div>
   </div>
 
   <!-- Schermata limite voti giornalieri -->
-  <div v-else-if="isLimitReached" style="display:flex;flex-direction:column;min-height:80vh;align-items:center;justify-content:center;padding:24px;text-align:center;gap:20px">
+  <div v-else-if="isLimitReached" class="swap-state-screen swap-state-screen--limit">
     <div style="font-size:56px">🚫</div>
-    <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:20px;color:#ff85b6;font-weight:800">{{ $t('swap.limit_reached') }}</div>
-    <div style="font-size:13px;color:rgba(241,235,255,0.6);line-height:1.6;max-width:320px">{{ $t('swap.limit_explanation') }}</div>
-    <div style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:28px;color:#f5c560;font-weight:700;font-variant-numeric:tabular-nums">
-      {{ countdown }}
-    </div>
-    <button @click="$emit('setTab', 'negozio')" style="padding:14px 28px;background:linear-gradient(135deg,#ec4899,#a855f7);border:none;border-radius:14px;color:#fff;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.1em">
+    <div class="swap-limit-title">{{ $t('swap.limit_reached') }}</div>
+    <div class="swap-limit-desc">{{ $t('swap.limit_explanation') }}</div>
+    <div class="swap-limit-timer">{{ countdown }}</div>
+    <button @click="$emit('setTab', 'negozio')" class="swap-btn-pass">
       <KissesIcon :size="13" /> {{ $t('swap.buy_pass') }}
     </button>
-    <button @click="$emit('setTab', 'home')" style="background:transparent;border:none;color:rgba(241,235,255,0.4);font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;cursor:pointer">{{ $t('swap.back_to_home') }}</button>
+    <button @click="$emit('setTab', 'home')" class="swap-btn-back">{{ $t('swap.back_to_home') }}</button>
   </div>
 
-  <!-- Card waifu centrata verticalmente e orizzontalmente nel viewport disponibile -->
-  <div v-else style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:calc(100dvh - 175px);padding:0 16px;">
+  <!-- Card waifu centrata -->
+  <div v-else class="swap-arena">
 
     <SwapCard
       v-if="currentWaifu"
@@ -209,18 +207,94 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
     />
 
     <!-- Hai visto tutto -->
-    <div v-else-if="exhausted" style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px;text-align:center;">
+    <div v-else-if="exhausted" class="swap-exhausted">
       <div style="font-size:56px">✨</div>
-      <div style="font-size:15px;color:rgba(241,235,255,0.5);">Hai visto tutte le waifu!<br/>Torna presto.</div>
-      <button @click="resetQueue" style="padding:12px 24px;background:rgba(255,133,182,0.12);border:1px solid rgba(255,133,182,0.3);border-radius:12px;color:#ff85b6;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;cursor:pointer;">↺ Ricarica</button>
+      <div class="swap-exhausted-text">Hai visto tutte le waifu!<br/>Torna presto.</div>
+      <button @click="resetQueue" class="swap-btn-reload">↺ Ricarica</button>
     </div>
 
-    <!-- Caricamento -->
-    <div v-else style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.22em;color:rgba(174,156,255,0.4);text-transform:uppercase;">Caricamento waifu…</div>
+    <!-- Caricamento batch -->
+    <div v-else class="swap-label">Caricamento waifu…</div>
 
-    <!-- Overlays (reward toast, milestone, ad) -->
+    <!-- Overlays -->
     <SwapRewardToast v-if="toast" v-bind="toast" @done="toast = null" />
     <SwapMilestoneModal v-if="milestone" v-bind="milestone" @close="milestone = null" />
     <AdSlot v-if="showAd" @close="showAd = false" />
   </div>
 </template>
+
+<style scoped>
+.swap-state-screen {
+  display: flex; flex-direction: column;
+  min-height: 70vh; align-items: center; justify-content: center;
+  padding: 24px; text-align: center; gap: 20px;
+}
+.swap-state-screen--limit { min-height: 80vh; }
+
+.swap-label {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 11px; letter-spacing: 0.22em;
+  color: var(--text-secondary);
+  margin-top: 12px; text-transform: uppercase;
+}
+.swap-limit-title {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 20px; font-weight: 800;
+  color: var(--theme-accent-pink);
+}
+.swap-limit-desc {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 13px; color: var(--text-secondary);
+  line-height: 1.6; max-width: 320px;
+}
+.swap-limit-timer {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 28px; font-weight: 700;
+  color: var(--accent-gold);
+  font-variant-numeric: tabular-nums;
+}
+.swap-btn-pass {
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #ec4899, #a855f7);
+  border: none; border-radius: var(--radius-pill);
+  color: #fff;
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 13px; font-weight: 800; cursor: pointer;
+  box-shadow: var(--shadow-float);
+}
+.swap-btn-back {
+  background: transparent; border: none;
+  color: var(--text-tertiary);
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 11px; cursor: pointer;
+  padding: 0;
+}
+
+.swap-arena {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: calc(100dvh - 175px);
+  padding: 0 16px;
+}
+
+.swap-exhausted {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 16px;
+  padding: 24px; text-align: center;
+}
+.swap-exhausted-text {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 15px; color: var(--text-secondary);
+}
+.swap-btn-reload {
+  padding: 12px 24px;
+  background: var(--accent-soft);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-pill);
+  color: var(--accent);
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  cursor: pointer;
+}
+</style>

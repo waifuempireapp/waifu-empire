@@ -56,7 +56,7 @@ const cssMiss = {
   borderRadius: '8px', padding: '10px 12px', marginBottom: '6px',
 }
 const cssInput = {
-  background: 'rgba(7,5,26,0.7)', border: '1px solid rgba(174,156,255,0.2)',
+  background: 'var(--surface)', border: '1px solid rgba(174,156,255,0.2)',
   color: '#f1ebff', padding: '6px 10px', borderRadius: '8px', fontFamily: 'inherit',
   fontSize: '12px', width: '100%',
 }

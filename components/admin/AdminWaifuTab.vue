@@ -930,7 +930,7 @@ const assocPendingCount = computed(() => Object.keys(assocPending.value).length)
               width: '143px', height: '215px', borderRadius: '8px', overflow: 'hidden',
               border: `2px solid ${(RARITA[w.rarita as keyof typeof RARITA] || RARITA.comune).colore}80`,
               boxShadow: `0 0 12px ${(RARITA[w.rarita as keyof typeof RARITA] || RARITA.comune).glow}`,
-              background: 'linear-gradient(160deg, #130a24, #06030f)', position: 'relative',
+              background: 'var(--surface)', position: 'relative',
             }">
               <img v-if="w.asset_statica || w.asset_immersiva" :src="ikUrl(w.asset_statica || w.asset_immersiva, 'thumbnail') || ''" :alt="w.nome" style="width: 100%; height: 100%; object-fit: cover; object-position: center 15%;" />
               <div v-else style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:60%;object-fit:contain;opacity:0.80;" /></div>

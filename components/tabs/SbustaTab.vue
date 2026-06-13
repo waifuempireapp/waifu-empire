@@ -59,6 +59,10 @@ const emit = defineEmits<{
 
 const authStore = useAuthStore()
 
+// ── Anti-FOUC: overlay full-page finché la bustina 3D non ha renderizzato ──
+// Aspetta che un <canvas> Three.js compaia e abbia dimensioni reali.
+const { isPageReady } = usePageReady('canvas')
+
 // ── Stato principale ─────────────────────────────────────────
 const stato = ref<'idle' | 'reveal' | 'reveal_multi' | 'summary' | 'summary_multi'>('idle')
 const carteRivelate = ref<any[]>([])
@@ -578,6 +582,9 @@ function cfTouchEnd(e: TouchEvent) {
 </script>
 
 <template>
+  <!-- Overlay anti-FOUC: copre tutto finché la bustina 3D non è renderizzata -->
+  <PageLoadingOverlay :ready="isPageReady" />
+
   <!-- SKELETON LOADING — full-screen fixed, usato quando SbustaTab è overlay -->
   <div v-if="dropsLoading" class="fade-in"
     style="position:fixed;inset:0;z-index:200;background:var(--theme-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
@@ -1044,10 +1051,10 @@ function cfTouchEnd(e: TouchEvent) {
     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
   }">
     <div @click.stop :style="{
-      background: 'linear-gradient(180deg, rgba(27,22,56,0.96), rgba(13,10,38,0.98))',
+      background: 'var(--surface)',
       border: `1.5px solid ${C.sakura}55`, borderRadius: '18px',
       padding: '24px 26px', maxWidth: '320px', width: '100%', textAlign: 'center',
-      boxShadow: `0 24px 50px rgba(3,2,12,0.85), 0 0 36px ${C.sakura}33`,
+      boxShadow: `var(--shadow-card-p), 0 0 36px ${C.sakura}33`,
     }">
       <div :style="{ fontFamily: FF.label, fontSize: '11px', color: C.sakura, letterSpacing: '0.32em', marginBottom: '10px', textTransform: 'uppercase', fontWeight: 700 }">Acquista Bustina</div>
       <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', marginBottom: '18px' }">Scegli quante bustine Sfida acquistare:</div>
@@ -1158,4 +1165,7 @@ function cfTouchEnd(e: TouchEvent) {
     transform: scale(1.02);
   }
 }
+
+/* ── Pocket theme overrides per SbustaTab ── */
+/* Il chrome usa var(--theme-*) — il contenuto (pack, carte) mantiene i colori game */
 </style>
