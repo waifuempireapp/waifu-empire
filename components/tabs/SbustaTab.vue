@@ -5,7 +5,7 @@
   Equivalente di src/app/gioco/_redesign/Sbusta.jsx
   ============================================================ -->
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, useTemplateRef } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick, useTemplateRef } from 'vue'
 import type { ProfiloUtente, Collezione, WaifuCatalog, MossaCatalog } from '~/types/game'
 import {
   listDropsAttivi,
@@ -84,6 +84,13 @@ const sfidaConferma = ref(false)
 const sfidaShortage = ref(false)
 const multiPackCarte = ref<any[][]>([])
 const multiPackIndice = ref(0)
+
+// ── APRI 10: tre fasi (stack fermo → uscita una alla volta → reveal a gruppi di 5) ──
+const multiPhase = ref<'stack' | 'exiting' | 'revealing'>('stack')
+const multiExitedCount = ref(0)     // quante bustine sono già uscite
+const multiPackDivider = ref(false) // intermezzo "Bustina X completata" tra i gruppi
+const packStackRef = ref<{ animateSinglePackExit: (i: number) => Promise<void> } | null>(null)
+const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
 // Nuovi stati per l'animazione di apertura pacchetto in stile Pokémon Pocket
 const bustaAperta = ref(false)
@@ -309,14 +316,14 @@ async function apriMulti(tipoPacchetto: string) {
   // Il browser le carica in parallelo mentre l'utente guarda il primo pack
   preloadCarteImages(tuttiIPacchetti)
 
-  const prime = tuttiIPacchetti[0]
-  const gp = prime.length === 5 && prime.every((c: any) => c.tipo === 'waifu' && c.isGodPack)
-  isGodPackAperto.value = gp
-  carteRivelate.value = prime
+  carteRivelate.value = []
   indiceRivelato.value = -1
   bustaAperta.value = false
   bustaInAnimazione.value = false
+  multiPhase.value = 'stack'
+  multiExitedCount.value = 0
   stato.value = 'reveal_multi'
+  // FASE 1: stack FERMO → (tap) → uscita una alla volta → reveal carte
 
   // Notifica missioni giornaliere: N pacchetti aperti + eventuali leggendarie
   if (typeof window !== 'undefined') {
@@ -351,34 +358,92 @@ async function apriMulti(tipoPacchetto: string) {
   })
 }
 
-function prossimoPackMulti() {
-  const prossimo = multiPackIndice.value + 1
-  const carte = multiPackCarte.value[prossimo]
-  const gp = carte.length === 5 && carte.every((c: any) => c.tipo === 'waifu' && c.isGodPack)
-  isGodPackAperto.value = gp
-  carteRivelate.value = carte
-  indiceRivelato.value = -1
-  bustaAperta.value = false
-  bustaInAnimazione.value = false
-  multiPackIndice.value = prossimo
+// Lo stack resta FERMO finché l'utente non tocca → poi uscita una alla volta
+async function onStackTap() {
+  if (multiPhase.value !== 'stack') return
+  multiPhase.value = 'exiting'
+  const n = multiPackCarte.value.length
+  for (let i = 0; i < n; i++) {
+    if (multiPhase.value !== 'exiting') return  // utente ha premuto SALTA
+    multiExitedCount.value = i + 1
+    await packStackRef.value?.animateSinglePackExit(i)
+    if (i < n - 1) await delay(0)             // pausa tra una bustina e l'altra
+  }
+  if (multiPhase.value !== 'exiting') return
+  await delay(500)
+  startMultiReveal()
 }
 
-function tornaIdle() {
-  stato.value = 'idle'
+function skipMultiOpening() {
+  if (multiPhase.value === 'revealing') return
+  startMultiReveal()
+}
+
+// ── FASE 2: reveal carte a gruppi di 5 ──
+function startMultiReveal() {
+  multiPhase.value = 'revealing'
+  multiPackIndice.value = 0
+  const carte = multiPackCarte.value[0]
+  isGodPackAperto.value = carte.length === 5 && carte.every((c: any) => c.tipo === 'waifu' && c.isGodPack)
+  carteRivelate.value = carte
+  bustaAperta.value = true
+  indiceRivelato.value = -1
+  revealTilt.value = { x: 0, y: 0 }
+  setTimeout(() => { indiceRivelato.value = 0 }, 300)
+}
+
+// Tap durante la fase 2: avanza carta → poi gruppo successivo → poi riepilogo
+async function avanzaMultiCarta() {
+  if (transizioneCarta.value || multiPackDivider.value) return
+  // Carta successiva nello stesso gruppo
+  if (indiceRivelato.value < carteRivelate.value.length - 1) {
+    transizioneCarta.value = true
+    setTimeout(() => {
+      indiceRivelato.value++
+      revealTilt.value = { x: 0, y: 0 }
+      transizioneCarta.value = false
+    }, 350)
+    return
+  }
+  // Gruppo finito → prossima bustina
+  if (multiPackIndice.value < multiPackCarte.value.length - 1) {
+    multiPackDivider.value = true
+    await delay(900)
+    multiPackDivider.value = false
+    const prossimo = multiPackIndice.value + 1
+    const carte = multiPackCarte.value[prossimo]
+    isGodPackAperto.value = carte.length === 5 && carte.every((c: any) => c.tipo === 'waifu' && c.isGodPack)
+    multiPackIndice.value = prossimo
+    carteRivelate.value = carte
+    indiceRivelato.value = -1
+    revealTilt.value = { x: 0, y: 0 }
+    setTimeout(() => { indiceRivelato.value = 0 }, 200)
+    return
+  }
+  // Tutte le 50 carte mostrate → riepilogo (il cui CONTINUA torna alla homepage)
+  stato.value = 'summary_multi'
+}
+
+// Fine sbusto: chiude l'overlay e torna alla HOMEPAGE (non alla selezione espansione)
+function concludiSbusto() {
   carteRivelate.value = []
   multiPackCarte.value = []
   multiPackIndice.value = 0
   bustaAperta.value = false
+  stato.value = 'idle'
+  emit('indietro')
 }
 
+// Solo flusso APRI 1: il multi usa avanzaMultiCarta
 function mostraRiepilogo() {
-  if (stato.value === 'reveal_multi' && multiPackIndice.value < multiPackCarte.value.length - 1) {
-    prossimoPackMulti()
-  } else if (stato.value === 'reveal_multi') {
-    stato.value = 'summary_multi'
-  } else {
-    stato.value = 'summary'
-  }
+  stato.value = 'summary'
+}
+
+// Tap nell'area reveal: instrada al flusso giusto (singolo vs multi)
+function onRevealTap() {
+  if (stato.value === 'reveal_multi') { avanzaMultiCarta(); return }
+  if (indiceRivelato.value < carteRivelate.value.length - 1) avanzaCartaManuale()
+  else mostraRiepilogo()
 }
 
 const copieCartaCorrente = computed(() => {
@@ -509,7 +574,35 @@ const cartaCorrente = computed(() =>
   indiceRivelato.value >= 0 ? carteRivelate.value[indiceRivelato.value] : null
 )
 
+// ── Reveal speciale Leggendario / Immersivo (flip 3D dal retro) ──────
+const SPECIAL_RARITIES = ['leggendario', 'immersivo']
+function isSpecialRarity(rarita?: string): boolean {
+  return !!rarita && SPECIAL_RARITIES.includes(rarita.toLowerCase())
+}
+const flipPlaying = ref(false)   // animazione flip in corso
+const flipPending = ref(false)   // carta speciale: mostra il retro prima di girare
 
+// Quando cambia la carta corrente, se è leggendaria/immersiva avvia il flip dal retro
+watch(indiceRivelato, async (idx) => {
+  flipPlaying.value = false
+  flipPending.value = false
+  if (idx < 0) return
+  const carta = carteRivelate.value[idx]
+  if (carta?.tipo === 'waifu' && isSpecialRarity(carta?.data?.rarita)) {
+    flipPending.value = true            // mostra subito il RETRO (niente flash del fronte)
+    await nextTick()
+    // doppio rAF: garantisce che il retro sia dipinto prima di far partire l'animazione
+    requestAnimationFrame(() => requestAnimationFrame(() => { flipPlaying.value = true }))
+  }
+})
+
+function onFlipEnd(e: AnimationEvent) {
+  // Ignora gli animationend che bubblano dai figli (shimmer/foil/glow di CartaWaifu):
+  // reagisci SOLO all'animazione di flip che gira sul body stesso.
+  if (e.target !== e.currentTarget) return
+  flipPlaying.value = false
+  flipPending.value = false           // torna al fronte (rotateY 0)
+}
 
 const RARITY_COLORS: Record<string, string> = {
   comune: '#b4bcc8', raro: '#5aa9ff', epico: '#b573ff',
@@ -602,8 +695,44 @@ function cfTouchEnd(e: TouchEvent) {
   <div v-else-if="stato === 'reveal' || stato === 'reveal_multi'"
     style="position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; overflow: hidden; background:var(--theme-bg); perspective: 1200px;">
 
-    <!-- 1. FASE DI SBUSTO INTERATTIVA (Prima di mostrare le carte) -->
-    <div v-if="!bustaAperta"
+    <!-- 1a. APRI 10 — stack FERMO → (tap) → uscita una alla volta -->
+    <div v-if="stato === 'reveal_multi' && (multiPhase === 'stack' || multiPhase === 'exiting')"
+      class="pack-stack-scene"
+      :style="{
+        position:'absolute', inset:0, zIndex:250,
+        display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+        background:`radial-gradient(circle at center, ${dropColore}28 0%, transparent 100%)`,
+        overflow:'hidden',
+      }"
+      @click="onStackTap">
+      <!-- Contatore / titolo -->
+      <p class="pack-stack-label">
+        <template v-if="multiPhase === 'exiting'">{{ multiExitedCount }} di {{ multiPackCarte.length }}</template>
+        <template v-else>{{ multiPackCarte.length }} Bustine</template>
+      </p>
+
+      <div class="pack-stack-container">
+        <!-- Stack 3D: 1 sola scena Three.js con N cloni del modello .glb -->
+        <PackStackGL
+          ref="packStackRef"
+          :count="multiPackCarte.length"
+          :color="dropColore"
+          :texture-url="dropAttivo?.asset_bustina ?? null"
+          :width="300" :height="420"
+        />
+        <!-- Riflesso finto sotto il canvas -->
+        <div v-if="multiPhase === 'stack'" class="pack-stack-reflection-fake" />
+      </div>
+
+      <!-- Hint pulsante (solo a stack fermo) -->
+      <p v-if="multiPhase === 'stack'" class="pack-stack-hint">▶ Tocca per aprire</p>
+
+      <!-- SALTA → solo durante l'uscita -->
+      <button v-if="multiPhase === 'exiting'" class="multi-skip-btn" @click.stop="skipMultiOpening">SALTA ▸▸</button>
+    </div>
+
+    <!-- 1b. APRI 1 — FASE DI SBUSTO INTERATTIVA (tap per aprire) -->
+    <div v-else-if="!bustaAperta"
       :style="{
         position:'absolute', inset:0, zIndex:250,
         display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
@@ -626,9 +755,6 @@ function cfTouchEnd(e: TouchEvent) {
           :ripping="bustaInAnimazione"
           :width="280" :height="460"
         />
-        <!-- Linea Neon di Taglio — commentata: apertura solo con tap, non swipe -->
-        <!-- <div class="glow-line"
-          style="position: absolute; top: 80px; left: 0; right: 0; height: 3px; background: #00ffff; box-shadow: 0 0 15px #00ffff, 0 0 30px #00ffff; z-index: 10; pointer-events:none;" /> -->
       </div>
     </div>
 
@@ -651,8 +777,7 @@ function cfTouchEnd(e: TouchEvent) {
         </div>
         <div
           :style="{ fontFamily: FF.label, fontSize: '16px', color: C.violet, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 800 }">
-          <template v-if="stato === 'reveal_multi'">Pacchetto {{ multiPackIndice + 1 }}/{{ multiPackCarte.length }} ·
-          </template>
+          <template v-if="stato === 'reveal_multi'">Bustina {{ multiPackIndice + 1 }} — </template>
           Carta {{ Math.max(1, indiceRivelato + 1) }} di {{ carteRivelate.length }}
         </div>
       </div>
@@ -660,7 +785,7 @@ function cfTouchEnd(e: TouchEvent) {
       <!-- Area Centrale di Gioco delle Carte -->
       <div
         style="position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 0; z-index: 5;"
-        @click="indiceRivelato < carteRivelate.length - 1 ? avanzaCartaManuale() : mostraRiepilogo()">
+        @click="onRevealTap">
 
         <!-- CARTA PRINCIPALE — centrata dal flex, nessun overflow hidden sopra -->
         <div v-if="cartaCorrente && indiceRivelato >= 0"
@@ -684,8 +809,24 @@ function cfTouchEnd(e: TouchEvent) {
             transition: revealDragging ? 'none' : 'transform 0.25s cubic-bezier(0.25,0.46,0.45,0.94)',
             willChange: 'transform',
           }">
-            <CartaWaifu v-if="cartaCorrente.tipo === 'waifu'" :waifu="cartaCorrente.data" dimensione="normale" tipo="auto" />
-            <CartaMossa v-else-if="cartaCorrente.tipo === 'mossa'" :mossa="cartaCorrente.data" dimensione="normale" />
+            <!-- Flip reveal: retro → 2 giravolte + zoom → fronte (solo Leggendario/Immersivo) -->
+            <div class="reveal-flip" :class="{ 'reveal-flip--playing': flipPlaying }">
+              <div
+                class="reveal-flip__body"
+                :style="(flipPending && !flipPlaying) ? { transform: 'rotateY(180deg)' } : undefined"
+                @animationend="onFlipEnd"
+              >
+                <!-- FRONTE: la carta vera -->
+                <div class="reveal-flip__face reveal-flip__face--front">
+                  <CartaWaifu v-if="cartaCorrente.tipo === 'waifu'" :waifu="cartaCorrente.data" dimensione="normale" tipo="auto" />
+                  <CartaMossa v-else-if="cartaCorrente.tipo === 'mossa'" :mossa="cartaCorrente.data" dimensione="normale" />
+                </div>
+                <!-- RETRO: back_card.png -->
+                <div class="reveal-flip__face reveal-flip__face--back">
+                  <img src="~/assets/images/back_card.png" alt="" class="reveal-flip__back-img" draggable="false" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -696,9 +837,18 @@ function cfTouchEnd(e: TouchEvent) {
         </div>
         <div v-if="indiceRivelato >= carteRivelate.length - 1"
           style="margin-top:18px;font-family:var(--ff-label);font-size:11px;letter-spacing:0.22em;color:var(--theme-text-3);text-transform:uppercase;animation:pulseSoft 1.6s ease-in-out infinite;pointer-events:none;">
-          Tocca per il riepilogo →
+          <template v-if="stato === 'reveal_multi' && multiPackIndice < multiPackCarte.length - 1">Tocca per la prossima bustina →</template>
+          <template v-else>Tocca per il riepilogo →</template>
         </div>
       </div>
+
+      <!-- Intermezzo tra bustine (APRI 10): "Bustina X completata" -->
+      <Transition name="fade">
+        <div v-if="multiPackDivider" class="multi-pack-divider">
+          <span class="multi-pack-divider__done">Bustina {{ multiPackIndice + 1 }} completata</span>
+          <span class="multi-pack-divider__next">Bustina {{ multiPackIndice + 2 }} →</span>
+        </div>
+      </Transition>
     </template>
 
     <!-- Overlay Video Immersivo Sezione Sblocchi -->
@@ -792,7 +942,7 @@ function cfTouchEnd(e: TouchEvent) {
       </div>
     </div>
     <div style="flex-shrink:0;padding:14px 20px 40px;text-align:center;position:relative;z-index:10;">
-      <button @click="tornaIdle"
+      <button @click="concludiSbusto"
         :style="{ padding: '16px', width: '100%', borderRadius: '999px', background: 'linear-gradient(135deg,#16a34a,#22c55e)', border: 'none', color: '#fff', fontFamily: FF.label, fontSize: '17px', fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer', boxShadow: '0 6px 24px rgba(34,197,94,0.45)' }">
         CONTINUA</button>
     </div>
@@ -857,7 +1007,7 @@ function cfTouchEnd(e: TouchEvent) {
       </div>
     </div>
     <div style="flex-shrink:0;padding:14px 20px 40px;text-align:center;position:relative;z-index:10;">
-      <button @click="tornaIdle"
+      <button @click="concludiSbusto"
         :style="{ padding: '13px 40px', borderRadius: '999px', background: `linear-gradient(135deg,${C.violet},#6938e8)`, border: 'none', color: '#fff', fontFamily: FF.label, fontSize: '13px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer' }">✅
         CONTINUA</button>
     </div>
@@ -1093,6 +1243,10 @@ function cfTouchEnd(e: TouchEvent) {
 
 <!-- STILI ANIMAZIONI NEON E RIVELAZIONE IN PRESERVE-3D -->
 <style scoped>
+/* Fade-in morbido quando la bustina riappare tra un'apertura e l'altra (APRI 10) */
+.booster-pack-wrapper {
+  transition: opacity 0.35s ease;
+}
 /* Animazione di Strappo Olografico della Bustina */
 .booster-pack-wrapper.rip-animation {
   animation: ripOpenEffect 0.8s cubic-bezier(0.45, 0, 0.55, 1) forwards;
@@ -1170,4 +1324,216 @@ function cfTouchEnd(e: TouchEvent) {
 
 /* ── Pocket theme overrides per SbustaTab ── */
 /* Il chrome usa var(--theme-*) — il contenuto (pack, carte) mantiene i colori game */
+
+/* ══════════════════════════════════════════════════════════════════
+   REVEAL SPECIALE LEGGENDARIO / IMMERSIVO — flip 3D dal retro
+   ══════════════════════════════════════════════════════════════════ */
+.reveal-flip {
+  position: relative;
+  display: inline-block;
+}
+
+/* Bagliore dorato durante l'animazione */
+.reveal-flip--playing::before {
+  content: '';
+  position: absolute;
+  inset: -24px;
+  border-radius: 24px;
+  background: radial-gradient(ellipse, rgba(255,200,50,0.45) 0%, transparent 70%);
+  animation: legendaryGlow 3.2s ease-in-out forwards;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.reveal-flip__body {
+  position: relative;
+  display: inline-block;
+  transform-style: preserve-3d;
+  /* stato base: fronte visibile */
+  transform: rotateY(0deg) scale(1);
+}
+
+.reveal-flip--playing .reveal-flip__body {
+  /* Più lenta e fluida: 3.2s con easing morbido in entrata/uscita */
+  animation: legendaryReveal 3.2s cubic-bezier(0.33, 0, 0.2, 1) forwards;
+  filter: drop-shadow(0 20px 40px rgba(255,180,0,0.3));
+}
+
+/* Le due facce */
+.reveal-flip__face {
+  border-radius: 14px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+/* Il fronte è la carta in flusso normale (definisce la dimensione del body) */
+.reveal-flip__face--front {
+  position: relative;
+  z-index: 2;
+}
+/* Il retro è sovrapposto, ruotato di 180° */
+.reveal-flip__face--back {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg);
+  z-index: 1;
+  overflow: hidden;
+}
+.reveal-flip__back-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 14px;
+  display: block;
+}
+
+/*
+  Gradi: 180°=retro (start) → 540°=1 giro (retro) → 900°=2 giri (retro)
+  → 720°=fine (720 mod 360 = 0° = fronte). Retro → gira ×2 con zoom → fronte.
+*/
+@keyframes legendaryReveal {
+  /* retro → 2 giravolte fluide con zoom graduale → fronte. Più step = movimento più smooth */
+  0%   { transform: rotateY(180deg) scale(1); }
+  20%  { transform: rotateY(450deg) scale(1.12); }
+  40%  { transform: rotateY(720deg) scale(1.22); }
+  58%  { transform: rotateY(900deg) scale(1.3); }
+  78%  { transform: rotateY(900deg) scale(1.3); }  /* pausa in zoom sul fronte */
+  100% { transform: rotateY(720deg) scale(1); }    /* zoom-out morbido, fronte */
+}
+
+@keyframes legendaryGlow {
+  0%   { opacity: 0; transform: scale(0.8); }
+  30%  { opacity: 1; transform: scale(1.2); }
+  75%  { opacity: 1; transform: scale(1.3); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-flip--playing .reveal-flip__body {
+    animation: legendaryRevealReduced 0.6s ease forwards;
+    filter: none;
+  }
+  @keyframes legendaryRevealReduced {
+    0%   { transform: rotateY(180deg) scale(1); }
+    100% { transform: rotateY(720deg) scale(1); }
+  }
+  .reveal-flip--playing::before { display: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   APRI 10 — Stack 3D fermo (PackStackGL) → uscita una alla volta
+   ══════════════════════════════════════════════════════════════════ */
+.pack-stack-scene { cursor: pointer; }
+.pack-stack-scene:active { transform: scale(0.99); transition: transform 0.1s; }
+
+.pack-stack-label {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 3px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pack-stack-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: stackEnter 0.5s cubic-bezier(0.25, 0.8, 0.3, 1);
+}
+@keyframes stackEnter {
+  0%   { opacity: 0; transform: scale(0.85) translateY(24px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Riflesso finto sfumato sotto il canvas dello stack */
+.pack-stack-reflection-fake {
+  width: 220px;
+  height: 70px;
+  margin: -10px auto 0;
+  background: radial-gradient(ellipse at center top, var(--accent-soft) 0%, transparent 70%);
+  filter: blur(10px);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* Hint pulsante "Tocca per aprire" */
+.pack-stack-hint {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 3px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  text-align: center;
+  margin-top: 24px;
+  animation: stackHintPulse 2s ease-in-out infinite;
+}
+@keyframes stackHintPulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pack-stack-container { animation-duration: 0.35s; }
+  .pack-stack-hint { animation: none; opacity: 0.8; }
+}
+
+/* Bottone SALTA */
+.multi-skip-btn {
+  position: fixed;
+  bottom: 40px; right: 24px;
+  z-index: 260;
+  padding: 10px 20px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill, 9999px);
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-weight: 800;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-float);
+  transition: background 0.2s, color 0.2s, transform 0.1s;
+}
+.multi-skip-btn:hover { background: var(--surface-raised); color: var(--text-primary); }
+.multi-skip-btn:active { transform: scale(0.96); }
+
+/* Intermezzo "Bustina X completata" */
+.multi-pack-divider {
+  position: absolute;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: radial-gradient(circle at center, var(--bg-base) 35%, transparent 100%);
+  pointer-events: none;
+}
+.multi-pack-divider__done {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-weight: 900;
+  font-size: 20px;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+}
+.multi-pack-divider__next {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>
