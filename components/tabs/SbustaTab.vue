@@ -89,7 +89,7 @@ const multiPackIndice = ref(0)
 const multiPhase = ref<'stack' | 'exiting' | 'revealing'>('stack')
 const multiExitedCount = ref(0)     // quante bustine sono già uscite
 const multiPackDivider = ref(false) // intermezzo "Bustina X completata" tra i gruppi
-const packStackRef = ref<{ animateSinglePackExit: (i: number) => Promise<void> } | null>(null)
+const packStackRef = ref<{ animateSinglePackExit: (i: number) => void } | null>(null)
 const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
 // Nuovi stati per l'animazione di apertura pacchetto in stile Pokémon Pocket
@@ -205,7 +205,7 @@ function preloadCarteImages(pacchetti: any[][]) {
 }
 
 function avviaRivelazione(_carte: any[]) {
-  setTimeout(() => { indiceRivelato.value = 0 }, 500)
+  setTimeout(() => { indiceRivelato.value = 0 }, 1500)
 }
 
 // Avanza alla carta successiva con animazione di sfilamento (Swipe/Click)
@@ -231,7 +231,7 @@ function eseguiTaglioBustina() {
     bustaAperta.value = true
     bustaInAnimazione.value = false
     avviaRivelazione(carteRivelate.value)
-  }, 800)
+  }, 1000)
 }
 
 // Apri singolo pacchetto
@@ -366,11 +366,11 @@ async function onStackTap() {
   for (let i = 0; i < n; i++) {
     if (multiPhase.value !== 'exiting') return  // utente ha premuto SALTA
     multiExitedCount.value = i + 1
-    await packStackRef.value?.animateSinglePackExit(i)
-    if (i < n - 1) await delay(0)             // pausa tra una bustina e l'altra
+    packStackRef.value?.animateSinglePackExit(i)  // fire-and-forget → effetto cascata
+    await delay(50)                               // raffica: 50ms tra una e l'altra
   }
   if (multiPhase.value !== 'exiting') return
-  await delay(500)
+  await delay(1500)                                // attende la fine dell'ultima animazione
   startMultiReveal()
 }
 

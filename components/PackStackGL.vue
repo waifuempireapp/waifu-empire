@@ -178,10 +178,12 @@ function startLoop(_THREE: typeof import('three')) {
 }
 
 // Uscita di UNA singola bustina (la frontale tra quelle rimaste): vola verso l'alto.
-function animateSinglePackExit(index: number): Promise<void> {
+// Fire-and-forget: avvia l'animazione e ritorna SUBITO, così le uscite si
+// possono sovrapporre (effetto cascata/raffica con pause brevi).
+function animateSinglePackExit(index: number): void {
   tapped = true
   const m = meshes[index]
-  if (!m || meshStates[index] !== 'idle') return Promise.resolve()
+  if (!m || meshStates[index] !== 'idle') return
   meshStates[index] = 'exiting'
 
   // Ricompatta le rimanenti: assegna nuovi target di stack partendo da 0
@@ -190,24 +192,22 @@ function animateSinglePackExit(index: number): Promise<void> {
     if (meshStates[i] === 'idle') { targets[i] = stackPos(k); k++ }
   }
 
-  const dur = 500
+  const dur = 300
   const start = performance.now()
   const sp = m.position.clone()
   const sr = m.rotation.clone()
   const ss = m.scale.x
-  return new Promise<void>((resolve) => {
-    const step = (now: number) => {
-      let p = Math.min((now - start) / dur, 1)
-      const e = 1 - Math.pow(1 - p, 3) // ease-out cubic
-      m.position.set(sp.x + e * 0.5, sp.y + e * 4, sp.z + e * 1)
-      m.rotation.z = sr.z + e * 0.3
-      m.rotation.x = sr.x - e * 0.2
-      if (p > 0.6) { const f = (p - 0.6) / 0.4; m.scale.setScalar((1 - f) * ss) }
-      if (p >= 1) { m.visible = false; meshStates[index] = 'gone'; resolve() }
-      else requestAnimationFrame(step)
-    }
-    requestAnimationFrame(step)
-  })
+  const step = (now: number) => {
+    const p = Math.min((now - start) / dur, 1)
+    const e = 1 - Math.pow(1 - p, 3) // ease-out cubic
+    m.position.set(sp.x + e * 0.5, sp.y + e * 4, sp.z + e * 1)
+    m.rotation.z = sr.z + e * 0.3
+    m.rotation.x = sr.x - e * 0.2
+    if (p > 0.6) { const f = (p - 0.6) / 0.4; m.scale.setScalar((1 - f) * ss) }
+    if (p >= 1) { m.visible = false; meshStates[index] = 'gone' }
+    else requestAnimationFrame(step)
+  }
+  requestAnimationFrame(step)
 }
 
 defineExpose({ animateSinglePackExit })
