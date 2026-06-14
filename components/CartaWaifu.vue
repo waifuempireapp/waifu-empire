@@ -11,7 +11,8 @@ import {
   Lock, Flame,
 } from 'lucide-vue-next'
 
-import { RARITA, type RaritaKey } from '~/utils/constants'
+import { RARITA, type RaritaKey, RARITY_MULTIPLIERS_DEFAULT } from '~/utils/constants'
+import { computeHp } from '~/utils/battleEngine'
 import { ARCHETIPI } from '~/utils/promptGenerator'
 import { ikUrl } from '~/utils/imagekitUrl'
 
@@ -147,8 +148,16 @@ const etaEff     = computed(() => (props.waifu.eta ?? 18) + (statBonus.value.eta
 const capelliEff = computed(() => Math.min(10, (props.waifu.colore_capelli ?? 1) + (statBonus.value.colore_capelli ?? 0)))
 const expEff     = computed(() => (props.waifu.esperienza ?? 0) + (statBonus.value.esperienza ?? 0))
 
-// HP / Velocità / Crit per riga superiore stats
-const hp   = computed(() => props.datiCollezione?.hp ?? props.waifu.hp ?? null)
+// HP / Velocità / Crit per riga superiore stats.
+// L'HP è un valore DERIVATo: se non memorizzato, lo si ricava da battleStats.maxHp
+// oppure lo si calcola al volo con computeHp (così l'HP al centro è sempre presente).
+const hp   = computed(() =>
+  props.datiCollezione?.hp
+  ?? props.waifu.hp
+  ?? props.waifu.battleStats?.maxHp
+  ?? (props.datiCollezione as any)?.battleStats?.maxHp
+  ?? computeHp(props.waifu as any, (RARITY_MULTIPLIERS_DEFAULT as Record<string, { multiplier: number }>)[props.waifu.rarita]?.multiplier ?? 1)
+)
 const vel  = computed(() => props.datiCollezione?.velocita ?? props.waifu.velocita_base ?? null)
 const crit = computed(() => props.datiCollezione?.crit_chance ?? props.waifu.crit_chance_base ?? null)
 const hasCombatStats = computed(() => hp.value != null || vel.value != null || crit.value != null)

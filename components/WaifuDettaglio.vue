@@ -314,22 +314,22 @@ onUnmounted(() => {
                 <component :is="battleOpen ? ChevronUp : ChevronDown" :size="18" :color="`${C.gold}88`" stroke-width="1.5" />
               </button>
               <div v-if="battleOpen" style="padding:4px 18px 20px;">
-                <!-- VEL / HP / CRIT — stesso ordine e icone della carta -->
+                <!-- VEL / HP / CRIT — colori tema-aware (leggibili in bright mode) -->
                 <div style="display:flex;gap:10px;margin-bottom:18px;">
-                  <div :style="{ flex:1, textAlign:'center', padding:'12px 4px', background:'rgba(108,240,224,0.06)', border:`1px solid ${C.aqua}22`, borderRadius:'12px' }">
+                  <div class="wd-stat wd-stat--vel">
                     <div :style="{ fontSize: '20px', marginBottom: '2px' }">⚡</div>
-                    <div :style="{ fontFamily: FF.label, fontSize: '10px', color: `${C.aqua}88`, letterSpacing: '0.2em', marginBottom: '4px' }">VEL</div>
-                    <div :style="{ fontFamily: FF.label, fontSize: '22px', color: C.aqua, fontWeight: 800 }">{{ Math.round(vel) }}</div>
+                    <div class="wd-stat__label" :style="{ fontFamily: FF.label }">VEL</div>
+                    <div class="wd-stat__val wd-stat__val--vel" :style="{ fontFamily: FF.label }">{{ Math.round(vel) }}</div>
                   </div>
-                  <div :style="{ flex:1, textAlign:'center', padding:'12px 4px', background:'rgba(6,214,160,0.06)', border:`1px solid ${C.ok}22`, borderRadius:'12px' }">
+                  <div class="wd-stat wd-stat--hp">
                     <div :style="{ fontSize: '20px', marginBottom: '2px' }">💚</div>
-                    <div :style="{ fontFamily: FF.label, fontSize: '10px', color: `${C.ok}88`, letterSpacing: '0.2em', marginBottom: '4px' }">HP</div>
-                    <div :style="{ fontFamily: FF.label, fontSize: '22px', color: C.ok, fontWeight: 800 }">{{ Math.round(hp) }}</div>
+                    <div class="wd-stat__label" :style="{ fontFamily: FF.label }">HP</div>
+                    <div class="wd-stat__val wd-stat__val--hp" :style="{ fontFamily: FF.label }">{{ Math.round(hp) }}</div>
                   </div>
-                  <div :style="{ flex:1, textAlign:'center', padding:'12px 4px', background:'rgba(251,191,36,0.06)', border:`1px solid #fbbf2422`, borderRadius:'12px' }">
+                  <div class="wd-stat wd-stat--crit">
                     <div :style="{ fontSize: '20px', marginBottom: '2px' }">💥</div>
-                    <div :style="{ fontFamily: FF.label, fontSize: '10px', color: '#fbbf2488', letterSpacing: '0.2em', marginBottom: '4px' }">CRIT</div>
-                    <div :style="{ fontFamily: FF.label, fontSize: '22px', color: '#fbbf24', fontWeight: 800 }">{{ Math.round(crit * 100) }}%</div>
+                    <div class="wd-stat__label" :style="{ fontFamily: FF.label }">CRIT</div>
+                    <div class="wd-stat__val wd-stat__val--crit" :style="{ fontFamily: FF.label }">{{ Math.round(crit * 100) }}%</div>
                   </div>
                 </div>
                 <!-- Slot mosse -->
@@ -459,3 +459,36 @@ onUnmounted(() => {
     </div>
   </Teleport>
 </template>
+
+<style scoped>
+/* Box statistica VEL / HP / CRIT */
+.wd-stat {
+  flex: 1;
+  text-align: center;
+  padding: 12px 4px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-sunken);
+}
+.wd-stat__label {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  margin-bottom: 4px;
+  color: var(--text-secondary);
+}
+.wd-stat__val {
+  font-size: 22px;
+  font-weight: 800;
+}
+/* Light mode: tinte scure sature → leggibili su sfondo chiaro */
+.wd-stat__val--vel  { color: #0e8aa3; }
+.wd-stat__val--hp   { color: #15a34a; }
+.wd-stat__val--crit { color: #d97706; }
+.wd-stat--vel  { border-color: rgba(14,138,163,0.25); }
+.wd-stat--hp   { border-color: rgba(21,163,74,0.25); }
+.wd-stat--crit { border-color: rgba(217,119,6,0.25); }
+/* Dark mode: tinte brillanti originali su sfondo scuro */
+[data-theme="dark"] .wd-stat__val--vel  { color: #6cf0e0; }
+[data-theme="dark"] .wd-stat__val--hp   { color: #58e0a3; }
+[data-theme="dark"] .wd-stat__val--crit { color: #fbbf24; }
+</style>
