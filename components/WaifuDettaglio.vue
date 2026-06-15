@@ -290,7 +290,7 @@ onUnmounted(() => {
                 </div>
                 <component :is="statsOpen ? ChevronUp : ChevronDown" :size="18" :color="`${C.violet}99`" stroke-width="1.5" />
               </button>
-              <div v-if="statsOpen" style="padding:4px 18px 20px;">
+              <div v-if="statsOpen" style="padding:18px 12px 20px;">
                 <div v-for="s in STAT_DEFS" :key="s.key" style="margin-bottom:16px;">
                   <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
                     <span :style="{ fontFamily: FF.label, fontSize: '13px', color: 'var(--theme-text-2)', letterSpacing: '0.14em', fontWeight: 700, textTransform: 'uppercase' }">{{ s.icon }} {{ s.label }}</span>
@@ -313,7 +313,7 @@ onUnmounted(() => {
                 </div>
                 <component :is="battleOpen ? ChevronUp : ChevronDown" :size="18" :color="`${C.gold}88`" stroke-width="1.5" />
               </button>
-              <div v-if="battleOpen" style="padding:4px 18px 20px;">
+              <div v-if="battleOpen" style="padding:18px 12px 20px;">
                 <!-- VEL / HP / CRIT — colori tema-aware (leggibili in bright mode) -->
                 <div style="display:flex;gap:10px;margin-bottom:18px;">
                   <div class="wd-stat wd-stat--vel">
