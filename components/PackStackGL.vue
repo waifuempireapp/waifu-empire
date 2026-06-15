@@ -71,7 +71,10 @@ async function init() {
     ;(window as any).__THREE__ = THREE
 
     const W = props.width, H = props.height
-    renderer = new THREE.WebGLRenderer({ canvas: canvasRef.value!, alpha: true, antialias: true })
+    renderer = new THREE.WebGLRenderer({
+      canvas: canvasRef.value!, alpha: true, antialias: true,
+      powerPreference: 'low-power', failIfMajorPerformanceCaveat: false, preserveDrawingBuffer: false,
+    })
     renderer.setSize(W, H)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.setClearColor(0x000000, 0)

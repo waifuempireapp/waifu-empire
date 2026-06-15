@@ -5,8 +5,20 @@ import SwapRewardToast from '~/components/swap/SwapRewardToast.vue'
 import SwapMilestoneModal from '~/components/swap/SwapMilestoneModal.vue'
 import AdSlot from '~/components/swap/AdSlot.vue'
 import { listDropsAttivi } from '~/utils/firestoreService'
+import { ikUrl } from '~/utils/imagekitUrl'
 
 const { t } = useI18n()
+
+// Precarica le immagini delle waifu in coda così non si caricano "realtime"
+// quando l'utente arriva alla carta (stesso URL/preset usato da SwapCard).
+function preloadWaifuImages(list: any[]) {
+  if (typeof window === 'undefined') return
+  for (const w of list) {
+    const src = w?.asset_immagine || w?.asset_statica || w?.asset_immersiva
+    const url = src ? ikUrl(src, 'normal') : null
+    if (url) { const img = new Image(); img.decoding = 'async'; img.src = url }
+  }
+}
 
 const props = defineProps<{
   user: any
@@ -47,6 +59,7 @@ async function loadBatch() {
     if (data.exhausted || waifu.length === 0) { exhausted.value = true; return }
     if (!props.profilo?.hardPass) waifu = waifu.filter((w: any) => !w.hot)
     queue.value = [...queue.value, ...waifu]
+    preloadWaifuImages(waifu)   // precarica subito le immagini del nuovo batch
     if (data.exhausted) exhausted.value = true
   } catch (e) { console.error(e) }
   finally { loadingBatch.value = false }

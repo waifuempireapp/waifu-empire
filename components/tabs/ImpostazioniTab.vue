@@ -1,7 +1,7 @@
 <!-- ImpostazioniTab.vue — Tab impostazioni con layout full-page (specchio estetico delle vecchie missioni) -->
 <script setup lang="ts">
 // Icone Lucide — User, Heart, Globe, Settings, ShoppingCart, LogOut, Check
-import { User, Heart, Globe, Settings, ShoppingCart, LogOut, Check } from 'lucide-vue-next'
+import { User, Heart, Globe, Settings, LogOut, Check } from 'lucide-vue-next'
 import { useAuthStore } from '~/stores/auth'
 import { useGameStore } from '~/stores/game'
 import { useAvatar, AVATAR_PRESETS } from '~/composables/useAvatar'
@@ -200,13 +200,7 @@ async function switchLocale(code: string) {
       >
         <Settings :size="20" stroke-width="1.5" style="width:26px;flex-shrink:0;" /> {{ $t('settings.admin_panel') }}
       </button>
-      <button
-        style="display:flex;align-items:center;gap:14px;padding:14px 4px;background:transparent;border:none;cursor:pointer;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:15px;font-weight:600;width:100%;text-align:left;"
-        :style="{ color:'var(--theme-text)', borderBottom:'1px solid var(--theme-border)' }"
-        @click="gameStore.toggleNegozio(true)"
-      >
-        <ShoppingCart :size="20" stroke-width="1.5" style="width:26px;flex-shrink:0;" /> {{ $t('settings.shop') }}
-      </button>
+      <!-- Negozio rimosso: ora è nell'header. Restano Admin (sopra) ed Esci (sotto). -->
       <button
         style="display:flex;align-items:center;gap:14px;padding:14px 4px;background:transparent;border:none;cursor:pointer;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:15px;font-weight:700;width:100%;text-align:left;margin-top:4px;"
         :style="{ color: isDark ? '#E74C3C' : '#C0392B' }"

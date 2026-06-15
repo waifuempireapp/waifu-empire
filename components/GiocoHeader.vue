@@ -7,7 +7,7 @@
   ============================================================ -->
 <script setup lang="ts">
 // Icone Lucide — sostituiscono le emoji per consistenza cross-device
-import { Heart, Zap, Bell } from 'lucide-vue-next'
+import { Heart, Zap, Bell, ShoppingCart } from 'lucide-vue-next'
 import type { ProfiloUtente } from '~/types/game'
 
 const props = defineProps<{
@@ -135,22 +135,6 @@ const pendingFriendRequests = computed(() => {
     <!-- ── DESTRA: admin + campanella + EXIT ─────────────────── -->
     <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
 
-      <NuxtLink v-if="isAdmin" to="/admin" style="
-          font-size: 13px;
-          font-family: var(--ff-label,'Saira Condensed',sans-serif);
-          color: var(--theme-accent);
-          background: var(--theme-surface);
-          border: 1px solid var(--theme-accent);
-          box-shadow: var(--shadow-float);
-          border-radius: 99px;
-          padding: 6px 10px;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          font-weight: 700;
-          text-decoration: none;
-          display: inline-flex; align-items: center;
-        ">ADMIN</NuxtLink>
-
       <button style="
           position: relative;
           width: 32.5px; height: 32.5px;
@@ -172,18 +156,23 @@ const pendingFriendRequests = computed(() => {
           ">{{ pendingFriendRequests > 9 ? '9+' : pendingFriendRequests }}</span>
       </button>
 
+      <!-- NEGOZIO (al posto del vecchio bottone ESCI) -->
       <button style="
           font-family: var(--ff-label,'Saira Condensed',sans-serif);
           font-size: 12px; letter-spacing: 0.13em;
           text-transform: uppercase;
-          color: var(--theme-text-2);
+          color: var(--accent);
           background: var(--theme-surface);
-          border: 1px solid var(--theme-border-2);
+          border: 1px solid var(--theme-accent);
+          box-shadow: var(--shadow-float);
           border-radius: 99px;
-          cursor: pointer; padding: 0 8px;
+          cursor: pointer; padding: 0 12px;
           min-height: 35px; font-weight: 700;
+          display: inline-flex; align-items: center; gap: 5px;
           transition: color 0.2s, background 0.2s;
-        " @click="$emit('logout')">{{ $t('header.exit') }}</button>
+        " @click="gameStore.toggleNegozio(true)">
+        <ShoppingCart :size="15" stroke-width="1.8" /> {{ $t('settings.shop') }}
+      </button>
 
     </div>
   </header>
