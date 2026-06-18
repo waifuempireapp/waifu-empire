@@ -65,8 +65,9 @@ interface WaifuBattleStat extends WaifuDoc {
 // COSTANTI DI LOGICA
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Numero di waifu che il giocatore deve selezionare per confermare il team. */
-const PICKS_RICHIESTI = 3
+/** Squadra di combattimento: minimo 1, massimo 8 (o quante ne ha il pool). */
+const MIN_TEAM = 1
+const MAX_TEAM = 8
 
 /** Numero minimo di waifu nel roster per accedere alla pick phase. */
 const ROSTER_MIN = 5
@@ -213,7 +214,7 @@ onUnmounted(() => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CPU PICK — la CPU pesca PICKS_RICHIESTI waifu al mount (per rarità desc)
+// CPU PICK — la CPU pesca fino a MAX_TEAM waifu (per rarità desc); a confronto scala al team del giocatore
 // forcedEnemyIndices: indici sempre inclusi (es. Waifu Raid)
 // ─────────────────────────────────────────────────────────────────────────────
 const RARITY_SCORE: Record<string, number> = {
@@ -227,7 +228,7 @@ const cpuPicks = computed<WaifuDoc[]>(() => {
   const sortedOthers = [...others].sort((a, b) =>
     (RARITY_SCORE[(b?.rarita as string) ?? ''] ?? 1) - (RARITY_SCORE[(a?.rarita as string) ?? ''] ?? 1),
   )
-  return [...forcedWaifu, ...sortedOthers].slice(0, PICKS_RICHIESTI).filter(Boolean) as WaifuDoc[]
+  return [...forcedWaifu, ...sortedOthers].slice(0, MAX_TEAM).filter(Boolean) as WaifuDoc[]
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -246,7 +247,7 @@ function handleTapRoster(idx: number) {
   if (pos !== -1) {
     // Deseleziona mantenendo l'ordine degli altri
     p1Slots.value = p1Slots.value.filter((_, i) => i !== pos)
-  } else if (p1Slots.value.length < PICKS_RICHIESTI) {
+  } else if (p1Slots.value.length < Math.min(MAX_TEAM, props.roster5P.length)) {
     p1Slots.value = [...p1Slots.value, idx]
   }
 }
@@ -277,15 +278,16 @@ function buildTeam(roster: WaifuDoc[], picks: number[]): WaifuBattleStat[] {
 // HANDLER: conferma del giocatore
 // ─────────────────────────────────────────────────────────────────────────────
 function handleP1Confirm() {
-  if (p1Slots.value.length < PICKS_RICHIESTI) return
+  if (p1Slots.value.length < MIN_TEAM) return
   const playerTeam = buildTeam(props.roster5P, p1Slots.value)
 
   if (props.isPvP) {
     // PvP Online: il team avversario arriva via Firestore dal parent
     emit('confirm', { playerPick3: playerTeam, enemyPick3: [] })
   } else {
-    // Modalità CPU: costruisce il team nemico con mosse da catalogo
-    const enemyTeam: WaifuBattleStat[] = cpuPicks.value.map(w => {
+    // Modalità CPU: team nemico scalato sulla dimensione della squadra del giocatore
+    const enemyCount = Math.max(1, Math.min(p1Slots.value.length, cpuPicks.value.length))
+    const enemyTeam: WaifuBattleStat[] = cpuPicks.value.slice(0, enemyCount).map(w => {
       const cpuMoves = w._cpuMoves ?? null
       const waifu = initBattleWaifu(w as Record<string, unknown>, { livello: (w.livello as number) ?? 1 }) as unknown as WaifuBattleStat
       if (cpuMoves?.length) {
@@ -305,6 +307,8 @@ function handleP1Confirm() {
 // ─────────────────────────────────────────────────────────────────────────────
 const activeRoster   = computed(() => props.roster5P)
 const activeSlots    = computed(() => p1Slots.value)
+const maxTeam        = computed(() => Math.min(MAX_TEAM, props.roster5P.length))
+const teamValido     = computed(() => activeSlots.value.length >= MIN_TEAM && activeSlots.value.length <= maxTeam.value)
 const opponentRoster = computed(() => props.roster5E)
 const opponentLabel  = computed(() => props.battleCtx?.nomeImperoAvversario ?? 'CPU')
 const terrSel        = computed(() => props.battleCtx?.terrSel)
@@ -354,9 +358,10 @@ function cardBackground(isSelected: boolean, rs: ReturnType<typeof getRarityStyl
 
 /** Stile box-shadow per rarità alte */
 function cardBoxShadow(rarita: string, rs: ReturnType<typeof getRarityStyle>): string {
+  // Ombra direzionale tipo carta (niente alone diffuso che arrotonda la silhouette)
   return ['epico', 'leggendario', 'immersivo'].includes(rarita.toLowerCase())
-    ? `0 0 8px ${rs.glow}`
-    : 'none'
+    ? `0 6px 16px ${rs.glow}`
+    : '0 4px 12px rgba(0,0,0,0.12)'
 }
 
 /** Colore del bordo per il tipo elemento */
@@ -368,11 +373,12 @@ function getTypeColor(type?: string): string {
 function getTypeBadgeStyle(type?: string): CSSProperties {
   const c = (TYPE_COLORS[(type ?? 'Arcana')] ?? { border: '#555', bg: '#111' }) as { border: string; bg: string }
   return {
-    background: `${c.bg}cc`, color: c.border,
-    border: `1px solid ${c.border}`,
-    borderRadius: '999px', padding: '3px 10px', fontSize: '12px',
-    fontWeight: 700, fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
+    background: 'var(--theme-surface)', color: c.border,
+    border: `1.5px solid ${c.border}`,
+    borderRadius: '999px', padding: '3px 12px', fontSize: '12px',
+    fontWeight: 800, fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)",
     letterSpacing: '0.06em', display: 'inline-block', whiteSpace: 'nowrap',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
   }
 }
 
@@ -507,8 +513,8 @@ function hpBarData(hp: number, maxHp: number) {
       </div>
       <!-- Istruzione + contatore selezioni -->
       <div style="font-family:var(--ff-body,'DM Sans',sans-serif);font-size:14px;color:var(--theme-text-2);margin-top:8px;line-height:1.5">
-        Scegli <strong style="color:#a78bfa">{{ PICKS_RICHIESTI }} waifu</strong> in base ai tipi. La prima entra subito in campo.
-        <span :style="{ color: activeSlots.length === PICKS_RICHIESTI ? '#16a34a' : 'var(--theme-accent)', fontWeight: 700, marginLeft: '4px' }">{{ activeSlots.length }}/{{ PICKS_RICHIESTI }}</span>
+        Scegli la tua <strong style="color:#a78bfa">squadra di combattimento</strong>. Minimo 1, massimo {{ maxTeam }}. La prima entra subito in campo.
+        <span :style="{ color: teamValido ? '#16a34a' : 'var(--theme-accent)', fontWeight: 700, marginLeft: '4px' }">{{ activeSlots.length }}/{{ maxTeam }}</span>
       </div>
     </div>
 
@@ -518,15 +524,15 @@ function hpBarData(hp: number, maxHp: number) {
       <!-- Sezione: roster del giocatore (selezionabile) -->
       <div :style="C.section">
         <div :style="C.label">IL TUO ROSTER</div>
-        <!-- Griglia 2 colonne -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 8px;">
+        <!-- Griglia 2 colonne — più spaziatura verticale + margini -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px 16px;padding:14px 14px 18px;">
           <template v-for="(w, idx) in activeRoster" :key="w.id ?? idx">
             <button
               :style="({
                 border: `2px solid ${cardBorderColor(getSlotNumber(idx) !== null, getRarityStyle(getWaifuRarita(w)))}`,
-                borderRadius: '16px',
+                borderRadius: '12px !important',
                 background: cardBackground(getSlotNumber(idx) !== null, getRarityStyle(getWaifuRarita(w))),
-                padding: '0 0 20px',
+                padding: '0 0 10px',
                 cursor: 'pointer', position: 'relative', textAlign: 'left',
                 width: '100%', overflow: 'visible',
                 transition: 'border-color .15s, background .15s',
@@ -536,21 +542,21 @@ function hpBarData(hp: number, maxHp: number) {
               } as CSSProperties)"
               @click="handleTapRoster(idx)"
             >
-              <!-- Badge slot top-left -->
+              <!-- Badge slot in basso a destra (evita sovrapposizione col chip tipo in alto) -->
               <div v-if="getSlotNumber(idx) !== null"
-                style="position:absolute;top:-12px;left:-12px;width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#00b050,#00e676);display:flex;align-items:center;justify-content:center;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;font-weight:900;color:#fff;border:2px solid var(--theme-surface);z-index:4">
+                style="position:absolute;bottom:-12px;right:-12px;width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#00b050,#00e676);display:flex;align-items:center;justify-content:center;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;font-weight:900;color:#fff;border:2px solid var(--theme-surface);z-index:4">
                 {{ getSlotNumber(idx) }}
               </div>
-              <!-- Chip tipo bottom-right della card -->
-              <div style="position:absolute;bottom:-10px;right:-10px;z-index:4;"
+              <!-- Chip tipo top-right della card -->
+              <div style="position:absolute;top:-10px;right:-10px;z-index:4;"
                 :style="getTypeBadgeStyle((getBattleStats(w).type as string) ?? 'Arcana')">
                 {{ (getBattleStats(w).type as string) ?? 'Arcana' }}
               </div>
 
               <!-- Immagine full-width -->
-              <div :style="({ width:'100%', height:'160px', borderRadius:'14px 14px 0 0', overflow:'hidden', background:'var(--theme-bg-secondary)', border:`2px solid ${getRarityStyle(getWaifuRarita(w)).badge}`, borderBottom:'none' } as CSSProperties)">
+              <div :style="({ width:'100%', height:'160px', borderRadius:'10px 10px 0 0', overflow:'hidden', background:'var(--theme-bg-secondary)', border:`2px solid ${getRarityStyle(getWaifuRarita(w)).badge}`, borderBottom:'none' } as CSSProperties)">
                 <template v-if="getWaifuImgUrl(w)">
-                  <img :src="getWaifuImgUrl(w) ?? ''" :alt="(w.nome ?? w.name ?? '') as string"
+                  <img :src="getWaifuImgUrl(w) ?? ''" :alt="(w.nome ?? w.name ?? '') as string" loading="eager" decoding="sync"
                     :style="({ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top', filter: w._hotBlurred ? 'blur(5px)' : 'none' } as CSSProperties)" />
                   <div v-if="w._hotBlurred" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(3,2,12,0.4)">
                     <span style="font-size:20px">🔥</span>
@@ -605,28 +611,28 @@ function hpBarData(hp: number, maxHp: number) {
           Acquista il Pass Hard per scoprirle e vederle senza censura.
         </div>
 
-        <!-- Griglia 2 colonne avversario -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 8px;">
+        <!-- Griglia 2 colonne avversario — più spaziatura verticale + margini -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px 16px;padding:14px 14px 18px;">
           <template v-for="(w, idx) in opponentRoster" :key="w.id ?? idx">
             <div
               :style="({
                 border: `2px solid ${getRarityStyle(getWaifuRarita(w)).badge}88`,
-                borderRadius: '16px',
+                borderRadius: '12px',
                 background: cardBackground(false, getRarityStyle(getWaifuRarita(w))),
-                padding: '0 0 20px',
+                padding: '0 0 10px',
                 cursor: 'default', position: 'relative', textAlign: 'left',
                 width: '100%', overflow: 'visible',
                 display: 'flex', flexDirection: 'column',
                 boxShadow: cardBoxShadow(getWaifuRarita(w), getRarityStyle(getWaifuRarita(w))),
               } as CSSProperties)"
             >
-              <div style="position:absolute;bottom:-10px;right:-10px;z-index:4;"
+              <div style="position:absolute;top:-10px;right:-10px;z-index:4;"
                 :style="getTypeBadgeStyle((getBattleStats(w).type as string) ?? 'Arcana')">
                 {{ (getBattleStats(w).type as string) ?? 'Arcana' }}
               </div>
-              <div :style="({ width:'100%', height:'160px', borderRadius:'14px 14px 0 0', overflow:'hidden', background:'var(--theme-bg-secondary)', border:`2px solid ${getRarityStyle(getWaifuRarita(w)).badge}`, borderBottom:'none' } as CSSProperties)">
+              <div :style="({ width:'100%', height:'160px', borderRadius:'10px 10px 0 0', overflow:'hidden', background:'var(--theme-bg-secondary)', border:`2px solid ${getRarityStyle(getWaifuRarita(w)).badge}`, borderBottom:'none' } as CSSProperties)">
                 <template v-if="getWaifuImgUrl(w)">
-                  <img :src="getWaifuImgUrl(w) ?? ''" :alt="(w.nome ?? w.name ?? '') as string"
+                  <img :src="getWaifuImgUrl(w) ?? ''" :alt="(w.nome ?? w.name ?? '') as string" loading="eager" decoding="sync"
                     :style="({ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top', filter: w._hotBlurred ? 'blur(5px)' : 'none' } as CSSProperties)" />
                   <div v-if="w._hotBlurred" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(3,2,12,0.4)">
                     <span style="font-size:20px">🔥</span>
@@ -661,12 +667,12 @@ function hpBarData(hp: number, maxHp: number) {
     <!-- ── Bottone CONFERMA fisso fuori dal body scrollabile ── -->
     <div style="flex-shrink:0;padding:12px 16px 28px;background:var(--theme-surface);border-top:1px solid var(--theme-border);z-index:100;box-shadow:0 -4px 20px var(--theme-shadow);">
       <button
-        :style="C.confirmBtn(activeSlots.length === PICKS_RICHIESTI)"
-        @click="activeSlots.length === PICKS_RICHIESTI ? handleP1Confirm() : undefined"
+        :style="C.confirmBtn(teamValido)"
+        @click="teamValido ? handleP1Confirm() : undefined"
       >
-        {{ activeSlots.length === PICKS_RICHIESTI
-          ? '⚔ CONFERMA TEAM'
-          : `SCEGLI ANCORA ${PICKS_RICHIESTI - activeSlots.length} WAIFU` }}
+        {{ teamValido
+          ? '⚔ Inizia battaglia →'
+          : 'Scegli almeno 1 waifu' }}
       </button>
     </div>
   </div>

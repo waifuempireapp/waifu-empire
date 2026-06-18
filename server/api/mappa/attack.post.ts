@@ -62,8 +62,8 @@ export default defineEventHandler(async (event) => {
       targetX < 0 || targetX >= GRID_SIZE || targetY < 0 || targetY >= GRID_SIZE
     ) throw createError({ statusCode: 400, message: 'Coordinate non valide' });
 
-    if (!Array.isArray(attackerTeam) || attackerTeam.length !== 5) {
-      throw createError({ statusCode: 400, message: 'Team offensivo non valido (richiede 5 waifu)' });
+    if (!Array.isArray(attackerTeam) || attackerTeam.length < 5 || attackerTeam.length > 8) {
+      throw createError({ statusCode: 400, message: 'Team offensivo non valido (richiede da 5 a 8 waifu)' });
     }
 
     // Verifica server-side se è il primo pixel (non ci fidiamo del flag client)
@@ -130,8 +130,8 @@ export default defineEventHandler(async (event) => {
       if (defenseSnap.exists) {
         defenderTeam = (defenseSnap.data() as any)[`${targetX}_${targetY}`] || [];
       }
-      // Fallback: preset #1
-      if (defenderTeam.length !== 5) {
+      // Fallback: preset #1 (team difesa valido = da 1 a 8 waifu)
+      if (!Array.isArray(defenderTeam) || defenderTeam.length < 1 || defenderTeam.length > 8) {
         const collSnap = await adminDb.collection('users').doc(pixel.ownerId)
           .collection('collezione').doc('main').get();
         if (collSnap.exists) {

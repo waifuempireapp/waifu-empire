@@ -66,9 +66,9 @@ const pendingFriendRequests = computed(() => {
         display: flex; align-items: center; gap: 4px;
         padding: 0 8px;
         background: var(--theme-surface);
-        border: 1px solid var(--theme-border);
+        border: 1px solid var(--theme-accent);
         border-radius: 999px;
-        height: 28px;
+        height: 38px;
         box-shadow: var(--shadow-float);
       ">
         <Heart :size="14" stroke-width="1.5" style="color:#D946A8;flex-shrink:0;" />
@@ -83,9 +83,9 @@ const pendingFriendRequests = computed(() => {
         display: flex; align-items: center; gap: 4px;
         padding: 0 8px;
         background: var(--theme-surface);
-        border: 1px solid var(--theme-border);
+        border: 1px solid var(--theme-accent);
         border-radius: 999px;
-        height: 28px;
+        height: 38px;
         box-shadow: var(--shadow-float);
       ">
         <Zap :size="14" stroke-width="1.5" style="color:var(--accent);flex-shrink:0;" />
@@ -111,6 +111,7 @@ const pendingFriendRequests = computed(() => {
         z-index: 50;
         display: flex; align-items: center; justify-content: center;
         padding: 0;
+        border: 1px solid var(--theme-accent);
         transition: transform 0.15s, box-shadow 0.15s;
         flex-shrink: 0;
       " :style="{
@@ -137,10 +138,19 @@ const pendingFriendRequests = computed(() => {
 
       <button style="
           position: relative;
-          width: 32.5px; height: 32.5px;
-          border: none; background: transparent;
-          cursor: pointer; display: flex;
-          align-items: center; justify-content: center;
+          width: 38px; height: 38px;
+          font-family: var(--ff-label,'Saira Condensed',sans-serif);
+          font-size: 14px; letter-spacing: 0.13em;
+          text-transform: uppercase;
+          color: var(--accent);
+          background: var(--theme-surface);
+          border: 1px solid var(--theme-accent);
+          box-shadow: var(--shadow-float);
+          border-radius: 99px;
+          cursor: pointer; padding: 0 12px;
+          min-height: 38px; font-weight: 700;
+          display: inline-flex; align-items: center; gap: 5px;
+          transition: color 0.2s, background 0.2s;
         " @click="() => { }">
         <Bell :size="20" stroke-width="1.5" style="color:var(--theme-text-2);" />
         <span v-if="pendingFriendRequests > 0" style="
@@ -158,6 +168,7 @@ const pendingFriendRequests = computed(() => {
 
       <!-- NEGOZIO (al posto del vecchio bottone ESCI) -->
       <button style="
+          width: 38px; height: 38px;
           font-family: var(--ff-label,'Saira Condensed',sans-serif);
           font-size: 12px; letter-spacing: 0.13em;
           text-transform: uppercase;
@@ -167,11 +178,12 @@ const pendingFriendRequests = computed(() => {
           box-shadow: var(--shadow-float);
           border-radius: 99px;
           cursor: pointer; padding: 0 12px;
-          min-height: 35px; font-weight: 700;
+          min-height: 38px; font-weight: 700;
           display: inline-flex; align-items: center; gap: 5px;
           transition: color 0.2s, background 0.2s;
         " @click="gameStore.toggleNegozio(true)">
-        <ShoppingCart :size="15" stroke-width="1.8" /> {{ $t('settings.shop') }}
+        <ShoppingCart :size="15" stroke-width="1.8" /> 
+        <!-- {{ $t('settings.shop') }} -->
       </button>
 
     </div>

@@ -187,9 +187,9 @@ const roster5E = computed(() => {
   const defIds = props.battle?.defenderTeam
 
   let pool: any[] = []
-  if (Array.isArray(defIds) && defIds.length === 5) {
+  if (Array.isArray(defIds) && defIds.length >= 1 && defIds.length <= 8) {
     const resolved = defIds.map((id: string) => patchW(props.waifuCat!.find(c => c.id === id))).filter(Boolean)
-    if (resolved.length === 5) pool = resolved
+    if (resolved.length) pool = resolved
   }
 
   if (!pool.length) {
@@ -224,8 +224,6 @@ const roster5E = computed(() => {
 })
 
 // ── Computed per la fase pre-round ────────────────────────────────────────────
-const roundNum = computed(() => (props.battle?.attackerWins ?? 0) + (props.battle?.defenderWins ?? 0) + 1)
-
 const cpuDifficultyLabel = computed(() => {
   const d = props.battle?.cpuDifficulty ?? 'easy'
   return d.charAt(0).toUpperCase() + d.slice(1)
@@ -250,9 +248,20 @@ function onPickConfirm({ playerPick3: pTeam, enemyPick3: eTeam }: { playerPick3:
 
   // Applica moltiplicatori difficoltà CPU
   const mult = DIFFICULTY_STAT_MULT[props.battle?.cpuDifficulty ?? 'easy']
-  const scaledETeam = props.battle?.defenderUid === 'CPU'
+  let scaledETeam = props.battle?.defenderUid === 'CPU'
     ? applyDifficultyScaling(eTeamWithFlags, mult)
     : eTeamWithFlags
+
+  // RAID BOSS: il difensore è un'unica waifu con HP ×N (default 10)
+  if (props.battle?.isRaid) {
+    const m = (props.battle?.raidBossHpMult as number) ?? 10
+    scaledETeam = scaledETeam.slice(0, 1).map((w: any) => ({
+      ...w,
+      maxHp: Math.round((w.maxHp ?? 300) * m),
+      hp:    Math.round((w.maxHp ?? 300) * m),
+      isRaidBoss: true,
+    }))
+  }
 
   enemyTeam.value = scaledETeam
   phase.value     = 'battle'
@@ -306,34 +315,21 @@ const primaryBtn = computed(() => ({
     }"
   >
     <div :style="{ fontFamily: FF.label, fontSize: '23px', letterSpacing: '0.28em', color: C.sakura, textTransform: 'uppercase', marginBottom: '4px', fontWeight: 700 }">
-      Round {{ roundNum }}
+      {{ battle?.isRaid ? 'Raid Boss' : 'Battaglia' }}
     </div>
     <div :style="{ fontFamily: FF.label, fontSize: '14px', letterSpacing: '0.18em', color: 'var(--theme-text-2)', textTransform: 'uppercase', marginBottom: '12px' }">
-      Al meglio delle 3
+      Round unico
     </div>
     <div :style="{ fontFamily: FF.display, fontSize: '28px', color: 'var(--theme-text)', fontWeight: 900, marginBottom: '6px', textAlign: 'center' }">
       Inizia battaglia!
     </div>
-    <div :style="{ fontFamily: FF.body, fontSize: '14px', color: 'var(--theme-text-2)', marginBottom: '32px' }">
+    <div :style="{ fontFamily: FF.body, fontSize: '14px', color: 'var(--theme-text-2)', marginBottom: '40px' }">
       Difficoltà CPU: <strong :style="{ color: isDark ? C.aqua : '#0891b2', textTransform: 'uppercase' }">{{ cpuDifficultyLabel }}</strong>
     </div>
 
-    <!-- Punteggio Bo3 -->
-    <div :style="{ display: 'flex', gap: '40px', marginBottom: '48px', alignItems: 'center' }">
-      <div style="text-align:center">
-        <div :style="{ fontFamily: FF.label, fontSize: '18px', color: isDark ? C.aqua : '#0891b2', letterSpacing: '0.28em', marginBottom: '8px', fontWeight: 800, textTransform: 'uppercase' }">TU</div>
-        <div :style="{ fontFamily: FF.display, fontSize: '52px', color: isDark ? C.aqua : '#0891b2', fontWeight: 900, lineHeight: 1 }">{{ battle?.attackerWins ?? 0 }}</div>
-      </div>
-      <div :style="{ fontFamily: FF.display, fontSize: '32px', color: 'var(--theme-text-3)', alignSelf: 'center' }">—</div>
-      <div style="text-align:center">
-        <div :style="{ fontFamily: FF.label, fontSize: '18px', color: C.sakura, letterSpacing: '0.28em', marginBottom: '8px', fontWeight: 800, textTransform: 'uppercase' }">CPU</div>
-        <div :style="{ fontFamily: FF.display, fontSize: '52px', color: C.err, fontWeight: 900, lineHeight: 1 }">{{ battle?.defenderWins ?? 0 }}</div>
-      </div>
-    </div>
-
     <div :style="{ display: 'flex', gap: '12px', width: '100%', maxWidth: '340px' }">
-      <button @click="emit('chiudi')" :style="ghostBtn">← Indietro</button>
-      <button @click="phase = 'pick'" :style="primaryBtn">⚔ Combatti</button>
+      <button @click="emit('chiudi')" :style="ghostBtn">Indietro</button>
+      <button @click="phase = 'pick'" :style="primaryBtn">Combatti</button>
     </div>
   </div>
 

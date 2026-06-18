@@ -137,7 +137,7 @@ function toggle(id: string) {
   activePresetId.value = null
   if (selectedIds.value.includes(id)) {
     selectedIds.value = selectedIds.value.filter(x => x !== id)
-  } else if (selectedIds.value.length < 5) {
+  } else if (selectedIds.value.length < 8) {   // pool max 8
     selectedIds.value = [...selectedIds.value, id]
   }
 }
@@ -162,8 +162,9 @@ function setTeams() {
   activePresetId.value = null
 }
 
+const poolValido = computed(() => selectedIds.value.length >= 5 && selectedIds.value.length <= 8)
 function confirm() {
-  if (selectedIds.value.length === 5) emit('conferma', selectedIds.value)
+  if (poolValido.value) emit('conferma', selectedIds.value)
 }
 
 function clearFilters() {
@@ -245,7 +246,7 @@ const visiblePages = computed(() => {
     <template v-if="mode === 'teams'">
       <div :style="{ flex: 1, overflowY: 'auto', padding: '14px 18px 0' }">
         <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.4, marginBottom: '12px' }">
-          💡 Scegli un team già salvato, oppure seleziona 5 waifu con cui vuoi combattere. Nella prossima schermata potrai scegliere le 3 migliori waifu per affrontare il primo round.
+          💡 Scegli un team già salvato, oppure seleziona da 5 a 8 waifu per il tuo pool. Nella prossima schermata sceglierai la squadra di combattimento (da 1 a 8).
         </div>
 
         <!-- Lista preset team -->
@@ -310,17 +311,17 @@ const visiblePages = computed(() => {
       <div :style="{ padding: '14px 16px 30px', flexShrink: 0 }">
         <button
           @click="confirm"
-          :disabled="selectedIds.length !== 5"
+          :disabled="!poolValido"
           :style="{
             width: '100%', padding: '15px',
-            background: selectedIds.length === 5 ? 'linear-gradient(135deg, #c54a86, #ff85b6)' : 'var(--theme-shimmer)',
+            background: poolValido ? 'linear-gradient(135deg, #c54a86, #ff85b6)' : 'var(--theme-shimmer)',
             border: 'none', borderRadius: '14px',
-            cursor: selectedIds.length === 5 ? 'pointer' : 'not-allowed',
-            color: selectedIds.length === 5 ? '#fff' : 'var(--theme-text-3)',
+            cursor: poolValido ? 'pointer' : 'not-allowed',
+            color: poolValido ? '#fff' : 'var(--theme-text-3)',
             fontFamily: FF.label, fontSize: '14px', letterSpacing: '0.2em',
             textTransform: 'uppercase', fontWeight: 700,
           }"
-        ><Swords v-if="selectedIds.length === 5" :size="14" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:6px;" />{{ selectedIds.length === 5 ? 'Avvia Battaglia' : 'Seleziona un team' }}</button>
+        ><Swords v-if="poolValido" :size="14" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:6px;" />{{ poolValido ? 'Avvia Battaglia' : 'Seleziona un team' }}</button>
       </div>
     </template>
 
@@ -329,10 +330,10 @@ const visiblePages = computed(() => {
       <!-- Istruzione + contatore -->
       <div :style="{ padding: '10px 16px 0', flexShrink: 0, display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px' }">
         <div :style="{ fontFamily: FF.body, fontSize: '15px', color: 'var(--theme-text-2)', lineHeight: 1.4 }">
-          Seleziona <strong :style="{ color: C.violet }">5 waifu</strong> da portare in battaglia
+          Scegli da <strong :style="{ color: C.violet }">5 a 8 waifu</strong> per il tuo pool
         </div>
-        <div :style="{ fontFamily: FF.mono, fontSize: '14px', fontWeight: 700, color: selectedIds.length === 5 ? C.gold : 'var(--theme-text-3)', flexShrink: 0 }">
-          {{ selectedIds.length }}/5
+        <div :style="{ fontFamily: FF.mono, fontSize: '14px', fontWeight: 700, color: poolValido ? '#16a34a' : 'var(--theme-text-3)', flexShrink: 0 }">
+          {{ selectedIds.length }}/8
         </div>
       </div>
 
@@ -364,73 +365,73 @@ const visiblePages = computed(() => {
         </div>
       </div>
 
-      <!-- Lista verticale waifu — padding-top/left extra per badge che sborda in alto a sinistra -->
-      <div :style="{ flex: 1, overflowY: 'auto', padding: '20px 16px 0 28px' }">
-        <div :style="{ display: 'flex', flexDirection: 'column', gap: '35px' }">
+      <!-- Griglia waifu 2 colonne — card verticali (nome, immagine, mosse 2×2 sotto) -->
+      <div :style="{ flex: 1, overflowY: 'auto', padding: '24px 16px 0' }">
+        <div :style="{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px 12px' }">
           <div
             v-for="w in pageWaifu"
             :key="w.id"
             @click="toggle(w.id)"
             :style="{
               position: 'relative', cursor: 'pointer',
-              display: 'flex', alignItems: 'flex-start', gap: '10px',
+              display: 'flex', flexDirection: 'column', gap: '8px',
               padding: '8px',
               background: selectedIds.includes(w.id) ? (isDark ? 'rgba(255,200,97,0.12)' : 'rgba(154,111,0,0.08)') : cardBg,
               border: `2px solid ${selectedIds.includes(w.id) ? gold + 'cc' : cardBorder}`,
-              borderRadius: '16px',
-              boxShadow: selectedIds.includes(w.id) ? `0 0 18px ${gold}40` : 'none',
+              borderRadius: '14px',
+              boxShadow: selectedIds.includes(w.id) ? `0 4px 16px ${gold}40` : '0 4px 12px rgba(0,0,0,0.10)',
               transition: 'all 0.15s',
             }"
           >
-            <!-- Colonna sinistra: nome sopra + immagine sotto -->
-            <div :style="{ display:'flex', flexDirection:'column', gap:'6px', flexShrink:0 }">
-              <div :style="{ fontFamily:FF.display, fontSize:'16px', fontWeight:800, color:'var(--theme-text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', width:'150px' }">
-                {{ w.nome }}
-              </div>
-              <div :style="{ width:'150px', height:'235px', borderRadius:'16px', overflow:'hidden', background:'var(--theme-bg-secondary)', border:`2px solid ${rarColors[w.rarita] || 'var(--theme-border)'}` }">
-                <img
-                  v-if="w.asset_immagine || w.asset_statica || w.asset_immersiva"
-                  :src="w.asset_immagine || w.asset_statica || w.asset_immersiva"
-                  :alt="w.nome"
-                  style="width:100%;height:100%;object-fit:cover;object-position:top;"
-                />
-                <div v-else style="width:100%;height:100%;display:grid;place-items:center;opacity:0.2;">
-                  <img src="~/assets/images/New_Logo.png" alt="" style="width:70%;" />
-                </div>
+            <!-- Nome -->
+            <div :style="{ fontFamily:FF.display, fontSize:'15px', fontWeight:800, color:'var(--theme-text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }">
+              {{ w.nome }}
+            </div>
+            <!-- Immagine -->
+            <div :style="{ width:'100%', aspectRatio:'2/3', borderRadius:'10px', overflow:'hidden', background:'var(--theme-bg-secondary)', border:`2px solid ${rarColors[w.rarita] || 'var(--theme-border)'}` }">
+              <img
+                v-if="w.asset_immagine || w.asset_statica || w.asset_immersiva"
+                :src="w.asset_immagine || w.asset_statica || w.asset_immersiva"
+                :alt="w.nome"
+                loading="eager" decoding="sync"
+                style="width:100%;height:100%;object-fit:cover;object-position:top;"
+              />
+              <div v-else style="width:100%;height:100%;display:grid;place-items:center;opacity:0.2;">
+                <img src="~/assets/images/New_Logo.png" alt="" style="width:70%;" />
               </div>
             </div>
 
-            <!-- Chip rarità — assoluto in alto a destra, per metà fuori dalla card -->
+            <!-- Chip rarità — full-round, in alto a destra che sborda -->
             <div :style="{
-                position: 'absolute', top: '-20px', right: '-15px',
+                position: 'absolute', top: '-10px', right: '-10px',
                 background: 'var(--theme-surface)',
                 border: `1.5px solid ${w.rarita === 'leggendario' ? gold : rarColors[w.rarita] || '#aaa'}`,
-                borderRadius: '999px', padding: '3px 14px',
-                fontFamily: FF.label, fontSize: '14px', fontWeight: 800,
+                borderRadius: '999px', padding: '2px 10px',
+                fontFamily: FF.label, fontSize: '11px', fontWeight: 800,
                 color: w.rarita === 'leggendario' ? gold : rarColors[w.rarita] || '#aaa',
-                textTransform: 'capitalize',
-                zIndex: 2,
+                textTransform: 'capitalize', zIndex: 3,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
               }">{{ w.rarita }}</div>
 
-            <!-- Colonna destra: mosse + stats -->
-            <div :style="{ flex:1, minWidth:0, overflow:'hidden', display:'flex', flexDirection:'column', gap:'6px', marginTop:'31px' }">
+            <!-- Mosse 2×2 sotto l'immagine -->
+            <div :style="{ minWidth:0, overflow:'hidden', display:'flex', flexDirection:'column', gap:'6px' }">
 
-              <!-- Mosse 2×2 — overflow:hidden impedisce fuoriuscita dalla card -->
-              <div :style="{ display:'grid', gridTemplateColumns:'1fr', gap:'4px', overflow:'hidden' }">
+              <!-- Mosse 2×2 sotto l'immagine — piccole -->
+              <div :style="{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'4px', overflow:'hidden' }">
                 <div
                   v-for="(mossaId, slot) in (w._datiColl?.mosse_slot ?? {})"
                   :key="slot"
                   :style="{
                     background: getMossa(mossaId) ? moveTypeColor(getMossa(mossaId)!.tipologia) + (isDark ? '20' : '15') : cardBg,
                     border: `0.5px solid ${getMossa(mossaId) ? moveTypeColor(getMossa(mossaId)!.tipologia) + (isDark ? '66' : 'bb') : cardBorder}`,
-                    borderRadius: '999px', padding: '4px 20px',
+                    borderRadius: '10px', padding: '4px 8px',
                     display: 'flex', flexDirection: 'column', gap: '0px', minWidth: 0, overflow: 'hidden',
                   }"
                 >
-                  <div :style="{ fontFamily:FF.label, fontSize:'16px', fontWeight:700, color: getMossa(mossaId) ? 'var(--theme-text)' : 'var(--theme-text-3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }">
+                  <div :style="{ fontFamily:FF.label, fontSize:'11px', fontWeight:700, color: getMossa(mossaId) ? 'var(--theme-text)' : 'var(--theme-text-3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }">
                     {{ getMossa(mossaId)?.nome ?? '—' }}
                   </div>
-                  <div v-if="getMossa(mossaId)?.tipologia" :style="{ fontFamily:FF.label, fontSize:'14px', fontWeight:600, color: moveTypeColor(getMossa(mossaId)!.tipologia) }">
+                  <div v-if="getMossa(mossaId)?.tipologia" :style="{ fontFamily:FF.label, fontSize:'9px', fontWeight:600, color: moveTypeColor(getMossa(mossaId)!.tipologia) }">
                     {{ getMossa(mossaId)!.tipologia }}
                   </div>
                 </div>
@@ -447,11 +448,11 @@ const visiblePages = computed(() => {
               </div>
             </div><!-- fine colonna destra -->
 
-            <!-- Badge numero selezione — per metà fuori dalla card, angolo in alto a sinistra -->
+            <!-- Badge numero selezione — in basso a destra (evita sovrapposizione col chip rarità) -->
             <div
               v-if="selectedIds.includes(w.id)"
               :style="{
-                position: 'absolute', top: '-15px', left: '-15px',
+                position: 'absolute', bottom: '-12px', right: '-12px',
                 width:'30px', height:'30px', borderRadius:'50%',
                 background: gold, color: '#fff',
                 display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: '15px',
@@ -475,18 +476,18 @@ const visiblePages = computed(() => {
       <div :style="{ padding: '10px 16px', flexShrink: 0 }">
         <button
           @click="confirm"
-          :disabled="selectedIds.length !== 5"
+          :disabled="!poolValido"
           :style="{
             width: '100%', padding: '16px',
-            background: selectedIds.length === 5 ? 'linear-gradient(135deg, #c54a86, #ff85b6)' : 'var(--theme-shimmer)',
+            background: poolValido ? 'linear-gradient(135deg, #c54a86, #ff85b6)' : 'var(--theme-shimmer)',
             border: 'none', borderRadius: '999px',
-            cursor: selectedIds.length === 5 ? 'pointer' : 'not-allowed',
-            color: selectedIds.length === 5 ? '#fff' : 'var(--theme-text-3)',
+            cursor: poolValido ? 'pointer' : 'not-allowed',
+            color: poolValido ? '#fff' : 'var(--theme-text-3)',
             fontFamily: FF.label, fontSize: '16px', letterSpacing: '0.18em',
             textTransform: 'uppercase', fontWeight: 800,
-            boxShadow: selectedIds.length === 5 ? '0 4px 24px rgba(197,74,134,0.5)' : 'none',
+            boxShadow: poolValido ? '0 4px 24px rgba(197,74,134,0.5)' : 'none',
           }"
-        ><Swords v-if="selectedIds.length === 5" :size="16" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:6px;" />{{ selectedIds.length === 5 ? 'Avvia Battaglia' : `Seleziona ancora ${5 - selectedIds.length}` }}</button>
+        ><Swords v-if="poolValido" :size="16" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:6px;" />{{ poolValido ? 'Avanti →' : (selectedIds.length < 5 ? `Seleziona ancora ${5 - selectedIds.length}` : 'Max 8 waifu') }}</button>
 
         <div v-if="ownedWaifu.length > 0" :style="{ marginTop:'8px', padding:'8px 12px', background:'var(--theme-shimmer)', border:'1px solid var(--theme-border)', borderRadius:'10px', fontFamily:FF.body, fontSize:'12px', color:'var(--theme-text-3)', lineHeight:1.5, textAlign:'center' }">
           Le altre waifu non sono visibili perché non hai assegnato 4 mosse attacco. Vai in <strong style="color:#9b59ff">Collezione → Mosse</strong>.

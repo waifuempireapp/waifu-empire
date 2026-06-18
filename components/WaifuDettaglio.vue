@@ -201,12 +201,15 @@ onUnmounted(() => {
           <span :style="{ color: rarColor, fontSize: '17px', letterSpacing: '3px', filter: `drop-shadow(0 0 6px ${rarColor})`, flexShrink: 0 }">{{ STELLE[waifu.rarita] ?? '★' }}</span>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
-          <button @click="emit('togglePreferita')" :style="{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', display: 'flex', alignItems: 'center', filter: pref ? `drop-shadow(0 0 8px ${C.sakura})` : 'none' }">
-            <Heart :size="28" :fill="pref ? C.sakura : 'none'" :color="pref ? C.sakura : 'rgba(255,255,255,0.45)'" stroke-width="1.5" />
+          <!-- Preferiti: bottone tondo bordo viola, cuore con bordo visibile se deselezionato -->
+          <button @click="emit('togglePreferita')"
+            :style="{ width:'44px', height:'44px', borderRadius:'50%', background:'var(--theme-surface)', border:'1.5px solid var(--theme-accent)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow: pref ? `0 0 10px ${C.sakura}66` : 'none' }">
+            <Heart :size="22" :fill="pref ? C.sakura : 'none'" :color="pref ? C.sakura : 'var(--theme-text-2)'" stroke-width="2" />
           </button>
-          <button @click="emit('chiudi')" style="background:var(--theme-shimmer);border:1px solid var(--theme-border);cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:999px;color:var(--theme-text-2);">
-            <X :size="15" stroke-width="2" />
-            <span :style="{ fontFamily: FF.label, fontSize: '13px', letterSpacing: '0.18em', fontWeight: 700 }">CHIUDI</span>
+          <!-- Chiudi: solo X, bottone tondo bordo viola, stessa dimensione -->
+          <button @click="emit('chiudi')"
+            style="width:44px;height:44px;border-radius:50%;background:var(--theme-surface);border:1.5px solid var(--theme-accent);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--theme-text-2);">
+            <X :size="20" stroke-width="2.2" />
           </button>
         </div>
       </div>
@@ -283,7 +286,7 @@ onUnmounted(() => {
 
             <!-- ── STATISTICHE collapsible ── -->
             <div :style="{ background: 'var(--theme-surface)', border: '1px solid var(--theme-border)', borderRadius: '14px', overflow: 'hidden' }">
-              <button @click="statsOpen = !statsOpen" style="width:100%;background:none;border:none;cursor:pointer;padding:18px 18px;display:flex;align-items:center;justify-content:space-between;">
+              <button @click="statsOpen = !statsOpen" style="width:100%;background:none;border:none;border-radius:0 !important;box-shadow:none !important;cursor:pointer;padding:18px 18px;display:flex;align-items:center;justify-content:space-between;">
                 <div style="display:flex;align-items:center;gap:10px;">
                   <span style="font-size:17px">📊</span>
                   <span :style="{ fontFamily: FF.label, fontSize: '15px', fontWeight: 800, color: C.violet, letterSpacing: '0.2em', textTransform: 'uppercase' }">Statistiche</span>
@@ -305,7 +308,7 @@ onUnmounted(() => {
 
             <!-- ── BATTAGLIA & MOSSE collapsible ── -->
             <div :style="{ background: 'var(--theme-surface)', border: '1px solid var(--theme-border)', borderRadius: '14px', overflow: 'hidden' }">
-              <button @click="battleOpen = !battleOpen" style="width:100%;background:none;border:none;cursor:pointer;padding:18px 18px;display:flex;align-items:center;justify-content:space-between;">
+              <button @click="battleOpen = !battleOpen" style="width:100%;background:none;border:none;border-radius:0 !important;box-shadow:none !important;cursor:pointer;padding:18px 18px;display:flex;align-items:center;justify-content:space-between;">
                 <div style="display:flex;align-items:center;gap:10px;">
                   <Swords :size="18" :color="C.gold" stroke-width="1.5" />
                   <span :style="{ fontFamily: FF.label, fontSize: '15px', fontWeight: 800, color: C.gold, letterSpacing: '0.2em', textTransform: 'uppercase' }">Battaglia & Mosse</span>
@@ -466,7 +469,7 @@ onUnmounted(() => {
   flex: 1;
   text-align: center;
   padding: 12px 4px;
-  border-radius: 12px;
+  border-radius: 12px !important;
   border: 1px solid var(--border-subtle);
   background: var(--surface-sunken);
 }

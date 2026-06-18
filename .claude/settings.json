@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"const.*= \\\\`\\\\|injectStyle\\\\|v-html\\\\|innerHTML\\\\|<style\\\\|useHead\\\\|STYLE\\\\b\\\\|= \\\\`$\" components/WaifuBattleArena.vue)",
+      "Bash(sed -n '/function cardBoxShadow/,/^}/p' components/PickPhase.vue)",
+      "Bash(sed -n '/function cardBackground/,/^}/p' components/PickPhase.vue)"
+    ]
+  }
+}

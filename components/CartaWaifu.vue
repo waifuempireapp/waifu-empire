@@ -305,12 +305,14 @@ function onMouseLeave(e: MouseEvent) {
         </div>
       </div>
 
-      <!-- Immagine carta -->
+      <!-- Immagine carta — caricamento immediato (no "carta nera" che si valorizza) -->
       <img
         v-else-if="imgSrc"
         :src="imgSrc"
         :alt="waifu.nome"
-        loading="lazy"
+        loading="eager"
+        decoding="sync"
+        fetchpriority="high"
         :style="{
           position: 'absolute', inset: '0',
           width: '100%', height: '100%',

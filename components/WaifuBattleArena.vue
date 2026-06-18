@@ -151,6 +151,16 @@ const BATTLE_CSS = `
   .wba-move-btn:disabled{cursor:not-allowed}
   .wba-bench-slot{transition:transform .1s ease;-webkit-tap-highlight-color:transparent}
   .wba-bench-slot:active:not(:disabled){transform:scale(.9)}
+
+  /* ── Barra HP BOSS (raid) ── */
+  .wba-boss-bar{width:100%;padding:10px 16px 12px;background:var(--theme-surface);border-bottom:1px solid var(--border-subtle);box-shadow:var(--shadow-float);position:relative;z-index:6}
+  .wba-boss-bar__label{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+  .wba-boss-bar__badge{background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;font-family:var(--ff-label,'Nunito',sans-serif);font-size:10px;font-weight:900;letter-spacing:2px;padding:2px 9px;border-radius:9999px;box-shadow:0 0 10px rgba(231,76,60,.5)}
+  .wba-boss-bar__name{font-family:var(--ff-display,'Unbounded',sans-serif);font-size:15px;font-weight:900;color:var(--theme-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  .wba-boss-bar__pct{font-family:var(--ff-label,'Nunito',sans-serif);font-size:15px;font-weight:900;color:#f39c12}
+  .wba-boss-bar__track{width:100%;height:14px;background:var(--surface-sunken);border-radius:9999px;overflow:hidden;border:1px solid var(--border-subtle)}
+  .wba-boss-bar__fill{height:100%;background:linear-gradient(90deg,#e74c3c,#f39c12);border-radius:9999px;transition:width .5s cubic-bezier(.25,.8,.25,1);box-shadow:0 0 12px rgba(243,156,18,.5)}
+  .wba-boss-bar__value{font-family:var(--ff-label,'Nunito',sans-serif);font-size:11px;font-weight:800;color:var(--theme-text-2);margin-top:4px;text-align:right}
 `
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -202,6 +212,13 @@ const eActive = ref(0)
 // Shortcut waifu attivi
 const player = computed(() => pTeam.value[pActive.value])
 const enemy  = computed(() => eTeam.value[eActive.value])
+
+// Raid boss: nemico unico con HP potenziati (flag impostato da RoundViewer)
+const isBoss     = computed(() => !!(enemy.value as any)?.isRaidBoss)
+const bossHpPct  = computed(() => {
+  const e = enemy.value
+  return e && e.maxHp > 0 ? Math.max(0, Math.min(100, (e.hp / e.maxHp) * 100)) : 0
+})
 
 // Animazioni sprite
 const pAnim     = ref('wba-sL')
@@ -1030,33 +1047,7 @@ const mvp = computed(() => {
           <HeartCrack v-else                         :size="44" stroke-width="1.5" style="color:#ff85b6;" />
         </div>
 
-        <!-- Score Bo3 -->
-        <template v-if="battleCtx?.bo3">
-          <div :style="{ marginBottom:'8px' }">
-            <div :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',letterSpacing:'0.2em',color:'var(--theme-text-2)',textTransform:'uppercase',marginBottom:'4px' }">
-              Al meglio di 3
-            </div>
-            <div :style="{ display:'flex',alignItems:'center',justifyContent:'center',gap:'16px' }">
-              <div>
-                <div :style="{ fontFamily:'var(--ff-label)',fontSize:'13px',color:c.teal,textTransform:'uppercase',marginBottom:'2px',fontWeight:700 }">
-                  {{ (battleCtx.nomeImpero as string) || 'Tu' }}
-                </div>
-                <div :style="{ fontFamily:'var(--ff-display)',fontSize:'28px',fontWeight:900,color:c.teal,lineHeight:1 }">
-                  {{ ((battleCtx.bo3 as any).attackerWins ?? 0) + (risultatoFinale.isVictory ? 1 : 0) }}
-                </div>
-              </div>
-              <div :style="{ fontFamily:'var(--ff-label)',fontSize:'20px',color:'var(--theme-text-3)',fontWeight:700 }">—</div>
-              <div>
-                <div :style="{ fontFamily:'var(--ff-label)',fontSize:'13px',color:c.pink,textTransform:'uppercase',marginBottom:'2px',fontWeight:700 }">
-                  {{ (battleCtx.nomeImperoAvversario as string) || 'CPU' }}
-                </div>
-                <div :style="{ fontFamily:'var(--ff-display)',fontSize:'28px',fontWeight:900,color:c.pink,lineHeight:1 }">
-                  {{ ((battleCtx.bo3 as any).defenderWins ?? 0) + (risultatoFinale.isVictory ? 0 : 1) }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </template>
+        <!-- (Bo3 rimosso: ora le battaglie sono a round singolo) -->
 
         <!-- VITTORIA / SCONFITTA / PAREGGIO -->
         <div :style="{
@@ -1067,8 +1058,8 @@ const mvp = computed(() => {
           {{ risultatoFinale.isDraw ? 'PAREGGIO' : risultatoFinale.isVictory ? 'VITTORIA!' : 'SCONFITTA' }}
         </div>
 
-        <!-- Punteggio round -->
-        <div v-if="!risultatoFinale.isDraw" :style="{
+        <!-- Punteggio round (nascosto nei raid: il punteggio 1-1 non ha senso) -->
+        <div v-if="!risultatoFinale.isDraw && !battleCtx?.isRaid" :style="{
           marginBottom:'10px',padding:'10px 16px',
           background:'linear-gradient(135deg,rgba(167,139,250,0.12),rgba(255,133,182,0.08))',
           border:'1px solid rgba(167,139,250,0.3)',borderRadius:'12px',
@@ -1272,14 +1263,27 @@ const mvp = computed(() => {
         </div>
       </div>
 
+      <!-- ── BARRA HP BOSS (raid): prominente, full-width, dorata/rossa ── -->
+      <div v-if="isBoss && enemy" class="wba-boss-bar">
+        <div class="wba-boss-bar__label">
+          <span class="wba-boss-bar__badge">BOSS</span>
+          <span class="wba-boss-bar__name">{{ enemy.name }}</span>
+          <span class="wba-boss-bar__pct">{{ Math.round(bossHpPct) }}%</span>
+        </div>
+        <div class="wba-boss-bar__track">
+          <div class="wba-boss-bar__fill" :style="{ width: bossHpPct + '%' }" />
+        </div>
+        <div class="wba-boss-bar__value">{{ Math.max(0, Math.round(enemy.hp)) }} / {{ enemy.maxHp }} HP</div>
+      </div>
+
       <!-- ── ZONE 2+3+4: Arene di battaglia ── -->
       <div :style="{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative', minHeight:0 }">
 
         <!-- Enemy Zone (top ~47% mobile, 52% desktop) -->
         <div :style="{ flex: isMobile ? '0 0 47%' : '0 0 52%', position:'relative', overflow:'hidden' }">
-          <!-- HUD nemico: top-left -->
+          <!-- HUD nemico: top-left (nascosto nei raid: la barra HP boss in alto lo sostituisce) -->
           <div :style="{ position:'absolute', top:'15px', left:'12px', zIndex:3 }">
-            <template v-if="enemy">
+            <template v-if="enemy && !isBoss">
               <!-- EnemyHud inline — specchia il layout del player HUD -->
               <div :style="{
                 background:'var(--theme-surface)', backdropFilter:'blur(12px)',
@@ -1755,10 +1759,22 @@ const mvp = computed(() => {
                       fontFamily: '\'DM Sans\', sans-serif',
                       cursor: dis ? 'not-allowed' : 'pointer',
                       display:'flex', flexDirection:'column', gap:'5px', alignItems:'flex-start',
-                      position:'relative', overflow:'hidden',
+                      position:'relative', overflow:'visible',
                     }
                   })()"
                 >
+                  <!-- Chip tipo — full-round, in alto a destra che sborda (-10px,-10px) -->
+                  <span v-if="move && (move.pp ?? 0) > 0 && !isMoveBlocked(lastPMove, i, move)" :style="{
+                    position:'absolute', top:'-10px', right:'-10px', zIndex:3,
+                    background:`rgba(${hexToRgb((_TYPE_COLORS_UI[move.type] ?? { border:'#555' }).border)},.18)`,
+                    color:(_TYPE_COLORS_UI[move.type] ?? { border:'#555' }).border,
+                    border:`1.5px solid ${(_TYPE_COLORS_UI[move.type] ?? { border:'#555' }).border}`,
+                    borderRadius:'9999px', padding:'2px 10px',
+                    fontSize:'12px', fontWeight:800,
+                    fontFamily:'var(--ff-label)', letterSpacing:.5,
+                    whiteSpace:'nowrap', backdropFilter:'blur(4px)',
+                    boxShadow:'0 2px 8px rgba(0,0,0,0.25)',
+                  }">{{ move.type }}</span>
                   <template v-if="move">
                     <div :style="{ display:'flex',alignItems:'flex-start',justifyContent:'space-between',width:'100%',gap:'4px' }">
                       <span :style="{
@@ -1771,18 +1787,6 @@ const mvp = computed(() => {
                         textDecoration: (move.pp ?? 0) <= 0 ? 'line-through' : 'none',
                       }">{{ move.name }}</span>
                       <Lock v-if="isMoveBlocked(lastPMove, i, move)" :size="11" stroke-width="1.5" style="flex-shrink:0;color:var(--theme-text-2);" />
-                      <template v-else-if="(move.pp ?? 0) > 0">
-                        <!-- TypeBadge sm inline -->
-                        <span :style="{
-                          background:`rgba(${hexToRgb((_TYPE_COLORS_UI[move.type] ?? { border:'#555' }).border)},.15)`,
-                          color:(_TYPE_COLORS_UI[move.type] ?? { border:'#555' }).border,
-                          border:`1px solid ${(_TYPE_COLORS_UI[move.type] ?? { border:'#555' }).border}99`,
-                          borderRadius:'4px', padding:'1px 5px',
-                          fontSize:'12px', fontWeight:700,
-                          fontFamily:'var(--ff-label)', letterSpacing:.5,
-                          display:'inline-block', whiteSpace:'nowrap',
-                        }">{{ move.type }}</span>
-                      </template>
                     </div>
                     <!-- Riga PP + efficacia -->
                     <div :style="{ display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%' }">

@@ -14,8 +14,8 @@ export default defineEventHandler(async (event) => {
 
     const adminDb = getAdminDb();
     const { attackerTeam } = await readBody(event);
-    if (!Array.isArray(attackerTeam) || attackerTeam.length !== 5) {
-      throw createError({ statusCode: 400, message: 'Team offensivo non valido (richiede 5 waifu)' });
+    if (!Array.isArray(attackerTeam) || attackerTeam.length < 5 || attackerTeam.length > 8) {
+      throw createError({ statusCode: 400, message: 'Team offensivo non valido (richiede da 5 a 8 waifu)' });
     }
 
     // Carica raid attivo
@@ -27,8 +27,12 @@ export default defineEventHandler(async (event) => {
     const raid = raidDoc.data() as any;
     const eventId: string = raidDoc.id;
 
-    // Il deck del raid = difensore
-    const defenderTeam: string[] = (raid.deck || []).slice(0, 5);
+    // BOSS FIGHT: il difensore è UNA SOLA waifu boss (la protagonista del raid)
+    // con HP potenziati ×10 (vedi raidBossHpMult, applicato lato client).
+    const bossId: string | null = raid.waifuId ?? (raid.deck || [])[0] ?? null;
+    if (!bossId) throw createError({ statusCode: 500, message: 'Raid senza boss valido' });
+    const defenderTeam: string[] = [bossId];
+    const RAID_BOSS_HP_MULT = 10;
 
     // Difficoltà CPU raid: 60% Medium, 30% Hard, 10% Extreme
     const participantId = `${eventId}_${uid}`;
@@ -58,6 +62,7 @@ export default defineEventHandler(async (event) => {
       pixelY: -1,
       raidEventId: eventId,
       isRaid: true,
+      raidBossHpMult: RAID_BOSS_HP_MULT,
       attackerTeam,
       defenderTeam,
       cpuDifficulty, // Medium 60% / Hard 30% / Extreme 10%
@@ -74,6 +79,7 @@ export default defineEventHandler(async (event) => {
       battleId: battleRef.id,
       cpuDifficulty,
       defenderTeam,
+      raidBossHpMult: RAID_BOSS_HP_MULT,
       raidEventId: eventId,
       waifuNome: raid.waifuNome ?? 'Waifu Raid',
     };

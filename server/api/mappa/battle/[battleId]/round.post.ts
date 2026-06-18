@@ -47,13 +47,14 @@ export default defineEventHandler(async (event) => {
     const newAttackerWins: number = battle.attackerWins + (roundWinner === 'attacker' ? 1 : 0);
     const newDefenderWins: number = battle.defenderWins + (roundWinner === 'defender' ? 1 : 0);
 
+    // ROUND SINGOLO: il primo round decide il match (era "meglio di 3" → soglia 2)
     let newStatus = 'in_progress';
     let matchWinner: string | null = null;
 
-    if (newAttackerWins >= 2) {
+    if (newAttackerWins >= 1) {
       newStatus = 'attacker_wins';
       matchWinner = 'attacker';
-    } else if (newDefenderWins >= 2) {
+    } else if (newDefenderWins >= 1) {
       newStatus = 'defender_wins';
       matchWinner = 'defender';
     }

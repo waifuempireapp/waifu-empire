@@ -168,6 +168,12 @@ watch(() => props.raidBattleCtx, (val) => {
 // Rinnova il countdown raid ogni volta che cambia raidInfo
 watch(raidInfo, () => startRaidCountdown())
 
+// Quando la schermata di battaglia si chiude, ricarica SEMPRE la mappa (dati freschi
+// dopo conquista/sconfitta) — copre ogni percorso, anche quelli senza reload esplicito.
+watch(showRound, (open, prevOpen) => {
+  if (prevOpen && !open) invalidateAndReload()
+})
+
 // Rinnova il countdown missioni quando cambia la missione attiva
 watch(activeMission, () => {
   startMissionCountdown()
@@ -382,6 +388,7 @@ const handleRaidAttack = async (attackerTeam: any[]) => {
         attackerWins: 0,
         defenderWins: 0,
         isRaid: true,
+        raidBossHpMult: data.raidBossHpMult ?? 10,
         raidEventId: data.raidEventId,
         name: data.waifuNome ?? 'Waifu Raid',
       }
