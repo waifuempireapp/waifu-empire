@@ -56,7 +56,14 @@
       "Bash(xargs head -80)",
       "Bash(mkdir -p \"c:\\\\Progetti\\\\Impero delle waifu\\\\impero-waifu\\\\src\\\\app\\\\api\\\\mappa\\\\pixel\\\\[x]\\\\[y]\")",
       "Bash(mkdir -p \"c:\\\\Progetti\\\\Impero delle waifu\\\\impero-waifu\\\\src\\\\app\\\\api\\\\mappa\\\\battle\\\\[battleId]\\\\round\")",
-      "Bash(mkdir -p \"c:\\\\Progetti\\\\Impero delle waifu\\\\impero-waifu\\\\src\\\\app\\\\api\\\\mappa\\\\offers\\\\[offerId]\")"
+      "Bash(mkdir -p \"c:\\\\Progetti\\\\Impero delle waifu\\\\impero-waifu\\\\src\\\\app\\\\api\\\\mappa\\\\offers\\\\[offerId]\")",
+      "Bash(awk -F/ '{print $1}')",
+      "Bash(git rm *)",
+      "Bash(echo \"rm exit: $?\")",
+      "Bash(ps -eo pid,command)"
+    ],
+    "additionalDirectories": [
+      "/Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt/.git"
     ]
   }
 }

@@ -1,5 +1,16 @@
 node_modules/
 .next/
+
+# Build / output Nuxt + deploy (artefatti generati, mai da committare)
+.nuxt/
+.output/
+dist/
+.netlify/
+
+# Capacitor native (rigenerato da `cap sync`; rimuovi se preferisci tracciarlo)
+android/
+ios/
+
 .env
 .env.local
 .env.production
