@@ -1,6 +1,7 @@
 // GET /api/mappa/pixel/[x]/[y] — info pixel + battle attiva + team difensore
 import { defineEventHandler, getHeader, getRouterParam, createError } from 'h3';
 import { getAdminAuth, getAdminDb } from '../../../../utils/firebaseAdmin';
+import { GRID_SIZE } from '../../../../utils/worldMap';
 
 export default defineEventHandler(async (event) => {
   try {
@@ -10,7 +11,7 @@ export default defineEventHandler(async (event) => {
 
     const x: number = parseInt(getRouterParam(event, 'x') as string, 10);
     const y: number = parseInt(getRouterParam(event, 'y') as string, 10);
-    if (isNaN(x) || isNaN(y) || x < 0 || x >= 50 || y < 0 || y >= 50) {
+    if (isNaN(x) || isNaN(y) || x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) {
       throw createError({ statusCode: 400, message: 'Coordinate non valide' });
     }
 

@@ -420,7 +420,7 @@ onUnmounted(() => {
         >
           <div :style="{
             display: 'flex', alignItems: 'center', gap: '14px',
-            padding: '16px 16px', borderRadius: '14px',
+            padding: '16px 22px', borderRadius: '999px',
             background: attackBlockReason ? 'var(--theme-shimmer)' : 'rgba(255,133,182,0.12)',
             border: `2px solid ${attackBlockReason ? 'var(--theme-border)' : 'rgba(255,133,182,0.6)'}`,
             boxShadow: attackBlockReason ? 'none' : '0 4px 18px rgba(255,133,182,0.18)',
@@ -450,7 +450,7 @@ onUnmounted(() => {
         >
           <div :style="{
             display: 'flex', alignItems: 'center', gap: '14px',
-            padding: '16px 16px', borderRadius: '14px',
+            padding: '16px 22px', borderRadius: '999px',
             background: buyBlockReason ? 'var(--theme-shimmer)' : 'rgba(245,197,96,0.12)',
             border: `2px solid ${buyBlockReason ? 'var(--theme-border)' : 'rgba(245,197,96,0.65)'}`,
             boxShadow: buyBlockReason ? 'none' : '0 4px 18px rgba(245,197,96,0.15)',

@@ -3,41 +3,34 @@ import { defineEventHandler, getHeader, readBody, createError } from 'h3';
 import { getAdminAuth, getAdminDb } from '../../utils/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 
-const GRID_SIZE = 50;
 const CHUNK_SIZE = 10;
 const BASE_PRICE = 200;
 const LEVEL_MULTIPLIER = 50;
 
-// Importa LAND_SET dal modulo condiviso
-import { LAND_SET } from '../../utils/worldMap';
+// Importa dal modulo condiviso
+import { LAND_SET, GRID_SIZE, PIXEL_COLORS, PIXEL_NAMES } from '../../utils/worldMap';
+import { isHexAdjacentToEmpire } from '../../../utils/hexGrid';
 
 function pixelPrice(ownerLevel = 1): number {
   return BASE_PRICE + (ownerLevel * LEVEL_MULTIPLIER);
 }
 
+// Sea adjacency esagonale (6 direzioni) — geometria condivisa con il client.
 async function isAdjacentToEmpire(uid: string, tx: number, ty: number): Promise<boolean> {
   const adminDb = getAdminDb();
   const allChunks = await adminDb.collection('map_chunks').get();
   const chunkData: Record<string, any> = {};
   allChunks.forEach(doc => { chunkData[doc.id] = doc.data(); });
 
-  const dirs8 = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
-  for (const [dx, dy] of dirs8) {
-    let nx = tx + dx;
-    let ny = ty + dy;
-    while (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
-      const key = `${nx}_${ny}`;
-      if (LAND_SET.has(key)) {
-        const chunkCol = Math.floor(nx / CHUNK_SIZE);
-        const chunkRow = Math.floor(ny / CHUNK_SIZE);
-        const cid = `chunk_${chunkCol}_${chunkRow}`;
-        if (chunkData[cid]?.pixels?.[key]?.ownerId === uid) return true;
-        break;
-      }
-      nx += dx; ny += dy;
-    }
-  }
-  return false;
+  const ownerOf = (col: number, row: number): string | undefined => {
+    const cid = `chunk_${Math.floor(col / CHUNK_SIZE)}_${Math.floor(row / CHUNK_SIZE)}`;
+    return chunkData[cid]?.pixels?.[`${col}_${row}`]?.ownerId;
+  };
+  return isHexAdjacentToEmpire(
+    tx, ty, GRID_SIZE,
+    (key) => LAND_SET.has(key),
+    (_key, col, row) => ownerOf(col, row) === uid,
+  );
 }
 
 export default defineEventHandler(async (event) => {
@@ -58,14 +51,18 @@ export default defineEventHandler(async (event) => {
     const adjacent = await isAdjacentToEmpire(uid, targetX, targetY);
     if (!adjacent) throw createError({ statusCode: 400, message: 'Pixel non adiacente al tuo impero' });
 
+    const key = `${targetX}_${targetY}`;
     const chunkCol = Math.floor(targetX / CHUNK_SIZE);
     const chunkRow = Math.floor(targetY / CHUNK_SIZE);
     const chunkRef = adminDb.collection('map_chunks').doc(`chunk_${chunkCol}_${chunkRow}`);
     const chunkSnap = await chunkRef.get();
-    if (!chunkSnap.exists) throw createError({ statusCode: 404, message: 'Chunk non trovato' });
 
-    const pixel = (chunkSnap.data() as any).pixels?.[`${targetX}_${targetY}`];
-    if (!pixel) throw createError({ statusCode: 404, message: 'Pixel non trovato' });
+    let pixel = chunkSnap.exists ? (chunkSnap.data() as any).pixels?.[key] : undefined;
+    // Cella di terra valida senza record → default CPU (trova sempre il pixel)
+    if (!pixel) {
+      if (!LAND_SET.has(key)) throw createError({ statusCode: 400, message: 'Qui è mare, non un territorio' });
+      pixel = { ownerId: 'CPU', ownerColor: PIXEL_COLORS[key] || '#888888', ownerName: 'CPU', name: PIXEL_NAMES[key] || '' };
+    }
     if (pixel.ownerId === uid) throw createError({ statusCode: 400, message: 'Questo pixel è già tuo' });
 
     // Acquisto CPU — sempre accettato al prezzo formula
@@ -81,13 +78,17 @@ export default defineEventHandler(async (event) => {
           kisses: FieldValue.increment(-price),
           pixelCount: FieldValue.increment(1),
         });
-        tx.update(chunkRef, {
-          [`pixels.${targetX}_${targetY}`]: {
-            ownerId: uid,
-            ownerColor: attacker.coloreImpero || '#ff85b6',
-            ownerName: attacker.nomeImpero || 'Ignoto',
+        // set+merge: crea il chunk/pixel se non esiste ancora
+        tx.set(chunkRef, {
+          chunkCol, chunkRow,
+          pixels: {
+            [key]: {
+              ownerId: uid,
+              ownerColor: attacker.coloreImpero || '#ff85b6',
+              ownerName: attacker.nomeImpero || 'Ignoto',
+            },
           },
-        });
+        }, { merge: true });
       });
 
       // Imposta team difensore = preset #1

@@ -85,6 +85,10 @@ const mode           = ref<'teams' | 'manual'>(hasTeams.value ? 'teams' : 'manua
 const selectedIds    = ref<string[]>([])
 const activePresetId = ref<string | null>(null)
 
+// Stato caricamento immagini carte: spinner finché l'immagine non è pronta
+const loadedImgs = ref(new Set<string>())
+function markImgLoaded(id: string) { loadedImgs.value.add(id) }
+
 // Paginazione e filtri (solo in modalità manual)
 const page         = ref(0)
 const filterRarity = ref('')
@@ -130,6 +134,13 @@ const filtered = computed(() =>
 const totalPages = computed(() => Math.ceil(filtered.value.length / PAGE_SIZE))
 const pageWaifu  = computed(() =>
   filtered.value.slice(page.value * PAGE_SIZE, (page.value + 1) * PAGE_SIZE)
+)
+
+// Loading globale: pronto quando TUTTE le immagini della pagina corrente sono caricate
+const imagesReady = computed(() =>
+  pageWaifu.value.every(w =>
+    !(w.asset_immagine || w.asset_statica || w.asset_immersiva) || loadedImgs.value.has(w.id),
+  ),
 )
 
 // ── Azioni ────────────────────────────────────────────────────────────────────
@@ -215,6 +226,14 @@ const visiblePages = computed(() => {
     background: 'var(--theme-bg)', backdropFilter: 'blur(16px)',
     display: 'flex', flexDirection: 'column',
   }">
+
+    <!-- Loading globale (standard app): copre tutto finché le immagini non sono pronte -->
+    <div
+      v-if="mode === 'manual' && ownedWaifu.length > 0 && !imagesReady"
+      :style="{ position: 'absolute', inset: 0, zIndex: 50, background: 'var(--theme-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }"
+    >
+      <AppLoading />
+    </div>
 
     <!-- Header ──────────────────────────────────────────────────────── -->
     <div :style="{ padding: '18px 18px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexShrink: 0 }">
@@ -393,7 +412,9 @@ const visiblePages = computed(() => {
                 v-if="w.asset_immagine || w.asset_statica || w.asset_immersiva"
                 :src="w.asset_immagine || w.asset_statica || w.asset_immersiva"
                 :alt="w.nome"
-                loading="eager" decoding="sync"
+                loading="eager" decoding="async"
+                @load="markImgLoaded(w.id)"
+                @error="markImgLoaded(w.id)"
                 style="width:100%;height:100%;object-fit:cover;object-position:top;"
               />
               <div v-else style="width:100%;height:100%;display:grid;place-items:center;opacity:0.2;">

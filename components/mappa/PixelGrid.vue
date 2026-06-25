@@ -1,14 +1,20 @@
-<!-- Griglia canvas 50×50 della mappa mondo con pan, zoom e selezione pixel. -->
-<!-- Porta PixelGrid.jsx (React/Next.js) → Vue 3 Composition API. -->
+<!-- Griglia ESAGONALE 50×50 (offset odd-r, pointy-top) della mappa mondo con
+     pan, zoom e selezione celle. Le coordinate "col_row" restano invariate nel
+     modello dati: cambiano solo geometria di rendering, hit-detection e la
+     regola di adiacenza (6 vicini). Matematica condivisa in ~/utils/hexGrid. -->
 <script setup lang="ts">
-import { LAND_SET } from '~/utils/worldMap'
+import { LAND_SET, PIXEL_COLORS, REGIONS, GRID_SIZE } from '~/utils/worldMap'
+import {
+  isHexAdjacentToEmpire, hexNeighbors,
+  hexSize, hexCenterLocal, pointToHexOffset, hexCorners,
+} from '~/utils/hexGrid'
 
 // ── Costanti di configurazione ────────────────────────────────────────────────
-const BASE_PIXEL_SIZE   = 8
-const MOBILE_PIXEL_SIZE = 10
+const BASE_PIXEL_SIZE   = 11
+const MOBILE_PIXEL_SIZE = 12
 const MIN_SCALE         = 0.5
 const MAX_SCALE         = 4
-const GRID_SIZE         = 50
+const CANVAS_HEIGHT     = 520
 const CPU_COLOR         = '#4a7c8a'
 const OCEAN_COLOR       = '#0a1428'
 const TAP_THRESHOLD     = 12
@@ -38,7 +44,7 @@ function isMobile(): boolean {
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 
 // Stato pan/zoom — oggetto mutabile plain, non Vue ref
-let state   = { panX: 0, panY: 0, scale: 1.5 }
+let state   = { panX: 0, panY: 0, scale: 1.05 }
 let drag    = { active: false, startX: 0, startY: 0, panX: 0, panY: 0 }
 let pinch   = { active: false, dist: 0, midX: 0, midY: 0, panX: 0, panY: 0, scale: 1 }
 let pulseVal = 0
@@ -80,7 +86,10 @@ function rebuildPixelMaps() {
     for (const chunk of Object.values(props.chunks)) {
       if (!chunk.pixels) continue
       for (const [key, data] of Object.entries(chunk.pixels) as [string, any][]) {
-        colorMap[key] = data.ownerId === 'CPU' ? CPU_COLOR : (data.ownerColor || '#ff85b6')
+        // Celle non conquistate (CPU) → colore biome della regione; conquistate → colore owner
+        colorMap[key] = data.ownerId === 'CPU'
+          ? (PIXEL_COLORS[key] || CPU_COLOR)
+          : (data.ownerColor || '#ff85b6')
         ownerMap[key] = data.ownerId
       }
     }
@@ -89,172 +98,202 @@ function rebuildPixelMaps() {
   pixelOwners = ownerMap
 }
 
-// ── Calcola set di pixel adiacenti (8 direzioni, via mare) ───────────────────
+// ── Calcola set di pixel adiacenti (6 direzioni esagonali, via mare) ─────────
 function rebuildAdjacentSet() {
   if (!props.chunks || !props.userUid) { adjacentSet = new Set(); return }
-  const dirs8: [number, number][] = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]
   const adj = new Set<string>()
   const ls = effectiveLandSet.value
+  const isLand = (k: string) => ls.has(k)
+  const isMine = (k: string) => pixelOwners[k] === props.userUid
   for (let y = 0; y < GRID_SIZE; y++) {
     for (let x = 0; x < GRID_SIZE; x++) {
       const key = `${x}_${y}`
       if (!ls.has(key)) continue
       if (pixelOwners[key] === props.userUid) continue
-      outer: for (const [dx, dy] of dirs8) {
-        let nx = x + dx, ny = y + dy
-        while (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
-          const nk = `${nx}_${ny}`
-          if (ls.has(nk)) {
-            if (pixelOwners[nk] === props.userUid) { adj.add(key); break outer }
-            break
-          }
-          nx += dx; ny += dy
-        }
-      }
+      if (isHexAdjacentToEmpire(x, y, GRID_SIZE, isLand, isMine)) adj.add(key)
     }
   }
   adjacentSet = adj
 }
 
-// ── Disegno imperativo del canvas ─────────────────────────────────────────────
+// ── Helper: centro schermo di una cella esagonale ────────────────────────────
+function hexScreen(gx: number, gy: number, ps: number, panX: number, panY: number) {
+  const { x, y } = hexCenterLocal(gx, gy, ps)
+  return { cx: panX + x, cy: panY + y }
+}
+
+// ── Helper: traccia il path di un esagono centrato in (cx,cy) ────────────────
+function traceHex(ctx: CanvasRenderingContext2D, cx: number, cy: number, corners: [number, number][]) {
+  ctx.beginPath()
+  ctx.moveTo(cx + corners[0][0], cy + corners[0][1])
+  for (let i = 1; i < 6; i++) ctx.lineTo(cx + corners[i][0], cy + corners[i][1])
+  ctx.closePath()
+}
+
+// ── Disegno imperativo del canvas (griglia ESAGONALE) ────────────────────────
 function drawCanvas(pulse = 0) {
   const canvas = canvasRef.value
   if (!canvas) return
   const ctx = canvas.getContext('2d')!
   const { panX, panY, scale } = state
   const ps = basePS * scale
+  const size = hexSize(ps)
+  const corners = hexCorners(size)
+  const cornersFill  = hexCorners(size + 0.6)  // fill leggermente più grande → niente cuciture fra hex adiacenti
+  const cornersPulse = hexCorners(size + 1.5)  // alone esterno per celle conquistabili
+  const cornersInner = hexCorners(size - 1.5)  // micro-bordo interno proprio impero
   const ls = effectiveLandSet.value
 
   ctx.clearRect(0, 0, canvas.width, canvas.height)
-  ctx.fillStyle = OCEAN_COLOR
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  // ── Mare: gradiente blu marino + chiaroscuri di profondità ──
+  const W = canvas.width, H = canvas.height
+  const sea = ctx.createLinearGradient(0, 0, 0, H)
+  sea.addColorStop(0,   '#1b4a78') // superficie più chiara (azzurro mare)
+  sea.addColorStop(0.45, '#123a60')
+  sea.addColorStop(1,   '#0c2542') // fondale più scuro
+  ctx.fillStyle = sea
+  ctx.fillRect(0, 0, W, H)
+  // Chiazze chiare di "luce sull'acqua" (parallasse leggera col pan)
+  const blobs: [number, number, number][] = [
+    [W * 0.28 + (panX % 80), H * 0.30, Math.max(W, H) * 0.45],
+    [W * 0.72, H * 0.68 + (panY % 80), Math.max(W, H) * 0.40],
+    [W * 0.55, H * 0.18, Math.max(W, H) * 0.30],
+  ]
+  for (const [bx, by, br] of blobs) {
+    const g = ctx.createRadialGradient(bx, by, 0, bx, by, br)
+    g.addColorStop(0, 'rgba(90,150,200,0.14)')
+    g.addColorStop(1, 'rgba(90,150,200,0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, W, H)
+  }
+  // Vignettatura ai bordi per profondità
+  const vig = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.25, W / 2, H / 2, Math.max(W, H) * 0.75)
+  vig.addColorStop(0, 'rgba(0,0,0,0)')
+  vig.addColorStop(1, 'rgba(0,0,0,0.35)')
+  ctx.fillStyle = vig
+  ctx.fillRect(0, 0, W, H)
 
-  // Primo passaggio: pixel terra
+  const onScreen = (cx: number, cy: number) =>
+    !(cx + size < 0 || cx - size > canvas.width || cy + size < 0 || cy - size > canvas.height)
+
+  // ── Primo passaggio: celle terra (fill + pulse + avatar + selezione) ──
   for (let gy = 0; gy < GRID_SIZE; gy++) {
     for (let gx = 0; gx < GRID_SIZE; gx++) {
       const key = `${gx}_${gy}`
       if (!ls.has(key)) continue
-
-      const sx = gx * ps + panX
-      const sy = gy * ps + panY
-      if (sx + ps < 0 || sx > canvas.width || sy + ps < 0 || sy > canvas.height) continue
+      const { cx, cy } = hexScreen(gx, gy, ps, panX, panY)
+      if (!onScreen(cx, cy)) continue
 
       const owner  = pixelOwners[key]
-      const color  = pixelColors[key] || CPU_COLOR
+      const color  = pixelColors[key] || PIXEL_COLORS[key] || CPU_COLOR
       const isOwn  = owner === props.userUid
       const isAdj  = adjacentSet.has(key)
 
-      // Pulse animato per pixel conquistabili
+      // Pulse animato per celle conquistabili (sotto al fill)
       if (isAdj) {
         const isCpuTarget = pixelOwners[key] === 'CPU' || !pixelOwners[key]
         if (isCpuTarget) {
           const alpha = 0.12 + pulse * 0.28
           ctx.fillStyle = `rgba(245,197,96,${alpha})`
-          ctx.fillRect(sx - 1, sy - 1, ps + 2, ps + 2)
-        } else {
-          ctx.strokeStyle = `rgba(255,255,255,${0.2 + pulse * 0.4})`
-          ctx.lineWidth = 1.5
-          ctx.strokeRect(sx, sy, ps - 1, ps - 1)
+          traceHex(ctx, cx, cy, cornersPulse); ctx.fill()
         }
       }
 
-      // Pixel terra
-      if (isOwn) {
-        ctx.fillStyle = color
-        ctx.globalAlpha = 1
-        ctx.fillRect(sx, sy, ps - 1, ps - 1)
-        // Sovrappone avatar utente se disponibile e pixel abbastanza grande
-        if (avatarImg && ps >= 12) {
-          const pad = ps * 0.08
-          ctx.drawImage(avatarImg, sx + pad, sy + pad, ps - 1 - pad * 2, ps - 1 - pad * 2)
-        }
-      } else {
-        ctx.fillStyle = color
-        ctx.globalAlpha = 0.85
-        ctx.fillRect(sx, sy, ps - 1, ps - 1)
-        ctx.globalAlpha = 1
+      // Fill cella terra
+      traceHex(ctx, cx, cy, cornersFill)
+      ctx.fillStyle = color
+      ctx.globalAlpha = isOwn ? 1 : 0.85
+      ctx.fill()
+      ctx.globalAlpha = 1
+
+      // Avatar utente clippato nell'esagono
+      if (isOwn && avatarImg && ps >= 12) {
+        ctx.save()
+        traceHex(ctx, cx, cy, corners)
+        ctx.clip()
+        ctx.drawImage(avatarImg, cx - ps / 2, cy - size, ps, 2 * size)
+        ctx.restore()
       }
 
-      // Pixel selezionato
-      if (props.selectedPixel) {
-        const [sx2, sy2] = props.selectedPixel.split('_').map(Number)
-        if (sx2 === gx && sy2 === gy) {
-          ctx.strokeStyle = '#ffe9a8'
-          ctx.lineWidth = 2
-          ctx.strokeRect(sx, sy, ps - 1, ps - 1)
-        }
+      // Pulse bordo bianco per celle nemiche adiacenti (sopra al fill)
+      if (isAdj && !(pixelOwners[key] === 'CPU' || !pixelOwners[key])) {
+        traceHex(ctx, cx, cy, corners)
+        ctx.strokeStyle = `rgba(255,255,255,${0.2 + pulse * 0.4})`
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+      }
+
+      // Cella selezionata
+      if (props.selectedPixel === key) {
+        traceHex(ctx, cx, cy, corners)
+        ctx.strokeStyle = '#ffe9a8'
+        ctx.lineWidth = 2
+        ctx.stroke()
       }
     }
   }
   ctx.globalAlpha = 1
 
-  // Secondo passaggio: bordi tra empire diversi
+  // ── Secondo passaggio: bordi territorio (cella al confine di un impero) ──
   for (let gy = 0; gy < GRID_SIZE; gy++) {
     for (let gx = 0; gx < GRID_SIZE; gx++) {
       const key = `${gx}_${gy}`
       if (!ls.has(key)) continue
       const owner = pixelOwners[key]
-      const sx = gx * ps + panX
-      const sy = gy * ps + panY
-      if (sx + ps < 0 || sx > canvas.width || sy + ps < 0 || sy > canvas.height) continue
+      const { cx, cy } = hexScreen(gx, gy, ps, panX, panY)
+      if (!onScreen(cx, cy)) continue
 
       const isOwn = owner === props.userUid
-      const cardinals: [number, number][] = [[1,0],[0,1]]
-      for (const [dx, dy] of cardinals) {
-        const nx = gx + dx, ny = gy + dy
-        if (nx >= GRID_SIZE || ny >= GRID_SIZE) continue
-        const nk = `${nx}_${ny}`
-        if (!ls.has(nk)) continue
+      // È confine se almeno un vicino è oceano o di proprietario diverso
+      let boundary = false
+      let touchesOwn = isOwn
+      for (const { col, row } of hexNeighbors(gx, gy)) {
+        if (col < 0 || col >= GRID_SIZE || row < 0 || row >= GRID_SIZE) { boundary = true; continue }
+        const nk = `${col}_${row}`
+        if (!ls.has(nk)) { boundary = true; continue }
         const nOwner = pixelOwners[nk]
-        if (nOwner === owner) continue
-
-        ctx.strokeStyle = (isOwn || nOwner === props.userUid)
-          ? 'rgba(255,233,168,0.7)'
-          : 'rgba(0,0,0,0.55)'
-        ctx.lineWidth = (isOwn || nOwner === props.userUid) ? 1.5 : 1
-        ctx.beginPath()
-        if (dx === 1) {
-          ctx.moveTo(sx + ps - 1, sy)
-          ctx.lineTo(sx + ps - 1, sy + ps - 1)
-        } else {
-          ctx.moveTo(sx, sy + ps - 1)
-          ctx.lineTo(sx + ps - 1, sy + ps - 1)
+        if (nOwner !== owner) {
+          boundary = true
+          if (nOwner === props.userUid) touchesOwn = true
         }
-        ctx.stroke()
       }
+      if (!boundary) continue
+
+      traceHex(ctx, cx, cy, corners)
+      ctx.strokeStyle = touchesOwn ? 'rgba(255,233,168,0.7)' : 'rgba(0,0,0,0.55)'
+      ctx.lineWidth = touchesOwn ? 1.5 : 1
+      ctx.stroke()
     }
   }
 
-  // Terzo passaggio: micro-bordo gold per proprio empire
+  // ── Terzo passaggio: micro-bordo gold per il proprio impero ──
   for (let gy = 0; gy < GRID_SIZE; gy++) {
     for (let gx = 0; gx < GRID_SIZE; gx++) {
       const key = `${gx}_${gy}`
-      if (!ls.has(key)) continue
-      if (pixelOwners[key] !== props.userUid) continue
-      const sx = gx * ps + panX
-      const sy = gy * ps + panY
-      if (sx + ps < 0 || sx > canvas.width || sy + ps < 0 || sy > canvas.height) continue
+      if (!ls.has(key) || pixelOwners[key] !== props.userUid) continue
+      const { cx, cy } = hexScreen(gx, gy, ps, panX, panY)
+      if (!onScreen(cx, cy)) continue
+      traceHex(ctx, cx, cy, cornersInner)
       ctx.strokeStyle = 'rgba(255,233,168,0.25)'
       ctx.lineWidth = 1
-      ctx.strokeRect(sx + 0.5, sy + 0.5, ps - 2, ps - 2)
+      ctx.stroke()
     }
   }
 
-  // Overlay missione mappa: bordo fuchsia + corona ♛
+  // ── Overlay missione mappa: fill fuchsia + bordo + corona ♛ ──
   if (props.missionPixelSet && props.missionPixelSet.size > 0) {
     for (const key of props.missionPixelSet) {
-      const [gx, gy] = key.split('_').map(Number)
       if (!ls.has(key)) continue
-      const sx = gx * ps + panX
-      const sy = gy * ps + panY
-      if (sx + ps < 0 || sx > canvas.width || sy + ps < 0 || sy > canvas.height) continue
+      const [gx, gy] = key.split('_').map(Number)
+      const { cx, cy } = hexScreen(gx, gy, ps, panX, panY)
+      if (!onScreen(cx, cy)) continue
 
+      traceHex(ctx, cx, cy, corners)
       ctx.fillStyle = 'rgba(232,121,249,0.22)'
-      ctx.fillRect(sx, sy, ps - 1, ps - 1)
-
+      ctx.fill()
       ctx.strokeStyle = MISSION_COLOR
       ctx.lineWidth = 1.5
-      ctx.strokeRect(sx + 0.5, sy + 0.5, ps - 2, ps - 2)
+      ctx.stroke()
 
       if (ps >= 7) {
         const fontSize = Math.min(Math.floor(ps * 0.75), 14)
@@ -263,13 +302,38 @@ function drawCanvas(pulse = 0) {
         ctx.font = `bold ${fontSize}px serif`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillText('♛', sx + ps / 2, sy + ps / 2)
+        ctx.fillText('♛', cx, cy)
         ctx.globalAlpha = 1
       }
     }
     ctx.textAlign = 'left'
     ctx.textBaseline = 'alphabetic'
   }
+
+  // ── Etichette nomi regioni (sopra a tutto, stile mappa fantasy) ──
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  for (const reg of REGIONS) {
+    const { cx, cy } = hexScreen(reg.col, reg.row, ps, panX, panY)
+    if (!onScreen(cx, cy)) continue
+    // Font proporzionale alla dimensione cella + raggio regione
+    const fontSize = Math.max(9, Math.min(28, ps * (0.42 + reg.r * 0.05)))
+    if (fontSize < 8) continue
+    const label = reg.name.toUpperCase()
+    ctx.font = `700 ${fontSize}px Georgia, 'Times New Roman', serif`
+    ctx.save()
+    // Ombra scura per leggibilità su qualsiasi biome
+    ctx.shadowColor = 'rgba(0,0,0,0.85)'
+    ctx.shadowBlur = Math.max(2, fontSize * 0.25)
+    ctx.lineWidth = Math.max(2, fontSize * 0.18)
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)'
+    ctx.strokeText(label, cx, cy)
+    ctx.fillStyle = '#f3e6bd' // oro chiaro come la mappa di riferimento
+    ctx.fillText(label, cx, cy)
+    ctx.restore()
+  }
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'alphabetic'
 }
 
 // ── Animazione pulse per pixel adiacenti ──────────────────────────────────────
@@ -291,15 +355,21 @@ watch(() => props.chunks, () => {
   drawCanvas(pulseVal)
 }, { deep: true })
 
+// ── Centra il pan sulla cella esagonale (gx,gy) ──────────────────────────────
+function centerPanOn(gx: number, gy: number) {
+  const canvas = canvasRef.value
+  if (!canvas) return
+  const ps = basePS * state.scale
+  const { x, y } = hexCenterLocal(gx, gy, ps)
+  state.panX = canvas.width / 2 - x
+  state.panY = canvas.height / 2 - y
+}
+
 // ── Watcher: focusPixel → centra la mappa su quel pixel ──────────────────────
 watch(() => props.focusPixel, (fp) => {
   if (!fp) return
-  const canvas = canvasRef.value
-  if (!canvas) return
   const [fx, fy] = fp.split('_').map(Number)
-  const ps = basePS * state.scale
-  state.panX = canvas.width / 2 - fx * ps - ps / 2
-  state.panY = canvas.height / 2 - fy * ps - ps / 2
+  centerPanOn(fx, fy)
   drawCanvas(pulseVal)
 })
 
@@ -312,13 +382,10 @@ onMounted(() => {
   rebuildPixelMaps()
   rebuildAdjacentSet()
   // Centra PRIMA di startAnimation (così il primo frame è già posizionato)
-  const canvas = canvasRef.value
-  if (canvas) {
-    const fp = props.focusPixel ?? '25_22'
+  if (canvasRef.value) {
+    const fp = props.focusPixel ?? '54_50'
     const [fx, fy] = fp.split('_').map(Number)
-    const ps = basePS * state.scale
-    state.panX = canvas.width  / 2 - fx * ps - ps / 2
-    state.panY = canvas.height / 2 - fy * ps - ps / 2
+    centerPanOn(fx, fy)
   }
   startAnimation()
 })
@@ -336,8 +403,7 @@ function handleTap(clientX: number, clientY: number) {
   const ps = basePS * scale
   const lx = clientX - rect.left - panX
   const ly = clientY - rect.top  - panY
-  const gx = Math.floor(lx / ps)
-  const gy = Math.floor(ly / ps)
+  const { col: gx, row: gy } = pointToHexOffset(lx, ly, ps)
   if (gx >= 0 && gx < GRID_SIZE && gy >= 0 && gy < GRID_SIZE) {
     const key = `${gx}_${gy}`
     if (!effectiveLandSet.value.has(key)) return
@@ -464,9 +530,8 @@ function centerOnEmpire() {
     }
   }
   if (count === 0) return
-  const ps = basePS * state.scale
-  state.panX = canvas.width  / 2 - (sumX / count) * ps
-  state.panY = canvas.height / 2 - (sumY / count) * ps
+  // Media delle coordinate offset → centro esagonale del baricentro impero
+  centerPanOn(sumX / count, sumY / count)
 }
 </script>
 
@@ -476,7 +541,7 @@ function centerOnEmpire() {
     <canvas
       ref="canvasRef"
       :width="canvasWidth"
-      :height="380"
+      :height="CANVAS_HEIGHT"
       style="display: block; cursor: crosshair; touch-action: none;"
       @pointerdown="onPointerDown"
       @pointermove="onPointerMove"

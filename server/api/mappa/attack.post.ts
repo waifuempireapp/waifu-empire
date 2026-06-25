@@ -2,9 +2,9 @@
 import { defineEventHandler, getHeader, readBody, createError } from 'h3';
 import { getAdminAuth, getAdminDb } from '../../utils/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { LAND_SET } from '../../utils/worldMap';
+import { LAND_SET, GRID_SIZE, PIXEL_COLORS, PIXEL_NAMES } from '../../utils/worldMap';
+import { isHexAdjacentToEmpire } from '../../../utils/hexGrid';
 
-const GRID_SIZE = 50;
 const CHUNK_SIZE = 10;
 
 // Determina difficoltà CPU dal livello del proprietario
@@ -16,7 +16,8 @@ function cpuDifficulty(ownerLevel = 1): string {
 }
 
 // Controlla se (tx, ty) è adiacente a qualsiasi pixel dell'utente uid
-// Sea adjacency: salta pixel oceano in ogni direzione finché si trova terra
+// Sea adjacency esagonale (6 direzioni): salta l'oceano finché trova terra.
+// Geometria condivisa con il client via isHexAdjacentToEmpire.
 async function isAdjacentToEmpire(uid: string, tx: number, ty: number): Promise<boolean> {
   const adminDb = getAdminDb();
   // Leggi tutti i 25 chunk per avere la mappa completa
@@ -24,27 +25,15 @@ async function isAdjacentToEmpire(uid: string, tx: number, ty: number): Promise<
   const chunkData: Record<string, any> = {};
   allChunks.forEach(doc => { chunkData[doc.id] = doc.data(); });
 
-  const dirs8 = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
-  for (const [dx, dy] of dirs8) {
-    let nx = tx + dx;
-    let ny = ty + dy;
-    while (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
-      const key = `${nx}_${ny}`;
-      if (LAND_SET.has(key)) {
-        // Pixel terra: controlla se appartiene all'utente
-        const chunkCol = Math.floor(nx / CHUNK_SIZE);
-        const chunkRow = Math.floor(ny / CHUNK_SIZE);
-        const cid = `chunk_${chunkCol}_${chunkRow}`;
-        const pData = chunkData[cid]?.pixels?.[key];
-        if (pData?.ownerId === uid) return true;
-        break; // Terra di un altro → blocca questa direzione
-      }
-      // Oceano → continua nella stessa direzione
-      nx += dx;
-      ny += dy;
-    }
-  }
-  return false;
+  const ownerOf = (col: number, row: number): string | undefined => {
+    const cid = `chunk_${Math.floor(col / CHUNK_SIZE)}_${Math.floor(row / CHUNK_SIZE)}`;
+    return chunkData[cid]?.pixels?.[`${col}_${row}`]?.ownerId;
+  };
+  return isHexAdjacentToEmpire(
+    tx, ty, GRID_SIZE,
+    (key) => LAND_SET.has(key),
+    (_key, col, row) => ownerOf(col, row) === uid,
+  );
 }
 
 export default defineEventHandler(async (event) => {
@@ -78,12 +67,17 @@ export default defineEventHandler(async (event) => {
     }
 
     // Leggi pixel target
+    const key = `${targetX}_${targetY}`;
     const chunkCol = Math.floor(targetX / CHUNK_SIZE);
     const chunkRow = Math.floor(targetY / CHUNK_SIZE);
     const chunkSnap = await adminDb.collection('map_chunks').doc(`chunk_${chunkCol}_${chunkRow}`).get();
-    if (!chunkSnap.exists) throw createError({ statusCode: 404, message: 'Chunk non trovato' });
-    const pixel = (chunkSnap.data() as any).pixels?.[`${targetX}_${targetY}`];
-    if (!pixel) throw createError({ statusCode: 404, message: 'Pixel non trovato' });
+    let pixel = chunkSnap.exists ? (chunkSnap.data() as any).pixels?.[key] : undefined;
+    // Cella di terra valida senza record (mappa non ancora seminata su queste coordinate)
+    // → default territorio CPU, così l'attacco trova SEMPRE il pixel da conquistare.
+    if (!pixel) {
+      if (!LAND_SET.has(key)) throw createError({ statusCode: 400, message: 'Qui è mare, non un territorio' });
+      pixel = { ownerId: 'CPU', ownerColor: PIXEL_COLORS[key] || '#888888', ownerName: 'CPU', name: PIXEL_NAMES[key] || '' };
+    }
 
     // Non puoi attaccare un pixel già tuo
     if (pixel.ownerId === uid) {

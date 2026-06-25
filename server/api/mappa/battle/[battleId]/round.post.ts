@@ -11,9 +11,12 @@ async function transferPixel(x: number, y: number, newOwnerId: string, newOwnerC
   const chunkCol = Math.floor(x / CHUNK_SIZE);
   const chunkRow = Math.floor(y / CHUNK_SIZE);
   const chunkRef = adminDb.collection('map_chunks').doc(`chunk_${chunkCol}_${chunkRow}`);
-  await chunkRef.update({
-    [`pixels.${x}_${y}`]: { ownerId: newOwnerId, ownerColor: newOwnerColor, ownerName: newOwnerName },
-  });
+  // set+merge (non update): crea il chunk/pixel se non esiste ancora
+  // (mappa non ancora seminata su queste coordinate).
+  await chunkRef.set({
+    chunkCol, chunkRow,
+    pixels: { [`${x}_${y}`]: { ownerId: newOwnerId, ownerColor: newOwnerColor, ownerName: newOwnerName } },
+  }, { merge: true });
 }
 
 export default defineEventHandler(async (event) => {

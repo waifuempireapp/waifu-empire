@@ -5,7 +5,8 @@
   Componenti mappa principali delegati a ~/components/mappa/* (da migrare).
   ============================================================ -->
 <script setup lang="ts">
-import { PIXEL_NAMES, LAND_SET } from '~/utils/worldMap'
+import { PIXEL_NAMES, LAND_SET, GRID_SIZE } from '~/utils/worldMap'
+import { isHexAdjacentToEmpire } from '~/utils/hexGrid'
 import { ikUrl } from '~/utils/imagekitUrl'
 import { useAuthStore } from '~/stores/auth'
 
@@ -273,30 +274,21 @@ const invalidateAndReload = async () => {
 
 // ------------------------------------------------------------------ Adiacenza client-side
 
-// Controlla se il pixel (tx, ty) è adiacente all'impero dell'utente via mare (8 direzioni)
+// Controlla se il pixel (tx, ty) è adiacente all'impero dell'utente via mare
+// (6 direzioni esagonali). Geometria condivisa con server e PixelGrid.
 const checkAdjacentToEmpire = (tx: number, ty: number): boolean => {
   const userPixelCount = (props.profilo?.pixelCount as number) ?? 0
   if (userPixelCount === 0) return true // primo pixel → sempre adiacente
   if (!chunks.value) return false
-  const dirs8: [number, number][] = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]
-  for (const [dx, dy] of dirs8) {
-    let nx = tx + dx
-    let ny = ty + dy
-    while (nx >= 0 && nx < 50 && ny >= 0 && ny < 50) {
-      const key      = `${nx}_${ny}`
-      const chunkCol = Math.floor(nx / 10)
-      const chunkRow = Math.floor(ny / 10)
-      const cid      = `chunk_${chunkCol}_${chunkRow}`
-      const pData    = chunks.value[cid]?.pixels?.[key]
-      if (pData !== undefined) {
-        if (pData.ownerId === authStore.user?.uid) return true
-        break
-      }
-      nx += dx
-      ny += dy
-    }
+  const pixelAt = (col: number, row: number) => {
+    const cid = `chunk_${Math.floor(col / 10)}_${Math.floor(row / 10)}`
+    return chunks.value![cid]?.pixels?.[`${col}_${row}`]
   }
-  return false
+  return isHexAdjacentToEmpire(
+    tx, ty, GRID_SIZE,
+    (_key, col, row) => pixelAt(col, row) !== undefined,
+    (_key, col, row) => pixelAt(col, row)?.ownerId === authStore.user?.uid,
+  )
 }
 
 // ------------------------------------------------------------------ Selezione pixel
@@ -763,13 +755,13 @@ async function onTerritoryClick(territoryId: string) {
         <div :style="{ fontFamily: FF.display, fontSize: '18px', color: 'var(--theme-text-2)', flexShrink: 0 }">→</div>
       </div>
 
-      <!-- Mappa: immagine di sfondo sempre visibile + canvas interattivo sovrapposto -->
-      <div style="margin: 20px 16px 16px; border-radius: 16px; position: relative; min-height: 380px;" :style="{ border: '1px solid var(--theme-border)' }">
+      <!-- Mappa: sfondo mare sempre visibile + canvas interattivo sovrapposto -->
+      <div style="margin: 20px 16px 16px; border-radius: 16px; position: relative; min-height: 520px;" :style="{ border: '1px solid var(--theme-border)' }">
         <!-- Chip "?" — angolo in alto a destra, come sui chip delle carte -->
         <button
           @click="showInfoModal = true"
           :style="{
-            position: 'absolute', top: '-15px', right: '-15px', zIndex: 20,
+            position: 'absolute', top: '-15px', right: '-15px', zIndex: 40,
             width: '38px', height: '38px', borderRadius: '50%',
             background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)',
             border: '1.5px solid rgba(255,255,255,0.3)',
@@ -778,22 +770,20 @@ async function onTerritoryClick(territoryId: string) {
             boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
           }"
         >?</button>
-        <!-- Immagine mappa sempre visibile come base -->
-        <img
-          src="~/assets/world/Mappa_Del_Mondo_Waifu.jpeg"
-          alt="Mappa del Mondo"
-          style="width:100%;height:380px;object-fit:cover;display:block;user-select:none;"
-          draggable="false"
+        <!-- Sfondo mare sempre visibile come base (sotto al canvas) -->
+        <div
+          style="width:100%;height:520px;display:block;user-select:none;border-radius:16px;
+                 background:radial-gradient(130% 110% at 50% 35%, #1b4a78 0%, #123a60 50%, #0c2542 100%);"
         />
-        <!-- Canvas pixel interattivo sopra l'immagine (pointer-events attivi) -->
-        <div style="position:absolute;inset:0;z-index:2;">
+        <!-- Canvas pixel interattivo sopra il mare (pointer-events attivi) -->
+        <div style="position:absolute;inset:0;z-index:2;border-radius:16px;overflow:hidden;">
           <PixelGrid
             v-if="chunks"
             :chunks="chunks"
             :user-uid="authStore.user?.uid ?? ''"
             :selected-pixel="selectedPixelKey"
             :mission-pixel-set="missionPixelSet"
-            :focus-pixel="missionFocusPixel ?? '25_22'"
+            :focus-pixel="missionFocusPixel ?? '54_50'"
             @pixel-select="onPixelGridSelect"
           />
         </div>

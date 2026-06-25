@@ -4,7 +4,17 @@
       "Bash(grep -n \"const.*= \\\\`\\\\|injectStyle\\\\|v-html\\\\|innerHTML\\\\|<style\\\\|useHead\\\\|STYLE\\\\b\\\\|= \\\\`$\" components/WaifuBattleArena.vue)",
       "Bash(sed -n '/function cardBoxShadow/,/^}/p' components/PickPhase.vue)",
       "Bash(sed -n '/function cardBackground/,/^}/p' components/PickPhase.vue)",
-      "Bash(node -e \"const p=require\\('./package.json'\\);console.log\\(JSON.stringify\\(p.scripts,null,1\\)\\)\")"
+      "Bash(node -e \"const p=require\\('./package.json'\\);console.log\\(JSON.stringify\\(p.scripts,null,1\\)\\)\")",
+      "Bash(node -e \"console.log\\(require\\('jiti/package.json'\\).version\\)\")",
+      "Bash(node -e \"console.log\\(require\\('firebase-admin/package.json'\\).version\\)\")",
+      "Bash(cat)",
+      "Bash(node /tmp/verify_worldmap.mjs)",
+      "Bash(node scripts/_verify_worldmap.mjs)",
+      "Bash(rm -f /tmp/hexworld_check.mjs /tmp/verify_worldmap.mjs *)",
+      "Bash(grep -n \"50\\\\|random\\\\|LAND_SET\\\\|UNIQUE_PIXELS\\\\|GRID\\\\|pixel\\\\|_\\\\${\" server/api/map-missions/current.get.ts)"
+    ],
+    "additionalDirectories": [
+      "/private/tmp"
     ]
   }
 }
