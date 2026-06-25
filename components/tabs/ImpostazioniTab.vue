@@ -48,15 +48,12 @@ async function switchLocale(code: string) {
 
 <template>
   <!-- Impostazioni — layout full-page verticale, specchio estetico delle vecchie missioni -->
-  <div style="display:flex;flex-direction:column;height:100%;padding:16px;gap:14px;overflow-y:auto;overflow-x:visible;">
+  <div style="display:flex;flex-direction:column;height:100%;padding:8px 16px 16px;gap:14px;overflow-y:auto;overflow-x:visible;">
 
     <!-- Header -->
     <div style="text-align:center;flex-shrink:0;">
-      <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;letter-spacing:0.28em;text-transform:uppercase;font-weight:700;margin-bottom:4px;color:var(--theme-accent);">
+      <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;letter-spacing:0.28em;text-transform:uppercase;font-weight:700;color:var(--theme-accent);">
         Impostazioni
-      </div>
-      <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:24px;font-weight:900;color:var(--theme-text);">
-        Il tuo profilo
       </div>
     </div>
 
@@ -194,7 +191,7 @@ async function switchLocale(code: string) {
     <div style="flex-shrink:0;display:flex;flex-direction:column;gap:2px;">
       <button
         v-if="isAdmin"
-        style="display:flex;align-items:center;gap:14px;padding:14px 4px;background:transparent;border:none;cursor:pointer;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:15px;font-weight:600;width:100%;text-align:left;"
+        style="display:flex;align-items:center;gap:14px;padding:14px 20px;background:transparent;border:none;cursor:pointer;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:15px;font-weight:600;width:100%;text-align:left;"
         :style="{ color:'var(--theme-accent)', borderBottom:'1px solid var(--theme-border)' }"
         @click="router.push('/admin')"
       >
@@ -202,7 +199,7 @@ async function switchLocale(code: string) {
       </button>
       <!-- Negozio rimosso: ora è nell'header. Restano Admin (sopra) ed Esci (sotto). -->
       <button
-        style="display:flex;align-items:center;gap:14px;padding:14px 4px;background:transparent;border:none;cursor:pointer;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:15px;font-weight:700;width:100%;text-align:left;margin-top:4px;"
+        style="display:flex;align-items:center;gap:14px;padding:14px 20px;background:transparent;border:none;cursor:pointer;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:15px;font-weight:700;width:100%;text-align:left;margin-top:4px;"
         :style="{ color: isDark ? '#E74C3C' : '#C0392B' }"
         @click="authStore.logout()"
       >

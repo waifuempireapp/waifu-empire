@@ -33,6 +33,7 @@ const emit = defineEmits<{
   apriPesca:   []
   apriNegozio: []
   apriSbusto:  [] // bottone "APRI ORA" → overlay SbustaTab
+  ricaricaPack: [] // timer omaggio scaduto → la pagina ricarica il profilo e accredita la bustina
 }>()
 
 // Tema light/dark
@@ -136,18 +137,28 @@ const hasCarte = computed(() => ultimeCarte.value.length > 0)
 
 // ── Countdown pacchetto (CardPacchettoOverlay) ───────────────────────
 const countdown = ref('')
+const packPronto = ref(false)   // timer scaduto: la bustina omaggio è maturata ma non ancora in inventario
 let countdownInterval: ReturnType<typeof setInterval> | null = null
+let ricaricaRichiesta = false   // guard: evita di emettere ricaricaPack ogni secondo
 
 function aggiornaCountdown() {
   const p = profilo.value
-  if (totalPack.value > 0) { countdown.value = ''; return }
+  if (totalPack.value > 0) { countdown.value = ''; packPronto.value = false; return }
   const raw = p.ultimaRicaricaPacchetti as { toMillis?: () => number; seconds?: number } | number | undefined
   const lastTs = typeof raw === 'object' && raw !== null
     ? (raw.toMillis ? raw.toMillis() : (raw.seconds ?? 0) * 1000)
     : Number(raw) || 0
   const prossima = lastTs + TIMER.PACCHETTO_HOURS * 60 * 60 * 1000
   const diff = prossima - Date.now()
-  if (diff <= 0) { countdown.value = 'Disponibile!'; return }
+  if (diff <= 0) {
+    countdown.value = ''
+    packPronto.value = true
+    // Chiede alla pagina di ricaricare il profilo → accredita la bustina (una sola volta)
+    if (!ricaricaRichiesta) { ricaricaRichiesta = true; emit('ricaricaPack') }
+    return
+  }
+  packPronto.value = false
+  ricaricaRichiesta = false
   const ore = Math.floor(diff / (1000 * 60 * 60))
   const min = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
   const sec = Math.floor((diff % (1000 * 60)) / 1000)
@@ -271,7 +282,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
             Hai <b class="ht-hero-count">{{ totalPack }}</b> {{ totalPack === 1 ? 'bustina' : 'bustine' }} da aprire
           </div>
           <div v-else class="ht-hero-timer-text">
-            {{ countdown ? `Prossima tra ${countdown}` : 'Visita il negozio' }}
+            {{ packPronto ? 'Bustina omaggio pronta!' : countdown ? `Prossima tra ${countdown}` : 'Visita il negozio' }}
           </div>
         </div>
 

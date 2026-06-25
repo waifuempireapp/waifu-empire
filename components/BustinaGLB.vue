@@ -2,6 +2,23 @@
      Layer 1 (sempre): gradiente CSS + logo → MAI immagine rotta o area bianca.
      Layer 2 (quando pronto): canvas Three.js sopra con opacity 0→1.
      Emette 'bustina:ready' globale quando il 3D è inizializzato (o fallisce). -->
+<script lang="ts">
+// Cache condivisa tra TUTTE le istanze: il GLB viene scaricato e parsato una
+// sola volta per sessione, poi ogni bustina clona la geometria sorgente.
+// → niente re-fetch + re-parse ad ogni mount (Home, Sbusta, x10, ecc.).
+let _glbMeshPromise: Promise<import('three').Mesh> | null = null
+function loadBustinaMesh(): Promise<import('three').Mesh> {
+  if (!_glbMeshPromise) {
+    _glbMeshPromise = (async () => {
+      const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
+      const gltf = await new GLTFLoader().loadAsync('/bustine/bustina_asset.glb')
+      return gltf.scene.children[0] as import('three').Mesh
+    })()
+  }
+  return _glbMeshPromise
+}
+</script>
+
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 
@@ -63,7 +80,6 @@ async function init() {
   }
   try {
     const THREE = await import('three')
-    const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
     const { RoomEnvironment } = await import('three/examples/jsm/environments/RoomEnvironment.js')
     ;(window as any).__THREE__ = THREE
 
@@ -112,8 +128,7 @@ async function init() {
     const rim = new THREE.DirectionalLight(0xa78bfa, 0.5)
     rim.position.set(-2, -1, 2); scene.add(rim)
 
-    const gltf = await new GLTFLoader().loadAsync('/bustine/bustina_asset.glb')
-    const src  = gltf.scene.children[0] as import('three').Mesh
+    const src  = await loadBustinaMesh()
     const geo  = src.geometry.clone()
     applyPlanarUVs(geo)
 

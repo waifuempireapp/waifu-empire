@@ -101,25 +101,23 @@ const listExpanded = ref(false)
   <!-- Contenitore scheda con animazione fade-in -->
   <div class="fade-in" :style="{ paddingTop: '14px' }">
 
-    <!-- Tab bar: Giocatori / Classifica Waifu -->
+    <!-- Tab bar: Giocatori / Classifica Waifu — bottone unico diviso a metà -->
     <div :style="{
-      display: 'flex', gap: 0,
-      background: 'var(--theme-shimmer)', border: '1px solid var(--theme-border)',
-      borderRadius: '12px', padding: '3px', marginBottom: '20px',
+      display: 'flex', border: '1.5px solid var(--theme-accent)',
+      borderRadius: '12px', overflow: 'hidden', marginBottom: '20px',
     }">
       <button
-        v-for="t in [{ id: 'giocatori', label: 'Giocatori' }, { id: 'waifu', label: 'Classifica Waifu' }]"
+        v-for="(t, i) in [{ id: 'giocatori', label: 'Giocatori' }, { id: 'waifu', label: 'Classifica Waifu' }]"
         :key="t.id"
         @click="subTab = (t.id as 'giocatori' | 'waifu')"
         :style="{
-          flex: 1, padding: '9px 8px', borderRadius: '10px',
-          border: 'none', cursor: 'pointer',
-          background: subTab === t.id ? 'var(--theme-tab-active)' : 'transparent',
-          color: subTab === t.id ? 'var(--theme-accent)' : 'var(--theme-text-2)',
+          flex: 1, padding: '11px 8px', borderRadius: '0 !important',
+          border: 'none', borderRight: i === 0 ? '1.5px solid var(--theme-accent)' : 'none', cursor: 'pointer',
+          background: subTab === t.id ? 'var(--theme-accent)' : 'transparent',
+          color: subTab === t.id ? '#fff' : 'var(--theme-accent)',
           fontFamily: FF.label, fontSize: '11px', letterSpacing: '0.15em',
-          fontWeight: subTab === t.id ? 700 : 500,
+          fontWeight: 800,
           textTransform: 'uppercase', transition: 'all 0.18s',
-          boxShadow: subTab === t.id ? '0 2px 8px var(--theme-shadow)' : 'none',
         }"
       >{{ t.label }}</button>
     </div>

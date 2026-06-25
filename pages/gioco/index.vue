@@ -85,11 +85,36 @@ onUnmounted(() => {
 })
 
 // ── Carica tutto al mount, quando l'utente è disponibile ──────────────
+// Guard: evita esecuzioni concorrenti e ritenta in caso di 403 transitorio
+// (token auth non ancora propagato → permission-denied alla prima lettura).
+let caricamentoInCorso = false
+async function avviaCaricamento(uid: string) {
+  if (caricamentoInCorso || caricato.value) return
+  caricamentoInCorso = true
+  for (let tentativo = 0; tentativo < 4; tentativo++) {
+    try {
+      // Forza un token fresco prima delle letture Firestore (evita 403 iniziale)
+      try { await authStore.user?.getIdToken(tentativo > 0) } catch { /* noop */ }
+      await caricaTutto(uid)
+      caricamentoInCorso = false
+      return
+    } catch (e) {
+      console.warn(`[gioco] caricaTutto fallito (tentativo ${tentativo + 1}/4)`, e)
+      // Backoff crescente prima di ritentare
+      await new Promise(r => setTimeout(r, 400 * (tentativo + 1)))
+    }
+  }
+  caricamentoInCorso = false
+  // Ultimo fallback: sblocca comunque la UI invece di restare nel loader infinito
+  caricato.value = true
+  appReady.value = true
+}
+
 watch(
   () => authStore.user,
-  async (user) => {
+  (user) => {
     if (!user) return
-    await caricaTutto(user.uid)
+    avviaCaricamento(user.uid)
   },
   { immediate: true },
 )
@@ -203,6 +228,34 @@ async function caricaTutto(uid: string) {
   })
 
   appReady.value = true
+}
+
+// ── Ricarica bustina omaggio on-demand (timer scaduto in Home) ────────
+// Evita di dover fare un refresh manuale per vedere la bustina accreditata.
+let ricaricaPackInCorso = false
+async function ricaricaPackOmaggio() {
+  if (ricaricaPackInCorso) return
+  const uid = authStore.user?.uid
+  const profilo = gameStore.profilo as any
+  if (!uid || !profilo) return
+  const ricP = calcolaRicaricaPacchettiOmaggio(
+    profilo.ultimaRicaricaPacchetti,
+    Number(profilo.pacchettiOmaggio) || 0,
+  )
+  if (!ricP.deveAggiornare) return
+  ricaricaPackInCorso = true
+  try {
+    const patch = {
+      pacchettiOmaggio: ricP.nuoviPacchetti,
+      ultimaRicaricaPacchetti: new Date(ricP.ultimaRicaricaAggiornata as string | number),
+    }
+    await updateUserProfile(uid, patch)
+    gameStore.aggiornaProfilo(patch as never)
+  } catch (e) {
+    console.warn('[gioco] ricaricaPackOmaggio fallita', e)
+  } finally {
+    ricaricaPackInCorso = false
+  }
 }
 
 function mostraNotif(testo: string, colore = '#00e676') {
@@ -350,6 +403,7 @@ function handleSetTab(t: string) {
         :collezione="gameStore.collezione as any" :waifu-cat="gameStore.catalogoWaifu" @set-tab="handleSetTab"
         @apri-pesca="() => { pescaAperta = true }"
         @apri-sbusto="() => { sbustaAperta = true }"
+        @ricarica-pack="ricaricaPackOmaggio"
         @apri-negozio="gameStore.toggleNegozio(true)" />
 
       <!-- ═══ TAB: PACCHETTI — commentata, selezione espansione ora in Home ═══

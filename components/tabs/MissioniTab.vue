@@ -211,47 +211,42 @@ onUnmounted(() => {
   <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
 
     <!-- ── HEADER con bottone ← back ──────────────────────────────────── -->
-    <div style="flex-shrink:0;padding:10px 16px 0;position:relative;text-align:center;">
+    <div style="flex-shrink:0;padding:8px 56px 0;position:relative;text-align:center;">
       <!-- Bottone back — torna alla tab precedente -->
       <button
         @click="emit('indietro')"
-        style="position:absolute;left:16px;top:16px;background:var(--theme-shimmer);border:1px solid var(--theme-border);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--theme-text-2);"
+        style="position:absolute;left:10px;top:6px;background:var(--theme-shimmer);border:1px solid var(--theme-border);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--theme-text-2);z-index:2;"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M19 12H5M12 19l-7-7 7-7"/>
         </svg>
       </button>
 
-      <!--<div :style="{ fontFamily:FF.label, fontSize:'13px', letterSpacing:'0.28em', color:`${C.mission}bb`, textTransform:'uppercase', fontWeight:700, marginBottom:'4px' }">
-        Missioni
-      </div> -->
-      <div :style="{ fontFamily:FF.display, fontSize:'22px', fontWeight:900, color:'var(--theme-text)', marginBottom:'16px' }">
+      <div :style="{ fontFamily:FF.display, fontSize:'22px', fontWeight:900, color:'var(--theme-text)', marginBottom:'16px', lineHeight:1.2 }">
         Missioni Giornaliere
       </div>
     </div>
 
-    <!-- ── SUB-TAB SELECTOR ────────────────────────────────────────────── -->
-    <div style="flex-shrink:0;display:flex;gap:0;margin:0 16px 14px;background:var(--theme-shimmer);border:1px solid var(--theme-border);border-radius:12px;padding:4px;">
+    <!-- ── SUB-TAB SELECTOR — bottone unico diviso a metà ───────────────── -->
+    <div style="flex-shrink:0;display:flex;margin:0 16px 14px;border:1.5px solid var(--theme-accent);border-radius:12px;overflow:hidden;">
       <button
         @click="subTab = 'giornaliere'"
         :style="{
-          flex:1, padding:'10px 8px', borderRadius:'9px', border:'none', cursor:'pointer',
-          background: subTab === 'giornaliere' ? 'var(--theme-tab-active)' : 'transparent',
-          fontFamily: FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.1em',
-          color: subTab === 'giornaliere' ? 'var(--theme-accent)' : 'var(--theme-text-3)',
-          textTransform:'uppercase', transition:'all 0.2s',
-          borderBottom: subTab === 'giornaliere' ? `2px solid var(--theme-accent)` : '2px solid transparent',
+          flex:1, padding:'11px 8px', border:'none', borderRight:'1.5px solid var(--theme-accent)', cursor:'pointer',
+          background: subTab === 'giornaliere' ? 'var(--theme-accent)' : 'transparent',
+          fontFamily: FF.label, fontSize:'13px', fontWeight:800, letterSpacing:'0.1em',
+          color: subTab === 'giornaliere' ? '#fff' : 'var(--theme-accent)',
+          textTransform:'uppercase', transition:'all 0.2s', borderRadius:'0 !important',
         }"
       >Giornaliere</button>
       <button
         @click="subTab = 'mappa'; if (!activeMission && !mapLoading) loadMapMission()"
         :style="{
-          flex:1, padding:'10px 8px', borderRadius:'9px', border:'none', cursor:'pointer',
-          background: subTab === 'mappa' ? 'var(--theme-tab-active)' : 'transparent',
-          fontFamily: FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.1em',
-          color: subTab === 'mappa' ? 'var(--theme-accent)' : 'var(--theme-text-3)',
-          textTransform:'uppercase', transition:'all 0.2s',
-          borderBottom: subTab === 'mappa' ? `2px solid var(--theme-accent)` : '2px solid transparent',
+          flex:1, padding:'11px 8px', border:'none', cursor:'pointer',
+          background: subTab === 'mappa' ? 'var(--theme-accent)' : 'transparent',
+          fontFamily: FF.label, fontSize:'13px', fontWeight:800, letterSpacing:'0.1em',
+          color: subTab === 'mappa' ? '#fff' : 'var(--theme-accent)',
+          textTransform:'uppercase', transition:'all 0.2s', borderRadius:'0 !important',
         }"
       >Mappa</button>
     </div>

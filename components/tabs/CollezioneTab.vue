@@ -571,20 +571,12 @@ function apriNegozio() {
 
       <!-- Titolo schermata -->
       <div :style="{
-        textAlign: 'center', marginBottom: '18px', paddingTop: 8,
+        textAlign: 'center', marginBottom: '14px', paddingTop: 8,
       }">
         <div :style="{
           fontFamily: FF.label, fontSize: 11, color: 'var(--theme-text-3)',
-          letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600, marginBottom: 6,
+          letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600,
         }">{{ $t('collection.your_collection') }}</div>
-        <div :style="{
-          fontFamily: FF.display, fontSize: 28, color: 'var(--theme-text)',
-          fontWeight: 800,
-        }">{{ $t('collection.my_cards') }}</div>
-        <div :style="{
-          fontFamily: FF.body, fontSize: 14, color: 'var(--theme-text-2)',
-          marginTop: 10, lineHeight: 1.5,
-        }">{{ $t('collection.subtitle') }}</div>
       </div>
 
       <!-- SUB-TAB BUTTONS -->
@@ -660,7 +652,7 @@ function apriNegozio() {
           <div :style="{ display:'flex', alignItems:'center', gap:'8px', padding:'10px 14px', background:'var(--theme-bg-secondary)', border:'1px solid var(--theme-border)', borderRadius:'12px', marginBottom:'10px', boxShadow:'0 2px 8px var(--theme-shadow)' }">
             <Search :size="14" stroke-width="1.5" :style="{ color:'var(--theme-text-3)', flexShrink:0 }" />
             <input v-model="filtroNome" @input="visibiliWaifu = 12" placeholder="Cerca per nome…"
-              :style="{ flex:1, background:'transparent', border:'none', outline:'none', color:'var(--theme-text)', fontSize:'14px', fontFamily:FF.body, padding:0 }" />
+              :style="{ flex:1, background:'transparent !important', border:'none !important', boxShadow:'none !important', outline:'none', color:'var(--theme-text)', fontSize:'14px', fontFamily:FF.body, padding:'6px 0' }" />
             <button v-if="filtroNome" @click="filtroNome = ''; visibiliWaifu = 12"
               :style="{ background:'none', border:'none', cursor:'pointer', color:'var(--theme-text-3)', padding:0, display:'flex', alignItems:'center' }"><X :size="14" stroke-width="1.5" /></button>
             <span :style="{ fontFamily:FF.mono, fontSize:'13px', color:'var(--theme-text-3)', fontWeight:700, flexShrink:0 }">{{ waifuEntries.length }}</span>
