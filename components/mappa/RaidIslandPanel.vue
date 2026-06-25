@@ -36,6 +36,15 @@ useScrollLock(true)
 
 // ── Stato ─────────────────────────────────────────────────────────────────────
 const tab            = ref<'dettaglio' | 'classifica'>('dettaglio')
+
+// Violetto del bottone "Combatti" + gradiente "a scomparsa" verso il divisore.
+const VIOLETTO = '#a855f7'
+// Gradiente DENTRO al solo bottone attivo: solido sotto al testo, dissolto a
+// trasparenza TOTALE prima del centro → nessun colore alla giunzione.
+function segActiveBg(i: number, color: string): string {
+  const dir = i === 0 ? 'to right' : 'to left'
+  return `linear-gradient(${dir}, ${color} 0%, ${color} 75%, transparent 100%)`
+}
 const raid           = ref<Record<string, any> | null>(null)
 const loading        = ref(true)
 const ranking        = ref<any[]>([])
@@ -232,19 +241,19 @@ const MEDAL = ['🥇', '🥈', '🥉']
         <button @click="emit('chiudi')" :style="{ background:'none', border:'none', color:'var(--theme-text-2)', fontSize:'20px', cursor:'pointer', fontFamily: FF.label }">✕</button>
       </div>
 
-      <!-- Tabs -->
-      <div style="display:flex;gap:6px;margin-bottom:20px">
+      <!-- Tabs — gradiente violetto nel solo bottone attivo (trasparenza prima del centro) -->
+      <div :style="{ display:'flex', border:`1.5px solid ${VIOLETTO}`, borderRadius:'12px', overflow:'hidden', marginBottom:'20px' }">
         <button
-          v-for="t in ['dettaglio', 'classifica']"
+          v-for="(t, i) in ['dettaglio', 'classifica']"
           :key="t"
           @click="tab = t as 'dettaglio' | 'classifica'"
           :style="{
-            flex: 1, padding: '9px 0',
-            background: tab === t ? 'var(--theme-tab-active)' : 'var(--theme-shimmer)',
-            border: `1px solid ${tab === t ? 'rgba(236,72,153,0.5)' : 'var(--theme-border)'}`,
-            borderRadius: '999px', color: tab === t ? 'var(--theme-accent-pink)' : 'var(--theme-text-2)',
-            fontFamily: FF.label, fontSize: '11px', fontWeight: 700, cursor: 'pointer',
-            letterSpacing: '0.12em', textTransform: 'uppercase',
+            flex: 1, padding: '10px 0', borderRadius: '0 !important',
+            border: 'none', boxShadow: 'none', cursor: 'pointer',
+            background: tab === t ? segActiveBg(i, VIOLETTO) : 'transparent',
+            color: tab === t ? '#fff' : VIOLETTO,
+            fontFamily: FF.label, fontSize: '11px', fontWeight: 800,
+            letterSpacing: '0.12em', textTransform: 'uppercase', transition: 'color 0.18s',
           }"
         >{{ t === 'dettaglio' ? '⚔ Dettaglio' : '🏆 Classifica' }}</button>
       </div>

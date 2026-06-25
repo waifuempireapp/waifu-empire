@@ -44,6 +44,13 @@ const rankTextColors = [C.violet, '#5a7a96', '#ff9b6b']
 
 // ---- Stato reattivo ----
 const subTab    = ref<'giocatori' | 'waifu'>('giocatori')
+
+// Gradiente DENTRO al solo bottone attivo: solido sul lato esterno, dissolto a
+// trasparenza COMPLETA prima del centro → nessun colore alla giunzione centrale.
+function segActiveBg(i: number, color: string): string {
+  const dir = i === 0 ? 'to right' : 'to left'
+  return `linear-gradient(${dir}, ${color} 0%, ${color} 75%, transparent 100%)`
+}
 const classifica = ref<any[]>([])
 const loading    = ref(true)
 const errore     = ref<string | null>(null)
@@ -101,7 +108,7 @@ const listExpanded = ref(false)
   <!-- Contenitore scheda con animazione fade-in -->
   <div class="fade-in" :style="{ paddingTop: '14px' }">
 
-    <!-- Tab bar: Giocatori / Classifica Waifu — bottone unico diviso a metà -->
+    <!-- Tab bar: Giocatori / Classifica Waifu — gradiente nel solo bottone attivo -->
     <div :style="{
       display: 'flex', border: '1.5px solid var(--theme-accent)',
       borderRadius: '12px', overflow: 'hidden', marginBottom: '20px',
@@ -112,12 +119,12 @@ const listExpanded = ref(false)
         @click="subTab = (t.id as 'giocatori' | 'waifu')"
         :style="{
           flex: 1, padding: '11px 8px', borderRadius: '0 !important',
-          border: 'none', borderRight: i === 0 ? '1.5px solid var(--theme-accent)' : 'none', cursor: 'pointer',
-          background: subTab === t.id ? 'var(--theme-accent)' : 'transparent',
+          border: 'none', boxShadow: 'none', cursor: 'pointer',
+          background: subTab === t.id ? segActiveBg(i, 'var(--theme-accent)') : 'transparent',
           color: subTab === t.id ? '#fff' : 'var(--theme-accent)',
           fontFamily: FF.label, fontSize: '11px', letterSpacing: '0.15em',
           fontWeight: 800,
-          textTransform: 'uppercase', transition: 'all 0.18s',
+          textTransform: 'uppercase', transition: 'color 0.18s',
         }"
       >{{ t.label }}</button>
     </div>
