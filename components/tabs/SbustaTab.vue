@@ -6,6 +6,7 @@
   ============================================================ -->
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick, useTemplateRef } from 'vue'
+import { FastForward } from 'lucide-vue-next'
 import type { ProfiloUtente, Collezione, WaifuCatalog, MossaCatalog } from '~/types/game'
 import {
   listDropsAttivi,
@@ -288,24 +289,34 @@ async function apri(tipoPacchetto: string) {
   }).catch((e: any) => console.error('createPackSnapshot:', e))
 }
 
-// Apri fino a 10 pacchetti in sequenza
-async function apriMulti(tipoPacchetto: string) {
+// Costruisce la sequenza di tipi da aprire attraversando TUTTI i tipi disponibili
+// (priorità omaggio → benvenuto → sfida), fino a `max` pacchetti totali.
+function sequenzaMista(max: number): string[] {
+  const seq: string[] = []
+  let o = nOmag.value, b = nBenv.value, s = nSfid.value
+  while (seq.length < max && (o > 0 || b > 0 || s > 0)) {
+    if (o > 0) { seq.push('omaggio'); o-- }
+    else if (b > 0) { seq.push('benvenuto'); b-- }
+    else { seq.push('sfida'); s-- }
+  }
+  return seq
+}
+
+// Apre una sequenza di pacchetti (tipi anche misti): genera le carte, avvia il
+// reveal e decrementa i contatori PER TIPO. È il cuore condiviso degli "apri N".
+async function apriMultiSequenza(seq: string[]) {
   const uid = authStore.user?.uid
   if (!uid || !props.collezione) return
-  const disponibili = tipoPacchetto === 'benvenuto'
-    ? Number(props.profilo?.pacchettiBenvenuto ?? 0)
-    : tipoPacchetto === 'omaggio'
-      ? Number(props.profilo?.pacchettiOmaggio ?? 0)
-      : Number(props.profilo?.pacchettiSfida ?? 0)
-  const quanti = Math.min(10, disponibili)
-  if (quanti < 1) { emit('notif', 'Nessun pacchetto disponibile.', C.err); return }
+  if (seq.length < 1) { emit('notif', 'Nessun pacchetto disponibile.', C.err); return }
 
   const nuova = JSON.parse(JSON.stringify(props.collezione))
   const tuttiIPacchetti: any[][] = []
-  for (let i = 0; i < quanti; i++) {
-    const carte = await _generaEAggiorna(tipoPacchetto, nuova)
+  const aperti: Record<string, number> = { omaggio: 0, benvenuto: 0, sfida: 0 }
+  for (const tipo of seq) {
+    const carte = await _generaEAggiorna(tipo, nuova)
     if (!carte) break
     tuttiIPacchetti.push(carte)
+    aperti[tipo] = (aperti[tipo] ?? 0) + 1
   }
   if (tuttiIPacchetti.length === 0) return
 
@@ -313,7 +324,6 @@ async function apriMulti(tipoPacchetto: string) {
   multiPackIndice.value = 0
 
   // Preload di TUTTE le immagini dei pack (fino a 10×5=50 carte)
-  // Il browser le carica in parallelo mentre l'utente guarda il primo pack
   preloadCarteImages(tuttiIPacchetti)
 
   carteRivelate.value = []
@@ -323,7 +333,6 @@ async function apriMulti(tipoPacchetto: string) {
   multiPhase.value = 'stack'
   multiExitedCount.value = 0
   stato.value = 'reveal_multi'
-  // FASE 1: stack FERMO → (tap) → uscita una alla volta → reveal carte
 
   // Notifica missioni giornaliere: N pacchetti aperti + eventuali leggendarie
   if (typeof window !== 'undefined') {
@@ -335,27 +344,36 @@ async function apriMulti(tipoPacchetto: string) {
   emit('updateCollezione', nuova)
   try {
     await saveCollezione(uid, nuova as any)
-    if (tipoPacchetto === 'benvenuto') {
-      const n = Number(props.profilo?.pacchettiBenvenuto ?? 0) - tuttiIPacchetti.length
-      emit('updateProfilo', { pacchettiBenvenuto: n })
-      await updateUserProfile(uid, { pacchettiBenvenuto: n })
-    } else if (tipoPacchetto === 'omaggio') {
-      const n = Number(props.profilo?.pacchettiOmaggio ?? 0) - tuttiIPacchetti.length
-      emit('updateProfilo', { pacchettiOmaggio: n })
-      await updateUserProfile(uid, { pacchettiOmaggio: n })
-    } else {
-      const n = Number(props.profilo?.pacchettiSfida ?? 0) - tuttiIPacchetti.length
-      emit('updateProfilo', { pacchettiSfida: n })
-      await updateUserProfile(uid, { pacchettiSfida: n })
+    // Decremento per-tipo (scala solo i tipi effettivamente aperti)
+    const patch: Record<string, number> = {}
+    if (aperti.benvenuto) patch.pacchettiBenvenuto = Number(props.profilo?.pacchettiBenvenuto ?? 0) - aperti.benvenuto
+    if (aperti.omaggio)   patch.pacchettiOmaggio   = Number(props.profilo?.pacchettiOmaggio ?? 0) - aperti.omaggio
+    if (aperti.sfida)     patch.pacchettiSfida     = Number(props.profilo?.pacchettiSfida ?? 0) - aperti.sfida
+    if (Object.keys(patch).length) {
+      emit('updateProfilo', patch)
+      await updateUserProfile(uid, patch)
     }
   } catch (e) {
-    console.error('apriMulti: errore salvataggio', e)
+    console.error('apriMultiSequenza: errore salvataggio', e)
   }
 
   tuttiIPacchetti.forEach(carte => {
     const carteClean = JSON.parse(JSON.stringify(carte))
     createPackSnapshot(uid, carteClean).catch((e: any) => console.error('createPackSnapshot:', e))
   })
+}
+
+// "APRI 10" principale: apre 10 pacchetti attraverso tutti i tipi disponibili.
+function apriMulti10() {
+  apriMultiSequenza(sequenzaMista(10))
+}
+
+// Popup "×10 APRI TUTTI": apre fino a 10 pacchetti di UN tipo specifico.
+function apriMulti(tipoPacchetto: string) {
+  const disp = tipoPacchetto === 'benvenuto'
+    ? nBenv.value
+    : tipoPacchetto === 'omaggio' ? nOmag.value : nSfid.value
+  apriMultiSequenza(Array(Math.min(10, disp)).fill(tipoPacchetto))
 }
 
 // Lo stack resta FERMO finché l'utente non tocca → poi uscita una alla volta
@@ -367,7 +385,7 @@ async function onStackTap() {
     if (multiPhase.value !== 'exiting') return  // utente ha premuto SALTA
     multiExitedCount.value = i + 1
     packStackRef.value?.animateSinglePackExit(i)  // fire-and-forget → effetto cascata
-    await delay(50)                               // raffica: 50ms tra una e l'altra
+    await delay(120)                              // cascata un po' più lenta tra una e l'altra
   }
   if (multiPhase.value !== 'exiting') return
   await delay(1500)                                // attende la fine dell'ultima animazione
@@ -424,8 +442,62 @@ async function avanzaMultiCarta() {
   stato.value = 'summary_multi'
 }
 
+// ── SALTA (tieni premuto): scorrimento velocissimo del reveal carte ──
+let fastForwardTimer: ReturnType<typeof setInterval> | null = null
+
+function fastForwardAttivo(): boolean {
+  // solo mentre le carte escono (bustina già aperta), mai durante "tocca per aprire"
+  return bustaAperta.value && (stato.value === 'reveal' || (stato.value === 'reveal_multi' && multiPhase.value === 'revealing'))
+}
+
+function avanzaVeloce() {
+  // bypassa transizioni/divisori lenti
+  transizioneCarta.value = false
+  multiPackDivider.value = false
+
+  // PACCHETTO SINGOLO (APRI 1)
+  if (stato.value === 'reveal') {
+    if (indiceRivelato.value < carteRivelate.value.length - 1) { indiceRivelato.value++; return }
+    stopFastForward()
+    stato.value = 'summary'
+    return
+  }
+
+  // APRI 10 — fase reveal
+  if (stato.value === 'reveal_multi' && multiPhase.value === 'revealing') {
+    // carta successiva nello stesso gruppo
+    if (indiceRivelato.value < carteRivelate.value.length - 1) { indiceRivelato.value++; return }
+    // gruppo finito → prossima bustina (istantaneo, niente intermezzo)
+    if (multiPackIndice.value < multiPackCarte.value.length - 1) {
+      const prossimo = multiPackIndice.value + 1
+      const carte = multiPackCarte.value[prossimo]
+      isGodPackAperto.value = carte.length === 5 && carte.every((c: any) => c.tipo === 'waifu' && c.isGodPack)
+      multiPackIndice.value = prossimo
+      carteRivelate.value = carte
+      indiceRivelato.value = 0
+      return
+    }
+    // tutte mostrate → riepilogo
+    stopFastForward()
+    stato.value = 'summary_multi'
+    return
+  }
+
+  stopFastForward()
+}
+
+function startFastForward() {
+  if (fastForwardTimer || !fastForwardAttivo()) return
+  avanzaVeloce()                                    // primo step immediato
+  fastForwardTimer = setInterval(avanzaVeloce, 280) // più veloce del normale, senza esagerare
+}
+function stopFastForward() {
+  if (fastForwardTimer) { clearInterval(fastForwardTimer); fastForwardTimer = null }
+}
+
 // Fine sbusto: chiude l'overlay e torna alla HOMEPAGE (non alla selezione espansione)
 function concludiSbusto() {
+  stopFastForward()
   carteRivelate.value = []
   multiPackCarte.value = []
   multiPackIndice.value = 0
@@ -562,6 +634,7 @@ onMounted(() => {
 })
 onUnmounted(() => {
   if (countdownInterval) clearInterval(countdownInterval)
+  stopFastForward()
 })
 watch(() => (props.profilo as any)?.ultimaRicaricaPacchetti, aggiornaCountdown)
 
@@ -694,6 +767,20 @@ function cfTouchEnd(e: TouchEvent) {
   ══════════════════════════════════════════════════════════════ -->
   <div v-else-if="stato === 'reveal' || stato === 'reveal_multi'"
     style="position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; overflow: hidden; background:var(--theme-bg); perspective: 1200px;">
+
+    <!-- SALTA (tieni premuto) → scorrimento veloce delle carte (singolo e x10) -->
+    <button
+      v-if="bustaAperta && (stato === 'reveal' || (stato === 'reveal_multi' && multiPhase === 'revealing'))"
+      class="reveal-ff-btn"
+      @pointerdown.stop.prevent="startFastForward"
+      @pointerup.stop="stopFastForward"
+      @pointerleave.stop="stopFastForward"
+      @pointercancel.stop="stopFastForward"
+      @click.stop
+    >
+      <FastForward class="reveal-ff-btn__chev" :size="16" :stroke-width="2.5" fill="currentColor" />
+      <span class="reveal-ff-btn__label">Salta</span>
+    </button>
 
     <!-- 1a. APRI 10 — stack FERMO → (tap) → uscita una alla volta -->
     <div v-if="stato === 'reveal_multi' && (multiPhase === 'stack' || multiPhase === 'exiting')"
@@ -1102,20 +1189,20 @@ function cfTouchEnd(e: TouchEvent) {
                 opacity: totalePacchetti > 0 ? 1 : 0.4, transition:'opacity 0.2s',
               }">APRI 1</button>
 
-            <!-- APRI 10 -->
+            <!-- APRI 10 — abilitato solo con almeno 10 pacchetti totali -->
             <button
-              @click="totalePacchetti > 0 && apriMulti(tipoDaAprire)"
-              :disabled="totalePacchetti === 0"
+              @click="totalePacchetti >= 10 && apriMulti10()"
+              :disabled="totalePacchetti < 10"
               :style="{
                 flex:1, padding:'15px 8px', borderRadius:'999px', border:'none',
-                cursor: totalePacchetti > 0 ? 'pointer' : 'not-allowed',
-                background: totalePacchetti > 0 ? `linear-gradient(135deg,${C.violet},#6938e8)` : 'rgba(255,255,255,0.06)',
-                boxShadow: totalePacchetti > 0 ? `0 6px 28px ${C.violet}55` : 'none',
+                cursor: totalePacchetti >= 10 ? 'pointer' : 'not-allowed',
+                background: totalePacchetti >= 10 ? `linear-gradient(135deg,${C.violet},#6938e8)` : 'rgba(255,255,255,0.06)',
+                boxShadow: totalePacchetti >= 10 ? `0 6px 28px ${C.violet}55` : 'none',
                 fontFamily: FF.display, fontSize:'14px', fontWeight:800,
-                color: totalePacchetti > 0 ? '#fff' : 'var(--theme-text-3)',
+                color: totalePacchetti >= 10 ? '#fff' : 'var(--theme-text-3)',
                 letterSpacing:'0.08em', textTransform:'uppercase',
                 display:'flex', alignItems:'center', justifyContent:'center',
-                opacity: totalePacchetti > 0 ? 1 : 0.4, transition:'opacity 0.2s',
+                opacity: totalePacchetti >= 10 ? 1 : 0.4, transition:'opacity 0.2s',
               }">APRI 10</button>
 
           </div>
@@ -1504,6 +1591,43 @@ function cfTouchEnd(e: TouchEvent) {
 }
 .multi-skip-btn:hover { background: var(--surface-raised); color: var(--text-primary); }
 .multi-skip-btn:active { transform: scale(0.96); }
+
+/* Bottone SALTA tieni-premuto — neumorfico raised (gradient + soft shadow 3D) */
+.reveal-ff-btn {
+  position: fixed;
+  bottom: 30px; right: 20px;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 13px 22px;
+  border: 1.5px solid var(--theme-accent);
+  border-radius: var(--radius-pill, 9999px);
+  background: linear-gradient(145deg, var(--theme-surface), var(--theme-surface-2));
+  color: var(--theme-accent);
+  font-family: var(--ff-label, 'Saira Condensed', sans-serif);
+  font-weight: 800;
+  font-size: 0.82rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  /* effetto 3D neumorfico (come i filtri della collezione) */
+  box-shadow: var(--shadow-neu-out);
+  touch-action: none;            /* evita scroll/gesture mentre tieni premuto */
+  user-select: none;
+  transition: box-shadow 0.1s ease, background 0.1s ease;
+}
+.reveal-ff-btn:active {
+  /* pressione: si "affossa" (shadow inset) */
+  background: linear-gradient(145deg, var(--theme-surface-2), var(--theme-surface));
+  box-shadow: var(--shadow-neu-in);
+}
+.reveal-ff-btn__chev {
+  flex-shrink: 0;
+  animation: ff-chev 0.7s linear infinite;
+}
+.reveal-ff-btn:active .reveal-ff-btn__chev { animation-duration: 0.28s; }
+@keyframes ff-chev { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } }
 
 /* Intermezzo "Bustina X completata" */
 .multi-pack-divider {
