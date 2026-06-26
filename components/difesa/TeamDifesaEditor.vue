@@ -4,8 +4,8 @@
     <!-- Header -->
     <div :style="headerStyle">
       <div>
-        <div :style="{ fontFamily: FF.label, fontSize: '9px', letterSpacing: '0.22em', color: C.violet, textTransform: 'uppercase' }">⚔ Difesa Territorio</div>
-        <div :style="{ fontFamily: FF.display, fontSize: '17px', color: '#fff', fontWeight: 800 }">Scegli team difensore</div>
+        <div :style="{ fontFamily: FF.label, fontSize: '9px', letterSpacing: '0.22em', color: C.violet, textTransform: 'uppercase' }">{{ $t("defense.title") }}</div>
+        <div :style="{ fontFamily: FF.display, fontSize: '17px', color: '#fff', fontWeight: 800 }">{{ $t("defense.choose_defender") }}</div>
         <div :style="{ fontFamily: FF.mono, fontSize: '10px', color: 'rgba(241,235,255,0.4)', marginTop: '2px' }">
           pixel {{ pixelKey?.replace('_', ', ') }} · {{ selectedIds.length }}/5
         </div>
@@ -50,7 +50,7 @@
       </div>
 
       <!-- Risultato o bottone salva -->
-      <div v-if="success" :style="successStyle">✓ TEAM SALVATO</div>
+      <div v-if="success" :style="successStyle">{{ $t("defense.team_saved") }}</div>
       <button
         v-else
         :disabled="selectedIds.length !== 5 || loading"

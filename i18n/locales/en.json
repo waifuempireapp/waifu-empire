@@ -38,7 +38,10 @@
     "language": {
       "title": "Language",
       "subtitle": "Choose your language"
-    }
+    },
+    "theme_dark": "Dark theme",
+    "theme_light": "Light theme",
+    "remove_image": "Remove image"
   },
   "header": {
     "exit": "EXIT",
@@ -214,7 +217,12 @@
     "offer_desc_player": "Make an offer to the owner",
     "insufficient_kisses": "Not enough Kisses (need {n})",
     "mission_owned_value": "Owning it is worth",
-    "raid_attack_error": "Raid attack failed. Please try again."
+    "raid_attack_error": "Raid attack failed. Please try again.",
+    "free_territory": "Free territory — fixed price",
+    "your_offer": "Your offer (Kisses)",
+    "territory_conquered": "Territory Conquered!",
+    "conquering": "Conquering…",
+    "owner": "Owner: {name}"
   },
   "collection": {
     "title": "Collection",
@@ -599,5 +607,22 @@
     "task_conquer_desc": "Conquer 3 territories on the map",
     "task_legendary_label": "Unlock 1 legendary card",
     "task_legendary_desc": "Get a legendary card"
+  },
+  "defense": {
+    "title": "⚔ Territory Defense",
+    "choose_defender": "Choose defender team",
+    "team_saved": "✓ TEAM SAVED"
+  },
+  "tutorial": {
+    "next": "Next →",
+    "skip": "Skip tutorial",
+    "step1_title": "Welcome to the Empire!",
+    "step1_body": "The map is divided into pixels. Each pixel is a territory you can conquer or buy.",
+    "step2_title": "How to conquer",
+    "step2_body": "Select any gray (CPU) pixel and challenge the CPU with your team of 5 Waifu in a Bo3 match.",
+    "step3_title": "Passive Kisses",
+    "step3_body": "Every pixel you own generates passive Kisses every hour. The more pixels you conquer, the more you earn!",
+    "step4_title": "Choose your first pixel",
+    "step4_body": "You can start anywhere on the map. Click \"Choose pixel\" and select your starting territory."
   }
 }

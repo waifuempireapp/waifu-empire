@@ -38,7 +38,10 @@
     "language": {
       "title": "Sprache",
       "subtitle": "Wähle deine Sprache"
-    }
+    },
+    "theme_dark": "Dunkles Design",
+    "theme_light": "Helles Design",
+    "remove_image": "Bild entfernen"
   },
   "header": {
     "exit": "EXIT",
@@ -182,7 +185,12 @@
     "offer_desc_player": "Mache dem Besitzer ein Angebot",
     "insufficient_kisses": "Nicht genug Kisses (benötigt {n})",
     "mission_owned_value": "Besitz bringt",
-    "raid_attack_error": "Raid-Angriff fehlgeschlagen. Bitte erneut versuchen."
+    "raid_attack_error": "Raid-Angriff fehlgeschlagen. Bitte erneut versuchen.",
+    "free_territory": "Freies Gebiet — Festpreis",
+    "your_offer": "Dein Angebot (Kisses)",
+    "territory_conquered": "Gebiet erobert!",
+    "conquering": "Eroberung…",
+    "owner": "Besitzer: {name}"
   },
   "collection": {
     "title": "Sammlung",
@@ -499,5 +507,22 @@
     "task_conquer_desc": "Erobere 3 Gebiete auf der Karte",
     "task_legendary_label": "Schalte 1 legendäre Karte frei",
     "task_legendary_desc": "Erhalte eine legendäre Karte"
+  },
+  "defense": {
+    "title": "⚔ Gebietsverteidigung",
+    "choose_defender": "Verteidigerteam wählen",
+    "team_saved": "✓ TEAM GESPEICHERT"
+  },
+  "tutorial": {
+    "next": "Weiter →",
+    "skip": "Tutorial überspringen",
+    "step1_title": "Willkommen im Reich!",
+    "step1_body": "Die Karte ist in Pixel unterteilt. Jeder Pixel ist ein Gebiet, das du erobern oder kaufen kannst.",
+    "step2_title": "Wie man erobert",
+    "step2_body": "Wähle einen grauen (CPU) Pixel und fordere die CPU mit deinem Team aus 5 Waifu in einem Bo3-Match heraus.",
+    "step3_title": "Passive Kisses",
+    "step3_body": "Jeder Pixel, den du besitzt, erzeugt jede Stunde passive Kisses. Je mehr Pixel du eroberst, desto mehr verdienst du!",
+    "step4_title": "Wähle deinen ersten Pixel",
+    "step4_body": "Du kannst überall auf der Karte beginnen. Klicke auf \"Pixel wählen\" und wähle dein Startgebiet."
   }
 }

@@ -19,14 +19,14 @@
     <!-- Testo -->
     <div style="text-align:center;padding:0 28px">
       <template v-if="phase === 'back' || phase === 'done'">
-        <div :style="conquestTitleStyle">Territorio Conquistato!</div>
+        <div :style="conquestTitleStyle">{{ $t("map.territory_conquered") }}</div>
         <div :style="pixelNameStyle">{{ pixelName }}</div>
         <div :style="empireNameStyle">
           Ora appartiene a
           <span :style="{ color: newColor || '#ff85b6', fontWeight: 800 }">{{ empireName }}</span>
         </div>
       </template>
-      <div v-else :style="loadingStyle">Conquista in corso…</div>
+      <div v-else :style="loadingStyle">{{ $t("map.conquering") }}</div>
     </div>
 
   </div>

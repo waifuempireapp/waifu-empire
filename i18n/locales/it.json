@@ -38,7 +38,10 @@
     "language": {
       "title": "Lingua",
       "subtitle": "Scegli la tua lingua"
-    }
+    },
+    "theme_dark": "Tema scuro",
+    "theme_light": "Tema chiaro",
+    "remove_image": "Rimuovi immagine"
   },
   "header": {
     "exit": "EXIT",
@@ -214,7 +217,12 @@
     "offer_desc_player": "Fai un'offerta al proprietario",
     "insufficient_kisses": "Kisses insufficienti (servono {n})",
     "mission_owned_value": "Possiederlo vale",
-    "raid_attack_error": "Errore attacco raid. Riprova."
+    "raid_attack_error": "Errore attacco raid. Riprova.",
+    "free_territory": "Territorio libero — prezzo fisso",
+    "your_offer": "La tua offerta (Kisses)",
+    "territory_conquered": "Territorio Conquistato!",
+    "conquering": "Conquista in corso…",
+    "owner": "Proprietario: {name}"
   },
   "collection": {
     "title": "Collezione",
@@ -599,5 +607,22 @@
     "task_conquer_desc": "Conquista 3 territori sulla mappa",
     "task_legendary_label": "Sblocca 1 carta leggendaria",
     "task_legendary_desc": "Ottieni una carta leggendaria"
+  },
+  "defense": {
+    "title": "⚔ Difesa Territorio",
+    "choose_defender": "Scegli team difensore",
+    "team_saved": "✓ TEAM SALVATO"
+  },
+  "tutorial": {
+    "next": "Avanti →",
+    "skip": "Salta tutorial",
+    "step1_title": "Benvenuto nell'Impero!",
+    "step1_body": "La mappa è divisa in pixel. Ogni pixel è un territorio che puoi conquistare o acquistare.",
+    "step2_title": "Come conquistare",
+    "step2_body": "Seleziona qualsiasi pixel grigio (CPU) e sfida la CPU con il tuo team di 5 Waifu in un match Bo3.",
+    "step3_title": "Kisses passivi",
+    "step3_body": "Ogni pixel che possiedi genera Kisses passivi ogni ora. Più pixel conquisti, più guadagni!",
+    "step4_title": "Scegli il tuo primo pixel",
+    "step4_body": "Puoi iniziare ovunque sulla mappa. Clicca \"Scegli pixel\" e seleziona il tuo territorio di partenza."
   }
 }

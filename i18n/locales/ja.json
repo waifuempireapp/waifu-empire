@@ -38,7 +38,10 @@
     "language": {
       "title": "言語",
       "subtitle": "言語を選んでください"
-    }
+    },
+    "theme_dark": "ダークテーマ",
+    "theme_light": "ライトテーマ",
+    "remove_image": "画像を削除"
   },
   "header": {
     "exit": "終了",
@@ -182,7 +185,12 @@
     "offer_desc_player": "オーナーにオファーを送る",
     "insufficient_kisses": "Kisses不足（{n}必要）",
     "mission_owned_value": "所有すると",
-    "raid_attack_error": "レイド攻撃に失敗しました。もう一度お試しください。"
+    "raid_attack_error": "レイド攻撃に失敗しました。もう一度お試しください。",
+    "free_territory": "空き領地 — 固定価格",
+    "your_offer": "あなたのオファー（Kisses）",
+    "territory_conquered": "領地を征服！",
+    "conquering": "征服中…",
+    "owner": "オーナー：{name}"
   },
   "collection": {
     "title": "コレクション",
@@ -499,5 +507,22 @@
     "task_conquer_desc": "マップで領地を3つ征服",
     "task_legendary_label": "レジェンダリーカードを1枚入手",
     "task_legendary_desc": "レジェンダリーカードを獲得"
+  },
+  "defense": {
+    "title": "⚔ 領地防衛",
+    "choose_defender": "防衛チームを選択",
+    "team_saved": "✓ チーム保存済み"
+  },
+  "tutorial": {
+    "next": "次へ →",
+    "skip": "チュートリアルをスキップ",
+    "step1_title": "帝国へようこそ！",
+    "step1_body": "マップはピクセルに分かれています。各ピクセルは征服または購入できる領地です。",
+    "step2_title": "征服の方法",
+    "step2_body": "灰色（CPU）のピクセルを選び、5体のワイフチームでCPUにBo3で挑戦しよう。",
+    "step3_title": "パッシブKisses",
+    "step3_body": "所有する各ピクセルは毎時パッシブKissesを生成します。征服するほど稼げます！",
+    "step4_title": "最初のピクセルを選ぼう",
+    "step4_body": "マップのどこからでも始められます。「ピクセルを選ぶ」をクリックして開始領地を選択してください。"
   }
 }

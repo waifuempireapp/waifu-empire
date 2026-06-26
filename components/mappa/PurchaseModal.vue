@@ -14,7 +14,7 @@
 
       <!-- Proprietario / tipo -->
       <div :style="{ fontFamily: FF.body, fontSize: '16px', color: 'var(--theme-text-2)', marginBottom: '24px' }">
-        {{ isCPU ? 'Territorio libero — prezzo fisso' : `Proprietario: ${pixel?.ownerName}` }}
+        {{ isCPU ? $t('map.free_territory') : $t('map.owner', { name: pixel?.ownerName }) }}
       </div>
 
       <!-- Prezzo fisso CPU -->
@@ -26,7 +26,7 @@
 
       <!-- Offerta libera per giocatori -->
       <div v-else :style="{ marginBottom: '24px' }">
-        <label :style="offerLabelStyle">La tua offerta (Kisses)</label>
+        <label :style="offerLabelStyle">{{ $t("map.your_offer") }}</label>
         <div :style="{ display: 'flex', alignItems: 'center', gap: '10px' }">
           <KissesIcon :size="20" />
           <input v-model="offerAmount" type="number" :min="1" :style="inputStyle" />
@@ -38,7 +38,7 @@
 
       <!-- Bottoni azione -->
       <div :style="{ display: 'flex', gap: '10px' }">
-        <button :style="cancelBtnStyle" @click="$emit('close')">Annulla</button>
+        <button :style="cancelBtnStyle" @click="$emit('close')">{{ $t("common.cancel") }}</button>
         <button
           :disabled="loading || !canAfford || amount <= 0"
           :style="confirmBtnStyle"

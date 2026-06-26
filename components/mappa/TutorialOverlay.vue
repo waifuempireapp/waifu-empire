@@ -19,8 +19,8 @@
 
     <!-- Navigazione -->
     <div :style="{ display: 'flex', gap: '12px', width: '100%', maxWidth: '320px' }">
-      <button v-if="step > 0" :style="ghostBtn" @click="step--">← Indietro</button>
-      <button v-if="!isLast" :style="primaryBtn" @click="step++">Avanti →</button>
+      <button v-if="step > 0" :style="ghostBtn" @click="step--">{{ $t("common.back") }}</button>
+      <button v-if="!isLast" :style="primaryBtn" @click="step++">{{ $t("tutorial.next") }}</button>
       <button
         v-else
         :style="{ ...primaryBtn, background: 'linear-gradient(135deg, #c54a86, #ff85b6)' }"
@@ -30,7 +30,7 @@
       </button>
     </div>
 
-    <button :style="skipStyle" @click="$emit('close')">Salta tutorial</button>
+    <button :style="skipStyle" @click="$emit('close')">{{ $t("tutorial.skip") }}</button>
   </div>
 </template>
 
@@ -52,16 +52,17 @@ const emit = defineEmits<{
 
 useScrollLock()
 
-const STEPS = [
-  { icon: '🗺️', title: "Benvenuto nell'Impero!", body: 'La mappa è divisa in pixel. Ogni pixel è un territorio che puoi conquistare o acquistare.' },
-  { icon: '⚔️', title: 'Come conquistare',       body: 'Seleziona qualsiasi pixel grigio (CPU) e sfida la CPU con il tuo team di 5 Waifu in un match Bo3.' },
-  { icon: '💋', title: 'Kisses passivi',          body: 'Ogni pixel che possiedi genera Kisses passivi ogni ora. Più pixel conquisti, più guadagni!' },
-  { icon: '🏰', title: 'Scegli il tuo primo pixel', body: 'Puoi iniziare ovunque sulla mappa. Clicca "Scegli pixel" e seleziona il tuo territorio di partenza.' },
-]
+const { t } = useI18n()
+const STEPS = computed(() => [
+  { icon: '🗺️', title: t('tutorial.step1_title'), body: t('tutorial.step1_body') },
+  { icon: '⚔️', title: t('tutorial.step2_title'), body: t('tutorial.step2_body') },
+  { icon: '💋', title: t('tutorial.step3_title'), body: t('tutorial.step3_body') },
+  { icon: '🏰', title: t('tutorial.step4_title'), body: t('tutorial.step4_body') },
+])
 
 const step    = ref(0)
-const isLast  = computed(() => step.value === STEPS.length - 1)
-const current = computed(() => STEPS[step.value])
+const isLast  = computed(() => step.value === STEPS.value.length - 1)
+const current = computed(() => STEPS.value[step.value])
 
 const dotStyle = (active: boolean): CSSProperties => ({
   width: active ? '20px' : '6px', height: '6px', borderRadius: '3px',

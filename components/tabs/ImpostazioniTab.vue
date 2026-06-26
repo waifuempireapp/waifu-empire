@@ -129,7 +129,7 @@ async function switchLocale(code: string) {
         @click="setAvatar(null)"
         style="background:none;border:none;cursor:pointer;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:12px;font-weight:600;padding:0;text-decoration:underline;text-underline-offset:3px;"
         :style="{ color: avatarUrl ? 'var(--theme-text-2)' : 'var(--theme-text-3)', opacity: avatarUrl ? 1 : 0.4, pointerEvents: avatarUrl ? 'auto' : 'none' }"
-      >Rimuovi immagine</button>
+      >{{ $t("settings.remove_image") }}</button>
     </div>
 
     <!-- Dark Mode Toggle -->
@@ -142,7 +142,7 @@ async function switchLocale(code: string) {
           </div>
           <div style="font-family:var(--ff-body,'DM Sans',sans-serif);font-size:12px;"
             :style="{ color: 'var(--theme-text-2)' }">
-            {{ isDark ? 'Tema scuro' : 'Tema chiaro' }}
+            {{ isDark ? $t('settings.theme_dark') : $t('settings.theme_light') }}
           </div>
         </div>
         <!-- Toggle switch iOS-style -->

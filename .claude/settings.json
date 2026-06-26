@@ -111,7 +111,18 @@
       "Bash(sed -n '7p' components/AppLoading.vue)",
       "Bash(sed -n '8p' components/PageLoadingOverlay.vue)",
       "Bash(grep -noE \">[^<>{}]*[a-zàèéìòù]{4,}[^<>{}]*<|'[A-ZÀ-Ù][a-zàèéìòù][^']{3,}'\" components/classifica/WaifuRankingList.vue)",
-      "Bash(grep -ivE '\\\\$t\\\\\\(|FF\\\\.|svg|→|—|\\\\{\\\\{|var\\\\\\(|i18n-t|RARITY')"
+      "Bash(grep -ivE '\\\\$t\\\\\\(|FF\\\\.|svg|→|—|\\\\{\\\\{|var\\\\\\(|i18n-t|RARITY')",
+      "Bash(node -e \"const o=require\\('./i18n/locales/en.json'\\); console.log\\('common.cancel:',o.common.cancel,'| common.back:',o.common.back,'| common.save:',o.common.save\\); console.log\\('settings keys:',Object.keys\\(o.settings||{}\\).join\\(', '\\)\\)\")",
+      "Bash(sed -n '54,62p' components/mappa/TutorialOverlay.vue)",
+      "Bash(sed -n '143,147p' components/tabs/ImpostazioniTab.vue)",
+      "Bash(grep -noE \">[^<>{}]*[A-Za-zàèéìòù]{3,}[^<>{}]*<|'[A-ZÀ-Ù][a-zàèéìòù][^']{2,}'|title: '[^']*'|body: '[^']*'|\\\\\"[A-ZÀ-Ù][^\\\\\"]{3,}\\\\\"\" components/mappa/TutorialOverlay.vue)",
+      "Bash(grep -ivE 'FF\\\\.|Cinzel|Inter|var\\\\\\(|svg|\\\\$t\\\\\\(|fontFamily|px|rgba')",
+      "Bash(perl -0pi -e 's/>La tua offerta \\\\\\(Kisses\\\\\\)</>{{ \\\\$t\\(\"map.your_offer\"\\) }}</g' components/mappa/PurchaseModal.vue)",
+      "Bash(perl -0pi -e 's/>Annulla</>{{ \\\\$t\\(\"common.cancel\"\\) }}</g' components/mappa/PurchaseModal.vue)",
+      "Bash(perl -0pi -e 's/>⚔ Difesa Territorio</>{{ \\\\$t\\(\"defense.title\"\\) }}</g' components/difesa/TeamDifesaEditor.vue)",
+      "Bash(perl -0pi -e 's/>Scegli team difensore</>{{ \\\\$t\\(\"defense.choose_defender\"\\) }}</g' components/difesa/TeamDifesaEditor.vue)",
+      "Bash(perl -0pi -e 's/>✓ TEAM SALVATO</>{{ \\\\$t\\(\"defense.team_saved\"\\) }}</g' components/difesa/TeamDifesaEditor.vue)",
+      "Bash(node /tmp/addowner.mjs)"
     ],
     "additionalDirectories": [
       "/private/tmp"

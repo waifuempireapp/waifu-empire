@@ -38,7 +38,10 @@
     "language": {
       "title": "Idioma",
       "subtitle": "Elige tu idioma"
-    }
+    },
+    "theme_dark": "Tema oscuro",
+    "theme_light": "Tema claro",
+    "remove_image": "Quitar imagen"
   },
   "header": {
     "exit": "SALIR",
@@ -182,7 +185,12 @@
     "offer_desc_player": "Haz una oferta al propietario",
     "insufficient_kisses": "Kisses insuficientes (faltan {n})",
     "mission_owned_value": "Poseerlo vale",
-    "raid_attack_error": "Error de ataque de raid. Inténtalo de nuevo."
+    "raid_attack_error": "Error de ataque de raid. Inténtalo de nuevo.",
+    "free_territory": "Territorio libre — precio fijo",
+    "your_offer": "Tu oferta (Kisses)",
+    "territory_conquered": "¡Territorio conquistado!",
+    "conquering": "Conquistando…",
+    "owner": "Propietario: {name}"
   },
   "collection": {
     "title": "Colección",
@@ -499,5 +507,22 @@
     "task_conquer_desc": "Conquista 3 territorios en el mapa",
     "task_legendary_label": "Desbloquea 1 carta legendaria",
     "task_legendary_desc": "Consigue una carta legendaria"
+  },
+  "defense": {
+    "title": "⚔ Defensa del Territorio",
+    "choose_defender": "Elige equipo defensor",
+    "team_saved": "✓ EQUIPO GUARDADO"
+  },
+  "tutorial": {
+    "next": "Siguiente →",
+    "skip": "Saltar tutorial",
+    "step1_title": "¡Bienvenido al Imperio!",
+    "step1_body": "El mapa está dividido en píxeles. Cada píxel es un territorio que puedes conquistar o comprar.",
+    "step2_title": "Cómo conquistar",
+    "step2_body": "Selecciona cualquier píxel gris (CPU) y desafía a la CPU con tu equipo de 5 Waifu en un partido Bo3.",
+    "step3_title": "Kisses pasivos",
+    "step3_body": "Cada píxel que posees genera Kisses pasivos cada hora. ¡Cuantos más píxeles conquistes, más ganas!",
+    "step4_title": "Elige tu primer píxel",
+    "step4_body": "Puedes empezar en cualquier parte del mapa. Haz clic en \"Elegir píxel\" y selecciona tu territorio inicial."
   }
 }
