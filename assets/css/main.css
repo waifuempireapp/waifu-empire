@@ -250,6 +250,15 @@ input, textarea, [contenteditable] {
   user-select: text;
 }
 
+/* Immagini: niente salvataggio long-press / drag / menu contestuale (waifu, carte, ecc.) */
+img {
+  -webkit-touch-callout: none !important;  /* iOS: disabilita il foglio "Salva immagine" */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;                 /* desktop: niente drag-to-save */
+}
+
 body.modal-open { overflow: hidden !important; }
 
 body {
