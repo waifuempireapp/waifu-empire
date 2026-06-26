@@ -12,6 +12,15 @@ definePageMeta({ middleware: 'auth' })
 const authStore = useAuthStore()
 const gameStore = useGameStore()
 const router    = useRouter()
+const { t } = useI18n()
+
+// Mappa l'id prodotto (server) alla chiave i18n del namespace shop
+function itemKey(id: string): string {
+  return id === 'pack_sfida' ? 'challenge_pack'
+    : id === 'energia' ? 'energy'
+    : id === 'pass_hard' ? 'hard_pass'
+    : 'trade_pass'
+}
 const config    = useRuntimeConfig()
 
 const prezzi       = ref<Record<string, unknown> | null>(null)
@@ -82,7 +91,7 @@ async function acquistaBene(beneId: string) {
     const label = (prezzi.value?.beni as Record<string, { label: string }>)?.[beneId]?.label ?? beneId
     flash(`✓ ${label} acquistato!`)
   } catch (e: unknown) {
-    flash((e as { data?: { message?: string } })?.data?.message ?? 'Errore acquisto', '#ff4d4d')
+    flash((e as { data?: { message?: string } })?.data?.message ?? t('shop.purchase_error'), '#ff4d4d')
   }
 }
 </script>
@@ -97,8 +106,8 @@ async function acquistaBene(beneId: string) {
       <!-- Header Pocket-style -->
       <header class="negozio-header">
         <div class="negozio-header__left">
-          <button class="negozio-btn-back" @click="router.push('/gioco')">← Gioco</button>
-          <span class="negozio-title">🛒 Negozio</span>
+          <button class="negozio-btn-back" @click="router.push('/gioco')">{{ $t('shop.back') }}</button>
+          <span class="negozio-title">{{ $t('shop.title') }}</span>
         </div>
         <div class="negozio-kisses-pill">
           <span style="color:var(--theme-accent-pink)">💋</span>
@@ -118,7 +127,7 @@ async function acquistaBene(beneId: string) {
 
         <!-- Beni con Kisses -->
         <section>
-          <SectionTitle>Acquista con Kisses</SectionTitle>
+          <SectionTitle>{{ $t('shop.buy_with_kisses') }}</SectionTitle>
           <div class="negozio-beni-list">
             <div
               v-for="(bene, id) in (prezzi?.beni as Record<string, {kisses: number; label: string; descrizione?: string}>)"
@@ -128,8 +137,8 @@ async function acquistaBene(beneId: string) {
               <div class="negozio-bene-info">
                 <span class="negozio-bene-emoji">{{ id === 'pack_sfida' ? '🎁' : id === 'energia' ? '⚡' : id === 'pass_hard' ? '🔞' : '🔄' }}</span>
                 <div>
-                  <div class="negozio-bene-label">{{ bene.label }}</div>
-                  <div class="negozio-bene-desc">{{ bene.descrizione }}</div>
+                  <div class="negozio-bene-label">{{ $t('shop.item_' + itemKey(id)) }}</div>
+                  <div class="negozio-bene-desc">{{ $t('shop.item_' + itemKey(id) + '_desc') }}</div>
                 </div>
               </div>
               <div class="negozio-bene-cta">
@@ -140,7 +149,7 @@ async function acquistaBene(beneId: string) {
                   :disabled="kisses < bene.kisses"
                   @click="acquistaBene(id)"
                 >
-                  {{ kisses >= bene.kisses ? 'Acquista' : `Mancano ${bene.kisses - kisses}` }}
+                  {{ kisses >= bene.kisses ? $t('shop.buy_btn') : $t('shop.missing_kisses', { n: bene.kisses - kisses }) }}
                 </button>
               </div>
             </div>
@@ -152,8 +161,8 @@ async function acquistaBene(beneId: string) {
 
         <!-- Ricarica Kisses -->
         <section>
-          <SectionTitle>Ricarica Kisses</SectionTitle>
-          <p class="negozio-section-desc">Acquista Kisses con PayPal e usali per beni di gioco e Pesca Misteriosa</p>
+          <SectionTitle>{{ $t('shop.recharge_kisses') }}</SectionTitle>
+          <p class="negozio-section-desc">{{ $t('shop.recharge_desc') }}</p>
 
           <div class="negozio-tagli-grid">
             <div
@@ -170,7 +179,7 @@ async function acquistaBene(beneId: string) {
             </div>
           </div>
 
-          <p class="negozio-paypal-note">Pagamento sicuro via PayPal</p>
+          <p class="negozio-paypal-note">{{ $t('shop.secure_payment') }}</p>
         </section>
       </div>
     </template>

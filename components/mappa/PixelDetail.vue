@@ -4,6 +4,8 @@
 // Icone Lucide — X chiudi, Target difficoltà, Flame HOT, Swords attacca, Heart kisses
 import { X, Target, Flame, Swords, Heart } from 'lucide-vue-next'
 
+const { t } = useI18n()
+
 // ── Colori brand e famiglie font (da _shared.jsx) ────────────────────────────
 const C = {
   ink:     '#03020c',
@@ -76,13 +78,13 @@ const isAdj = computed(() => props.pixel?.isAdjacentToEmpire !== false)
 const canAfford = computed(() => props.pixel?.canAffordBuy !== false)
 
 const attackBlockReason = computed<string | null>(() => {
-  if (!isAdj.value) return 'Non adiacente al tuo impero'
+  if (!isAdj.value) return t('map.not_adjacent')
   return null
 })
 
 const buyBlockReason = computed<string | null>(() => {
-  if (!isAdj.value) return 'Non adiacente al tuo impero'
-  if (!canAfford.value) return `Kisses insufficienti (servono ${price.value})`
+  if (!isAdj.value) return t('map.not_adjacent')
+  if (!canAfford.value) return t('map.insufficient_kisses', { n: price.value })
   return null
 })
 
@@ -223,7 +225,7 @@ onUnmounted(() => {
             color: 'var(--theme-text)', fontWeight: 900, lineHeight: 1.1, marginBottom: '8px',
           }">
             {{ pixel.ownerName || 'CPU' }}
-            <span v-if="isOwn" :style="{ color: C.aqua, fontSize: '13px', fontWeight: 600 }"> · tuo</span>
+            <span v-if="isOwn" :style="{ color: C.aqua, fontSize: '13px', fontWeight: 600 }"> {{ $t('map.yours_suffix') }}</span>
           </div>
 
           <!-- Badge difficoltà — grande, full-rounded -->
@@ -236,7 +238,7 @@ onUnmounted(() => {
               fontFamily: FF.label, fontSize: '13px', letterSpacing: '0.14em',
               color: DIFF_STYLE[pixel.difficulty][0], fontWeight: 800,
             }">
-              {{ DIFF_STYLE[pixel.difficulty][1] }}
+              {{ $t('map.diff_' + pixel.difficulty) }}
             </div>
           </template>
         </div>
@@ -252,10 +254,10 @@ onUnmounted(() => {
         <Target :size="14" stroke-width="1.5" style="color:#e879f9;flex-shrink:0;" />
         <div>
           <div style="font-family: 'Saira Condensed', sans-serif; font-size: 11px; color: #e879f9; font-weight: 700; letter-spacing: 0.06em;">
-            Territorio Missione Mappa
+            {{ $t('map.mission_territory') }}
           </div>
           <div style="font-family: 'Saira Condensed', sans-serif; font-size: 10px; color: rgba(232,121,249,0.65); font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 4px;">
-            Possiederlo vale +100 <KissesIcon :size="11" /> · scade tra {{ missionLabel }}
+            {{ $t('map.mission_owned_value') }} +100 <KissesIcon :size="11" /> · {{ $t('map.expires_in') }} {{ missionLabel }}
           </div>
         </div>
       </div>
@@ -266,7 +268,7 @@ onUnmounted(() => {
           fontFamily: FF.label, fontSize: '12px', letterSpacing: '0.22em',
           color: 'var(--theme-text-2)', textTransform: 'uppercase', marginBottom: '10px', fontWeight: 700,
         }">
-          {{ isCPU ? 'Team difensore CPU' : isOwn ? 'Il tuo team difensore' : 'Team difensore' }}
+          {{ isCPU ? $t('map.defender_team_cpu') : isOwn ? $t('map.defender_team_yours') : $t('map.defender_team') }}
         </div>
 
         <!-- Avviso team CPU nascosto -->
@@ -397,7 +399,7 @@ onUnmounted(() => {
 
         <!-- Nessun team impostato / caricamento -->
         <div v-else :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-3)', paddingTop: '4px' }">
-          {{ isOwn ? 'Nessun team difensore impostato' : 'Caricamento team…' }}
+          {{ isOwn ? $t('map.no_defender_team') : $t('map.loading_team') }}
         </div>
       </div>
 
@@ -428,10 +430,10 @@ onUnmounted(() => {
             <Swords :size="28" stroke-width="1.5" style="flex-shrink:0;color:#ff85b6;" />
             <div style="flex: 1; min-width: 0;">
               <div :style="{ fontFamily: FF.label, fontSize: '18px', fontWeight: 800, color: '#ff85b6', marginBottom: '3px', letterSpacing: '0.08em' }">
-                Attacca
+                {{ $t('map.attack') }}
               </div>
               <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.4 }">
-                {{ isCPU ? 'Conquista il territorio battendo il team CPU' : 'Sfida il difensore al meglio di 3 round' }}
+                {{ isCPU ? $t('map.attack_desc_cpu') : $t('map.attack_desc_player') }}
               </div>
               <div v-if="attackBlockReason" :style="{ fontFamily: FF.label, fontSize: '11px', color: 'rgba(255,91,108,0.8)', marginTop: '4px', letterSpacing: '0.06em' }">
                 ⚠ {{ attackBlockReason }}
@@ -459,7 +461,7 @@ onUnmounted(() => {
             <div style="flex: 1; min-width: 0;">
               <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 3px;">
                 <div :style="{ fontFamily: FF.label, fontSize: '18px', fontWeight: 800, color: '#d4a000', letterSpacing: '0.08em' }">
-                  {{ isCPU ? 'Compra' : 'Offri' }}
+                  {{ isCPU ? $t('map.buy') : $t('map.offer') }}
                 </div>
                 <div style="display: flex; align-items: center; gap: 4px; background: rgba(245,197,96,0.18); border: 1.5px solid rgba(245,197,96,0.6); border-radius: 999px; padding: 3px 12px;">
                   <KissesIcon :size="13" />
@@ -467,7 +469,7 @@ onUnmounted(() => {
                 </div>
               </div>
               <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.4 }">
-                {{ isCPU ? 'Ottienilo subito pagando Kisses' : 'Fai un\'offerta al proprietario' }}
+                {{ isCPU ? $t('map.buy_desc_cpu') : $t('map.offer_desc_player') }}
               </div>
               <div v-if="buyBlockReason" :style="{ fontFamily: FF.label, fontSize: '11px', color: 'rgba(255,91,108,0.8)', marginTop: '4px', letterSpacing: '0.06em' }">
                 ⚠ {{ buyBlockReason }}

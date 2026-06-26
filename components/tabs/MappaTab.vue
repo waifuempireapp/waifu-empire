@@ -54,6 +54,7 @@ const FF = {
 
 // ------------------------------------------------------------------ Store
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 // ------------------------------------------------------------------ Stato principale
 const chunks          = ref<any>(null)
@@ -351,11 +352,11 @@ const handleAttack = async (attackerTeam: any[]) => {
       showBattle.value = false
       showRound.value  = true
     } else {
-      attackError.value = data.message || (typeof data.error === 'string' ? data.error : null) || 'Errore nel tentativo di attacco. Riprova.'
+      attackError.value = data.message || (typeof data.error === 'string' ? data.error : null) || t('map.attack_generic_error')
       showBattle.value  = false
     }
   } catch (e: any) {
-    attackError.value = e?.data?.message || (typeof e?.data?.error === 'string' ? e.data.error : null) || 'Errore nel tentativo di attacco. Riprova.'
+    attackError.value = e?.data?.message || (typeof e?.data?.error === 'string' ? e.data.error : null) || t('map.attack_generic_error')
     showBattle.value  = false
   }
 }
@@ -387,11 +388,11 @@ const handleRaidAttack = async (attackerTeam: any[]) => {
       showBattle.value = false
       showRound.value  = true
     } else {
-      attackError.value = data.message || (typeof data.error === 'string' ? data.error : null) || 'Errore attacco raid. Riprova.'
+      attackError.value = data.message || (typeof data.error === 'string' ? data.error : null) || t('map.raid_attack_error')
       showBattle.value  = false
     }
   } catch (e: any) {
-    attackError.value = e?.data?.message || (typeof e?.data?.error === 'string' ? e.data.error : null) || 'Errore attacco raid. Riprova.'
+    attackError.value = e?.data?.message || (typeof e?.data?.error === 'string' ? e.data.error : null) || t('map.raid_attack_error')
     showBattle.value  = false
   }
 }
@@ -830,7 +831,7 @@ async function onTerritoryClick(territoryId: string) {
           animation: 'slideDown 0.3s ease-out',
         }"
       >
-        <div :style="{ marginBottom: '10px', fontWeight: 800, fontSize: '16px', letterSpacing: '0.08em' }">⚠️ Attacco non riuscito</div>
+        <div :style="{ marginBottom: '10px', fontWeight: 800, fontSize: '16px', letterSpacing: '0.08em' }">{{ $t('map.attack_failed') }}</div>
         <div :style="{ fontSize: '15px', fontWeight: 600, lineHeight: 1.5, opacity: 0.95 }">{{ attackError }}</div>
         <button
           @click="attackError = null"
@@ -839,7 +840,7 @@ async function onTerritoryClick(territoryId: string) {
             borderRadius: '999px', color: '#fff', fontFamily: FF.label, fontSize: '13px',
             letterSpacing: '0.15em', textTransform: 'uppercase', padding: '7px 20px', cursor: 'pointer',
           }"
-        >OK</button>
+        >{{ $t('map.ok') }}</button>
       </div>
 
       <!-- ── Animazione conquista territorio ───────────────────────────── -->

@@ -4,7 +4,7 @@
   <div class="app-loading" :class="{ 'app-loading--fullscreen': fullscreen, 'app-loading--inline': !fullscreen }">
     <div class="app-loading__content">
       <div class="app-loading__spinner" />
-      <span class="app-loading__text">Caricamento...</span>
+      <span class="app-loading__text">{{ $t("loading.text") }}</span>
     </div>
   </div>
 </template>

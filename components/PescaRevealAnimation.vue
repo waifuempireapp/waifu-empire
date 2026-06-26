@@ -162,7 +162,7 @@ const cardBackStyle = {
               >
                 <div style="background:rgba(255,214,102,0.85);border-radius:4px;
                             font-family:'Orbitron',sans-serif;font-size:6px;color:#000;
-                            padding:2px 6px;letter-spacing:1px;font-weight:900">TUA</div>
+                            padding:2px 6px;letter-spacing:1px;font-weight:900">{{ $t('pesca.yours') }}</div>
               </div>
             </div>
           </div>
@@ -207,7 +207,7 @@ const cardBackStyle = {
               >
                 <div style="background:rgba(255,214,102,0.85);border-radius:4px;
                             font-family:'Orbitron',sans-serif;font-size:6px;color:#000;
-                            padding:2px 6px;letter-spacing:1px;font-weight:900">TUA</div>
+                            padding:2px 6px;letter-spacing:1px;font-weight:900">{{ $t('pesca.yours') }}</div>
               </div>
             </div>
           </div>
@@ -265,7 +265,7 @@ const cardBackStyle = {
             padding:'11px 32px', cursor:'pointer', letterSpacing:'2px'
           }"
           @click="onComplete"
-        >CONTINUA</button>
+        >{{ $t('pesca.continue') }}</button>
       </div>
     </div>
   </div>

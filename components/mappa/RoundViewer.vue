@@ -6,6 +6,8 @@ import {
   initBattleTeam,
   generateCPUMovesFromCatalog,
 } from '~/utils/battleEngine'
+
+const { t } = useI18n()
 import { useAuthStore } from '~/stores/auth'
 
 // ── Costanti locali (da _shared.jsx) ─────────────────────────────────────────
@@ -224,15 +226,14 @@ const roster5E = computed(() => {
 })
 
 // ── Computed per la fase pre-round ────────────────────────────────────────────
-const cpuDifficultyLabel = computed(() => {
-  const d = props.battle?.cpuDifficulty ?? 'easy'
-  return d.charAt(0).toUpperCase() + d.slice(1)
-})
+const cpuDifficultyLabel = computed(() =>
+  t('map.diff_' + (props.battle?.cpuDifficulty ?? 'easy'))
+)
 
 const battleName = computed(() =>
   props.battle?.isRaid ? (props.battle?.name ?? 'Waifu Raid')
   : props.battle?.defenderUid === 'CPU' ? 'CPU'
-  : 'Avversario'
+  : t('battle.opponent')
 )
 
 // ── Gestori fasi ──────────────────────────────────────────────────────────────
@@ -315,21 +316,21 @@ const primaryBtn = computed(() => ({
     }"
   >
     <div :style="{ fontFamily: FF.label, fontSize: '23px', letterSpacing: '0.28em', color: C.sakura, textTransform: 'uppercase', marginBottom: '4px', fontWeight: 700 }">
-      {{ battle?.isRaid ? 'Raid Boss' : 'Battaglia' }}
+      {{ battle?.isRaid ? $t('battle.raid_boss') : $t('battle.battle_label') }}
     </div>
     <div :style="{ fontFamily: FF.label, fontSize: '14px', letterSpacing: '0.18em', color: 'var(--theme-text-2)', textTransform: 'uppercase', marginBottom: '12px' }">
-      Round unico
+      {{ $t('battle.round_single') }}
     </div>
     <div :style="{ fontFamily: FF.display, fontSize: '28px', color: 'var(--theme-text)', fontWeight: 900, marginBottom: '6px', textAlign: 'center' }">
-      Inizia battaglia!
+      {{ $t('battle.start_battle_excl') }}
     </div>
     <div :style="{ fontFamily: FF.body, fontSize: '14px', color: 'var(--theme-text-2)', marginBottom: '40px' }">
-      Difficoltà CPU: <strong :style="{ color: isDark ? C.aqua : '#0891b2', textTransform: 'uppercase' }">{{ cpuDifficultyLabel }}</strong>
+      {{ $t('battle.cpu_difficulty') }} <strong :style="{ color: isDark ? C.aqua : '#0891b2', textTransform: 'uppercase' }">{{ cpuDifficultyLabel }}</strong>
     </div>
 
     <div :style="{ display: 'flex', gap: '12px', width: '100%', maxWidth: '340px' }">
-      <button @click="emit('chiudi')" :style="ghostBtn">Indietro</button>
-      <button @click="phase = 'pick'" :style="primaryBtn">Combatti</button>
+      <button @click="emit('chiudi')" :style="ghostBtn">{{ $t('battle.back') }}</button>
+      <button @click="phase = 'pick'" :style="primaryBtn">{{ $t('battle.fight') }}</button>
     </div>
   </div>
 

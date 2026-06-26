@@ -3,6 +3,8 @@
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
 import { ikUrl } from '~/utils/imagekitUrl'
+
+const { t } = useI18n()
 import {
   collection, query, where, orderBy, onSnapshot, doc,
 } from 'firebase/firestore'
@@ -235,7 +237,7 @@ const MEDAL = ['🥇', '🥈', '🥉']
       <!-- Header -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <div>
-          <div :style="{ fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.28em', color: 'var(--theme-accent-pink)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '2px' }">Evento</div>
+          <div :style="{ fontFamily: FF.label, fontSize: '10px', letterSpacing: '0.28em', color: 'var(--theme-accent-pink)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '2px' }">{{ $t('raid.event') }}</div>
           <div :style="{ fontFamily: FF.display, fontSize: '22px', color: 'var(--theme-text)', fontWeight: 900 }">Raid Island</div>
         </div>
         <button @click="emit('chiudi')" :style="{ background:'none', border:'none', color:'var(--theme-text-2)', fontSize:'20px', cursor:'pointer', fontFamily: FF.label }">✕</button>
@@ -255,14 +257,14 @@ const MEDAL = ['🥇', '🥈', '🥉']
             fontFamily: FF.label, fontSize: '11px', fontWeight: 800,
             letterSpacing: '0.12em', textTransform: 'uppercase', transition: 'color 0.18s',
           }"
-        >{{ t === 'dettaglio' ? '⚔ Dettaglio' : '🏆 Classifica' }}</button>
+        >{{ t === 'dettaglio' ? $t('raid.detail_tab') : $t('raid.leaderboard_tab') }}</button>
       </div>
 
       <!-- Nessun raid attivo -->
       <div
         v-if="!raid"
         :style="{ textAlign:'center', padding:'40px', color:'var(--theme-text-3)', fontFamily: FF.body, fontSize:'14px' }"
-      >Nessun raid attivo al momento</div>
+      >{{ $t('raid.no_raid_active') }}</div>
 
       <!-- ── TAB DETTAGLIO ─────────────────────────────────────────── -->
       <template v-else-if="tab === 'dettaglio'">
@@ -356,7 +358,7 @@ const MEDAL = ['🥇', '🥈', '🥉']
             padding:'0 16px 14px', borderTop:'1px solid rgba(6,214,160,0.15)',
           }">
             <div :style="{ fontFamily: FF.label, fontSize: '11px', color: '#f59e0b', letterSpacing:'0.18em', textTransform:'uppercase', margin:'12px 0 8px' }">
-              {{ isCompleted ? 'Premio da riscuotere' : 'Premio atteso' }}
+              {{ isCompleted ? $t('raid.reward_to_claim') : $t('raid.reward_expected') }}
             </div>
             <div :style="{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'10px' }">
               <span :style="{ fontFamily: FF.label, fontSize: '18px', color: '#f5c560', fontWeight: 800 }">
@@ -382,7 +384,7 @@ const MEDAL = ['🥇', '🥈', '🥉']
             <button
               @click="emit('battle', { ...raid, cpuDifficulty: myParticipation?.cpuDifficulty ?? 'medium' })"
               :style="{ flex:1, padding:'14px', background:'linear-gradient(135deg,#ec4899,#a855f7)', border:'none', borderRadius:'999px', color:'#fff', fontFamily:FF.label, fontSize:'13px', fontWeight:700, cursor:'pointer', letterSpacing:'0.12em', boxShadow:'0 4px 20px rgba(236,72,153,0.4)', textTransform:'uppercase' }"
-            >⚔ Combatti</button>
+            >⚔ {{ $t('battle.fight') }}</button>
             <!-- Chip info -->
             <button
               @click="showInfo = true"
@@ -413,16 +415,16 @@ const MEDAL = ['🥇', '🥈', '🥉']
             boxShadow:'0 24px 60px var(--theme-shadow)',
           }">
             <div :style="{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }">
-              <div :style="{ fontFamily:FF.display, fontSize:'18px', fontWeight:900, color:'var(--theme-text)' }">Come funziona</div>
+              <div :style="{ fontFamily:FF.display, fontSize:'18px', fontWeight:900, color:'var(--theme-text)' }">{{ $t('raid.how_it_works') }}</div>
               <button @click="showInfo = false" :style="{ background:'none', border:'none', color:'var(--theme-text-2)', fontSize:'20px', cursor:'pointer', fontFamily:FF.label }">✕</button>
             </div>
             <div :style="{ display:'flex', flexDirection:'column', gap:'12px' }">
               <div
                 v-for="row in [
-                  { icon:'⚔', text:'Unisciti agli altri giocatori per portare gli HP della Waifu Raid a 0.' },
-                  { icon:'🛡', text:'Dovrai sconfiggere la Waifu Raid e il suo team in battaglia.' },
-                  { icon:'💥', text:'Ogni vittoria riduce la vita della Waifu Raid di 100 HP. Ogni sconfitta la ripristina di 100 HP.' },
-                  { icon:'🏆', text:'I primi 3 classificati per danno inflitto si aggiudicheranno la carta esclusiva della Waifu Raid.' },
+                  { icon:'⚔', text: $t('raid.info1') },
+                  { icon:'🛡', text: $t('raid.info2') },
+                  { icon:'💥', text: $t('raid.info3') },
+                  { icon:'🏆', text: $t('raid.info4') },
                 ]"
                 :key="row.icon"
                 :style="{ display:'flex', gap:'12px', alignItems:'flex-start' }"
@@ -440,7 +442,7 @@ const MEDAL = ['🥇', '🥈', '🥉']
                 fontFamily:FF.label, fontSize:'12px', fontWeight:700,
                 letterSpacing:'0.15em', textTransform:'uppercase', cursor:'pointer',
               }"
-            >Capito!</button>
+            >{{ $t('raid.got_it') }}</button>
           </div>
         </div>
 
@@ -457,15 +459,15 @@ const MEDAL = ['🥇', '🥈', '🥉']
             cursor: claiming ? 'not-allowed' : 'pointer', letterSpacing: '0.12em', textTransform: 'uppercase',
           }"
         >
-          <template v-if="claiming">⏳ Riscossione…</template>
+          <template v-if="claiming">{{ $t('raid.claiming') }}</template>
           <template v-else>
-            🎁 RISCUOTI PREMI<template v-if="myPrize"> (+{{ myPrize.kisses.toLocaleString() }} <KissesIcon :size="12" />)</template>
+            {{ $t('raid.claim_rewards') }}<template v-if="myPrize"> (+{{ myPrize.kisses.toLocaleString() }} <KissesIcon :size="12" />)</template>
           </template>
         </button>
         <div
           v-if="claimed"
           :style="{ textAlign: 'center', color: '#06d6a0', fontFamily: FF.label, fontSize: '11px', padding: '8px 0' }"
-        >✓ Premi riscossi</div>
+        >{{ $t('raid.rewards_claimed') }}</div>
       </template>
 
       <!-- ── TAB CLASSIFICA ────────────────────────────────────────── -->
@@ -484,19 +486,19 @@ const MEDAL = ['🥇', '🥈', '🥉']
         <!-- Errore generico -->
         <div v-else-if="rankingError === 'error'"
           :style="{ textAlign:'center', padding:'32px 0', color:'#ff5b6c', fontFamily:FF.label, fontSize:'14px' }"
-        >Errore nel caricamento della classifica</div>
+        >{{ $t('raid.leaderboard_error') }}</div>
 
         <!-- Nessun partecipante -->
         <div v-else-if="ranking.length === 0"
           :style="{ textAlign:'center', padding:'32px 0', color:'var(--theme-text-3)', fontFamily:FF.label, fontSize:'14px' }"
-        >Nessun partecipante ancora</div>
+        >{{ $t('raid.no_participants') }}</div>
 
         <!-- Lista classifica -->
         <div v-else :style="{ display:'flex', flexDirection:'column', gap:'8px' }">
           <!-- Header premi -->
           <div :style="{ padding:'12px 14px', background:'rgba(245,158,11,0.07)', border:'1px solid rgba(245,158,11,0.2)', borderRadius:'12px', marginBottom:'4px' }">
             <div :style="{ fontFamily:FF.label, fontSize:'11px', color:'#f59e0b', marginBottom:'10px', letterSpacing:'0.18em', textTransform:'uppercase', fontWeight:700 }">
-              {{ isCompleted ? 'Premi assegnati — riscuoti nel tab Dettaglio' : 'Premi (riscuotibili al termine del raid)' }}
+              {{ isCompleted ? $t('raid.rewards_assigned') : $t('raid.rewards_title') }}
             </div>
             <!-- 3 colonne: posizione | kisses | waifu -->
             <div :style="{ display:'grid', gridTemplateColumns:'70px 1fr auto', alignItems:'center', gap:'8px 10px' }">
@@ -543,7 +545,7 @@ const MEDAL = ['🥇', '🥈', '🥉']
               <!-- Riga 1: nome | danno HP -->
               <div :style="{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:'8px', marginBottom:'4px' }">
                 <div :style="{ fontFamily:FF.label, fontSize:'18px', fontWeight:800, color:p.uid === authStore.uid ? '#06d6a0' : 'var(--theme-text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }">
-                  {{ p.nomeImpero ?? 'Ignoto' }}<span v-if="p.uid === authStore.uid" :style="{ fontWeight:400, opacity:.55, fontSize:'14px' }"> (tu)</span>
+                  {{ p.nomeImpero ?? $t('raid.unknown') }}<span v-if="p.uid === authStore.uid" :style="{ fontWeight:400, opacity:.55, fontSize:'14px' }">{{ $t('raid.you_suffix') }}</span>
                 </div>
                 <div :style="{ fontFamily:FF.label, fontSize:'14px', fontWeight:700, color:(p.damageDealt ?? 0) > 0 ? '#ff5b6c' : 'var(--theme-text-3)', flexShrink:0 }">
                   {{ (p.damageDealt ?? 0) > 0 ? `-${(p.damageDealt).toLocaleString()} HP` : '—' }}

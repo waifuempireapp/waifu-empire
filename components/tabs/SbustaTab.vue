@@ -59,6 +59,7 @@ const emit = defineEmits<{
 }>()
 
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 // ── Anti-FOUC: overlay full-page finché la bustina 3D non ha renderizzato ──
 // Aspetta che un <canvas> Three.js compaia e abbia dimensioni reali.
@@ -151,7 +152,7 @@ async function _generaEAggiorna(tipoPacchetto: string, nuovaCollezione: any) {
   const wp = drop?.waifuIds ? filteredWaifuCat.filter((w: any) => drop.waifuIds.includes(w.id)) : filteredWaifuCat
   const mp = props.mosseCat
   if (wp.length === 0) {
-    emit('notif', 'Nessuna waifu nel drop attivo.', C.err)
+    emit('notif', t('sbusta.no_waifu_in_drop'), C.err)
     return null
   }
   const escludiDoppioni = tipoPacchetto === 'benvenuto'
@@ -307,7 +308,7 @@ function sequenzaMista(max: number): string[] {
 async function apriMultiSequenza(seq: string[]) {
   const uid = authStore.user?.uid
   if (!uid || !props.collezione) return
-  if (seq.length < 1) { emit('notif', 'Nessun pacchetto disponibile.', C.err); return }
+  if (seq.length < 1) { emit('notif', t('sbusta.no_pack_available'), C.err); return }
 
   const nuova = JSON.parse(JSON.stringify(props.collezione))
   const tuttiIPacchetti: any[][] = []
@@ -605,9 +606,9 @@ async function acquistaSfidaConKisses(qty = 1) {
     const newSfid = Number(props.profilo?.pacchettiSfida ?? 0) + pAgg
     emit('updateProfilo', { kisses: newKisses, pacchettiSfida: newSfid })
     if (qty === 1) popupApertura.value = { tipoPacchetto: 'sfida' }
-    else emit('notif', `+${pAgg} bustine sfida aggiunte!`, '#ff8c00')
+    else emit('notif', t('sbusta.packs_added', { n: pAgg }), '#ff8c00')
   } catch (e: any) {
-    emit('notif', e?.data?.error || 'Errore acquisto', C.err)
+    emit('notif', e?.data?.error || t('sbusta.buy_error'), C.err)
   }
 }
 
@@ -779,7 +780,7 @@ function cfTouchEnd(e: TouchEvent) {
       @click.stop
     >
       <FastForward class="reveal-ff-btn__chev" :size="16" :stroke-width="2.5" fill="currentColor" />
-      <span class="reveal-ff-btn__label">Salta</span>
+      <span class="reveal-ff-btn__label">{{ $t('sbusta.skip') }}</span>
     </button>
 
     <!-- 1a. APRI 10 — stack FERMO → (tap) → uscita una alla volta -->
@@ -794,8 +795,8 @@ function cfTouchEnd(e: TouchEvent) {
       @click="onStackTap">
       <!-- Contatore / titolo -->
       <p class="pack-stack-label">
-        <template v-if="multiPhase === 'exiting'">{{ multiExitedCount }} di {{ multiPackCarte.length }}</template>
-        <template v-else>{{ multiPackCarte.length }} Bustine</template>
+        <template v-if="multiPhase === 'exiting'">{{ $t('sbusta.exit_count', { n: multiExitedCount, total: multiPackCarte.length }) }}</template>
+        <template v-else>{{ $t('sbusta.n_packs_label', { n: multiPackCarte.length }) }}</template>
       </p>
 
       <div class="pack-stack-container">
@@ -812,10 +813,10 @@ function cfTouchEnd(e: TouchEvent) {
       </div>
 
       <!-- Hint pulsante (solo a stack fermo) -->
-      <p v-if="multiPhase === 'stack'" class="pack-stack-hint">▶ Tocca per aprire</p>
+      <p v-if="multiPhase === 'stack'" class="pack-stack-hint">{{ $t('sbusta.tap_to_open') }}</p>
 
       <!-- SALTA → solo durante l'uscita -->
-      <button v-if="multiPhase === 'exiting'" class="multi-skip-btn" @click.stop="skipMultiOpening">SALTA ▸▸</button>
+      <button v-if="multiPhase === 'exiting'" class="multi-skip-btn" @click.stop="skipMultiOpening">{{ $t('sbusta.skip_exit') }}</button>
     </div>
 
     <!-- 1b. APRI 1 — FASE DI SBUSTO INTERATTIVA (tap per aprire) -->
@@ -829,7 +830,7 @@ function cfTouchEnd(e: TouchEvent) {
       @click="eseguiTaglioBustina">
       <div style="text-align: center; margin-bottom: 32px; padding: 0 30px; animation: pulseSoft 2s infinite;">
         <p :style="{ fontFamily: FF.label, fontSize: '15px', color: 'var(--theme-text-2)', textTransform: 'uppercase', letterSpacing: '3px', fontWeight: 700 }">
-          ▶ Tocca per aprire
+          {{ $t('sbusta.tap_to_open') }}
         </p>
       </div>
 
@@ -864,8 +865,8 @@ function cfTouchEnd(e: TouchEvent) {
         </div>
         <div
           :style="{ fontFamily: FF.label, fontSize: '16px', color: C.violet, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 800 }">
-          <template v-if="stato === 'reveal_multi'">Bustina {{ multiPackIndice + 1 }} — </template>
-          Carta {{ Math.max(1, indiceRivelato + 1) }} di {{ carteRivelate.length }}
+          <template v-if="stato === 'reveal_multi'">{{ $t('sbusta.card_progress_multi', { pack: multiPackIndice + 1, n: Math.max(1, indiceRivelato + 1), total: carteRivelate.length }) }}</template>
+          <template v-else>{{ $t('sbusta.card_progress', { n: Math.max(1, indiceRivelato + 1), total: carteRivelate.length }) }}</template>
         </div>
       </div>
 
@@ -924,16 +925,16 @@ function cfTouchEnd(e: TouchEvent) {
         </div>
         <div v-if="indiceRivelato >= carteRivelate.length - 1"
           style="margin-top:18px;font-family:var(--ff-label);font-size:11px;letter-spacing:0.22em;color:var(--theme-text-3);text-transform:uppercase;animation:pulseSoft 1.6s ease-in-out infinite;pointer-events:none;">
-          <template v-if="stato === 'reveal_multi' && multiPackIndice < multiPackCarte.length - 1">Tocca per la prossima bustina →</template>
-          <template v-else>Tocca per il riepilogo →</template>
+          <template v-if="stato === 'reveal_multi' && multiPackIndice < multiPackCarte.length - 1">{{ $t('sbusta.tap_next_pack') }}</template>
+          <template v-else>{{ $t('sbusta.tap_for_summary') }}</template>
         </div>
       </div>
 
       <!-- Intermezzo tra bustine (APRI 10): "Bustina X completata" -->
       <Transition name="fade">
         <div v-if="multiPackDivider" class="multi-pack-divider">
-          <span class="multi-pack-divider__done">Bustina {{ multiPackIndice + 1 }} completata</span>
-          <span class="multi-pack-divider__next">Bustina {{ multiPackIndice + 2 }} →</span>
+          <span class="multi-pack-divider__done">{{ $t('sbusta.pack_divider_done', { n: multiPackIndice + 1 }) }}</span>
+          <span class="multi-pack-divider__next">{{ $t('sbusta.pack_divider_next', { n: multiPackIndice + 2 }) }}</span>
         </div>
       </Transition>
     </template>
@@ -948,8 +949,8 @@ function cfTouchEnd(e: TouchEvent) {
           @ended="sbusVideoFinito = true" />
       </div>
       <div v-if="sbusVideoFinito" @click.stop style="margin-top: 20px; display: flex; gap: 12px;">
-        <BtnDecorato variant="secondary" size="md" @click="rivediVideoSbusto">↺ Rivedi</BtnDecorato>
-        <BtnDecorato variant="danger" size="md" @click="chiudiVideoSbusto">✕ Chiudi</BtnDecorato>
+        <BtnDecorato variant="secondary" size="md" @click="rivediVideoSbusto">{{ $t('sbusta.rewatch') }}</BtnDecorato>
+        <BtnDecorato variant="danger" size="md" @click="chiudiVideoSbusto">{{ $t('sbusta.close') }}</BtnDecorato>
       </div>
     </div>
   </div>
@@ -1187,7 +1188,7 @@ function cfTouchEnd(e: TouchEvent) {
                 letterSpacing:'0.1em', textTransform:'uppercase',
                 display:'flex', alignItems:'center', justifyContent:'center',
                 opacity: totalePacchetti > 0 ? 1 : 0.4, transition:'opacity 0.2s',
-              }">APRI 1</button>
+              }">{{ $t('sbusta.open_1_main') }}</button>
 
             <!-- APRI 10 — abilitato solo con almeno 10 pacchetti totali -->
             <button
@@ -1203,7 +1204,7 @@ function cfTouchEnd(e: TouchEvent) {
                 letterSpacing:'0.08em', textTransform:'uppercase',
                 display:'flex', alignItems:'center', justifyContent:'center',
                 opacity: totalePacchetti >= 10 ? 1 : 0.4, transition:'opacity 0.2s',
-              }">APRI 10</button>
+              }">{{ $t('sbusta.open_10_main') }}</button>
 
           </div>
 
@@ -1211,10 +1212,10 @@ function cfTouchEnd(e: TouchEvent) {
           <div style="text-align:center;padding:2px 0;">
             <template v-if="totalePacchetti > 0">
               <span :style="{ fontFamily:FF.label, fontSize:'22px', fontWeight:900, color:C.gold }">{{ totalePacchetti }}</span>
-              <span :style="{ fontFamily:FF.label, fontSize:'12px', letterSpacing:'0.16em', color:'var(--theme-text-3)', marginLeft:'8px', textTransform:'uppercase' }">pacchetti disponibili</span>
+              <span :style="{ fontFamily:FF.label, fontSize:'12px', letterSpacing:'0.16em', color:'var(--theme-text-3)', marginLeft:'8px', textTransform:'uppercase' }">{{ $t('sbusta.packs_available_label') }}</span>
             </template>
             <template v-else>
-              <span :style="{ fontFamily:FF.label, fontSize:'12px', letterSpacing:'0.16em', color:'var(--theme-text-3)', textTransform:'uppercase' }">nessun pacchetto disponibile</span>
+              <span :style="{ fontFamily:FF.label, fontSize:'12px', letterSpacing:'0.16em', color:'var(--theme-text-3)', textTransform:'uppercase' }">{{ $t('sbusta.no_pack_available') }}</span>
             </template>
           </div>
         </div>
@@ -1252,12 +1253,12 @@ function cfTouchEnd(e: TouchEvent) {
 
       <!-- Titolo -->
       <div :style="{fontFamily:`var(--ff-display,'Unbounded',sans-serif)`,fontSize:'17px',fontWeight:900,letterSpacing:'0.1em',color:popupColor.main,textTransform:'uppercase',marginBottom:'5px',textShadow:`0 0 22px ${popupColor.main}88`}">
-        PACCHETTO {{ popupApertura.tipoPacchetto === 'omaggio' ? 'OMAGGIO' : popupApertura.tipoPacchetto === 'sfida' ? 'SFIDA' : 'BENVENUTO' }}
+        {{ $t('sbusta.pack_modal_title', { type: $t('sbusta.pack_' + popupApertura.tipoPacchetto) }) }}
       </div>
 
       <!-- Quantità -->
       <div style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:12px;color:rgba(148,192,232,0.75);margin-bottom:26px;letter-spacing:0.04em;">
-        {{ contaPackPopup }} disponibili
+        {{ $t('sbusta.available_count', { n: contaPackPopup }) }}
       </div>
 
       <!-- Bottoni -->
@@ -1265,13 +1266,13 @@ function cfTouchEnd(e: TouchEvent) {
         <!-- APRI 1 -->
         <button @click="() => { const t = popupApertura!.tipoPacchetto; popupApertura = null; apri(t) }"
           :style="{width:'100%',padding:'15px 24px',borderRadius:'999px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',background:popupColor.btn1,border:`1.5px solid ${popupColor.border}`,boxShadow:`0 4px 24px ${popupColor.glow},inset 0 1px 0 rgba(255,255,255,0.1)`,fontFamily:`var(--ff-display,'Unbounded',sans-serif)`,fontSize:'15px',fontWeight:800,color:popupColor.btn1txt,letterSpacing:'0.12em',textTransform:'uppercase'}">
-          <span style="font-size:18px;line-height:1;">🃏</span> APRI 1
+          <span style="font-size:18px;line-height:1;">🃏</span> {{ $t('sbusta.open_1_main') }}
         </button>
         <!-- APRI 10 -->
         <button v-if="contaPackPopup >= 2"
           @click="() => { const t = popupApertura!.tipoPacchetto; popupApertura = null; apriMulti(t) }"
           :style="{width:'100%',padding:'15px 20px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',background:popupColor.btn2bg,border:`1.5px solid ${popupColor.btn2border}`,boxShadow:`0 4px 18px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.04)`,fontFamily:`var(--ff-display,'Unbounded',sans-serif)`,fontSize:'13px',fontWeight:800,color:popupColor.btn2txt,letterSpacing:'0.08em',textTransform:'uppercase',borderRadius:'8px',clipPath:'polygon(14px 0%,calc(100% - 14px) 0%,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0% calc(100% - 14px),0% 14px)'}">
-          <span style="font-size:18px;line-height:1;">🃏</span> ×10 APRI TUTTI
+          <span style="font-size:18px;line-height:1;">🃏</span> {{ $t('sbusta.open_all') }}
         </button>
       </div>
 
@@ -1295,26 +1296,26 @@ function cfTouchEnd(e: TouchEvent) {
       padding: '24px 26px', maxWidth: '320px', width: '100%', textAlign: 'center',
       boxShadow: `var(--shadow-card-p), 0 0 36px ${C.sakura}33`,
     }">
-      <div :style="{ fontFamily: FF.label, fontSize: '11px', color: C.sakura, letterSpacing: '0.32em', marginBottom: '10px', textTransform: 'uppercase', fontWeight: 700 }">Acquista Bustina</div>
-      <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', marginBottom: '18px' }">Scegli quante bustine Sfida acquistare:</div>
+      <div :style="{ fontFamily: FF.label, fontSize: '11px', color: C.sakura, letterSpacing: '0.32em', marginBottom: '10px', textTransform: 'uppercase', fontWeight: 700 }">{{ $t('sbusta.buy_pack_title') }}</div>
+      <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', marginBottom: '18px' }">{{ $t('sbusta.choose_qty') }}</div>
       <div :style="{ display: 'flex', flexDirection: 'column', gap: '9px', marginBottom: '16px' }">
         <button @click="acquistaSfidaConKisses(1)" :style="{
           background: `${C.sakura}1f`, border: `1px solid ${C.sakura}66`, borderRadius: '10px', color: C.sakuraL,
           fontFamily: FF.label, fontSize: '10px', fontWeight: 700, padding: '11px 16px', cursor: 'pointer',
           letterSpacing: '0.18em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-        }">🎁 1 bustina · {{ SFIDA_COSTO_KISSES }} Kisses</button>
+        }">{{ $t('sbusta.pack_1x', { cost: SFIDA_COSTO_KISSES }) }}</button>
         <button @click="(profilo?.kisses ?? 0) >= SFIDA_COSTO_10 ? acquistaSfidaConKisses(10) : (sfidaConferma = false, sfidaShortage = true)" :style="{
           background: `linear-gradient(135deg, ${C.gold}26, ${C.sakura}1f)`, border: `1px solid ${C.gold}66`,
           borderRadius: '10px', color: C.goldL, fontFamily: FF.label, fontSize: '10px', fontWeight: 700,
           padding: '11px 16px', cursor: 'pointer', letterSpacing: '0.18em', textTransform: 'uppercase',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-        }">🎁×10 · {{ SFIDA_COSTO_10 }} Kisses</button>
+        }">{{ $t('sbusta.pack_10x', { cost: SFIDA_COSTO_10 }) }}</button>
       </div>
       <button @click="sfidaConferma = false" :style="{
         background: 'none', border: `1px solid ${C.inkLine}`, borderRadius: '9px', color: 'rgba(241,235,255,0.5)',
         fontFamily: FF.label, fontSize: '10px', padding: '10px 16px', cursor: 'pointer', width: '100%',
         letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 600,
-      }">Annulla</button>
+      }">{{ $t('sbusta.cancel') }}</button>
     </div>
   </div>
 

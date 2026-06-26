@@ -20,6 +20,8 @@ const emit = defineEmits<{
   indietro:      []
 }>()
 
+const { t } = useI18n()
+
 // ── Colori ───────────────────────────────────────────────────────────────────
 const C = {
   gold:    '#f5c560',
@@ -108,7 +110,7 @@ async function claimMission(m: DailyMission) {
   } else if (m.reward.pack) {
     const curPacks = Number(props.profilo?.pacchettiOmaggio ?? 0)
     emit('updateProfilo', { pacchettiOmaggio: curPacks + m.reward.pack })
-    emit('notif', `+${m.reward.pack} bustina ricevuta!`, C.gold)
+    emit('notif', t("missions.pack_received", { n: m.reward.pack }), C.gold)
   }
 }
 
@@ -222,9 +224,7 @@ onUnmounted(() => {
         </svg>
       </button>
 
-      <div :style="{ fontFamily:FF.display, fontSize:'22px', fontWeight:900, color:'var(--theme-text)', marginBottom:'16px', lineHeight:1.2 }">
-        Missioni Giornaliere
-      </div>
+      <div :style="{ fontFamily:FF.display, fontSize:'22px', fontWeight:900, color:'var(--theme-text)', marginBottom:'16px', lineHeight:1.2 }">{{ $t("missions.title") }}</div>
     </div>
 
     <!-- ── SUB-TAB SELECTOR — bottone unico diviso a metà ───────────────── -->
@@ -238,7 +238,7 @@ onUnmounted(() => {
           color: subTab === 'giornaliere' ? '#fff' : 'var(--theme-accent)',
           textTransform:'uppercase', transition:'all 0.2s', borderRadius:'0 !important',
         }"
-      >Giornaliere</button>
+      >{{ $t("missions.daily_tab") }}</button>
       <button
         @click="subTab = 'mappa'; if (!activeMission && !mapLoading) loadMapMission()"
         :style="{
@@ -248,7 +248,7 @@ onUnmounted(() => {
           color: subTab === 'mappa' ? '#fff' : 'var(--theme-accent)',
           textTransform:'uppercase', transition:'all 0.2s', borderRadius:'0 !important',
         }"
-      >Mappa</button>
+      >{{ $t("missions.map_tab") }}</button>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════════════
@@ -273,7 +273,7 @@ onUnmounted(() => {
               display:'flex', alignItems:'center', justifyContent:'center', gap:'6px',
             }"
           >
-            <Gift :size="13" stroke-width="1.5" />In Corso
+            <Gift :size="13" stroke-width="1.5" />{{ $t('missions.filter_in_progress') }}
           </button>
           <button
             @click="filterView = 'completate'"
@@ -287,14 +287,14 @@ onUnmounted(() => {
               display:'flex', alignItems:'center', justifyContent:'center', gap:'6px',
             }"
           >
-            <CheckCircle :size="13" stroke-width="1.5" />Completate
+            <CheckCircle :size="13" stroke-width="1.5" />{{ $t('missions.filter_completed') }}
           </button>
         </div>
 
         <!-- Reset countdown — sotto, tutta la larghezza, centrato -->
         <div style="display:flex;align-items:center;justify-content:center;gap:5px;width:100%;"
           :style="{ fontFamily:FF.mono, fontSize:'12px', color:'var(--theme-text-3)' }">
-          <Clock :size="12" stroke-width="1.5" />Reset tra {{ resetCountdown }}
+          <Clock :size="12" stroke-width="1.5" />{{ $t('missions.reset_in', { time: resetCountdown }) }}
         </div>
 
       </div>
@@ -303,7 +303,7 @@ onUnmounted(() => {
       <div style="flex-shrink:0;margin-bottom:14px;">
         <div style="display:flex;align-items:center;gap:8px;">
           <div :style="{ fontFamily:FF.label, fontSize:'15px', color:'var(--theme-text-2)', letterSpacing:'0.06em', fontWeight:600 }">
-            {{ completedCount }}/{{ DAILY_MISSIONS.length }} completate
+            {{ $t('missions.progress_completed', { n: completedCount, total: DAILY_MISSIONS.length }) }}
           </div>
           <!-- Barra progresso totale -->
           <div style="flex:1;height:4px;background:var(--theme-border);border-radius:999px;overflow:hidden;">
@@ -325,7 +325,7 @@ onUnmounted(() => {
           style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;text-align:center;">
           <CheckCircle :size="36" stroke-width="1" style="color:#58e0a3;opacity:0.5;" />
           <div :style="{ fontFamily:FF.body, fontSize:'15px', color:'var(--theme-text-3)' }">
-            {{ filterView === 'completate' ? 'Nessuna missione completata ancora' : 'Tutte le missioni completate!' }}
+            {{ filterView === 'completate' ? $t('missions.none_completed') : $t('missions.all_completed') }}
           </div>
         </div>
 
@@ -367,7 +367,7 @@ onUnmounted(() => {
             <!-- Testo + reward -->
             <div style="flex:1;min-width:0;">
               <div :style="{ fontFamily:FF.display, fontSize:'16px', fontWeight:800, color:'#fff', marginBottom:'4px', lineHeight:1.3 }">
-                {{ m.label }}
+                {{ $t('missions.task_' + m.key + '_label') }}
               </div>
               <!-- Reward pill -->
               <div :style="{
@@ -408,7 +408,7 @@ onUnmounted(() => {
                 boxShadow:`0 4px 14px rgba(88,224,163,0.4)`, flexShrink:0,
                 whiteSpace:'nowrap',
               }"
-            >CLAIM</button>
+            >{{ $t("missions.claim") }}</button>
             <div v-else-if="isMissionClaimed(m)"
               :style="{ fontFamily:FF.label, fontSize:'12px', color:`${C.ok}99`, fontWeight:700, flexShrink:0, paddingTop:'4px' }"
             >✓</div>
@@ -482,20 +482,20 @@ onUnmounted(() => {
       <div v-else style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:20px;">
         <Target :size="44" stroke-width="1" style="opacity:0.4;color:#e879f9;" />
         <template v-if="nextCountdown">
-          <div :style="{ fontFamily:FF.display, fontSize:'15px', fontWeight:800, color:'var(--theme-text-2)' }">Prossima missione tra</div>
+          <div :style="{ fontFamily:FF.display, fontSize:'15px', fontWeight:800, color:'var(--theme-text-2)' }">{{ $t("missions.next_mission_in") }}</div>
           <div :style="{ fontFamily:FF.mono, fontSize:'28px', fontWeight:800, color:'#e879f9', letterSpacing:'0.05em', fontVariantNumeric:'tabular-nums' }">
             {{ nextCountdown }}
           </div>
         </template>
         <template v-else>
-          <div :style="{ fontFamily:FF.display, fontSize:'15px', fontWeight:800, color:'var(--theme-text-2)' }">Nessuna missione attiva</div>
+          <div :style="{ fontFamily:FF.display, fontSize:'15px', fontWeight:800, color:'var(--theme-text-2)' }">{{ $t("missions.no_active_mission") }}</div>
           <div :style="{ fontFamily:FF.body, fontSize:'13px', color:'var(--theme-text-3)', lineHeight:1.5 }">
             Le missioni si rinnovano ogni 2 ore.
           </div>
         </template>
         <button @click="loadMapMission"
           style="padding:12px 28px;background:rgba(232,121,249,0.08);border:1.5px solid rgba(232,121,249,0.3);border-radius:999px;color:#e879f9;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.12em;text-transform:uppercase;"
-        >↺ Aggiorna</button>
+        >{{ $t("missions.refresh") }}</button>
       </div>
 
     </div>

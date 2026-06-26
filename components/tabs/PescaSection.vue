@@ -23,6 +23,7 @@ const emit = defineEmits<{
 
 // ── Auth ──────────────────────────────────────────────────────
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 // ── Tipo minimo di un pack snapshot nel feed ──────────────────
 interface CartaPack {
@@ -108,7 +109,7 @@ async function caricaFeed() {
     packs.value = data.packs ?? []
     await preloadAllImages(packs.value)
   } catch (e: any) {
-    error.value = e?.message ?? 'Errore caricamento feed'
+    error.value = e?.message ?? t('pesca.feed_error')
     immaginiCaricate.value = true  // sblocca anche su errore
   } finally {
     loading.value = false
@@ -387,12 +388,12 @@ async function confermaScelta() {
   } catch (e: any) {
     const status = (e as any)?.statusCode ?? (e as any)?.status
     if (status === 409) {
-      mostraNotif('Già pescata da qualcun altro!', '#f59e0b')
+      mostraNotif(t('pesca.already_fished_other'), '#f59e0b')
       selectedPack.value = null
       selectedCardIndex.value = null
       await caricaFeed()
     } else {
-      mostraNotif((e as any)?.data?.error ?? (e as any)?.message ?? 'Errore pesca', '#ff4d4d')
+      mostraNotif((e as any)?.data?.error ?? (e as any)?.message ?? t('pesca.fish_error'), '#ff4d4d')
     }
   } finally {
     busy.value = false
@@ -412,7 +413,7 @@ async function chiudiRiveal() {
     packs.value = packs.value.map(p => p.id === fishedId ? { ...p, alreadyFished: true } : p)
     lastFishedId.value = null
   }
-  mostraNotif('Carta aggiunta alla collezione! 🎉', '#00e676')
+  mostraNotif(t('pesca.card_added'), '#00e676')
   emit('updateCollezione', null)
   // Ricarica il feed dal server per avere la lista aggiornata — NON chiude PescaSection
   caricaFeed()
@@ -434,7 +435,7 @@ async function onRivelazioneFine() {
     )
     lastFishedId.value = null
   }
-  mostraNotif('Carta aggiunta alla collezione!', '#00e676')
+  mostraNotif(t('pesca.card_added'), '#00e676')
   emit('updateCollezione', null)
 }
 
@@ -494,7 +495,7 @@ onUnmounted(() => {
               style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:var(--theme-text);letter-spacing:0.02em;">WAIFU
             </span>
             <span
-              style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:rgb(255, 77, 158);letter-spacing:0.02em;">PESCA</span>
+              style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:rgb(255, 77, 158);letter-spacing:0.02em;">{{ $t('pesca.fish_label') }}</span>
           </div>
         </div>
       </div>
@@ -543,7 +544,7 @@ onUnmounted(() => {
               color: pickPhase === 'pick' ? '#ff4d9e' : 'rgba(238,232,220,0.4)',
               textTransform: 'uppercase', fontWeight: 700, transition: 'color 0.3s',
             }">
-              {{ pickPhase === 'shuffle' ? '⟳ Mescolando...' : 'Scegli una carta' }}
+              {{ pickPhase === 'shuffle' ? $t('pesca.shuffling') : $t('pesca.choose_card') }}
             </div>
           </div>
 
@@ -565,12 +566,12 @@ onUnmounted(() => {
                     <div :style="{position:'absolute',inset:0,transformStyle:'preserve-3d',transition:'transform 0.55s cubic-bezier(0.4,0,0.2,1)',transform:(pickPhase==='revealing'||pickPhase==='revealed')&&inPlaceFlipped.has(0)?'rotateY(180deg)':'rotateY(0deg)'}">
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:13px;overflow:hidden;">
                         <img src="~/assets/images/back_card.png" style="width:100%;height:100%;object-fit:cover;display:block;"/>
-                        <div v-if="pickPhase==='pick'&&selectedCardIndex===0" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div>
+                        <div v-if="pickPhase==='pick'&&selectedCardIndex===0" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">{{ $t('pesca.chosen') }}</div>
                       </div>
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
                         <img v-if="inPlaceCards[0]?.immagine" :src="inPlaceCards[0].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
                         <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
-                        <div v-if="inPlaceNew[0]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">NEW</div>
+                        <div v-if="inPlaceNew[0]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">{{ $t('pesca.new_badge') }}</div>
                         <div v-if="inPlaceCards[0]?.rarita" style="position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,0.6);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#fff;letter-spacing:0.06em;text-transform:capitalize;">{{ inPlaceCards[0].rarita }}</div>
                       </div>
                     </div>
@@ -588,12 +589,12 @@ onUnmounted(() => {
                     <div :style="{position:'absolute',inset:0,transformStyle:'preserve-3d',transition:'transform 0.55s cubic-bezier(0.4,0,0.2,1)',transform:(pickPhase==='revealing'||pickPhase==='revealed')&&inPlaceFlipped.has(1)?'rotateY(180deg)':'rotateY(0deg)'}">
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:13px;overflow:hidden;">
                         <img src="~/assets/images/back_card.png" style="width:100%;height:100%;object-fit:cover;display:block;"/>
-                        <div v-if="pickPhase==='pick'&&selectedCardIndex===1" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div>
+                        <div v-if="pickPhase==='pick'&&selectedCardIndex===1" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">{{ $t('pesca.chosen') }}</div>
                       </div>
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
                         <img v-if="inPlaceCards[1]?.immagine" :src="inPlaceCards[1].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
                         <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
-                        <div v-if="inPlaceNew[1]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">NEW</div>
+                        <div v-if="inPlaceNew[1]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">{{ $t('pesca.new_badge') }}</div>
                         <div v-if="inPlaceCards[1]?.rarita" style="position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,0.6);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#fff;letter-spacing:0.06em;text-transform:capitalize;">{{ inPlaceCards[1].rarita }}</div>
                       </div>
                     </div>
@@ -613,12 +614,12 @@ onUnmounted(() => {
                     <div :style="{position:'absolute',inset:0,transformStyle:'preserve-3d',transition:'transform 0.55s cubic-bezier(0.4,0,0.2,1)',transform:(pickPhase==='revealing'||pickPhase==='revealed')&&inPlaceFlipped.has(2)?'rotateY(180deg)':'rotateY(0deg)'}">
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:13px;overflow:hidden;">
                         <img src="~/assets/images/back_card.png" style="width:100%;height:100%;object-fit:cover;display:block;"/>
-                        <div v-if="pickPhase==='pick'&&selectedCardIndex===2" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div>
+                        <div v-if="pickPhase==='pick'&&selectedCardIndex===2" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">{{ $t('pesca.chosen') }}</div>
                       </div>
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
                         <img v-if="inPlaceCards[2]?.immagine" :src="inPlaceCards[2].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
                         <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
-                        <div v-if="inPlaceNew[2]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">NEW</div>
+                        <div v-if="inPlaceNew[2]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">{{ $t('pesca.new_badge') }}</div>
                         <div v-if="inPlaceCards[2]?.rarita" style="position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,0.6);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#fff;letter-spacing:0.06em;text-transform:capitalize;">{{ inPlaceCards[2].rarita }}</div>
                       </div>
                     </div>
@@ -635,12 +636,12 @@ onUnmounted(() => {
                     <div :style="{position:'absolute',inset:0,transformStyle:'preserve-3d',transition:'transform 0.55s cubic-bezier(0.4,0,0.2,1)',transform:(pickPhase==='revealing'||pickPhase==='revealed')&&inPlaceFlipped.has(3)?'rotateY(180deg)':'rotateY(0deg)'}">
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:13px;overflow:hidden;">
                         <img src="~/assets/images/back_card.png" style="width:100%;height:100%;object-fit:cover;display:block;"/>
-                        <div v-if="pickPhase==='pick'&&selectedCardIndex===3" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div>
+                        <div v-if="pickPhase==='pick'&&selectedCardIndex===3" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">{{ $t('pesca.chosen') }}</div>
                       </div>
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
                         <img v-if="inPlaceCards[3]?.immagine" :src="inPlaceCards[3].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
                         <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
-                        <div v-if="inPlaceNew[3]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">NEW</div>
+                        <div v-if="inPlaceNew[3]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">{{ $t('pesca.new_badge') }}</div>
                         <div v-if="inPlaceCards[3]?.rarita" style="position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,0.6);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#fff;letter-spacing:0.06em;text-transform:capitalize;">{{ inPlaceCards[3].rarita }}</div>
                       </div>
                     </div>
@@ -657,12 +658,12 @@ onUnmounted(() => {
                     <div :style="{position:'absolute',inset:0,transformStyle:'preserve-3d',transition:'transform 0.55s cubic-bezier(0.4,0,0.2,1)',transform:(pickPhase==='revealing'||pickPhase==='revealed')&&inPlaceFlipped.has(4)?'rotateY(180deg)':'rotateY(0deg)'}">
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:13px;overflow:hidden;">
                         <img src="~/assets/images/back_card.png" style="width:100%;height:100%;object-fit:cover;display:block;"/>
-                        <div v-if="pickPhase==='pick'&&selectedCardIndex===4" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">SCELTA</div>
+                        <div v-if="pickPhase==='pick'&&selectedCardIndex===4" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">{{ $t('pesca.chosen') }}</div>
                       </div>
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
                         <img v-if="inPlaceCards[4]?.immagine" :src="inPlaceCards[4].immagine" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
                         <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
-                        <div v-if="inPlaceNew[4]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">NEW</div>
+                        <div v-if="inPlaceNew[4]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">{{ $t('pesca.new_badge') }}</div>
                         <div v-if="inPlaceCards[4]?.rarita" style="position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,0.6);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#fff;letter-spacing:0.06em;text-transform:capitalize;">{{ inPlaceCards[4].rarita }}</div>
                       </div>
                     </div>
@@ -683,7 +684,7 @@ onUnmounted(() => {
 
             <!-- Indicatore "in corso" durante il revealing -->
             <div v-else-if="pickPhase === 'revealing'" style="display:flex;justify-content:center;margin-top:28px;height:52px;align-items:center;">
-              <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;color:var(--theme-text-3);letter-spacing:0.2em;text-transform:uppercase;">Rivelando…</span>
+              <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;color:var(--theme-text-3);letter-spacing:0.2em;text-transform:uppercase;">{{ $t('pesca.revealing') }}</span>
             </div>
 
           </div>

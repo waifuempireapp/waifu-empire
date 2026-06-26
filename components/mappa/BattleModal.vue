@@ -239,7 +239,7 @@ const visiblePages = computed(() => {
     <div :style="{ padding: '18px 18px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexShrink: 0 }">
       <div>
         <div :style="{ fontFamily: FF.display, fontSize: '22px', color: 'var(--theme-text)', fontWeight: 900, lineHeight: 1.1 }">
-          {{ mode === 'teams' ? 'Scegli il team' : 'Selezione manuale' }}
+          {{ mode === 'teams' ? $t('battle.title_teams') : $t('battle.title_manual') }}
         </div>
         <div v-if="pixel?.name || (pixel?.x != null && pixel?.y != null)" :style="{ fontFamily: FF.mono, fontSize: '12px', color: 'var(--theme-text-3)', marginTop: '4px' }">
           {{ pixel?.name || `${pixel?.x}, ${pixel?.y}` }}
@@ -256,7 +256,7 @@ const visiblePages = computed(() => {
             fontSize: '10px', letterSpacing: '0.15em', textTransform: 'uppercase',
             padding: '5px 12px', cursor: 'pointer',
           }"
-        >← Team</button>
+        >{{ $t('battle.back_team') }}</button>
         <button @click="emit('chiudi')" :style="{ background: 'none', border: 'none', color: 'var(--theme-text-2)', cursor: 'pointer', display:'flex', alignItems:'center' }"><X :size="22" stroke-width="1.5" /></button>
       </div>
     </div>
@@ -265,7 +265,7 @@ const visiblePages = computed(() => {
     <template v-if="mode === 'teams'">
       <div :style="{ flex: 1, overflowY: 'auto', padding: '14px 18px 0' }">
         <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.4, marginBottom: '12px' }">
-          💡 Scegli un team già salvato, oppure seleziona da 5 a 8 waifu per il tuo pool. Nella prossima schermata sceglierai la squadra di combattimento (da 1 a 8).
+          {{ $t('battle.teams_hint') }}
         </div>
 
         <!-- Lista preset team -->
@@ -282,7 +282,7 @@ const visiblePages = computed(() => {
           }"
         >
           <div :style="{ fontFamily: FF.label, fontSize: '11px', color: activePresetId === id ? C.violet : 'var(--theme-text)', textTransform: 'uppercase', minWidth: '70px', flexShrink: 0 }">
-            {{ (preset as any).nome || 'Team' }}
+            {{ (preset as any).nome || $t('battle.team_default') }}
           </div>
           <div :style="{ display: 'flex', gap: '4px', flex: 1 }">
             <!-- Miniature waifu del preset -->
@@ -340,7 +340,7 @@ const visiblePages = computed(() => {
             fontFamily: FF.label, fontSize: '14px', letterSpacing: '0.2em',
             textTransform: 'uppercase', fontWeight: 700,
           }"
-        ><Swords v-if="poolValido" :size="14" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:6px;" />{{ poolValido ? 'Avvia Battaglia' : 'Seleziona un team' }}</button>
+        ><Swords v-if="poolValido" :size="14" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:6px;" />{{ poolValido ? $t('battle.start_battle') : $t('battle.select_team') }}</button>
       </div>
     </template>
 
@@ -349,7 +349,7 @@ const visiblePages = computed(() => {
       <!-- Istruzione + contatore -->
       <div :style="{ padding: '10px 16px 0', flexShrink: 0, display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px' }">
         <div :style="{ fontFamily: FF.body, fontSize: '15px', color: 'var(--theme-text-2)', lineHeight: 1.4 }">
-          Scegli da <strong :style="{ color: C.violet }">5 a 8 waifu</strong> per il tuo pool
+          {{ $t('battle.pool_choose_prefix') }}<strong :style="{ color: C.violet }">{{ $t('battle.pool_range') }}</strong>{{ $t('battle.pool_for') }}
         </div>
         <div :style="{ fontFamily: FF.mono, fontSize: '14px', fontWeight: 700, color: poolValido ? '#16a34a' : 'var(--theme-text-3)', flexShrink: 0 }">
           {{ selectedIds.length }}/8
@@ -359,17 +359,17 @@ const visiblePages = computed(() => {
       <!-- Filtri -->
       <div :style="{ padding: '8px 16px', display: 'flex', gap: '6px', flexShrink: 0 }">
         <select v-model="filterRarity" :style="filterSelectStyle(!!filterRarity)">
-          <option value="">Tutte le rarità</option>
+          <option value="">{{ $t('battle.filter_all_rarities') }}</option>
           <option v-for="r in RARITY_ORDER" :key="r" :value="r" :style="{ background: 'var(--theme-surface)', color: rarColors[r] }">{{ r.charAt(0).toUpperCase() + r.slice(1) }}</option>
         </select>
         <select v-model="filterType" :style="filterSelectStyle(!!filterType)">
-          <option value="">Tutti i tipi</option>
+          <option value="">{{ $t('battle.filter_all_types') }}</option>
           <option v-for="t in ['Arcana','Natura','Abisso','Ferro','Fuoco','Acqua']" :key="t" :value="t" :style="{ background: 'var(--theme-surface)' }">{{ t }}</option>
         </select>
         <select v-model="sortBy" :style="filterSelectStyle(sortBy !== 'rarita')">
-          <option value="rarita">Rarità</option>
-          <option value="velocita">Velocità</option>
-          <option value="crit">% Critico</option>
+          <option value="rarita">{{ $t('battle.filter_rarity') }}</option>
+          <option value="velocita">{{ $t('battle.sort_speed') }}</option>
+          <option value="crit">{{ $t('battle.sort_crit') }}</option>
         </select>
         <button v-if="filterRarity || filterType" @click="clearFilters" :style="{ background:'rgba(255,91,108,0.1)', border:'1px solid rgba(255,91,108,0.3)', borderRadius:'999px', color:C.err, fontFamily:FF.label, fontSize:'11px', padding:'4px 10px', cursor:'pointer', display:'flex', alignItems:'center', gap:'4px', flexShrink:0 }"><X :size="11" stroke-width="1.5" /></button>
       </div>
@@ -377,10 +377,10 @@ const visiblePages = computed(() => {
       <!-- Nessuna waifu -->
       <div v-if="ownedWaifu.length === 0" :style="{ padding: '32px 20px', textAlign: 'center' }">
         <Swords :size="32" stroke-width="1.5" style="margin-bottom:10px;opacity:0.6;" />
-        <div :style="{ fontFamily: FF.label, fontSize: '13px', color: C.gold, letterSpacing: '0.15em', marginBottom: '8px' }">NESSUNA WAIFU DISPONIBILE</div>
+        <div :style="{ fontFamily: FF.label, fontSize: '13px', color: C.gold, letterSpacing: '0.15em', marginBottom: '8px' }">{{ $t('battle.no_waifu_available') }}</div>
         <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.6 }">
-          Ogni waifu deve avere 4 mosse attacco assegnate.<br>
-          Vai in <strong style="color:#9b59ff">Collezione → Mosse</strong>.
+          {{ $t('battle.no_moves_desc') }}<br>
+          {{ $t('battle.go_to') }} <strong style="color:#9b59ff">{{ $t('battle.collection_moves') }}</strong>.
         </div>
       </div>
 
@@ -508,10 +508,10 @@ const visiblePages = computed(() => {
             textTransform: 'uppercase', fontWeight: 800,
             boxShadow: poolValido ? '0 4px 24px rgba(197,74,134,0.5)' : 'none',
           }"
-        ><Swords v-if="poolValido" :size="16" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:6px;" />{{ poolValido ? 'Avanti →' : (selectedIds.length < 5 ? `Seleziona ancora ${5 - selectedIds.length}` : 'Max 8 waifu') }}</button>
+        ><Swords v-if="poolValido" :size="16" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:6px;" />{{ poolValido ? $t('battle.next') : (selectedIds.length < 5 ? $t('battle.select_more', { n: 5 - selectedIds.length }) : $t('battle.max_waifu')) }}</button>
 
         <div v-if="ownedWaifu.length > 0" :style="{ marginTop:'8px', padding:'8px 12px', background:'var(--theme-shimmer)', border:'1px solid var(--theme-border)', borderRadius:'10px', fontFamily:FF.body, fontSize:'12px', color:'var(--theme-text-3)', lineHeight:1.5, textAlign:'center' }">
-          Le altre waifu non sono visibili perché non hai assegnato 4 mosse attacco. Vai in <strong style="color:#9b59ff">Collezione → Mosse</strong>.
+          {{ $t('battle.others_hidden') }} {{ $t('battle.go_to') }} <strong style="color:#9b59ff">{{ $t('battle.collection_moves') }}</strong>.
         </div>
       </div>
     </template>

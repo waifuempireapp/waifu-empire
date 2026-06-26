@@ -95,10 +95,11 @@ const premiRiga2 = [
   { label: '2°',      medal: '🥈', pack: 5,  col: '#5a7a96' },
   { label: '3°',      medal: '🥉', pack: 3,  col: '#ff9b6b' },
 ]
-const premiRiga3 = [
-  { label: 'Top 100', medal: '🏅', pack: 2,  col: C.violet  },
-  { label: 'Tutti',   medal: '✦',  pack: 1,  col: C.violet  },
-]
+const { t: tr } = useI18n()
+const premiRiga3 = computed(() => [
+  { label: 'Top 100',            medal: '🏅', pack: 2, col: C.violet },
+  { label: tr('leaderboard.all_plain'), medal: '✦', pack: 1, col: C.violet },
+])
 
 // ---- Stato collasso lista completa ----
 const listExpanded = ref(false)
@@ -126,7 +127,7 @@ const listExpanded = ref(false)
           fontWeight: 800,
           textTransform: 'uppercase', transition: 'color 0.18s',
         }"
-      >{{ t.label }}</button>
+      >{{ $t(t.id === 'giocatori' ? 'leaderboard.players_tab' : 'leaderboard.waifu_tab') }}</button>
     </div>
 
     <!-- ===== CLASSIFICA WAIFU ===== -->
@@ -143,7 +144,7 @@ const listExpanded = ref(false)
           color: isDark ? '#E0A030' : 'var(--theme-accent)',
           textTransform: 'uppercase', marginBottom: '6px',
           fontWeight: 600, opacity: 1,
-        }">◆ Stagione 7 · reset in {{ prossimoLunedi }}</div>
+        }">{{ $t('leaderboard.season_label', { time: prossimoLunedi }) }}</div>
 
         <!-- Titolo principale -->
         <h1 :style="{
@@ -151,14 +152,14 @@ const listExpanded = ref(false)
           fontSize: 'clamp(22px, 5vw, 32px)',
           fontWeight: 800, margin: 0,
           letterSpacing: '-0.01em', lineHeight: 0.95, color: 'var(--theme-accent)',
-        }">Classifica Globale</h1>
+        }">{{ $t("leaderboard.global_title") }}</h1>
 
         <!-- Sottotitolo descrittivo -->
         <div :style="{
           fontFamily: FF.body, fontSize: '12px',
           color: 'var(--theme-text-2)', marginTop: '6px',
           lineHeight: 1.4, marginBottom: '18px',
-        }">Conquista più territori, sali di livello mappa, vinci più premi.</div>
+        }">{{ $t("leaderboard.subtitle") }}</div>
       </div>
 
       <!-- Premio settimanale: due righe di box colorati -->
@@ -172,7 +173,7 @@ const listExpanded = ref(false)
           fontFamily: FF.label, fontSize: '13px', color: 'var(--theme-text)',
           letterSpacing: '0.2em', marginBottom: '12px', fontWeight: 700,
           textTransform: 'uppercase',
-        }"><Gift :size="14" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:4px;" />Premi settimanali</div>
+        }"><Gift :size="14" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:4px;" />{{ $t("leaderboard.weekly_rewards") }}</div>
 
         <!-- Riga 1: solo 1° posto, centrato -->
         <div :style="{ display:'flex', justifyContent:'center', marginBottom:'12px', paddingTop:'14px' }">
@@ -188,7 +189,7 @@ const listExpanded = ref(false)
             <div :style="{ display:'flex', alignItems:'center', gap:'12px', marginTop:'6px' }">
               <img src="~/assets/images/back_card.png" alt="" :style="{ width:'42px', height:'auto', borderRadius:'5px', flexShrink:0, filter:`drop-shadow(0 3px 8px ${premiTop.col}66)` }" />
               <div>
-                <div :style="{ fontFamily:FF.label, fontSize:'11px', color:'var(--theme-text-2)', letterSpacing:'0.2em', textTransform:'uppercase', marginBottom:'3px' }">PREMIO</div>
+                <div :style="{ fontFamily:FF.label, fontSize:'11px', color:'var(--theme-text-2)', letterSpacing:'0.2em', textTransform:'uppercase', marginBottom:'3px' }">{{ $t("leaderboard.header_prize") }}</div>
                 <div :style="{ fontFamily:FF.label, fontSize:'16px', fontWeight:800, color:premiTop.col, lineHeight:1.15, whiteSpace:'nowrap' }">{{ premiTop.pack }} carte waifu</div>
               </div>
             </div>
@@ -213,7 +214,7 @@ const listExpanded = ref(false)
             <div :style="{ display:'flex', alignItems:'center', gap:'10px', marginTop:'6px' }">
               <img src="~/assets/images/back_card.png" alt="" :style="{ width:'36px', height:'auto', borderRadius:'4px', flexShrink:0, filter:`drop-shadow(0 2px 6px ${p.col}55)` }" />
               <div>
-                <div :style="{ fontFamily:FF.label, fontSize:'11px', color:'var(--theme-text-2)', letterSpacing:'0.2em', textTransform:'uppercase', marginBottom:'3px' }">PREMIO</div>
+                <div :style="{ fontFamily:FF.label, fontSize:'11px', color:'var(--theme-text-2)', letterSpacing:'0.2em', textTransform:'uppercase', marginBottom:'3px' }">{{ $t("leaderboard.header_prize") }}</div>
                 <div :style="{ fontFamily:FF.label, fontSize:'14px', fontWeight:800, color:p.col, lineHeight:1.15, whiteSpace:'nowrap' }">{{ p.pack }} carte waifu</div>
               </div>
             </div>
@@ -237,7 +238,7 @@ const listExpanded = ref(false)
             <div :style="{ display:'flex', alignItems:'center', gap:'10px', marginTop:'6px' }">
               <img src="~/assets/images/back_card.png" alt="" :style="{ width:'32px', height:'auto', borderRadius:'4px', flexShrink:0, filter:`drop-shadow(0 2px 6px ${p.col}55)` }" />
               <div>
-                <div :style="{ fontFamily:FF.label, fontSize:'11px', color:'var(--theme-text-2)', letterSpacing:'0.2em', textTransform:'uppercase', marginBottom:'3px' }">PREMIO</div>
+                <div :style="{ fontFamily:FF.label, fontSize:'11px', color:'var(--theme-text-2)', letterSpacing:'0.2em', textTransform:'uppercase', marginBottom:'3px' }">{{ $t("leaderboard.header_prize") }}</div>
                 <div :style="{ fontFamily:FF.label, fontSize:'14px', fontWeight:800, color:p.col, lineHeight:1.15, whiteSpace:'nowrap' }">{{ p.pack }} carte waifu</div>
               </div>
             </div>
@@ -403,7 +404,7 @@ const listExpanded = ref(false)
             fontSize: '7px', color: 'var(--theme-text-3)',
             fontFamily: FF.label, letterSpacing: '0.18em',
             textTransform: 'uppercase', marginTop: '2px',
-          }">Premio</div>
+          }">{{ $t("leaderboard.header_prize") }}</div>
         </div>
       </div>
 
@@ -426,7 +427,7 @@ const listExpanded = ref(false)
         >
           <div :style="{ display:'flex', alignItems:'center', gap:'10px' }">
             <Trophy :size="18" stroke-width="1.5" :style="{ color: C.gold }" />
-            <span :style="{ fontFamily:FF.label, fontSize:'16px', fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--theme-text)' }">Classifica Completa</span>
+            <span :style="{ fontFamily:FF.label, fontSize:'16px', fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--theme-text)' }">{{ $t("leaderboard.full_title") }}</span>
           </div>
           <div :style="{ display:'flex', alignItems:'center', gap:'10px' }">
             <span v-if="classifica.length" :style="{ fontFamily:FF.label, fontSize:'13px', color:'var(--theme-text-3)' }">{{ classifica.length }} giocatori</span>
@@ -439,8 +440,8 @@ const listExpanded = ref(false)
           <!-- Stato vuoto -->
           <div v-if="classifica.length === 0" :style="{ padding: '40px', textAlign: 'center' }">
             <Trophy :size="38" stroke-width="1" style="margin-bottom:8px;filter:drop-shadow(0 0 12px rgba(245,197,96,0.5));color:#f5c560;" />
-            <div :style="{ fontFamily:FF.label, fontSize:'13px', color:C.gold, letterSpacing:'0.24em', marginBottom:'6px', textTransform:'uppercase', fontWeight:700 }">Classifica vuota</div>
-            <div :style="{ fontFamily:FF.body, fontSize:'13px', color:'var(--theme-text-2)', lineHeight:1.6 }">Sii il primo a conquistare territori<br/>e scalare la classifica!</div>
+            <div :style="{ fontFamily:FF.label, fontSize:'13px', color:C.gold, letterSpacing:'0.24em', marginBottom:'6px', textTransform:'uppercase', fontWeight:700 }">{{ $t("leaderboard.empty_title") }}</div>
+            <div :style="{ fontFamily:FF.body, fontSize:'13px', color:'var(--theme-text-2)', lineHeight:1.6, whiteSpace:'pre-line' }">{{ $t('leaderboard.empty_hint') }}</div>
           </div>
 
           <template v-else>
@@ -452,9 +453,9 @@ const listExpanded = ref(false)
               color:'var(--theme-text-2)', textTransform:'uppercase', fontWeight:700,
             }">
               <div :style="{ minWidth:'34px' }">#</div>
-              <div :style="{ flex:1 }">Giocatore</div>
-              <div :style="{ minWidth:'72px', textAlign:'center' }">Territori</div>
-              <div :style="{ minWidth:'44px', textAlign:'right' }">Premio</div>
+              <div :style="{ flex:1 }">{{ $t("leaderboard.header_player") }}</div>
+              <div :style="{ minWidth:'72px', textAlign:'center' }">{{ $t("leaderboard.header_territories") }}</div>
+              <div :style="{ minWidth:'44px', textAlign:'right' }">{{ $t("leaderboard.header_prize") }}</div>
             </div>
 
             <!-- Righe classifica -->
@@ -485,8 +486,8 @@ const listExpanded = ref(false)
                     color: i <= 2 ? rankTextColors[i] : (user && u.id === user.uid) ? C.violet : 'var(--theme-text)',
                     overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
                   }">
-                    {{ (u._nomeDisplay || u.nomeImpero || u.nome || u.email?.split('@')[0] || 'Giocatore').slice(0, 22) }}
-                    <span v-if="user && u.id === user.uid" :style="{ marginLeft:'6px', fontSize:'12px', color:C.gold, fontFamily:FF.label, letterSpacing:'0.12em' }">← TU</span>
+                    {{ (u._nomeDisplay || u.nomeImpero || u.nome || u.email?.split('@')[0] || $t('leaderboard.header_player')).slice(0, 22) }}
+                    <span v-if="user && u.id === user.uid" :style="{ marginLeft:'6px', fontSize:'12px', color:C.gold, fontFamily:FF.label, letterSpacing:'0.12em' }">{{ $t("leaderboard.you_indicator") }}</span>
                   </div>
                 </div>
 

@@ -38,6 +38,7 @@ const emit = defineEmits<{
 
 // Tema light/dark
 const { isDark } = useTheme()
+const { t } = useI18n()
 
 // ── Anti-FOUC: overlay full-page finché la bustina 3D non ha renderizzato ──
 const { isPageReady } = usePageReady('canvas')
@@ -91,7 +92,7 @@ const numOutfit = computed(() => Object.keys((collezione.value.outfit as Record<
 const numPose   = computed(() => Object.keys((collezione.value.pose   as Record<string, unknown>) ?? {}).length)
 
 const energiaAttuale = computed(() => (profilo.value.energia as number) ?? 0)
-const nomeImpero     = computed(() => (profilo.value.nomeImpero as string) || 'Il Tuo Impero')
+const nomeImpero     = computed(() => (profilo.value.nomeImpero as string) || t('home.your_empire'))
 
 // ── Statistiche collezione per le tile ───────────────────────────────
 const statTiles = computed(() => [
@@ -276,13 +277,14 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
         <!-- Testo stato pack -->
         <div class="ht-hero-text">
           <div class="ht-hero-title" :class="totalPack > 0 ? 'ht-hero-title--active' : ''">
-            {{ totalPack > 0 ? 'SBUSTA ORA' : 'PACCHETTI' }}
+            {{ totalPack > 0 ? $t('home.sbusta_title') : $t('home.sbusta_empty') }}
           </div>
-          <div v-if="totalPack > 0" class="ht-hero-sub">
-            Hai <b class="ht-hero-count">{{ totalPack }}</b> {{ totalPack === 1 ? 'bustina' : 'bustine' }} da aprire
-          </div>
+          <i18n-t v-if="totalPack > 0" keypath="home.packs_count" tag="div" class="ht-hero-sub" scope="global">
+            <template #n><b class="ht-hero-count">{{ totalPack }}</b></template>
+            <template #pack>{{ totalPack === 1 ? $t('home.pack_singular') : $t('home.pack_plural') }}</template>
+          </i18n-t>
           <div v-else class="ht-hero-timer-text">
-            {{ packPronto ? 'Bustina omaggio pronta!' : countdown ? `Prossima tra ${countdown}` : 'Visita il negozio' }}
+            {{ packPronto ? $t('home.gift_pack_ready') : countdown ? $t('home.next_in', { time: countdown }) : $t('home.next_pack') }}
           </div>
         </div>
 
@@ -292,7 +294,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
           :class="totalPack > 0 ? 'ht-hero-cta--pink' : 'ht-hero-cta--gold'"
           @click.stop="totalPack > 0 ? emit('apriSbusto') : emit('setTab', 'pacchetti')"
         >
-          {{ totalPack > 0 ? 'Apri ora' : 'Vai ai pacchetti' }}
+          {{ totalPack > 0 ? $t('home.cta_open_now') : $t('home.cta_go_packs') }}
         </button>
 
         <!-- Timer inferiore -->
@@ -316,7 +318,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
       <div class="ht-action-card ht-action-card--pesca" @click="emit('apriPesca')">
         <div class="ht-action-emoji">🎣</div>
         <div>
-          <div class="ht-action-title">Pesca Misteriosa</div>
+          <div class="ht-action-title">{{ $t('home.pesca_title') }}</div>
           <div class="ht-action-status ht-action-status--pesca">
             <span class="ht-action-dot ht-action-dot--pesca" />
             Disponibile
@@ -328,9 +330,9 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
       <div class="ht-action-card ht-action-card--swap" @click="emit('setTab', 'swap')">
         <div class="ht-action-emoji">🩷</div>
         <div>
-          <div class="ht-action-title">Swipe Waifu</div>
+          <div class="ht-action-title">{{ $t('home.swap_title') }}</div>
           <div class="ht-action-status ht-action-status--swap">
-            {{ totalVoti > 0 ? `${totalVoti} voti totali` : 'Vota ora' }}
+            {{ totalVoti > 0 ? $t('home.swap_votes', { n: totalVoti }) : $t('home.swap_vote_now') }}
           </div>
         </div>
       </div>

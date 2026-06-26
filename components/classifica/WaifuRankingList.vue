@@ -143,7 +143,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
               background: 'rgba(6,214,160,0.15)', border: '1px solid rgba(6,214,160,0.5)',
               borderRadius: '999px', padding: '2px 8px',
               fontSize: '12px', color: '#06d6a0',
-            }">● LIVE</span>
+            }">{{ $t("leaderboard.live") }}</span>
           </div>
           <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)' }">
             Top 50 · le prime 10 ricevono Kisses bonus ogni settimana
@@ -160,7 +160,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
             color: !canPrev ? 'var(--theme-text-3)' : 'var(--theme-text)',
             cursor: !canPrev ? 'default' : 'pointer',
             fontFamily: FF.label, fontSize: '13px', fontWeight: 700,
-          }">← Prec</button>
+          }">{{ $t("leaderboard.prev") }}</button>
           <span :style="{ fontFamily: FF.label, fontSize: '13px', color: 'var(--theme-text-2)' }">
             {{ page * PAGE_SIZE + 1 }}–{{ Math.min((page + 1) * PAGE_SIZE, topList.length) }} di {{ topList.length }}
           </span>
@@ -170,7 +170,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
             color: !canNext ? 'var(--theme-text-3)' : 'var(--theme-text)',
             cursor: !canNext ? 'default' : 'pointer',
             fontFamily: FF.label, fontSize: '13px', fontWeight: 700,
-          }">Succ →</button>
+          }">{{ $t("leaderboard.next") }}</button>
         </div>
 
         <!-- Righe waifu -->
@@ -199,7 +199,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
               fontFamily: FF.label, fontSize: '11px', fontWeight: 700,
               color: 'var(--theme-text-3)', letterSpacing: '0.18em',
               background: 'var(--theme-surface)', padding: '0 8px',
-            }">SENZA PREMIO</span>
+            }">{{ $t("leaderboard.no_prize") }}</span>
           </div>
 
           <div :style="{ display: 'flex', alignItems: 'center', gap: '14px' }">
@@ -251,7 +251,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
                   color: C.ok, background: 'rgba(88,224,163,0.12)',
                   border: '1px solid rgba(88,224,163,0.3)',
                   borderRadius: '5px', padding: '2px 8px', textTransform: 'uppercase',
-                }">✓ Tua</span>
+                }">{{ $t("leaderboard.yours") }}</span>
               </div>
 
               <!-- Rarità -->
@@ -262,7 +262,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
                   background: `${RARITY_COLORS[item.rarita] ?? '#888'}18`,
                   border: `1px solid ${RARITY_COLORS[item.rarita] ?? '#888'}40`,
                   borderRadius: '4px', padding: '2px 8px',
-                }">{{ RARITY_NAMES[item.rarita] ?? item.rarita }}</span>
+                }">{{ $t("rarity." + item.rarita) }}</span>
 
                 <template v-if="RARITY_CHAIN[RARITY_CHAIN.indexOf(item.rarita) + 1] && (page * PAGE_SIZE + j) < 10">
                   <span :style="{ color: 'var(--theme-text-3)', fontSize: '12px' }">→</span>
@@ -272,8 +272,8 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
                     background: `${RARITY_COLORS[RARITY_CHAIN[RARITY_CHAIN.indexOf(item.rarita) + 1]]}18`,
                     border: `1px solid ${RARITY_COLORS[RARITY_CHAIN[RARITY_CHAIN.indexOf(item.rarita) + 1]]}40`,
                     borderRadius: '4px', padding: '2px 8px',
-                  }">{{ RARITY_NAMES[RARITY_CHAIN[RARITY_CHAIN.indexOf(item.rarita) + 1]] }}</span>
-                  <span :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-text-3)' }">se vince</span>
+                  }">{{ $t("rarity." + RARITY_CHAIN[RARITY_CHAIN.indexOf(item.rarita) + 1]) }}</span>
+                  <span :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-text-3)' }">{{ $t("leaderboard.if_wins") }}</span>
                 </template>
               </div>
             </div>
@@ -292,7 +292,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
                   fontFamily: FF.label, fontSize: '11px', fontWeight: 700,
                   color: 'var(--theme-text-3)', letterSpacing: '0.12em',
                   textTransform: 'uppercase', marginTop: '2px',
-                }">premio</div>
+                }">{{ $t("leaderboard.prize_lc") }}</div>
               </template>
               <div v-else :style="{ fontFamily: FF.label, fontSize: '13px', color: 'var(--theme-text-3)' }">—</div>
             </div>
@@ -304,10 +304,10 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
           marginTop: '8px', padding: '14px 16px', borderRadius: '14px', textAlign: 'center',
           background: 'var(--theme-surface)', border: '1px dashed var(--theme-border)',
         }">
-          <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.5 }">
-            Vota le waifu nella sezione <strong :style="{ color: C.sakura }">Swap</strong>
-            per influenzare la classifica della prossima settimana!
-          </div>
+          <i18n-t keypath="leaderboard.vote_in_swap" tag="div" scope="global"
+            :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.5 }">
+            <template #section><strong :style="{ color: C.sakura }">Swap</strong></template>
+          </i18n-t>
         </div>
       </div>
     </div>
@@ -331,7 +331,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
             fontFamily: FF.label, fontSize: '12px', fontWeight: 700,
             color: C.violet, letterSpacing: '0.15em',
             textTransform: 'uppercase', marginBottom: '4px',
-          }">⏸ Anti-monopolio</div>
+          }">{{ $t("leaderboard.anti_monopoly") }}</div>
           <div :style="{ fontFamily: FF.label, fontSize: '15px', fontWeight: 700, color: 'var(--theme-text)' }">
             {{ p.waifuId }}
           </div>
@@ -344,7 +344,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
             fontFamily: FF.label, fontSize: '11px', fontWeight: 600,
             color: 'var(--theme-text-3)', textTransform: 'uppercase',
             letterSpacing: '0.12em', marginTop: '2px',
-          }">al rientro</div>
+          }">{{ $t("leaderboard.on_return") }}</div>
         </div>
       </div>
     </div>

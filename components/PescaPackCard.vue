@@ -6,6 +6,7 @@
   Script invariato; solo il template è stato ridisegnato.
   ============================================================ -->
 <script setup lang="ts">
+const { t } = useI18n()
 import type { Collezione } from '~/types/game'
 import { ikUrl } from '~/utils/imagekitUrl'
 
@@ -109,7 +110,7 @@ let timerInterval: ReturnType<typeof setInterval> | null = null
 function calcRemaining() {
   if (!props.pack.expiresAt) return
   const diff = new Date(props.pack.expiresAt).getTime() - Date.now()
-  if (diff <= 0) { remaining.value = 'Scaduta'; return }
+  if (diff <= 0) { remaining.value = t('pesca.expired'); return }
   const h = Math.floor(diff / 3_600_000)
   const m = Math.floor((diff % 3_600_000) / 60_000)
   const s = Math.floor((diff % 60_000) / 1_000)
@@ -150,8 +151,8 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
     <!-- Overlay Hard Pass: sopra il blur, non interattivo -->
     <div v-if="packBloccato" style="position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-radius:19px;pointer-events:none;">
       <div style="font-size:36px;line-height:1;filter:drop-shadow(0 0 12px rgba(255,140,0,0.7))">🔒</div>
-      <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:14px;font-weight:900;color:#ffa020;letter-spacing:0.14em;text-transform:uppercase;text-align:center;text-shadow:0 0 16px rgba(255,140,0,0.8);">Hard Pass<br/>Richiesto</div>
-      <div style="font-family:var(--ff-body,'DM Sans',sans-serif);font-size:11px;color:rgba(255,255,255,0.55);text-align:center;padding:0 20px;">Acquista il Pass per vedere e pescare i contenuti hot</div>
+      <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:14px;font-weight:900;color:#ffa020;letter-spacing:0.14em;text-transform:uppercase;text-align:center;text-shadow:0 0 16px rgba(255,140,0,0.8);">{{ $t('pesca.hard_pass_required') }}</div>
+      <div style="font-family:var(--ff-body,'DM Sans',sans-serif);font-size:11px;color:rgba(255,255,255,0.55);text-align:center;padding:0 20px;">{{ $t('pesca.hard_pass_desc') }}</div>
     </div>
 
     <!-- Overlay PESCATA -->
@@ -209,7 +210,7 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
         <template v-for="carta in cards.slice(0,2)" :key="carta.id">
           <!-- slot card: larghezza fissa = 1/3 container -->
           <div style="width:calc((100% - 24px) / 3); flex-shrink:0; position:relative;">
-            <div v-if="isNew(carta)" style="position:absolute;top:-10px;left:-4px;z-index:20;background:linear-gradient(135deg,#00b4ff,#00e676);border:2px solid rgba(255,255,255,0.5);border-radius:999px;padding:2px 7px;font-size:10px;font-weight:900;color:#000;line-height:1;white-space:nowrap;">NEW</div>
+            <div v-if="isNew(carta)" style="position:absolute;top:-10px;left:-4px;z-index:20;background:linear-gradient(135deg,#00b4ff,#00e676);border:2px solid rgba(255,255,255,0.5);border-radius:999px;padding:2px 7px;font-size:10px;font-weight:900;color:#000;line-height:1;white-space:nowrap;">{{ $t('pesca.new_badge') }}</div>
             <div v-if="getCopie(carta)>0" style="position:absolute;top:-10px;right:-4px;z-index:20;min-width:20px;height:20px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#fff;padding:0 4px;" :style="getCopie(carta)>=3?{background:'linear-gradient(135deg,#00c853,#58e0a3)',border:'2px solid rgba(89,224,163,0.8)'}:{background:'linear-gradient(135deg,#3b1fa8,#6d28d9)',border:'2px solid rgba(139,111,216,0.8)'}">{{ getCopie(carta)>=3?'C':getCopie(carta) }}</div>
             <!-- CONTENITORE IMMAGINE: padding-bottom:150% = ratio 2:3 FISSO — impossibile da sovrascrivere -->
             <div style="position:relative; width:100%; padding-bottom:150%; border-radius:10px; overflow:hidden;"
@@ -232,7 +233,7 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
       <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;">
         <template v-for="carta in cards.slice(2,5)" :key="carta.id">
           <div style="position:relative;">
-            <div v-if="isNew(carta)" style="position:absolute;top:-10px;left:-4px;z-index:20;background:linear-gradient(135deg,#00b4ff,#00e676);border:2px solid rgba(255,255,255,0.5);border-radius:999px;padding:2px 7px;font-size:10px;font-weight:900;color:#000;line-height:1;white-space:nowrap;">NEW</div>
+            <div v-if="isNew(carta)" style="position:absolute;top:-10px;left:-4px;z-index:20;background:linear-gradient(135deg,#00b4ff,#00e676);border:2px solid rgba(255,255,255,0.5);border-radius:999px;padding:2px 7px;font-size:10px;font-weight:900;color:#000;line-height:1;white-space:nowrap;">{{ $t('pesca.new_badge') }}</div>
             <div v-if="getCopie(carta)>0" style="position:absolute;top:-10px;right:-4px;z-index:20;min-width:20px;height:20px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#fff;padding:0 4px;" :style="getCopie(carta)>=3?{background:'linear-gradient(135deg,#00c853,#58e0a3)',border:'2px solid rgba(89,224,163,0.8)'}:{background:'linear-gradient(135deg,#3b1fa8,#6d28d9)',border:'2px solid rgba(139,111,216,0.8)'}">{{ getCopie(carta)>=3?'C':getCopie(carta) }}</div>
             <!-- STESSO CONTENITORE: padding-bottom:150% fisso inline -->
             <div style="position:relative; width:100%; padding-bottom:150%; border-radius:10px; overflow:hidden;"

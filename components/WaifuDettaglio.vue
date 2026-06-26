@@ -6,6 +6,8 @@
 <script setup lang="ts">
 import { Heart, X, ChevronDown, ChevronUp, Swords, Plus, Trash2 } from 'lucide-vue-next'
 
+const { t } = useI18n()
+
 const props = defineProps<{
   waifuId: string
   waifu: any
@@ -86,14 +88,14 @@ const waifuRarIdx = computed(() => RAR_ORDER.indexOf(props.waifu.rarita ?? 'comu
 // Compatibilità mossa
 function compat(mossaId: string, slot: string): { ok: boolean; motivo?: string } {
   const m = props.mosseCat.find((x: any) => x.id === mossaId)
-  if (!m) return { ok: false, motivo: 'Non trovata nel catalogo' }
+  if (!m) return { ok: false, motivo: t('card.not_in_catalog') }
 
   const rIdx = RAR_ORDER.indexOf(m.rarita ?? 'comune')
   if (rIdx > waifuRarIdx.value)
-    return { ok: false, motivo: `Rarità non compatibile (mossa: ${m.rarita}, waifu: ${props.waifu.rarita})` }
+    return { ok: false, motivo: t('card.rarity_incompatible', { move: m.rarita, waifu: props.waifu.rarita }) }
 
   if (SLOTS.filter(s => s !== slot).some(s => mosseSlot.value[s] === mossaId))
-    return { ok: false, motivo: 'Già assegnata a questa waifu' }
+    return { ok: false, motivo: t('card.already_assigned') }
 
   for (const [wId, wDati] of Object.entries(props.waifuCollezione)) {
     if (wId === props.waifuId) continue
@@ -281,7 +283,7 @@ onUnmounted(() => {
               fontFamily: FF.label, fontSize: '12px', fontWeight: 800, color: C.ok,
               letterSpacing: '0.18em', cursor: 'pointer', boxShadow: `0 0 20px ${C.ok}44`,
               textTransform: 'uppercase',
-            }">⬆ LEVEL UP disponibile!</button>
+            }">{{ $t('card.level_up_available') }}</button>
           </div>
 
           <div style="display:flex;flex-direction:column;gap:10px;">
@@ -291,14 +293,14 @@ onUnmounted(() => {
               <button @click="statsOpen = !statsOpen" style="width:100%;background:none;border:none;border-radius:0 !important;box-shadow:none !important;cursor:pointer;padding:18px 18px;display:flex;align-items:center;justify-content:space-between;">
                 <div style="display:flex;align-items:center;gap:10px;">
                   <span style="font-size:17px">📊</span>
-                  <span :style="{ fontFamily: FF.label, fontSize: '15px', fontWeight: 800, color: C.violet, letterSpacing: '0.2em', textTransform: 'uppercase' }">Statistiche</span>
+                  <span :style="{ fontFamily: FF.label, fontSize: '15px', fontWeight: 800, color: C.violet, letterSpacing: '0.2em', textTransform: 'uppercase' }">{{ $t('card.statistics') }}</span>
                 </div>
                 <component :is="statsOpen ? ChevronUp : ChevronDown" :size="18" :color="`${C.violet}99`" stroke-width="1.5" />
               </button>
               <div v-if="statsOpen" style="padding:18px 12px 20px;">
                 <div v-for="s in STAT_DEFS" :key="s.key" style="margin-bottom:16px;">
                   <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-                    <span :style="{ fontFamily: FF.label, fontSize: '13px', color: 'var(--theme-text-2)', letterSpacing: '0.14em', fontWeight: 700, textTransform: 'uppercase' }">{{ s.icon }} {{ s.label }}</span>
+                    <span :style="{ fontFamily: FF.label, fontSize: '13px', color: 'var(--theme-text-2)', letterSpacing: '0.14em', fontWeight: 700, textTransform: 'uppercase' }">{{ s.icon }} {{ $t('card.stat_' + s.key) }}</span>
                     <span :style="{ fontFamily: FF.label, fontSize: '15px', color: 'var(--theme-text)', fontWeight: 700 }">{{ statVal(s.key) }}</span>
                   </div>
                   <div style="height:5px;background:var(--theme-border);border-radius:99px;overflow:hidden;">
@@ -313,7 +315,7 @@ onUnmounted(() => {
               <button @click="battleOpen = !battleOpen" style="width:100%;background:none;border:none;border-radius:0 !important;box-shadow:none !important;cursor:pointer;padding:18px 18px;display:flex;align-items:center;justify-content:space-between;">
                 <div style="display:flex;align-items:center;gap:10px;">
                   <Swords :size="18" :color="C.gold" stroke-width="1.5" />
-                  <span :style="{ fontFamily: FF.label, fontSize: '15px', fontWeight: 800, color: C.gold, letterSpacing: '0.2em', textTransform: 'uppercase' }">Battaglia & Mosse</span>
+                  <span :style="{ fontFamily: FF.label, fontSize: '15px', fontWeight: 800, color: C.gold, letterSpacing: '0.2em', textTransform: 'uppercase' }">{{ $t('card.battle_moves') }}</span>
                   <span :style="{ fontFamily: FF.label, fontSize: '12px', color: `${C.gold}66` }">{{ Object.values(mosseSlot).filter(Boolean).length }}/4</span>
                 </div>
                 <component :is="battleOpen ? ChevronUp : ChevronDown" :size="18" :color="`${C.gold}88`" stroke-width="1.5" />
@@ -323,7 +325,7 @@ onUnmounted(() => {
                 <div style="display:flex;gap:10px;margin-bottom:18px;">
                   <div class="wd-stat wd-stat--vel">
                     <div :style="{ fontSize: '20px', marginBottom: '2px' }">⚡</div>
-                    <div class="wd-stat__label" :style="{ fontFamily: FF.label }">VEL</div>
+                    <div class="wd-stat__label" :style="{ fontFamily: FF.label }">{{ $t('card.stat_speed_abbr') }}</div>
                     <div class="wd-stat__val wd-stat__val--vel" :style="{ fontFamily: FF.label }">{{ Math.round(vel) }}</div>
                   </div>
                   <div class="wd-stat wd-stat--hp">
@@ -333,7 +335,7 @@ onUnmounted(() => {
                   </div>
                   <div class="wd-stat wd-stat--crit">
                     <div :style="{ fontSize: '20px', marginBottom: '2px' }">💥</div>
-                    <div class="wd-stat__label" :style="{ fontFamily: FF.label }">CRIT</div>
+                    <div class="wd-stat__label" :style="{ fontFamily: FF.label }">{{ $t('card.stat_crit_abbr') }}</div>
                     <div class="wd-stat__val wd-stat__val--crit" :style="{ fontFamily: FF.label }">{{ Math.round(crit * 100) }}%</div>
                   </div>
                 </div>
@@ -354,7 +356,7 @@ onUnmounted(() => {
                         </div>
                       </div>
                       <div v-else style="flex:1;">
-                        <span :style="{ fontFamily: FF.label, fontSize: '12px', color: 'var(--theme-text-3)', letterSpacing: '0.1em' }">— vuoto —</span>
+                        <span :style="{ fontFamily: FF.label, fontSize: '12px', color: 'var(--theme-text-3)', letterSpacing: '0.1em' }">{{ $t('card.empty_slot') }}</span>
                       </div>
                       <div style="display:flex;gap:5px;flex-shrink:0;">
                         <button @click="slotPicker = slot" :style="{
@@ -455,7 +457,7 @@ onUnmounted(() => {
           <!-- Empty -->
           <div v-if="!pickerMosse.length" style="text-align:center;padding:36px 0;color:var(--theme-text-3);">
             <Swords :size="32" stroke-width="1" style="margin:0 auto 10px;" />
-            <div :style="{ fontFamily: FF.label, fontSize: '13px', letterSpacing: '0.2em' }">Nessuna mossa in collezione</div>
+            <div :style="{ fontFamily: FF.label, fontSize: '13px', letterSpacing: '0.2em' }">{{ $t('card.no_moves_collection') }}</div>
           </div>
 
         </div>

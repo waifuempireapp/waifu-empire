@@ -177,10 +177,10 @@ const tipoIcona = computed(() => TIPO_ICONA[props.carta?.tipo ?? ''] ?? '◈')
              border:1px solid rgba(255,255,255,0.35);
              box-shadow:0 0 8px rgba(245,166,35,0.5);
              pointer-events:none;z-index:10;text-transform:uppercase"
-    >NEW!</div>
+    >{{ $t('pesca.new_badge') }}</div>
 
     <!-- Badge HOT 🔥 in alto a sinistra (sposta se c'è anche NEW) -->
-    <div v-if="isHot" :style="hotBadgeStyle">HOT 🔥</div>
+    <div v-if="isHot" :style="hotBadgeStyle">{{ $t('pesca.hot_badge') }}</div>
 
     <!-- Contatore copie (opzionale, visibile solo se prop passata) -->
     <div v-if="copia !== undefined" :style="copieStyle">

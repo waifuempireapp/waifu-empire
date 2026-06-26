@@ -5,7 +5,7 @@
     <div v-if="!ready" class="page-loading-overlay" :style="background ? { background } : {}">
       <div class="page-loading-overlay__content">
         <div class="page-loading-overlay__spinner" />
-        <span class="page-loading-overlay__text">Caricamento...</span>
+        <span class="page-loading-overlay__text">{{ $t("loading.text") }}</span>
       </div>
     </div>
   </Transition>
