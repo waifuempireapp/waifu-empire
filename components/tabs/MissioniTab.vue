@@ -42,6 +42,13 @@ const FF = {
 // ── Sub-tab attiva ────────────────────────────────────────────────────────────
 const subTab = ref<'giornaliere' | 'mappa'>('giornaliere')
 
+// Toggle stile Raid: violetto con dissolvenza a scomparsa nel solo bottone attivo
+const VIOLETTO = '#a855f7'
+function segActiveBg(i: number, color: string): string {
+  const dir = i === 0 ? 'to right' : 'to left'
+  return `linear-gradient(${dir}, ${color} 0%, ${color} 75%, transparent 100%)`
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  GIORNALIERE — definizione missioni + tracking localStorage
 // ══════════════════════════════════════════════════════════════════════════════
@@ -227,26 +234,26 @@ onUnmounted(() => {
       <div :style="{ fontFamily:FF.display, fontSize:'22px', fontWeight:900, color:'var(--theme-text)', marginBottom:'16px', lineHeight:1.2 }">{{ $t("missions.title") }}</div>
     </div>
 
-    <!-- ── SUB-TAB SELECTOR — bottone unico diviso a metà ───────────────── -->
-    <div style="flex-shrink:0;display:flex;margin:0 16px 14px;border:1.5px solid var(--theme-accent);border-radius:12px;overflow:hidden;">
+    <!-- ── SUB-TAB SELECTOR — gradiente violetto a scomparsa (stile Raid) ──── -->
+    <div :style="{ flexShrink:0, display:'flex', margin:'0 16px 14px', border:`1.5px solid ${VIOLETTO}`, borderRadius:'12px', overflow:'hidden' }">
       <button
         @click="subTab = 'giornaliere'"
         :style="{
-          flex:1, padding:'11px 8px', border:'none', borderRight:'1.5px solid var(--theme-accent)', cursor:'pointer',
-          background: subTab === 'giornaliere' ? 'var(--theme-accent)' : 'transparent',
+          flex:1, padding:'11px 8px', borderRadius:'0 !important', border:'none', boxShadow:'none', cursor:'pointer',
+          background: subTab === 'giornaliere' ? segActiveBg(0, VIOLETTO) : 'transparent',
+          color: subTab === 'giornaliere' ? '#fff' : VIOLETTO,
           fontFamily: FF.label, fontSize:'13px', fontWeight:800, letterSpacing:'0.1em',
-          color: subTab === 'giornaliere' ? '#fff' : 'var(--theme-accent)',
-          textTransform:'uppercase', transition:'all 0.2s', borderRadius:'0 !important',
+          textTransform:'uppercase', transition:'color 0.18s',
         }"
       >{{ $t("missions.daily_tab") }}</button>
       <button
         @click="subTab = 'mappa'; if (!activeMission && !mapLoading) loadMapMission()"
         :style="{
-          flex:1, padding:'11px 8px', border:'none', cursor:'pointer',
-          background: subTab === 'mappa' ? 'var(--theme-accent)' : 'transparent',
+          flex:1, padding:'11px 8px', borderRadius:'0 !important', border:'none', boxShadow:'none', cursor:'pointer',
+          background: subTab === 'mappa' ? segActiveBg(1, VIOLETTO) : 'transparent',
+          color: subTab === 'mappa' ? '#fff' : VIOLETTO,
           fontFamily: FF.label, fontSize:'13px', fontWeight:800, letterSpacing:'0.1em',
-          color: subTab === 'mappa' ? '#fff' : 'var(--theme-accent)',
-          textTransform:'uppercase', transition:'all 0.2s', borderRadius:'0 !important',
+          textTransform:'uppercase', transition:'color 0.18s',
         }"
       >{{ $t("missions.map_tab") }}</button>
     </div>
