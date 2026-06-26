@@ -191,8 +191,10 @@ onUnmounted(() => {
 
 <template>
   <Teleport to="body">
-    <!-- Outer: flex-column, touch-action:none blocca iOS scroll passthrough -->
-    <div style="position:fixed;inset:0;z-index:9000;background:var(--theme-bg);backdrop-filter:blur(24px);display:flex;flex-direction:column;overflow:hidden;touch-action:none;">
+    <!-- Outer: flex-column. touch-action:pan-y → permette lo scroll verticale all'area
+         sottostante (con touch-action:none l'intersezione con gli antenati lo bloccava).
+         Lo scroll-passthrough resta bloccato da overscroll-behavior:contain + body overflow:hidden. -->
+    <div style="position:fixed;inset:0;z-index:9000;background:var(--theme-bg);backdrop-filter:blur(24px);display:flex;flex-direction:column;overflow:hidden;touch-action:pan-y;">
 
       <!-- Header fisso: non scorre mai -->
       <div style="flex-shrink:0;background:var(--theme-surface);backdrop-filter:blur(16px);border-bottom:1px solid var(--theme-border);padding:15px 18px;display:flex;align-items:center;justify-content:space-between;">
