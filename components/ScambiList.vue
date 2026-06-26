@@ -37,6 +37,7 @@ const TRADES_PER_PAGE = 10
 
 // ------------------------------------------------------------------ Store & stato
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 const trades = ref<any[]>(props.initialData?.trades ?? [])
 const loading = ref(!props.initialData)
@@ -87,33 +88,33 @@ const getStatusLabel = (trade: any, uid: string) => {
   switch (trade.status) {
     case 'waifu_a_scelta':
       return isA
-        ? { text: 'Waifu offerta · in attesa risposta', color: '#f5a623' }
-        : { text: 'Proposta ricevuta · scegli la tua waifu', color: '#f5a623', action: true }
+        ? { text: t('trades.st_waifu_offered'), color: '#f5a623' }
+        : { text: t('trades.st_proposal_received'), color: '#f5a623', action: true }
     case 'waifu_b_scelta':
       return isA
-        ? { text: 'Risposta ricevuta · accetta o rifiuta', color: '#42a5f5', action: true }
-        : { text: 'Proposta inviata · in attesa di A', color: '#9e9e9e' }
+        ? { text: t('trades.st_response_accept_reject'), color: '#42a5f5', action: true }
+        : { text: t('trades.st_proposal_sent_a'), color: '#9e9e9e' }
     case 'a_accettato':
       return isA
-        ? { text: 'Accettato · in attesa che B confermi', color: '#9e9e9e' }
-        : { text: 'A ha accettato · conferma per completare', color: '#00e676', action: true }
+        ? { text: t('trades.st_accepted_waiting_b'), color: '#9e9e9e' }
+        : { text: t('trades.st_a_accepted_confirm'), color: '#00e676', action: true }
     case 'b_accettato':
       return isB
-        ? { text: 'Scambio eseguito · guarda la tua nuova waifu!', color: '#00e676', action: true }
-        : { text: 'B ha confermato · in elaborazione…', color: '#9e9e9e' }
+        ? { text: t('trades.st_trade_done'), color: '#00e676', action: true }
+        : { text: t('trades.st_b_confirmed'), color: '#9e9e9e' }
     case 'completato':
       return isA
-        ? { text: 'Quasi finito · guarda la tua nuova waifu!', color: '#00e676', action: true }
-        : { text: 'Completato · in attesa di A', color: '#9e9e9e' }
-    case 'chiuso':           return { text: 'Completato ✓', color: '#9e9e9e' }
-    case 'pending_response': return { text: 'In attesa di risposta', color: '#f5a623' }
+        ? { text: t('trades.st_almost_done'), color: '#00e676', action: true }
+        : { text: t('trades.st_completed_waiting_a'), color: '#9e9e9e' }
+    case 'chiuso':           return { text: t('trades.st_completed_check'), color: '#9e9e9e' }
+    case 'pending_response': return { text: t('trades.st_pending_response'), color: '#f5a623' }
     case 'pending_confirm':
       return isA
-        ? { text: 'Risposta ricevuta · accetta', color: '#42a5f5', action: true }
-        : { text: 'In attesa di conferma', color: '#9e9e9e' }
-    case 'completed':  return { text: 'Completato', color: '#00e676' }
-    case 'cancelled':  return { text: 'Annullato', color: '#9e9e9e' }
-    case 'expired':    return { text: 'Scaduto', color: '#ff4d4d' }
+        ? { text: t('trades.st_response_accept'), color: '#42a5f5', action: true }
+        : { text: t('trades.st_pending_confirm'), color: '#9e9e9e' }
+    case 'completed':  return { text: t('trades.st_completed'), color: '#00e676' }
+    case 'cancelled':  return { text: t('trades.st_cancelled'), color: '#9e9e9e' }
+    case 'expired':    return { text: t('trades.st_expired'), color: '#ff4d4d' }
     default:           return { text: trade.status, color: '#9e9e9e' }
   }
 }
@@ -186,7 +187,7 @@ const carica = async () => {
       }
     }
   } catch (e: any) {
-    errore.value = e?.data?.error || e?.message || 'Errore caricamento'
+    errore.value = e?.data?.error || e?.message || t('trades.error_load')
   } finally {
     loading.value = false
   }
@@ -367,7 +368,7 @@ const incomingRispondi = async () => {
     incomingStato.value = 'success'
     setTimeout(() => { tradeAperto.value = null; incomingStato.value = 'idle'; carica() }, 1500)
   } catch (e: any) {
-    incomingErrMsg.value = e?.data?.error || e?.message || 'Errore risposta'
+    incomingErrMsg.value = e?.data?.error || e?.message || t('trades.error_response')
     incomingStato.value = 'idle'
   }
 }
@@ -401,7 +402,7 @@ const acceptAccetta = async () => {
     acceptStato.value = 'success'
     setTimeout(() => { tradeAperto.value = null; acceptStato.value = 'idle'; carica() }, 1200)
   } catch (e: any) {
-    acceptErrMsg.value = e?.data?.error || e?.message || 'Errore accettazione'
+    acceptErrMsg.value = e?.data?.error || e?.message || t('trades.error_accept')
     acceptStato.value = 'idle'
   }
 }
@@ -441,7 +442,7 @@ const confirmConferma = async () => {
     confirmBReceivedByB.value = received
     confirmStato.value = 'success'
   } catch (e: any) {
-    confirmErrMsg.value = e?.data?.error || e?.message || 'Errore conferma'
+    confirmErrMsg.value = e?.data?.error || e?.message || t('trades.error_confirm')
     confirmStato.value = 'idle'
   }
 }
@@ -589,7 +590,7 @@ onUnmounted(() => {
           cursor: 'pointer',
           letterSpacing: '2px',
         }"
-      >CONTINUA</button>
+      >{{ $t("trades.continue") }}</button>
     </div>
   </div>
 
@@ -607,7 +608,7 @@ onUnmounted(() => {
       class="flex flex-col items-center justify-center gap-3 w-full h-full"
     >
       <div style="font-size: 40px;">✅</div>
-      <div style="font-family: 'Orbitron', sans-serif; font-size: 12px; color: #00e676; letter-spacing: 2px;">RISPOSTA INVIATA!</div>
+      <div style="font-family: 'Orbitron', sans-serif; font-size: 12px; color: #00e676; letter-spacing: 2px;">{{ $t("trades.response_sent") }}</div>
       <div style="font-family: 'Fredoka', sans-serif; font-size: 12px; color: rgba(238,232,220,0.6);">
         {{ enrichedIncomingTrade?.fromName }} deve ora confermare lo scambio.
       </div>
@@ -619,13 +620,13 @@ onUnmounted(() => {
       class="flex flex-col items-center justify-center gap-3 w-full h-full"
     >
       <div style="font-size: 40px;">❌</div>
-      <div style="font-family: 'Orbitron', sans-serif; font-size: 12px; color: rgba(238,232,220,0.5); letter-spacing: 2px;">SCAMBIO RIFIUTATO</div>
+      <div style="font-family: 'Orbitron', sans-serif; font-size: 12px; color: rgba(238,232,220,0.5); letter-spacing: 2px;">{{ $t("trades.trade_rejected") }}</div>
     </div>
 
     <!-- Form selezione waifu -->
     <div v-else style="width: 100%; max-width: 440px;">
       <div class="flex items-center justify-between mb-4">
-        <div style="font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: 3px; color: #ff4d9e;">📨 RICHIESTA SCAMBIO</div>
+        <div style="font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: 3px; color: #ff4d9e;">{{ $t("trades.trade_request") }}</div>
         <button
           @click="tradeAperto = null"
           style="background: none; border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: rgba(238,232,220,0.5); font-family: 'Orbitron', sans-serif; font-size: 9px; padding: 6px 12px; cursor: pointer;"
@@ -666,8 +667,8 @@ onUnmounted(() => {
         class="flex items-center justify-between rounded-[10px] px-[14px] py-2 mb-1"
         style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);"
       >
-        <div style="font-family: 'Orbitron', sans-serif; font-size: 9px; color: rgba(238,232,220,0.4); letter-spacing: 1px;">SCAMBI OGGI</div>
-        <div v-if="haTradePass" style="font-family: 'Orbitron', sans-serif; font-size: 9px; color: #00e676;">✓ ILLIMITATI</div>
+        <div style="font-family: 'Orbitron', sans-serif; font-size: 9px; color: rgba(238,232,220,0.4); letter-spacing: 1px;">{{ $t("trades.trades_today") }}</div>
+        <div v-if="haTradePass" style="font-family: 'Orbitron', sans-serif; font-size: 9px; color: #00e676;">{{ $t("trades.unlimited") }}</div>
         <div v-else style="font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700;">
           <span :style="{ color: incomingLimitRaggiunto ? '#ff4d4d' : '#eedcd4' }">{{ tradesToday }}</span>
           <span style="color: rgba(238,232,220,0.35);">/{{ DAILY_LIMIT }}</span>
@@ -681,7 +682,7 @@ onUnmounted(() => {
         class="rounded-[10px] px-[14px] py-[10px] mb-1"
         style="background: rgba(255,77,77,0.08); border: 1px solid rgba(255,77,77,0.3);"
       >
-        <div style="font-family: 'Orbitron', sans-serif; font-size: 9px; color: #ff4d4d; font-weight: 700;">LIMITE RAGGIUNTO</div>
+        <div style="font-family: 'Orbitron', sans-serif; font-size: 9px; color: #ff4d4d; font-weight: 700;">{{ $t("trades.limit_reached") }}</div>
         <div style="font-family: 'Fredoka', sans-serif; font-size: 11px; color: rgba(238,232,220,0.5); margin-top: 2px;">
           Hai esaurito i tuoi {{ DAILY_LIMIT }} scambi giornalieri. Puoi solo rifiutare questo scambio.
         </div>
@@ -704,7 +705,7 @@ onUnmounted(() => {
         <div style="font-family: 'Orbitron', sans-serif; font-size: 10px; color: rgba(238,232,220,0.4);">
           Non hai waifu di rarità <strong :style="{ color: incomingColore }">{{ incomingRarita }}</strong> con almeno 2 copie da offrire.
         </div>
-        <div style="font-family: 'Fredoka', sans-serif; font-size: 11px; color: rgba(238,232,220,0.3); margin-top: 4px;">Puoi rifiutare lo scambio.</div>
+        <div style="font-family: 'Fredoka', sans-serif; font-size: 11px; color: rgba(238,232,220,0.3); margin-top: 4px;">{{ $t("trades.can_reject") }}</div>
       </div>
 
       <!-- Griglia waifu compatibili -->
@@ -787,7 +788,7 @@ onUnmounted(() => {
       class="flex flex-col items-center gap-3"
     >
       <div style="font-size: 40px;">✅</div>
-      <div style="font-family: 'Orbitron', sans-serif; font-size: 12px; color: #00e676; letter-spacing: 2px;">SCAMBIO ACCETTATO</div>
+      <div style="font-family: 'Orbitron', sans-serif; font-size: 12px; color: #00e676; letter-spacing: 2px;">{{ $t("trades.trade_accepted") }}</div>
       <div style="font-family: 'Fredoka', sans-serif; font-size: 12px; color: rgba(238,232,220,0.6);">
         {{ acceptTrade?.toName }} deve ora confermare per completare.
       </div>
@@ -797,11 +798,11 @@ onUnmounted(() => {
       class="flex flex-col items-center gap-3"
     >
       <div style="font-size: 40px;">❌</div>
-      <div style="font-family: 'Orbitron', sans-serif; font-size: 12px; color: rgba(238,232,220,0.5); letter-spacing: 2px;">SCAMBIO ANNULLATO</div>
+      <div style="font-family: 'Orbitron', sans-serif; font-size: 12px; color: rgba(238,232,220,0.5); letter-spacing: 2px;">{{ $t("trades.trade_cancelled") }}</div>
     </div>
     <div v-else style="width: 100%; max-width: 440px;">
       <div class="flex items-center justify-between mb-4">
-        <div style="font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: 3px; color: #42a5f5;">↔ ACCETTA SCAMBIO</div>
+        <div style="font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: 3px; color: #42a5f5;">{{ $t("trades.accept_trade") }}</div>
         <button @click="tradeAperto = null" style="background: none; border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: rgba(238,232,220,0.5); font-family: 'Orbitron', sans-serif; font-size: 9px; padding: 6px 12px; cursor: pointer;">✕</button>
       </div>
 
@@ -812,7 +813,7 @@ onUnmounted(() => {
       <!-- Tu cedi ↔ Tu ricevi -->
       <div class="flex items-start justify-center gap-4 mb-5">
         <div class="text-center">
-          <div style="font-family: 'Orbitron', sans-serif; font-size: 8px; color: rgba(238,232,220,0.4); margin-bottom: 6px; letter-spacing: 1px;">TU CEDI</div>
+          <div style="font-family: 'Orbitron', sans-serif; font-size: 8px; color: rgba(238,232,220,0.4); margin-bottom: 6px; letter-spacing: 1px;">{{ $t("trades.you_give") }}</div>
           <img
             v-if="acceptFromCatalog?.asset_statica || acceptFromCatalog?.immagine"
             :src="acceptFromCatalog.asset_statica || acceptFromCatalog.immagine"
@@ -823,7 +824,7 @@ onUnmounted(() => {
         </div>
         <div style="font-size: 22px; color: #42a5f5; align-self: center; margin-top: 20px;">↔</div>
         <div class="text-center">
-          <div style="font-family: 'Orbitron', sans-serif; font-size: 8px; color: rgba(238,232,220,0.4); margin-bottom: 6px; letter-spacing: 1px;">TU RICEVI</div>
+          <div style="font-family: 'Orbitron', sans-serif; font-size: 8px; color: rgba(238,232,220,0.4); margin-bottom: 6px; letter-spacing: 1px;">{{ $t("trades.you_receive") }}</div>
           <img
             v-if="acceptToCatalog?.asset_statica || acceptToCatalog?.immagine"
             :src="acceptToCatalog.asset_statica || acceptToCatalog.immagine"
@@ -837,7 +838,7 @@ onUnmounted(() => {
       <div v-if="acceptErrMsg" style="color: #ff4d4d; font-family: 'Orbitron', sans-serif; font-size: 9px; text-align: center; margin-bottom: 10px;">{{ acceptErrMsg }}</div>
 
       <div class="flex gap-[10px] justify-center">
-        <button @click="acceptAnnulla" :disabled="acceptStato === 'loading'" style="background: rgba(255,77,77,0.08); border: 1px solid rgba(255,77,77,0.3); border-radius: 8px; color: #ff4d4d; font-family: 'Orbitron', sans-serif; font-size: 9px; padding: 9px 18px; cursor: pointer;">RIFIUTA</button>
+        <button @click="acceptAnnulla" :disabled="acceptStato === 'loading'" style="background: rgba(255,77,77,0.08); border: 1px solid rgba(255,77,77,0.3); border-radius: 8px; color: #ff4d4d; font-family: 'Orbitron', sans-serif; font-size: 9px; padding: 9px 18px; cursor: pointer;">{{ $t("trades.reject") }}</button>
         <button @click="acceptAccetta" :disabled="acceptStato === 'loading'" style="background: rgba(66,165,245,0.15); border: 1px solid rgba(66,165,245,0.5); border-radius: 8px; color: #42a5f5; font-family: 'Orbitron', sans-serif; font-size: 9px; padding: 9px 22px; cursor: pointer; letter-spacing: 1px;">{{ acceptStato === 'loading' ? '…' : '✓ ACCETTA' }}</button>
       </div>
     </div>
@@ -856,7 +857,7 @@ onUnmounted(() => {
       v-if="confirmStato === 'success' && confirmBReceivedByB"
       class="flex flex-col items-center gap-7"
     >
-      <div style="font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: 4px; color: #ff4d9e; opacity: 0.8;">✦ WAIFU RICEVUTA ✦</div>
+      <div style="font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: 4px; color: #ff4d9e; opacity: 0.8;">{{ $t("trades.waifu_received") }}</div>
       <div>
         <img
           v-if="confirmFromImg"
@@ -885,7 +886,7 @@ onUnmounted(() => {
             cursor: 'pointer',
             letterSpacing: '2px',
           }"
-        >CONTINUA</button>
+        >{{ $t("trades.continue") }}</button>
       </div>
     </div>
 
@@ -894,12 +895,12 @@ onUnmounted(() => {
       class="flex flex-col items-center gap-3"
     >
       <div style="font-size: 40px;">❌</div>
-      <div style="font-family: 'Orbitron', sans-serif; font-size: 12px; color: rgba(238,232,220,0.5); letter-spacing: 2px;">SCAMBIO ANNULLATO</div>
+      <div style="font-family: 'Orbitron', sans-serif; font-size: 12px; color: rgba(238,232,220,0.5); letter-spacing: 2px;">{{ $t("trades.trade_cancelled") }}</div>
     </div>
 
     <div v-else style="width: 100%; max-width: 440px;">
       <div class="flex items-center justify-between mb-4">
-        <div style="font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: 3px; color: #f5a623;">✓ CONFERMA SCAMBIO</div>
+        <div style="font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: 3px; color: #f5a623;">{{ $t("trades.confirm_trade") }}</div>
         <button @click="tradeAperto = null" style="background: none; border: 1px solid rgba(255,255,255,0.15); border-radius: 7px; color: rgba(238,232,220,0.5); font-family: 'Orbitron', sans-serif; font-size: 9px; padding: 6px 12px; cursor: pointer;">✕</button>
       </div>
 
@@ -910,7 +911,7 @@ onUnmounted(() => {
       <!-- B cede ↔ B riceve -->
       <div class="flex items-start justify-center gap-4 mb-5">
         <div class="text-center">
-          <div style="font-family: 'Orbitron', sans-serif; font-size: 8px; color: rgba(238,232,220,0.4); margin-bottom: 6px; letter-spacing: 1px;">TU CEDI</div>
+          <div style="font-family: 'Orbitron', sans-serif; font-size: 8px; color: rgba(238,232,220,0.4); margin-bottom: 6px; letter-spacing: 1px;">{{ $t("trades.you_give") }}</div>
           <img
             v-if="confirmToImg"
             :src="confirmToImg"
@@ -921,7 +922,7 @@ onUnmounted(() => {
         </div>
         <div style="font-size: 22px; color: #f5a623; align-self: center; margin-top: 20px;">↔</div>
         <div class="text-center">
-          <div style="font-family: 'Orbitron', sans-serif; font-size: 8px; color: rgba(238,232,220,0.4); margin-bottom: 6px; letter-spacing: 1px;">TU RICEVI</div>
+          <div style="font-family: 'Orbitron', sans-serif; font-size: 8px; color: rgba(238,232,220,0.4); margin-bottom: 6px; letter-spacing: 1px;">{{ $t("trades.you_receive") }}</div>
           <img
             v-if="confirmFromImg"
             :src="confirmFromImg"
@@ -935,7 +936,7 @@ onUnmounted(() => {
       <div v-if="confirmErrMsg" style="color: #ff4d4d; font-family: 'Orbitron', sans-serif; font-size: 9px; text-align: center; margin-bottom: 10px;">{{ confirmErrMsg }}</div>
 
       <div class="flex gap-[10px] justify-center">
-        <button @click="confirmAnnulla" :disabled="confirmStato === 'loading'" style="background: rgba(255,77,77,0.08); border: 1px solid rgba(255,77,77,0.3); border-radius: 8px; color: #ff4d4d; font-family: 'Orbitron', sans-serif; font-size: 9px; padding: 9px 18px; cursor: pointer;">ANNULLA</button>
+        <button @click="confirmAnnulla" :disabled="confirmStato === 'loading'" style="background: rgba(255,77,77,0.08); border: 1px solid rgba(255,77,77,0.3); border-radius: 8px; color: #ff4d4d; font-family: 'Orbitron', sans-serif; font-size: 9px; padding: 9px 18px; cursor: pointer;">{{ $t("trades.cancel") }}</button>
         <button @click="confirmConferma" :disabled="confirmStato === 'loading'" style="background: rgba(245,166,35,0.15); border: 1px solid rgba(245,166,35,0.5); border-radius: 8px; color: #f5a623; font-family: 'Orbitron', sans-serif; font-size: 9px; padding: 9px 22px; cursor: pointer; letter-spacing: 1px;">{{ confirmStato === 'loading' ? '…' : '✓ COMPLETA SCAMBIO' }}</button>
       </div>
     </div>
@@ -964,8 +965,8 @@ onUnmounted(() => {
       style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);"
     >
       <div style="font-size: 32px; margin-bottom: 10px;">↔</div>
-      <div style="font-family: 'Orbitron', sans-serif; font-size: 10px; color: rgba(238,232,220,0.4);">Nessuno scambio ancora.</div>
-      <div style="font-family: 'Fredoka', sans-serif; font-size: 11px; color: rgba(238,232,220,0.3); margin-top: 4px;">Apri il dettaglio di una waifu e premi SCAMBIA!</div>
+      <div style="font-family: 'Orbitron', sans-serif; font-size: 10px; color: rgba(238,232,220,0.4);">{{ $t("trades.no_trades") }}</div>
+      <div style="font-family: 'Fredoka', sans-serif; font-size: 11px; color: rgba(238,232,220,0.3); margin-top: 4px;">{{ $t("trades.empty_hint") }}</div>
     </div>
 
     <!-- Lista scambi -->
@@ -975,7 +976,7 @@ onUnmounted(() => {
         class="flex items-center justify-between gap-2 rounded-[10px] px-[14px] py-2"
         style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);"
       >
-        <div style="font-family: 'Orbitron', sans-serif; font-size: 9px; color: rgba(238,232,220,0.4); letter-spacing: 1px;">SCAMBI OGGI</div>
+        <div style="font-family: 'Orbitron', sans-serif; font-size: 9px; color: rgba(238,232,220,0.4); letter-spacing: 1px;">{{ $t("trades.trades_today") }}</div>
         <div v-if="haTradePass" style="font-family: 'Orbitron', sans-serif; font-size: 9px; color: #00e676;">✓ TRADE PASS — ILLIMITATI</div>
         <div v-else class="flex flex-col items-end gap-[3px]">
           <div style="font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700;">
@@ -1055,7 +1056,7 @@ onUnmounted(() => {
                 v-if="getStatusLabel(t, uid).action"
                 class="ml-auto"
                 style="background: rgba(255,77,158,0.15); border: 1px solid rgba(255,77,158,0.4); border-radius: 6px; font-family: 'Orbitron', sans-serif; font-size: 8px; color: #ff4d9e; padding: 4px 8px; letter-spacing: 1px;"
-              >AZIONE RICHIESTA</div>
+              >{{ $t("trades.action_required") }}</div>
             </div>
           </div>
         </div>

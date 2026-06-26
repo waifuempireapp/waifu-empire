@@ -147,19 +147,19 @@ const dropPoseIds     = computed(() => dropSelezionato.value ? new Set(dropSelez
 const teams = computed(() => props.collezione.teams || {})
 
 async function salvaTeam() {
-  if (!teamNome.value.trim()) { emit('notif', 'Inserisci un nome', '#ff3d3d'); return }
-  if (teamWaifu.value.length !== 5) { emit('notif', 'Seleziona esattamente 5 waifu per il team', '#ff3d3d'); return }
+  if (!teamNome.value.trim()) { emit('notif', t('collection.enter_team_name'), '#ff3d3d'); return }
+  if (teamWaifu.value.length !== 5) { emit('notif', t('collection.select_5_waifu'), '#ff3d3d'); return }
   const nomiEsistenti = Object.entries(teams.value)
     .filter(([id]) => id !== teamInEdit.value)
     .map(([, t]: [string, any]) => (t.nome as string).toLowerCase())
-  if (nomiEsistenti.includes(teamNome.value.trim().toLowerCase())) { emit('notif', 'Nome già esistente', '#ff3d3d'); return }
+  if (nomiEsistenti.includes(teamNome.value.trim().toLowerCase())) { emit('notif', t('collection.team_name_exists'), '#ff3d3d'); return }
   const nuova = JSON.parse(JSON.stringify(props.collezione))
   if (!nuova.teams) nuova.teams = {}
   const teamId = teamInEdit.value === 'new' ? `team_${Date.now()}` : teamInEdit.value!
   nuova.teams[teamId] = { nome: teamNome.value.trim(), waifu: teamWaifu.value }
   emit('updateCollezione', nuova)
   await saveCollezione(authStore.user!.uid, nuova)
-  emit('notif', 'Team salvato!', '#00e676')
+  emit('notif', t('collection.team_saved'), '#00e676')
   teamInEdit.value = null; teamNome.value = ''; teamWaifu.value = []
 }
 
@@ -168,7 +168,7 @@ async function eliminaTeam(teamId: string) {
   delete nuova.teams[teamId]
   emit('updateCollezione', nuova)
   await deleteTeamFromCollezione(authStore.user!.uid, teamId)
-  emit('notif', 'Team eliminato', '#ff3d3d')
+  emit('notif', t('collection.team_deleted'), '#ff3d3d')
 }
 
 function iniziaEditTeam(teamId: string) {
@@ -197,7 +197,7 @@ async function togglePreferita(id: string) {
   nuova.waifu[id].preferita = !nuova.waifu[id].preferita
   emit('updateCollezione', nuova)
   await saveCollezione(authStore.user!.uid, nuova)
-  emit('notif', nuova.waifu[id].preferita ? '❤ Aggiunta ai preferiti' : 'Rimossa dai preferiti', nuova.waifu[id].preferita ? '#ff85b6' : 'rgba(241,235,255,0.5)')
+  emit('notif', nuova.waifu[id].preferita ? t('collection.fav_added') : t('collection.fav_removed'), nuova.waifu[id].preferita ? '#ff85b6' : 'rgba(241,235,255,0.5)')
 }
 
 // ── Assegna / rimuovi mossa slot ──────────────────────────────
@@ -207,7 +207,7 @@ async function assegnaMossa(waifuId: string, slot: string, mossaId: string) {
   nuova.waifu[waifuId].mosse_slot[slot] = mossaId
   emit('updateCollezione', nuova)
   await saveCollezione(authStore.user!.uid, nuova)
-  emit('notif', 'Mossa assegnata!', '#a78bfa')
+  emit('notif', t('collection.move_assigned'), '#a78bfa')
 }
 
 async function rimuoviMossa(waifuId: string, slot: string) {
@@ -215,14 +215,14 @@ async function rimuoviMossa(waifuId: string, slot: string) {
   if (nuova.waifu[waifuId].mosse_slot) delete nuova.waifu[waifuId].mosse_slot[slot]
   emit('updateCollezione', nuova)
   await saveCollezione(authStore.user!.uid, nuova)
-  emit('notif', 'Mossa rimossa', 'rgba(241,235,255,0.5)')
+  emit('notif', t('collection.move_removed'), 'rgba(241,235,255,0.5)')
 }
 
 // ── Sub-tab config ────────────────────────────────────────────
 const subTabs = computed(() => [
-  { k: 'waifu',  l: 'Waifu',  icon: '♛', n: Object.keys(props.collezione.waifu || {}).length,  c: C.gold   },
-  { k: 'mosse',  l: 'Mosse',  icon: Swords, n: Object.keys(props.collezione.mosse || {}).length,  c: C.violet },
-  { k: 'team',   l: 'Team',   icon: Shield, n: Object.keys(teams.value).length,                   c: C.ok     },
+  { k: 'waifu',  l: t('collection.waifu'),     icon: '♛', n: Object.keys(props.collezione.waifu || {}).length,  c: C.gold   },
+  { k: 'mosse',  l: t('collection.tab_moves'), icon: Swords, n: Object.keys(props.collezione.mosse || {}).length,  c: C.violet },
+  { k: 'team',   l: t('collection.tab_team'),  icon: Shield, n: Object.keys(teams.value).length,                   c: C.ok     },
 ])
 
 // ── Computed: waifu entries filtrate e ordinate ───────────────
@@ -396,9 +396,9 @@ async function lvlApply() {
     await saveCollezione(authStore.user!.uid, nuova)
     waifuSel.value = null
     lvlPreview.value = null
-    emit('notif', 'Level Up applicato!', '#06d6a0')
+    emit('notif', t('collection.level_up_applied'), '#06d6a0')
   } catch (e: any) {
-    alert('Errore: ' + (e.message || e))
+    alert(t('collection.error_generic') + (e.message || e))
   } finally {
     lvlBusy.value = false
   }
@@ -478,9 +478,9 @@ function teamToggleWaifu(id: string) {
   if (waifuEntry) {
     const dati = waifuEntry[1] as any
     const mosseOk = Object.values(dati.mosse_slot ?? {}).filter(Boolean).length === 4
-    if (!mosseOk) { emit('notif', 'Equipaggia 4 mosse per usare questa waifu in combattimento', '#f5a623'); return }
+    if (!mosseOk) { emit('notif', t('collection.equip_4_moves'), '#f5a623'); return }
   }
-  if (teamWaifu.value.length >= 5) { emit('notif', 'Massimo 5 waifu per team', '#f5a623'); return }
+  if (teamWaifu.value.length >= 5) { emit('notif', t('collection.team_max_5'), '#f5a623'); return }
   teamWaifu.value = [...teamWaifu.value, id]
 }
 
@@ -651,7 +651,7 @@ function apriNegozio() {
           <!-- Ricerca -->
           <div :style="{ display:'flex', alignItems:'center', gap:'8px', padding:'10px 14px', background:'var(--theme-bg-secondary)', border:'1px solid var(--theme-border)', borderRadius:'12px', marginBottom:'10px', boxShadow:'0 2px 8px var(--theme-shadow)' }">
             <Search :size="14" stroke-width="1.5" :style="{ color:'var(--theme-text-3)', flexShrink:0 }" />
-            <input v-model="filtroNome" @input="visibiliWaifu = 12" placeholder="Cerca per nome…"
+            <input v-model="filtroNome" @input="visibiliWaifu = 12" :placeholder="$t('collection.search_placeholder')"
               :style="{ flex:1, background:'transparent !important', border:'none !important', boxShadow:'none !important', outline:'none', color:'var(--theme-text)', fontSize:'14px', fontFamily:FF.body, padding:'6px 0' }" />
             <button v-if="filtroNome" @click="filtroNome = ''; visibiliWaifu = 12"
               :style="{ background:'none', border:'none', cursor:'pointer', color:'var(--theme-text-3)', padding:0, display:'flex', alignItems:'center' }"><X :size="14" stroke-width="1.5" /></button>
@@ -730,7 +730,7 @@ function apriNegozio() {
               padding: '7px 12px', cursor: 'pointer',
               letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 700,
             }"
-          >🔓 Acquista Trade Pass</button>
+          >{{ $t("collection.buy_trade_pass") }}</button>
         </div>
 
         <!-- Griglia waifu 3 colonne -->
@@ -791,8 +791,8 @@ function apriNegozio() {
               fontFamily: FF.label, fontSize: '10px', color: C.gold,
               letterSpacing: '0.28em', marginBottom: '6px',
               textTransform: 'uppercase', fontWeight: 700,
-            }">Nessuna waifu trovata</div>
-            <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">Cambia filtri o sbusta nuovi pacchetti!</div>
+            }">{{ $t("collection.no_waifu_found") }}</div>
+            <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">{{ $t("collection.empty_state_hint") }}</div>
           </PannelloOrnato>
         </div>
 
@@ -870,8 +870,8 @@ function apriNegozio() {
               fontFamily: FF.label, fontSize: '10px', color: C.violet,
               letterSpacing: '0.28em', marginBottom: '6px',
               textTransform: 'uppercase', fontWeight: 700,
-            }">Nessuna mossa trovata</div>
-            <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">Apri bustine per trovare mosse attacco!</div>
+            }">{{ $t("collection.no_moves_found") }}</div>
+            <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">{{ $t("collection.empty_moves_hint") }}</div>
           </PannelloOrnato>
         </div>
 
@@ -898,11 +898,11 @@ function apriNegozio() {
         <!-- Editor team -->
         <PannelloOrnato v-if="teamInEdit" :glow="C.ok" :style="{ padding: '20px' }">
           <TitoloOrnato :livello="3" :colore="C.ok">
-            {{ teamInEdit === 'new' ? 'Crea Team' : 'Modifica Team' }}
+            {{ teamInEdit === 'new' ? $t('collection.team_create') : $t('collection.team_edit') }}
           </TitoloOrnato>
           <input
             v-model="teamNome"
-            placeholder="Nome del team…"
+            :placeholder="$t('collection.team_name_placeholder')"
             :style="{ width: '100%', marginBottom: '14px' }"
           />
 
@@ -933,7 +933,7 @@ function apriNegozio() {
                   <Search :size="13" stroke-width="1.5" style="color:var(--theme-text-3);flex-shrink:0;" />
                   <input
                     v-model="teamFiltroNome"
-                    placeholder="Cerca per nome…"
+                    :placeholder="$t('collection.search_placeholder')"
                     :style="{
                       flex: 1, background: 'transparent', border: 'none', outline: 'none',
                       color: 'var(--theme-text)', fontSize: '12px', fontFamily: FF.body, padding: 0,
@@ -955,7 +955,7 @@ function apriNegozio() {
                     fontFamily: FF.label, cursor: 'pointer', letterSpacing: '0.08em', fontWeight: 600,
                   }"
                 >
-                  <option value="tutte">Tutte le rarità</option>
+                  <option value="tutte">{{ $t("collection.filter_all_rarities") }}</option>
                   <option v-for="r in ['comune','raro','epico','leggendario','immersivo']" :key="r" :value="r">
                     {{ r.charAt(0).toUpperCase() + r.slice(1) }}
                   </option>
@@ -969,7 +969,7 @@ function apriNegozio() {
                     fontFamily: FF.label, cursor: 'pointer', letterSpacing: '0.08em', fontWeight: 600,
                   }"
                 >
-                  <option value="tutti">Tutti i drop</option>
+                  <option value="tutti">{{ $t("collection.filter_all_drops") }}</option>
                   <option v-for="d in drops" :key="d.id" :value="d.id">{{ d.nome || d.id }}</option>
                 </select>
               </div>
@@ -982,12 +982,12 @@ function apriNegozio() {
                   fontFamily: FF.label, fontSize: '13px',
                   color: 'var(--theme-text-3)',
                   letterSpacing: '0.24em', textTransform: 'uppercase', fontWeight: 700,
-                }">Ordina:</span>
+                }">{{ $t("collection.sort_label") }}</span>
                 <button
                   v-for="s in [
-                    { k: 'rarita', l: 'Rarità' },
-                    { k: 'livello', l: 'Livello' },
-                    { k: 'copie', l: 'Copie' },
+                    { k: 'rarita', l: $t('collection.sort_opt_rarity') },
+                    { k: 'livello', l: $t('collection.sort_opt_level') },
+                    { k: 'copie', l: $t('collection.sort_opt_copies') },
                   ]"
                   :key="s.k"
                   @click="teamToggleSort(s.k)"
@@ -1033,7 +1033,7 @@ function apriNegozio() {
                     background: 'rgba(0,0,0,0.8)', padding: '3px 4px',
                     fontFamily: FF.label, fontSize: '7px', color: '#f5a623', letterSpacing: '0.1em',
                   }"
-                >⚔ 0/4 mosse</div>
+                >{{ $t('collection.moves_count', { n: 0 }) }}</div>
               </div>
               <!-- Empty state team picker -->
               <PannelloOrnato
@@ -1046,8 +1046,8 @@ function apriNegozio() {
                   fontFamily: FF.label, fontSize: '14px', color: C.ok,
                   letterSpacing: '0.28em', marginBottom: '6px',
                   textTransform: 'uppercase', fontWeight: 700,
-                }">Nessuna waifu</div>
-                <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">Cambia i filtri.</div>
+                }">{{ $t("collection.no_waifu_short") }}</div>
+                <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">{{ $t("collection.change_filters") }}</div>
               </PannelloOrnato>
             </div>
 
@@ -1068,7 +1068,7 @@ function apriNegozio() {
               <BtnDecorato
                 variant="secondary" size="md"
                 @click="teamInEdit = null; teamNome = ''; teamWaifu = []"
-              >ANNULLA</BtnDecorato>
+              >{{ $t("collection.cancel") }}</BtnDecorato>
               <BtnDecorato
                 variant="primary" size="md"
                 @click="salvaTeam"
@@ -1097,8 +1097,8 @@ function apriNegozio() {
               fontFamily: FF.label, fontSize: '14px', color: C.ok,
               letterSpacing: '0.28em', marginBottom: '6px',
               textTransform: 'uppercase', fontWeight: 700,
-            }">Nessun team</div>
-            <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">Crea il tuo primo team per la battaglia!</div>
+            }">{{ $t("collection.no_team") }}</div>
+            <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">{{ $t("collection.empty_team_hint") }}</div>
           </PannelloOrnato>
 
           <div :style="{ display: 'flex', flexDirection: 'column', gap: '12px' }">
@@ -1181,7 +1181,7 @@ function apriNegozio() {
         <div :style="{
           fontFamily: FF.label, fontSize: '9px', color: 'rgba(245,158,11,0.6)',
           textAlign: 'center', marginBottom: '20px', letterSpacing: '0.2em',
-        }">SCEGLI UNA STAT DA MODIFICARE</div>
+        }">{{ $t("collection.choose_stat") }}</div>
 
         <!-- Preview velocità / crit -->
         <div :style="{ display: 'flex', gap: '12px', marginBottom: '20px', justifyContent: 'center' }">
@@ -1190,7 +1190,7 @@ function apriNegozio() {
             background: 'rgba(174,156,255,0.08)', borderRadius: '10px',
             border: '1px solid rgba(174,156,255,0.2)',
           }">
-            <div :style="{ fontFamily: FF.label, fontSize: '13px', color: 'rgba(174,156,255,0.6)', marginBottom: '4px' }">VELOCITÀ</div>
+            <div :style="{ fontFamily: FF.label, fontSize: '13px', color: 'rgba(174,156,255,0.6)', marginBottom: '4px' }">{{ $t("collection.stat_speed") }}</div>
             <div :style="{ fontFamily: FF.mono, fontSize: '16px', color: lvlPreview ? '#aef0d8' : '#f5e6d3' }">
               {{ lvlPreview ? lvlCalcPreview(lvlPreview.stat, lvlPreview.delta).velocita : lvlCurrentVel }}
             </div>
@@ -1203,7 +1203,7 @@ function apriNegozio() {
             background: 'rgba(255,126,182,0.08)', borderRadius: '10px',
             border: '1px solid rgba(255,126,182,0.2)',
           }">
-            <div :style="{ fontFamily: FF.label, fontSize: '13px', color: 'rgba(255,126,182,0.6)', marginBottom: '4px' }">CRITICO</div>
+            <div :style="{ fontFamily: FF.label, fontSize: '13px', color: 'rgba(255,126,182,0.6)', marginBottom: '4px' }">{{ $t("collection.stat_crit") }}</div>
             <div :style="{ fontFamily: FF.mono, fontSize: '16px', color: lvlPreview ? '#aef0d8' : '#f5e6d3' }">
               {{ lvlPreview ? lvlCalcPreview(lvlPreview.stat, lvlPreview.delta).crit_chance : lvlCurrentCrit }}%
             </div>
@@ -1225,7 +1225,7 @@ function apriNegozio() {
               border: `1px solid ${lvlPreview?.stat === key ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.06)'}`,
             }"
           >
-            <div :style="{ flex: 1, fontFamily: FF.label, fontSize: '10px', color: '#f5e6d3' }">{{ label }}</div>
+            <div :style="{ flex: 1, fontFamily: FF.label, fontSize: '10px', color: '#f5e6d3' }">{{ $t('card.stat_' + key) }}</div>
             <div :style="{ fontFamily: FF.mono, fontSize: '12px', color: 'rgba(174,156,255,0.7)', minWidth: '40px', textAlign: 'center' }">
               {{ lvlStatBase[key] ?? 0 }}
             </div>
@@ -1268,7 +1268,7 @@ function apriNegozio() {
               cursor: lvlPreview && !lvlBusy ? 'pointer' : 'not-allowed',
               letterSpacing: '0.1em',
             }"
-          ><Check v-if="!lvlBusy" :size="14" stroke-width="2" style="display:inline-block;vertical-align:middle;margin-right:4px;" />{{ lvlBusy ? 'Applicando…' : 'CONFERMA' }}</button>
+          ><Check v-if="!lvlBusy" :size="14" stroke-width="2" style="display:inline-block;vertical-align:middle;margin-right:4px;" />{{ lvlBusy ? $t('collection.applying') : $t('collection.confirm') }}</button>
           <button
             @click="waifuSel = null; lvlPreview = null"
             :style="{
@@ -1277,7 +1277,7 @@ function apriNegozio() {
               borderRadius: '12px', color: '#f5e6d3',
               fontFamily: FF.label, fontSize: '11px', cursor: 'pointer',
             }"
-          >Annulla</button>
+          >{{ $t("collection.cancel") }}</button>
         </div>
       </div>
     </div>

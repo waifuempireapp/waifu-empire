@@ -122,7 +122,25 @@
       "Bash(perl -0pi -e 's/>⚔ Difesa Territorio</>{{ \\\\$t\\(\"defense.title\"\\) }}</g' components/difesa/TeamDifesaEditor.vue)",
       "Bash(perl -0pi -e 's/>Scegli team difensore</>{{ \\\\$t\\(\"defense.choose_defender\"\\) }}</g' components/difesa/TeamDifesaEditor.vue)",
       "Bash(perl -0pi -e 's/>✓ TEAM SALVATO</>{{ \\\\$t\\(\"defense.team_saved\"\\) }}</g' components/difesa/TeamDifesaEditor.vue)",
-      "Bash(node /tmp/addowner.mjs)"
+      "Bash(node /tmp/addowner.mjs)",
+      "Bash(node -e \"const o=require\\('./i18n/locales/en.json'\\); ['swap','friends','friends_ui','trades','collection'].forEach\\(n=>console.log\\(n+':',o[n]?Object.keys\\(o[n]\\).length+' keys':'MANCA'\\)\\)\")",
+      "Bash(grep -c '\\\\$t\\(' components/ScambiList.vue)",
+      "Bash(grep -noE \">[^<>{}]*[A-Za-zàèéìòù]{3,}[^<>{}]*<|'[A-ZÀ-Ù][a-zàèéìòù][^']{2,}'|emit\\\\\\('notif', '[^']*'|mostraNotif\\\\\\('[^']*'|placeholder=\\\\\"[^\\\\\"]*\\\\\"\" components/ScambiList.vue)",
+      "Bash(grep -ivE 'FF\\\\.|var\\\\\\(|svg|/assets|→|\\\\$t\\\\\\(|fontFamily|Unbounded|Saira|JetBrains|class=|Content-Type|http|Nunito|DM Sans|Orbitron')",
+      "Bash(node /tmp/addtrades.mjs)",
+      "Bash(grep -noE \">[^<>{}]*[A-Za-zàèéìòù]{3,}[^<>{}]*<|'[A-ZÀ-Ù][a-zàèéìòù][^']{2,}'|emit\\\\\\('notif', '[^']*'|mostraNotif\\\\\\('[^']*'|placeholder=\\\\\"[^\\\\\"]*\\\\\"\" components/tabs/CollezioneTab.vue)",
+      "Bash(grep -ivE 'FF\\\\.|var\\\\\\(|svg|/assets|→|\\\\$t\\\\\\(|fontFamily|Unbounded|Saira|JetBrains|class=|Content-Type|Nunito|DM Sans')",
+      "Bash(node -e \"console.log\\(Object.keys\\(require\\('./i18n/locales/en.json'\\).collection\\).join\\(', '\\)\\)\")",
+      "Bash(node -e \"const o=require\\('./i18n/locales/en.json'\\).collection; ['equip_4_moves','search_placeholder','stat_speed','stat_crit','choose_stat','applying','no_team','empty_team_hint','team_create','team_edit'].forEach\\(k=>console.log\\(k+':',JSON.stringify\\(o[k]\\)\\)\\)\")",
+      "Bash(node /tmp/addcoll.mjs)",
+      "Bash(grep -noE \">[^<>{}]*[A-Za-zàèéìòù]{3,}[^<>{}]*<|'[A-ZÀ-Ù][a-zàèéìòù][^']{2,}'\" components/tabs/CollezioneTab.vue)",
+      "Bash(grep -ivE 'FF\\\\.|\\\\$t\\\\\\(|var\\\\\\(|svg|→|—|Saira|Unbounded|JetBrains|collection\\\\.|card\\\\.')",
+      "Bash(sed -n '221,226p' components/tabs/CollezioneTab.vue)",
+      "Bash(sed -n '334,341p' components/tabs/CollezioneTab.vue)",
+      "Bash(sed -n '900,902p' components/tabs/CollezioneTab.vue)",
+      "Bash(sed -n '1035,1037p' components/tabs/CollezioneTab.vue)",
+      "Bash(grep -noE \">[^<>{}]*[a-zàèéìòù]{4,}[^<>{}]*<|'[A-ZÀ-Ù][a-zàèéìòù][^']{3,}'\" components/tabs/CollezioneTab.vue)",
+      "Bash(grep -ivE '\\\\$t\\\\\\(|FF\\\\.|svg|→|—|\\\\{\\\\{|var\\\\\\(|collection\\\\.|card\\\\.|STAT_DEFS|label:|: '\\\\''Tette'\\\\''|: '\\\\''Taglia|: '\\\\''Età'\\\\''|: '\\\\''Capelli'\\\\''|: '\\\\''Esperienza'\\\\''')"
     ],
     "additionalDirectories": [
       "/private/tmp"
