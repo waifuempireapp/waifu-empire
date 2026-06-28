@@ -147,7 +147,11 @@
       "Bash(sed -n '32,44p' /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt/locales/it.json)",
       "Bash(sed -n '32,44p' /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt/locales/de.json)",
       "Bash(sed -n '32,44p' /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt/locales/es.json)",
-      "Bash(sed -n '32,44p' /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt/locales/ja.json)"
+      "Bash(sed -n '32,44p' /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt/locales/ja.json)",
+      "Bash(xargs -I{} sh -c 'echo \"{}\"; git show -s --format=\"%b\" $\\(echo \"{}\" | cut -d\" \" -f1\\)')",
+      "Bash(git filter-branch *)",
+      "Bash(git stash *)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter 'sed \"/^Co-Authored-By:/d\"' -- HEAD~20..HEAD)"
     ],
     "additionalDirectories": [
       "/private/tmp"
