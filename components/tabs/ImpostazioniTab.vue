@@ -165,8 +165,8 @@ async function switchLocale(code: string) {
       <div style="position:relative;z-index:46;">
         <button
           @click="langDropdownOpen = !langDropdownOpen"
-          style="width:100%;background:var(--theme-input-bg);border:1.5px solid var(--theme-border-2);color:var(--theme-text);border-radius:14px;padding:12px 44px 12px 18px;font-size:15px;font-family:var(--ff-body,'DM Sans',sans-serif);font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:space-between;"
-          :style="langDropdownOpen ? 'border-radius:14px 14px 0 0;' : ''"
+          style="width:100%;background:var(--theme-input-bg);border:1.5px solid var(--theme-border-2);box-shadow:none !important;color:var(--theme-text);border-radius:14px !important;padding:12px 44px 12px 18px;font-size:15px;font-family:var(--ff-body,'DM Sans',sans-serif);font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:space-between;"
+          :style="langDropdownOpen ? 'border-radius:14px 14px 0 0 !important;' : ''"
         >
           <span>{{ currentLocaleName }}</span>
           <span :style="{ transition:'transform 0.2s', transform:langDropdownOpen?'rotate(180deg)':'rotate(0)', color:'var(--theme-accent)', fontSize:'18px', lineHeight:1 }">▾</span>
@@ -176,8 +176,8 @@ async function switchLocale(code: string) {
             v-for="loc in availableLocales"
             :key="loc.code"
             @click="switchLocale(loc.code)"
-            style="width:100%;padding:12px 18px;border:none;border-top:1px solid var(--theme-border);cursor:pointer;text-align:left;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:14px;font-weight:600;display:flex;align-items:center;gap:10px;"
-            :style="{ color:loc.code===currentLocale?'var(--theme-accent)':'var(--theme-text)', background:loc.code===currentLocale?'var(--theme-tab-active)':'transparent' }"
+            style="width:100%;padding:12px 18px;border:none !important;border-radius:0 !important;box-shadow:none !important;cursor:pointer;text-align:left;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:14px;font-weight:600;display:flex;align-items:center;gap:10px;color:var(--theme-text);"
+            :style="{ background: loc.code===currentLocale ? 'color-mix(in srgb, var(--theme-accent) 14%, transparent)' : 'transparent' }"
           >
             <span v-if="loc.code===currentLocale" style="font-size:12px;">✓</span>
             <span v-else style="width:12px;display:inline-block;"></span>

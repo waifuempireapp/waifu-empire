@@ -66,6 +66,32 @@ const statsOpen  = ref(false)
 const battleOpen = ref(false)
 const slotPicker = ref<string | null>(null)
 
+// Scroll: quando una sezione è espansa e si scrolla, rimpicciolisce la carta
+// per lasciare spazio alle mosse.
+const scrolled = ref(false)
+function onDetailScroll(e: Event) {
+  scrolled.value = (e.target as HTMLElement).scrollTop > 12
+}
+const cardShrink = computed(() => scrolled.value && (statsOpen.value || battleOpen.value))
+const cardOuter = ref<HTMLElement | null>(null)
+const cardOuterH = ref(0)
+function measureCard() {
+  if (cardOuter.value) cardOuterH.value = cardOuter.value.offsetHeight
+}
+const cardShrinkStyle = computed(() => ({
+  flexShrink: 0,
+  display: 'flex',
+  justifyContent: 'center',
+  overflow: 'visible',
+  transformOrigin: 'top center',
+  transition: 'transform 0.3s ease, margin-bottom 0.3s ease, padding 0.3s ease',
+  transform: cardShrink.value ? 'scale(0.6)' : 'none',
+  marginBottom: cardShrink.value ? `-${Math.round(cardOuterH.value * 0.28)}px` : '0px',
+  padding: cardShrink.value ? '4px 16px 4px' : '16px 16px 26px',
+}))
+onMounted(() => { nextTick(measureCard) })
+watch([statsOpen, battleOpen], () => { nextTick(measureCard) })
+
 // Mosse
 const SLOTS = ['1', '2', '3', '4']
 const mosseSlot = computed(() => props.dati.mosse_slot ?? {})
@@ -218,8 +244,8 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Carta: flex-shrink:0, sempre visibile, non scorre mai -->
-      <div style="flex-shrink:0;display:flex;justify-content:center;padding:16px 16px 26px;overflow:visible;">
+      <!-- Carta: rimpicciolisce allo scroll se una sezione è espansa -->
+      <div ref="cardOuter" :style="cardShrinkStyle">
         <div
           ref="cardWrap"
           @pointermove="onCardMove"
@@ -272,7 +298,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Sezioni: flex:1, touch-action:pan-y permette solo scroll verticale qui -->
-      <div style="flex:1;overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;">
+      <div style="flex:1;overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;" @scroll.passive="onDetailScroll">
         <div style="max-width:440px;margin:0 auto;padding:8px 16px calc(24px + env(safe-area-inset-bottom));">
 
           <!-- Bottone LEVEL UP -->
@@ -406,27 +432,25 @@ onUnmounted(() => {
             <div :style="{ fontFamily: FF.label, fontSize: '12px', color: C.ok, letterSpacing: '0.22em', textTransform: 'uppercase', marginBottom: '10px', fontWeight: 700 }">
               ✓ COMPATIBILI ({{ pickerMosse.filter(m => m.ok).length }})
             </div>
-            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;">
               <button
                 v-for="m in pickerMosse.filter(x => x.ok)"
                 :key="m.id"
                 @click="emit('assegnaMossa', slotPicker!, m.id); slotPicker = null"
                 :style="{
-                  padding: '14px 16px',
+                  padding: '12px 16px 12px 22px',
                   background: `${tc(m.cat.tipologia ?? m.cat.tipo).bg}`,
                   border: `1px solid ${tc(m.cat.tipologia ?? m.cat.tipo).border}`,
                   borderRadius: '12px',
                   cursor: 'pointer', textAlign: 'left', display: 'flex',
-                  alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                  flexDirection: 'column', gap: '4px', minWidth: 0,
                 }"
               >
-                <div style="min-width:0;flex:1;">
-                  <div :style="{ fontFamily: FF.label, fontSize: '18px', color: tc(m.cat.tipologia ?? m.cat.tipo).txt, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ m.cat.nome }}</div>
-                  <div :style="{ fontFamily: FF.label, fontSize: '13px', color: 'var(--theme-text-2)', marginTop: '4px' }">
-                    {{ m.cat.tipologia ?? m.cat.tipo }} · {{ m.cat.rarita }} · PP:{{ m.cat.pp }} · ×{{ m.cat.danno }} · {{ m.cat.danno_critico }}%+
-                  </div>
+                <div :style="{ fontFamily: FF.label, fontSize: '15px', color: 'var(--theme-text)', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ m.cat.nome }}</div>
+                <div :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-text-2)', lineHeight: 1.3 }">
+                  {{ m.cat.tipologia ?? m.cat.tipo }} · {{ m.cat.rarita }}<br>PP:{{ m.cat.pp }} · ×{{ m.cat.danno }} · {{ m.cat.danno_critico }}%+
                 </div>
-                <span :style="{ fontFamily: FF.label, fontSize: '12px', color: tc(m.cat.tipologia ?? m.cat.tipo).txt, letterSpacing: '0.1em', flexShrink: 0, marginLeft: '12px', fontWeight: 700 }">+ Slot {{ slotPicker }}</span>
+                <span :style="{ fontFamily: FF.label, fontSize: '10px', color: tc(m.cat.tipologia ?? m.cat.tipo).txt, letterSpacing: '0.1em', fontWeight: 700, marginTop: '2px' }">+ Slot {{ slotPicker }}</span>
               </button>
             </div>
           </template>
@@ -442,13 +466,13 @@ onUnmounted(() => {
               </span>
               <component :is="nonCompatOpen ? ChevronUp : ChevronDown" :size="16" :color="C.err" stroke-width="2" />
             </button>
-            <div v-if="nonCompatOpen" style="display:flex;flex-direction:column;gap:6px;">
+            <div v-if="nonCompatOpen" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
               <div
                 v-for="m in pickerMosse.filter(x => !x.ok)"
                 :key="m.id"
-                style="padding:12px 14px;background:var(--theme-shimmer);border:1px solid var(--theme-border);border-radius:10px;opacity:0.65;"
+                style="padding:12px 14px 12px 22px;background:var(--theme-shimmer);border:1px solid var(--theme-border);border-radius:10px;opacity:0.65;min-width:0;"
               >
-                <div :style="{ fontFamily: FF.label, fontSize: '16px', color: 'var(--theme-text-2)', fontWeight: 600 }">{{ m.cat.nome }}</div>
+                <div :style="{ fontFamily: FF.label, fontSize: '14px', color: 'var(--theme-text)', fontWeight: 700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }">{{ m.cat.nome }}</div>
                 <div :style="{ fontFamily: FF.label, fontSize: '14px', color: C.err, marginTop: '4px', fontWeight: 600 }">{{ m.motivo }}</div>
               </div>
             </div>

@@ -140,7 +140,10 @@
       "Bash(sed -n '900,902p' components/tabs/CollezioneTab.vue)",
       "Bash(sed -n '1035,1037p' components/tabs/CollezioneTab.vue)",
       "Bash(grep -noE \">[^<>{}]*[a-zàèéìòù]{4,}[^<>{}]*<|'[A-ZÀ-Ù][a-zàèéìòù][^']{3,}'\" components/tabs/CollezioneTab.vue)",
-      "Bash(grep -ivE '\\\\$t\\\\\\(|FF\\\\.|svg|→|—|\\\\{\\\\{|var\\\\\\(|collection\\\\.|card\\\\.|STAT_DEFS|label:|: '\\\\''Tette'\\\\''|: '\\\\''Taglia|: '\\\\''Età'\\\\''|: '\\\\''Capelli'\\\\''|: '\\\\''Esperienza'\\\\''')"
+      "Bash(grep -ivE '\\\\$t\\\\\\(|FF\\\\.|svg|→|—|\\\\{\\\\{|var\\\\\\(|collection\\\\.|card\\\\.|STAT_DEFS|label:|: '\\\\''Tette'\\\\''|: '\\\\''Taglia|: '\\\\''Età'\\\\''|: '\\\\''Capelli'\\\\''|: '\\\\''Esperienza'\\\\''')",
+      "Bash(node -e \"for\\(const l of ['en','it','de','es','ja']\\){JSON.parse\\(require\\('fs'\\).readFileSync\\('./i18n/locales/'+l+'.json','utf8'\\)\\);} console.log\\('5/5 OK'\\)\")",
+      "Bash(awk -F/ '{print $1}')",
+      "Bash(awk '{print $1}')"
     ],
     "additionalDirectories": [
       "/private/tmp"
