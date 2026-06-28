@@ -17,7 +17,7 @@ const props = defineProps<{
 
 defineEmits<{ logout: []; goSettings: [] }>()
 
-const { avatarUrl } = useAvatar()
+const { avatarUrl, setAvatar } = useAvatar()
 const gameStore = useGameStore()
 
 // Determina se avatarUrl è un colore hex (preset) o un'immagine reale
@@ -127,7 +127,7 @@ const pendingFriendRequests = computed(() => {
             : 'var(--theme-accent)',
       }">
       <!-- Immagine reale -->
-      <img v-if="isImageUrl" :src="avatarUrl!" alt="Avatar"
+      <img v-if="isImageUrl" :src="avatarUrl!" alt="" @error="setAvatar(null)"
         style="width:100%;height:100%;object-fit:cover;display:block;" />
       <!-- Cerchio colorato preset — nessun testo sopra il colore -->
       <!-- Iniziali giocatore se nessun avatar impostato -->

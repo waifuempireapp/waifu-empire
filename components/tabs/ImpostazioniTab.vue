@@ -74,7 +74,7 @@ async function switchLocale(code: string) {
               : 'var(--theme-accent)',
         }"
       >
-        <img v-if="isImageUrl" :src="avatarUrl!" alt="Avatar" style="width:100%;height:100%;object-fit:cover;display:block;" />
+        <img v-if="isImageUrl" :src="avatarUrl!" alt="" @error="setAvatar(null)" style="width:100%;height:100%;object-fit:cover;display:block;" />
         <span
           v-else-if="!isColorPreset"
           style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:18px;font-weight:800;color:#F0ECF8;user-select:none;line-height:1;"
