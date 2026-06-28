@@ -143,7 +143,11 @@
       "Bash(grep -ivE '\\\\$t\\\\\\(|FF\\\\.|svg|→|—|\\\\{\\\\{|var\\\\\\(|collection\\\\.|card\\\\.|STAT_DEFS|label:|: '\\\\''Tette'\\\\''|: '\\\\''Taglia|: '\\\\''Età'\\\\''|: '\\\\''Capelli'\\\\''|: '\\\\''Esperienza'\\\\''')",
       "Bash(node -e \"for\\(const l of ['en','it','de','es','ja']\\){JSON.parse\\(require\\('fs'\\).readFileSync\\('./i18n/locales/'+l+'.json','utf8'\\)\\);} console.log\\('5/5 OK'\\)\")",
       "Bash(awk -F/ '{print $1}')",
-      "Bash(awk '{print $1}')"
+      "Bash(awk '{print $1}')",
+      "Bash(sed -n '32,44p' /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt/locales/it.json)",
+      "Bash(sed -n '32,44p' /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt/locales/de.json)",
+      "Bash(sed -n '32,44p' /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt/locales/es.json)",
+      "Bash(sed -n '32,44p' /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt/locales/ja.json)"
     ],
     "additionalDirectories": [
       "/private/tmp"

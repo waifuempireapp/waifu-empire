@@ -33,20 +33,22 @@ export type AvatarPreset =
   | { id: string; label: string; color: string; image?: never }
   | { id: string; label: string; image: string; color?: never }
 
-// Carica automaticamente tutti i file *_icon.png dalla cartella icons.
+// Carica automaticamente tutti i file .png dalla cartella icons.
+// I file seguono la convenzione "COD — Descrizione.png".
 // import.meta.glob è risolto da Vite a build-time: aggiungere un file
 // nella cartella è sufficiente, nessun import manuale necessario.
 const iconModules = import.meta.glob<{ default: string }>(
-  '~/assets/images/icons/*_icon.png',
+  '~/assets/images/icons/*.png',
   { eager: true }
 )
 
 const iconPresets: AvatarPreset[] = Object.entries(iconModules).map(([path, mod]) => {
-  // Estrae il nome dal percorso: '.../blade_icon.png' → 'Blade'
-  const filename = path.split('/').pop() ?? ''
-  const name = filename.replace('_icon.png', '')
-  const label = name.charAt(0).toUpperCase() + name.slice(1)
-  return { id: `preset-${name}`, image: mod.default, label }
+  // Estrae codice e label dal nome: 'RAN — La domatrice di draghi.png'
+  const filename = (path.split('/').pop() ?? '').replace('.png', '')
+  const [code, desc] = filename.split(' — ')
+  const id = (code ?? filename).trim().toLowerCase()
+  const label = desc?.trim() ?? id
+  return { id: `preset-${id}`, image: mod.default, label }
 })
 
 export const AVATAR_PRESETS: AvatarPreset[] = [

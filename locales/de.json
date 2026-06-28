@@ -35,6 +35,9 @@
     "shop": "Shop",
     "logout": "Abmelden",
     "version": "Waifu's Empire",
+    "remove_image": "Bild entfernen",
+    "theme_dark": "Dunkles Design aktiv",
+    "theme_light": "Helles Design aktiv",
     "language": {
       "title": "Sprache",
       "subtitle": "Wähle deine Sprache"

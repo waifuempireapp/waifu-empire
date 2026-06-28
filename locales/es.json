@@ -35,6 +35,9 @@
     "shop": "Tienda",
     "logout": "Salir",
     "version": "Waifu's Empire",
+    "remove_image": "Eliminar imagen",
+    "theme_dark": "Tema oscuro activo",
+    "theme_light": "Tema claro activo",
     "language": {
       "title": "Idioma",
       "subtitle": "Elige tu idioma"
