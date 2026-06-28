@@ -28,6 +28,11 @@ const isImageUrl = computed(() =>
   !!avatarUrl.value && (avatarUrl.value.startsWith('http') || avatarUrl.value.startsWith('/'))
 )
 
+const initials = computed(() => {
+  const name = props.profilo?.nomeImpero ?? props.profilo?.email ?? ''
+  return name.slice(0, 2).toUpperCase() || '?'
+})
+
 const pendingFriendRequests = computed(() => {
   const received = (props.profilo as Record<string, unknown> | null)?.friendRequestsReceived
   if (Array.isArray(received)) return received.length
@@ -125,12 +130,12 @@ const pendingFriendRequests = computed(() => {
       <img v-if="isImageUrl" :src="avatarUrl!" alt="Avatar"
         style="width:100%;height:100%;object-fit:cover;display:block;" />
       <!-- Cerchio colorato preset — nessun testo sopra il colore -->
-      <!-- Iniziali "WE" se nessun avatar impostato -->
+      <!-- Iniziali giocatore se nessun avatar impostato -->
       <span v-else-if="!isColorPreset" style="
           font-family: var(--ff-display,'Unbounded',sans-serif);
           font-size: 18px; font-weight: 800; color: #F0ECF8;
           user-select: none; line-height: 1;
-        ">WE</span>
+        ">{{ initials }}</span>
     </button>
 
     <!-- ── DESTRA: admin + campanella + EXIT ─────────────────── -->

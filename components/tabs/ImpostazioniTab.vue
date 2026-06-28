@@ -14,6 +14,10 @@ const router    = useRouter()
 const { avatarUrl, setAvatar } = useAvatar()
 const isColorPreset = computed(() => !!avatarUrl.value && avatarUrl.value.startsWith('#'))
 const isImageUrl    = computed(() => !!avatarUrl.value && (avatarUrl.value.startsWith('http') || avatarUrl.value.startsWith('/')))
+const initials      = computed(() => {
+  const name = gameStore.profilo?.nomeImpero ?? authStore.user?.email ?? ''
+  return name.slice(0, 2).toUpperCase() || '?'
+})
 
 // i18n
 const { locale, locales, setLocale } = useI18n()
@@ -74,7 +78,7 @@ async function switchLocale(code: string) {
         <span
           v-else-if="!isColorPreset"
           style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:18px;font-weight:800;color:#F0ECF8;user-select:none;line-height:1;"
-        >WE</span>
+        >{{ initials }}</span>
       </div>
       <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:var(--theme-text);margin-top:4px;">
         {{ gameStore.profilo?.nomeImpero ?? '—' }}
