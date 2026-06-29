@@ -176,7 +176,14 @@
       "Bash(node -e \"console.log\\(JSON.stringify\\(require\\('./i18n/locales/en.json'\\).nav,null,1\\)\\)\")",
       "Bash(node -e 'const j=require\\('\\\\''./i18n/locales/__TRACKED_VAR__.json'\\\\''\\); console.log\\('\\\\''nav:'\\\\'',JSON.stringify\\(j.nav\\)\\); console.log\\('\\\\''settings keys:'\\\\'',Object.keys\\(j.settings||{}\\).join\\('\\\\'','\\\\''\\)\\)')",
       "Bash(node -e 'console.log\\('\\\\''__TRACKED_VAR__'\\\\'',require\\('\\\\''./i18n/locales/__TRACKED_VAR__.json'\\\\''\\).settings.title\\)')",
-      "Bash(grep -n 'useI18n\\\\|$t\\(\\\\|const { t' components/WaifuDettaglio.vue)"
+      "Bash(grep -n 'useI18n\\\\|$t\\(\\\\|const { t' components/WaifuDettaglio.vue)",
+      "Bash(node -e \"console.log\\(JSON.stringify\\(require\\('./i18n/locales/en.json'\\).pesca,null,1\\)\\)\")",
+      "Bash(node -e \"const p=require\\('./i18n/locales/it.json'\\).pesca; console.log\\('all_seen:',p.all_seen,'| come_back:',p.come_back_soon,'| reload:',p.reload\\)\")",
+      "Bash(node -e \"const s=require\\('./i18n/locales/en.json'\\).swap; console.log\\('swap keys:',Object.keys\\(s\\).join\\(', '\\)\\)\")",
+      "Bash(node -e 'const s=require\\('\\\\''./i18n/locales/__TRACKED_VAR__.json'\\\\''\\).swap; console.log\\('\\\\''__TRACKED_VAR__:'\\\\'',s.all_seen,'\\\\''/'\\\\'',s.come_back_soon,'\\\\''/'\\\\'',s.reload\\)')",
+      "Bash(node -e 'JSON.parse\\(require\\('\\\\''fs'\\\\''\\).readFileSync\\('\\\\''./i18n/locales/__TRACKED_VAR__.json'\\\\'','\\\\''utf8'\\\\''\\)\\);console.log\\('\\\\''__TRACKED_VAR__ valid'\\\\''\\)')",
+      "Bash(node -e \"const j=require\\('./i18n/locales/it.json'\\); console.log\\('nav.settings:',j.nav.settings\\); console.log\\('types:',JSON.stringify\\(j.types\\)\\); console.log\\('pesca.no_packs_title:',j.pesca.no_packs_title\\)\")",
+      "Bash(node -e 'const j=require\\('\\\\''./i18n/locales/__TRACKED_VAR__.json'\\\\''\\); console.log\\('\\\\''__TRACKED_VAR__ nav.settings='\\\\''+j.nav.settings+'\\\\'' | types.fuoco='\\\\''+j.types.fuoco+'\\\\'' | no_packs='\\\\''+\\(j.pesca.no_packs_title?'\\\\''ok'\\\\'':'\\\\''MISSING'\\\\''\\)\\)')"
     ],
     "additionalDirectories": [
       "/private/tmp"

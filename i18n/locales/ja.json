@@ -591,5 +591,9 @@
     "abisso": "深淵",
     "ferro": "鉄",
     "fuoco": "炎"
+  },
+  "avatar": {
+    "unlocked": "✨ {name}のアバターを解放しました！",
+    "locked_hint": "{name}のカードを入手して解放"
   }
 }

@@ -691,5 +691,9 @@
     "abisso": "Abisso",
     "ferro": "Ferro",
     "fuoco": "Fuoco"
+  },
+  "avatar": {
+    "unlocked": "✨ Avatar di {name} sbloccato!",
+    "locked_hint": "Trova la carta di {name} per sbloccarlo"
   }
 }

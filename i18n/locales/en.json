@@ -691,5 +691,9 @@
     "abisso": "Abyss",
     "ferro": "Iron",
     "fuoco": "Fire"
+  },
+  "avatar": {
+    "unlocked": "✨ {name} avatar unlocked!",
+    "locked_hint": "Get the {name} card to unlock"
   }
 }

@@ -23,6 +23,7 @@ import {
 } from '~/utils/gameLogic'
 import { STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT } from '~/utils/constants'
 import { getDb } from '~/utils/firebase'
+import { AVATAR_BY_WAIFU, BASE_AVATAR_IDS } from '~/composables/useAvatar'
 // ikUrl rimosso — non più usato nel template (carte acquisite rimosse dalla nav)
 
 definePageMeta({ middleware: 'auth' })
@@ -48,8 +49,8 @@ const caricato = ref(false)   // dati Firestore pronti
 const appReady = ref(false)   // pack 3D pronto → nasconde la loading screen
 // Contesto battaglia raid — passato a MappaTab come prop, poi reimpostato a null
 const raidBattleCtx = ref<unknown>(null)
-// i18n — usato solo per ripristino lingua al mount
-const { setLocale } = useI18n()
+// i18n — ripristino lingua al mount + notifiche
+const { setLocale, t } = useI18n()
 
 // ── Sub-navigazione per la tab "Pacchetti" (Sbusta | Pesca) ───────────
 const subTabPacchetti = ref<'sbusta' | 'pesca'>('sbusta')
@@ -262,6 +263,22 @@ function mostraNotif(testo: string, colore = '#00e676') {
   notif.value = { testo, colore }
   setTimeout(() => (notif.value = null), 2200)
 }
+
+// ── Notifica sblocco avatar ─────────────────────────────────────────────
+// Quando si ottiene una NUOVA waifu con un'icona avatar (non base), avvisa
+// l'utente che ha sbloccato un nuovo avatar. Copre tutti i flussi perché
+// ascolta la collezione globale (sbusta, pesca, swap, ecc.).
+let knownAvatarWaifu: Set<string> | null = null
+watch(() => Object.keys(gameStore.collezione?.waifu ?? {}), (ids) => {
+  const withAvatar = ids.filter(id => AVATAR_BY_WAIFU[id] && !BASE_AVATAR_IDS.includes(id))
+  // Primo caricamento: registra lo stato iniziale senza notificare
+  if (knownAvatarWaifu === null) { knownAvatarWaifu = new Set(withAvatar); return }
+  const newly = withAvatar.filter(id => !knownAvatarWaifu!.has(id))
+  if (newly.length === 0) return
+  newly.forEach(id => knownAvatarWaifu!.add(id))
+  const names = newly.map(id => (AVATAR_BY_WAIFU[id]?.waifuId || id).toUpperCase())
+  mostraNotif(t('avatar.unlocked', { name: names.join(', ') }), '#c77dff')
+})
 
 // ── 5 tab principali: Home | Collezione | Mappa | Classifica | Missioni ──
 // Mappa ripristinata — è una feature core e non va mai rimossa

@@ -591,5 +591,9 @@
     "abisso": "Abismo",
     "ferro": "Hierro",
     "fuoco": "Fuego"
+  },
+  "avatar": {
+    "unlocked": "✨ ¡Avatar de {name} desbloqueado!",
+    "locked_hint": "Consigue la carta de {name} para desbloquearlo"
   }
 }

@@ -1,22 +1,38 @@
 <!-- ImpostazioniTab.vue — Tab impostazioni con layout full-page (specchio estetico delle vecchie missioni) -->
 <script setup lang="ts">
 // Icone Lucide — User, Heart, Globe, Settings, ShoppingCart, LogOut, Check
-import { User, Heart, Globe, Settings, LogOut, Check } from 'lucide-vue-next'
+import { User, Heart, Globe, Settings, LogOut, Check, Lock } from 'lucide-vue-next'
 import { useAuthStore } from '~/stores/auth'
 import { useGameStore } from '~/stores/game'
-import { useAvatar, AVATAR_PRESETS } from '~/composables/useAvatar'
+import { useAvatar, AVATAR_PRESETS, isAvatarUnlocked } from '~/composables/useAvatar'
 
 const authStore = useAuthStore()
 const gameStore = useGameStore()
 const router    = useRouter()
+const { t } = useI18n()
 
 // Avatar
-const { avatarUrl, setAvatar } = useAvatar()
+const { avatarUrl, avatarValue, setAvatar } = useAvatar()
 const isColorPreset   = computed(() => !!avatarUrl.value && avatarUrl.value.startsWith('#'))
 const isImageUrl      = computed(() => !!avatarUrl.value && (avatarUrl.value.startsWith('http') || avatarUrl.value.startsWith('/')))
 const failedPresets   = ref(new Set<string>())
 function onPresetImgError(id: string) {
   failedPresets.value = new Set([...failedPresets.value, id])
+}
+
+// Icone possedute → sblocco. Le bloccate restano visibili (grigie + lucchetto).
+const ownedWaifuIds = computed(() => new Set(Object.keys(gameStore.collezione?.waifu ?? {})))
+// Sbloccate prima, bloccate dopo
+const orderedPresets = computed(() =>
+  [...AVATAR_PRESETS].sort((a, b) => {
+    const ua = isAvatarUnlocked(a, ownedWaifuIds.value) ? 0 : 1
+    const ub = isAvatarUnlocked(b, ownedWaifuIds.value) ? 0 : 1
+    return ua - ub || a.label.localeCompare(b.label)
+  }),
+)
+function selectPreset(preset: typeof AVATAR_PRESETS[number]) {
+  if (!isAvatarUnlocked(preset, ownedWaifuIds.value)) return
+  setAvatar(preset.id)
 }
 const initials      = computed(() => {
   const name = gameStore.profilo?.nomeImpero ?? authStore.user?.email ?? ''
@@ -103,18 +119,19 @@ async function switchLocale(code: string) {
       <!-- Carosello orizzontale preset -->
       <div style="display:flex;gap:12px;overflow-x:auto;padding:4px 4px 12px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
         <button
-          v-for="preset in AVATAR_PRESETS"
+          v-for="preset in orderedPresets"
           v-show="!preset.image || !failedPresets.has(preset.id)"
           :key="preset.id"
-          @click="setAvatar(preset.color ?? preset.image!)"
-          :title="preset.label"
-          style="position:relative;flex-shrink:0;width:68px;height:68px;border-radius:50%;cursor:pointer;padding:0;overflow:hidden;scroll-snap-align:start;transition:border-color 0.15s,box-shadow 0.15s;"
+          @click="selectPreset(preset)"
+          :title="isAvatarUnlocked(preset, ownedWaifuIds) ? preset.label : t('avatar.locked_hint', { name: preset.waifuId.toUpperCase() })"
+          style="position:relative;flex-shrink:0;width:68px;height:68px;border-radius:50%;padding:0;overflow:hidden;scroll-snap-align:start;transition:border-color 0.15s,box-shadow 0.15s;"
           :style="{
-            background: preset.color ?? 'var(--theme-surface)',
-            border: avatarUrl === (preset.color ?? preset.image)
+            background: 'var(--theme-surface)',
+            cursor: isAvatarUnlocked(preset, ownedWaifuIds) ? 'pointer' : 'not-allowed',
+            border: avatarValue === preset.id
               ? '3px solid var(--theme-accent)'
               : '3px solid transparent',
-            boxShadow: avatarUrl === (preset.color ?? preset.image)
+            boxShadow: avatarValue === preset.id
               ? 'inset 0 0 0 2px var(--theme-surface), 0 0 0 1px var(--theme-accent)'
               : 'none',
           }"
@@ -123,11 +140,22 @@ async function switchLocale(code: string) {
             v-if="preset.image"
             :src="preset.image"
             :alt="preset.label"
-            style="width:100%;height:100%;object-fit:cover;display:block;"
+            :style="{
+              width:'100%',height:'100%',objectFit:'cover',display:'block',
+              filter: isAvatarUnlocked(preset, ownedWaifuIds) ? 'none' : 'grayscale(1) brightness(0.45)',
+            }"
             @error="onPresetImgError(preset.id)"
           />
+          <!-- Lucchetto su icona bloccata -->
           <span
-            v-if="avatarUrl === (preset.color ?? preset.image)"
+            v-if="!isAvatarUnlocked(preset, ownedWaifuIds)"
+            style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"
+          >
+            <Lock :size="22" stroke-width="2" style="color:rgba(255,255,255,0.9);filter:drop-shadow(0 1px 2px rgba(0,0,0,0.6));" />
+          </span>
+          <!-- Spunta su icona selezionata -->
+          <span
+            v-else-if="avatarValue === preset.id"
             style="position:absolute;bottom:2px;right:2px;width:18px;height:18px;border-radius:50%;background:var(--theme-accent);display:flex;align-items:center;justify-content:center;border:1.5px solid var(--theme-surface);"
           >
             <Check :size="10" stroke-width="3" style="color:#fff;" />

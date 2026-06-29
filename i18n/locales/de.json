@@ -591,5 +591,9 @@
     "abisso": "Abgrund",
     "ferro": "Eisen",
     "fuoco": "Feuer"
+  },
+  "avatar": {
+    "unlocked": "✨ Avatar von {name} freigeschaltet!",
+    "locked_hint": "Hol dir die {name}-Karte zum Freischalten"
   }
 }
