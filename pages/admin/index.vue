@@ -52,6 +52,7 @@ const TABS_ADMIN = [
   { k: 'swap',        l: '💋 Swap' },
   { k: 'mappa',       l: '🗺️ Mappa' },
   { k: 'soundtrack',  l: '🎵 Soundtrack' },
+  { k: 'utenti',      l: '👤 Utenti' },
 ]
 </script>
 
@@ -182,6 +183,12 @@ const TABS_ADMIN = [
       <LazyAdminSoundtrackTab
         v-if="tab === 'soundtrack'"
         @flash="(t: string, c: string) => flash(t, c)"
+      />
+
+      <!-- UTENTI -->
+      <LazyAdminUtentiTab
+        v-if="tab === 'utenti'"
+        @notif="(t: string, c: string) => flash(t, c)"
       />
     </div>
   </div>
