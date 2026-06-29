@@ -5,11 +5,14 @@
   Equivalente di src/app/login/page.jsx nel Next.js originale.
   ============================================================ -->
 <script setup lang="ts">
-import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth'
-import { GoogleAuthProvider }  from 'firebase/auth'
-import { getFirebaseAuth }     from '~/utils/firebase'
-import { useAuthStore }        from '~/stores/auth'
-import { getUserProfile }      from '~/utils/firestoreService'
+import {
+  signInWithPopup, signInWithRedirect, getRedirectResult,
+  signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+} from 'firebase/auth'
+import { getFirebaseAuth }  from '~/utils/firebase'
+import { useAuthStore }     from '~/stores/auth'
+import { getUserProfile }   from '~/utils/firestoreService'
 
 definePageMeta({ middleware: 'guest' })
 
@@ -34,14 +37,48 @@ watch(
   { immediate: true },
 )
 
+function isMobile(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+}
+
+// All'avvio gestisce il risultato di un eventuale signInWithRedirect precedente
+onMounted(async () => {
+  try {
+    const auth   = getFirebaseAuth()
+    await getRedirectResult(auth)
+    // Se c'è stato un redirect Google, l'authStore si aggiorna via onAuthStateChanged
+  } catch (e: unknown) {
+    const code = (e as { code?: string }).code
+    if (code && code !== 'auth/no-current-user') {
+      errore.value = traduciErrore(code)
+    }
+  }
+})
+
 async function loginGoogle() {
   busy.value = true; errore.value = ''
   try {
     const auth     = getFirebaseAuth()
     const provider = new GoogleAuthProvider()
+    if (isMobile()) {
+      // Su mobile usa redirect: evita popup bloccati dai browser
+      await signInWithRedirect(auth, provider)
+      return // la pagina verrà ricaricata da Google, non arriva qui
+    }
     await signInWithPopup(auth, provider)
   } catch (e: unknown) {
-    errore.value = traduciErrore((e as { code?: string }).code)
+    const code = (e as { code?: string }).code
+    // Se popup bloccato, ricade sul redirect
+    if (code === 'auth/popup-blocked' || code === 'auth/unauthorized-domain') {
+      try {
+        const auth     = getFirebaseAuth()
+        const provider = new GoogleAuthProvider()
+        await signInWithRedirect(auth, provider)
+        return
+      } catch { /* ignora */ }
+    }
+    errore.value = traduciErrore(code)
   } finally { busy.value = false }
 }
 
@@ -69,7 +106,9 @@ function traduciErrore(code?: string): string {
     'auth/wrong-password':       t('login.error_wrong_password'),
     'auth/email-already-in-use': t('login.error_email_in_use'),
     'auth/weak-password':        t('login.error_weak_password'),
-    'auth/popup-closed-by-user': t('login.error_popup_closed'),
+    'auth/popup-closed-by-user':  t('login.error_popup_closed'),
+    'auth/popup-blocked':         t('login.error_popup_closed'),
+    'auth/unauthorized-domain':   t('login.error_generic', { code: 'unauthorized-domain' }),
     'auth/network-request-failed': t('login.error_network'),
   }
   return m[code ?? ''] || t('login.error_generic', { code })
