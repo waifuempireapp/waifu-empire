@@ -5,6 +5,11 @@
 // Migrato da src/lib/imagekitUrl.js
 // ============================================================
 
+// Endpoint base ImageKit. Alcuni documenti (migrazione) salvano solo il path
+// relativo del file (es. "/Akane.png") invece dell'URL completo: in quel caso
+// prependiamo questo endpoint. Gli URL completi restano invariati.
+const IK_ENDPOINT = 'https://ik.imagekit.io/waifuempire'
+
 // Preset di trasformazione ImageKit disponibili
 type ImageKitPreset = 'thumbnail' | 'card' | 'normal' | 'full' | 'video'
 
@@ -27,11 +32,18 @@ const TR: Record<ImageKitPreset, string | null> = {
  */
 export function ikUrl(url: string | null | undefined, preset: ImageKitPreset = 'card'): string | null {
   if (!url) return null
+
+  // Path relativo (es. "/Akane.png") → prependi l'endpoint ImageKit
+  let full = url
+  if (!/^https?:\/\//i.test(full)) {
+    full = `${IK_ENDPOINT}/${full.replace(/^\/+/, '')}`
+  }
+
   // URL legacy (Cloudinary o altro) → passthrough senza trasformazioni
-  if (!url.includes('ik.imagekit.io')) return url
+  if (!full.includes('ik.imagekit.io')) return full
 
   // Rimuove trasformazioni precedenti per evitare duplicati
-  const clean = url.replace(/\/tr:[^/]+\//, '/')
+  const clean = full.replace(/\/tr:[^/]+\//, '/')
 
   const tr = TR[preset] ?? 'tr:f-auto,q-80'
   if (!tr) return clean
