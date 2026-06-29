@@ -49,6 +49,6 @@ export const adminAuth = new Proxy({} as Auth,      { get: (_, p) => (getAdminAu
 export function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false
   const config  = useRuntimeConfig()
-  const admins  = ((config.adminEmails as string) || '').split(',').map(e => e.trim().toLowerCase())
+  const admins  = ((config.public.adminEmails as string) || '').split(',').map(e => e.trim().toLowerCase())
   return admins.includes(email.toLowerCase())
 }
