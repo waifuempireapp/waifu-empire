@@ -20,6 +20,27 @@ import { STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, RARITA } from '~/utils/cons
 import { MOTORI_AI, suggerisciDiversificazione } from '~/utils/promptGenerator'
 import { getDb } from '~/utils/firebase'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { useAuthStore } from '~/stores/auth'
+
+const authStore = useAuthStore()
+
+// ── Ricalcola Pack Pools ─────────────────────────────────────────
+const rebuildingPools = ref(false)
+async function rebuildPackPools() {
+  rebuildingPools.value = true
+  try {
+    const token = await authStore.user?.getIdToken()
+    await $fetch('/api/admin/rebuild-pack-pools', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    emit('flash', '✅ Pack Pools ricalcolati', '#06d6a0')
+  } catch (e: any) {
+    emit('flash', '❌ ' + (e?.data?.message ?? e?.message ?? 'Errore'), '#ff5b6c')
+  } finally {
+    rebuildingPools.value = false
+  }
+}
 
 // ── Props / Emits ────────────────────────────────────────────────
 const props = defineProps<{
@@ -277,6 +298,27 @@ const btnSecondario = {
         @click="activeTab = t.id"
       >
         {{ t.label }}
+      </button>
+
+      <!-- Ricalcola Pack Pools — sempre visibile -->
+      <button
+        @click="rebuildPackPools"
+        :disabled="rebuildingPools"
+        :style="{
+          padding: '7px 16px',
+          background: 'rgba(6,214,160,0.15)',
+          border: '1px solid rgba(6,214,160,0.5)',
+          color: '#06d6a0',
+          fontFamily: 'Cinzel, serif',
+          fontSize: '11px',
+          letterSpacing: '1px',
+          borderRadius: '6px',
+          cursor: rebuildingPools ? 'default' : 'pointer',
+          opacity: rebuildingPools ? 0.6 : 1,
+          marginLeft: 'auto',
+        }"
+      >
+        {{ rebuildingPools ? '⏳ Ricalcolo…' : '🔄 Ricalcola Pack Pools' }}
       </button>
     </div>
 
