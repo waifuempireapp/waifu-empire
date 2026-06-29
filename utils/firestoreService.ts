@@ -63,6 +63,14 @@ export async function checkAndInvalidateCatalogCache(): Promise<void> {
 // PROFILO UTENTE
 // ══════════════════════════════════════════════════════════════
 
+export async function isNomeImperoTaken(nome: string): Promise<boolean> {
+  const db   = getDb()
+  const snap = await getDocs(
+    query(collection(db, 'users'), where('nomeImpero', '==', nome.trim()))
+  )
+  return !snap.empty
+}
+
 export async function getUserProfile(uid: string): Promise<Record<string, unknown> | null> {
   const db   = getDb()
   const ref  = doc(db, 'users', uid)

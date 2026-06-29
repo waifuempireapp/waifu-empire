@@ -5,7 +5,7 @@
   ============================================================ -->
 <script setup lang="ts">
 import { useAuthStore }         from '~/stores/auth'
-import { getUserProfile, createUserProfile, setCollezione } from '~/utils/firestoreService'
+import { getUserProfile, createUserProfile, setCollezione, isNomeImperoTaken } from '~/utils/firestoreService'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -14,6 +14,7 @@ const router       = useRouter()
 const nomeImpero   = ref('')
 const coloreImpero = ref('#f59e0b')
 const busy         = ref(false)
+const erroreNome   = ref('')
 
 const COLORI = ['#f59e0b', '#ec4899', '#a855f7', '#06d6a0', '#3b82f6', '#ef4444', '#10b981', '#fbbf24']
 
@@ -25,16 +26,25 @@ onMounted(async () => {
 })
 
 async function conferma() {
-  if (!nomeImpero.value.trim() || !authStore.user) return
+  const nome = nomeImpero.value.trim()
+  if (!nome || !authStore.user) return
+  erroreNome.value = ''
   busy.value = true
   try {
+    const taken = await isNomeImperoTaken(nome)
+    if (taken) {
+      erroreNome.value = 'Questo nome è già preso. Scegline un altro!'
+      busy.value = false
+      return
+    }
+
     const uid = authStore.user.uid
 
     await createUserProfile(uid, {
-      nomeImpero:             nomeImpero.value.trim(),
+      nomeImpero:             nome,
       coloreImpero:           coloreImpero.value,
       email:                  authStore.user.email,
-      displayName:            authStore.user.displayName || nomeImpero.value.trim(),
+      displayName:            authStore.user.displayName || nome,
       energia:                10,
       pacchettiOmaggio:       2,
       pacchettiBenvenuto:     5,
@@ -82,9 +92,11 @@ async function conferma() {
         v-model="nomeImpero"
         maxlength="30"
         placeholder="Es. Impero del Sol Levante"
-        class="w-full px-3 py-3 mt-1.5 mb-4 rounded-lg text-sm outline-none box-border transition-colors"
-        style="background:var(--theme-input-bg);border:1px solid var(--theme-border);border-radius:12px;color:var(--theme-text);"
+        @input="erroreNome = ''"
+        class="w-full px-3 py-3 mt-1.5 rounded-lg text-sm outline-none box-border transition-colors"
+        :style="`background:var(--theme-input-bg);border:1.5px solid ${erroreNome ? '#ef4444' : 'var(--theme-border)'};border-radius:12px;color:var(--theme-text);margin-bottom:${erroreNome ? '6px' : '16px'};`"
       />
+      <p v-if="erroreNome" class="text-xs mb-3" style="color:#ef4444;">⚠ {{ erroreNome }}</p>
 
       <!-- Colore bandiera -->
       <label class="text-xs tracking-widest font-cinzel block" style="color:var(--theme-accent)">
