@@ -86,7 +86,7 @@ const missionFocusPixel  = ref<any>(null)
 // ------------------------------------------------------------------ RaidWidget state (inline)
 // Countdown per il widget Raid Island (aggiornato da setInterval)
 const raidCountdown = ref('')
-const raidError     = ref<string | null>(null)
+const raidError     = ref(false)
 let raidCountdownTimer: ReturnType<typeof setInterval> | null = null
 
 // ------------------------------------------------------------------ MissionMapBadge state (inline)
@@ -260,16 +260,16 @@ const loadActiveMission = async () => {
 
 // Carica le informazioni del Raid Island corrente
 const loadRaidInfo = async () => {
-  raidError.value = null
+  raidError.value = false
   try {
     const token = await authStore.user?.getIdToken()
     const data = await ($fetch('/api/raid/current', {
       headers: { Authorization: `Bearer ${token}` },
     })) as { raid: any }
     raidInfo.value = data.raid ?? null
-  } catch (e: any) {
+  } catch {
     raidInfo.value = null
-    raidError.value = e?.data?.message ?? e?.message ?? t('map.raid_error_generic')
+    raidError.value = true
   }
 }
 
