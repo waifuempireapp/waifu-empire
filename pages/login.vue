@@ -18,8 +18,6 @@ definePageMeta({ middleware: 'guest' })
 
 const router    = useRouter()
 const authStore = useAuthStore()
-const { t }     = useI18n()
-
 const modo      = ref<'login' | 'register'>('login')
 const email     = ref('')
 const password  = ref('')
