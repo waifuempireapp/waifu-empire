@@ -378,32 +378,40 @@ onUnmounted(() => {
       <AppLoading v-if="mapLoading" />
 
       <template v-else-if="activeMission">
-        <div style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 18px;background:rgba(232,121,249,0.08);border:1px solid rgba(232,121,249,0.25);border-radius:16px;margin-bottom:14px;">
-          <Timer :size="20" stroke-width="1.5" style="color:#e879f9;flex-shrink:0;" />
+
+        <!-- Countdown -->
+        <div style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 18px;border-radius:16px;margin-bottom:12px;"
+          :style="{ background:'linear-gradient(135deg,rgba(168,85,247,0.14) 0%,var(--theme-surface) 60%)' }">
+          <Timer :size="18" stroke-width="1.5" :style="{ color:C.violet, flexShrink:0 }" />
           <span :style="{ fontFamily:FF.mono, fontSize:'26px', color:'var(--theme-text)', fontWeight:800, fontVariantNumeric:'tabular-nums', letterSpacing:'0.04em' }">
             {{ mapCountdown }}
           </span>
         </div>
 
-        <div style="flex-shrink:0;display:flex;align-items:center;gap:10px;padding:12px 16px;background:rgba(232,121,249,0.06);border:1px solid rgba(232,121,249,0.18);border-radius:14px;margin-bottom:16px;">
-          <CheckCircle :size="18" stroke-width="1.5" style="color:#58e0a3;flex-shrink:0;" />
+        <!-- Reward info -->
+        <div style="flex-shrink:0;display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:14px;margin-bottom:14px;"
+          :style="{ background:'linear-gradient(135deg,rgba(88,224,163,0.12) 0%,var(--theme-surface) 60%)' }">
+          <CheckCircle :size="16" stroke-width="1.5" :style="{ color:C.ok, flexShrink:0 }" />
           <div :style="{ fontFamily:FF.body, fontSize:'14px', color:'var(--theme-text)', lineHeight:1.45 }">
             Possiedi i territori alla scadenza:
             <strong :style="{ color:C.gold }">+{{ activeMission.rewardPerPixel ?? 100 }} Kisses</strong> ciascuno
           </div>
         </div>
 
-        <div :style="{ fontFamily:FF.label, fontSize:'11px', letterSpacing:'0.2em', color:`rgba(232,121,249,0.55)`, textTransform:'uppercase', marginBottom:'10px', fontWeight:700, flexShrink:0 }">
+        <!-- Label sezione -->
+        <div :style="{ fontFamily:FF.label, fontSize:'11px', letterSpacing:'0.2em', color:'var(--theme-text-3)', textTransform:'uppercase', marginBottom:'8px', fontWeight:700, flexShrink:0 }">
           Territori obiettivo
         </div>
 
-        <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+        <!-- Lista territori -->
+        <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
           <div
             v-for="(px, i) in (activeMission.pixels || [])"
             :key="i"
-            style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(232,121,249,0.06);border:1px solid rgba(232,121,249,0.15);border-radius:12px;"
+            style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:12px;border:none;"
+            :style="{ background:'linear-gradient(135deg,rgba(168,85,247,0.10) 0%,var(--theme-surface) 65%)' }"
           >
-            <div :style="{ fontFamily:FF.label, fontSize:'15px', color:'#fff', fontWeight:700 }">
+            <div :style="{ fontFamily:FF.label, fontSize:'14px', color:'var(--theme-text)', fontWeight:700 }">
               {{ px.name || `(${px.x}, ${px.y})` }}
             </div>
             <div :style="{ fontFamily:FF.mono, fontSize:'13px', color:C.gold, fontWeight:800 }">
@@ -412,19 +420,28 @@ onUnmounted(() => {
           </div>
         </div>
 
+        <!-- CTA -->
         <button
           @click="emit('setTab', 'mappa')"
-          style="flex-shrink:0;width:100%;margin-top:14px;padding:15px;border:none;border-radius:999px;cursor:pointer;background:linear-gradient(135deg,#9e2232,#6b1020);font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:15px;font-weight:800;color:#ffd050;letter-spacing:0.14em;text-transform:uppercase;box-shadow:0 4px 20px rgba(155,34,50,0.5);display:flex;align-items:center;justify-content:center;gap:8px;"
+          :style="{
+            flexShrink:0, width:'100%', marginTop:'14px', padding:'15px',
+            border:'none', borderRadius:'999px', cursor:'pointer',
+            background:`linear-gradient(135deg,${VIOLETTO},#6938e8)`,
+            fontFamily:FF.label, fontSize:'15px', fontWeight:800,
+            color:'#fff', letterSpacing:'0.14em', textTransform:'uppercase',
+            display:'flex', alignItems:'center', justifyContent:'center', gap:'8px',
+          }"
         >
           <MapIcon :size="16" stroke-width="1.5" />Vai alla Mappa
         </button>
       </template>
 
+      <!-- Nessuna missione mappa -->
       <div v-else style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:20px;">
-        <Target :size="44" stroke-width="1" style="opacity:0.4;color:#e879f9;" />
+        <Target :size="44" stroke-width="1" :style="{ opacity:0.35, color:C.violet }" />
         <template v-if="nextCountdown">
           <div :style="{ fontFamily:FF.display, fontSize:'15px', fontWeight:800, color:'var(--theme-text-2)' }">{{ $t('missions.next_mission_in') }}</div>
-          <div :style="{ fontFamily:FF.mono, fontSize:'28px', fontWeight:800, color:'#e879f9', letterSpacing:'0.05em', fontVariantNumeric:'tabular-nums' }">
+          <div :style="{ fontFamily:FF.mono, fontSize:'28px', fontWeight:800, color:C.violet, letterSpacing:'0.05em', fontVariantNumeric:'tabular-nums' }">
             {{ nextCountdown }}
           </div>
         </template>
@@ -435,7 +452,12 @@ onUnmounted(() => {
           </div>
         </template>
         <button @click="loadMapMission"
-          style="padding:12px 28px;background:rgba(232,121,249,0.08);border:1.5px solid rgba(232,121,249,0.3);border-radius:999px;color:#e879f9;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.12em;text-transform:uppercase;"
+          :style="{
+            padding:'11px 28px', border:'none', borderRadius:'999px', cursor:'pointer',
+            background:`linear-gradient(135deg,rgba(168,85,247,0.14) 0%,var(--theme-surface) 60%)`,
+            color:C.violet, fontFamily:FF.label, fontSize:'13px', fontWeight:700,
+            letterSpacing:'0.12em', textTransform:'uppercase',
+          }"
         >{{ $t('missions.refresh') }}</button>
       </div>
 
