@@ -138,7 +138,10 @@
     "attack_failed": "⚠️ Ataque fallido",
     "ok": "OK",
     "mission_active": "🎯 Misiones de Mapa activas",
-    "expires_in": "Expira en"
+    "expires_in": "Expira en",
+    "raid_unavailable": "No hay Waifu disponible para el Raid. Inténtalo más tarde.",
+    "raid_tap_hint": "Toca para el Raid cooperativo por horas ⚔",
+    "raid_error_generic": "Raid temporalmente no disponible."
   },
   "collection": {
     "title": "Colección",

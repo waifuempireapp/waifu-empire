@@ -1,0 +1,46 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "pack_snapshots",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "forUid",    "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pack_snapshots",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ownerUid",  "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pack_snapshots",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "forUid",    "order": "ASCENDING" },
+        { "fieldPath": "isGhost",   "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "friendships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fromUid", "order": "ASCENDING" },
+        { "fieldPath": "toUid",   "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "territory_battles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status",    "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

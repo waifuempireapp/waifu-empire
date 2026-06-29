@@ -138,7 +138,10 @@
     "attack_failed": "⚠️ Angriff fehlgeschlagen",
     "ok": "OK",
     "mission_active": "🎯 Aktive Kartenmissionen",
-    "expires_in": "Läuft ab in"
+    "expires_in": "Läuft ab in",
+    "raid_unavailable": "Keine Waifu für den Raid verfügbar. Versuche es später.",
+    "raid_tap_hint": "Tippe für den stündlichen Kooperations-Raid ⚔",
+    "raid_error_generic": "Raid vorübergehend nicht verfügbar."
   },
   "collection": {
     "title": "Sammlung",

@@ -86,6 +86,7 @@ const missionFocusPixel  = ref<any>(null)
 // ------------------------------------------------------------------ RaidWidget state (inline)
 // Countdown per il widget Raid Island (aggiornato da setInterval)
 const raidCountdown = ref('')
+const raidError     = ref<string | null>(null)
 let raidCountdownTimer: ReturnType<typeof setInterval> | null = null
 
 // ------------------------------------------------------------------ MissionMapBadge state (inline)
@@ -259,13 +260,17 @@ const loadActiveMission = async () => {
 
 // Carica le informazioni del Raid Island corrente
 const loadRaidInfo = async () => {
+  raidError.value = null
   try {
     const token = await authStore.user?.getIdToken()
     const data = await ($fetch('/api/raid/current', {
       headers: { Authorization: `Bearer ${token}` },
     })) as { raid: any }
     raidInfo.value = data.raid ?? null
-  } catch { /* ignora */ }
+  } catch (e: any) {
+    raidInfo.value = null
+    raidError.value = e?.data?.message ?? e?.message ?? t('map.raid_error_generic')
+  }
 }
 
 // Invalida la cache della mappa e forza il ricaricamento
@@ -710,20 +715,23 @@ async function onTerritoryClick(territoryId: string) {
       </div>
 
       <!-- ── Raid Widget (inline) — sopra la mappa ─────────────────────── -->
-      <!-- Widget compatto per il Raid Island cooperativo orario -->
       <div
-        @click="showRaidPanel = true"
+        @click="raidError ? undefined : showRaidPanel = true"
         :style="{
           margin: '0 16px 10px', padding: '8px 10px',
-          background: 'var(--theme-surface)',
-          border: '1.5px solid rgba(236,72,153,0.45)', borderRadius: '16px', cursor: 'pointer',
+          background: raidError ? 'rgba(239,68,68,0.06)' : 'var(--theme-surface)',
+          border: raidError ? '1.5px solid rgba(239,68,68,0.3)' : '1.5px solid rgba(236,72,153,0.45)',
+          borderRadius: '16px',
+          cursor: raidError ? 'default' : 'pointer',
           display: 'flex', alignItems: 'center', gap: '10px',
           boxShadow: '0 4px 16px var(--theme-shadow)',
+          opacity: raidError ? 0.85 : 1,
         }"
       >
-        <!-- Thumbnail waifu raid -->
+        <!-- Icona errore o thumbnail waifu -->
+        <div v-if="raidError" :style="{ fontSize: '32px', flexShrink: 0, lineHeight: 1 }">⚠️</div>
         <img
-          v-if="raidInfo?.waifuImage"
+          v-else-if="raidInfo?.waifuImage"
           :src="ikUrl(raidInfo.waifuImage, 'thumbnail') ?? undefined"
           :alt="raidInfo.waifuNome"
           :style="{ width: '58px', height: '80px', objectFit: 'cover', objectPosition: 'top', borderRadius: '10px', border: '2px solid rgba(236,72,153,0.5)', flexShrink: 0, boxShadow: '0 4px 16px rgba(236,72,153,0.3)' }"
@@ -731,32 +739,45 @@ async function onTerritoryClick(territoryId: string) {
         <div v-else :style="{ fontSize: '36px', flexShrink: 0, lineHeight: 1 }">⚔</div>
 
         <div :style="{ flex: 1, minWidth: 0 }">
-          <div :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-accent-pink)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '3px' }">
-            ⚔ Raid Waifu
-          </div>
-          <div :style="{ fontFamily: FF.display, fontSize: '16px', color: 'var(--theme-text)', fontWeight: 700, marginBottom: '6px' }">
-            {{ raidInfo?.waifuNome ?? 'Raid Island' }}
-          </div>
-          <template v-if="raidInfo">
-            <div :style="{ height: '6px', background: 'var(--theme-border)', borderRadius: '3px', marginBottom: '5px', overflow: 'hidden' }">
-              <div :style="{ height: '100%', width: `${raidHpPct}%`, background: raidHpColor, borderRadius: '3px', transition: 'width 0.5s' }" />
+          <!-- Stato di errore -->
+          <template v-if="raidError">
+            <div :style="{ fontFamily: FF.label, fontSize: '11px', color: '#ef4444', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '4px' }">
+              ⚔ Raid Island
             </div>
-            <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }">
-              <div :style="{ fontFamily: FF.mono, fontSize: '12px', color: 'var(--theme-text-2)', fontWeight: 600 }">
-                {{ Math.max(0, raidInfo.currentHp).toLocaleString() }} / {{ raidInfo.totalHp.toLocaleString() }} HP
-              </div>
-              <div v-if="raidCountdown" :style="{ fontFamily: FF.mono, fontSize: '12px', color: 'var(--theme-accent-pink)', fontVariantNumeric: 'tabular-nums', fontWeight: 700 }">
-                ⏱ {{ raidCountdown }}
-              </div>
+            <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.4 }">
+              {{ $t('map.raid_unavailable') }}
             </div>
           </template>
+
+          <!-- Stato normale -->
           <template v-else>
-            <div :style="{ fontFamily: FF.label, fontSize: '12px', color: 'var(--theme-text-2)', letterSpacing: '0.1em' }">
-              Tocca per il Raid orario cooperativo ⚔
+            <div :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-accent-pink)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '3px' }">
+              ⚔ Raid Waifu
             </div>
+            <div :style="{ fontFamily: FF.display, fontSize: '16px', color: 'var(--theme-text)', fontWeight: 700, marginBottom: '6px' }">
+              {{ raidInfo?.waifuNome ?? 'Raid Island' }}
+            </div>
+            <template v-if="raidInfo">
+              <div :style="{ height: '6px', background: 'var(--theme-border)', borderRadius: '3px', marginBottom: '5px', overflow: 'hidden' }">
+                <div :style="{ height: '100%', width: `${raidHpPct}%`, background: raidHpColor, borderRadius: '3px', transition: 'width 0.5s' }" />
+              </div>
+              <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }">
+                <div :style="{ fontFamily: FF.mono, fontSize: '12px', color: 'var(--theme-text-2)', fontWeight: 600 }">
+                  {{ Math.max(0, raidInfo.currentHp).toLocaleString() }} / {{ raidInfo.totalHp.toLocaleString() }} HP
+                </div>
+                <div v-if="raidCountdown" :style="{ fontFamily: FF.mono, fontSize: '12px', color: 'var(--theme-accent-pink)', fontVariantNumeric: 'tabular-nums', fontWeight: 700 }">
+                  ⏱ {{ raidCountdown }}
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <div :style="{ fontFamily: FF.label, fontSize: '12px', color: 'var(--theme-text-2)', letterSpacing: '0.1em' }">
+                {{ $t('map.raid_tap_hint') }}
+              </div>
+            </template>
           </template>
         </div>
-        <div :style="{ fontFamily: FF.display, fontSize: '18px', color: 'var(--theme-text-2)', flexShrink: 0 }">→</div>
+        <div v-if="!raidError" :style="{ fontFamily: FF.display, fontSize: '18px', color: 'var(--theme-text-2)', flexShrink: 0 }">→</div>
       </div>
 
       <!-- Mappa: sfondo mare sempre visibile + canvas interattivo sovrapposto -->
