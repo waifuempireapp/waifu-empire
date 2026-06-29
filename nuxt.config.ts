@@ -90,6 +90,15 @@ export default defineNuxtConfig({
     },
   },
 
+  // Header HTTP — same-origin-allow-popups necessario per signInWithPopup Firebase
+  routeRules: {
+    '/**': {
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+      },
+    },
+  },
+
   app: {
     head: {
       title: 'Impero delle Waifu',
