@@ -161,7 +161,10 @@
       "Bash(curl -s -u \"private_vPRxaFpTT9Ue0wYRuQ4CkYuo/7c=:\" \"https://api.imagekit.io/v1/files?limit=100\")",
       "Bash(node scripts/seed-waifu.mjs)",
       "Bash(node scripts/seed-espansione-stellare.mjs)",
-      "Bash(curl -s -X POST \"https://waifu-empire.vercel.app/api/admin/rebuild-pack-pools\")"
+      "Bash(curl -s -X POST \"https://waifu-empire.vercel.app/api/admin/rebuild-pack-pools\")",
+      "Bash(git -C /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt diff --stat)",
+      "Bash(git -C /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt add server/utils/firebaseAdmin.ts)",
+      "Bash(git -C /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt commit -m ' *)"
     ],
     "additionalDirectories": [
       "/private/tmp"
