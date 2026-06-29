@@ -48,7 +48,14 @@ export const adminAuth = new Proxy({} as Auth,      { get: (_, p) => (getAdminAu
 /** Verifica se un'email appartiene agli amministratori. */
 export function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false
-  const config  = useRuntimeConfig()
-  const admins  = ((config.public.adminEmails as string) || '').split(',').map(e => e.trim().toLowerCase())
+  // Server-only: process.env è sempre iniettato a runtime su Vercel/Nitro.
+  // I valori runtimeConfig.public sono "bakati" al build time, quindi leggiamo
+  // direttamente da process.env con fallback su runtimeConfig per sicurezza.
+  const config = useRuntimeConfig()
+  const raw =
+    (process.env.ADMIN_EMAILS as string) ||
+    (config.adminEmails as string) ||
+    ((config.public?.adminEmails as string) || '')
+  const admins = raw.split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
   return admins.includes(email.toLowerCase())
 }
