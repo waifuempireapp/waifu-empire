@@ -159,7 +159,9 @@
       "Bash(sed -n '131,145p' /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt/locales/es.json)",
       "Bash(sed -n '131,145p' /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt/locales/ja.json)",
       "Bash(curl -s -u \"private_vPRxaFpTT9Ue0wYRuQ4CkYuo/7c=:\" \"https://api.imagekit.io/v1/files?limit=100\")",
-      "Bash(node scripts/seed-waifu.mjs)"
+      "Bash(node scripts/seed-waifu.mjs)",
+      "Bash(node scripts/seed-espansione-stellare.mjs)",
+      "Bash(curl -s -X POST \"https://waifu-empire.vercel.app/api/admin/rebuild-pack-pools\")"
     ],
     "additionalDirectories": [
       "/private/tmp"

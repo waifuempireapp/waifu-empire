@@ -200,9 +200,14 @@ export async function lazyMigrateStats(
 export async function listWaifu(): Promise<Record<string, unknown>[]> {
   const cached = _cacheGet<Record<string, unknown>[]>('iw_catalog_waifu', _CATALOG_TTL)
   if (cached) return cached
-  const db   = getDb()
-  const q    = query(collection(db, 'catalogo_waifu'), orderBy('nome'))
-  const snap = await getDocs(q)
+  const db = getDb()
+  let snap
+  try {
+    snap = await getDocs(query(collection(db, 'catalogo_waifu'), orderBy('nome')))
+  } catch {
+    // indice 'nome' non ancora attivo — fallback senza ordinamento
+    snap = await getDocs(collection(db, 'catalogo_waifu'))
+  }
   const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
   _cacheSet('iw_catalog_waifu', data)
   return data
@@ -211,9 +216,13 @@ export async function listWaifu(): Promise<Record<string, unknown>[]> {
 export async function listOutfit(): Promise<Record<string, unknown>[]> {
   const cached = _cacheGet<Record<string, unknown>[]>('iw_catalog_outfit', _CATALOG_TTL)
   if (cached) return cached
-  const db   = getDb()
-  const q    = query(collection(db, 'catalogo_outfit'), orderBy('nome'))
-  const snap = await getDocs(q)
+  const db = getDb()
+  let snap
+  try {
+    snap = await getDocs(query(collection(db, 'catalogo_outfit'), orderBy('nome')))
+  } catch {
+    snap = await getDocs(collection(db, 'catalogo_outfit'))
+  }
   const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
   _cacheSet('iw_catalog_outfit', data)
   return data
