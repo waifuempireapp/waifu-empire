@@ -28,9 +28,14 @@ const busy      = ref(false)
 watch(
   () => authStore.isLoggedIn,
   async (loggedIn) => {
-    if (loggedIn && authStore.user) {
+    if (!loggedIn || !authStore.user) return
+    try {
       const profilo = await getUserProfile(authStore.user.uid)
       router.replace(profilo ? '/gioco' : '/onboarding')
+    } catch {
+      // Profilo non leggibile (nuovo progetto, regole Firestore, ecc.)
+      // L'utente è autenticato: manda all'onboarding per creare il profilo
+      router.replace('/onboarding')
     }
   },
   { immediate: true },
