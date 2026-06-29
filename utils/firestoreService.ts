@@ -142,11 +142,17 @@ export async function setMappaUtente(uid: string, dati: Record<string, unknown>)
 export async function listMosse(): Promise<Record<string, unknown>[]> {
   const cached = _cacheGet<Record<string, unknown>[]>('iw_catalog_mosse', _CATALOG_TTL)
   if (cached) return cached
-  const db   = getDb()
-  const q    = query(collection(db, 'catalogo_mosse'), orderBy('nome'))
-  const snap = await getDocs(q)
+  const db = getDb()
+  let snap
+  try {
+    snap = await getDocs(query(collection(db, 'catalogo_mosse'), orderBy('nome')))
+  } catch {
+    snap = await getDocs(collection(db, 'catalogo_mosse'))
+  }
   const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-  _cacheSet('iw_catalog_mosse', data)
+  // Non cachiamo risultati vuoti: una lettura vuota (es. seed non ancora
+  // completato) altrimenti bloccherebbe il catalogo per 24h.
+  if (data.length > 0) _cacheSet('iw_catalog_mosse', data)
   return data
 }
 
@@ -209,7 +215,7 @@ export async function listWaifu(): Promise<Record<string, unknown>[]> {
     snap = await getDocs(collection(db, 'catalogo_waifu'))
   }
   const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-  _cacheSet('iw_catalog_waifu', data)
+  if (data.length > 0) _cacheSet('iw_catalog_waifu', data)
   return data
 }
 
@@ -224,18 +230,22 @@ export async function listOutfit(): Promise<Record<string, unknown>[]> {
     snap = await getDocs(collection(db, 'catalogo_outfit'))
   }
   const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-  _cacheSet('iw_catalog_outfit', data)
+  if (data.length > 0) _cacheSet('iw_catalog_outfit', data)
   return data
 }
 
 export async function listPose(): Promise<Record<string, unknown>[]> {
   const cached = _cacheGet<Record<string, unknown>[]>('iw_catalog_pose', _CATALOG_TTL)
   if (cached) return cached
-  const db   = getDb()
-  const q    = query(collection(db, 'catalogo_pose'), orderBy('nome'))
-  const snap = await getDocs(q)
+  const db = getDb()
+  let snap
+  try {
+    snap = await getDocs(query(collection(db, 'catalogo_pose'), orderBy('nome')))
+  } catch {
+    snap = await getDocs(collection(db, 'catalogo_pose'))
+  }
   const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-  _cacheSet('iw_catalog_pose', data)
+  if (data.length > 0) _cacheSet('iw_catalog_pose', data)
   return data
 }
 
