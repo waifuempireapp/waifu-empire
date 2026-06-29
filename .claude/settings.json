@@ -154,7 +154,12 @@
       "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter 'sed \"/^Co-Authored-By:/d\"' -- HEAD~20..HEAD)",
       "Bash(gh repo *)",
       "Bash(git remote *)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(sed -n '131,145p' /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt/locales/de.json)",
+      "Bash(sed -n '131,145p' /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt/locales/es.json)",
+      "Bash(sed -n '131,145p' /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt/locales/ja.json)",
+      "Bash(curl -s -u \"private_vPRxaFpTT9Ue0wYRuQ4CkYuo/7c=:\" \"https://api.imagekit.io/v1/files?limit=100\")",
+      "Bash(node scripts/seed-waifu.mjs)"
     ],
     "additionalDirectories": [
       "/private/tmp"
