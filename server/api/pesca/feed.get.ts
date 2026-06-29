@@ -212,6 +212,7 @@ async function _handleFeed(_event: unknown, uid: string) {
           hasHot:        packHasHot,
         }
       })
+      .filter(p => (p.cards as unknown[])?.length > 0)
       .filter(p => hasHardPass || !p.hasHot)
   }
 
@@ -251,7 +252,8 @@ async function _handleFeed(_event: unknown, uid: string) {
       dropName:      data.dropName || null,
       hasHot:        packHasHot,
     }
-  }).filter(p => hasHardPass || !p.hasHot)
+  }).filter(p => (p.cards as unknown[])?.length > 0)
+    .filter(p => hasHardPass || !p.hasHot)
 
   if (needsCleanup) cleanupBatch.commit().catch((e: unknown) => console.error('Cleanup error:', e))
 
@@ -275,6 +277,9 @@ async function _handleFeed(_event: unknown, uid: string) {
       for (let i = 0; i < Math.min(neededNew, availableNames.length); i++) {
         const ghostName = availableNames[i]
         const cards     = buildGhostCards(waifuPool, mossePool)
+        // Non creare ghost pack senza carte (es. pool vuoto): genererebbe
+        // pacchetti impescabili (errore 400 al fish).
+        if (cards.length === 0) continue
         const expiresAt = new Date(now.getTime() + GHOST_EXPIRY_MS)
 
         const docRef = db.collection('pack_snapshots').doc()
