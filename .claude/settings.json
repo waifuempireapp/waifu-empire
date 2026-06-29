@@ -153,7 +153,8 @@
       "Bash(git stash *)",
       "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter 'sed \"/^Co-Authored-By:/d\"' -- HEAD~20..HEAD)",
       "Bash(gh repo *)",
-      "Bash(git remote *)"
+      "Bash(git remote *)",
+      "Bash(python3 -c ' *)"
     ],
     "additionalDirectories": [
       "/private/tmp"

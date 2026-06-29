@@ -17,6 +17,7 @@ import {
 import { generaPacchetto, GOD_PACK_PROB_DEFAULT } from '~/utils/gameLogic'
 import { TIMER } from '~/utils/constants'
 import { useAuthStore } from '~/stores/auth'
+import { useMissionsStore } from '~/stores/missions'
 import { ikUrl } from '~/utils/imagekitUrl'
 
 // ── Costanti colori e font ───────────────────────────────────
@@ -58,7 +59,8 @@ const emit = defineEmits<{
   indietro:         [] // chiude l'overlay quando aperto da HomeTab
 }>()
 
-const authStore = useAuthStore()
+const authStore      = useAuthStore()
+const missionsStore  = useMissionsStore()
 const { t } = useI18n()
 
 // ── Anti-FOUC: overlay full-page finché la bustina 3D non ha renderizzato ──
@@ -255,13 +257,10 @@ async function apri(tipoPacchetto: string) {
   // Preload immediato: le immagini arrivano durante l'animazione del pack (≥1.3s)
   preloadCarteImages([carte])
 
-  // Notifica il sistema missioni giornaliere: pacchetto aperto
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('mission:progress', { detail: { key: 'open_pack', amount: 1 } }))
-    // Controlla se ci sono carte leggendarie nel pacchetto appena aperto
-    const hasLegendary = carte.some((c: any) => c.tipo === 'waifu' && c.data?.rarita === 'leggendario')
-    if (hasLegendary) window.dispatchEvent(new CustomEvent('mission:progress', { detail: { key: 'legendary', amount: 1 } }))
-  }
+  // Tracking missioni giornaliere
+  missionsStore.trackAction('open_pack', 1)
+  const hasLegendary = carte.some((c: any) => c.tipo === 'waifu' && c.data?.rarita === 'leggendario')
+  if (hasLegendary) missionsStore.trackAction('legendary', 1)
 
   emit('updateCollezione', nuova)
   try {
@@ -335,12 +334,10 @@ async function apriMultiSequenza(seq: string[]) {
   multiExitedCount.value = 0
   stato.value = 'reveal_multi'
 
-  // Notifica missioni giornaliere: N pacchetti aperti + eventuali leggendarie
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('mission:progress', { detail: { key: 'open_pack', amount: tuttiIPacchetti.length } }))
-    const legCount = tuttiIPacchetti.flat().filter((c: any) => c.tipo === 'waifu' && c.data?.rarita === 'leggendario').length
-    if (legCount > 0) window.dispatchEvent(new CustomEvent('mission:progress', { detail: { key: 'legendary', amount: legCount } }))
-  }
+  // Tracking missioni giornaliere
+  missionsStore.trackAction('open_pack', tuttiIPacchetti.length)
+  const legCount = tuttiIPacchetti.flat().filter((c: any) => c.tipo === 'waifu' && c.data?.rarita === 'leggendario').length
+  if (legCount > 0) missionsStore.trackAction('legendary', legCount)
 
   emit('updateCollezione', nuova)
   try {

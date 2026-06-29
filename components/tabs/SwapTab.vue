@@ -6,6 +6,7 @@ import SwapMilestoneModal from '~/components/swap/SwapMilestoneModal.vue'
 import AdSlot from '~/components/swap/AdSlot.vue'
 import { listDropsAttivi } from '~/utils/firestoreService'
 import { ikUrl } from '~/utils/imagekitUrl'
+import { useMissionsStore } from '~/stores/missions'
 
 const { t } = useI18n()
 
@@ -28,6 +29,8 @@ const emit = defineEmits<{
   profiloUpdate: [partial: Record<string, any>]
   setTab: [tab: string]
 }>()
+
+const missionsStore = useMissionsStore()
 
 const queue = ref<any[]>([])
 const currentIdx = ref(0)
@@ -108,6 +111,7 @@ async function handleVote(direction: 'like' | 'dislike') {
       daily_swap_votes: isNewDay ? 1 : (props.profilo?.daily_swap_votes ?? 0) + 1,
       daily_swap_date: todayItaly,
     })
+    missionsStore.trackAction('swipe_waifu')
     if (data.kissesEarned > 0) {
       toast.value = { amount: data.kissesEarned, streakDays: data.streakDays, multiplier: data.multiplier }
       emit('profiloUpdate', { kisses: (props.profilo?.kisses ?? 0) + data.kissesEarned })

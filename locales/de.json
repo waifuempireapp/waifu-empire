@@ -350,5 +350,26 @@
     "hot_badge": "HOT 🔥",
     "already_fished": "🎣 BEREITS GEFISCHT",
     "drop_btn": "Drop ({n})"
+  },
+  "missions": {
+    "title": "Tägliche Missionen",
+    "daily_tab": "TÄGLICH",
+    "map_tab": "KARTE",
+    "filter_in_progress": "LÄUFT",
+    "filter_completed": "ABGESCHLOSSEN",
+    "reset_in": "Reset in {time}",
+    "progress_completed": "{n}/{total} abgeschlossen",
+    "none_completed": "Noch keine Missionen abgeschlossen",
+    "all_completed": "Alle Missionen abgeschlossen!",
+    "claim": "ABHOLEN",
+    "next_mission_in": "Nächste Mission in",
+    "no_active_mission": "Keine aktive Kartenmission",
+    "refresh": "AKTUALISIEREN",
+    "pack_received": "+{n} Pack erhalten!",
+    "task_open_pack_label": "Öffne 2 Pakete",
+    "task_conquer_label": "Erobere 3 Gebiete",
+    "task_legendary_label": "Schalte 1 legendäre Karte frei",
+    "task_swipe_waifu_label": "30 Swipes durchführen",
+    "task_mysterious_draw_label": "Mysteriöse Ziehung durchführen"
   }
 }

@@ -450,5 +450,26 @@
     "hard_pass_fishing": "Hard Pass Required",
     "hard_pass_fishing_desc": "Buy the Pass to see and fish hot content",
     "drop_btn": "Drop ({n})"
+  },
+  "missions": {
+    "title": "Daily Missions",
+    "daily_tab": "DAILY",
+    "map_tab": "MAP",
+    "filter_in_progress": "IN PROGRESS",
+    "filter_completed": "COMPLETED",
+    "reset_in": "Reset in {time}",
+    "progress_completed": "{n}/{total} completed",
+    "none_completed": "No completed missions yet",
+    "all_completed": "All missions complete!",
+    "claim": "CLAIM",
+    "next_mission_in": "Next mission in",
+    "no_active_mission": "No active map mission",
+    "refresh": "REFRESH",
+    "pack_received": "+{n} Pack received!",
+    "task_open_pack_label": "Open 2 packs",
+    "task_conquer_label": "Conquer 3 territories",
+    "task_legendary_label": "Unlock 1 legendary card",
+    "task_swipe_waifu_label": "Swipe 30 times",
+    "task_mysterious_draw_label": "Make a mysterious draw"
   }
 }

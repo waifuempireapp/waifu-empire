@@ -9,6 +9,7 @@ import { PIXEL_NAMES, LAND_SET, GRID_SIZE } from '~/utils/worldMap'
 import { isHexAdjacentToEmpire } from '~/utils/hexGrid'
 import { ikUrl } from '~/utils/imagekitUrl'
 import { useAuthStore } from '~/stores/auth'
+import { useMissionsStore } from '~/stores/missions'
 
 // ------------------------------------------------------------------ Props
 const props = defineProps<{
@@ -53,7 +54,8 @@ const FF = {
 }
 
 // ------------------------------------------------------------------ Store
-const authStore = useAuthStore()
+const authStore     = useAuthStore()
+const missionsStore = useMissionsStore()
 const { t } = useI18n()
 
 // ------------------------------------------------------------------ Stato principale
@@ -442,6 +444,7 @@ const handleRoundComplete = async (
       activeBattle.value = null
 
       if (data.status === 'attacker_wins') {
+        missionsStore.trackAction('conquer')
         // Animazione conquista territorio
         const oldColor = battSnap?.defenderUid === 'CPU' ? '#888888' : (battSnap?.defenderColor || '#ff85b6')
         const newColor = (props.profilo?.coloreImpero as string) || '#ff85b6'

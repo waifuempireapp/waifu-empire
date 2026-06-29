@@ -1,11 +1,11 @@
 <!-- MissioniTab.vue — Missioni giornaliere + missioni mappa con progress bar e CLAIM -->
 <script setup lang="ts">
-import { Gift, Map as MapIcon, Target, Timer, CheckCircle, Clock } from 'lucide-vue-next'
+import { Gift, Map as MapIcon, Target, Timer, CheckCircle, Clock, Heart, Fish } from 'lucide-vue-next'
 import { useAuthStore } from '~/stores/auth'
-import { useGameStore } from '~/stores/game'
+import { useMissionsStore, type MissionType } from '~/stores/missions'
 
-const authStore  = useAuthStore()
-const gameStore  = useGameStore()
+const authStore      = useAuthStore()
+const missionsStore  = useMissionsStore()
 
 // ── Props ────────────────────────────────────────────────────────────────────
 const props = defineProps<{
@@ -42,7 +42,6 @@ const FF = {
 // ── Sub-tab attiva ────────────────────────────────────────────────────────────
 const subTab = ref<'giornaliere' | 'mappa'>('giornaliere')
 
-// Toggle stile Raid: violetto con dissolvenza a scomparsa nel solo bottone attivo
 const VIOLETTO = '#a855f7'
 function segActiveBg(i: number, color: string): string {
   const dir = i === 0 ? 'to right' : 'to left'
@@ -50,100 +49,50 @@ function segActiveBg(i: number, color: string): string {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  GIORNALIERE — definizione missioni + tracking localStorage
+//  GIORNALIERE — dati dallo store Pinia
 // ══════════════════════════════════════════════════════════════════════════════
 
-// Definizione missioni giornaliere
-interface DailyMission {
-  key:    string
-  label:  string
-  desc:   string
-  goal:   number
-  reward: { kisses?: number; pack?: number }
-}
+const filterView = ref<'corso' | 'completate'>('corso')
 
-const DAILY_MISSIONS: DailyMission[] = [
-  { key: 'open_pack',    label: 'Apri una bustina',           desc: 'Apri almeno 1 bustina',                goal: 1, reward: { kisses: 50  } },
-  { key: 'conquer',      label: 'Conquista 3 territori',      desc: 'Conquista 3 territori sulla mappa',    goal: 3, reward: { pack: 1    } },
-  { key: 'legendary',   label: 'Sblocca 1 carta leggendaria', desc: 'Ottieni una carta leggendaria',        goal: 1, reward: { kisses: 200 } },
-]
-
-// Chiave daily reset — formato YYYY-MM-DD (orario locale)
-const todayKey = computed(() => {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const visibleMissions = computed(() => {
+  if (filterView.value === 'completate')
+    return missionsStore.missions.filter(m => missionsStore.isClaimed(m.id as MissionType))
+  return missionsStore.missions.filter(m => !missionsStore.isClaimed(m.id as MissionType))
 })
-const progressKey = computed(() => `waifu_daily_progress_${todayKey.value}`)
-const claimedKey  = computed(() => `waifu_daily_claimed_${todayKey.value}`)
-
-const progress = ref<Record<string, number>>({})
-const claimed  = ref<Record<string, boolean>>({})
 
 // Countdown al reset (mezzanotte locale)
 const resetCountdown = ref('')
 let resetTimer: ReturnType<typeof setInterval> | null = null
 
-function loadProgress() {
-  if (typeof window === 'undefined') return
-  try {
-    progress.value = JSON.parse(localStorage.getItem(progressKey.value) || '{}')
-    claimed.value  = JSON.parse(localStorage.getItem(claimedKey.value)  || '{}')
-  } catch { progress.value = {}; claimed.value = {} }
-}
-
-function getMissionProgress(key: string)             { return Math.min(progress.value[key] ?? 0, getMissionGoal(key)) }
-function getMissionGoal(key: string)                 { return DAILY_MISSIONS.find(m => m.key === key)?.goal ?? 1 }
-function isMissionComplete(m: DailyMission)          { return getMissionProgress(m.key) >= m.goal }
-function isMissionClaimed(m: DailyMission)           { return claimed.value[m.key] === true }
-
-const completedCount = computed(() => DAILY_MISSIONS.filter(m => isMissionComplete(m)).length)
-
-const filterView = ref<'corso' | 'completate'>('corso')
-const visibleMissions = computed(() => {
-  if (filterView.value === 'completate') return DAILY_MISSIONS.filter(m => isMissionClaimed(m))
-  return DAILY_MISSIONS.filter(m => !isMissionClaimed(m))
-})
-
-// Claim singola missione — aggiunge kisses/pack al profilo via emit
-async function claimMission(m: DailyMission) {
-  if (!isMissionComplete(m) || isMissionClaimed(m)) return
-  claimed.value[m.key] = true
-  localStorage.setItem(claimedKey.value, JSON.stringify(claimed.value))
-
-  if (m.reward.kisses) {
-    const curKisses = Number(props.profilo?.kisses ?? 0)
-    emit('updateProfilo', { kisses: curKisses + m.reward.kisses })
-    emit('notif', `+${m.reward.kisses} Kisses!`, C.ok)
-  } else if (m.reward.pack) {
-    const curPacks = Number(props.profilo?.pacchettiOmaggio ?? 0)
-    emit('updateProfilo', { pacchettiOmaggio: curPacks + m.reward.pack })
-    emit('notif', t("missions.pack_received", { n: m.reward.pack }), C.gold)
-  }
-}
-
-// Countdown a mezzanotte per il reset
 function startResetCountdown() {
   if (resetTimer) clearInterval(resetTimer)
   const tick = () => {
-    const now   = new Date()
-    const mdn   = new Date(now)
+    const now  = new Date()
+    const mdn  = new Date(now)
     mdn.setHours(24, 0, 0, 0)
-    const diff  = mdn.getTime() - now.getTime()
+    const diff = mdn.getTime() - now.getTime()
     const h = Math.floor(diff / 3_600_000)
     const m = Math.floor((diff % 3_600_000) / 60_000)
     resetCountdown.value = `${h}h ${String(m).padStart(2, '0')}m`
   }
   tick()
-  resetTimer = setInterval(tick, 10_000) // aggiorna ogni 10s (sufficiente)
+  resetTimer = setInterval(tick, 10_000)
 }
 
-// Ascolta eventi progress da altri componenti
-function onMissionProgress(e: Event) {
-  const { key, amount = 1 } = (e as CustomEvent).detail as { key: string; amount?: number }
-  const cur = progress.value[key] ?? 0
-  const goal = getMissionGoal(key)
-  progress.value[key] = Math.min(cur + amount, goal)
-  localStorage.setItem(progressKey.value, JSON.stringify(progress.value))
+// Claim singola missione
+async function claimMission(m: typeof missionsStore.missions[0]) {
+  if (!m.completed || missionsStore.isClaimed(m.id as MissionType)) return
+  missionsStore.claimMission(m.id as MissionType)
+
+  if (m.reward.type === 'kisses') {
+    const curKisses = Number(props.profilo?.kisses ?? 0)
+    emit('updateProfilo', { kisses: curKisses + m.reward.amount })
+    emit('notif', `+${m.reward.amount} Kisses!`, C.ok)
+  } else if (m.reward.type === 'pack') {
+    const curPacks = Number(props.profilo?.pacchettiOmaggio ?? 0)
+    emit('updateProfilo', { pacchettiOmaggio: curPacks + m.reward.amount })
+    emit('notif', t('missions.pack_received', { n: m.reward.amount }), C.gold)
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -154,7 +103,7 @@ const activeMission = ref<any>(null)
 const mapLoading    = ref(false)
 const mapCountdown  = ref('')
 const nextCountdown = ref('')
-let mapTimer: ReturnType<typeof setInterval> | null = null
+let mapTimer:  ReturnType<typeof setInterval> | null = null
 let nextTimer: ReturnType<typeof setInterval> | null = null
 
 async function loadMapMission() {
@@ -201,17 +150,15 @@ function startNextCountdown(ms: number) {
 }
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
-onMounted(() => {
-  loadProgress()
+onMounted(async () => {
+  await missionsStore.load(authStore.user?.uid ?? undefined)
   startResetCountdown()
   loadMapMission()
-  window.addEventListener('mission:progress', onMissionProgress)
 })
 onUnmounted(() => {
   if (resetTimer) clearInterval(resetTimer)
   if (mapTimer)   clearInterval(mapTimer)
   if (nextTimer)  clearInterval(nextTimer)
-  window.removeEventListener('mission:progress', onMissionProgress)
 })
 </script>
 
@@ -221,7 +168,6 @@ onUnmounted(() => {
 
     <!-- ── HEADER con bottone ← back ──────────────────────────────────── -->
     <div style="flex-shrink:0;padding:8px 56px 0;position:relative;text-align:center;">
-      <!-- Bottone back — torna alla tab precedente -->
       <button
         @click="emit('indietro')"
         style="position:absolute;left:10px;top:6px;background:var(--theme-shimmer);border:1px solid var(--theme-border);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--theme-text-2);z-index:2;"
@@ -230,11 +176,10 @@ onUnmounted(() => {
           <path d="M19 12H5M12 19l-7-7 7-7"/>
         </svg>
       </button>
-
-      <div :style="{ fontFamily:FF.display, fontSize:'22px', fontWeight:900, color:'var(--theme-text)', marginBottom:'16px', lineHeight:1.2 }">{{ $t("missions.title") }}</div>
+      <div :style="{ fontFamily:FF.display, fontSize:'22px', fontWeight:900, color:'var(--theme-text)', marginBottom:'16px', lineHeight:1.2 }">{{ $t('missions.title') }}</div>
     </div>
 
-    <!-- ── SUB-TAB SELECTOR — gradiente violetto a scomparsa (stile Raid) ──── -->
+    <!-- ── SUB-TAB SELECTOR ───────────────────────────────────────────────── -->
     <div :style="{ flexShrink:0, display:'flex', margin:'0 16px 14px', border:`1.5px solid ${VIOLETTO}`, borderRadius:'12px', overflow:'hidden' }">
       <button
         @click="subTab = 'giornaliere'"
@@ -245,7 +190,7 @@ onUnmounted(() => {
           fontFamily: FF.label, fontSize:'13px', fontWeight:800, letterSpacing:'0.1em',
           textTransform:'uppercase', transition:'color 0.18s',
         }"
-      >{{ $t("missions.daily_tab") }}</button>
+      >{{ $t('missions.daily_tab') }}</button>
       <button
         @click="subTab = 'mappa'; if (!activeMission && !mapLoading) loadMapMission()"
         :style="{
@@ -255,7 +200,7 @@ onUnmounted(() => {
           fontFamily: FF.label, fontSize:'13px', fontWeight:800, letterSpacing:'0.1em',
           textTransform:'uppercase', transition:'color 0.18s',
         }"
-      >{{ $t("missions.map_tab") }}</button>
+      >{{ $t('missions.map_tab') }}</button>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════════════
@@ -263,10 +208,8 @@ onUnmounted(() => {
     ══════════════════════════════════════════════════════════════════ -->
     <div v-if="subTab === 'giornaliere'" style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding:0 16px 16px;">
 
-      <!-- Toggle In Corso / Completate (50%/50%) + reset countdown sotto a tutta larghezza -->
+      <!-- Toggle In Corso / Completate + reset countdown -->
       <div style="flex-shrink:0;margin-bottom:12px;margin-top:6px;">
-
-        <!-- Riga bottoni: 50% ciascuno -->
         <div style="display:flex;gap:6px;margin-bottom:8px;">
           <button
             @click="filterView = 'corso'"
@@ -298,26 +241,23 @@ onUnmounted(() => {
           </button>
         </div>
 
-        <!-- Reset countdown — sotto, tutta la larghezza, centrato -->
         <div style="display:flex;align-items:center;justify-content:center;gap:5px;width:100%;"
           :style="{ fontFamily:FF.mono, fontSize:'12px', color:'var(--theme-text-3)' }">
           <Clock :size="12" stroke-width="1.5" />{{ $t('missions.reset_in', { time: resetCountdown }) }}
         </div>
-
       </div>
 
       <!-- Counter completate -->
       <div style="flex-shrink:0;margin-bottom:14px;">
         <div style="display:flex;align-items:center;gap:8px;">
           <div :style="{ fontFamily:FF.label, fontSize:'15px', color:'var(--theme-text-2)', letterSpacing:'0.06em', fontWeight:600 }">
-            {{ $t('missions.progress_completed', { n: completedCount, total: DAILY_MISSIONS.length }) }}
+            {{ $t('missions.progress_completed', { n: missionsStore.completedCount, total: missionsStore.missions.length }) }}
           </div>
-          <!-- Barra progresso totale -->
           <div style="flex:1;height:4px;background:var(--theme-border);border-radius:999px;overflow:hidden;">
             <div :style="{
               height:'100%', borderRadius:'999px',
               background:`linear-gradient(90deg,${C.mission},${C.violet})`,
-              width:`${Math.round((completedCount / DAILY_MISSIONS.length) * 100)}%`,
+              width:`${Math.round((missionsStore.completedCount / missionsStore.missions.length) * 100)}%`,
               transition:'width 0.4s ease',
             }" />
           </div>
@@ -325,9 +265,8 @@ onUnmounted(() => {
       </div>
 
       <!-- Lista missioni -->
-      <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;">
+      <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;">
 
-        <!-- Nessuna missione nel filtro attivo -->
         <div v-if="visibleMissions.length === 0"
           style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;text-align:center;">
           <CheckCircle :size="36" stroke-width="1" style="color:#58e0a3;opacity:0.5;" />
@@ -339,85 +278,90 @@ onUnmounted(() => {
         <!-- Card missione singola -->
         <div
           v-for="m in visibleMissions"
-          :key="m.key"
+          :key="m.id"
           :style="{
-            background: isMissionClaimed(m)
-              ? 'rgba(88,224,163,0.06)'
-              : isMissionComplete(m)
-                ? 'linear-gradient(135deg,rgba(88,224,163,0.10),rgba(10,7,38,0.9))'
-                : 'linear-gradient(135deg,rgba(168,85,247,0.06),rgba(10,7,38,0.9))',
-            border: isMissionClaimed(m)
-              ? '1px solid rgba(88,224,163,0.2)'
-              : isMissionComplete(m)
-                ? '1.5px solid rgba(88,224,163,0.35)'
-                : '1px solid rgba(168,85,247,0.2)',
+            background: missionsStore.isClaimed(m.id as MissionType)
+              ? 'linear-gradient(135deg, rgba(88,224,163,0.12) 0%, var(--theme-surface) 55%)'
+              : m.completed
+                ? 'linear-gradient(135deg, rgba(88,224,163,0.18) 0%, var(--theme-surface) 55%)'
+                : 'linear-gradient(135deg, rgba(168,85,247,0.16) 0%, var(--theme-surface) 55%)',
+            border: 'none',
             borderRadius: '16px',
             padding: '16px',
           }"
         >
-          <div style="display:flex;align-items:flex-start;gap:14px;">
+
+          <div style="display:flex;align-items:flex-start;gap:12px;">
 
             <!-- Icona missione -->
             <div :style="{
-              width:'48px', height:'48px', borderRadius:'12px',
-              background: isMissionComplete(m) ? 'rgba(88,224,163,0.15)' : 'rgba(168,85,247,0.12)',
-              border: isMissionComplete(m) ? '1px solid rgba(88,224,163,0.3)' : '1px solid rgba(168,85,247,0.25)',
+              width:'44px', height:'44px', borderRadius:'12px', flexShrink:0,
+              background: m.completed
+                ? 'linear-gradient(135deg,rgba(88,224,163,0.2),rgba(45,212,170,0.15))'
+                : 'linear-gradient(135deg,rgba(168,85,247,0.18),rgba(105,56,232,0.12))',
               display:'flex', alignItems:'center', justifyContent:'center',
-              flexShrink: 0,
             }">
-              <CheckCircle v-if="isMissionClaimed(m)" :size="24" stroke-width="1.5" style="color:#58e0a3;" />
-              <Gift        v-else-if="m.key === 'open_pack'"  :size="24" stroke-width="1.5" style="color:#ff85b6;" />
-              <MapIcon     v-else-if="m.key === 'conquer'"    :size="24" stroke-width="1.5" style="color:#a78bfa;" />
-              <Target      v-else                             :size="24" stroke-width="1.5" style="color:#e879f9;" />
+              <CheckCircle v-if="missionsStore.isClaimed(m.id as MissionType)" :size="22" stroke-width="1.5" :style="{ color: C.ok }" />
+              <Gift    v-else-if="m.icon === 'gift'"   :size="22" stroke-width="1.5" :style="{ color: C.sakura }" />
+              <MapIcon v-else-if="m.icon === 'map'"    :size="22" stroke-width="1.5" :style="{ color: C.violet }" />
+              <Heart   v-else-if="m.icon === 'heart'"  :size="22" stroke-width="1.5" :style="{ color: C.mission }" />
+              <Fish    v-else-if="m.icon === 'fish'"   :size="22" stroke-width="1.5" style="color:#5aa9ff;" />
+              <Target  v-else                          :size="22" stroke-width="1.5" :style="{ color: C.mission }" />
             </div>
 
             <!-- Testo + reward -->
             <div style="flex:1;min-width:0;">
-              <div :style="{ fontFamily:FF.display, fontSize:'16px', fontWeight:800, color:'#fff', marginBottom:'4px', lineHeight:1.3 }">
-                {{ $t('missions.task_' + m.key + '_label') }}
+              <div :style="{
+                fontFamily: FF.label, fontSize:'14px', fontWeight:800,
+                color: 'var(--theme-text)', marginBottom:'6px', lineHeight:1.35,
+                letterSpacing:'0.04em', textTransform:'uppercase',
+                wordBreak:'break-word',
+              }">
+                {{ $te('missions.task_' + m.id + '_label') ? $t('missions.task_' + m.id + '_label') : m.label }}
               </div>
+
               <!-- Reward pill -->
               <div :style="{
                 display:'inline-flex', alignItems:'center', gap:'4px',
-                fontFamily:FF.mono, fontSize:'13px', fontWeight:700,
-                color: m.reward.kisses ? C.sakura : C.gold,
-                background: m.reward.kisses ? 'rgba(255,133,182,0.1)' : 'rgba(245,197,96,0.1)',
-                border: `1px solid ${m.reward.kisses ? 'rgba(255,133,182,0.25)' : 'rgba(245,197,96,0.25)'}`,
+                fontFamily:FF.mono, fontSize:'12px', fontWeight:700,
+                color: m.reward.type === 'kisses' ? C.sakura : C.gold,
+                background: m.reward.type === 'kisses' ? 'rgba(255,133,182,0.12)' : 'rgba(245,197,96,0.12)',
+                border: `1px solid ${m.reward.type === 'kisses' ? 'rgba(255,133,182,0.3)' : 'rgba(245,197,96,0.3)'}`,
                 borderRadius:'999px', padding:'2px 10px', marginBottom:'10px',
               }">
-                +{{ m.reward.kisses ? `${m.reward.kisses} Kisses` : `${m.reward.pack} Pack` }}
+                +{{ m.reward.amount }} {{ m.reward.type === 'kisses' ? 'Kisses' : 'Pack' }}
               </div>
 
               <!-- Progress bar -->
-              <div style="height:6px;background:rgba(255,255,255,0.08);border-radius:999px;overflow:hidden;margin-bottom:5px;">
+              <div style="height:5px;background:rgba(0,0,0,0.08);border-radius:999px;overflow:hidden;margin-bottom:4px;">
                 <div :style="{
                   height:'100%', borderRadius:'999px', transition:'width 0.4s ease',
-                  background: isMissionComplete(m)
+                  background: m.completed
                     ? `linear-gradient(90deg,${C.ok},#2dd4aa)`
-                    : `linear-gradient(90deg,${C.violet},#6938e8)`,
-                  width:`${Math.min(100, Math.round((getMissionProgress(m.key) / m.goal) * 100))}%`,
+                    : `linear-gradient(90deg,#a855f7,#6938e8)`,
+                  width:`${Math.min(100, Math.round((m.current / m.target) * 100))}%`,
                 }" />
               </div>
-              <div :style="{ fontFamily:FF.mono, fontSize:'13px', color:'rgba(255,255,255,0.45)', marginTop:'2px' }">
-                {{ getMissionProgress(m.key) }}/{{ m.goal }}
+              <div :style="{ fontFamily:FF.mono, fontSize:'12px', color:'var(--theme-text-3)', marginTop:'2px' }">
+                {{ m.current }}/{{ m.target }}
               </div>
             </div>
 
-            <!-- CLAIM button (destra) -->
+            <!-- CLAIM button -->
             <button
-              v-if="isMissionComplete(m) && !isMissionClaimed(m)"
+              v-if="m.completed && !missionsStore.isClaimed(m.id as MissionType)"
               @click="claimMission(m)"
               :style="{
-                padding:'8px 16px', borderRadius:'999px', border:'none', cursor:'pointer',
+                padding:'8px 14px', borderRadius:'999px', border:'none', cursor:'pointer',
                 background:`linear-gradient(135deg,${C.ok},#2dd4aa)`,
-                fontFamily:FF.label, fontSize:'13px', fontWeight:800,
+                fontFamily:FF.label, fontSize:'12px', fontWeight:800,
                 color:'#031a0f', letterSpacing:'0.1em', textTransform:'uppercase',
-                boxShadow:`0 4px 14px rgba(88,224,163,0.4)`, flexShrink:0,
-                whiteSpace:'nowrap',
+                boxShadow:`0 4px 14px rgba(88,224,163,0.35)`, flexShrink:0,
+                whiteSpace:'nowrap', marginTop:'2px',
               }"
-            >{{ $t("missions.claim") }}</button>
-            <div v-else-if="isMissionClaimed(m)"
-              :style="{ fontFamily:FF.label, fontSize:'12px', color:`${C.ok}99`, fontWeight:700, flexShrink:0, paddingTop:'4px' }"
+            >{{ $t('missions.claim') }}</button>
+            <div v-else-if="missionsStore.isClaimed(m.id as MissionType)"
+              :style="{ fontFamily:FF.label, fontSize:'13px', color:C.ok, fontWeight:800, flexShrink:0, paddingTop:'2px' }"
             >✓</div>
 
           </div>
@@ -431,13 +375,9 @@ onUnmounted(() => {
     ══════════════════════════════════════════════════════════════════ -->
     <div v-else style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding:0 16px 16px;">
 
-      <!-- Loading -->
       <AppLoading v-if="mapLoading" />
 
-      <!-- Missione mappa attiva -->
       <template v-else-if="activeMission">
-
-        <!-- Countdown scadenza -->
         <div style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 18px;background:rgba(232,121,249,0.08);border:1px solid rgba(232,121,249,0.25);border-radius:16px;margin-bottom:14px;">
           <Timer :size="20" stroke-width="1.5" style="color:#e879f9;flex-shrink:0;" />
           <span :style="{ fontFamily:FF.mono, fontSize:'26px', color:'var(--theme-text)', fontWeight:800, fontVariantNumeric:'tabular-nums', letterSpacing:'0.04em' }">
@@ -445,7 +385,6 @@ onUnmounted(() => {
           </span>
         </div>
 
-        <!-- Reward -->
         <div style="flex-shrink:0;display:flex;align-items:center;gap:10px;padding:12px 16px;background:rgba(232,121,249,0.06);border:1px solid rgba(232,121,249,0.18);border-radius:14px;margin-bottom:16px;">
           <CheckCircle :size="18" stroke-width="1.5" style="color:#58e0a3;flex-shrink:0;" />
           <div :style="{ fontFamily:FF.body, fontSize:'14px', color:'var(--theme-text)', lineHeight:1.45 }">
@@ -454,12 +393,10 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- Intestazione lista territori -->
         <div :style="{ fontFamily:FF.label, fontSize:'11px', letterSpacing:'0.2em', color:`rgba(232,121,249,0.55)`, textTransform:'uppercase', marginBottom:'10px', fontWeight:700, flexShrink:0 }">
           Territori obiettivo
         </div>
 
-        <!-- Lista territori scrollabile -->
         <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
           <div
             v-for="(px, i) in (activeMission.pixels || [])"
@@ -475,34 +412,31 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- CTA mappa -->
         <button
           @click="emit('setTab', 'mappa')"
           style="flex-shrink:0;width:100%;margin-top:14px;padding:15px;border:none;border-radius:999px;cursor:pointer;background:linear-gradient(135deg,#9e2232,#6b1020);font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:15px;font-weight:800;color:#ffd050;letter-spacing:0.14em;text-transform:uppercase;box-shadow:0 4px 20px rgba(155,34,50,0.5);display:flex;align-items:center;justify-content:center;gap:8px;"
         >
           <MapIcon :size="16" stroke-width="1.5" />Vai alla Mappa
         </button>
-
       </template>
 
-      <!-- Nessuna missione mappa — countdown prossima -->
       <div v-else style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:20px;">
         <Target :size="44" stroke-width="1" style="opacity:0.4;color:#e879f9;" />
         <template v-if="nextCountdown">
-          <div :style="{ fontFamily:FF.display, fontSize:'15px', fontWeight:800, color:'var(--theme-text-2)' }">{{ $t("missions.next_mission_in") }}</div>
+          <div :style="{ fontFamily:FF.display, fontSize:'15px', fontWeight:800, color:'var(--theme-text-2)' }">{{ $t('missions.next_mission_in') }}</div>
           <div :style="{ fontFamily:FF.mono, fontSize:'28px', fontWeight:800, color:'#e879f9', letterSpacing:'0.05em', fontVariantNumeric:'tabular-nums' }">
             {{ nextCountdown }}
           </div>
         </template>
         <template v-else>
-          <div :style="{ fontFamily:FF.display, fontSize:'15px', fontWeight:800, color:'var(--theme-text-2)' }">{{ $t("missions.no_active_mission") }}</div>
+          <div :style="{ fontFamily:FF.display, fontSize:'15px', fontWeight:800, color:'var(--theme-text-2)' }">{{ $t('missions.no_active_mission') }}</div>
           <div :style="{ fontFamily:FF.body, fontSize:'13px', color:'var(--theme-text-3)', lineHeight:1.5 }">
             Le missioni si rinnovano ogni 2 ore.
           </div>
         </template>
         <button @click="loadMapMission"
           style="padding:12px 28px;background:rgba(232,121,249,0.08);border:1.5px solid rgba(232,121,249,0.3);border-radius:999px;color:#e879f9;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.12em;text-transform:uppercase;"
-        >{{ $t("missions.refresh") }}</button>
+        >{{ $t('missions.refresh') }}</button>
       </div>
 
     </div>

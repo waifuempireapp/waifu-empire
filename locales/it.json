@@ -450,5 +450,26 @@
     "hard_pass_fishing": "Hard Pass Richiesto",
     "hard_pass_fishing_desc": "Acquista il Pass per vedere e pescare i contenuti hot",
     "drop_btn": "Drop ({n})"
+  },
+  "missions": {
+    "title": "Missioni Giornaliere",
+    "daily_tab": "GIORNALIERE",
+    "map_tab": "MAPPA",
+    "filter_in_progress": "IN CORSO",
+    "filter_completed": "COMPLETATE",
+    "reset_in": "Reset tra {time}",
+    "progress_completed": "{n}/{total} completate",
+    "none_completed": "Nessuna missione completata",
+    "all_completed": "Tutte le missioni completate!",
+    "claim": "RITIRA",
+    "next_mission_in": "Prossima missione tra",
+    "no_active_mission": "Nessuna missione mappa attiva",
+    "refresh": "AGGIORNA",
+    "pack_received": "+{n} Pack ricevuto!",
+    "task_open_pack_label": "Apri 2 pacchetti",
+    "task_conquer_label": "Conquista 3 territori",
+    "task_legendary_label": "Sblocca 1 carta leggendaria",
+    "task_swipe_waifu_label": "Effettua 30 swipe",
+    "task_mysterious_draw_label": "Effettua una pescata misteriosa"
   }
 }

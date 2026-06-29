@@ -2,6 +2,7 @@
 import type { ProfiloUtente, Collezione } from '~/types/game'
 import type { CSSProperties } from 'vue'
 import { useAuthStore } from '~/stores/auth'
+import { useMissionsStore } from '~/stores/missions'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 
 // ── Costo fisso per pescare un pack ──────────────────────────
@@ -22,7 +23,8 @@ const emit = defineEmits<{
 }>()
 
 // ── Auth ──────────────────────────────────────────────────────
-const authStore = useAuthStore()
+const authStore     = useAuthStore()
+const missionsStore = useMissionsStore()
 const { t } = useI18n()
 
 // ── Tipo minimo di un pack snapshot nel feed ──────────────────
@@ -346,6 +348,7 @@ async function confermaScelta() {
       body,
     })
 
+    missionsStore.trackAction('mysterious_draw')
     lastFishedId.value = selectedPack.value.id
     lastFishedIsGhost.value = selectedPack.value.isGhost ?? false
 

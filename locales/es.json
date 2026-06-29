@@ -350,5 +350,26 @@
     "hot_badge": "HOT 🔥",
     "already_fished": "🎣 YA PESCADA",
     "drop_btn": "Drop ({n})"
+  },
+  "missions": {
+    "title": "Misiones Diarias",
+    "daily_tab": "DIARIAS",
+    "map_tab": "MAPA",
+    "filter_in_progress": "EN CURSO",
+    "filter_completed": "COMPLETADAS",
+    "reset_in": "Reinicio en {time}",
+    "progress_completed": "{n}/{total} completadas",
+    "none_completed": "Sin misiones completadas aún",
+    "all_completed": "¡Todas las misiones completadas!",
+    "claim": "RECLAMAR",
+    "next_mission_in": "Próxima misión en",
+    "no_active_mission": "Sin misión de mapa activa",
+    "refresh": "ACTUALIZAR",
+    "pack_received": "+{n} sobre recibido!",
+    "task_open_pack_label": "Abre 2 sobres",
+    "task_conquer_label": "Conquista 3 territorios",
+    "task_legendary_label": "Desbloquea 1 carta legendaria",
+    "task_swipe_waifu_label": "Realiza 30 swipes",
+    "task_mysterious_draw_label": "Realiza una pesca misteriosa"
   }
 }

@@ -350,5 +350,26 @@
     "hot_badge": "ホット 🔥",
     "already_fished": "🎣 すでに釣られました",
     "drop_btn": "ドロップ ({n})"
+  },
+  "missions": {
+    "title": "デイリーミッション",
+    "daily_tab": "デイリー",
+    "map_tab": "マップ",
+    "filter_in_progress": "進行中",
+    "filter_completed": "完了済み",
+    "reset_in": "{time}でリセット",
+    "progress_completed": "{n}/{total}完了",
+    "none_completed": "まだ完了したミッションはありません",
+    "all_completed": "全ミッション完了！",
+    "claim": "受け取る",
+    "next_mission_in": "次のミッションまで",
+    "no_active_mission": "アクティブなマップミッションなし",
+    "refresh": "更新",
+    "pack_received": "+{n}パック受け取り！",
+    "task_open_pack_label": "パックを2つ開封",
+    "task_conquer_label": "3つの領地を征服",
+    "task_legendary_label": "伝説カード1枚を解放",
+    "task_swipe_waifu_label": "30回スワイプ",
+    "task_mysterious_draw_label": "謎の釣りを実行"
   }
 }
