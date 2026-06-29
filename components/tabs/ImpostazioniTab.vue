@@ -12,8 +12,9 @@ const router    = useRouter()
 
 // Avatar
 const { avatarUrl, setAvatar } = useAvatar()
-const isColorPreset = computed(() => !!avatarUrl.value && avatarUrl.value.startsWith('#'))
-const isImageUrl    = computed(() => !!avatarUrl.value && (avatarUrl.value.startsWith('http') || avatarUrl.value.startsWith('/')))
+const isColorPreset   = computed(() => !!avatarUrl.value && avatarUrl.value.startsWith('#'))
+const isImageUrl      = computed(() => !!avatarUrl.value && (avatarUrl.value.startsWith('http') || avatarUrl.value.startsWith('/')))
+const failedPresets   = ref(new Set<string>())
 const initials      = computed(() => {
   const name = gameStore.profilo?.nomeImpero ?? authStore.user?.email ?? ''
   return name.slice(0, 2).toUpperCase() || '?'
@@ -100,6 +101,7 @@ async function switchLocale(code: string) {
       <div style="display:flex;gap:12px;overflow-x:auto;padding:4px 4px 12px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;">
         <button
           v-for="preset in AVATAR_PRESETS"
+          v-show="!preset.image || !failedPresets.has(preset.id)"
           :key="preset.id"
           @click="setAvatar(preset.color ?? preset.image!)"
           :title="preset.label"
@@ -119,6 +121,7 @@ async function switchLocale(code: string) {
             :src="preset.image"
             :alt="preset.label"
             style="width:100%;height:100%;object-fit:cover;display:block;"
+            @error="() => { failedPresets.value = new Set([...failedPresets.value, preset.id]) }"
           />
           <span
             v-if="avatarUrl === (preset.color ?? preset.image)"
