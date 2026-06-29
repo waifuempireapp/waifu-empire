@@ -6,7 +6,7 @@
   ============================================================ -->
 <script setup lang="ts">
 import {
-  signInWithRedirect,
+  signInWithPopup, signInWithRedirect,
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   GoogleAuthProvider,
 } from 'firebase/auth'
@@ -42,12 +42,23 @@ async function loginGoogle() {
   errore.value = ''
   busy.value   = true
   try {
-    const auth = getFirebaseAuth()
-    await signInWithRedirect(auth, new GoogleAuthProvider())
-    // La pagina si ricarica dopo il redirect — busy viene resettato al reload
+    const auth     = getFirebaseAuth()
+    const provider = new GoogleAuthProvider()
+    // Desktop: popup — Mobile: redirect se popup bloccato
+    try {
+      await signInWithPopup(auth, provider)
+    } catch (popupErr: unknown) {
+      const c = (popupErr as { code?: string }).code
+      if (c === 'auth/popup-blocked' || c === 'auth/popup-closed-by-user') {
+        await signInWithRedirect(auth, provider)
+        return
+      }
+      throw popupErr
+    }
   } catch (e: unknown) {
     errore.value = traduciErrore((e as { code?: string }).code)
-    busy.value   = false
+  } finally {
+    busy.value = false
   }
 }
 
