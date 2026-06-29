@@ -239,12 +239,27 @@ function eseguiTaglioBustina() {
 }
 
 // Apri singolo pacchetto
+// Collezione base: se non è ancora caricata (es. account appena creato)
+// usa una collezione vuota. saveCollezione usa merge:true, quindi le nuove
+// carte vengono aggiunte senza cancellare eventuali dati esistenti.
+function collezioneBase(): any {
+  return props.collezione ?? { waifu: {}, outfit: {}, pose: {}, equipaggiamento: {}, preset: {} }
+}
+
 async function apri(tipoPacchetto: string) {
   const uid = authStore.user?.uid
-  if (!uid || !props.collezione) return
-  const nuova = JSON.parse(JSON.stringify(props.collezione))
-  const carte = await _generaEAggiorna(tipoPacchetto, nuova)
-  if (!carte) return
+  if (!uid) { emit('notif', t('sbusta.no_pack_available'), C.err); return }
+  const nuova = JSON.parse(JSON.stringify(collezioneBase()))
+  let carte
+  try {
+    carte = await _generaEAggiorna(tipoPacchetto, nuova)
+  } catch (e: any) {
+    console.error('apri: errore generazione', e)
+    emit('notif', '❌ ' + (e?.message ?? 'Errore apertura pacchetto'), C.err)
+    return
+  }
+  if (!carte) return            // _generaEAggiorna ha già notificato (es. catalogo vuoto)
+  if (carte.length === 0) { emit('notif', t('sbusta.no_waifu_in_drop'), C.err); return }
 
   const gp = carte.length === 5 && carte.every((c: any) => c.tipo === 'waifu' && c.isGodPack)
   isGodPackAperto.value = gp
@@ -306,10 +321,10 @@ function sequenzaMista(max: number): string[] {
 // reveal e decrementa i contatori PER TIPO. È il cuore condiviso degli "apri N".
 async function apriMultiSequenza(seq: string[]) {
   const uid = authStore.user?.uid
-  if (!uid || !props.collezione) return
+  if (!uid) { emit('notif', t('sbusta.no_pack_available'), C.err); return }
   if (seq.length < 1) { emit('notif', t('sbusta.no_pack_available'), C.err); return }
 
-  const nuova = JSON.parse(JSON.stringify(props.collezione))
+  const nuova = JSON.parse(JSON.stringify(collezioneBase()))
   const tuttiIPacchetti: any[][] = []
   const aperti: Record<string, number> = { omaggio: 0, benvenuto: 0, sfida: 0 }
   for (const tipo of seq) {
