@@ -122,8 +122,24 @@ export default defineEventHandler(async (event) => {
   const token = getHeader(event, 'Authorization')?.replace('Bearer ', '')
   if (!token) throw createError({ statusCode: 401, message: 'Non autorizzato' })
 
-  const decoded = await getAdminAuth().verifyIdToken(token)
-  const uid     = decoded.uid
+  let uid: string
+  try {
+    const decoded = await getAdminAuth().verifyIdToken(token)
+    uid = decoded.uid
+  } catch (authErr: unknown) {
+    console.error('[feed] verifyIdToken error:', authErr)
+    throw createError({ statusCode: 401, message: 'Token non valido: ' + String(authErr) })
+  }
+
+  try {
+    return await _handleFeed(event, uid)
+  } catch (err: unknown) {
+    console.error('[feed] unhandled error:', err)
+    throw createError({ statusCode: 500, message: String(err) })
+  }
+})
+
+async function _handleFeed(_event: unknown, uid: string) {
 
   const db        = getAdminDb()
   const now       = new Date()
@@ -298,4 +314,4 @@ export default defineEventHandler(async (event) => {
   ].sort((a, b) => new Date(b.createdAt as string || 0).getTime() - new Date(a.createdAt as string || 0).getTime())
 
   return { packs: [...allActive, ...allFished] }
-})
+}

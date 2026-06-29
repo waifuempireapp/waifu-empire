@@ -15,6 +15,9 @@ const { avatarUrl, setAvatar } = useAvatar()
 const isColorPreset   = computed(() => !!avatarUrl.value && avatarUrl.value.startsWith('#'))
 const isImageUrl      = computed(() => !!avatarUrl.value && (avatarUrl.value.startsWith('http') || avatarUrl.value.startsWith('/')))
 const failedPresets   = ref(new Set<string>())
+function onPresetImgError(id: string) {
+  failedPresets.value = new Set([...failedPresets.value, id])
+}
 const initials      = computed(() => {
   const name = gameStore.profilo?.nomeImpero ?? authStore.user?.email ?? ''
   return name.slice(0, 2).toUpperCase() || '?'
@@ -121,7 +124,7 @@ async function switchLocale(code: string) {
             :src="preset.image"
             :alt="preset.label"
             style="width:100%;height:100%;object-fit:cover;display:block;"
-            @error="() => { failedPresets.value = new Set([...failedPresets.value, preset.id]) }"
+            @error="onPresetImgError(preset.id)"
           />
           <span
             v-if="avatarUrl === (preset.color ?? preset.image)"
