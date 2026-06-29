@@ -6,7 +6,7 @@
   ============================================================ -->
 <script setup lang="ts">
 import {
-  signInWithPopup, signInWithRedirect, getRedirectResult,
+  signInWithRedirect,
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   GoogleAuthProvider,
 } from 'firebase/auth'
@@ -18,6 +18,7 @@ definePageMeta({ middleware: 'guest' })
 
 const router    = useRouter()
 const authStore = useAuthStore()
+const { t }     = useI18n()
 
 const modo      = ref<'login' | 'register'>('login')
 const email     = ref('')
@@ -37,49 +38,17 @@ watch(
   { immediate: true },
 )
 
-function isMobile(): boolean {
-  if (typeof navigator === 'undefined') return false
-  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
-}
-
-// All'avvio gestisce il risultato di un eventuale signInWithRedirect precedente
-onMounted(async () => {
-  try {
-    const auth   = getFirebaseAuth()
-    await getRedirectResult(auth)
-    // Se c'è stato un redirect Google, l'authStore si aggiorna via onAuthStateChanged
-  } catch (e: unknown) {
-    const code = (e as { code?: string }).code
-    if (code && code !== 'auth/no-current-user') {
-      errore.value = traduciErrore(code)
-    }
-  }
-})
-
 async function loginGoogle() {
-  busy.value = true; errore.value = ''
+  errore.value = ''
+  busy.value   = true
   try {
-    const auth     = getFirebaseAuth()
-    const provider = new GoogleAuthProvider()
-    if (isMobile()) {
-      // Su mobile usa redirect: evita popup bloccati dai browser
-      await signInWithRedirect(auth, provider)
-      return // la pagina verrà ricaricata da Google, non arriva qui
-    }
-    await signInWithPopup(auth, provider)
+    const auth = getFirebaseAuth()
+    await signInWithRedirect(auth, new GoogleAuthProvider())
+    // La pagina si ricarica dopo il redirect — busy viene resettato al reload
   } catch (e: unknown) {
-    const code = (e as { code?: string }).code
-    // Se popup bloccato, ricade sul redirect
-    if (code === 'auth/popup-blocked' || code === 'auth/unauthorized-domain') {
-      try {
-        const auth     = getFirebaseAuth()
-        const provider = new GoogleAuthProvider()
-        await signInWithRedirect(auth, provider)
-        return
-      } catch { /* ignora */ }
-    }
-    errore.value = traduciErrore(code)
-  } finally { busy.value = false }
+    errore.value = traduciErrore((e as { code?: string }).code)
+    busy.value   = false
+  }
 }
 
 async function loginEmail(ev: Event) {
