@@ -9,7 +9,8 @@
     "fish": "Pescar",
     "friends": "Amigos",
     "leaderboard": "Clasificación",
-    "swap": "Intercambio"
+    "swap": "Intercambio",
+    "settings": "Ajustes"
   },
   "auth": {
     "login": "Iniciar sesión",
@@ -107,7 +108,9 @@
     "expired": "Caducada",
     "yours": "TUYA",
     "revealing": "Revelando…",
-    "fish_label": "PESCAR"
+    "fish_label": "PESCAR",
+    "no_packs_title": "No hay sobres para pescar ahora",
+    "no_packs_sub": "Vuelve más tarde — amigos y otras pescadoras dejarán nuevos sobres pronto."
   },
   "sbusta": {
     "opening": "Abriendo Sobre",
@@ -581,5 +584,12 @@
     "no_trades": "Aún no hay intercambios.",
     "empty_hint": "¡Abre el detalle de una waifu y pulsa INTERCAMBIAR!",
     "action_required": "ACCIÓN REQUERIDA"
+  },
+  "types": {
+    "arcana": "Arcano",
+    "natura": "Naturaleza",
+    "abisso": "Abismo",
+    "ferro": "Hierro",
+    "fuoco": "Fuego"
   }
 }

@@ -2,6 +2,8 @@
 <script setup lang="ts">
 import { RARITA } from '~/utils/constants'
 
+const { t } = useI18n()
+
 // ── Palette rarità (identica a CartaWaifu) ────────────────────────────────
 const RARITY_BORDER: Record<string, { outer: string; inner: string; glow: string; bg: string }> = {
   comune:      { outer: '#b4bcc8', inner: '#dfe5ef', glow: 'rgba(180,188,200,0.45)', bg: 'linear-gradient(160deg, #293142 0%, #0c0e1a 100%)' },
@@ -48,6 +50,7 @@ const rarita   = computed(() => props.mossa?.rarita ?? 'comune')
 const rar      = computed(() => (RARITA as Record<string, any>)[rarita.value] ?? (RARITA as Record<string, any>).comune)
 const rb       = computed(() => RARITY_BORDER[rarita.value] ?? RARITY_BORDER.comune)
 const tipo     = computed(() => props.mossa?.tipologia ?? 'Arcana')
+const tipoLabel = computed(() => t('types.' + String(tipo.value).toLowerCase()))
 const tipoCol  = computed(() => TIPO_COLORS[tipo.value] ?? TIPO_COLORS.Arcana)
 const livello  = computed(() => props.datiUtente?.livello ?? props.mossa?.livello ?? 1)
 const dannoEff = computed(() => props.datiUtente?.danno ?? props.mossa?.danno ?? 0)
@@ -188,7 +191,7 @@ const hovered = ref(false)
             color: tipoCol.accent,
             fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
             letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700,
-          }">{{ tipo }}</span>
+          }">{{ tipoLabel }}</span>
         </div>
       </div>
       <!-- Stelle rarità -->

@@ -9,7 +9,8 @@
     "fish": "Pesca",
     "friends": "Amici",
     "leaderboard": "Classifica",
-    "swap": "Swap"
+    "swap": "Swap",
+    "settings": "Impostazioni"
   },
   "auth": {
     "login": "Accedi",
@@ -116,7 +117,9 @@
     "expired": "Scaduta",
     "yours": "TUA",
     "revealing": "Rivelando…",
-    "fish_label": "PESCA"
+    "fish_label": "PESCA",
+    "no_packs_title": "Nessun pacchetto da pescare ora",
+    "no_packs_sub": "Torna più tardi — amici e altre pescatrici lasceranno nuovi pacchetti a breve."
   },
   "sbusta": {
     "opening": "Apertura Pacchetto",
@@ -681,5 +684,12 @@
     "no_trades": "Nessuno scambio ancora.",
     "empty_hint": "Apri il dettaglio di una waifu e premi SCAMBIA!",
     "action_required": "AZIONE RICHIESTA"
+  },
+  "types": {
+    "arcana": "Arcana",
+    "natura": "Natura",
+    "abisso": "Abisso",
+    "ferro": "Ferro",
+    "fuoco": "Fuoco"
   }
 }

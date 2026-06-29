@@ -9,7 +9,8 @@
     "fish": "釣り",
     "friends": "フレンド",
     "leaderboard": "ランキング",
-    "swap": "交換"
+    "swap": "交換",
+    "settings": "設定"
   },
   "auth": {
     "login": "ログイン",
@@ -107,7 +108,9 @@
     "expired": "期限切れ",
     "yours": "あなたの",
     "revealing": "公開中…",
-    "fish_label": "釣り"
+    "fish_label": "釣り",
+    "no_packs_title": "今は釣れるパックがありません",
+    "no_packs_sub": "後でまた来てね — フレンドや他の釣り人がもうすぐ新しいパックを落とします。"
   },
   "sbusta": {
     "opening": "パック開封",
@@ -581,5 +584,12 @@
     "no_trades": "まだ取引はありません。",
     "empty_hint": "ワイフの詳細を開いてトレードを押そう！",
     "action_required": "アクションが必要"
+  },
+  "types": {
+    "arcana": "アルカナ",
+    "natura": "自然",
+    "abisso": "深淵",
+    "ferro": "鉄",
+    "fuoco": "炎"
   }
 }

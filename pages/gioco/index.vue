@@ -269,11 +269,11 @@ function mostraNotif(testo: string, colore = '#00e676') {
 // 5a tab: Impostazioni al posto di Missioni — Missioni diventa FAB flottante
 // Icone Lucide invece di emoji — componenti Vue, non stringhe
 const TABS = [
-  { id: 'home',          label: 'Home',          icon: Home     },
-  { id: 'collezione',    label: 'Collezione',    icon: Archive  },
-  { id: 'mappa',         label: 'Mappa',         icon: MapIcon  },
-  { id: 'classifica',    label: 'Classifica',    icon: Trophy   },
-  { id: 'impostazioni',  label: 'Impostazioni',  icon: Settings },
+  { id: 'home',          labelKey: 'nav.home',       icon: Home     },
+  { id: 'collezione',    labelKey: 'nav.collection', icon: Archive  },
+  { id: 'mappa',         labelKey: 'nav.map',        icon: MapIcon  },
+  { id: 'classifica',    labelKey: 'nav.leaderboard',icon: Trophy   },
+  { id: 'impostazioni',  labelKey: 'nav.settings',   icon: Settings },
 ]
 
 // SUB_COMMUNITY rimossa — Community non è più una tab della nav principale
@@ -470,7 +470,7 @@ function handleSetTab(t: string) {
         v-for="t in TABS" :key="t.id"
         class="bnav-pocket__btn"
         :class="{ 'bnav-pocket__btn--active': tab === t.id }"
-        :aria-label="t.label"
+        :aria-label="$t(t.labelKey)"
         @click="() => {
           if (t.id === 'home') { gameStore.toggleNegozio(false); chiudiPesca() }
           gameStore.setTab(t.id)
@@ -490,7 +490,7 @@ function handleSetTab(t: string) {
 
         <!-- Label sotto l'icona -->
         <span class="bnav-pocket__label" :class="{ 'bnav-pocket__label--active': tab === t.id }">
-          {{ t.label }}
+          {{ $t(t.labelKey) }}
         </span>
       </button>
     </nav>

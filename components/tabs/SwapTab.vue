@@ -223,8 +223,8 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
     <!-- Hai visto tutto -->
     <div v-else-if="exhausted" class="swap-exhausted">
       <div style="font-size:56px">✨</div>
-      <div class="swap-exhausted-text">Hai visto tutte le waifu!<br/>Torna presto.</div>
-      <button @click="resetQueue" class="swap-btn-reload">↺ Ricarica</button>
+      <div class="swap-exhausted-text">{{ t('swap.all_seen') }}<br/>{{ t('swap.come_back_soon') }}</div>
+      <button @click="resetQueue" class="swap-btn-reload">{{ t('swap.reload') }}</button>
     </div>
 
     <!-- Caricamento batch -->

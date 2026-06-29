@@ -8,6 +8,9 @@ import { Heart, X, ChevronDown, ChevronUp, Swords, Plus, Trash2 } from 'lucide-v
 
 const { t } = useI18n()
 
+// Traduce il tipo elementale (Fuoco→Fire, ...) con fallback al valore grezzo
+const typeLabel = (v?: string | null) => v ? t('types.' + String(v).toLowerCase()) : ''
+
 const props = defineProps<{
   waifuId: string
   waifu: any
@@ -272,7 +275,7 @@ onUnmounted(() => {
             color: tc(waifu.tipo).txt, letterSpacing: '0.12em', textTransform: 'uppercase',
             boxShadow: `0 3px 16px ${tc(waifu.tipo).border}66`,
             whiteSpace: 'nowrap', pointerEvents: 'none',
-          }">⚡ {{ waifu.tipo }}</div>
+          }">⚡ {{ typeLabel(waifu.tipo) }}</div>
           <!-- Chip LV — bottom-left angolo -->
           <div :style="{
             position: 'absolute', bottom: '-20px', left: '-30px', zIndex: 20,
@@ -378,7 +381,7 @@ onUnmounted(() => {
                       <div v-if="mossaInSlot(slot)" style="flex:1;min-width:0;">
                         <div :style="{ fontFamily: FF.label, fontSize: '14px', color: 'var(--theme-text)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ mossaInSlot(slot)!.nome }}</div>
                         <div :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-text-2)', marginTop: '2px' }">
-                          {{ mossaInSlot(slot)!.tipologia ?? mossaInSlot(slot)!.tipo }} · {{ mossaInSlot(slot)!.rarita }} · PP:{{ mossaInSlot(slot)!.pp }} · ×{{ mossaInSlot(slot)!.danno }}
+                          {{ typeLabel(mossaInSlot(slot)!.tipologia ?? mossaInSlot(slot)!.tipo) }} · {{ mossaInSlot(slot)!.rarita }} · PP:{{ mossaInSlot(slot)!.pp }} · ×{{ mossaInSlot(slot)!.danno }}
                         </div>
                       </div>
                       <div v-else style="flex:1;">
@@ -448,7 +451,7 @@ onUnmounted(() => {
               >
                 <div :style="{ fontFamily: FF.label, fontSize: '15px', color: 'var(--theme-text)', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ m.cat.nome }}</div>
                 <div :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-text-2)', lineHeight: 1.3 }">
-                  {{ m.cat.tipologia ?? m.cat.tipo }} · {{ m.cat.rarita }}<br>PP:{{ m.cat.pp }} · ×{{ m.cat.danno }} · {{ m.cat.danno_critico }}%+
+                  {{ typeLabel(m.cat.tipologia ?? m.cat.tipo) }} · {{ m.cat.rarita }}<br>PP:{{ m.cat.pp }} · ×{{ m.cat.danno }} · {{ m.cat.danno_critico }}%+
                 </div>
                 <span :style="{ fontFamily: FF.label, fontSize: '10px', color: tc(m.cat.tipologia ?? m.cat.tipo).txt, letterSpacing: '0.1em', fontWeight: 700, marginTop: '2px' }">+ Slot {{ slotPicker }}</span>
               </button>

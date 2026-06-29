@@ -9,7 +9,8 @@
     "fish": "Fischen",
     "friends": "Freunde",
     "leaderboard": "Bestenliste",
-    "swap": "Tausch"
+    "swap": "Tausch",
+    "settings": "Einstellungen"
   },
   "auth": {
     "login": "Anmelden",
@@ -107,7 +108,9 @@
     "expired": "Abgelaufen",
     "yours": "DEINS",
     "revealing": "Enthüllung…",
-    "fish_label": "ANGELN"
+    "fish_label": "ANGELN",
+    "no_packs_title": "Gerade keine Pakete zum Fischen",
+    "no_packs_sub": "Komm später wieder — Freunde und andere Fischerinnen lassen bald neue Pakete da."
   },
   "sbusta": {
     "opening": "Paket öffnen",
@@ -581,5 +584,12 @@
     "no_trades": "Noch keine Täusche.",
     "empty_hint": "Öffne das Detail einer Waifu und drücke TAUSCHEN!",
     "action_required": "AKTION ERFORDERLICH"
+  },
+  "types": {
+    "arcana": "Arkana",
+    "natura": "Natur",
+    "abisso": "Abgrund",
+    "ferro": "Eisen",
+    "fuoco": "Feuer"
   }
 }

@@ -33,11 +33,14 @@ async function getCatalogIds(): Promise<string[]> {
   try {
     const indexSnap = await adminDb.collection('swap_config').doc('catalog_ids').get();
     if (indexSnap.exists) {
-      ids = (indexSnap.data() as any).ids ?? [];
+      const cached = (indexSnap.data() as any).ids ?? [];
+      // Indice vuoto (es. residuo migrazione) = trattalo come mancante e
+      // ricostruiscilo dal catalogo, altrimenti lo swap resta "esaurito".
+      if (cached.length > 0) ids = cached;
     }
   } catch { /* ignora */ }
 
-  if (!ids) {
+  if (!ids || ids.length === 0) {
     const snap = await adminDb.collection('catalogo_waifu').get();
     ids = snap.docs.map(d => d.id);
     adminDb.collection('swap_config').doc('catalog_ids').set({

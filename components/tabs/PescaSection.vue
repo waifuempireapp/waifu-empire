@@ -702,17 +702,25 @@ onUnmounted(() => {
       <div v-if="error" style="text-align:center;padding:16px;color:#ff4d4d;
                font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px">{{ error }}</div>
 
-      <div v-show="immaginiCaricate" style="display:flex;flex-direction:column;gap:28px;padding-top:20px;overflow:visible;">
+      <!-- Empty state: nessun pacchetto da pescare -->
+      <div v-if="immaginiCaricate && !error && packs.length === 0"
+           style="text-align:center;padding:60px 24px;display:flex;flex-direction:column;align-items:center;gap:10px;">
+        <div style="font-size:52px;">🎣</div>
+        <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:var(--theme-text);">{{ $t('pesca.no_packs_title') }}</div>
+        <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;color:var(--theme-text-2);max-width:260px;line-height:1.4;">{{ $t('pesca.no_packs_sub') }}</div>
+      </div>
+
+      <div v-show="immaginiCaricate && packs.length > 0" style="display:flex;flex-direction:column;gap:28px;padding-top:20px;overflow:visible;">
         <div v-for="(pack, idx) in packs" :key="pack.id" style="position:relative;">
           <div
             v-if="(pack.createdAt && (Date.now() - new Date(pack.createdAt).getTime() < 3 * 60 * 60 * 1000) || pack.hasHot) && !pack.alreadyFished"
             style="position:absolute;top:-16px;right:16px;z-index:10;display:flex;gap:6px;pointer-events:none;">
             <div v-if="pack.createdAt && Date.now() - new Date(pack.createdAt).getTime() < 3 * 60 * 60 * 1000"
               style="background:linear-gradient(135deg,#00c853,#00e676);border:2px solid rgba(255,255,255,0.3);border-radius:999px;padding:5px 16px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;color:#000;font-weight:900;letter-spacing:0.12em;box-shadow:0 4px 16px rgba(0,230,118,0.5);">
-              NUOVA</div>
+              {{ $t('pesca.new_badge') }}</div>
             <div v-if="pack.hasHot"
               style="background:linear-gradient(135deg,#ff6500,#ff9000);border:2px solid rgba(255,255,255,0.3);border-radius:999px;padding:5px 16px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;color:#fff;font-weight:900;letter-spacing:0.1em;box-shadow:0 4px 16px rgba(255,100,0,0.5);">
-              HOT 🔥</div>
+              {{ $t('pesca.hot_badge') }}</div>
           </div>
 
           <PescaPackCard :pack="pack" :kisses-cost="KISSES_COST" :user-kisses="kissesAttuali" :collezione="collezione"

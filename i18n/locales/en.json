@@ -9,7 +9,8 @@
     "fish": "Fish",
     "friends": "Friends",
     "leaderboard": "Leaderboard",
-    "swap": "Swap"
+    "swap": "Swap",
+    "settings": "Settings"
   },
   "auth": {
     "login": "Log In",
@@ -116,7 +117,9 @@
     "expired": "Expired",
     "yours": "YOURS",
     "revealing": "Revealing…",
-    "fish_label": "FISH"
+    "fish_label": "FISH",
+    "no_packs_title": "No packs to fish right now",
+    "no_packs_sub": "Come back later — friends and other fishers will drop new packs soon."
   },
   "sbusta": {
     "opening": "Opening Pack",
@@ -681,5 +684,12 @@
     "no_trades": "No trades yet.",
     "empty_hint": "Open a waifu's detail and press TRADE!",
     "action_required": "ACTION REQUIRED"
+  },
+  "types": {
+    "arcana": "Arcane",
+    "natura": "Nature",
+    "abisso": "Abyss",
+    "ferro": "Iron",
+    "fuoco": "Fire"
   }
 }

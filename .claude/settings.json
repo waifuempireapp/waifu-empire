@@ -164,7 +164,19 @@
       "Bash(curl -s -X POST \"https://waifu-empire.vercel.app/api/admin/rebuild-pack-pools\")",
       "Bash(git -C /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt diff --stat)",
       "Bash(git -C /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt add server/utils/firebaseAdmin.ts)",
-      "Bash(git -C /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt commit -m ' *)"
+      "Bash(git -C /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt commit -m ' *)",
+      "Bash(node _dump_waifu.mjs)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://ik.imagekit.io/waifuempire/Akane%20-%20La%20Spadaccina%20Urbana_2.png\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://ik.imagekit.io/waifuempire/Akane - La Spadaccina Urbana_2.png\" --get)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://ik.imagekit.io/waifuempire//Akane%20-%20La%20Spadaccina%20Urbana_2.png\")",
+      "Bash(node scripts/fix-asset-urls.mjs)",
+      "Bash(node _d.mjs)",
+      "Bash(curl -s -o /dev/null -w \"akane full: %{http_code}\\\\n\" \"https://ik.imagekit.io/waifuempire/Akane%20-%20La%20Spadaccina%20Urbana_2.png\")",
+      "Bash(node -e \"const j=require\\('./i18n/locales/en.json'\\); console.log\\(Object.keys\\(j\\).join\\(', '\\)\\)\")",
+      "Bash(node -e \"console.log\\(JSON.stringify\\(require\\('./i18n/locales/en.json'\\).nav,null,1\\)\\)\")",
+      "Bash(node -e 'const j=require\\('\\\\''./i18n/locales/__TRACKED_VAR__.json'\\\\''\\); console.log\\('\\\\''nav:'\\\\'',JSON.stringify\\(j.nav\\)\\); console.log\\('\\\\''settings keys:'\\\\'',Object.keys\\(j.settings||{}\\).join\\('\\\\'','\\\\''\\)\\)')",
+      "Bash(node -e 'console.log\\('\\\\''__TRACKED_VAR__'\\\\'',require\\('\\\\''./i18n/locales/__TRACKED_VAR__.json'\\\\''\\).settings.title\\)')",
+      "Bash(grep -n 'useI18n\\\\|$t\\(\\\\|const { t' components/WaifuDettaglio.vue)"
     ],
     "additionalDirectories": [
       "/private/tmp"
