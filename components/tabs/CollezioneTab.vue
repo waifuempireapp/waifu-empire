@@ -14,6 +14,7 @@ import {
   deleteTeamFromCollezione,
   updateUserProfile,
 } from '~/utils/firestoreService'
+import MovesList from '~/components/moves/MovesList.vue'
 import { computeAndSaveStats, calcolaEnergiaScarto } from '~/utils/gameLogic'
 import { ikUrl } from '~/utils/imagekitUrl'
 import { TIMER, RARITA, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, RARITY_MULTIPLIERS_DEFAULT } from '~/utils/constants'
@@ -117,13 +118,7 @@ const filtroDropId = ref('tutti')
 
 // ── Paginazione ───────────────────────────────────────────────
 const visibiliWaifu  = ref(12)
-const visibiliMosse  = ref(12)
 const visibiliOutfit = ref(12)
-// Mosse paginate (evita di renderizzare 40+ CartaMossa con foil/backdrop → crash iOS)
-const mosseEntries = computed(() =>
-  Object.entries((props.collezione.mosse || {}) as Record<string, any>)
-    .filter(([id]) => props.mosseCat.find((m: any) => m.id === id))
-)
 const visibiliPose   = ref(12)
 
 // ── Team ──────────────────────────────────────────────────────
@@ -830,64 +825,15 @@ function apriNegozio() {
            TAB MOSSE
       ══════════════════════════════════════════════════════ -->
       <div v-if="tabSub === 'mosse'">
-        <!-- Griglia mosse 3 colonne — paginata (max visibiliMosse → niente crash iOS) -->
-        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:16px;">
-          <template v-for="([moveId, dati], idx) in mosseEntries.slice(0, visibiliMosse)" :key="moveId">
-            <div
-              class="card-fade-up card-clickable collection-card-item"
-              :style="{ width:'calc(33.33% - 3px)', display:'flex', flexDirection:'column', alignItems:'center', animationDelay:`${idx * 30}ms` }"
-            >
-              <div style="zoom:0.92;flex-shrink:0;position:relative;">
-                <CartaMossa
-                  :mossa="mosseCat.find(m => m.id === moveId)!"
-                  :datiUtente="dati as any"
-                  dimensione="piccola"
-                />
-                <!-- Badge copie -->
-                <div :style="{
-                  position:'absolute', bottom:'10px', right:'6px', zIndex:20,
-                  background:'rgba(4,2,14,0.88)',
-                  border:`2px solid ${(dati as any).levelup_pending ? C.ok : C.violet}bb`,
-                  borderRadius:'999px', padding:'4px 10px',
-                  fontFamily:FF.label, fontSize:'16px', fontWeight:800,
-                  color: (dati as any).levelup_pending ? C.ok : C.gold,
-                  letterSpacing:'0.04em', whiteSpace:'nowrap',
-                }">
-                  LV {{ (dati as any).livello ?? 1 }}
-                </div>
-              </div>
-            </div>
-          </template>
-
-          <!-- Empty state mosse -->
-          <PannelloOrnato
-            v-if="mosseEntries.length === 0"
-            :glow="C.violet"
-            :style="{ width: '100%', textAlign: 'center', padding: '40px' }"
-          >
-            <Swords :size="36" stroke-width="1" :style="{ marginBottom: '8px', filter: `drop-shadow(0 0 12px ${C.violet}88)`, color: C.violet }" />
-            <div :style="{
-              fontFamily: FF.label, fontSize: '10px', color: C.violet,
-              letterSpacing: '0.28em', marginBottom: '6px',
-              textTransform: 'uppercase', fontWeight: 700,
-            }">{{ $t("collection.no_moves_found") }}</div>
-            <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">{{ $t("collection.empty_moves_hint") }}</div>
-          </PannelloOrnato>
-        </div>
-
-        <!-- Carica altre mosse -->
-        <div v-if="visibiliMosse < mosseEntries.length" style="text-align:center;margin-top:6px;">
-          <button
-            @click="visibiliMosse += 12"
-            :style="{
-              padding: '13px 28px', background: 'var(--surface)', color: 'var(--text-primary)',
-              border: '1px solid var(--border-medium)', borderRadius: '99px',
-              fontFamily: FF.label, fontSize: '13px', fontWeight: 700, letterSpacing: '1.5px',
-              cursor: 'pointer', boxShadow: 'var(--shadow-float)', textTransform: 'uppercase',
-              marginBottom: '30px',
-            }"
-          >Carica altre ({{ mosseEntries.length - visibiliMosse }} rimanenti)</button>
-        </div>
+        <!-- Vetrina mosse: tutte visibili, possedute cliccabili/assegnabili,
+             le altre bloccate col lucchetto. Dettaglio → assegna a una waifu. -->
+        <MovesList
+          :catalog="mosseCat"
+          :collezione="collezione"
+          :waifu-cat="waifuCat"
+          @update-collezione="(c: any) => emit('updateCollezione', c)"
+          @notif="(testo: string, colore: string) => emit('notif', testo, colore)"
+        />
       </div>
 
       <!-- ══════════════════════════════════════════════════════

@@ -6,18 +6,29 @@
   font Nunito. Non dipende da store/composables di gioco.
 -->
 <script setup lang="ts">
-import { Crown, Clock, Flame } from 'lucide-vue-next'
+import { Crown, Clock, Flame, Lock } from 'lucide-vue-next'
 import type { Move, MoveType } from '~/assets/moves/moves-data'
 import {
   TYPE_META, resolveMoveImage, effectiveDamage, typeEffectiveness,
   effectivenessLabel, effectDurationLabel,
 } from '~/utils/moves'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   move: Move
   /** Tipo difensore opzionale: se presente mostra il danno efficace ricalcolato. */
   defenderType?: MoveType | null
-}>()
+  /** Se false la carta è bloccata (lucchetto, non cliccabile). Default true. */
+  owned?: boolean
+}>(), {
+  defenderType: null,
+  owned: true,
+})
+
+const emit = defineEmits<{ open: [] }>()
+
+function onClick() {
+  if (props.owned) emit('open')
+}
 
 const FF = {
   display: "var(--ff-display, 'Unbounded', sans-serif)",
@@ -42,13 +53,20 @@ const durationLabel = computed(() => effectDurationLabel(props.move))
 <template>
   <article
     class="move-card glass-panel"
+    :class="{ 'move-card--locked': !owned, 'move-card--clickable': owned }"
     :style="{
       '--accent': meta.accent,
       borderColor: `${meta.accent}55`,
       boxShadow: `0 10px 32px rgba(0,0,0,0.28), 0 0 0 1px ${meta.accent}22, 0 0 26px ${meta.accent}1f`,
       fontFamily: FF.body,
     }"
+    @click="onClick"
   >
+    <!-- Overlay lucchetto se non posseduta -->
+    <div v-if="!owned" class="move-card__lock">
+      <Lock :size="26" stroke-width="2.5" />
+    </div>
+
     <!-- ── Immagine ─────────────────────────────────────────── -->
     <div class="move-card__media" :style="{ background: `radial-gradient(120% 90% at 50% 0%, ${meta.accent}33, rgba(10,8,20,0.55))` }">
       <img
@@ -135,6 +153,7 @@ const durationLabel = computed(() => effectDurationLabel(props.move))
 
 <style scoped>
 .move-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   border-radius: 18px;
@@ -143,7 +162,27 @@ const durationLabel = computed(() => effectDurationLabel(props.move))
   background: var(--theme-surface);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-.move-card:hover { transform: translateY(-3px); }
+.move-card--clickable { cursor: pointer; }
+.move-card--clickable:hover { transform: translateY(-3px); }
+
+/* Bloccata: desaturata + non interattiva, lucchetto al centro */
+.move-card--locked {
+  cursor: not-allowed;
+  filter: grayscale(0.9) brightness(0.7);
+  opacity: 0.78;
+}
+.move-card__lock {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(8, 6, 18, 0.28);
+  pointer-events: none;
+}
+.move-card__lock :deep(svg) { filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.7)); }
 
 .move-card__media {
   position: relative;
