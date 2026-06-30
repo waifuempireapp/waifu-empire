@@ -1,6 +1,7 @@
 <!-- Carta mossa attacco — stessa struttura visiva di CartaWaifu. Porta CartaMossa.jsx -->
 <script setup lang="ts">
 import { RARITA } from '~/utils/constants'
+import { ikUrl } from '~/utils/imagekitUrl'
 
 const { t } = useI18n()
 
@@ -58,9 +59,14 @@ const critEff  = computed(() => props.datiUtente?.danno_critico ?? props.mossa?.
 const ppVal    = computed(() => props.mossa?.pp ?? 0)
 const showFoil = computed(() => ['epico', 'leggendario', 'immersivo'].includes(rarita.value))
 const imgSrc   = computed(() => {
-  const url = props.mossa?.immagine_url
-  return url && url !== '/images/mosse/placeholder.png' ? url : null
+  // Robusto: prova tutti i campi immagine e applica la trasformazione ImageKit
+  const url = props.mossa?.immagine_url ?? props.mossa?.immagine ?? props.mossa?.imageUrl ?? null
+  if (!url || url === '/images/mosse/placeholder.png') return null
+  return ikUrl(url, 'card')
 })
+// Descrizione mostrata in carta (solo formati medi/grandi per spazio)
+const descrizione = computed(() => props.mossa?.effectDescription ?? '')
+const mostraDesc   = computed(() => ['normale', 'media', 'grande'].includes(props.dimensione))
 
 // ── Angoli decorativi (corner brackets) ──────────────────────────────────
 const corners = computed(() => {
@@ -99,10 +105,10 @@ const hovered = ref(false)
       position: 'relative',
       cursor: 'pointer',
       borderRadius: `${Math.round(14 * scale)}px`,
-      border: `${borderW}px solid ${evidenziato ? '#ffe9a8' : rb.outer}`,
+      border: `${borderW}px solid ${evidenziato ? '#ffe9a8' : tipoCol.accent}`,
       boxShadow: evidenziato
         ? '0 0 30px rgba(255,233,168,0.6), inset 0 0 20px rgba(255,233,168,0.1)'
-        : `0 0 22px ${rb.glow}, inset 0 0 18px rgba(0,0,0,0.35)`,
+        : `0 0 22px ${tipoCol.accent}66, inset 0 0 18px rgba(0,0,0,0.35)`,
       overflow: 'hidden',
       background: rb.bg,
       transition: 'all 0.3s ease',
@@ -117,9 +123,21 @@ const hovered = ref(false)
     <div :style="{
       position: 'absolute', inset: `${Math.round(3 * scale)}px`,
       borderRadius: `${Math.round(11 * scale)}px`,
-      border: `1px solid ${rb.inner}3a`,
+      border: `1px solid ${tipoCol.accent}3a`,
       pointerEvents: 'none', zIndex: 3,
     }" />
+
+    <!-- Badge MOSSA — distingue nettamente dalle carte waifu -->
+    <div :style="{
+      position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', zIndex: 6,
+      background: tipoCol.accent, color: '#0c0a16',
+      fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
+      fontSize: `${Math.round(8 * scale)}px`, fontWeight: 900, letterSpacing: '0.22em',
+      padding: `${Math.round(2.5 * scale)}px ${Math.round(10 * scale)}px`,
+      borderRadius: `0 0 ${Math.round(8 * scale)}px ${Math.round(8 * scale)}px`,
+      textTransform: 'uppercase', whiteSpace: 'nowrap',
+      boxShadow: `0 2px 10px ${tipoCol.accent}88`,
+    }">⚔ Mossa</div>
 
     <!-- IMMAGINE / PLACEHOLDER -->
     <div :style="{ position: 'absolute', inset: 0, borderRadius: `${Math.round(12 * scale)}px`, overflow: 'hidden' }">
@@ -222,14 +240,25 @@ const hovered = ref(false)
     <div :style="{
       position: 'absolute', bottom: 0, left: 0, right: 0,
       padding: `${Math.round(22 * scale)}px ${Math.round(8 * scale)}px ${Math.round(9 * scale)}px`,
-      background: 'linear-gradient(0deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 45%, transparent 100%)',
+      background: 'linear-gradient(0deg, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.6) 50%, transparent 100%)',
       zIndex: 4,
     }">
+      <!-- Descrizione effetto (formati medi/grandi) -->
+      <div v-if="mostraDesc && descrizione" :style="{
+        fontFamily: `var(--ff-body, 'Nunito', sans-serif)`,
+        fontSize: `${Math.round(8.5 * scale)}px`, lineHeight: 1.32,
+        color: 'rgba(255,255,255,0.88)',
+        marginBottom: `${Math.round(7 * scale)}px`,
+        textShadow: '0 1px 3px rgba(0,0,0,0.9)',
+        display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
+        overflow: 'hidden',
+      }">{{ descrizione }}</div>
+
       <!-- Linea ornamento -->
       <div :style="{
         width: '70%', height: '1px', margin: `0 auto ${Math.round(7 * scale)}px`,
-        background: `linear-gradient(90deg, transparent, ${rb.inner}cc, transparent)`,
-        boxShadow: `0 0 6px ${rb.glow}`,
+        background: `linear-gradient(90deg, transparent, ${tipoCol.accent}cc, transparent)`,
+        boxShadow: `0 0 6px ${tipoCol.accent}66`,
       }" />
       <div style="display:flex;justify-content:space-around;align-items:center">
         <!-- StatCircle: PP -->
