@@ -181,6 +181,13 @@ async function caricaTutto(uid: string) {
 
   // Aggiorna store globale
   gameStore.setProfilo(updatedProfile as never)
+
+  // Lingua: il profilo Firebase è la fonte di verità (legata all'account)
+  const linguaProfilo = (updatedProfile as Record<string, unknown>).lingua as string | undefined
+  if (linguaProfilo) {
+    setLocale(linguaProfilo as 'en' | 'it' | 'de' | 'es' | 'ja')
+    if (typeof window !== 'undefined') localStorage.setItem('waifu_locale', linguaProfilo)
+  }
   gameStore.setCollezione(collezione as never)
   gameStore.setCatalogoWaifu(catalog.ws as never[])
   gameStore.setCatalogoMosse(catalog.ms as never[])

@@ -100,6 +100,7 @@ async function main() {
     const doc = {
       id: m.id,
       nome: m.name,
+      name: m.name,                 // alias usato dai componenti vetrina
       type: m.type,                 // minuscolo — nuovi componenti
       tipologia: cap(m.type),       // capitalizzato — sistema/CartaMossa esistente
       rarita: d.rarita,

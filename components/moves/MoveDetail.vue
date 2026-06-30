@@ -26,6 +26,7 @@ const FF = {
 
 const RAR_ORDER = ['comune', 'raro', 'epico', 'leggendario', 'immersivo']
 const meta = computed(() => TYPE_META[props.move.type])
+const name = computed(() => (props.move as any).name ?? (props.move as any).nome ?? '')
 const imgSrc = computed(() => resolveMoveImage(props.move, 'normal'))
 const imgFail = ref(false)
 const durationLabel = computed(() => effectDurationLabel(props.move))
@@ -80,7 +81,7 @@ function pick(w: PickWaifu) {
 
       <!-- Immagine + badge -->
       <div class="md-media" :style="{ background: `radial-gradient(120% 90% at 50% 0%, ${meta.accent}40, rgba(10,8,20,0.6))` }">
-        <img v-if="imgSrc && !imgFail" :src="imgSrc" :alt="move.name" class="md-img" @error="imgFail = true" />
+        <img v-if="imgSrc && !imgFail" :src="imgSrc" :alt="name" class="md-img" @error="imgFail = true" />
         <div v-else class="md-img-fallback" :style="{ color: meta.accent }"><span style="font-size:56px">{{ meta.icon }}</span></div>
 
         <div class="md-type" :style="{ background: meta.bg, border: `1px solid ${meta.accent}aa`, color: meta.accent, fontFamily: FF.label }">
@@ -93,7 +94,7 @@ function pick(w: PickWaifu) {
 
       <!-- Corpo -->
       <div class="md-body">
-        <h2 class="md-name" :style="{ fontFamily: FF.display }">{{ move.name }}</h2>
+        <h2 class="md-name" :style="{ fontFamily: FF.display }">{{ name }}</h2>
 
         <div class="md-stats">
           <div class="md-stat"><span class="md-stat-v" :style="{ color: meta.accent, fontFamily: FF.display }">{{ move.damage }}</span><span class="md-stat-l" :style="{ fontFamily: FF.label }">Potenza</span></div>

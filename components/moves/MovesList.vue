@@ -172,5 +172,5 @@ async function onAssign(waifuId: string) {
 .moves-list__vs-pill:hover { transform: translateY(-1px); }
 .moves-list__vs-pill.is-active { color: #0c0a16; }
 
-.moves-list__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+.moves-list__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 </style>

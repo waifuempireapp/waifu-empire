@@ -5,6 +5,7 @@ import { User, Heart, Globe, Settings, LogOut, Check, Lock } from 'lucide-vue-ne
 import { useAuthStore } from '~/stores/auth'
 import { useGameStore } from '~/stores/game'
 import { useAvatar, AVATAR_PRESETS, isAvatarUnlocked } from '~/composables/useAvatar'
+import { updateUserProfile } from '~/utils/firestoreService'
 
 const authStore = useAuthStore()
 const gameStore = useGameStore()
@@ -65,8 +66,15 @@ const langDropdownOpen = ref(false)
 
 async function switchLocale(code: string) {
   await setLocale(code as 'en' | 'it' | 'de' | 'es' | 'ja')
-  if (typeof window !== 'undefined') localStorage.setItem('waifu_locale', code)
+  if (typeof window !== 'undefined') localStorage.setItem('waifu_locale', code) // cache veloce
   langDropdownOpen.value = false
+  // Persisti la lingua sul profilo Firebase (legata all'account)
+  const uid = authStore.user?.uid
+  if (uid) {
+    gameStore.aggiornaProfilo({ lingua: code } as never)
+    try { await updateUserProfile(uid, { lingua: code }) }
+    catch (e) { console.error('[lingua] salvataggio fallito', e) }
+  }
 }
 </script>
 
