@@ -183,7 +183,17 @@
       "Bash(node -e 'const s=require\\('\\\\''./i18n/locales/__TRACKED_VAR__.json'\\\\''\\).swap; console.log\\('\\\\''__TRACKED_VAR__:'\\\\'',s.all_seen,'\\\\''/'\\\\'',s.come_back_soon,'\\\\''/'\\\\'',s.reload\\)')",
       "Bash(node -e 'JSON.parse\\(require\\('\\\\''fs'\\\\''\\).readFileSync\\('\\\\''./i18n/locales/__TRACKED_VAR__.json'\\\\'','\\\\''utf8'\\\\''\\)\\);console.log\\('\\\\''__TRACKED_VAR__ valid'\\\\''\\)')",
       "Bash(node -e \"const j=require\\('./i18n/locales/it.json'\\); console.log\\('nav.settings:',j.nav.settings\\); console.log\\('types:',JSON.stringify\\(j.types\\)\\); console.log\\('pesca.no_packs_title:',j.pesca.no_packs_title\\)\")",
-      "Bash(node -e 'const j=require\\('\\\\''./i18n/locales/__TRACKED_VAR__.json'\\\\''\\); console.log\\('\\\\''__TRACKED_VAR__ nav.settings='\\\\''+j.nav.settings+'\\\\'' | types.fuoco='\\\\''+j.types.fuoco+'\\\\'' | no_packs='\\\\''+\\(j.pesca.no_packs_title?'\\\\''ok'\\\\'':'\\\\''MISSING'\\\\''\\)\\)')"
+      "Bash(node -e 'const j=require\\('\\\\''./i18n/locales/__TRACKED_VAR__.json'\\\\''\\); console.log\\('\\\\''__TRACKED_VAR__ nav.settings='\\\\''+j.nav.settings+'\\\\'' | types.fuoco='\\\\''+j.types.fuoco+'\\\\'' | no_packs='\\\\''+\\(j.pesca.no_packs_title?'\\\\''ok'\\\\'':'\\\\''MISSING'\\\\''\\)\\)')",
+      "Bash(node -e 'JSON.parse\\(require\\('\\\\''fs'\\\\''\\).readFileSync\\('\\\\''./i18n/locales/__TRACKED_VAR__.json'\\\\'','\\\\''utf8'\\\\''\\)\\)')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://ik.imagekit.io/waifuempire/Mosse/VELO%20D'ARGENTO%20_%20Arcana_2.png\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://ik.imagekit.io/waifuempire/Mosse/RADICI%20PRIMORDIALI%20_%20Natura.png\")",
+      "Bash(curl -s -o /dev/null -w \"transform URL: %{http_code}\\\\n\" \"https://ik.imagekit.io/waifuempire/tr:w-360,q-75,f-auto/Mosse/VELO%20D'ARGENTO%20_%20Arcana_2.png\")",
+      "Bash(node /tmp/_deldup.mjs)",
+      "Bash(sed -n '40,70p' components/tabs/CollezioneTab.vue)",
+      "Bash(sed -n '203,220p' components/tabs/CollezioneTab.vue)",
+      "Bash(node scripts/seed-moves.mjs)",
+      "Bash(node -e \"const{moves}=require\\('esbuild-register/dist/node'\\);\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://ik.imagekit.io/waifuempire/SUMIRE%20_%20La%20maestra%20del%20te%CC%80_2.png\")"
     ],
     "additionalDirectories": [
       "/private/tmp"
