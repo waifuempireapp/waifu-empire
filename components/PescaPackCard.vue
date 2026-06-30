@@ -8,7 +8,7 @@
 <script setup lang="ts">
 const { t } = useI18n()
 import type { Collezione } from '~/types/game'
-import { ikUrl } from '~/utils/imagekitUrl'
+import PescaCardTile from '~/components/PescaCardTile.vue'
 
 interface CartaPack {
   id:       string
@@ -17,6 +17,9 @@ interface CartaPack {
   nome?:    string
   immagine?:string
   hot?:     boolean
+  danno?:       number | null
+  tipoMossa?:   string | null
+  descrizione?: string | null
 }
 
 interface Pack {
@@ -89,20 +92,6 @@ const avatarGradient = computed(() => {
   if (isNuovo.value) return 'linear-gradient(135deg, #ff8c00, #ff4500)'
   return 'linear-gradient(135deg, #7c3aed, #2563eb)'
 })
-
-const RARITY_COLORS: Record<string,string> = {
-  comune: '#b4bcc8', raro: '#5aa9ff', epico: '#b573ff',
-  leggendario: '#ffc861', immersivo: '#ff7eb6',
-}
-function rarityColor(r?: string) { return RARITY_COLORS[r ?? ''] ?? '#b4bcc8' }
-function rarityBorder(r?: string) {
-  const c = RARITY_COLORS[r ?? ''] ?? 'rgba(255,255,255,0.12)'
-  return `1.5px solid ${c}66`
-}
-function rarityGlow(r?: string) {
-  const c = RARITY_COLORS[r ?? ''] ?? 'transparent'
-  return `0 0 12px ${c}44`
-}
 
 // Timer
 const remaining = ref('')
@@ -209,22 +198,8 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
       <div style="display:flex; justify-content:center; gap:12px; margin-bottom:12px;">
         <template v-for="carta in cards.slice(0,2)" :key="carta.id">
           <!-- slot card: larghezza fissa = 1/3 container -->
-          <div style="width:calc((100% - 24px) / 3); flex-shrink:0; position:relative;">
-            <div v-if="isNew(carta)" style="position:absolute;top:-10px;left:-4px;z-index:20;background:linear-gradient(135deg,#00b4ff,#00e676);border:2px solid rgba(255,255,255,0.5);border-radius:999px;padding:2px 7px;font-size:10px;font-weight:900;color:#000;line-height:1;white-space:nowrap;">{{ $t('pesca.new_badge') }}</div>
-            <div v-if="getCopie(carta)>0" style="position:absolute;top:-10px;right:-4px;z-index:20;min-width:20px;height:20px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#fff;padding:0 4px;" :style="getCopie(carta)>=3?{background:'linear-gradient(135deg,#00c853,#58e0a3)',border:'2px solid rgba(89,224,163,0.8)'}:{background:'linear-gradient(135deg,#3b1fa8,#6d28d9)',border:'2px solid rgba(139,111,216,0.8)'}">{{ getCopie(carta)>=3?'C':getCopie(carta) }}</div>
-            <!-- CONTENITORE IMMAGINE: padding-bottom:150% = ratio 2:3 FISSO — impossibile da sovrascrivere -->
-            <div style="position:relative; width:100%; padding-bottom:150%; border-radius:10px; overflow:hidden;"
-                 :style="{border:rarityBorder(carta.rarita), boxShadow:rarityGlow(carta.rarita), background:'var(--theme-bg-secondary)'}">
-              <img v-if="carta.immagine"
-                   :src="ikUrl(carta.immagine,'thumbnail')??undefined" :alt="carta.nome"
-                   style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
-              <div v-else style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--surface-sunken);">
-                <img src="~/assets/images/New_Logo.png" alt="" style="width:50%;height:auto;display:block;" />
-              </div>
-              <div style="position:absolute;bottom:4px;left:4px;z-index:3;border-radius:999px;padding:2px 6px;font-size:10px;font-weight:800;text-transform:capitalize;backdrop-filter:blur(4px);"
-                   :style="{background:rarityColor(carta.rarita)+'33',border:'1px solid '+rarityColor(carta.rarita)+'88',color:rarityColor(carta.rarita)}">{{ carta.rarita||'?' }}</div>
-            </div>
-            <div style="padding:4px 0 0;text-align:center;font-size:11px;font-weight:700;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ carta.nome||'—' }}</div>
+          <div style="width:calc((100% - 24px) / 3); flex-shrink:0;">
+            <PescaCardTile :carta="carta" :copie="getCopie(carta)" :is-new="isNew(carta)" />
           </div>
         </template>
       </div>
@@ -232,23 +207,7 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
       <!-- riga 2: 3 carte grid, stessa larghezza 1fr -->
       <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;">
         <template v-for="carta in cards.slice(2,5)" :key="carta.id">
-          <div style="position:relative;">
-            <div v-if="isNew(carta)" style="position:absolute;top:-10px;left:-4px;z-index:20;background:linear-gradient(135deg,#00b4ff,#00e676);border:2px solid rgba(255,255,255,0.5);border-radius:999px;padding:2px 7px;font-size:10px;font-weight:900;color:#000;line-height:1;white-space:nowrap;">{{ $t('pesca.new_badge') }}</div>
-            <div v-if="getCopie(carta)>0" style="position:absolute;top:-10px;right:-4px;z-index:20;min-width:20px;height:20px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#fff;padding:0 4px;" :style="getCopie(carta)>=3?{background:'linear-gradient(135deg,#00c853,#58e0a3)',border:'2px solid rgba(89,224,163,0.8)'}:{background:'linear-gradient(135deg,#3b1fa8,#6d28d9)',border:'2px solid rgba(139,111,216,0.8)'}">{{ getCopie(carta)>=3?'C':getCopie(carta) }}</div>
-            <!-- STESSO CONTENITORE: padding-bottom:150% fisso inline -->
-            <div style="position:relative; width:100%; padding-bottom:150%; border-radius:10px; overflow:hidden;"
-                 :style="{border:rarityBorder(carta.rarita), boxShadow:rarityGlow(carta.rarita), background:'var(--theme-bg-secondary)'}">
-              <img v-if="carta.immagine"
-                   :src="ikUrl(carta.immagine,'thumbnail')??undefined" :alt="carta.nome"
-                   style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
-              <div v-else style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--surface-sunken);">
-                <img src="~/assets/images/New_Logo.png" alt="" style="width:50%;height:auto;display:block;" />
-              </div>
-              <div style="position:absolute;bottom:4px;left:4px;z-index:3;border-radius:999px;padding:2px 6px;font-size:10px;font-weight:800;text-transform:capitalize;backdrop-filter:blur(4px);"
-                   :style="{background:rarityColor(carta.rarita)+'33',border:'1px solid '+rarityColor(carta.rarita)+'88',color:rarityColor(carta.rarita)}">{{ carta.rarita||'?' }}</div>
-            </div>
-            <div style="padding:4px 0 0;text-align:center;font-size:11px;font-weight:700;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ carta.nome||'—' }}</div>
-          </div>
+          <PescaCardTile :carta="carta" :copie="getCopie(carta)" :is-new="isNew(carta)" />
         </template>
       </div>
 

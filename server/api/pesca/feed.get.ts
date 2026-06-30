@@ -113,7 +113,13 @@ function buildGhostCards(
   }
   for (let i = 0; i < mosseCount; i++) {
     const m = randPick(mossePool)
-    if (m) cards.push({ tipo: 'mossa', id: m.id, rarita: m.rarita || 'comune', nome: m.nome || '', immagine: m.immagine || null })
+    if (m) cards.push({
+      tipo: 'mossa', id: m.id, rarita: m.rarita || 'comune', nome: m.nome || '',
+      immagine: (m.immagine || m.immagine_url || m.imageUrl || null) as string | null,
+      danno: (m.danno ?? m.damage ?? null) as number | null,
+      tipoMossa: (m.type ?? (typeof m.tipologia === 'string' ? (m.tipologia as string).toLowerCase() : null)) as string | null,
+      descrizione: (m.effectDescription ?? null) as string | null,
+    })
   }
   return shuffle(cards)
 }

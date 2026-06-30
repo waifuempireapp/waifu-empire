@@ -33,8 +33,12 @@ const TR: Record<ImageKitPreset, string | null> = {
 export function ikUrl(url: string | null | undefined, preset: ImageKitPreset = 'card'): string | null {
   if (!url) return null
 
+  // Normalizza in NFD: i file caricati da macOS hanno i caratteri accentati
+  // decomposti (es. "è" = e + grave). Senza questo, nomi come "tè" salvati in
+  // NFC non vengono trovati (404). I caratteri non accentati restano invariati.
+  let full = url.normalize('NFD')
+
   // Path relativo (es. "/Akane.png") → prependi l'endpoint ImageKit
-  let full = url
   if (!/^https?:\/\//i.test(full)) {
     full = `${IK_ENDPOINT}/${full.replace(/^\/+/, '')}`
   }

@@ -492,8 +492,17 @@ export async function createPackSnapshot(
       let immagine: string | null = null
       if (c.tipo === 'waifu')  immagine = (d.asset_statica || d.asset_immersiva || d.immagine) as string | null
       else if (c.tipo === 'outfit') immagine = (d.asset || d.immagine) as string | null
-      else immagine = (d.immagine) as string | null
-      return { tipo: c.tipo, id: d.id ?? null, rarita: d.rarita ?? null, nome: d.nome ?? null, immagine: immagine ?? null, hot: d.hot === true }
+      else immagine = (d.immagine || d.immagine_url || d.imageUrl) as string | null
+      const base = { tipo: c.tipo, id: d.id ?? null, rarita: d.rarita ?? null, nome: d.nome ?? null, immagine: immagine ?? null, hot: d.hot === true }
+      // Le mosse portano anche danno/tipo/descrizione per la preview pesca
+      if (c.tipo === 'mossa') {
+        return { ...base,
+          danno: (d.danno ?? d.damage ?? null) as number | null,
+          tipoMossa: (d.type ?? (typeof d.tipologia === 'string' ? (d.tipologia as string).toLowerCase() : null)) as string | null,
+          descrizione: (d.effectDescription ?? null) as string | null,
+        }
+      }
+      return base
     }),
     isGhost: false,
     visibleToFriends: true,
