@@ -3,19 +3,20 @@
      Layer 2 (quando pronto): canvas Three.js sopra con opacity 0→1.
      Emette 'bustina:ready' globale quando il 3D è inizializzato (o fallisce). -->
 <script lang="ts">
-// Cache condivisa tra TUTTE le istanze: il GLB viene scaricato e parsato una
-// sola volta per sessione, poi ogni bustina clona la geometria sorgente.
-// → niente re-fetch + re-parse ad ogni mount (Home, Sbusta, x10, ecc.).
-let _glbMeshPromise: Promise<import('three').Mesh> | null = null
-function loadBustinaMesh(): Promise<import('three').Mesh> {
-  if (!_glbMeshPromise) {
-    _glbMeshPromise = (async () => {
+// Cache condivisa tra TUTTE le istanze, per URL del modello: ogni GLB viene
+// scaricato e parsato una sola volta per sessione, poi ogni bustina clona la
+// geometria sorgente. Permette modelli diversi per espansione.
+const DEFAULT_BUSTINA = '/bustine/bustina_asset.glb'
+const _glbMeshCache = new Map<string, Promise<import('three').Mesh>>()
+function loadBustinaMesh(url: string = DEFAULT_BUSTINA): Promise<import('three').Mesh> {
+  if (!_glbMeshCache.has(url)) {
+    _glbMeshCache.set(url, (async () => {
       const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
-      const gltf = await new GLTFLoader().loadAsync('/bustine/bustina_asset.glb')
+      const gltf = await new GLTFLoader().loadAsync(url)
       return gltf.scene.children[0] as import('three').Mesh
-    })()
+    })())
   }
-  return _glbMeshPromise
+  return _glbMeshCache.get(url)!
 }
 </script>
 
@@ -31,6 +32,7 @@ const props = withDefaults(defineProps<{
   label?:      string | null
   labelColor?: string | null
   passive?:    boolean  // se true, il canvas non intercetta click (decorativo)
+  modelUrl?:   string | null  // GLB del modello bustina (default: standard)
 }>(), { width: 220, height: 360, passive: false })
 
 const emit = defineEmits<{ done: [] }>()
@@ -128,7 +130,7 @@ async function init() {
     const rim = new THREE.DirectionalLight(0xa78bfa, 0.5)
     rim.position.set(-2, -1, 2); scene.add(rim)
 
-    const src  = await loadBustinaMesh()
+    const src  = await loadBustinaMesh(props.modelUrl || DEFAULT_BUSTINA)
     const geo  = src.geometry.clone()
     applyPlanarUVs(geo)
 

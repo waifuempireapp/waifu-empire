@@ -25,6 +25,7 @@ const props = defineProps<{
   waifuCat:   unknown[]
   outfitCat?: unknown[]
   poseCat?:   unknown[]
+  drop?:      Record<string, unknown> | null  // espansione attiva (colore + modello bustina)
 }>()
 
 // ── Emits ────────────────────────────────────────────────────────────
@@ -268,8 +269,9 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
 
         <!-- Bustina 3D: passive=true → canvas non intercetta click → il panel/button restano cliccabili -->
         <BustinaGLB
-          :color="totalPack > 0 ? '#6b1a3a' : '#5a3e0a'"
+          :color="totalPack > 0 ? ((drop?.colore as string) || '#6b1a3a') : '#5a3e0a'"
           :texture-url="null"
+          :model-url="(drop?.asset_glb as string) || null"
           :width="115" :height="185"
           :passive="true"
         />

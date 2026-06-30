@@ -852,6 +852,7 @@ function cfTouchEnd(e: TouchEvent) {
         <BustinaGLB
           :texture-url="dropAttivo?.asset_bustina ?? null"
           :color="dropColore"
+          :model-url="dropAttivo?.asset_glb ?? null"
           :ripping="bustaInAnimazione"
           :width="280" :height="460"
         />
@@ -1175,6 +1176,7 @@ function cfTouchEnd(e: TouchEvent) {
             <BustinaGLB
               :color="d.colore || C.violet"
               :texture-url="null"
+              :model-url="d.asset_glb ?? null"
               :label="(d.nome||'DROP').toUpperCase()"
               :label-color="d.id===dropSelId ? (d.colore||'#e8c448') : 'rgba(255,255,255,0.45)'"
               :width="185" :height="300"

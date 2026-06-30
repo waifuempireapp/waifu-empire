@@ -136,8 +136,8 @@ async function caricaTutto(uid: string) {
       return catalogRef
     })
 
-  // Pre-fetch drops in background
-  listDropsAttivi().catch(() => { })
+  // Pre-fetch drops in background + store (per la bustina dell'espansione in Home)
+  listDropsAttivi().then(d => gameStore.setDropsAttivi(d as never)).catch(() => { })
 
   const [profilo, collezione, catalog] = await Promise.all([
     getUserProfile(uid),
@@ -432,7 +432,7 @@ function handleSetTab(t: string) {
       <!-- ═══ TAB: HOME ════════════════════════════════════════════════ -->
       <!-- apri-sbusto: bottone "APRI ORA" → apre l'overlay SbustaTab -->
       <LazyHomeTab v-if="tab === 'home'" :user="authStore.user" :profilo="gameStore.profilo"
-        :collezione="gameStore.collezione as any" :waifu-cat="gameStore.catalogoWaifu" @set-tab="handleSetTab"
+        :collezione="gameStore.collezione as any" :waifu-cat="gameStore.catalogoWaifu" :drop="(gameStore.dropsAttivi as any[])?.[0] ?? null" @set-tab="handleSetTab"
         @apri-pesca="() => { pescaAperta = true }"
         @apri-sbusto="() => { sbustaAperta = true }"
         @ricarica-pack="ricaricaPackOmaggio"

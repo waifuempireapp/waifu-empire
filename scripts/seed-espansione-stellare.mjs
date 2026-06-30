@@ -52,6 +52,7 @@ async function main() {
     colore:       '#1565C0',   // blu profondo
     colore2:      '#0D47A1',   // blu scuro
     asset_bustina: null,       // nessuna texture custom — usa colore puro
+    asset_glb:    '/bustine/bustina_asset_01.glb', // modello 3D dedicato dell'espansione
     waifuIds:     WAIFU_IDS,
     espansione_id: 'imp_stellare',
   }, { merge: false })
