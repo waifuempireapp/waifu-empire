@@ -13,7 +13,12 @@ function loadBustinaMesh(url: string = DEFAULT_BUSTINA): Promise<import('three')
     _glbMeshCache.set(url, (async () => {
       const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
       const gltf = await new GLTFLoader().loadAsync(url)
-      return gltf.scene.children[0] as import('three').Mesh
+      // Trova la prima Mesh nella gerarchia (struttura GLB variabile)
+      let found: import('three').Mesh | null = null
+      gltf.scene.traverse((o: import('three').Object3D) => {
+        if (!found && (o as import('three').Mesh).isMesh) found = o as import('three').Mesh
+      })
+      return (found ?? gltf.scene.children[0]) as import('three').Mesh
     })())
   }
   return _glbMeshCache.get(url)!
@@ -130,27 +135,38 @@ async function init() {
     const rim = new THREE.DirectionalLight(0xa78bfa, 0.5)
     rim.position.set(-2, -1, 2); scene.add(rim)
 
-    const src  = await loadBustinaMesh(props.modelUrl || DEFAULT_BUSTINA)
-    const geo  = src.geometry.clone()
-    applyPlanarUVs(geo)
+    const src    = await loadBustinaMesh(props.modelUrl || DEFAULT_BUSTINA)
+    const srcMat = (Array.isArray(src.material) ? src.material[0] : src.material) as import('three').MeshStandardMaterial | undefined
+    // Se il modello GLB ha già una texture incorporata (es. bustina d'espansione
+    // con immagine personalizzata), usiamo IL SUO materiale e le SUE UV originali.
+    // Altrimenti (bustina standard) sovrascriviamo con il colore del drop.
+    const useModelMat = !!(srcMat && srcMat.map)
 
-    let tex: import('three').Texture | undefined
-    if (props.textureUrl) {
-      try {
-        tex = await new THREE.TextureLoader().loadAsync(props.textureUrl)
-        tex.colorSpace = THREE.SRGBColorSpace
-      } catch { /* usa colore base */ }
+    const geo = src.geometry.clone()
+
+    if (useModelMat) {
+      const m = srcMat!.clone()
+      if (m.map) m.map.colorSpace = THREE.SRGBColorSpace
+      m.envMapIntensity = 1.2
+      mesh = new THREE.Mesh(geo, m)
+    } else {
+      applyPlanarUVs(geo)
+      let tex: import('three').Texture | undefined
+      if (props.textureUrl) {
+        try {
+          tex = await new THREE.TextureLoader().loadAsync(props.textureUrl)
+          tex.colorSpace = THREE.SRGBColorSpace
+        } catch { /* usa colore base */ }
+      }
+      const baseColor = props.color
+        ? new THREE.Color(props.color)
+        : new THREE.Color(tex ? 0xffffff : 0x1a0a35)
+      mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+        map: tex ?? null, color: baseColor,
+        metalness: 0.65, roughness: 0.22, envMapIntensity: 1.4,
+        emissive: props.color ? new THREE.Color(props.color).multiplyScalar(0.12) : new THREE.Color(0x000000),
+      }))
     }
-
-    const baseColor = props.color
-      ? new THREE.Color(props.color)
-      : new THREE.Color(tex ? 0xffffff : 0x1a0a35)
-
-    mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-      map: tex ?? null, color: baseColor,
-      metalness: 0.65, roughness: 0.22, envMapIntensity: 1.4,
-      emissive: props.color ? new THREE.Color(props.color).multiplyScalar(0.12) : new THREE.Color(0x000000),
-    }))
     scene.add(mesh)
     glReady.value = true
     failed.value = false
