@@ -58,8 +58,18 @@ const isAdmin = computed(() => {
   return emails.includes(authStore.user?.email?.toLowerCase() ?? '')
 })
 
-// Dark mode toggle
+// Dark mode toggle (persistito sul profilo Firebase, legato all'account)
 const { isDark, toggleTheme } = useTheme()
+async function onToggleTheme() {
+  toggleTheme()
+  const uid = authStore.user?.uid
+  if (uid) {
+    const tema = isDark.value ? 'dark' : 'light'
+    gameStore.aggiornaProfilo({ tema } as never)
+    try { await updateUserProfile(uid, { tema }) }
+    catch (e) { console.error('[tema] salvataggio fallito', e) }
+  }
+}
 
 // Dropdown lingua
 const langDropdownOpen = ref(false)
@@ -194,7 +204,7 @@ async function switchLocale(code: string) {
         <!-- Toggle switch iOS-style -->
         <div
           :class="['theme-toggle-track', isDark ? 'theme-toggle-track--on' : 'theme-toggle-track--off']"
-          @click="toggleTheme"
+          @click="onToggleTheme"
         >
           <div :class="['theme-toggle-thumb', isDark ? 'theme-toggle-thumb--on' : 'theme-toggle-thumb--off']" />
         </div>

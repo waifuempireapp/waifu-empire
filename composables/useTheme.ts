@@ -16,17 +16,22 @@ export function useTheme() {
     document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
   }
 
-  function toggleTheme() {
-    isDark.value = !isDark.value
-    applyTheme(isDark.value)
+  // Imposta il tema a un valore specifico (es. ripristino dal profilo Firebase)
+  function setTheme(dark: boolean) {
+    isDark.value = dark
+    applyTheme(dark)
     if (typeof window !== 'undefined') {
-      localStorage.setItem('waifu_theme', isDark.value ? 'dark' : 'light')
+      localStorage.setItem('waifu_theme', dark ? 'dark' : 'light')
     }
+  }
+
+  function toggleTheme() {
+    setTheme(!isDark.value)
   }
 
   function initTheme() {
     applyTheme(isDark.value)
   }
 
-  return { isDark, toggleTheme, initTheme }
+  return { isDark, toggleTheme, setTheme, initTheme }
 }

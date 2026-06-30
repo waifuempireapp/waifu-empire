@@ -51,6 +51,8 @@ const appReady = ref(false)   // pack 3D pronto → nasconde la loading screen
 const raidBattleCtx = ref<unknown>(null)
 // i18n — ripristino lingua al mount + notifiche
 const { setLocale, t } = useI18n()
+// Tema — ripristino dal profilo Firebase
+const { setTheme } = useTheme()
 
 // ── Sub-navigazione per la tab "Pacchetti" (Sbusta | Pesca) ───────────
 const subTabPacchetti = ref<'sbusta' | 'pesca'>('sbusta')
@@ -187,6 +189,12 @@ async function caricaTutto(uid: string) {
   if (linguaProfilo) {
     setLocale(linguaProfilo as 'en' | 'it' | 'de' | 'es' | 'ja')
     if (typeof window !== 'undefined') localStorage.setItem('waifu_locale', linguaProfilo)
+  }
+
+  // Tema (light/dark): ripristina dal profilo Firebase
+  const temaProfilo = (updatedProfile as Record<string, unknown>).tema as string | undefined
+  if (temaProfilo === 'dark' || temaProfilo === 'light') {
+    setTheme(temaProfilo === 'dark')
   }
   gameStore.setCollezione(collezione as never)
   gameStore.setCatalogoWaifu(catalog.ws as never[])
