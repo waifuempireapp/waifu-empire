@@ -16,6 +16,16 @@ const config: CapacitorConfig = {
   server: {
     // Usa HTTPS per Android (necessario per Firebase Auth)
     androidScheme: 'https',
+    // L'app carica il sito live: tutte le API server funzionano
+    url: 'https://waifu-empire.vercel.app',
+    cleartext: false,
+  },
+  plugins: {
+    // Login Google nativo (le WebView bloccano il popup OAuth di Google)
+    FirebaseAuthentication: {
+      skipNativeAuth: false,
+      providers: ['google.com'],
+    },
   },
   // Configurazione iOS
   ios: {
