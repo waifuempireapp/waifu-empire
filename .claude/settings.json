@@ -196,7 +196,11 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://ik.imagekit.io/waifuempire/SUMIRE%20_%20La%20maestra%20del%20te%CC%80_2.png\")",
       "Bash(grep -c '>{{ inPlaceCards[__TRACKED_VAR__].rarita }}</div>' components/tabs/PescaSection.vue)",
       "Bash(awk '/<\\\\/template>/{print NR\": \"$0}' components/tabs/SbustaTab.vue)",
-      "Bash(node -e \"const j=require\\('./i18n/locales/it.json'\\); function find\\(o,p\\){for\\(const k in o\\){if\\(typeof o[k]==='string'&&/pool|nessuna waifu|mosse attacco|selezione manuale|seleziona ancora/i.test\\(o[k]\\)\\)console.log\\(p+k+' = '+o[k]\\);else if\\(typeof o[k]==='object'\\)find\\(o[k],p+k+'.'\\)}} find\\(j,''\\)\")"
+      "Bash(node -e \"const j=require\\('./i18n/locales/it.json'\\); function find\\(o,p\\){for\\(const k in o\\){if\\(typeof o[k]==='string'&&/pool|nessuna waifu|mosse attacco|selezione manuale|seleziona ancora/i.test\\(o[k]\\)\\)console.log\\(p+k+' = '+o[k]\\);else if\\(typeof o[k]==='object'\\)find\\(o[k],p+k+'.'\\)}} find\\(j,''\\)\")",
+      "Bash(sed -n '1,5p')",
+      "Bash(sed -n '796,797p' components/tabs/MappaTab.vue)",
+      "Bash(awk 'NR>=786 && NR<=800 && /button>/{print NR\": \"$0}' components/tabs/MappaTab.vue)",
+      "Bash(git rm *)"
     ],
     "additionalDirectories": [
       "/private/tmp"
