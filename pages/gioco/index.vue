@@ -23,6 +23,7 @@ import {
 } from '~/utils/gameLogic'
 import { STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT } from '~/utils/constants'
 import { getDb } from '~/utils/firebase'
+import { ikUrl } from '~/utils/imagekitUrl'
 import { AVATAR_BY_WAIFU, BASE_AVATAR_IDS } from '~/composables/useAvatar'
 // ikUrl rimosso — non più usato nel template (carte acquisite rimosse dalla nav)
 
@@ -200,6 +201,11 @@ async function caricaTutto(uid: string) {
   gameStore.setCatalogoWaifu(catalog.ws as never[])
   gameStore.setCatalogoMosse(catalog.ms as never[])
 
+  // Precaricamento globale immagini: warm-up della cache HTTP per TUTTE le
+  // immagini di catalogo (waifu + mosse) ai preset usati da collezione, pesca,
+  // swipe e reveal → quando l'utente naviga le vede già caricate.
+  preloadCatalogImages(catalog.ws as any[], catalog.ms as any[])
+
   // Migrazione lazy stats (velocita/crit_chance)
   const waifuCatalogMap = Object.fromEntries((catalog.ws as { id: string }[]).map(w => [w.id, w]))
   lazyMigrateStats(uid, collezione as never, waifuCatalogMap as never).then(updated => {
@@ -272,6 +278,27 @@ async function ricaricaPackOmaggio() {
   } finally {
     ricaricaPackInCorso = false
   }
+}
+
+// Precarica in background tutte le immagini di catalogo ai preset usati.
+function preloadCatalogImages(waifu: any[], mosse: any[]) {
+  if (typeof window === 'undefined') return
+  const warm = (url: string | null) => { if (url) { const img = new Image(); img.decoding = 'async'; img.src = url } }
+  const run = () => {
+    for (const w of waifu ?? []) {
+      const src = w?.asset_statica ?? w?.asset_immersiva ?? w?.immagine ?? null
+      if (!src) continue
+      warm(ikUrl(src, 'thumbnail')); warm(ikUrl(src, 'card')); warm(ikUrl(src, 'normal'))
+    }
+    for (const m of mosse ?? []) {
+      const src = m?.imageUrl ?? m?.immagine_url ?? m?.immagine ?? null
+      if (!src) continue
+      warm(ikUrl(src, 'thumbnail')); warm(ikUrl(src, 'card'))
+    }
+  }
+  // Non blocca il primo render
+  if ('requestIdleCallback' in window) (window as any).requestIdleCallback(run, { timeout: 2000 })
+  else setTimeout(run, 300)
 }
 
 function mostraNotif(testo: string, colore = '#00e676') {

@@ -19,6 +19,7 @@ import { TIMER } from '~/utils/constants'
 import { useAuthStore } from '~/stores/auth'
 import { useMissionsStore } from '~/stores/missions'
 import { ikUrl } from '~/utils/imagekitUrl'
+import MoveCard from '~/components/moves/MoveCard.vue'
 
 // ── Costanti colori e font ───────────────────────────────────
 const C = {
@@ -920,7 +921,9 @@ function cfTouchEnd(e: TouchEvent) {
                 <!-- FRONTE: la carta vera -->
                 <div class="reveal-flip__face reveal-flip__face--front">
                   <CartaWaifu v-if="cartaCorrente.tipo === 'waifu'" :waifu="cartaCorrente.data" dimensione="normale" tipo="auto" />
-                  <CartaMossa v-else-if="cartaCorrente.tipo === 'mossa'" :mossa="cartaCorrente.data" dimensione="normale" />
+                  <div v-else-if="cartaCorrente.tipo === 'mossa'" style="width:220px;">
+                    <MoveCard :move="(cartaCorrente.data as any)" :owned="true" />
+                  </div>
                 </div>
                 <!-- RETRO: back_card.png -->
                 <div class="reveal-flip__face reveal-flip__face--back">
