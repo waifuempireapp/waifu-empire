@@ -64,6 +64,13 @@ const authStore      = useAuthStore()
 const missionsStore  = useMissionsStore()
 const { t } = useI18n()
 
+// Immagine (thumbnail) di una carta del riepilogo — gestisce waifu E mosse.
+function cardImg(carta: any): string | undefined {
+  const d = carta?.data ?? {}
+  if (carta?.tipo === 'mossa') return ikUrl(d.immagine ?? d.immagine_url ?? d.imageUrl ?? null, 'thumbnail') ?? undefined
+  return ikUrl(d.asset_statica ?? d.asset_immersiva ?? d.immagine ?? null, 'thumbnail') ?? undefined
+}
+
 // ── Anti-FOUC: overlay full-page finché la bustina 3D non ha renderizzato ──
 // Aspetta che un <canvas> Three.js compaia e abbia dimensioni reali.
 // recheck() ri-mostra l'overlay quando si entra nella schermata di apertura
@@ -999,11 +1006,9 @@ function cfTouchEnd(e: TouchEvent) {
             {{ getCopie(carta) }}</div>
           <div
             :style="{ borderRadius: '10px', overflow: 'hidden', aspectRatio: '2/3', background: 'var(--theme-bg-secondary)', position: 'relative', border: carta.isNuova ? '1.5px solid rgba(0,200,255,0.5)' : '1.5px solid rgba(255,255,255,0.08)' }">
-            <img v-if="carta.tipo === 'waifu' && carta.data?.asset_statica"
-              :src="ikUrl(carta.data.asset_statica, 'thumbnail') ?? undefined" :alt="carta.data?.nome"
+            <img v-if="cardImg(carta)"
+              :src="cardImg(carta)" :alt="carta.data?.nome"
               style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
-            <img v-else-if="carta.tipo === 'mossa' && carta.data?.asset" :src="carta.data.asset" :alt="carta.data?.nome"
-              style="width:100%;height:100%;object-fit:cover;display:block;" />
             <div v-else style="width:100%;height:100%;display:grid;place-items:center;">
               <img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.72;" />
             </div>
@@ -1027,11 +1032,9 @@ function cfTouchEnd(e: TouchEvent) {
             {{ getCopie(carta) }}</div>
           <div
             :style="{ borderRadius: '10px', overflow: 'hidden', aspectRatio: '2/3', background: 'var(--theme-bg-secondary)', position: 'relative', border: carta.isNuova ? '1.5px solid rgba(0,200,255,0.5)' : '1.5px solid rgba(255,255,255,0.08)' }">
-            <img v-if="carta.tipo === 'waifu' && carta.data?.asset_statica"
-              :src="ikUrl(carta.data.asset_statica, 'thumbnail') ?? undefined" :alt="carta.data?.nome"
+            <img v-if="cardImg(carta)"
+              :src="cardImg(carta)" :alt="carta.data?.nome"
               style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
-            <img v-else-if="carta.tipo === 'mossa' && carta.data?.asset" :src="carta.data.asset" :alt="carta.data?.nome"
-              style="width:100%;height:100%;object-fit:cover;display:block;" />
             <div v-else style="width:100%;height:100%;display:grid;place-items:center;">
               <img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.72;" />
             </div>
@@ -1082,8 +1085,8 @@ function cfTouchEnd(e: TouchEvent) {
               NEW</div>
             <div
               :style="{ borderRadius: '8px', overflow: 'hidden', aspectRatio: '2/3', background: 'var(--theme-bg-secondary)', position: 'relative' }">
-              <img v-if="carta.tipo === 'waifu' && carta.data?.asset_statica"
-                :src="ikUrl(carta.data.asset_statica, 'thumbnail') ?? undefined" :alt="carta.data?.nome"
+              <img v-if="cardImg(carta)"
+                :src="cardImg(carta)" :alt="carta.data?.nome"
                 style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
               <div v-else style="width:100%;height:100%;display:grid;place-items:center;">
                 <img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.72;" />
@@ -1099,8 +1102,8 @@ function cfTouchEnd(e: TouchEvent) {
               NEW</div>
             <div
               :style="{ borderRadius: '8px', overflow: 'hidden', aspectRatio: '2/3', background: 'var(--theme-bg-secondary)', position: 'relative' }">
-              <img v-if="carta.tipo === 'waifu' && carta.data?.asset_statica"
-                :src="ikUrl(carta.data.asset_statica, 'thumbnail') ?? undefined" :alt="carta.data?.nome"
+              <img v-if="cardImg(carta)"
+                :src="cardImg(carta)" :alt="carta.data?.nome"
                 style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
               <div v-else style="width:100%;height:100%;display:grid;place-items:center;">
                 <img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.72;" />
