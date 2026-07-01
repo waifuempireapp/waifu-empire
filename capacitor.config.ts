@@ -20,13 +20,6 @@ const config: CapacitorConfig = {
     url: 'https://waifu-empire.vercel.app',
     cleartext: false,
   },
-  plugins: {
-    // Login Google nativo (le WebView bloccano il popup OAuth di Google)
-    FirebaseAuthentication: {
-      skipNativeAuth: false,
-      providers: ['google.com'],
-    },
-  },
   // Configurazione iOS
   ios: {
     contentInset: 'automatic',

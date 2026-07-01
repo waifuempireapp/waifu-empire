@@ -6,11 +6,10 @@
   ============================================================ -->
 <script setup lang="ts">
 import {
-  signInWithPopup, signInWithRedirect, signInWithCredential,
+  signInWithPopup, signInWithRedirect,
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   GoogleAuthProvider,
 } from 'firebase/auth'
-import { Capacitor } from '@capacitor/core'
 import { getFirebaseAuth }  from '~/utils/firebase'
 import { useAuthStore }     from '~/stores/auth'
 import { getUserProfile }   from '~/utils/firestoreService'
@@ -49,30 +48,18 @@ async function loginGoogle() {
   errore.value = ''
   busy.value   = true
   try {
-    const auth = getFirebaseAuth()
-    // App nativa (Capacitor): login Google NATIVO. Le WebView bloccano il
-    // popup OAuth di Google, quindi usiamo il plugin nativo e poi autentichiamo
-    // Firebase con la credenziale ottenuta.
-    if (Capacitor.isNativePlatform()) {
-      const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication')
-      const result = await FirebaseAuthentication.signInWithGoogle()
-      const idToken = result.credential?.idToken
-      const accessToken = result.credential?.accessToken
-      const cred = GoogleAuthProvider.credential(idToken, accessToken)
-      await signInWithCredential(auth, cred)
-    } else {
-      const provider = new GoogleAuthProvider()
-      // Desktop: popup — Mobile web: redirect se popup bloccato
-      try {
-        await signInWithPopup(auth, provider)
-      } catch (popupErr: unknown) {
-        const c = (popupErr as { code?: string }).code
-        if (c === 'auth/popup-blocked' || c === 'auth/popup-closed-by-user') {
-          await signInWithRedirect(auth, provider)
-          return
-        }
-        throw popupErr
+    const auth     = getFirebaseAuth()
+    const provider = new GoogleAuthProvider()
+    // Desktop: popup — Mobile: redirect se popup bloccato
+    try {
+      await signInWithPopup(auth, provider)
+    } catch (popupErr: unknown) {
+      const c = (popupErr as { code?: string }).code
+      if (c === 'auth/popup-blocked' || c === 'auth/popup-closed-by-user') {
+        await signInWithRedirect(auth, provider)
+        return
       }
+      throw popupErr
     }
   } catch (e: unknown) {
     errore.value = traduciErrore((e as { code?: string }).code)
