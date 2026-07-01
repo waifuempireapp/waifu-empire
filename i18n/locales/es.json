@@ -262,7 +262,8 @@
     "sort_opt_copies": "Copias",
     "moves_count": "⚔ {n}/4 movimientos",
     "no_waifu_short": "Ninguna waifu",
-    "change_filters": "Cambia los filtros."
+    "change_filters": "Cambia los filtros.",
+    "equip_1_move": "Asigna al menos 1 movimiento de ataque"
   },
   "swap": {
     "loading": "Cargando…",
@@ -465,7 +466,7 @@
     "select_more": "Selecciona {n} más",
     "max_waifu": "Máx. 8 waifu",
     "teams_hint": "💡 Elige un equipo guardado, o selecciona de 5 a 8 waifu para tu grupo. En la próxima pantalla elegirás tu escuadrón de combate (de 1 a 8).",
-    "no_moves_desc": "Cada waifu debe tener 4 movimientos de ataque asignados.",
+    "no_moves_desc": "Cada waifu necesita al menos 1 movimiento asignado.",
     "go_to": "Ve a",
     "collection_moves": "Colección → Movimientos",
     "others_hidden": "Las demás waifu no son visibles porque no has asignado 4 movimientos de ataque.",
@@ -478,7 +479,8 @@
     "fight": "Luchar",
     "round_single": "Ronda única",
     "start_battle_excl": "¡Empieza la batalla!",
-    "cpu_difficulty": "Dificultad CPU:"
+    "cpu_difficulty": "Dificultad CPU:",
+    "random_moves": "Movimientos aleatorios"
   },
   "raid": {
     "event": "Evento",
@@ -540,7 +542,8 @@
     "step3_title": "Kisses pasivos",
     "step3_body": "Cada píxel que posees genera Kisses pasivos cada hora. ¡Cuantos más píxeles conquistes, más ganas!",
     "step4_title": "Elige tu primer píxel",
-    "step4_body": "Puedes empezar en cualquier parte del mapa. Haz clic en \"Elegir píxel\" y selecciona tu territorio inicial."
+    "step4_body": "Puedes empezar en cualquier parte del mapa. Haz clic en \"Elegir píxel\" y selecciona tu territorio inicial.",
+    "reopen": "Ver el tutorial"
   },
   "trades": {
     "st_waifu_offered": "Waifu ofrecida · esperando respuesta",

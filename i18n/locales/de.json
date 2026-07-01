@@ -262,7 +262,8 @@
     "sort_opt_copies": "Kopien",
     "moves_count": "⚔ {n}/4 Moves",
     "no_waifu_short": "Keine Waifu",
-    "change_filters": "Ändere die Filter."
+    "change_filters": "Ändere die Filter.",
+    "equip_1_move": "Weise mindestens 1 Angriff zu"
   },
   "swap": {
     "loading": "Laden…",
@@ -465,7 +466,7 @@
     "select_more": "Noch {n} auswählen",
     "max_waifu": "Max. 8 Waifu",
     "teams_hint": "💡 Wähle ein gespeichertes Team oder 5 bis 8 Waifu für deinen Pool. Im nächsten Bildschirm wählst du dein Kampfteam (1 bis 8).",
-    "no_moves_desc": "Jede Waifu muss 4 Angriffs-Moves zugewiesen haben.",
+    "no_moves_desc": "Jede Waifu braucht mindestens 1 zugewiesenen Angriff.",
     "go_to": "Gehe zu",
     "collection_moves": "Sammlung → Moves",
     "others_hidden": "Andere Waifu sind nicht sichtbar, weil du keine 4 Angriffs-Moves zugewiesen hast.",
@@ -478,7 +479,8 @@
     "fight": "Kämpfen",
     "round_single": "Einzelrunde",
     "start_battle_excl": "Kampf beginnen!",
-    "cpu_difficulty": "CPU-Schwierigkeit:"
+    "cpu_difficulty": "CPU-Schwierigkeit:",
+    "random_moves": "Zufällige Angriffe"
   },
   "raid": {
     "event": "Event",
@@ -540,7 +542,8 @@
     "step3_title": "Passive Kisses",
     "step3_body": "Jeder Pixel, den du besitzt, erzeugt jede Stunde passive Kisses. Je mehr Pixel du eroberst, desto mehr verdienst du!",
     "step4_title": "Wähle deinen ersten Pixel",
-    "step4_body": "Du kannst überall auf der Karte beginnen. Klicke auf \"Pixel wählen\" und wähle dein Startgebiet."
+    "step4_body": "Du kannst überall auf der Karte beginnen. Klicke auf \"Pixel wählen\" und wähle dein Startgebiet.",
+    "reopen": "Tutorial erneut"
   },
   "trades": {
     "st_waifu_offered": "Waifu angeboten · warte auf Antwort",

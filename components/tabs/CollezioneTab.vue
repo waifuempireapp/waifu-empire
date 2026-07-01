@@ -430,7 +430,7 @@ const waifuDisponibiliPerTeam = computed(() =>
     const w = props.waifuCat.find((x: any) => x.id === id)
     if (!w) return null
     const mosseAssegnate = Object.values(dati.mosse_slot ?? {}).filter(Boolean).length
-    return { ...w, copie: dati.copie, livello: dati.livello, stat_bonus: dati.stat_bonus, mosse_ok: mosseAssegnate === 4 }
+    return { ...w, copie: dati.copie, livello: dati.livello, stat_bonus: dati.stat_bonus, mosse_ok: mosseAssegnate >= 1 }
   }).filter(Boolean) as any[]
 )
 
@@ -472,8 +472,8 @@ function teamToggleWaifu(id: string) {
   const waifuEntry = Object.entries(props.collezione.waifu || {}).find(([wid]) => wid === id)
   if (waifuEntry) {
     const dati = waifuEntry[1] as any
-    const mosseOk = Object.values(dati.mosse_slot ?? {}).filter(Boolean).length === 4
-    if (!mosseOk) { emit('notif', t('collection.equip_4_moves'), '#f5a623'); return }
+    const mosseOk = Object.values(dati.mosse_slot ?? {}).filter(Boolean).length >= 1
+    if (!mosseOk) { emit('notif', t('collection.equip_1_move'), '#f5a623'); return }
   }
   if (teamWaifu.value.length >= 5) { emit('notif', t('collection.team_max_5'), '#f5a623'); return }
   teamWaifu.value = [...teamWaifu.value, id]

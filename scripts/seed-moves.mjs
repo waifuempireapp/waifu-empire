@@ -158,12 +158,19 @@ const MOVES = [
 
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1)
 
-// Rarità derivata dalla potenza (+ PP / crit coerenti)
+// PP in base alla potenza: 5–20 (più forte = meno PP). Ultimate → 5.
+function ppFromPower(m) {
+  if (m.isUltimate) return 5
+  return Math.max(5, Math.min(20, Math.round(20 - m.damage / 10)))
+}
+
+// Rarità derivata dalla potenza (+ PP 5–20 e crit coerenti)
 function deriva(m) {
-  if (m.isUltimate)   return { rarita:'leggendario', pp:5,  danno_critico:30 }
-  if (m.damage >= 120) return { rarita:'epico',       pp:8,  danno_critico:20 }
-  if (m.damage >= 55)  return { rarita:'raro',        pp:12, danno_critico:15 }
-  return { rarita:'comune', pp:15, danno_critico:10 }
+  const pp = ppFromPower(m)
+  if (m.isUltimate)   return { rarita:'leggendario', pp, danno_critico:30 }
+  if (m.damage >= 120) return { rarita:'epico',       pp, danno_critico:20 }
+  if (m.damage >= 55)  return { rarita:'raro',        pp, danno_critico:15 }
+  return { rarita:'comune', pp, danno_critico:10 }
 }
 
 async function main() {

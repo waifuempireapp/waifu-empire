@@ -5,6 +5,7 @@
 import { X, Swords, Zap } from 'lucide-vue-next'
 import { useAuthStore } from '~/stores/auth'
 import { RARITA } from '~/utils/constants'
+import RandomMovesModal from '~/components/RandomMovesModal.vue'
 
 // ── Costanti locali (da _shared.jsx) ─────────────────────────────────────────
 const C = {
@@ -50,7 +51,17 @@ const emit = defineEmits<{
   conferma: [team: any[]]
   /** Chiude il modal */
   chiudi: []
+  /** Collezione aggiornata (assegnazione rapida mosse) */
+  updateCollezione: [c: any]
+  notif: [testo: string, colore: string]
 }>()
+
+// Assegnazione rapida mosse + navigazione alla collezione
+const showRandomMoves = ref(false)
+function goToCollezioneMosse() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('impero:collezione-mosse'))
+  emit('chiudi')
+}
 
 // ── Auth + tema ───────────────────────────────────────────────────────────────
 const authStore  = useAuthStore()
@@ -111,7 +122,7 @@ const ownedWaifu = computed(() => {
       const w = props.waifuCat?.find((x: any) => x.id === id)
       if (!w) return null
       const mosseAssegnate = Object.values(dati.mosse_slot ?? {}).filter(Boolean).length
-      if (mosseAssegnate < 4) return null
+      if (mosseAssegnate < 1) return null   // basta almeno 1 mossa per partecipare
       return { ...w, ...dati, _datiColl: dati }
     })
     .filter(Boolean)
@@ -378,11 +389,35 @@ const visiblePages = computed(() => {
       <div v-if="ownedWaifu.length === 0" :style="{ padding: '32px 20px', textAlign: 'center' }">
         <Swords :size="32" stroke-width="1.5" style="margin-bottom:10px;opacity:0.6;" />
         <div :style="{ fontFamily: FF.label, fontSize: '13px', color: C.gold, letterSpacing: '0.15em', marginBottom: '8px' }">{{ $t('battle.no_waifu_available') }}</div>
-        <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.6 }">
-          {{ $t('battle.no_moves_desc') }}<br>
-          {{ $t('battle.go_to') }} <strong style="color:#9b59ff">{{ $t('battle.collection_moves') }}</strong>.
+        <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.6, marginBottom: '16px' }">
+          {{ $t('battle.no_moves_desc') }}
+        </div>
+        <div :style="{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }">
+          <button @click="showRandomMoves = true"
+            :style="{ background: 'linear-gradient(135deg,#a78bfa,#6938e8)', border: 'none', borderRadius: '999px', color: '#fff', fontFamily: FF.label, fontSize: '13px', fontWeight: 800, letterSpacing: '0.06em', padding: '11px 22px', cursor: 'pointer', textTransform: 'uppercase' }">
+            🎲 {{ $t('battle.random_moves') }}
+          </button>
+          <button @click="goToCollezioneMosse"
+            :style="{ background: 'none', border: 'none', color: '#9b59ff', fontFamily: FF.body, fontSize: '13px', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: '3px' }">
+            {{ $t('battle.go_to') }} {{ $t('battle.collection_moves') }} →
+          </button>
         </div>
       </div>
+
+      <!-- Bottone random sempre disponibile in modalità manuale (sopra la griglia) -->
+      <div v-else :style="{ padding: '0 16px 4px', flexShrink: 0 }">
+        <button @click="showRandomMoves = true"
+          :style="{ width: '100%', background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.4)', borderRadius: '999px', color: '#a78bfa', fontFamily: FF.label, fontSize: '12px', fontWeight: 800, letterSpacing: '0.06em', padding: '9px', cursor: 'pointer', textTransform: 'uppercase' }">
+          🎲 {{ $t('battle.random_moves') }}
+        </button>
+      </div>
+
+      <!-- Popup assegnazione rapida mosse -->
+      <RandomMovesModal v-if="showRandomMoves"
+        :collezione="collezione" :waifu-cat="waifuCat ?? []" :mosse-cat="mosseCat ?? []"
+        @close="showRandomMoves = false"
+        @update-collezione="(c) => emit('updateCollezione', c)"
+        @notif="(t, c) => emit('notif', t, c)" />
 
       <!-- Griglia waifu 2 colonne — card verticali (nome, immagine, mosse 2×2 sotto) -->
       <div :style="{ flex: 1, overflowY: 'auto', padding: '24px 16px 0' }">

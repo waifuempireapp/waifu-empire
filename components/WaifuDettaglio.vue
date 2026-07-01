@@ -5,6 +5,7 @@
   ============================================================ -->
 <script setup lang="ts">
 import { Heart, X, ChevronDown, ChevronUp, Swords, Plus, Trash2 } from 'lucide-vue-next'
+import { canLearnMove, weakType } from '~/utils/moves'
 
 const { t } = useI18n()
 
@@ -114,25 +115,20 @@ const rarColor = computed(() => {
 })
 const waifuRarIdx = computed(() => RAR_ORDER.indexOf(props.waifu.rarita ?? 'comune'))
 
-// Compatibilità mossa
+// Compatibilità mossa: unico vincolo è la debolezza di tipo.
+// Le mosse NON sono univoche (possono stare su più waifu); nessun limite di rarità.
 function compat(mossaId: string, slot: string): { ok: boolean; motivo?: string } {
   const m = props.mosseCat.find((x: any) => x.id === mossaId)
   if (!m) return { ok: false, motivo: t('card.not_in_catalog') }
 
-  const rIdx = RAR_ORDER.indexOf(m.rarita ?? 'comune')
-  if (rIdx > waifuRarIdx.value)
-    return { ok: false, motivo: t('card.rarity_incompatible', { move: m.rarita, waifu: props.waifu.rarita }) }
+  // La waifu non può imparare la mossa del tipo a cui è debole
+  if (!canLearnMove(props.waifu.tipo as string, (m.type ?? m.tipologia) as string))
+    return { ok: false, motivo: `Debole a ${weakType(props.waifu.tipo as string)?.toUpperCase() ?? '?'}` }
 
+  // Stessa mossa già in un altro slot di QUESTA waifu
   if (SLOTS.filter(s => s !== slot).some(s => mosseSlot.value[s] === mossaId))
     return { ok: false, motivo: t('card.already_assigned') }
 
-  for (const [wId, wDati] of Object.entries(props.waifuCollezione)) {
-    if (wId === props.waifuId) continue
-    if (Object.values((wDati as any).mosse_slot ?? {}).includes(mossaId)) {
-      const nome = props.waifuCat.find((x: any) => x.id === wId)?.nome ?? 'altra waifu'
-      return { ok: false, motivo: `Mossa già assegnata alla waifu ${nome}` }
-    }
-  }
   return { ok: true }
 }
 

@@ -68,11 +68,19 @@ function chiudiPesca() {
   pescaPacksInitial.value = null
 }
 
+// Sub-tab iniziale della Collezione (per navigazione da altri punti, es. mosse)
+const collezioneSubTab = ref('waifu')
+
 // ── Listener eventi globali (window.addEventListener) ─────────────────
 onMounted(() => {
   window.addEventListener('impero:apri-negozio', () => gameStore.toggleNegozio(true))
   window.addEventListener('impero:apri-pesca', () => {
     pescaAperta.value = true
+  })
+  // Naviga a Collezione → Mosse (es. dal link nella schermata battaglia)
+  window.addEventListener('impero:collezione-mosse', () => {
+    collezioneSubTab.value = 'mosse'
+    gameStore.setTab('collezione')
   })
   // Ripristina la lingua salvata
   const savedLocale = localStorage.getItem('waifu_locale')
@@ -478,6 +486,7 @@ function handleSetTab(t: string) {
       <!-- ═══ TAB: COLLEZIONE ════════════════════════════════════════════ -->
       <LazyCollezioneTab v-if="tab === 'collezione'" :profilo="gameStore.profilo" :collezione="gameStore.collezione as any"
         :waifu-cat="gameStore.catalogoWaifu" :mosse-cat="gameStore.catalogoMosse" :stat-config="statConfig"
+        :initial-sub-tab="collezioneSubTab"
         @notif="(t: string, c: string) => mostraNotif(t, c)"
         @update-profilo="(p: unknown) => gameStore.setProfilo(p as never)"
         @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)" />

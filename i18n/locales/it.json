@@ -314,7 +314,8 @@
     "sort_opt_copies": "Copie",
     "moves_count": "⚔ {n}/4 mosse",
     "no_waifu_short": "Nessuna waifu",
-    "change_filters": "Cambia i filtri."
+    "change_filters": "Cambia i filtri.",
+    "equip_1_move": "Assegna almeno 1 mossa attacco"
   },
   "swap": {
     "loading": "Caricamento…",
@@ -565,7 +566,7 @@
     "select_more": "Seleziona ancora {n}",
     "max_waifu": "Max 8 waifu",
     "teams_hint": "💡 Scegli un team già salvato, oppure seleziona da 5 a 8 waifu per il tuo pool. Nella prossima schermata sceglierai la squadra di combattimento (da 1 a 8).",
-    "no_moves_desc": "Ogni waifu deve avere 4 mosse attacco assegnate.",
+    "no_moves_desc": "Ogni waifu deve avere almeno 1 mossa attacco assegnata.",
     "go_to": "Vai in",
     "collection_moves": "Collezione → Mosse",
     "others_hidden": "Le altre waifu non sono visibili perché non hai assegnato 4 mosse attacco.",
@@ -578,7 +579,8 @@
     "fight": "Combatti",
     "round_single": "Round unico",
     "start_battle_excl": "Inizia battaglia!",
-    "cpu_difficulty": "Difficoltà CPU:"
+    "cpu_difficulty": "Difficoltà CPU:",
+    "random_moves": "Selezione random mosse"
   },
   "raid": {
     "event": "Evento",
@@ -640,7 +642,8 @@
     "step3_title": "Kisses passivi",
     "step3_body": "Ogni pixel che possiedi genera Kisses passivi ogni ora. Più pixel conquisti, più guadagni!",
     "step4_title": "Scegli il tuo primo pixel",
-    "step4_body": "Puoi iniziare ovunque sulla mappa. Clicca \"Scegli pixel\" e seleziona il tuo territorio di partenza."
+    "step4_body": "Puoi iniziare ovunque sulla mappa. Clicca \"Scegli pixel\" e seleziona il tuo territorio di partenza.",
+    "reopen": "Rivedi il tutorial"
   },
   "trades": {
     "st_waifu_offered": "Waifu offerta · in attesa risposta",

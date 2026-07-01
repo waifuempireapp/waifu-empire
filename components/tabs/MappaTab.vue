@@ -8,6 +8,7 @@
 import { PIXEL_NAMES, LAND_SET, GRID_SIZE } from '~/utils/worldMap'
 import { isHexAdjacentToEmpire } from '~/utils/hexGrid'
 import { ikUrl } from '~/utils/imagekitUrl'
+import { updateUserProfile } from '~/utils/firestoreService'
 import { useAuthStore } from '~/stores/auth'
 import { useMissionsStore } from '~/stores/missions'
 
@@ -530,17 +531,16 @@ const handlePurchase = async ({ amount }: { amount?: number }) => {
 
 // ------------------------------------------------------------------ Tutorial
 
-// Chiude il tutorial e segna pixelCount = 0 nel profilo per non rimostrarlo
+// Apre il tutorial manualmente (bottone dedicato)
+const openTutorial = () => { showTutorial.value = true }
+
+// Chiude il tutorial e lo segna come già visto sul profilo (mai più in automatico)
 const closeTutorial = async () => {
   showTutorial.value = false
+  if (props.profilo?.tutorialMapSeen) return
+  emit('updateProfilo', { ...props.profilo, tutorialMapSeen: true })
   try {
-    const token = await authStore.user?.getIdToken()
-    await $fetch('/api/profilo/update', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: { pixelCount: 0 },
-    })
-    emit('updateProfilo', { ...props.profilo, pixelCount: 0 })
+    if (authStore.user?.uid) await updateUserProfile(authStore.user.uid, { tutorialMapSeen: true })
   } catch { /* ignora errori di rete */ }
 }
 
@@ -554,9 +554,8 @@ onMounted(async () => {
     loadActiveMission(),
     loadRaidInfo(),
   ])
-  // Mostra tutorial se il giocatore non ha ancora pixel
-  const hasNoPixels = ((props.profilo?.pixelCount as number) ?? 0) === 0
-  if (hasNoPixels) showTutorial.value = true
+  // Mostra il tutorial SOLO la prima volta (poi mai più; riapribile dal bottone)
+  if (!props.profilo?.tutorialMapSeen) showTutorial.value = true
 })
 
 onUnmounted(() => {
@@ -795,6 +794,20 @@ async function onTerritoryClick(territoryId: string) {
             boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
           }"
         >?</button>
+        <!-- Bottone tutorial dedicato — riapre il tutorial in qualsiasi momento -->
+        <button
+          @click="openTutorial"
+          :title="$t('tutorial.reopen')"
+          :style="{
+            position: 'absolute', top: '-15px', right: '31px', zIndex: 40,
+            width: '38px', height: '38px', borderRadius: '50%',
+            background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)',
+            border: '1.5px solid rgba(255,255,255,0.3)',
+            color: '#fff', fontSize: '17px',
+            cursor: 'pointer', display: 'grid', placeItems: 'center', lineHeight: 1,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+          }"
+        >📖</button>
         <!-- Sfondo mare sempre visibile come base (sotto al canvas) -->
         <div
           style="width:100%;height:520px;display:block;user-select:none;border-radius:16px;
@@ -882,7 +895,7 @@ async function onTerritoryClick(territoryId: string) {
       <InfoModal v-if="showInfoModal" @close="showInfoModal = false" />
 
       <!-- ── Tutorial (nuovo utente senza pixel) ───────────────────────── -->
-      <TutorialOverlay v-if="showTutorial" @close="showTutorial = false" />
+      <TutorialOverlay v-if="showTutorial" @close="closeTutorial" />
 
       <!-- ── BattleModal: selezione team offensivo pixel normale ────────── -->
       <BattleModal
@@ -893,6 +906,8 @@ async function onTerritoryClick(territoryId: string) {
         :mosse-cat="mosseCat"
         @conferma="(team) => handleAttack(team)"
         @chiudi="showBattle = false"
+        @update-collezione="(c) => emit('updateCollezione', c)"
+        @notif="(t, col) => emit('notif', t, col)"
       />
 
       <!-- ── BattleModal: selezione team offensivo Raid Island ──────────── -->
@@ -904,6 +919,8 @@ async function onTerritoryClick(territoryId: string) {
         :mosse-cat="mosseCat"
         @conferma="(team) => { raidAttackMode = false; handleRaidAttack(team) }"
         @chiudi="showBattle = false; raidAttackMode = false"
+        @update-collezione="(c) => emit('updateCollezione', c)"
+        @notif="(t, col) => emit('notif', t, col)"
       />
 
       <!-- ── RoundViewer: pick phase + arena battaglia ──────────────────── -->

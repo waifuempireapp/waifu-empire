@@ -314,7 +314,8 @@
     "sort_opt_copies": "Copies",
     "moves_count": "⚔ {n}/4 moves",
     "no_waifu_short": "No waifu",
-    "change_filters": "Change the filters."
+    "change_filters": "Change the filters.",
+    "equip_1_move": "Assign at least 1 attack move"
   },
   "swap": {
     "loading": "Loading…",
@@ -565,7 +566,7 @@
     "select_more": "Select {n} more",
     "max_waifu": "Max 8 waifu",
     "teams_hint": "💡 Choose a saved team, or pick 5 to 8 waifu for your pool. On the next screen you'll choose your battle squad (1 to 8).",
-    "no_moves_desc": "Each waifu must have 4 attack moves assigned.",
+    "no_moves_desc": "Each waifu needs at least 1 attack move assigned.",
     "go_to": "Go to",
     "collection_moves": "Collection → Moves",
     "others_hidden": "Other waifu aren't visible because you haven't assigned 4 attack moves.",
@@ -578,7 +579,8 @@
     "fight": "Fight",
     "round_single": "Single round",
     "start_battle_excl": "Start battle!",
-    "cpu_difficulty": "CPU difficulty:"
+    "cpu_difficulty": "CPU difficulty:",
+    "random_moves": "Random moves"
   },
   "raid": {
     "event": "Event",
@@ -640,7 +642,8 @@
     "step3_title": "Passive Kisses",
     "step3_body": "Every pixel you own generates passive Kisses every hour. The more pixels you conquer, the more you earn!",
     "step4_title": "Choose your first pixel",
-    "step4_body": "You can start anywhere on the map. Click \"Choose pixel\" and select your starting territory."
+    "step4_body": "You can start anywhere on the map. Click \"Choose pixel\" and select your starting territory.",
+    "reopen": "Reopen tutorial"
   },
   "trades": {
     "st_waifu_offered": "Waifu offered · awaiting response",

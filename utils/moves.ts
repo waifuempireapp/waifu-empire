@@ -46,6 +46,37 @@ export function typeEffectiveness(attacker: MoveType, defender: MoveType): numbe
   return NEUTRO
 }
 
+// Debolezza: il tipo T è debole al tipo che lo "batte" (inverso di BATTE).
+const WEAK: Record<MoveType, MoveType> = (() => {
+  const w = {} as Record<MoveType, MoveType>
+  for (const atk of ALL_TYPES) w[BATTE[atk]] = atk
+  return w
+})()
+
+/** Normalizza un tipo (anche capitalizzato) a MoveType, o null se sconosciuto. */
+export function normalizeType(t?: string | null): MoveType | null {
+  if (!t) return null
+  const l = t.toLowerCase()
+  return (ALL_TYPES as string[]).includes(l) ? (l as MoveType) : null
+}
+
+/** Tipo a cui una waifu (del tipo dato) è debole. */
+export function weakType(waifuType?: string | null): MoveType | null {
+  const t = normalizeType(waifuType)
+  return t ? WEAK[t] : null
+}
+
+/**
+ * Una waifu può imparare una mossa se NON è del tipo a cui è debole.
+ * (Le mosse non sono univoche: una mossa può essere insegnata a più waifu.)
+ */
+export function canLearnMove(waifuType?: string | null, moveType?: string | null): boolean {
+  const wt = normalizeType(waifuType)
+  const mt = normalizeType(moveType)
+  if (!wt || !mt) return true   // tipo sconosciuto → nessun vincolo
+  return mt !== WEAK[wt]
+}
+
 export type EffectivenessLabel = 'super' | 'poco' | 'neutro'
 
 export function effectivenessLabel(attacker: MoveType, defender: MoveType): EffectivenessLabel {

@@ -262,7 +262,8 @@
     "sort_opt_copies": "枚数",
     "moves_count": "⚔ {n}/4 技",
     "no_waifu_short": "ワイフなし",
-    "change_filters": "フィルターを変更してください。"
+    "change_filters": "フィルターを変更してください。",
+    "equip_1_move": "攻撃技を1つ以上割り当ててください"
   },
   "swap": {
     "loading": "読み込み中…",
@@ -465,7 +466,7 @@
     "select_more": "あと{n}体選択",
     "max_waifu": "最大8体",
     "teams_hint": "💡 保存済みチームを選ぶか、5〜8体のワイフをプールに選択。次の画面でバトル編成（1〜8体）を選びます。",
-    "no_moves_desc": "各ワイフに攻撃技を4つ割り当てる必要があります。",
+    "no_moves_desc": "各ワイフに攻撃技を1つ以上割り当てる必要があります。",
     "go_to": "移動：",
     "collection_moves": "コレクション → 技",
     "others_hidden": "他のワイフは攻撃技を4つ割り当てていないため表示されません。",
@@ -478,7 +479,8 @@
     "fight": "戦う",
     "round_single": "単一ラウンド",
     "start_battle_excl": "バトル開始！",
-    "cpu_difficulty": "CPU難易度："
+    "cpu_difficulty": "CPU難易度：",
+    "random_moves": "ランダム技割当"
   },
   "raid": {
     "event": "イベント",
@@ -540,7 +542,8 @@
     "step3_title": "パッシブKisses",
     "step3_body": "所有する各ピクセルは毎時パッシブKissesを生成します。征服するほど稼げます！",
     "step4_title": "最初のピクセルを選ぼう",
-    "step4_body": "マップのどこからでも始められます。「ピクセルを選ぶ」をクリックして開始領地を選択してください。"
+    "step4_body": "マップのどこからでも始められます。「ピクセルを選ぶ」をクリックして開始領地を選択してください。",
+    "reopen": "チュートリアルを見る"
   },
   "trades": {
     "st_waifu_offered": "ワイフ提供 · 返答待ち",

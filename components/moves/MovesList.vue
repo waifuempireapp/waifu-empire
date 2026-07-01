@@ -9,7 +9,7 @@
 <script setup lang="ts">
 import { moves as STATIC_MOVES } from '~/assets/moves/moves-data'
 import type { Move, MoveType } from '~/assets/moves/moves-data'
-import { TYPE_META, ALL_TYPES } from '~/utils/moves'
+import { TYPE_META, ALL_TYPES, canLearnMove, weakType } from '~/utils/moves'
 import { setCollezione as saveCollezione } from '~/utils/firestoreService'
 import { useAuthStore } from '~/stores/auth'
 import MoveCard from '~/components/moves/MoveCard.vue'
@@ -69,13 +69,17 @@ async function onAssign(waifuId: string) {
   const nuova = JSON.parse(JSON.stringify(props.collezione))
   if (!nuova.waifu?.[waifuId]) return
 
-  // Unicità: rimuovi la mossa da qualsiasi waifu la possieda
-  for (const wid of Object.keys(nuova.waifu)) {
-    const ms = nuova.waifu[wid].mosse_slot
-    if (ms) for (const s of Object.keys(ms)) if (ms[s] === move.id) delete ms[s]
+  // Vincolo tipo: la waifu non può imparare la mossa del tipo a cui è debole.
+  const cat = (props.waifuCat ?? []).find((x: any) => x.id === waifuId)
+  if (!canLearnMove(cat?.tipo, move.type)) {
+    emit('notif', `${cat?.nome ?? 'La waifu'} è debole a ${weakType(cat?.tipo)?.toUpperCase() ?? '?'}`, '#ff5b6c')
+    return
   }
+
   const w = nuova.waifu[waifuId]
   if (!w.mosse_slot) w.mosse_slot = {}
+  // Le mosse NON sono univoche: la stessa mossa può stare su più waifu.
+  if (Object.values(w.mosse_slot).includes(move.id)) { emit('notif', 'Già assegnata a questa waifu', '#f5a623'); return }
   const free = ['1', '2', '3', '4'].find(s => !w.mosse_slot[s])
   if (!free) { emit('notif', 'Slot mosse pieni', '#ff5b6c'); return }
   w.mosse_slot[free] = move.id

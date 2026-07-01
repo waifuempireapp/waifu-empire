@@ -7,7 +7,7 @@
 <script setup lang="ts">
 import { X, Crown, Clock, Flame, Check } from 'lucide-vue-next'
 import type { Move } from '~/assets/moves/moves-data'
-import { TYPE_META, resolveMoveImage, effectDurationLabel } from '~/utils/moves'
+import { TYPE_META, resolveMoveImage, effectDurationLabel, canLearnMove, weakType } from '~/utils/moves'
 import { ikUrl } from '~/utils/imagekitUrl'
 
 const props = defineProps<{
@@ -24,13 +24,11 @@ const FF = {
   body:    "var(--ff-body, 'Nunito', sans-serif)",
 }
 
-const RAR_ORDER = ['comune', 'raro', 'epico', 'leggendario', 'immersivo']
 const meta = computed(() => TYPE_META[props.move.type])
 const name = computed(() => (props.move as any).name ?? (props.move as any).nome ?? '')
 const imgSrc = computed(() => resolveMoveImage(props.move, 'normal'))
 const imgFail = ref(false)
 const durationLabel = computed(() => effectDurationLabel(props.move))
-const moveRarIdx = computed(() => RAR_ORDER.indexOf((props.move.rarita as string) ?? 'comune'))
 
 // Waifu possedute con info di compatibilità per l'assegnazione
 interface PickWaifu {
@@ -53,7 +51,9 @@ const ownedWaifu = computed<PickWaifu[]>(() => {
     const usati = ['1', '2', '3', '4'].filter(s => slot[s]).length
     const haQuestaMossa = Object.values(slot).includes(props.move.id)
     const rarita = cat?.rarita ?? 'comune'
-    const rarOk = RAR_ORDER.indexOf(rarita) >= moveRarIdx.value
+    // Vincolo UNICO: una waifu non può imparare mosse del tipo a cui è debole.
+    // (Le mosse non sono univoche: la stessa mossa può stare su più waifu.)
+    const learnOk = canLearnMove(cat?.tipo, props.move.type)
     const slotOk = usati < 4 || haQuestaMossa
     return {
       id,
@@ -62,8 +62,8 @@ const ownedWaifu = computed<PickWaifu[]>(() => {
       img: ikUrl(cat?.asset_statica ?? cat?.asset_immersiva ?? null, 'thumbnail'),
       slotsLiberi: 4 - usati,
       haQuestaMossa,
-      compatibile: rarOk && slotOk,
-      motivo: !rarOk ? 'Rarità insufficiente' : !slotOk ? 'Slot pieni' : undefined,
+      compatibile: learnOk && slotOk,
+      motivo: !learnOk ? `Debole a ${weakType(cat?.tipo)?.toUpperCase() ?? '?'}` : !slotOk ? 'Slot pieni' : undefined,
     }
   }).sort((a, b) => Number(b.compatibile) - Number(a.compatibile) || a.nome.localeCompare(b.nome))
 })
