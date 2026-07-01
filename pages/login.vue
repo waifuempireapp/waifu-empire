@@ -18,6 +18,9 @@ definePageMeta({ middleware: 'guest' })
 
 const router    = useRouter()
 const authStore = useAuthStore()
+// Toggle tema chiaro/scuro già dal login (salvato in localStorage; se poi
+// l'utente ha un tema sul profilo, quello prevale al caricamento del gioco)
+const { isDark, toggleTheme } = useTheme()
 const modo      = ref<'login' | 'register'>('login')
 const email     = ref('')
 const password  = ref('')
@@ -100,6 +103,16 @@ function traduciErrore(code?: string): string {
 
 <template>
   <div class="min-h-screen flex items-center justify-center p-4" style="background: var(--theme-bg);">
+    <!-- Toggle tema chiaro/scuro -->
+    <button
+      @click="toggleTheme"
+      :title="isDark ? 'Tema chiaro' : 'Tema scuro'"
+      style="position:fixed;top:16px;right:16px;z-index:50;width:42px;height:42px;border-radius:50%;
+             display:grid;place-items:center;cursor:pointer;font-size:20px;line-height:1;
+             background:var(--theme-surface);border:1px solid var(--theme-border);
+             box-shadow:0 4px 16px var(--theme-shadow);"
+    >{{ isDark ? '☀️' : '🌙' }}</button>
+
     <!-- Card -->
     <div class="fade-up w-full max-w-md rounded-2xl p-7"
          style="background:var(--theme-surface);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
