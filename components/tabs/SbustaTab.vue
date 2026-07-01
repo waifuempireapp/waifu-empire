@@ -20,6 +20,7 @@ import { useAuthStore } from '~/stores/auth'
 import { useMissionsStore } from '~/stores/missions'
 import { ikUrl } from '~/utils/imagekitUrl'
 import MoveCard from '~/components/moves/MoveCard.vue'
+import SummaryCardTile from '~/components/SummaryCardTile.vue'
 
 // ── Costanti colori e font ───────────────────────────────────
 const C = {
@@ -64,12 +65,8 @@ const authStore      = useAuthStore()
 const missionsStore  = useMissionsStore()
 const { t } = useI18n()
 
-// Immagine (thumbnail) di una carta del riepilogo — gestisce waifu E mosse.
-function cardImg(carta: any): string | undefined {
-  const d = carta?.data ?? {}
-  if (carta?.tipo === 'mossa') return ikUrl(d.immagine ?? d.immagine_url ?? d.imageUrl ?? null, 'thumbnail') ?? undefined
-  return ikUrl(d.asset_statica ?? d.asset_immersiva ?? d.immagine ?? null, 'thumbnail') ?? undefined
-}
+// Carta selezionata per la vista ingrandita (zoom) nel riepilogo
+const zoomCard = ref<any>(null)
 
 // ── Anti-FOUC: overlay full-page finché la bustina 3D non ha renderizzato ──
 // Aspetta che un <canvas> Three.js compaia e abbia dimensioni reali.
@@ -998,53 +995,13 @@ function cfTouchEnd(e: TouchEvent) {
       <div style="display:flex;gap:12px;justify-content:center;">
         <div v-for="(carta, ci) in carteRivelate.slice(0, 2)" :key="'s0-' + ci"
           style="width:110px;position:relative;flex-shrink:0;">
-          <div v-if="carta.isNuova"
-            style="position:absolute;top:-10px;left:-4px;z-index:20;background:linear-gradient(135deg,#00b4ff,#00e676);border:2px solid rgba(255,255,255,0.45);border-radius:999px;padding:2px 7px;font-family:var(--ff-label);font-size:10px;font-weight:900;color:#000;box-shadow:0 3px 10px rgba(0,180,255,0.5);">
-            NEW</div>
-          <div v-else-if="carta.tipo === 'waifu' && getCopie(carta) > 0"
-            :style="{ position: 'absolute', top: '-10px', right: '-4px', zIndex: 20, background: getCopie(carta) >= 3 ? 'linear-gradient(135deg,#00c853,#58e0a3)' : 'linear-gradient(135deg,#1a0a35,#2a1255)', border: getCopie(carta) >= 3 ? '2px solid rgba(89,224,163,0.8)' : '2px solid rgba(245,197,96,0.8)', borderRadius: '999px', minWidth: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--ff-mono)', fontSize: '10px', fontWeight: 900, color: '#fff', padding: '0 4px' }">
-            {{ getCopie(carta) }}</div>
-          <div
-            :style="{ borderRadius: '10px', overflow: 'hidden', aspectRatio: '2/3', background: 'var(--theme-bg-secondary)', position: 'relative', border: carta.isNuova ? '1.5px solid rgba(0,200,255,0.5)' : '1.5px solid rgba(255,255,255,0.08)' }">
-            <img v-if="cardImg(carta)"
-              :src="cardImg(carta)" :alt="carta.data?.nome"
-              style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
-            <div v-else style="width:100%;height:100%;display:grid;place-items:center;">
-              <img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.72;" />
-            </div>
-            <div v-if="carta.data?.rarita"
-              :style="{ position: 'absolute', bottom: '4px', left: '4px', background: 'rgba(0,0,0,0.6)', borderRadius: '999px', padding: '2px 6px', fontFamily: FF.label, fontSize: '8px', fontWeight: 800, color: '#fff', textTransform: 'capitalize' }">
-              {{ carta.data.rarita }}</div>
-          </div>
-          <div
-            style="padding:3px 1px 0;text-align:center;font-family:var(--ff-label);font-size:12px;color:var(--theme-text);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-            {{ carta.data?.nome || '—' }}</div>
+          <SummaryCardTile :carta="carta" :is-new="carta.isNuova" :copie="carta.isNuova ? 0 : getCopie(carta)" @zoom="zoomCard = carta" />
         </div>
       </div>
       <div style="display:flex;gap:12px;justify-content:center;">
         <div v-for="(carta, ci) in carteRivelate.slice(2)" :key="'s1-' + ci"
           style="width:110px;position:relative;flex-shrink:0;">
-          <div v-if="carta.isNuova"
-            style="position:absolute;top:-10px;left:-4px;z-index:20;background:linear-gradient(135deg,#00b4ff,#00e676);border:2px solid rgba(255,255,255,0.45);border-radius:999px;padding:2px 7px;font-family:var(--ff-label);font-size:10px;font-weight:900;color:#000;">
-            NEW</div>
-          <div v-else-if="carta.tipo === 'waifu' && getCopie(carta) > 0"
-            :style="{ position: 'absolute', top: '-10px', right: '-4px', zIndex: 20, background: getCopie(carta) >= 3 ? 'linear-gradient(135deg,#00c853,#58e0a3)' : 'linear-gradient(135deg,#1a0a35,#2a1255)', border: getCopie(carta) >= 3 ? '2px solid rgba(89,224,163,0.8)' : '2px solid rgba(245,197,96,0.8)', borderRadius: '999px', minWidth: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--ff-mono)', fontSize: '10px', fontWeight: 900, color: '#fff', padding: '0 4px' }">
-            {{ getCopie(carta) }}</div>
-          <div
-            :style="{ borderRadius: '10px', overflow: 'hidden', aspectRatio: '2/3', background: 'var(--theme-bg-secondary)', position: 'relative', border: carta.isNuova ? '1.5px solid rgba(0,200,255,0.5)' : '1.5px solid rgba(255,255,255,0.08)' }">
-            <img v-if="cardImg(carta)"
-              :src="cardImg(carta)" :alt="carta.data?.nome"
-              style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
-            <div v-else style="width:100%;height:100%;display:grid;place-items:center;">
-              <img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.72;" />
-            </div>
-            <div v-if="carta.data?.rarita"
-              :style="{ position: 'absolute', bottom: '4px', left: '4px', background: 'rgba(0,0,0,0.6)', borderRadius: '999px', padding: '2px 6px', fontFamily: FF.label, fontSize: '8px', fontWeight: 800, color: '#fff', textTransform: 'capitalize' }">
-              {{ carta.data.rarita }}</div>
-          </div>
-          <div
-            style="padding:3px 1px 0;text-align:center;font-family:var(--ff-label);font-size:12px;color:var(--theme-text);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-            {{ carta.data?.nome || '—' }}</div>
+          <SummaryCardTile :carta="carta" :is-new="carta.isNuova" :copie="carta.isNuova ? 0 : getCopie(carta)" @zoom="zoomCard = carta" />
         </div>
       </div>
     </div>
@@ -1080,35 +1037,13 @@ function cfTouchEnd(e: TouchEvent) {
         <div style="display:flex;gap:10px;justify-content:center;margin-bottom:10px;">
           <div v-for="(carta, ci) in pack.slice(0, 2)" :key="'m' + pi + '-a-' + ci"
             style="width:calc((100% - 20px)/3);max-width:90px;position:relative;flex-shrink:0;">
-            <div v-if="carta.isNuova"
-              style="position:absolute;top:-8px;left:-3px;z-index:20;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:1px 6px;font-family:var(--ff-label);font-size:9px;font-weight:900;color:#000;">
-              NEW</div>
-            <div
-              :style="{ borderRadius: '8px', overflow: 'hidden', aspectRatio: '2/3', background: 'var(--theme-bg-secondary)', position: 'relative' }">
-              <img v-if="cardImg(carta)"
-                :src="cardImg(carta)" :alt="carta.data?.nome"
-                style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
-              <div v-else style="width:100%;height:100%;display:grid;place-items:center;">
-                <img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.72;" />
-              </div>
-            </div>
+            <SummaryCardTile :carta="carta" :is-new="carta.isNuova" :copie="0" @zoom="zoomCard = carta" />
           </div>
         </div>
         <div style="display:flex;gap:10px;justify-content:center;">
           <div v-for="(carta, ci) in pack.slice(2)" :key="'m' + pi + '-b-' + ci"
             style="width:calc((100% - 20px)/3);max-width:90px;position:relative;flex-shrink:0;">
-            <div v-if="carta.isNuova"
-              style="position:absolute;top:-8px;left:-3px;z-index:20;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:1px 6px;font-family:var(--ff-label);font-size:9px;font-weight:900;color:#000;">
-              NEW</div>
-            <div
-              :style="{ borderRadius: '8px', overflow: 'hidden', aspectRatio: '2/3', background: 'var(--theme-bg-secondary)', position: 'relative' }">
-              <img v-if="cardImg(carta)"
-                :src="cardImg(carta)" :alt="carta.data?.nome"
-                style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" />
-              <div v-else style="width:100%;height:100%;display:grid;place-items:center;">
-                <img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.72;" />
-              </div>
-            </div>
+            <SummaryCardTile :carta="carta" :is-new="carta.isNuova" :copie="0" @zoom="zoomCard = carta" />
           </div>
         </div>
       </div>
@@ -1347,6 +1282,15 @@ function cfTouchEnd(e: TouchEvent) {
     @success="(newKisses: number) => { emit('updateProfilo', { kisses: newKisses }); sfidaShortage = false; sfidaConferma = true }"
     @cancel="sfidaShortage = false"
   />
+
+  <!-- Zoom carta: vista ingrandita al tap nel riepilogo -->
+  <div v-if="zoomCard" @click="zoomCard = null"
+    style="position:fixed;inset:0;z-index:300;background:rgba(4,2,14,0.85);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn 0.2s ease;">
+    <div @click.stop style="animation:scaleIn 0.25s ease-out;">
+      <CartaWaifu v-if="zoomCard.tipo === 'waifu'" :waifu="zoomCard.data" dimensione="grande" tipo="auto" />
+      <div v-else-if="zoomCard.tipo === 'mossa'" style="width:300px;"><MoveCard :move="(zoomCard.data as any)" :owned="true" /></div>
+    </div>
+  </div>
 </template>
 
 <!-- STILI ANIMAZIONI NEON E RIVELAZIONE IN PRESERVE-3D -->

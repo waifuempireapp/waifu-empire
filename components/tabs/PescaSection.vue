@@ -4,6 +4,9 @@ import type { CSSProperties } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 import { useMissionsStore } from '~/stores/missions'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ikUrl } from '~/utils/imagekitUrl'
+import { TYPE_META } from '~/utils/moves'
+import type { MoveType } from '~/assets/moves/moves-data'
 
 // ── Costo fisso per pescare un pack ──────────────────────────
 const KISSES_COST = 10
@@ -35,6 +38,9 @@ interface CartaPack {
   nome?: string
   immagine?: string
   hot?: boolean
+  danno?: number | null
+  tipoMossa?: string | null
+  descrizione?: string | null
 }
 
 interface Pack {
@@ -157,6 +163,8 @@ async function ricaricaFeed() {
 
 // ── Coreografia Shuffle 3D Stile Pokémon Pocket ────────────────
 const pickPhase = ref<'reveal' | 'shuffle' | 'pick' | 'revealing' | 'revealed'>('reveal')
+// Carta ingrandita (zoom) al tap dopo la rivelazione
+const zoomCard = ref<CartaPack | null>(null)
 // Carte rivelate in place (sostituisce PescaRevealAnimation)
 const inPlaceCards   = ref<CartaPack[]>([])          // 5 carte nell'ordine mostrato
 const inPlaceNew     = ref<boolean[]>([])              // badge NEW
@@ -424,6 +432,12 @@ async function chiudiRiveal() {
 
 // Click su carta durante il pick: seleziona e pesca automaticamente senza bottone
 function onPickCard(idx: number) {
+  // A rivelazione avvenuta, il tap ingrandisce la carta (zoom)
+  if (pickPhase.value === 'revealed') {
+    const c = inPlaceCards.value[idx]
+    if (c) zoomCard.value = c
+    return
+  }
   if (pickPhase.value !== 'pick' || busy.value) return
   selectedCardIndex.value = idx
   confermaScelta()
@@ -738,6 +752,29 @@ onUnmounted(() => {
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- Zoom carta al tap dopo la rivelazione -->
+  <div v-if="zoomCard" @click="zoomCard = null"
+    style="position:fixed;inset:0;z-index:400;background:rgba(4,2,14,0.88);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px;">
+    <div @click.stop style="width:100%;max-width:300px;border-radius:16px;overflow:hidden;border:1.5px solid rgba(255,255,255,0.15);background:var(--theme-surface);">
+      <div style="position:relative;width:100%;padding-bottom:150%;background:var(--theme-bg-secondary);">
+        <img v-if="zoomCard.immagine" :src="ikUrl(zoomCard.immagine,'normal') ?? undefined" :alt="zoomCard.nome"
+          style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 12%;" />
+        <div v-if="zoomCard.tipo === 'mossa'" style="position:absolute;top:8px;left:8px;background:rgba(139,111,216,0.95);color:#fff;border-radius:999px;padding:2px 9px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;letter-spacing:0.12em;">⚔ MOSSA</div>
+        <div v-if="zoomCard.rarita" style="position:absolute;bottom:8px;left:8px;background:#fff;color:#1a1a2e;border-radius:999px;padding:2px 9px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:800;text-transform:capitalize;box-shadow:0 1px 4px rgba(0,0,0,0.3);">{{ zoomCard.rarita }}</div>
+      </div>
+      <div style="padding:12px 14px;">
+        <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:17px;font-weight:800;color:var(--theme-text);">{{ zoomCard.nome }}</div>
+        <template v-if="zoomCard.tipo === 'mossa'">
+          <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+            <span style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:22px;font-weight:800;" :style="{ color: (zoomCard.tipoMossa && TYPE_META[zoomCard.tipoMossa as MoveType]?.accent) || 'var(--theme-text)' }">{{ zoomCard.danno ?? 0 }}<small style="font-size:10px;color:var(--theme-text-3);margin-left:3px;">POTENZA</small></span>
+            <span v-if="zoomCard.tipoMossa && TYPE_META[zoomCard.tipoMossa as MoveType]" style="margin-left:auto;background:#fff;border-radius:999px;padding:2px 10px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;font-weight:900;box-shadow:0 1px 4px rgba(0,0,0,0.3);" :style="{ color: TYPE_META[zoomCard.tipoMossa as MoveType].accent }">{{ TYPE_META[zoomCard.tipoMossa as MoveType].icon }} {{ TYPE_META[zoomCard.tipoMossa as MoveType].label }}</span>
+          </div>
+          <p v-if="zoomCard.descrizione" style="margin:8px 0 0;font-family:var(--ff-body,'Nunito',sans-serif);font-size:12.5px;line-height:1.45;color:var(--theme-text-2);">{{ zoomCard.descrizione }}</p>
+        </template>
+      </div>
     </div>
   </div>
 </template>
