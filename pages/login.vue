@@ -6,10 +6,11 @@
   ============================================================ -->
 <script setup lang="ts">
 import {
-  signInWithPopup, signInWithRedirect,
+  signInWithPopup, signInWithRedirect, signInWithCredential,
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   GoogleAuthProvider,
 } from 'firebase/auth'
+import { Capacitor } from '@capacitor/core'
 import { getFirebaseAuth }  from '~/utils/firebase'
 import { useAuthStore }     from '~/stores/auth'
 import { getUserProfile }   from '~/utils/firestoreService'
@@ -48,18 +49,30 @@ async function loginGoogle() {
   errore.value = ''
   busy.value   = true
   try {
-    const auth     = getFirebaseAuth()
-    const provider = new GoogleAuthProvider()
-    // Desktop: popup — Mobile: redirect se popup bloccato
-    try {
-      await signInWithPopup(auth, provider)
-    } catch (popupErr: unknown) {
-      const c = (popupErr as { code?: string }).code
-      if (c === 'auth/popup-blocked' || c === 'auth/popup-closed-by-user') {
-        await signInWithRedirect(auth, provider)
-        return
+    const auth = getFirebaseAuth()
+    // App nativa (Capacitor): login Google NATIVO. Le WebView bloccano il
+    // popup OAuth di Google, quindi usiamo il plugin nativo e poi autentichiamo
+    // Firebase con la credenziale ottenuta.
+    if (Capacitor.isNativePlatform()) {
+      const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication')
+      const result = await FirebaseAuthentication.signInWithGoogle()
+      const idToken = result.credential?.idToken
+      const accessToken = result.credential?.accessToken
+      const cred = GoogleAuthProvider.credential(idToken, accessToken)
+      await signInWithCredential(auth, cred)
+    } else {
+      const provider = new GoogleAuthProvider()
+      // Desktop: popup — Mobile web: redirect se popup bloccato
+      try {
+        await signInWithPopup(auth, provider)
+      } catch (popupErr: unknown) {
+        const c = (popupErr as { code?: string }).code
+        if (c === 'auth/popup-blocked' || c === 'auth/popup-closed-by-user') {
+          await signInWithRedirect(auth, provider)
+          return
+        }
+        throw popupErr
       }
-      throw popupErr
     }
   } catch (e: unknown) {
     errore.value = traduciErrore((e as { code?: string }).code)
@@ -103,14 +116,13 @@ function traduciErrore(code?: string): string {
 
 <template>
   <div class="min-h-screen flex items-center justify-center p-4" style="background: var(--theme-bg);">
-    <!-- Toggle tema chiaro/scuro -->
+    <!-- Toggle tema chiaro/scuro — stile 3D (ombre + rilievo) -->
     <button
       @click="toggleTheme"
       :title="isDark ? 'Tema chiaro' : 'Tema scuro'"
-      style="position:fixed;top:16px;right:16px;z-index:50;width:42px;height:42px;border-radius:50%;
-             display:grid;place-items:center;cursor:pointer;font-size:20px;line-height:1;
-             background:var(--theme-surface);border:1px solid var(--theme-border);
-             box-shadow:0 4px 16px var(--theme-shadow);"
+      class="btn-3d"
+      style="position:fixed;top:16px;right:16px;z-index:50;width:44px;height:44px;border-radius:50%;
+             display:grid;place-items:center;cursor:pointer;font-size:20px;line-height:1;"
     >{{ isDark ? '☀️' : '🌙' }}</button>
 
     <!-- Card -->

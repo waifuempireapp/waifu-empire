@@ -141,21 +141,16 @@ const pendingFriendRequests = computed(() => {
     <!-- ── DESTRA: admin + campanella + EXIT ─────────────────── -->
     <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
 
-      <button style="
+      <button class="btn-3d" style="
           position: relative;
           width: 38px; height: 38px;
           font-family: var(--ff-label,'Saira Condensed',sans-serif);
           font-size: 14px; letter-spacing: 0.13em;
           text-transform: uppercase;
-          color: var(--accent);
-          background: var(--theme-surface);
-          border: 1px solid var(--theme-accent);
-          box-shadow: var(--shadow-float);
           border-radius: 99px;
           cursor: pointer; padding: 0 12px;
           min-height: 38px; font-weight: 700;
           display: inline-flex; align-items: center; gap: 5px;
-          transition: color 0.2s, background 0.2s;
         " @click="() => { }">
         <Bell :size="20" stroke-width="1.5" style="color:var(--theme-text-2);" />
         <span v-if="pendingFriendRequests > 0" style="
@@ -172,22 +167,18 @@ const pendingFriendRequests = computed(() => {
       </button>
 
       <!-- NEGOZIO (al posto del vecchio bottone ESCI) -->
-      <button style="
+      <button class="btn-3d" style="
           width: 38px; height: 38px;
           font-family: var(--ff-label,'Saira Condensed',sans-serif);
           font-size: 12px; letter-spacing: 0.13em;
           text-transform: uppercase;
-          color: var(--accent);
-          background: var(--theme-surface);
-          border: 1px solid var(--theme-accent);
-          box-shadow: var(--shadow-float);
+          color: var(--theme-accent);
           border-radius: 99px;
           cursor: pointer; padding: 0 12px;
           min-height: 38px; font-weight: 700;
           display: inline-flex; align-items: center; gap: 5px;
-          transition: color 0.2s, background 0.2s;
         " @click="gameStore.toggleNegozio(true)">
-        <ShoppingCart :size="15" stroke-width="1.8" /> 
+        <ShoppingCart :size="15" stroke-width="1.8" />
         <!-- {{ $t('settings.shop') }} -->
       </button>
 
