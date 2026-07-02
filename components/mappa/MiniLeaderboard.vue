@@ -1,23 +1,21 @@
 <template>
-  <!-- Classifica territori con kisses passivi, espandibile -->
-  <div :style="wrapperStyle">
+  <!-- Classifica territori con kisses passivi — modale centrata -->
+  <div v-if="open" :style="overlayStyle" @click.self="emit('close')">
+    <div :style="wrapperStyle">
 
-    <!-- Badge kisses — fuoriesce in alto a sinistra -->
-    <span v-if="pixelCount > 0 && accumulated > 0" :style="badgeStyle">
-      <KissesIcon :size="13" /> +{{ accumulated }}
-    </span>
-
-    <!-- Header cliccabile per espandere/collassare -->
-    <button :style="headerStyle" @click="expanded = !expanded">
+    <!-- Header modale: titolo + chiudi -->
+    <div :style="headerStyle">
       <div :style="{ display:'flex', alignItems:'center', gap:'10px' }">
-        <Trophy :size="16" stroke-width="1.5" />
+        <Trophy :size="18" stroke-width="1.5" />
         <span :style="titleStyle">Classifica</span>
       </div>
-      <span :style="{ fontSize:'16px', color:'var(--theme-text-3)', transition:'transform 0.25s', transform: expanded ? 'rotate(180deg)' : 'rotate(0)' }">▾</span>
-    </button>
+      <button :style="closeBtnStyle" @click="emit('close')" aria-label="Chiudi">
+        <X :size="18" stroke-width="2" />
+      </button>
+    </div>
 
-    <!-- Contenuto espandibile -->
-    <div v-if="expanded">
+    <!-- Contenuto -->
+    <div>
       <!-- Riga kisses passivi (solo se possiede territori) -->
       <div v-if="pixelCount > 0" :style="passiveRowStyle">
         <div :style="{ display:'flex', alignItems:'center', gap:'10px' }">
@@ -66,12 +64,13 @@
         </div>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-// Trophy (Lucide) sostituisce l'emoji 🏆 nell'header della classifica
-import { Trophy } from 'lucide-vue-next'
+// Trophy (Lucide) nell'header della classifica, X per chiudere la modale
+import { Trophy, X } from 'lucide-vue-next'
 import type { CSSProperties } from 'vue'
 // Classifica mini mappa con kisses passivi, countdown e toggle espansione
 const authStore = useAuthStore()
@@ -81,6 +80,7 @@ interface Chunk { pixels?: Record<string, ChunkPixel> }
 interface Profilo { pixelCount?: number; kisses?: number; lastKissesClaimAt?: { toMillis?: () => number } }
 
 const props = defineProps<{
+  open:         boolean
   chunks:       Record<string, Chunk> | null
   userUid:      string
   profilo:      Profilo | null
@@ -90,10 +90,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   kissesUpdate: [amount: number]
   claimAt:      [timestamp: number]
+  close:        []
 }>()
-
-// Stato espansione (default: collassato)
-const expanded = ref(false)
 
 const C = { gold:'#f5c560', goldL:'#ffe9a8', sakura:'#ff85b6', aqua:'#6cf0e0', violet:'#a78bfa', ok:'#58e0a3', err:'#ff5b6c' }
 const FF = {
@@ -195,29 +193,34 @@ const formatTime = (seconds: number): string => {
 }
 
 // ── Stili — tutti con CSS variables per supporto light/dark ───────────────────
+const overlayStyle: CSSProperties = {
+  position: 'fixed', inset: '0', zIndex: 500,
+  background: 'var(--theme-overlay)', backdropFilter: 'blur(8px)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px',
+}
 const wrapperStyle: CSSProperties = {
   position: 'relative',
+  width: '100%', maxWidth: '400px',
+  maxHeight: '82vh', overflowY: 'auto',
   background: 'var(--theme-surface)',
   border: '1px solid var(--theme-border)',
-  margin: '24px 16px 12px',
-  borderRadius: '14px',
+  borderRadius: '18px',
+  boxShadow: '0 12px 40px var(--theme-shadow)',
 }
 const headerStyle: CSSProperties = {
   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-  padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
+  padding: '16px 16px 12px',
+  borderBottom: '1px solid var(--theme-border)',
 }
 const titleStyle: CSSProperties = {
   fontFamily: FF.label, fontSize: '16px', fontWeight: 700,
   letterSpacing: '0.18em', color: 'var(--theme-text)', textTransform: 'uppercase',
 }
-const badgeStyle: CSSProperties = {
-  position: 'absolute', top: '-18px', left: '-10px',
-  display: 'inline-flex', alignItems: 'center', gap: '5px',
-  background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)',
-  borderRadius: '999px', padding: '4px 14px',
-  fontFamily: FF.label, fontSize: '14px', fontWeight: 700, color: '#1a1a2e',
-  boxShadow: '0 4px 16px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.12)',
-  zIndex: 1,
+const closeBtnStyle: CSSProperties = {
+  flexShrink: 0, width: '32px', height: '32px',
+  background: 'transparent', border: '1px solid var(--theme-border)',
+  borderRadius: '50%', cursor: 'pointer',
+  display: 'grid', placeItems: 'center', color: 'var(--theme-text-3)',
 }
 const passiveRowStyle: CSSProperties = {
   padding: '12px 16px',

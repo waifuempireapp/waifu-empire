@@ -75,6 +75,7 @@ const raidAttackMode     = ref(false) // distingue BattleModal normale da raid
 const showRound          = ref(false)
 const showPurchase       = ref(false)
 const showOffers         = ref(false)
+const showLeaderboard    = ref(false)
 const showTutorial       = ref(false)
 const showDefenseEditor  = ref(false)
 const activeBattle       = ref<any>(null)
@@ -696,21 +697,38 @@ async function onTerritoryClick(territoryId: string) {
         <div :style="{ fontFamily: FF.display, fontSize: '20px', color: 'var(--theme-text)', fontWeight: 900, lineHeight: 1.1 }">
           Mappa del Mondo
         </div>
-        <!-- Bottone offerte: rotondo, solo emoji 💌 -->
-        <button
-          @click="showOffers = true"
-          :style="{
-            position: 'relative', flexShrink: 0,
-            width: '38px', height: '38px',
-            background: 'var(--theme-accent-pink)', border: 'none',
-            borderRadius: '50%', fontSize: '22px', lineHeight: 1,
-            cursor: 'pointer', display: 'grid', placeItems: 'center',
-            boxShadow: '0 4px 12px var(--theme-shadow)',
-          }"
-        >
-          💌
-          <span v-if="pendingOffersCount > 0" :style="{ position: 'absolute', top: '-5px', right: '-5px', background: '#ff5b6c', color: '#fff', width: '17px', height: '17px', borderRadius: '50%', display: 'grid', placeItems: 'center', fontFamily: FF.mono, fontSize: '9px', fontWeight: 800, border: '1.5px solid var(--theme-surface)' }">{{ pendingOffersCount }}</span>
-        </button>
+        <!-- Bottoni azione header: classifica (🏆) + offerte (💌), stesso stile -->
+        <div :style="{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }">
+          <!-- Bottone classifica: rotondo, stesso stile del bottone offerte -->
+          <button
+            @click="showLeaderboard = true"
+            :style="{
+              flexShrink: 0,
+              width: '38px', height: '38px',
+              background: 'var(--theme-accent-pink)', border: 'none',
+              borderRadius: '50%', fontSize: '20px', lineHeight: 1,
+              cursor: 'pointer', display: 'grid', placeItems: 'center',
+              boxShadow: '0 4px 12px var(--theme-shadow)',
+            }"
+          >
+            🏆
+          </button>
+          <!-- Bottone offerte: rotondo, solo emoji 💌 -->
+          <button
+            @click="showOffers = true"
+            :style="{
+              position: 'relative', flexShrink: 0,
+              width: '38px', height: '38px',
+              background: 'var(--theme-accent-pink)', border: 'none',
+              borderRadius: '50%', fontSize: '22px', lineHeight: 1,
+              cursor: 'pointer', display: 'grid', placeItems: 'center',
+              boxShadow: '0 4px 12px var(--theme-shadow)',
+            }"
+          >
+            💌
+            <span v-if="pendingOffersCount > 0" :style="{ position: 'absolute', top: '-5px', right: '-5px', background: '#ff5b6c', color: '#fff', width: '17px', height: '17px', borderRadius: '50%', display: 'grid', placeItems: 'center', fontFamily: FF.mono, fontSize: '9px', fontWeight: 800, border: '1.5px solid var(--theme-surface)' }">{{ pendingOffersCount }}</span>
+          </button>
+        </div>
       </div>
 
       <!-- ── Raid Widget (inline) — sopra la mappa ─────────────────────── -->
@@ -833,13 +851,15 @@ async function onTerritoryClick(territoryId: string) {
 
       <!-- Sezione Missioni Mappa rimossa — le missioni sono accessibili dal FAB Target -->
 
-      <!-- Mini leaderboard territori + kisses passivi -->
+      <!-- Classifica territori + kisses passivi — modale aperta dal bottone 🏆 nell'header -->
       <MiniLeaderboard
+        :open="showLeaderboard"
         :chunks="chunks"
         :user-uid="authStore.user?.uid ?? ''"
         :profilo="profilo as any"
         @kisses-update="(k) => emit('updateProfilo', { kisses: (profilo?.kisses as number ?? 0) + k })"
         @claim-at="() => {}"
+        @close="showLeaderboard = false"
       />
 
       <!-- Pixel detail popup -->
