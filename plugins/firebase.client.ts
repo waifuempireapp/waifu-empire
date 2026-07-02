@@ -20,10 +20,19 @@ import {
 export default defineNuxtPlugin(() => {
   const config = useRuntimeConfig()
 
+  // authDomain SAME-ORIGIN in produzione: il proxy /__/auth in nuxt.config
+  // serve l'helper Firebase dallo stesso dominio dell'app, eliminando lo storage
+  // partitioning di Safari/iOS (ITP) che bloccava il login Google. In locale/preview
+  // resta il default firebaseapp.com (nessun proxy configurato lì).
+  const PROD_HOST = 'waifu-empire.vercel.app'
+  const authDomain = (typeof window !== 'undefined' && window.location.hostname === PROD_HOST)
+    ? window.location.host
+    : (config.public.firebaseAuthDomain as string)
+
   // Configurazione Firebase lato client — usa le variabili pubbliche (NUXT_PUBLIC_*)
   const firebaseConfig = {
     apiKey:            config.public.firebaseApiKey as string,
-    authDomain:        config.public.firebaseAuthDomain as string,
+    authDomain,
     projectId:         config.public.firebaseProjectId as string,
     storageBucket:     config.public.firebaseStorageBucket as string,
     messagingSenderId: config.public.firebaseMessagingSenderId as string,
