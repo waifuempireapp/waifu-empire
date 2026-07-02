@@ -5,7 +5,14 @@
 import { X, Swords, Zap } from 'lucide-vue-next'
 import { useAuthStore } from '~/stores/auth'
 import { RARITA } from '~/utils/constants'
+import { computeSpeed, computeCritChance, computeHp } from '~/utils/battleEngine'
 import RandomMovesModal from '~/components/RandomMovesModal.vue'
+
+// Stat di battaglia con fallback calcolati: così ⚡Vel, 💚HP e 💥Crit sono SEMPRE
+// mostrati sulle carte (anche se battleStats non è memorizzato nel catalogo).
+function statSpeed(w: any): number { return Math.round(w.battleStats?.speed ?? w.velocita_base ?? w.velocita ?? computeSpeed(w)) }
+function statHp(w: any): number { return Math.round(w.battleStats?.maxHp ?? w.hp ?? computeHp(w)) }
+function statCrit(w: any): number { return w.battleStats?.critChance != null ? Math.round(w.battleStats.critChance) : Math.round(computeCritChance(w) * 100) }
 
 // ── Costanti locali (da _shared.jsx) ─────────────────────────────────────────
 const C = {
@@ -493,13 +500,16 @@ const visiblePages = computed(() => {
                 </div>
               </div>
 
-              <!-- Stats veloci -->
-              <div :style="{ display:'flex', gap:'10px' }">
-                <span v-if="w.battleStats?.speed" :style="{ fontFamily:FF.mono, fontSize:'12px', fontWeight:600, color: isDark ? '#6cf0e0' : '#0891b2', display:'flex', alignItems:'center', gap:'3px' }">
-                  <Zap :size="12" stroke-width="1.5" />{{ w.battleStats.speed }}
+              <!-- Stats veloci: ⚡ Velocità · 💚 HP · 💥 Crit (sempre visibili) -->
+              <div :style="{ display:'flex', gap:'10px', justifyContent:'space-between' }">
+                <span :style="{ fontFamily:FF.mono, fontSize:'12px', fontWeight:600, color: isDark ? '#6cf0e0' : '#0891b2', display:'flex', alignItems:'center', gap:'3px' }">
+                  <Zap :size="12" stroke-width="1.5" />{{ statSpeed(w) }}
                 </span>
-                <span v-if="w.battleStats?.critChance" :style="{ fontFamily:FF.mono, fontSize:'12px', fontWeight:600, color: gold }">
-                  💥 {{ w.battleStats.critChance }}%
+                <span :style="{ fontFamily:FF.mono, fontSize:'12px', fontWeight:600, color: isDark ? '#06d6a0' : '#059669', display:'flex', alignItems:'center', gap:'3px' }">
+                  💚 {{ statHp(w) }}
+                </span>
+                <span :style="{ fontFamily:FF.mono, fontSize:'12px', fontWeight:600, color: gold, display:'flex', alignItems:'center', gap:'3px' }">
+                  💥 {{ statCrit(w) }}%
                 </span>
               </div>
             </div><!-- fine colonna destra -->
