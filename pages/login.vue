@@ -6,7 +6,7 @@
   ============================================================ -->
 <script setup lang="ts">
 import {
-  signInWithPopup, signInWithRedirect, signInWithCredential,
+  signInWithRedirect, getRedirectResult, signInWithCredential,
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   GoogleAuthProvider,
 } from 'firebase/auth'
@@ -45,6 +45,17 @@ watch(
   { immediate: true },
 )
 
+// Completa il flusso Google via redirect (web) al ritorno sulla pagina
+onMounted(async () => {
+  if (Capacitor.isNativePlatform()) return
+  try {
+    await getRedirectResult(getFirebaseAuth())
+    // Il watch su isLoggedIn reindirizza a /gioco o /onboarding
+  } catch (e: unknown) {
+    errore.value = traduciErrore((e as { code?: string }).code)
+  }
+})
+
 async function loginGoogle() {
   errore.value = ''
   busy.value   = true
@@ -58,18 +69,10 @@ async function loginGoogle() {
       const cred = GoogleAuthProvider.credential(result.credential?.idToken, result.credential?.accessToken)
       await signInWithCredential(auth, cred)
     } else {
+      // Web: redirect (il popup su domini con COOP non rileva la chiusura →
+      // signInWithPopup resta appeso). Il ritorno è gestito da getRedirectResult.
       const provider = new GoogleAuthProvider()
-      // Desktop: popup — Mobile web: redirect se popup bloccato
-      try {
-        await signInWithPopup(auth, provider)
-      } catch (popupErr: unknown) {
-        const c = (popupErr as { code?: string }).code
-        if (c === 'auth/popup-blocked' || c === 'auth/popup-closed-by-user') {
-          await signInWithRedirect(auth, provider)
-          return
-        }
-        throw popupErr
-      }
+      await signInWithRedirect(auth, provider)
     }
   } catch (e: unknown) {
     errore.value = traduciErrore((e as { code?: string }).code)

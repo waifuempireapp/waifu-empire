@@ -5,7 +5,7 @@
   ============================================================ -->
 <script setup lang="ts">
 import { useAuthStore }         from '~/stores/auth'
-import { getUserProfile, createUserProfile, setCollezione, isNomeImperoTaken } from '~/utils/firestoreService'
+import { getUserProfile } from '~/utils/firestoreService'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -31,31 +31,22 @@ async function conferma() {
   erroreNome.value = ''
   busy.value = true
   try {
-    const taken = await isNomeImperoTaken(nome)
-    if (taken) {
-      erroreNome.value = 'Questo nome è già preso. Scegline un altro!'
-      busy.value = false
-      return
-    }
-
-    const uid = authStore.user.uid
-
-    await createUserProfile(uid, {
-      nomeImpero:             nome,
-      coloreImpero:           coloreImpero.value,
-      email:                  authStore.user.email,
-      displayName:            authStore.user.displayName || nome,
-      energia:                10,
-      pacchettiOmaggio:       2,
-      pacchettiBenvenuto:     5,
-      pacchettiSfida:         0,
-      ultimaRicaricaEnergia:  new Date(),
-      ultimaRicaricaPacchetti: new Date(),
+    // Creazione lato server (admin SDK): controllo nome univoco + scrittura
+    // profilo/collezione senza dipendere dalle Firestore Rules del client.
+    const token = await authStore.user.getIdToken()
+    const res = await $fetch<{ success?: boolean; taken?: boolean }>('/api/onboarding/create-empire', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: { nomeImpero: nome, coloreImpero: coloreImpero.value, email: authStore.user.email, displayName: authStore.user.displayName },
     })
-
-    await setCollezione(uid, { waifu: {}, outfit: {}, pose: {}, equipaggiamento: {}, preset: {} })
-
+    if (res.taken) { erroreNome.value = 'Questo nome è già preso. Scegline un altro!'; return }
+    if (!res.success) { erroreNome.value = 'Creazione non riuscita. Riprova.'; return }
     router.replace('/gioco')
+  } catch (e: unknown) {
+    // Errore VISIBILE all'utente invece di fallire silenziosamente in console
+    const err = e as { data?: { message?: string }; message?: string }
+    erroreNome.value = err?.data?.message ?? err?.message ?? 'Errore nella creazione dell’impero. Riprova.'
+    console.error('[onboarding] create-empire', e)
   } finally {
     busy.value = false
   }
