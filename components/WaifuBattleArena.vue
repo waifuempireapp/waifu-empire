@@ -1528,10 +1528,12 @@ const mvp = computed(() => {
       </div>
 
       <!-- ── ZONA 5+6: Action Panel ── -->
+      <!-- Altezza FISSA (non min/max variabile): così l'arena sopra non si ridimensiona
+           tra le fasi (scelta/messaggio/cambio) e le carte non si alzano/abbassano.
+           Il contenuto piu' alto scrolla internamente (overflowY:auto). -->
       <div :style="{
         flexShrink:0,
-        minHeight: isMobile ? 'min(210px, 44dvh)' : 'clamp(188px, 37dvh, 252px)',
-        maxHeight: isMobile ? '50dvh' : 'clamp(220px, 45dvh, 300px)',
+        height: isMobile ? '50dvh' : 'clamp(220px, 45dvh, 300px)',
         display:'flex', flexDirection:'column',
         background:'var(--theme-surface)',
         borderTop:'1px solid var(--theme-border)',
