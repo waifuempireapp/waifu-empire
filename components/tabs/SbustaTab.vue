@@ -1127,7 +1127,8 @@ function cfTouchEnd(e: TouchEvent) {
 
         <!-- Bottoni APRI 1 / APRI 10 + contatore — subito sotto la carta -->
         <div style="width:100%;flex-shrink:0;">
-          <div style="display:flex;gap:12px;margin-bottom:14px;">
+          <!-- Nascosti quando non ci sono pacchetti da aprire: resta solo la pagina espansioni -->
+          <div v-if="totalePacchetti > 0" style="display:flex;gap:12px;margin-bottom:14px;">
 
             <!-- APRI 1 -->
             <button

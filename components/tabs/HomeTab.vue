@@ -259,7 +259,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
     <div
       class="ht-hero-panel"
       :class="totalPack > 0 ? 'ht-hero-panel--active' : 'ht-hero-panel--empty'"
-      @click="totalPack > 0 ? emit('apriSbusto') : emit('setTab', 'pacchetti')"
+      @click="emit('apriSbusto')"
     >
       <!-- Raggi decorativi in rotazione -->
       <div class="ht-hero-rays" :class="totalPack > 0 ? 'ht-hero-rays--pink' : 'ht-hero-rays--gold'" />
@@ -294,7 +294,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
         <button
           class="ht-hero-cta"
           :class="totalPack > 0 ? 'ht-hero-cta--pink' : 'ht-hero-cta--gold'"
-          @click.stop="totalPack > 0 ? emit('apriSbusto') : emit('setTab', 'pacchetti')"
+          @click.stop="emit('apriSbusto')"
         >
           {{ totalPack > 0 ? $t('home.cta_open_now') : $t('home.cta_go_packs') }}
         </button>
