@@ -18,6 +18,16 @@ watch(
   },
   { immediate: true },
 )
+
+// Rete di sicurezza ANTI-LOADER-INFINITO: se dopo 10s l'inizializzazione di
+// Firebase Auth non ha risposto (plugin fallito, rete che blocca googleapis,
+// stato persistito corrotto su PWA/iOS…), non restare bloccati per sempre sul
+// loader: manda al /login, dove l'utente puo' almeno riprovare l'accesso.
+onMounted(() => {
+  setTimeout(() => {
+    if (!authStore.ready) router.replace('/login')
+  }, 10000)
+})
 </script>
 
 <template>
