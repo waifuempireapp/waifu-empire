@@ -6,7 +6,7 @@
   ============================================================ -->
 <script setup lang="ts">
 import {
-  signInWithRedirect, getRedirectResult, signInWithCredential,
+  signInWithPopup, signInWithRedirect, getRedirectResult, signInWithCredential,
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   GoogleAuthProvider,
 } from 'firebase/auth'
@@ -69,10 +69,31 @@ async function loginGoogle() {
       const cred = GoogleAuthProvider.credential(result.credential?.idToken, result.credential?.accessToken)
       await signInWithCredential(auth, cred)
     } else {
-      // Web: redirect (il popup su domini con COOP non rileva la chiusura →
-      // signInWithPopup resta appeso). Il ritorno è gestito da getRedirectResult.
+      // Web: POPUP-FIRST con fallback a REDIRECT.
+      // Il redirect da solo è fragile su Safari/iOS (ITP + storage partitioning:
+      // torna dopo Google ma getRedirectResult dà null → login "non funziona").
+      // Il popup è più affidabile; se è bloccato/non supportato (in-app browser,
+      // alcune PWA), si ripiega automaticamente sul redirect.
       const provider = new GoogleAuthProvider()
-      await signInWithRedirect(auth, provider)
+      provider.setCustomParameters({ prompt: 'select_account' })
+      try {
+        await signInWithPopup(auth, provider)
+        // Successo: il watch su isLoggedIn reindirizza a /gioco o /onboarding
+      } catch (e: unknown) {
+        const code = (e as { code?: string }).code ?? ''
+        const fallbackCodes = [
+          'auth/popup-blocked',
+          'auth/popup-closed-by-user',
+          'auth/cancelled-popup-request',
+          'auth/operation-not-supported-in-this-environment',
+          'auth/web-storage-unsupported',
+        ]
+        if (fallbackCodes.includes(code)) {
+          await signInWithRedirect(auth, provider)
+        } else {
+          throw e
+        }
+      }
     }
   } catch (e: unknown) {
     errore.value = traduciErrore((e as { code?: string }).code)

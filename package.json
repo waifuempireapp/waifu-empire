@@ -9,6 +9,7 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "typecheck": "nuxi typecheck",
+    "app": "bash scripts/build-apk.sh",
     "build:android": "nuxt generate && npx cap sync android && npx cap open android",
     "build:ios": "nuxt generate && npx cap sync ios && npx cap open ios",
     "cap:sync": "nuxt generate && npx cap sync"
