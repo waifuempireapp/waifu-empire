@@ -387,7 +387,7 @@ const visiblePages = computed(() => {
 
       <!-- Nessuna waifu -->
       <div v-if="ownedWaifu.length === 0" :style="{ padding: '32px 20px', textAlign: 'center' }">
-        <Swords :size="32" stroke-width="1.5" style="margin-bottom:10px;opacity:0.6;" />
+        <Swords :size="32" stroke-width="1.5" style="display:block;margin:0 auto 10px;opacity:0.6;" />
         <div :style="{ fontFamily: FF.label, fontSize: '13px', color: C.gold, letterSpacing: '0.15em', marginBottom: '8px' }">{{ $t('battle.no_waifu_available') }}</div>
         <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.6, marginBottom: '16px' }">
           {{ $t('battle.no_moves_desc') }}
