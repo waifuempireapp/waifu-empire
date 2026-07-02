@@ -490,7 +490,8 @@
     "paypal_error": "PayPal error. Please try again.",
     "completing_purchase": "Completing purchase…",
     "paypal_config_missing": "PayPal configuration missing.",
-    "paypal_loading_error": "Unable to load PayPal."
+    "paypal_loading_error": "Unable to load PayPal.",
+    "recharge_kisses": "RECHARGE"
   },
   "admin": {
     "title": "⚙ ADMIN",

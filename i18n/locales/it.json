@@ -490,7 +490,8 @@
     "paypal_error": "Errore PayPal. Riprova.",
     "completing_purchase": "Completamento acquisto…",
     "paypal_config_missing": "Configurazione PayPal mancante.",
-    "paypal_loading_error": "Impossibile caricare PayPal."
+    "paypal_loading_error": "Impossibile caricare PayPal.",
+    "recharge_kisses": "RICARICA"
   },
   "admin": {
     "title": "⚙ ADMIN",

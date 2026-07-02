@@ -409,7 +409,8 @@
     "kisses_added_msg": "+{n} Küsse hinzugefügt",
     "cancel": "ABBRECHEN",
     "paypal_error": "PayPal-Fehler. Bitte erneut versuchen.",
-    "completing_purchase": "Kauf wird abgeschlossen…"
+    "completing_purchase": "Kauf wird abgeschlossen…",
+    "recharge_kisses": "AUFLADEN"
   },
   "friends_ui": {
     "add_friend": "Freund hinzufügen",

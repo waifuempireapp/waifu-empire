@@ -409,7 +409,8 @@
     "kisses_added_msg": "+{n}キスが残高に追加されました",
     "cancel": "キャンセル",
     "paypal_error": "PayPalエラー。再試行してください。",
-    "completing_purchase": "購入を完了中…"
+    "completing_purchase": "購入を完了中…",
+    "recharge_kisses": "チャージ"
   },
   "friends_ui": {
     "add_friend": "フレンドを追加",

@@ -88,7 +88,7 @@ function mostraNotif(testo: string, colore = '#ff4d9e') {
 }
 
 // ── Modale Kisses insufficienti ───────────────────────────────
-const kissesShortage = ref<{ pendingPack: Pack } | null>(null)
+const kissesShortage = ref<boolean>(false)
 
 // ── Kisses attuali dal profilo ────────────────────────────────
 const kissesAttuali = computed(() => props.profilo?.kisses ?? 0)
@@ -460,18 +460,9 @@ function onClickPesca(pack: Pack) {
   if (pack.alreadyFished) return
   if (pack.hasHot && !props.profilo?.hardPass) return
   if (kissesAttuali.value < KISSES_COST) {
-    kissesShortage.value = { pendingPack: pack }
+    kissesShortage.value = true
   } else {
     aprePack(pack)
-  }
-}
-
-function onKissesSuccess(newKisses: number) {
-  const pending = kissesShortage.value?.pendingPack
-  kissesShortage.value = null
-  emit('updateProfilo', { ...(props.profilo ?? {}), kisses: newKisses })
-  if (pending) {
-    setTimeout(() => aprePack(pending), 200)
   }
 }
 
@@ -541,8 +532,8 @@ onUnmounted(() => {
         fontFamily: 'var(--ff-label)', letterSpacing: '2px', fontSize: '11px', zIndex: 500,
       }">{{ notif.testo }}</div>
 
-      <KissesShortageModal v-if="kissesShortage" :missing-kisses="KISSES_COST - kissesAttuali"
-        :current-kisses="kissesAttuali" @success="onKissesSuccess" @cancel="kissesShortage = null" />
+      <KissesShortageDialog v-if="kissesShortage" :missing-kisses="KISSES_COST - kissesAttuali"
+        @cancel="kissesShortage = false" />
 
       <!-- PescaRevealAnimation sostituita da reveal in-place -->
 
