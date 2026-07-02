@@ -9,7 +9,7 @@ import { defineEventHandler, readBody, getHeader, createError } from 'h3'
 import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminAuth, getAdminDb } from '../../../server/utils/firebaseAdmin'
 
-const KISSES_COST = 10
+const KISSES_COST = 50
 
 export default defineEventHandler(async (event) => {
   const token = getHeader(event, 'Authorization')?.replace('Bearer ', '')

@@ -9,7 +9,7 @@ import { TYPE_META } from '~/utils/moves'
 import type { MoveType } from '~/assets/moves/moves-data'
 
 // ── Costo fisso per pescare un pack ──────────────────────────
-const KISSES_COST = 10
+const KISSES_COST = 50
 
 // ── Props ─────────────────────────────────────────────────────
 const props = defineProps<{
@@ -519,11 +519,11 @@ onUnmounted(() => {
 
       <div
         style="display:flex;align-items:center;gap:7px;background:rgba(255,80,160,0.1);border:1px solid rgba(255,80,160,0.3);border-radius:999px;padding:6px 14px;">
-        <span style="font-size:16px;line-height:1">💎</span>
+        <span style="font-size:16px;line-height:1">💋</span>
         <div>
           <div
             style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;color:rgba(255,80,160,0.75);letter-spacing:0.2em;text-transform:uppercase;line-height:1;font-weight:700;">
-            GEMME</div>
+            KISSES</div>
           <div
             style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:16px;font-weight:800;color:#ff4d9e;line-height:1.2;">
             {{ kissesAttuali }}</div>

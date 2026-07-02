@@ -84,7 +84,7 @@
   },
   "pesca": {
     "title": "Waifu Drop",
-    "gems": "GEMME",
+    "gems": "KISSES",
     "blind_pick": "PESCA ALLA CIECA",
     "blind_subtitle": "Di {owner} — Scegli una carta senza sapere cosa c'è dentro",
     "confirm_pick": "Carta {n} selezionata",
@@ -119,7 +119,8 @@
     "revealing": "Rivelando…",
     "fish_label": "PESCA",
     "no_packs_title": "Nessun pacchetto da pescare ora",
-    "no_packs_sub": "Torna più tardi — amici e altre pescatrici lasceranno nuovi pacchetti a breve."
+    "no_packs_sub": "Torna più tardi — amici e altre pescatrici lasceranno nuovi pacchetti a breve.",
+    "kisses_per_pick": "Kisses / pesca"
   },
   "sbusta": {
     "opening": "Apertura Pacchetto",

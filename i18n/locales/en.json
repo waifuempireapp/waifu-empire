@@ -84,7 +84,7 @@
   },
   "pesca": {
     "title": "Waifu Drop",
-    "gems": "GEMS",
+    "gems": "KISSES",
     "blind_pick": "BLIND PICK",
     "blind_subtitle": "By {owner} — Choose a card without knowing what's inside",
     "confirm_pick": "Card {n} selected",
@@ -119,7 +119,8 @@
     "revealing": "Revealing…",
     "fish_label": "FISH",
     "no_packs_title": "No packs to fish right now",
-    "no_packs_sub": "Come back later — friends and other fishers will drop new packs soon."
+    "no_packs_sub": "Come back later — friends and other fishers will drop new packs soon.",
+    "kisses_per_pick": "Kisses / pick"
   },
   "sbusta": {
     "opening": "Opening Pack",

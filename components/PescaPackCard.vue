@@ -46,7 +46,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ pesca: [pack: Pack] }>()
 
-const kissesCost = computed(() => props.kissesCost ?? 10)
+const kissesCost = computed(() => props.kissesCost ?? 50)
 const userKisses = computed(() => props.userKisses ?? 0)
 const puoPescare  = computed(() => userKisses.value >= kissesCost.value)
 const giaFiscata  = computed(() => props.pack.alreadyFished === true)
@@ -189,6 +189,19 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
         fontWeight:700, letterSpacing:'0.1em',
         boxShadow: isNuovo ? '0 0 14px rgba(255,165,30,0.2)' : '0 0 14px rgba(167,139,250,0.2)',
       }">★ {{ pack.dropName }}</div>
+    </div>
+
+    <!-- Costo per pick: sempre visibile così l'utente sa quanti Kisses consuma -->
+    <div v-if="!giaFiscata" style="padding:0 16px 4px;">
+      <div :style="{
+        display:'flex', alignItems:'center', justifyContent:'center', gap:'6px',
+        fontFamily:'var(--ff-label,\'Saira Condensed\',sans-serif)',
+        fontSize:'12px', fontWeight:800, letterSpacing:'0.08em',
+        color: puoPescare ? '#ff4d9e' : 'rgba(255,255,255,0.45)',
+      }">
+        <span>💋</span>
+        <span>{{ kissesCost }} {{ $t('pesca.kisses_per_pick') }}</span>
+      </div>
     </div>
 
     <!-- ── CARTE: 2 centrate sopra + 3 sotto ── -->

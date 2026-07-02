@@ -84,7 +84,7 @@
   },
   "pesca": {
     "title": "Waifu Drop",
-    "gems": "GEMAS",
+    "gems": "BESOS",
     "cancel": "CANCELAR",
     "fishing": "PESCANDO…",
     "fish_btn": "PESCAR ({n} Besos)",
@@ -110,7 +110,8 @@
     "revealing": "Revelando…",
     "fish_label": "PESCAR",
     "no_packs_title": "No hay sobres para pescar ahora",
-    "no_packs_sub": "Vuelve más tarde — amigos y otras pescadoras dejarán nuevos sobres pronto."
+    "no_packs_sub": "Vuelve más tarde — amigos y otras pescadoras dejarán nuevos sobres pronto.",
+    "kisses_per_pick": "Besos / tirada"
   },
   "sbusta": {
     "opening": "Abriendo Sobre",

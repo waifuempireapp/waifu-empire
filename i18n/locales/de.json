@@ -84,7 +84,7 @@
   },
   "pesca": {
     "title": "Waifu Drop",
-    "gems": "EDELSTEINE",
+    "gems": "KÜSSE",
     "cancel": "ABBRECHEN",
     "fishing": "WIRD GEFISCHT…",
     "fish_btn": "FISCHEN ({n} Küsse)",
@@ -110,7 +110,8 @@
     "revealing": "Enthüllung…",
     "fish_label": "ANGELN",
     "no_packs_title": "Gerade keine Pakete zum Fischen",
-    "no_packs_sub": "Komm später wieder — Freunde und andere Fischerinnen lassen bald neue Pakete da."
+    "no_packs_sub": "Komm später wieder — Freunde und andere Fischerinnen lassen bald neue Pakete da.",
+    "kisses_per_pick": "Küsse / Zug"
   },
   "sbusta": {
     "opening": "Paket öffnen",

@@ -84,7 +84,7 @@
   },
   "pesca": {
     "title": "ワイフドロップ",
-    "gems": "ジェム",
+    "gems": "キス",
     "cancel": "キャンセル",
     "fishing": "釣り中…",
     "fish_btn": "釣る ({n}キス)",
@@ -110,7 +110,8 @@
     "revealing": "公開中…",
     "fish_label": "釣り",
     "no_packs_title": "今は釣れるパックがありません",
-    "no_packs_sub": "後でまた来てね — フレンドや他の釣り人がもうすぐ新しいパックを落とします。"
+    "no_packs_sub": "後でまた来てね — フレンドや他の釣り人がもうすぐ新しいパックを落とします。",
+    "kisses_per_pick": "キス / ピック"
   },
   "sbusta": {
     "opening": "パック開封",
