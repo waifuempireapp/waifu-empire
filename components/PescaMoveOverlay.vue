@@ -19,16 +19,16 @@ const typeMeta = computed(() => props.carta?.tipoMossa ? TYPE_META[props.carta.t
 <template>
   <div v-if="show" :style="{
     position:'absolute', left:0, right:0, bottom:0, height:'44%', zIndex:6,
-    background:'var(--theme-surface)', borderTop:`1px solid ${(typeMeta?.accent ?? '#8b6fd8')}55`,
+    background:'rgba(12,10,24,0.94)', borderTop:`1px solid ${(typeMeta?.accent ?? '#8b6fd8')}55`,
     padding:'4px 6px', display:'flex', flexDirection:'column', gap:'1px', overflow:'hidden',
   }">
     <!-- Danno -->
     <div style="display:flex;align-items:baseline;gap:3px;">
       <span :style="{ fontFamily:`var(--ff-display,'Unbounded',sans-serif)`, fontSize:'14px', fontWeight:800, lineHeight:1, color: typeMeta?.accent ?? 'var(--theme-text)' }">{{ carta?.danno ?? 0 }}</span>
-      <span :style="{ fontFamily:`var(--ff-label,'Saira Condensed',sans-serif)`, fontSize:'7px', letterSpacing:'0.1em', color:'var(--theme-text-3)', textTransform:'uppercase' }">DMG</span>
+      <span :style="{ fontFamily:`var(--ff-label,'Saira Condensed',sans-serif)`, fontSize:'7px', letterSpacing:'0.1em', color:'rgba(238,232,246,0.5)', textTransform:'uppercase' }">DMG</span>
     </div>
     <!-- Descrizione: testo completo, scroll interno se serve (niente troncamento) -->
-    <div :style="{ fontFamily:`var(--ff-body,'Nunito',sans-serif)`, fontSize:'11px', lineHeight:1.3, color:'var(--theme-text-2)', flex:1, minHeight:0, overflowY:'auto', overflowX:'hidden', WebkitOverflowScrolling:'touch' }">{{ carta?.descrizione }}</div>
+    <div :style="{ fontFamily:`var(--ff-body,'Nunito',sans-serif)`, fontSize:'10px', lineHeight:1.3, color:'rgba(238,232,246,0.82)', flex:1, minHeight:0, overflowY:'auto', overflowX:'hidden', WebkitOverflowScrolling:'touch' }">{{ carta?.descrizione }}</div>
     <!-- Chip tipo (basso-dx, bg bianco) -->
     <div v-if="typeMeta" :style="{ position:'absolute', bottom:'4px', right:'5px', background:'#fff', color: typeMeta.accent, borderRadius:'999px', padding:'1px 7px', fontFamily:`var(--ff-label,'Saira Condensed',sans-serif)`, fontSize:'8px', fontWeight:900, letterSpacing:'0.06em', boxShadow:'0 1px 4px rgba(0,0,0,0.3)', display:'flex', alignItems:'center', gap:'2px' }">
       <span>{{ typeMeta.icon }}</span>{{ typeMeta.label }}

@@ -926,7 +926,7 @@ function cfTouchEnd(e: TouchEvent) {
                 <div class="reveal-flip__face reveal-flip__face--front">
                   <CartaWaifu v-if="cartaCorrente.tipo === 'waifu'" :waifu="cartaCorrente.data" dimensione="normale" tipo="auto" />
                   <div v-else-if="cartaCorrente.tipo === 'mossa'" style="width:220px;">
-                    <MoveCard :move="(cartaCorrente.data as any)" :owned="true" />
+                    <MoveCard :move="(cartaCorrente.data as any)" :owned="true" :large="true" />
                   </div>
                 </div>
                 <!-- RETRO: back_card.png -->
@@ -1289,7 +1289,7 @@ function cfTouchEnd(e: TouchEvent) {
     style="position:fixed;inset:0;z-index:300;background:rgba(4,2,14,0.85);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn 0.2s ease;">
     <div @click.stop style="animation:scaleIn 0.25s ease-out;">
       <CartaWaifu v-if="zoomCard.tipo === 'waifu'" :waifu="zoomCard.data" dimensione="grande" tipo="auto" />
-      <div v-else-if="zoomCard.tipo === 'mossa'" style="width:300px;"><MoveCard :move="(zoomCard.data as any)" :owned="true" /></div>
+      <div v-else-if="zoomCard.tipo === 'mossa'" style="width:300px;"><MoveCard :move="(zoomCard.data as any)" :owned="true" :large="true" /></div>
     </div>
   </div>
 </template>

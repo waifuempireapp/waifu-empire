@@ -13,7 +13,9 @@ const props = withDefaults(defineProps<{
   move: Move & { nome?: string; danno?: number }
   defenderType?: MoveType | null
   owned?: boolean
-}>(), { defenderType: null, owned: true })
+  /** true nelle viste ingrandite (reveal/zoom): descrizione con font piu' grande */
+  large?: boolean
+}>(), { defenderType: null, owned: true, large: false })
 
 const emit = defineEmits<{ open: [] }>()
 function onClick() { if (props.owned) emit('open') }
@@ -34,7 +36,7 @@ const effColor   = computed(() => effLabel.value === 'super' ? '#22c55e' : effLa
 </script>
 
 <template>
-  <div class="mc" :class="{ 'mc--clickable': owned, 'mc--locked': !owned }" @click="onClick">
+  <div class="mc" :class="{ 'mc--clickable': owned, 'mc--locked': !owned, 'mc--lg': large }" @click="onClick">
     <!-- Box ratio 2:3 -->
     <div class="mc__box" :style="{ borderColor: `${meta.accent}aa`, boxShadow: `0 4px 16px rgba(0,0,0,0.28), 0 0 14px ${meta.accent}33` }">
 
@@ -101,22 +103,26 @@ const effColor   = computed(() => effLabel.value === 'super' ? '#22c55e' : effLa
 
 .mc__panel {
   position: absolute; left: 0; right: 0; bottom: 0; height: 44%;
-  background: var(--theme-surface); border-top: 1px solid;
+  /* Pannello scuro theme-independent: l'art della carta e' sempre scura,
+     cosi' non risulta un blocco bianco nel tema chiaro (come prima). */
+  background: rgba(12, 10, 24, 0.94); border-top: 1px solid;
   padding: 4px 6px; display: flex; flex-direction: column; gap: 1px; overflow: hidden;
 }
 .mc__dmg-row { display: flex; align-items: baseline; gap: 3px; }
 .mc__dmg { font-family: var(--ff-display, 'Unbounded', sans-serif); font-size: 14px; font-weight: 800; line-height: 1; }
-.mc__dmg-lbl { font-size: 7px; letter-spacing: 0.1em; color: var(--theme-text-3); text-transform: uppercase; }
-.mc__arrow { font-size: 10px; color: var(--theme-text-3); }
+.mc__dmg-lbl { font-size: 7px; letter-spacing: 0.1em; color: rgba(238,232,246,0.5); text-transform: uppercase; }
+.mc__arrow { font-size: 10px; color: rgba(238,232,246,0.5); }
 .mc__eff { font-size: 12px; font-weight: 800; }
 .mc__eff small { font-size: 8px; opacity: 0.85; margin-left: 1px; }
 .mc__desc {
   font-family: var(--ff-body, 'Nunito', sans-serif);
-  font-size: 11px; line-height: 1.3; color: var(--theme-text-2);
+  /* Piccola nella carta (deve solo starci); grande nella vista ingrandita (.mc--lg) */
+  font-size: 8.5px; line-height: 1.28; color: rgba(238,232,246,0.82);
   /* Testo completo sempre accessibile: nessun troncamento, scroll interno se serve */
   flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
 }
+.mc--lg .mc__desc { font-size: 14px; line-height: 1.42; }
 .mc__type {
   position: absolute; bottom: 4px; right: 5px;
   background: #fff; border-radius: 999px; padding: 1px 7px;
