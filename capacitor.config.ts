@@ -20,6 +20,14 @@ const config: CapacitorConfig = {
     url: 'https://waifu-empire.vercel.app',
     cleartext: false,
   },
+  plugins: {
+    // Google Sign-In nativo (selettore account Android, no browser esterno).
+    // Il Web Client ID viene letto automaticamente da google-services.json.
+    FirebaseAuthentication: {
+      skipNativeAuth: false,
+      providers: ['google.com'],
+    },
+  },
   // Configurazione iOS
   ios: {
     contentInset: 'automatic',

@@ -6,10 +6,11 @@
   ============================================================ -->
 <script setup lang="ts">
 import {
-  signInWithPopup, signInWithRedirect,
+  signInWithPopup, signInWithRedirect, signInWithCredential,
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   GoogleAuthProvider,
 } from 'firebase/auth'
+import { Capacitor } from '@capacitor/core'
 import { getFirebaseAuth }  from '~/utils/firebase'
 import { useAuthStore }     from '~/stores/auth'
 import { getUserProfile }   from '~/utils/firestoreService'
@@ -48,18 +49,27 @@ async function loginGoogle() {
   errore.value = ''
   busy.value   = true
   try {
-    const auth     = getFirebaseAuth()
-    const provider = new GoogleAuthProvider()
-    // Desktop: popup — Mobile: redirect se popup bloccato
-    try {
-      await signInWithPopup(auth, provider)
-    } catch (popupErr: unknown) {
-      const c = (popupErr as { code?: string }).code
-      if (c === 'auth/popup-blocked' || c === 'auth/popup-closed-by-user') {
-        await signInWithRedirect(auth, provider)
-        return
+    const auth = getFirebaseAuth()
+    // App nativa (Capacitor): Google Sign-In NATIVO (selettore account Android),
+    // niente browser esterno. Otteniamo la credenziale e completiamo Firebase.
+    if (Capacitor.isNativePlatform()) {
+      const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication')
+      const result = await FirebaseAuthentication.signInWithGoogle()
+      const cred = GoogleAuthProvider.credential(result.credential?.idToken, result.credential?.accessToken)
+      await signInWithCredential(auth, cred)
+    } else {
+      const provider = new GoogleAuthProvider()
+      // Desktop: popup — Mobile web: redirect se popup bloccato
+      try {
+        await signInWithPopup(auth, provider)
+      } catch (popupErr: unknown) {
+        const c = (popupErr as { code?: string }).code
+        if (c === 'auth/popup-blocked' || c === 'auth/popup-closed-by-user') {
+          await signInWithRedirect(auth, provider)
+          return
+        }
+        throw popupErr
       }
-      throw popupErr
     }
   } catch (e: unknown) {
     errore.value = traduciErrore((e as { code?: string }).code)
