@@ -39,6 +39,12 @@ export const useAuthStore = defineStore('auth', {
         this.user = user
         this.loading = false
       })
+      // Rete di sicurezza: se onAuthStateChanged non scatta (es. persistenza non
+      // disponibile su PWA iOS) sblocca comunque dopo 8s, così il middleware può
+      // reindirizzare al login invece di lasciare il loader infinito.
+      if (typeof window !== 'undefined') {
+        setTimeout(() => { if (this.loading) this.loading = false }, 8000)
+      }
     },
 
     // Esegue il logout e pulisce lo stato

@@ -6,11 +6,14 @@
 // ============================================================
 
 import { initializeApp, getApps, getApp } from 'firebase/app'
-import { getAuth, GoogleAuthProvider } from 'firebase/auth'
 import {
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
+  initializeAuth, getAuth, GoogleAuthProvider,
+  indexedDBLocalPersistence, browserLocalPersistence,
+  browserSessionPersistence, inMemoryPersistence,
+} from 'firebase/auth'
+import {
+  initializeFirestore, getFirestore,
+  persistentLocalCache, persistentMultipleTabManager,
 } from 'firebase/firestore'
 
 export default defineNuxtPlugin(() => {
@@ -29,18 +32,42 @@ export default defineNuxtPlugin(() => {
   // Inizializza l'app Firebase (singleton: se già esistente la riusa)
   const app = getApps().length ? getApp() : initializeApp(firebaseConfig)
 
-  // Abilita la cache IndexedDB persistente: riduce le letture Firestore fatturate
-  const db = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager(),
-    }),
-  })
-
-  const auth = getAuth(app)
-  const googleProvider = new GoogleAuthProvider()
+  // ── AUTH PER PRIMA ──────────────────────────────────────────────────────
+  // Inizializzata prima di Firestore così l'auth si registra SEMPRE, anche se
+  // la persistenza Firestore fallisce. Catena di persistenze: su PWA iOS
+  // standalone / Safari privato IndexedDB può non essere disponibile → fallback.
+  let auth
+  try {
+    auth = initializeAuth(app, {
+      persistence: [
+        indexedDBLocalPersistence,
+        browserLocalPersistence,
+        browserSessionPersistence,
+        inMemoryPersistence,
+      ],
+    })
+  } catch {
+    // Già inizializzata (HMR, doppio init) → riusa
+    auth = getAuth(app)
+  }
 
   const authStore = useAuthStore()
   authStore.initAuthListener(auth)
+
+  // ── FIRESTORE (fault-tolerant) ──────────────────────────────────────────
+  // Cache persistente IndexedDB per ridurre le letture; se non disponibile
+  // (es. PWA iOS) si degrada a cache in memoria senza bloccare l'app.
+  let db
+  try {
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    })
+  } catch (e) {
+    console.warn('[firebase] persistenza Firestore non disponibile, uso cache in memoria', e)
+    try { db = initializeFirestore(app, {}) } catch { db = getFirestore(app) }
+  }
+
+  const googleProvider = new GoogleAuthProvider()
 
   return {
     provide: {
