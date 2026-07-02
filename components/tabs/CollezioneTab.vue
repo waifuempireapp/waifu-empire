@@ -731,10 +731,10 @@ function apriNegozio() {
         <!-- Griglia waifu 3 colonne -->
         <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:16px;">
           <div
-            v-for="({ id, dati, w }, idx) in waifuEntries.slice(0, visibiliWaifu)"
+            v-for="{ id, dati, w } in waifuEntries.slice(0, visibiliWaifu)"
             :key="id"
             class="card-fade-up card-clickable collection-card-item"
-            :style="{ width:'calc(33.33% - 3px)', display:'flex', flexDirection:'column', alignItems:'center', animationDelay:`${idx * 30}ms` }"
+            :style="{ width:'calc(33.33% - 3px)', display:'flex', flexDirection:'column', alignItems:'center' }"
           >
             <div style="zoom:0.92;flex-shrink:0;position:relative;">
             <CartaWaifu

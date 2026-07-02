@@ -339,12 +339,21 @@ input:focus, textarea:focus, select:focus {
 .pulse   { animation: pulseSoft 1.8s ease-in-out infinite; }
 .glow-pulse { animation: glowPulse 2s ease-in-out infinite; }
 
-/* Collection card fade-up */
+/* Collection card fade-up.
+   IMPORTANTE: niente animation-fill-mode: both. Con `both` (+ animation-delay)
+   il keyframe iniziale opacity:0 resta "incollato" se l'animazione non parte o è
+   throttlata (iOS Safari con Reduce Motion / Low Power Mode, o mount via v-if):
+   risultato = griglia collezione invisibile ("nera") mentre header/filtri (che usano
+   .fade-in/.fade-up, solo forwards) restano visibili. Lo stato a riposo dell'elemento
+   e' opacity:1, quindi senza fill l'entrata e' additiva e le carte sono SEMPRE visibili. */
 @keyframes cardFadeUp {
   from { opacity: 0; transform: translateY(20px) scale(0.96); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-.card-fade-up { animation: cardFadeUp 0.38s ease-out both; }
+.card-fade-up { animation: cardFadeUp 0.38s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .card-fade-up { animation: none; }
+}
 
 /* Click feedback */
 .card-clickable {
