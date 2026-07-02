@@ -1268,7 +1268,7 @@ const mvp = computed(() => {
         <div class="wba-boss-bar__label">
           <span class="wba-boss-bar__badge">BOSS</span>
           <span class="wba-boss-bar__name">{{ enemy.name }}</span>
-          <span class="wba-boss-bar__pct">{{ Math.round(bossHpPct) }}%</span>
+          <span class="wba-boss-bar__pct">{{ enemy.hp > 0 ? Math.max(1, Math.round(bossHpPct)) : 0 }}%</span>
         </div>
         <div class="wba-boss-bar__track">
           <div class="wba-boss-bar__fill" :style="{ width: bossHpPct + '%' }" />
@@ -1334,11 +1334,25 @@ const mvp = computed(() => {
                 <!-- HP% bottom-left, grande -->
                 <div :style="{ display:'flex',alignItems:'baseline',gap:'2px' }">
                   <span :style="{ fontFamily:'var(--ff-label)',fontSize:'20px',fontWeight:900,color:c.pink }">
-                    {{ enemy.maxHp > 0 ? Math.round((enemy.hp / enemy.maxHp) * 100) : 0 }}%
+                    {{ enemy.maxHp > 0 ? (enemy.hp > 0 ? Math.max(1, Math.round((enemy.hp / enemy.maxHp) * 100)) : 0) : 0 }}%
                   </span>
                 </div>
               </div>
             </template>
+          </div>
+
+          <!-- Waifu rimanenti avversario — stile "pokeball" (solo team multiplo, non boss) -->
+          <div v-if="!isBoss && eTeam.length > 1" :style="{ position:'absolute', top:'15px', right:'12px', zIndex:3, display:'flex', gap:'6px' }">
+            <div v-for="(w, i) in eTeam" :key="w.id"
+              :title="w.name"
+              :style="{
+                width:'14px', height:'14px', borderRadius:'50%',
+                background: w.isKO ? 'transparent' : '#ff4d6a',
+                border:`2px solid ${w.isKO ? 'rgba(255,255,255,0.28)' : '#ff4d6a'}`,
+                boxShadow: (!w.isKO && i === eActive) ? '0 0 7px #ff4d6a' : 'none',
+                opacity: w.isKO ? 0.45 : 1,
+                transition:'all .3s',
+              }" />
           </div>
 
 
@@ -1573,6 +1587,10 @@ const mvp = computed(() => {
                 <span :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'var(--theme-text-3)',textAlign:'center',maxWidth:'64px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }">
                   {{ w.name }}
                 </span>
+                <!-- Tipo waifu (utile per scegliere il matchup nel cambio) -->
+                <span v-if="w.type" :style="{ fontFamily:'var(--ff-label)',fontSize:'11px',fontWeight:800,letterSpacing:'.4px',color:(TYPE_COLORS[w.type]?.border ?? 'var(--theme-text-3)') }">
+                  {{ w.type }}
+                </span>
                 <!-- HpBar mini -->
                 <div :style="{ width:'64px' }">
                   <div :style="{ height:'3px',background:'var(--theme-border)',borderRadius:'3px',overflow:'hidden' }">
@@ -1622,6 +1640,10 @@ const mvp = computed(() => {
                 </button>
                 <span :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'var(--theme-text-3)',textAlign:'center',maxWidth:'64px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }">
                   {{ w.name }}
+                </span>
+                <!-- Tipo waifu (utile per scegliere il matchup nella sostituzione) -->
+                <span v-if="w.type" :style="{ fontFamily:'var(--ff-label)',fontSize:'11px',fontWeight:800,letterSpacing:'.4px',color:(TYPE_COLORS[w.type]?.border ?? 'var(--theme-text-3)') }">
+                  {{ w.type }}
                 </span>
                 <div :style="{ width:'64px' }">
                   <div :style="{ height:'3px',background:'var(--theme-border)',borderRadius:'3px',overflow:'hidden' }">
