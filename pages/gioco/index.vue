@@ -24,7 +24,7 @@ import {
 import { STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT } from '~/utils/constants'
 import { getDb } from '~/utils/firebase'
 import { ikUrl } from '~/utils/imagekitUrl'
-import { AVATAR_BY_WAIFU, BASE_AVATAR_IDS } from '~/composables/useAvatar'
+import { AVATAR_BY_WAIFU, BASE_AVATAR_IDS, AVATAR_PRESETS } from '~/composables/useAvatar'
 // ikUrl rimosso — non più usato nel template (carte acquisite rimosse dalla nav)
 
 definePageMeta({ middleware: 'auth' })
@@ -303,6 +303,9 @@ function preloadCatalogImages(waifu: any[], mosse: any[]) {
       if (!src) continue
       warm(ikUrl(src, 'thumbnail')); warm(ikUrl(src, 'card'))
     }
+    // Avatar preset (asset Vite locali): precaricati tutti così il carosello
+    // in Impostazioni li mostra subito senza flicker/mancate immagini.
+    for (const p of AVATAR_PRESETS) warm(p.image)
   }
   // Non blocca il primo render
   if ('requestIdleCallback' in window) (window as any).requestIdleCallback(run, { timeout: 2000 })
