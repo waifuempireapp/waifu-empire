@@ -10,6 +10,7 @@ import {
   initializeAuth, getAuth, GoogleAuthProvider,
   indexedDBLocalPersistence, browserLocalPersistence,
   browserSessionPersistence, inMemoryPersistence,
+  browserPopupRedirectResolver,
 } from 'firebase/auth'
 import {
   initializeFirestore, getFirestore,
@@ -45,6 +46,10 @@ export default defineNuxtPlugin(() => {
         browserSessionPersistence,
         inMemoryPersistence,
       ],
+      // Necessario per signInWithRedirect / signInWithPopup / getRedirectResult:
+      // initializeAuth NON lo include di default (getAuth sì) → senza, quei metodi
+      // lanciano auth/argument-error.
+      popupRedirectResolver: browserPopupRedirectResolver,
     })
   } catch {
     // Già inizializzata (HMR, doppio init) → riusa
