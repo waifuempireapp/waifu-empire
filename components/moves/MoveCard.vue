@@ -84,7 +84,7 @@ const effColor   = computed(() => effLabel.value === 'super' ? '#22c55e' : effLa
   transition: transform 0.15s ease;
 }
 
-.mc__img { position: absolute; left: 0; right: 0; top: 0; height: 64%; width: 100%; object-fit: cover; object-position: center 15%; display: block; }
+.mc__img { position: absolute; left: 0; right: 0; top: 0; height: 56%; width: 100%; object-fit: cover; object-position: center 15%; display: block; }
 .mc__img--ph { display: grid; place-items: center; }
 
 .mc__mossa {
@@ -93,14 +93,14 @@ const effColor   = computed(() => effLabel.value === 'super' ? '#22c55e' : effLa
   font-size: 8px; font-weight: 900; letter-spacing: 0.12em;
 }
 .mc__lock {
-  position: absolute; left: 0; right: 0; top: 0; height: 64%; z-index: 6;
+  position: absolute; left: 0; right: 0; top: 0; height: 56%; z-index: 6;
   display: flex; align-items: center; justify-content: center;
   color: rgba(255,255,255,0.92); background: rgba(8,6,18,0.28);
 }
 .mc__lock :deep(svg) { filter: drop-shadow(0 2px 5px rgba(0,0,0,0.7)); }
 
 .mc__panel {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 36%;
+  position: absolute; left: 0; right: 0; bottom: 0; height: 44%;
   background: var(--theme-surface); border-top: 1px solid;
   padding: 4px 6px; display: flex; flex-direction: column; gap: 1px; overflow: hidden;
 }
@@ -112,8 +112,10 @@ const effColor   = computed(() => effLabel.value === 'super' ? '#22c55e' : effLa
 .mc__eff small { font-size: 8px; opacity: 0.85; margin-left: 1px; }
 .mc__desc {
   font-family: var(--ff-body, 'Nunito', sans-serif);
-  font-size: 8px; line-height: 1.22; color: var(--theme-text-2);
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  font-size: 11px; line-height: 1.3; color: var(--theme-text-2);
+  /* Testo completo sempre accessibile: nessun troncamento, scroll interno se serve */
+  flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 .mc__type {
   position: absolute; bottom: 4px; right: 5px;
