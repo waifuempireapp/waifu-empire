@@ -557,7 +557,7 @@ function centerOnEmpire() {
     <button
       @click="centerOnEmpire"
       style="
-        position: absolute; bottom: 12px; right: 12px;
+        position: absolute; bottom: 12px; left: 12px;
         background: var(--theme-accent); backdrop-filter: blur(12px);
         border: none; color: #F0ECF8;
         font-family: 'Saira Condensed', sans-serif; font-size: 10px;
