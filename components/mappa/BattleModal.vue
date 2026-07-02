@@ -442,7 +442,7 @@ const visiblePages = computed(() => {
               {{ w.nome }}
             </div>
             <!-- Immagine -->
-            <div :style="{ width:'100%', aspectRatio:'2/3', borderRadius:'10px', overflow:'hidden', background:'var(--theme-bg-secondary)', border:`2px solid ${rarColors[w.rarita] || 'var(--theme-border)'}` }">
+            <div :style="{ width:'100%', aspectRatio:'3/4', borderRadius:'10px', overflow:'hidden', background:'var(--theme-bg-secondary)', border:`2px solid ${rarColors[w.rarita] || 'var(--theme-border)'}` }">
               <img
                 v-if="w.asset_immagine || w.asset_statica || w.asset_immersiva"
                 :src="w.asset_immagine || w.asset_statica || w.asset_immersiva"
@@ -544,10 +544,6 @@ const visiblePages = computed(() => {
             boxShadow: poolValido ? '0 4px 24px rgba(197,74,134,0.5)' : 'none',
           }"
         ><Swords v-if="poolValido" :size="16" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:6px;" />{{ poolValido ? $t('battle.next') : (selectedIds.length < 5 ? $t('battle.select_more', { n: 5 - selectedIds.length }) : $t('battle.max_waifu')) }}</button>
-
-        <div v-if="ownedWaifu.length > 0" :style="{ marginTop:'8px', padding:'8px 12px', background:'var(--theme-shimmer)', border:'1px solid var(--theme-border)', borderRadius:'10px', fontFamily:FF.body, fontSize:'12px', color:'var(--theme-text-3)', lineHeight:1.5, textAlign:'center' }">
-          {{ $t('battle.others_hidden') }} {{ $t('battle.go_to') }} <strong style="color:#9b59ff">{{ $t('battle.collection_moves') }}</strong>.
-        </div>
       </div>
     </template>
 
