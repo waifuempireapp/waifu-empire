@@ -6,7 +6,7 @@
   ============================================================ -->
 <script setup lang="ts">
 import {
-  signInWithPopup, signInWithCredential,
+  signInWithPopup, signInWithRedirect, getRedirectResult, signInWithCredential,
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   GoogleAuthProvider,
 } from 'firebase/auth'
@@ -45,6 +45,26 @@ watch(
   { immediate: true },
 )
 
+// PWA installata (standalone): su iOS il popup non condivide il contesto con la
+// PWA → l'auth si completa ma la finestra PWA non riceve il risultato. In quel
+// caso si usa il redirect (ritorno gestito da getRedirectResult qui sotto).
+function isStandalonePWA(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia?.('(display-mode: standalone)')?.matches === true
+    || (window.navigator as { standalone?: boolean }).standalone === true
+}
+
+// Completa il flusso Google via redirect quando si torna sulla pagina (solo PWA).
+onMounted(async () => {
+  if (Capacitor.isNativePlatform()) return
+  try {
+    await getRedirectResult(getFirebaseAuth())
+    // Il watch su isLoggedIn reindirizza a /gioco o /onboarding
+  } catch (e: unknown) {
+    errore.value = traduciErrore((e as { code?: string }).code)
+  }
+})
+
 async function loginGoogle() {
   errore.value = ''
   busy.value   = true
@@ -65,7 +85,13 @@ async function loginGoogle() {
       // non valida" e nessun dominio extra da autorizzare lato Google.
       const provider = new GoogleAuthProvider()
       provider.setCustomParameters({ prompt: 'select_account' })
-      await signInWithPopup(auth, provider)
+      if (isStandalonePWA()) {
+        // PWA installata: redirect (il popup non torna nel contesto PWA su iOS)
+        await signInWithRedirect(auth, provider)
+      } else {
+        // Browser normale: popup (evita l'ITP del redirect su Safari/iOS)
+        await signInWithPopup(auth, provider)
+      }
       // Successo: il watch su isLoggedIn reindirizza a /gioco o /onboarding
     }
   } catch (e: unknown) {

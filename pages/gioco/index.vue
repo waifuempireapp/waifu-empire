@@ -237,24 +237,23 @@ async function caricaTutto(uid: string) {
     }
   } catch { /* usa defaults */ }
 
-  // Pre-fetch feed pesca in background
-  try {
-    const token = await authStore.user!.getIdToken()
-    const data = await $fetch('/api/pesca/feed', { headers: { Authorization: `Bearer ${token}` } }) as { packs?: unknown[] }
-    pescaPacksInitial.value = data.packs ?? []
-  } catch {
-    pescaPacksInitial.value = []
-  }
+  // Pre-fetch feed pesca in BACKGROUND — NON blocca la home: serve solo quando
+  // l'utente apre la Pesca. (Prima era awaited → aggiungeva secondi al primo accesso.)
+  authStore.user!.getIdToken()
+    .then(token => $fetch('/api/pesca/feed', { headers: { Authorization: `Bearer ${token}` } }) as Promise<{ packs?: unknown[] }>)
+    .then(data => { pescaPacksInitial.value = data.packs ?? [] })
+    .catch(() => { pescaPacksInitial.value = [] })
 
+  // Dati pronti: mostra subito l'app. Il pack 3D della Home ha già il suo overlay
+  // anti-FOUC (PageLoadingOverlay), quindi non blocchiamo TUTTO aspettando WebGL.
   caricato.value = true
-
-  // Aspetta che il DOM monti il game container (e BustinaGLB avvii Three.js)
   await nextTick()
 
-  // Poi aspetta bustina pronta o fallback 5s — non blocca l'app se WebGL è lento
+  // Breve attesa della bustina (cap 1s) solo per una transizione morbida: se il 3D
+  // è lento non paghiamo più i 5s di prima.
   await new Promise<void>(resolve => {
     window.addEventListener('bustina:ready', () => resolve(), { once: true })
-    setTimeout(resolve, 5000)
+    setTimeout(resolve, 1000)
   })
 
   appReady.value = true
