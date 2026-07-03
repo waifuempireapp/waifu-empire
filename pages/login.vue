@@ -6,7 +6,7 @@
   ============================================================ -->
 <script setup lang="ts">
 import {
-  signInWithPopup, signInWithRedirect, getRedirectResult, signInWithCredential,
+  signInWithPopup, signInWithCredential,
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   GoogleAuthProvider,
 } from 'firebase/auth'
@@ -45,17 +45,6 @@ watch(
   { immediate: true },
 )
 
-// Completa il flusso Google via redirect (web) al ritorno sulla pagina
-onMounted(async () => {
-  if (Capacitor.isNativePlatform()) return
-  try {
-    await getRedirectResult(getFirebaseAuth())
-    // Il watch su isLoggedIn reindirizza a /gioco o /onboarding
-  } catch (e: unknown) {
-    errore.value = traduciErrore((e as { code?: string }).code)
-  }
-})
-
 async function loginGoogle() {
   errore.value = ''
   busy.value   = true
@@ -69,31 +58,15 @@ async function loginGoogle() {
       const cred = GoogleAuthProvider.credential(result.credential?.idToken, result.credential?.accessToken)
       await signInWithCredential(auth, cred)
     } else {
-      // Web: POPUP-FIRST con fallback a REDIRECT.
-      // Il redirect da solo è fragile su Safari/iOS (ITP + storage partitioning:
-      // torna dopo Google ma getRedirectResult dà null → login "non funziona").
-      // Il popup è più affidabile; se è bloccato/non supportato (in-app browser,
-      // alcune PWA), si ripiega automaticamente sul redirect.
+      // Web: SOLO popup. È la modalità raccomandata da Firebase quando l'app è
+      // servita da un dominio diverso da authDomain (qui vercel.app ≠ firebaseapp.com):
+      // NON soffre del blocco storage ITP di Safari/iOS che rompe signInWithRedirect,
+      // e il redirect va su firebaseapp.com (già autorizzato) → nessun "richiesta
+      // non valida" e nessun dominio extra da autorizzare lato Google.
       const provider = new GoogleAuthProvider()
       provider.setCustomParameters({ prompt: 'select_account' })
-      try {
-        await signInWithPopup(auth, provider)
-        // Successo: il watch su isLoggedIn reindirizza a /gioco o /onboarding
-      } catch (e: unknown) {
-        const code = (e as { code?: string }).code ?? ''
-        const fallbackCodes = [
-          'auth/popup-blocked',
-          'auth/popup-closed-by-user',
-          'auth/cancelled-popup-request',
-          'auth/operation-not-supported-in-this-environment',
-          'auth/web-storage-unsupported',
-        ]
-        if (fallbackCodes.includes(code)) {
-          await signInWithRedirect(auth, provider)
-        } else {
-          throw e
-        }
-      }
+      await signInWithPopup(auth, provider)
+      // Successo: il watch su isLoggedIn reindirizza a /gioco o /onboarding
     }
   } catch (e: unknown) {
     errore.value = traduciErrore((e as { code?: string }).code)

@@ -90,18 +90,9 @@ export default defineNuxtConfig({
     },
   },
 
+  // Header HTTP — same-origin-allow-popups: necessario perché signInWithPopup
+  // Firebase possa ricevere il risultato dalla finestra popup (COOP).
   routeRules: {
-    // ── FIX LOGIN GOOGLE SU SAFARI/iOS (ITP / storage partitioning) ──
-    // L'app è su waifu-empire.vercel.app ma l'helper di auth Firebase sta su
-    // waifu-empire.firebaseapp.com (cross-origin): Safari/iOS partiziona lo
-    // storage di quell'iframe → al ritorno da Google l'app non riceve il login.
-    // Proxando /__/auth e /__/firebase sullo STESSO dominio, l'helper è
-    // same-origin e lo storage non viene partizionato → il login funziona.
-    // Va in coppia con authDomain = dominio dell'app in plugins/firebase.client.ts.
-    '/__/auth/**':     { proxy: 'https://waifu-empire.firebaseapp.com/__/auth/**' },
-    '/__/firebase/**': { proxy: 'https://waifu-empire.firebaseapp.com/__/firebase/**' },
-
-    // Header HTTP — same-origin-allow-popups necessario per signInWithPopup Firebase
     '/**': {
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',

@@ -24,3 +24,6 @@ Thumbs.db
 
 # Netlify
 .netlify
+
+# Vercel build output (locale, rigenerato ad ogni build)
+.vercel
