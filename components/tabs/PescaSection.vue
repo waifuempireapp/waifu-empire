@@ -532,8 +532,12 @@ onUnmounted(() => {
         fontFamily: 'var(--ff-label)', letterSpacing: '2px', fontSize: '11px', zIndex: 500,
       }">{{ notif.testo }}</div>
 
-      <KissesShortageDialog v-if="kissesShortage" :missing-kisses="KISSES_COST - kissesAttuali"
-        @cancel="kissesShortage = false" />
+      <!-- Teleport su body: altrimenti il position:fixed del dialog è relativo agli
+           antenati con transform della pesca → appare storto invece che centrato -->
+      <Teleport to="body">
+        <KissesShortageDialog v-if="kissesShortage" :missing-kisses="KISSES_COST - kissesAttuali"
+          @cancel="kissesShortage = false" />
+      </Teleport>
 
       <!-- PescaRevealAnimation sostituita da reveal in-place -->
 

@@ -21,7 +21,7 @@ function ricarica() {
 
 <template>
   <div
-    style="position:fixed;inset:0;z-index:450;background:var(--theme-overlay);backdrop-filter:blur(8px);
+    style="position:fixed;inset:0;z-index:100000;background:var(--theme-overlay);backdrop-filter:blur(8px);
            display:flex;align-items:center;justify-content:center;padding:24px"
     @click.self="emit('cancel')"
   >
