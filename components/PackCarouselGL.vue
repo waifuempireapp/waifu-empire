@@ -191,6 +191,9 @@ async function init() {
     }
     layoutRing(0)
 
+    // Anti-flash bianco: upload texture in GPU prima del primo frame visibile
+    const _map = (sharedMat as import('three').MeshStandardMaterial).map
+    if (_map) renderer.initTexture(_map)
     renderer.render(scene, camera)
     requestAnimationFrame(() => requestAnimationFrame(() => { glReady.value = true; emit('ready') }))
     startLoop()

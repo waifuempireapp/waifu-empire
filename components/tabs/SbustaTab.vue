@@ -1134,7 +1134,7 @@ function cfTouchEnd(e: TouchEvent) {
         multiPackCarte.length }} Pack Aperti</div>
     </div>
     <div
-      style="flex:1;overflow-y:auto;padding:12px 16px 8px;display:flex;flex-direction:column;gap:20px;position:relative;z-index:5;">
+      style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;padding:12px 16px 8px;display:flex;flex-direction:column;gap:20px;position:relative;z-index:5;">
       <div v-for="(pack, pi) in multiPackCarte" :key="pi"
         :style="{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.inkLine}`, borderRadius: '16px', padding: '14px 12px', position: 'relative' }">
         <div
@@ -1159,7 +1159,7 @@ function cfTouchEnd(e: TouchEvent) {
     </div>
     <div style="flex-shrink:0;padding:14px 20px 40px;text-align:center;position:relative;z-index:10;">
       <button @click="concludiSbusto"
-        :style="{ padding: '13px 40px', borderRadius: '999px', background: `linear-gradient(135deg,${C.violet},#6938e8)`, border: 'none', color: '#fff', fontFamily: FF.label, fontSize: '13px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer' }">✅
+        :style="{ padding: '13px 40px', borderRadius: '999px', background: `linear-gradient(135deg,${C.violet},#6938e8)`, border: 'none', color: '#fff', fontFamily: FF.label, fontSize: '13px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer' }">
         CONTINUA</button>
     </div>
   </div>

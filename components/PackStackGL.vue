@@ -126,20 +126,35 @@ async function init() {
       src = findMesh(await loader.loadAsync(DEFAULT_GLB))
     }
     if (!src) throw new Error('Nessuna mesh bustina disponibile')
-    sharedGeo = src.geometry.clone()
-    applyPlanarUVs(sharedGeo, THREE)
+    const srcMat = (Array.isArray(src.material) ? src.material[0] : src.material) as import('three').MeshStandardMaterial | undefined
+    const useModelMat = !!(srcMat && srcMat.map)
 
-    // Texture espansione (condivisa da tutti i cloni)
-    let tex: import('three').Texture | undefined
-    if (props.textureUrl) {
-      try { tex = await new THREE.TextureLoader().loadAsync(props.textureUrl); tex.colorSpace = THREE.SRGBColorSpace } catch { /* colore base */ }
+    sharedGeo = src.geometry.clone()
+
+    if (useModelMat) {
+      // Il GLB dell'espansione ha la texture incorporata → usa il SUO materiale
+      // (prima veniva ignorato: lo stack appariva come blob colorato senza grafica)
+      const m = srcMat!.clone()
+      if (m.map) m.map.colorSpace = THREE.SRGBColorSpace
+      m.envMapIntensity = 1.2
+      sharedMat = m
+    } else {
+      applyPlanarUVs(sharedGeo, THREE)
+      // Texture espansione (condivisa da tutti i cloni)
+      let tex: import('three').Texture | undefined
+      if (props.textureUrl) {
+        try { tex = await new THREE.TextureLoader().loadAsync(props.textureUrl); tex.colorSpace = THREE.SRGBColorSpace } catch { /* colore base */ }
+      }
+      const baseColor = props.color ? new THREE.Color(props.color) : new THREE.Color(tex ? 0xffffff : 0x1a0a35)
+      sharedMat = new THREE.MeshStandardMaterial({
+        map: tex ?? null, color: baseColor,
+        metalness: 0.65, roughness: 0.22, envMapIntensity: 1.4,
+        emissive: props.color ? new THREE.Color(props.color).multiplyScalar(0.12) : new THREE.Color(0x000000),
+      })
     }
-    const baseColor = props.color ? new THREE.Color(props.color) : new THREE.Color(tex ? 0xffffff : 0x1a0a35)
-    sharedMat = new THREE.MeshStandardMaterial({
-      map: tex ?? null, color: baseColor,
-      metalness: 0.65, roughness: 0.22, envMapIntensity: 1.4,
-      emissive: props.color ? new THREE.Color(props.color).multiplyScalar(0.12) : new THREE.Color(0x000000),
-    })
+    // Anti-flash bianco: forza l'upload della texture in GPU PRIMA del primo frame
+    const _map = (sharedMat as import('three').MeshStandardMaterial).map
+    if (_map) renderer.initTexture(_map)
 
     // N cloni (geometria + materiale condivisi → leggero)
     const n = Math.max(1, props.count)

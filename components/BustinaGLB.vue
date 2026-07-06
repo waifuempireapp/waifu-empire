@@ -195,6 +195,9 @@ async function init() {
       }))
     }
     scene.add(mesh)
+    // Anti-flash bianco: upload della texture in GPU prima del primo frame
+    const _m = mesh.material as import('three').MeshStandardMaterial
+    if (_m?.map) renderer.initTexture(_m.map)
     glReady.value = true
     failed.value = false
     window.dispatchEvent(new Event('bustina:ready'))

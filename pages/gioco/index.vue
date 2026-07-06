@@ -26,6 +26,7 @@ import { getDb } from '~/utils/firebase'
 import { ikUrl } from '~/utils/imagekitUrl'
 import { AVATAR_BY_WAIFU, BASE_AVATAR_IDS, AVATAR_PRESETS } from '~/composables/useAvatar'
 import { preloadBustina } from '~/components/BustinaGLB.vue'
+import { releaseAllScrollLocks } from '~/composables/useScrollLock'
 import { bustinaGlbUrl } from '~/utils/bustina'
 // ikUrl rimosso — non più usato nel template (carte acquisite rimosse dalla nav)
 
@@ -134,7 +135,13 @@ watch(
 )
 
 // ── Reset scroll al cambio di tab principale ────────────────────────
-watch(tab, () => { if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'instant' }) })
+// releaseAllScrollLocks: failsafe — se un modal ha lasciato il body bloccato
+// (scroll morto ovunque), il cambio tab lo libera sempre.
+watch(tab, () => {
+  if (typeof window === 'undefined') return
+  releaseAllScrollLocks()
+  window.scrollTo({ top: 0, behavior: 'instant' })
+})
 
 async function caricaTutto(uid: string) {
   // Preload del pack 3D DURANTE la loading screen: three.js + GLB standard subito,
