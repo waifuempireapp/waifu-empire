@@ -119,6 +119,16 @@ export default defineEventHandler(async (event) => {
       uid, waifuId, vote,
       timestamp: Timestamp.now(),
     });
+    // Punteggio CUMULATIVO per la classifica waifu: ogni swipe conta
+    // (+1 cuore / -1 X), anche ri-votando la stessa waifu. La classifica
+    // legge questi totali → aggiornamento in tempo reale.
+    batch.set(adminDb.collection('waifu_vote_totals').doc(waifuId), {
+      waifuId,
+      score:    FieldValue.increment(vote === 'like' ? 1 : -1),
+      likes:    FieldValue.increment(vote === 'like' ? 1 : 0),
+      dislikes: FieldValue.increment(vote === 'dislike' ? 1 : 0),
+      updated_at: Timestamp.now(),
+    }, { merge: true });
     await batch.commit();
 
     return {

@@ -24,25 +24,22 @@ export default defineEventHandler(async (event) => {
       adminDb.collection('users').doc(uid).get(),
     ]);
 
-    let rankingData: Record<string, any> | null = rankingSnap.exists ? rankingSnap.data() as any : null;
     const config = configSnap.exists ? configSnap.data() as any : {};
     const pausedUntil = config.pausedUntil ?? {};
-    const resetAt: number = config.classifica_reset_at?.toMillis?.() ?? 0;
     const now = Date.now();
     const hasHardPass: boolean = !!(userSnap.exists ? (userSnap.data() as any)?.hardPass : false);
+    void rankingSnap; // risultati pre-computati: usati solo per premi storici, non per la vista
 
-    // Se non ci sono risultati pre-computati, calcola live dai voti
-    if (!rankingData) {
-      const votesSnap = await adminDb.collection('swap_votes').get();
-      // Punteggio dallo swipe: +1 per ogni cuore (like), -1 per ogni X (dislike)
-      const counts: Record<string, number> = {};
-      for (const d of votesSnap.docs) {
-        const data = d.data() as any;
-        if (data.vote !== 'like' && data.vote !== 'dislike') continue;
-        if (resetAt && (data.timestamp?.toMillis?.() ?? 0) < resetAt) continue;
-        counts[data.waifuId] = (counts[data.waifuId] ?? 0) + (data.vote === 'like' ? 1 : -1);
-      }
-      const top100Ids = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 100).map(([id, likes]) => ({ waifuId: id, likeCount: likes, nome: id }));
+    // Classifica SEMPRE live dai totali cumulativi (waifu_vote_totals):
+    // ogni swipe incrementa score (+1 cuore / -1 X) → entrando nella sezione
+    // si vede subito l'effetto degli ultimi voti.
+    let rankingData: Record<string, any> | null = null;
+    {
+      const totalsSnap = await adminDb.collection('waifu_vote_totals').get();
+      const top100Ids = totalsSnap.docs
+        .map(d => ({ waifuId: d.id, likeCount: (d.data() as any).score ?? 0, nome: d.id }))
+        .sort((a, b) => b.likeCount - a.likeCount)
+        .slice(0, 100);
       if (top100Ids.length > 0) {
         const waifuSnaps = await adminDb.getAll(...top100Ids.map(e => adminDb.doc(`catalogo_waifu/${e.waifuId}`)));
         const enriched = top100Ids.map((e, i) => {
