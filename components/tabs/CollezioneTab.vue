@@ -271,6 +271,58 @@ const waifuEntries = computed(() => {
   return entries
 })
 
+// ── Griglia "stile mosse": TUTTO il catalogo, ordinato per nome ──────────────
+// Le waifu possedute mostrano la carta; le altre uno slot placeholder '?'
+// (non carte disattivate): si vede quante carte mancano e dove andrebbero.
+const waifuGridEntries = computed(() => {
+  let list = [...props.waifuCat]
+    .sort((a: any, b: any) => String(a.nome ?? a.id).localeCompare(String(b.nome ?? b.id)))
+    .map((w: any) => {
+      const dati = props.collezione.waifu?.[w.id] ?? null
+      return { id: w.id as string, w, dati, owned: !!dati }
+    })
+
+  // Filtri di catalogo (valgono anche per i placeholder)
+  if (filtroNome.value)
+    list = list.filter(({ w }) => (w.nome || '').toLowerCase().includes(filtroNome.value.toLowerCase()))
+  if (filtroRarita.value !== 'tutte')
+    list = list.filter(({ w }) => w.rarita === filtroRarita.value)
+  if (dropWaifuIds.value)
+    list = list.filter(({ w }) => dropWaifuIds.value!.has(w.id))
+  if (filtroHot.value === 'hot')
+    list = list.filter(({ w }) => w.hot === true)
+  if (filtroHot.value === 'non-hot')
+    list = list.filter(({ w }) => !w.hot)
+  // Filtri che hanno senso solo sulle possedute → escludono i placeholder
+  if (filtroScambiabile.value)
+    list = list.filter(e => e.owned && (e.dati.copie ?? 0) >= 2)
+  if (filtroLevelUp.value === 'si')
+    list = list.filter(e => e.owned && (e.dati.copie ?? 0) >= 3)
+  if (filtroLevelUp.value === 'no')
+    list = list.filter(e => e.owned && (e.dati.copie ?? 0) < 3)
+
+  // Ordinamenti espliciti (rarità/stat): applicati a tutta la griglia
+  const sk = sortKey.value
+  const sd = sortDir.value
+  if (sk === 'rarita')
+    list.sort((a, b) => sd === 'desc'
+      ? rarOrder.indexOf(b.w.rarita) - rarOrder.indexOf(a.w.rarita)
+      : rarOrder.indexOf(a.w.rarita) - rarOrder.indexOf(b.w.rarita))
+  else if (sk === 'livello')
+    list.sort((a, b) => sd === 'desc' ? (b.dati?.livello ?? 0) - (a.dati?.livello ?? 0) : (a.dati?.livello ?? 0) - (b.dati?.livello ?? 0))
+  else if (sk === 'copie')
+    list.sort((a, b) => sd === 'desc' ? (b.dati?.copie ?? 0) - (a.dati?.copie ?? 0) : (a.dati?.copie ?? 0) - (b.dati?.copie ?? 0))
+  else if (STAT_KEYS.includes(sk))
+    list.sort((a, b) => {
+      const va = (a.w[sk] || 0) + (a.dati?.stat_bonus?.[sk] || 0)
+      const vb = (b.w[sk] || 0) + (b.dati?.stat_bonus?.[sk] || 0)
+      return sd === 'desc' ? vb - va : va - vb
+    })
+
+  return list
+})
+const waifuPossedute = computed(() => waifuGridEntries.value.filter(e => e.owned).length)
+
 const totScambiabili = computed(() =>
   filtroScambiabile.value
     ? Object.values(props.collezione.waifu || {}).filter((d: any) => (d.copie ?? 0) >= 2).length
@@ -655,7 +707,7 @@ function apriNegozio() {
               :style="{ flex:1, background:'transparent !important', border:'none !important', boxShadow:'none !important', outline:'none', color:'var(--theme-text)', fontSize:'14px', fontFamily:FF.body, padding:'6px 0' }" />
             <button v-if="filtroNome" @click="filtroNome = ''; visibiliWaifu = 12"
               :style="{ background:'none', border:'none', cursor:'pointer', color:'var(--theme-text-3)', padding:0, display:'flex', alignItems:'center' }"><X :size="14" stroke-width="1.5" /></button>
-            <span :style="{ fontFamily:FF.mono, fontSize:'13px', color:'var(--theme-text-3)', fontWeight:700, flexShrink:0 }">{{ waifuEntries.length }}</span>
+            <span :style="{ fontFamily:FF.mono, fontSize:'13px', color:'var(--theme-text-3)', fontWeight:700, flexShrink:0 }">{{ waifuPossedute }}/{{ waifuGridEntries.length }}</span>
           </div>
 
           <!-- Le 2 select 50/50 -->
@@ -733,15 +785,28 @@ function apriNegozio() {
           >{{ $t("collection.buy_trade_pass") }}</button>
         </div>
 
-        <!-- Griglia waifu 3 colonne -->
+        <!-- Griglia waifu 3 colonne — tutto il catalogo: possedute = carta,
+             non possedute = slot placeholder '?' (stile pagina mosse) -->
         <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:16px;">
           <div
-            v-for="{ id, dati, w } in waifuEntries.slice(0, visibiliWaifu)"
+            v-for="{ id, dati, w, owned } in waifuGridEntries.slice(0, visibiliWaifu)"
             :key="id"
-            class="card-fade-up card-clickable collection-card-item"
+            :class="owned ? 'card-fade-up card-clickable collection-card-item' : 'collection-card-item'"
             :style="{ width:'calc(33.33% - 3px)', display:'flex', flexDirection:'column', alignItems:'center' }"
           >
-            <div style="zoom:0.92;flex-shrink:0;position:relative;">
+            <!-- Slot NON posseduto: placeholder con '?' (stesso ingombro della carta) -->
+            <div v-if="!owned" style="zoom:0.92;flex-shrink:0;">
+              <div :style="{
+                width:'143px', height:'215px', borderRadius:'12px',
+                border:'1.5px dashed var(--theme-border)',
+                background:'var(--theme-bg-secondary)',
+                display:'flex', alignItems:'center', justifyContent:'center',
+              }">
+                <span :style="{ fontFamily:FF.display, fontSize:'40px', fontWeight:900, color:'var(--theme-text-3)', opacity:0.45, userSelect:'none' }">?</span>
+              </div>
+            </div>
+
+            <div v-else style="zoom:0.92;flex-shrink:0;position:relative;">
             <CartaWaifu
               :waifu="w"
               :datiCollezione="dati"
@@ -782,7 +847,7 @@ function apriNegozio() {
 
           <!-- Empty state waifu -->
           <PannelloOrnato
-            v-if="waifuEntries.length === 0"
+            v-if="waifuGridEntries.length === 0"
             :glow="C.gold"
             :style="{ width: '100%', textAlign: 'center', padding: '40px' }"
           >
@@ -797,7 +862,7 @@ function apriNegozio() {
         </div>
 
         <!-- Carica altre waifu -->
-        <div v-if="visibiliWaifu < waifuEntries.length" :style="{ textAlign: 'center', marginTop: '0' }">
+        <div v-if="visibiliWaifu < waifuGridEntries.length" :style="{ textAlign: 'center', marginTop: '0' }">
           <button
             @click="visibiliWaifu += 12"
             :style="{
@@ -821,7 +886,7 @@ function apriNegozio() {
               marginBottom: '30px',
             }"
           >
-            Carica altre ({{ waifuEntries.length - visibiliWaifu }} rimanenti)
+            Carica altre ({{ waifuGridEntries.length - visibiliWaifu }} rimanenti)
           </button>
         </div>
       </div>
