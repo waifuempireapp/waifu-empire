@@ -31,6 +31,7 @@ import {
   type MoveInstance,
 } from '~/utils/battleEngine'
 import { ikUrl } from '~/utils/imagekitUrl'
+import { moves as MOVES_DATA } from '~/assets/moves/moves-data'
 
 // ─── PROPS ────────────────────────────────────────────────────────────────────
 
@@ -260,6 +261,36 @@ function controlEffect(side: 'player' | 'enemy'): ActiveEffect | undefined {
 // pActive → effetti subiti dalla waifu del giocatore; eActive → da quella nemica.
 watch(pActive, () => { fieldEffects.value = { ...fieldEffects.value, player: [] } })
 watch(eActive, () => { fieldEffects.value = { ...fieldEffects.value, enemy: [] } })
+
+// ── Long-press su una mossa: popup con la CARTA della mossa e la spiegazione ──
+// (gli effetti non sono mostrati sul bottone: si vedono qui)
+const moveDetail = ref<Record<string, unknown> | null>(null)
+let lpTimer: ReturnType<typeof setTimeout> | null = null
+let lpFired = false
+function moveLongPressStart(move: MoveInstance | null) {
+  if (!move) return
+  lpFired = false
+  if (lpTimer) clearTimeout(lpTimer)
+  lpTimer = setTimeout(() => {
+    lpFired = true
+    // Scheda completa dal catalogo locale (match per nome), fallback minimale
+    const full = MOVES_DATA.find(m => m.name === move.name)
+    moveDetail.value = (full as unknown as Record<string, unknown>) ?? {
+      id: '', name: move.name, type: String(move.type ?? 'arcana').toLowerCase(),
+      damage: move.power, additionalEffectLabel: '', effectDescription: '',
+      flavorText: '', isUltimate: false, imageFileName: '', imageUrl: '',
+    }
+  }, 420)
+}
+function moveLongPressEnd() {
+  if (lpTimer) { clearTimeout(lpTimer); lpTimer = null }
+}
+/** true (una volta) se il long-press è appena scattato: annulla il click. */
+function consumeLongPress(): boolean {
+  const fired = lpFired
+  lpFired = false
+  return fired
+}
 
 /** Stile chip effetto per gli HUD: colore per tipo di effetto. */
 const EFFECT_CHIP_COLORS: Record<ActiveEffect['kind'], string> = {
@@ -1678,11 +1709,12 @@ const mvp = computed(() => {
 
       <!-- ── ZONA 5+6: Action Panel ── -->
       <!-- Altezza FISSA (non min/max variabile): così l'arena sopra non si ridimensiona
-           tra le fasi (scelta/messaggio/cambio) e le carte non si alzano/abbassano.
-           Il contenuto piu' alto scrolla internamente (overflowY:auto). -->
+           tra le fasi e le carte non si alzano/abbassano. Ma COMPATTA: con 50dvh i
+           bottoni mossa (flex:1) si stiravano diventando giganti. Il contenuto più
+           alto (fase cambio) scrolla internamente (overflowY:auto). -->
       <div :style="{
         flexShrink:0,
-        height: isMobile ? '50dvh' : 'clamp(220px, 45dvh, 300px)',
+        height: isMobile ? 'clamp(225px, 31dvh, 270px)' : 'clamp(220px, 30dvh, 280px)',
         display:'flex', flexDirection:'column',
         background:'var(--theme-surface)',
         borderTop:'1px solid var(--theme-border)',
@@ -1909,7 +1941,12 @@ const mvp = computed(() => {
                 <button
                   class="wba-move-btn"
                   :disabled="!isChoose || isAnim || (isPvP && pvpWaiting) || (move?.pp ?? 0) <= 0 || isMoveBlocked(lastPMove, i, move ?? ({} as MoveInstance))"
-                  @click="() => { if (move && (move.pp ?? 0) > 0 && !isMoveBlocked(lastPMove, i, move)) handleMove(i) }"
+                  @pointerdown="moveLongPressStart(move)"
+                  @pointerup="moveLongPressEnd"
+                  @pointerleave="moveLongPressEnd"
+                  @pointercancel="moveLongPressEnd"
+                  @contextmenu.prevent
+                  @click="() => { if (consumeLongPress()) return; if (move && (move.pp ?? 0) > 0 && !isMoveBlocked(lastPMove, i, move)) handleMove(i) }"
                   :style="(() => {
                     if (!move) return {
                       height:'100%',borderRadius:'12px',
@@ -2002,6 +2039,14 @@ const mvp = computed(() => {
             </div>
           </div>
         </template>
+      </div>
+    </div>
+
+    <!-- Popup dettaglio mossa (long-press): carta completa con la spiegazione -->
+    <div v-if="moveDetail" @click="moveDetail = null"
+      style="position:fixed;inset:0;z-index:600;background:rgba(4,2,14,0.82);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px;">
+      <div @click.stop style="width:280px;animation:fadeIn 0.2s ease-out;">
+        <MoveCard :move="(moveDetail as any)" :owned="true" :large="true" />
       </div>
     </div>
   </template>
