@@ -921,7 +921,7 @@ function cfTouchEnd(e: TouchEvent) {
         :texture-url="dropAttivo?.asset_bustina ?? null"
         :model-url="dropAttivo?.asset_glb ?? null"
         :width="vw"
-        :height="440"
+        :height="530"
         @pick="packPicked = true"
       />
     </div>

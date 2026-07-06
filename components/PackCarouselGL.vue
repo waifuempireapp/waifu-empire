@@ -103,11 +103,13 @@ async function init() {
     }
 
     scene = new THREE.Scene()
-    camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 100)
+    // FOV più ampio + camera arretrata e mira più bassa: la base delle bustine
+    // frontali resta DENTRO il frustum (prima veniva tagliata in basso)
+    camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 100)
     // Camera leggermente rialzata e inclinata verso il basso: la ruota si vede
     // in prospettiva e i pacchetti dietro scorrono visibili sopra quelli davanti
-    camera.position.set(0, 1.25, 5.4)
-    camera.lookAt(0, 0.15, 0)
+    camera.position.set(0, 1.3, 5.8)
+    camera.lookAt(0, -0.05, 0)
 
     // Environment + luci IDENTICHE a BustinaGLB
     const pmrem = new THREE.PMREMGenerator(renderer)
