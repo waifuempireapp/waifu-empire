@@ -10,6 +10,7 @@
 // ============================================================
 
 import { RARITY_MULTIPLIERS_DEFAULT } from '~/utils/constants'
+import { moves as MOVES_CATALOG, type MoveEffect } from '~/assets/moves/moves-data'
 
 // ── TIPI ─────────────────────────────────────────────────────
 
@@ -25,7 +26,14 @@ export interface MoveInstance {
   maxPp:         number
   ability:       string | null
   effectiveness?: string
+  /** Effetto strutturato (dot/shield/control/buff/debuff) applicato in battaglia */
+  effect?:       MoveEffect | null
 }
+
+// Effetti dal catalogo locale, per id mossa: fallback se il documento Firestore
+// non ha il campo effect (mosse inserite a mano dall'admin).
+const _EFFECT_BY_MOVE_ID: Record<string, MoveEffect | undefined> =
+  Object.fromEntries(MOVES_CATALOG.map(m => [m.id, m.effect]))
 
 export interface WaifuBattleStat {
   id:           string
@@ -332,6 +340,8 @@ export function initBattleWaifu(waifuFirestore: Record<string, unknown>, collect
           pp: Math.round((m.pp as number) ?? 5), maxPp: Math.round((m.pp as number) ?? 5),
           ability: (m.abilita as string) ?? null,
           effectiveness: 'Normal',
+          // Effetto: dal doc Firestore se presente, altrimenti dal catalogo locale
+          effect: (m.effect as MoveEffect | undefined) ?? _EFFECT_BY_MOVE_ID[mid] ?? null,
         } as MoveInstance
       }).filter((m): m is MoveInstance => m !== null)
       if (resolved.length === 4) finalMoves = resolved

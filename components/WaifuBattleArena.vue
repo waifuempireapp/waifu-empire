@@ -213,6 +213,65 @@ const eActive = ref(0)
 const player = computed(() => pTeam.value[pActive.value])
 const enemy  = computed(() => eTeam.value[eActive.value])
 
+// ── EFFETTI DELLE MOSSE (dot/shield/control/buff/debuff) ─────────────────────
+// Ogni effetto è legato alla waifu ATTIVA del lato colpito: se quella waifu
+// viene sostituita (cambio volontario, KO, swap CPU) l'effetto termina subito.
+interface ActiveEffect {
+  status: string
+  label: string
+  kind: 'dot' | 'shield' | 'control' | 'buff' | 'debuff'
+  turni: number             // turni rimanenti
+  dannoPerTurno?: number    // dot: HP persi a turno · buff: HP curati a turno
+}
+const fieldEffects = ref<{ player: ActiveEffect[]; enemy: ActiveEffect[] }>({ player: [], enemy: [] })
+
+/** Applica l'effetto della mossa: buff/shield sull'attaccante, il resto sul difensore. */
+function applyMoveEffect(attSide: 'player' | 'enemy', move: any) {
+  const eff = move?.effect
+  if (!eff?.kind || !(eff.durataTurni > 0)) return
+  const targetSide: 'player' | 'enemy' =
+    (eff.kind === 'buff' || eff.kind === 'shield') ? attSide : (attSide === 'player' ? 'enemy' : 'player')
+  // Nessuno stacking: la riapplicazione rinnova la durata
+  const list = fieldEffects.value[targetSide].filter(e => e.status !== eff.status)
+  list.push({ status: eff.status, label: eff.label, kind: eff.kind, turni: eff.durataTurni, dannoPerTurno: eff.dannoPerTurno })
+  fieldEffects.value = { ...fieldEffects.value, [targetSide]: list }
+}
+
+/** Moltiplicatore danno in uscita: buff proprio +40%, debuff proprio -30%, scudo del difensore -50%. */
+function effectDamageMult(attSide: 'player' | 'enemy'): number {
+  let mult = 1
+  const own = fieldEffects.value[attSide]
+  if (own.some(e => e.kind === 'buff' && !(e.dannoPerTurno! > 0))) mult *= 1.4
+  if (own.some(e => e.kind === 'debuff')) mult *= 0.7
+  const defSide = attSide === 'player' ? 'enemy' : 'player'
+  if (fieldEffects.value[defSide].some(e => e.kind === 'shield')) mult *= 0.5
+  return mult
+}
+
+/** Effetto control attivo (immobilizzo/stordimento): la waifu salta l'attacco. */
+function controlEffect(side: 'player' | 'enemy'): ActiveEffect | undefined {
+  return fieldEffects.value[side].find(e => e.kind === 'control')
+}
+
+// La sostituzione della waifu attiva (per qualsiasi motivo) termina subito
+// gli effetti sul suo lato — requisito esplicito del game design.
+watch(pActive, () => { fieldEffects.value = { ...fieldEffects.value, player: [] } })
+watch(eActive, () => { fieldEffects.value = { ...fieldEffects.value, enemy: [] } })
+
+/** Stile chip effetto per gli HUD: colore per tipo di effetto. */
+const EFFECT_CHIP_COLORS: Record<ActiveEffect['kind'], string> = {
+  dot: '#ff6b4a', control: '#b46bff', debuff: '#9aa4b5', buff: '#58e0a3', shield: '#4ac3ff',
+}
+function effectChipStyle(e: ActiveEffect) {
+  const col = EFFECT_CHIP_COLORS[e.kind] ?? '#9aa4b5'
+  return {
+    fontFamily: 'var(--ff-label)', fontSize: '10px', fontWeight: 800, lineHeight: 1,
+    letterSpacing: '0.04em', textTransform: 'uppercase' as const,
+    color: col, background: `${col}1f`, border: `1px solid ${col}66`,
+    borderRadius: '999px', padding: '3px 7px', whiteSpace: 'nowrap' as const,
+  }
+}
+
 // Raid boss: nemico unico con HP potenziati (flag impostato da RoundViewer)
 const isBoss     = computed(() => !!(enemy.value as any)?.isRaidBoss)
 const bossHpPct  = computed(() => {
@@ -587,13 +646,19 @@ async function handleVoluntarySwap(newIdx: number, { isPPExhausted = false } = {
       const eMi = cpuChooseMove(cpuAttacker, playerDefender, lastEMove.value)
       const move = cpuAttacker.moves[eMi]
 
-      if (move && (move.pp ?? 0) > 0) {
+      const cpuCtrl = controlEffect('enemy')
+      if (cpuCtrl && move) {
+        message.value = `${cpuAttacker.name} è ${cpuCtrl.label}! Non può attaccare!`
+        await wait(800)
+      } else if (move && (move.pp ?? 0) > 0) {
         eAnim.value   = 'wba-aL'
         message.value = `${cpuAttacker.name} usa ${move.name}!`
         await wait(ANIM_ENTER_MS)
         eAnim.value   = ''
 
-        const { damage, isCrit, effectiveness } = calculateDamage(cpuAttacker, move, playerDefender)
+        const _calc = calculateDamage(cpuAttacker, move, playerDefender)
+        const { isCrit, effectiveness } = _calc
+        const damage = Math.max(1, Math.round(_calc.damage * effectDamageMult('enemy')))
         pAnim.value = 'wba-sh'
         await wait(ANIM_BETWEEN_ATTACKS_MS)
         pAnim.value = ''
@@ -611,6 +676,10 @@ async function handleVoluntarySwap(newIdx: number, { isPPExhausted = false } = {
         if (isCrit) { message.value = 'Colpo critico! 💥'; await wait(350) }
         if (effectiveness === 'Super efficace!') { message.value = 'Super efficace!'; await wait(350) }
         else if (effectiveness === 'Poco efficace…') { message.value = 'Poco efficace…'; await wait(350) }
+
+        // Applica l'eventuale effetto della mossa CPU sulla waifu appena entrata
+        if (move.effect && !newDef.isKO) applyMoveEffect('enemy', move)
+        else if (move.effect && (move.effect.kind === 'buff' || move.effect.kind === 'shield')) applyMoveEffect('enemy', move)
 
         if (newDef.isKO) {
           message.value = `${newDef.name} è fuori combattimento!`
@@ -761,7 +830,19 @@ async function resolveTurn(pMi: number, eMi: number, _externalResult: null = nul
     const move = att.moves[mi]
     if (!move) return false
 
-    const { damage, isCrit, effectiveness } = calculateDamage(att, move, def)
+    // Effetto control (immobilizzo/stordimento): la waifu salta l'attacco
+    const ctrl = controlEffect(side)
+    if (ctrl) {
+      message.value = `${att.name} è ${ctrl.label}! Non può attaccare!`
+      await wait(800)
+      return false
+    }
+
+    const dmgCalc = calculateDamage(att, move, def)
+    const { isCrit, effectiveness } = dmgCalc
+    // Modificatori degli effetti attivi (buff/debuff propri, scudo del difensore)
+    const effMult = effectDamageMult(side)
+    const damage  = Math.max(1, Math.round(dmgCalc.damage * effMult))
     lastCritFlag = isCrit
 
     if (side === 'player') { pAnim.value = 'wba-aR' } else { eAnim.value = 'wba-aL' }
@@ -818,11 +899,20 @@ async function resolveTurn(pMi: number, eMi: number, _externalResult: null = nul
       biggestHitState.value = { ...biggestHitRef }
     }
 
+    // Applica l'effetto della mossa (dot/control/debuff sul difensore, buff/shield su di sé)
+    if (move.effect && !newDef.isKO) {
+      applyMoveEffect(side, move)
+    } else if (move.effect && (move.effect.kind === 'buff' || move.effect.kind === 'shield')) {
+      applyMoveEffect(side, move)   // gli effetti su di sé valgono anche se il bersaglio è KO
+    }
+
     // Messaggi efficacia
     const msgs: string[] = []
     if (isCrit) msgs.push('Colpo critico! 💥')
     if (effectiveness === 'Super efficace!') msgs.push('Super efficace!')
     else if (effectiveness === 'Poco efficace…') msgs.push('Poco efficace…')
+    if (effMult < 1 && fieldEffects.value[side === 'player' ? 'enemy' : 'player'].some(e => e.kind === 'shield')) msgs.push('Lo scudo assorbe parte del danno!')
+    if (move.effect && !newDef.isKO && move.effect.kind !== 'buff' && move.effect.kind !== 'shield') msgs.push(`${newDef.name} subisce: ${move.effect.label}!`)
     for (const m of msgs) { await wait(250); message.value = m }
 
     return newDef.isKO
@@ -853,6 +943,48 @@ async function resolveTurn(pMi: number, eMi: number, _externalResult: null = nul
         await wait(ANIM_KO_MS)
         if (second === 'player') { eAnim.value = '' } else { pAnim.value = '' }
       }
+    }
+  }
+
+  // ── Tick effetti di fine turno: DoT, rigenerazione, decremento durate ──────
+  for (const side of ['player', 'enemy'] as const) {
+    const list = fieldEffects.value[side]
+    if (!list.length) continue
+    const isP  = side === 'player'
+    const idx  = isP ? cPA : cEA
+    const w    = (isP ? curP : curE)[idx]
+    if (!w || w.isKO) { fieldEffects.value = { ...fieldEffects.value, [side]: [] }; continue }
+
+    let hp = w.hp
+    for (const e of list) {
+      if (e.kind === 'dot' && (e.dannoPerTurno ?? 0) > 0) {
+        hp = Math.max(0, hp - e.dannoPerTurno!)
+        message.value = `${w.name} soffre per ${e.label}! -${e.dannoPerTurno} HP`
+        if (isP) pAnim.value = 'wba-sh'; else eAnim.value = 'wba-sh'
+        await wait(500)
+        if (isP) pAnim.value = ''; else eAnim.value = ''
+      } else if (e.kind === 'buff' && (e.dannoPerTurno ?? 0) > 0) {
+        hp = Math.min(w.maxHp, hp + e.dannoPerTurno!)
+        message.value = `${w.name} recupera ${e.dannoPerTurno} HP (${e.label})`
+        await wait(500)
+      }
+    }
+
+    const tickKO = hp <= 0
+    const nw = { ...w, hp, isKO: tickKO }
+    if (isP) { curP = curP.map((x, i) => i === idx ? nw : x); pTeam.value = [...curP] }
+    else     { curE = curE.map((x, i) => i === idx ? nw : x); eTeam.value = [...curE] }
+
+    if (tickKO) {
+      message.value = `${w.name} è fuori combattimento!`
+      if (isP) pAnim.value = 'wba-ko'; else eAnim.value = 'wba-ko'
+      await wait(ANIM_KO_MS)
+      if (isP) pAnim.value = ''; else eAnim.value = ''
+      fieldEffects.value = { ...fieldEffects.value, [side]: [] }
+    } else {
+      // Decrementa la durata e rimuovi gli effetti scaduti
+      const rest = list.map(e => ({ ...e, turni: e.turni - 1 })).filter(e => e.turni > 0)
+      fieldEffects.value = { ...fieldEffects.value, [side]: rest }
     }
   }
 
@@ -1337,6 +1469,13 @@ const mvp = computed(() => {
                     {{ enemy.maxHp > 0 ? (enemy.hp > 0 ? Math.max(1, Math.round((enemy.hp / enemy.maxHp) * 100)) : 0) : 0 }}%
                   </span>
                 </div>
+
+                <!-- Effetti attivi sulla waifu avversaria -->
+                <div v-if="fieldEffects.enemy.length" :style="{ display:'flex',gap:'4px',flexWrap:'wrap',marginTop:'5px' }">
+                  <span v-for="e in fieldEffects.enemy" :key="e.status" :style="effectChipStyle(e)">
+                    {{ e.label }} · {{ e.turni }}t
+                  </span>
+                </div>
               </div>
             </template>
           </div>
@@ -1520,6 +1659,13 @@ const mvp = computed(() => {
                 <div :style="{ display:'flex',alignItems:'baseline',gap:'2px' }">
                   <span :style="{ fontFamily:'var(--ff-label)',fontSize:'20px',fontWeight:900,color:c.teal }">{{ Math.max(0, player.hp) }}</span>
                   <span :style="{ fontFamily:'var(--ff-label)',fontSize:'13px',color:'var(--theme-text-3)' }">/{{ player.maxHp }}</span>
+                </div>
+
+                <!-- Effetti attivi sulla propria waifu -->
+                <div v-if="fieldEffects.player.length" :style="{ display:'flex',gap:'4px',flexWrap:'wrap',marginTop:'5px' }">
+                  <span v-for="e in fieldEffects.player" :key="e.status" :style="effectChipStyle(e)">
+                    {{ e.label }} · {{ e.turni }}t
+                  </span>
                 </div>
               </div>
             </template>
