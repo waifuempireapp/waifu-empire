@@ -6,6 +6,9 @@
 <script setup lang="ts">
 import { Heart, X, ChevronDown, ChevronUp, Swords, Plus, Trash2 } from 'lucide-vue-next'
 import { canLearnMove, weakType } from '~/utils/moves'
+import { resolveWaifuStat, AESTHETIC_STAT_CAPS, type AestheticStatKey } from '~/utils/waifuStats'
+import { computeHp, computeSpeed, computeCritChance } from '~/utils/battleEngine'
+import { RARITY_MULTIPLIERS_DEFAULT } from '~/utils/constants'
 
 const { t } = useI18n()
 
@@ -149,16 +152,27 @@ const pickerMosse = computed(() => {
     .sort((a, b) => (b!.ok ? 1 : 0) - (a!.ok ? 1 : 0)) as { id: string; dati: any; cat: any; ok: boolean; motivo?: string }[]
 })
 
+// Valore statistica: reale dal catalogo se presente, altrimenti GENERATO in modo
+// deterministico dall'id (identico a quello mostrato sulla carta — utils/waifuStats).
 function statVal(key: string) {
-  return (props.waifu[key] ?? 0) + (props.dati.stat_bonus?.[key] ?? 0)
+  const v = resolveWaifuStat(props.waifu, key as AestheticStatKey) + (props.dati.stat_bonus?.[key] ?? 0)
+  const cap = AESTHETIC_STAT_CAPS[key as AestheticStatKey]
+  return cap != null ? Math.min(cap, v) : v
 }
 function statPct(key: string, max: number) {
   return Math.min(100, (statVal(key) / max) * 100)
 }
 
-const hp    = computed(() => props.dati.hp ?? props.waifu.hp ?? 0)
-const vel   = computed(() => props.dati.velocita ?? props.waifu.velocita_base ?? 0)
-const crit  = computed(() => props.dati.crit_chance ?? props.waifu.crit_chance_base ?? 0)
+// HP/Vel/Crit: stessi fallback derivati usati da CartaWaifu, così il dettaglio
+// non mostra mai 0 quando la carta mostra un valore calcolato.
+const _rarMult = computed(() =>
+  (RARITY_MULTIPLIERS_DEFAULT as Record<string, { multiplier: number }>)[props.waifu.rarita]?.multiplier ?? 1)
+const hp    = computed(() =>
+  props.dati.hp ?? props.waifu.hp ?? props.waifu.battleStats?.maxHp ?? computeHp(props.waifu, _rarMult.value))
+const vel   = computed(() =>
+  props.dati.velocita ?? props.waifu.velocita_base ?? props.waifu.battleStats?.speed ?? Math.round(computeSpeed(props.waifu)))
+const crit  = computed(() =>
+  props.dati.crit_chance ?? props.waifu.crit_chance_base ?? computeCritChance(props.waifu, _rarMult.value))
 const lv    = computed(() => props.dati.livello ?? 1)
 const copie = computed(() => props.dati.copie ?? 0)
 const pref  = computed(() => !!props.dati.preferita)

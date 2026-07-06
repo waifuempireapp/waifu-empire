@@ -13,6 +13,7 @@ import {
 
 import { RARITA, type RaritaKey, RARITY_MULTIPLIERS_DEFAULT } from '~/utils/constants'
 import { computeHp } from '~/utils/battleEngine'
+import { resolveWaifuStat } from '~/utils/waifuStats'
 import { ARCHETIPI } from '~/utils/promptGenerator'
 import { ikUrl } from '~/utils/imagekitUrl'
 
@@ -140,13 +141,15 @@ const censurata   = computed(() => props.censurata ?? false)
 const isHot       = computed(() => props.isHot ?? false)
 const evidenziato = computed(() => props.evidenziato ?? false)
 
-// Stat effettive con bonus collezione
+// Stat effettive con bonus collezione. I valori base vengono dal catalogo se
+// presenti, altrimenti GENERATI deterministicamente dall'id (utils/waifuStats):
+// così ogni waifu ha valori propri, identici anche nel dettaglio carta.
 const statBonus  = computed(() => props.datiCollezione?.stat_bonus ?? {})
-const tetteEff   = computed(() => Math.min(7, (props.waifu.tette ?? 3) + (statBonus.value.tette ?? 0)))
-const piediEff   = computed(() => (props.waifu.taglia_piedi ?? 38) + (statBonus.value.taglia_piedi ?? 0))
-const etaEff     = computed(() => (props.waifu.eta ?? 18) + (statBonus.value.eta ?? 0))
-const capelliEff = computed(() => Math.min(10, (props.waifu.colore_capelli ?? 1) + (statBonus.value.colore_capelli ?? 0)))
-const expEff     = computed(() => (props.waifu.esperienza ?? 0) + (statBonus.value.esperienza ?? 0))
+const tetteEff   = computed(() => Math.min(7, resolveWaifuStat(props.waifu, 'tette') + (statBonus.value.tette ?? 0)))
+const piediEff   = computed(() => resolveWaifuStat(props.waifu, 'taglia_piedi') + (statBonus.value.taglia_piedi ?? 0))
+const etaEff     = computed(() => resolveWaifuStat(props.waifu, 'eta') + (statBonus.value.eta ?? 0))
+const capelliEff = computed(() => Math.min(10, resolveWaifuStat(props.waifu, 'colore_capelli') + (statBonus.value.colore_capelli ?? 0)))
+const expEff     = computed(() => resolveWaifuStat(props.waifu, 'esperienza') + (statBonus.value.esperienza ?? 0))
 
 // HP / Velocità / Crit per riga superiore stats.
 // L'HP è un valore DERIVATo: se non memorizzato, lo si ricava da battleStats.maxHp

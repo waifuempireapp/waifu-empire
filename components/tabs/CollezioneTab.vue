@@ -16,6 +16,7 @@ import {
 } from '~/utils/firestoreService'
 import MovesList from '~/components/moves/MovesList.vue'
 import { computeAndSaveStats, calcolaEnergiaScarto } from '~/utils/gameLogic'
+import { resolveWaifuStats } from '~/utils/waifuStats'
 import { ikUrl } from '~/utils/imagekitUrl'
 import { TIMER, RARITA, STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, RARITY_MULTIPLIERS_DEFAULT } from '~/utils/constants'
 import { useAuthStore } from '~/stores/auth'
@@ -340,7 +341,9 @@ const lvlBusy    = ref(false)
 
 const lvlStatBase = computed(() => {
   if (!catalogWaifuSel.value || !datiWaifuSel.value) return {}
-  return { ...catalogWaifuSel.value, ...(datiWaifuSel.value.stat_personali ?? {}) }
+  // resolveWaifuStats: valorizza i campi estetici mancanti nel catalogo con gli
+  // stessi valori deterministici mostrati su carta e dettaglio (niente più 0)
+  return { ...catalogWaifuSel.value, ...resolveWaifuStats(catalogWaifuSel.value), ...(datiWaifuSel.value.stat_personali ?? {}) }
 })
 
 function lvlCalcPreview(stat: string, delta: number) {
