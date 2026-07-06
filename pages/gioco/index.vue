@@ -482,13 +482,17 @@ function handleSetTab(t: string) {
          :style="{ paddingTop: '20px' }">
 
       <!-- ═══ TAB: HOME ════════════════════════════════════════════════ -->
-      <!-- apri-sbusto: bottone "APRI ORA" → apre l'overlay SbustaTab -->
-      <LazyHomeTab v-if="tab === 'home'" :user="authStore.user" :profilo="gameStore.profilo"
-        :collezione="gameStore.collezione as any" :waifu-cat="gameStore.catalogoWaifu" :drop="(gameStore.dropsAttivi as any[])?.[0] ?? null" @set-tab="handleSetTab"
-        @apri-pesca="() => { pescaAperta = true }"
-        @apri-sbusto="() => { sbustaAperta = true }"
-        @ricarica-pack="ricaricaPackOmaggio"
-        @apri-negozio="gameStore.toggleNegozio(true)" />
+      <!-- apri-sbusto: bottone "APRI ORA" → apre l'overlay SbustaTab.
+           KeepAlive: la Home (e il suo pack 3D WebGL) NON si rimonta ai cambi di
+           tab → il pacchetto non lampeggia mai mostrando il placeholder. -->
+      <KeepAlive>
+        <LazyHomeTab v-if="tab === 'home'" :user="authStore.user" :profilo="gameStore.profilo"
+          :collezione="gameStore.collezione as any" :waifu-cat="gameStore.catalogoWaifu" :drop="(gameStore.dropsAttivi as any[])?.[0] ?? null" @set-tab="handleSetTab"
+          @apri-pesca="() => { pescaAperta = true }"
+          @apri-sbusto="() => { sbustaAperta = true }"
+          @ricarica-pack="ricaricaPackOmaggio"
+          @apri-negozio="gameStore.toggleNegozio(true)" />
+      </KeepAlive>
 
       <!-- ═══ TAB: PACCHETTI — commentata, selezione espansione ora in Home ═══
       <div v-if="tab === 'pacchetti'">

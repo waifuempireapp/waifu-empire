@@ -16,7 +16,7 @@ const props = withDefaults(defineProps<{
   modelUrl?:   string | null   // GLB dell'espansione (default: standard)
   width?:      number
   height?:     number
-}>(), { count: 8, width: 400, height: 430 })
+}>(), { count: 20, width: 400, height: 430 })
 
 const emit = defineEmits<{ ready: []; pick: [] }>()
 
@@ -26,11 +26,15 @@ const YMIN = -1.0038, YMAX = 1.0008
 
 const DEFAULT_BUSTINA = '/bustine/bustina_asset.glb'
 
-// Geometria dell'anello: spread orizzontale e profondità
-const SPREAD_X = 1.55
-const DEPTH_Z  = 1.05
+// Geometria dell'anello: con ~20 bustine serve un anello ampio perché non si
+// accavallino troppo; la profondità accentua l'effetto ruota.
+const SPREAD_X = 2.7
+const DEPTH_Z  = 1.6
+// Bustine leggermente più piccole rispetto alla singola (richiesta UX)
+const PACK_SCALE = 0.8
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+const glReady   = ref(false)   // fade-in del canvas: niente pop alla comparsa
 
 let renderer: import('three').WebGLRenderer     | null = null
 let scene:    import('three').Scene             | null = null
@@ -97,7 +101,7 @@ async function init() {
 
     scene = new THREE.Scene()
     camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 100)
-    camera.position.set(0, 0.04, 4.35)
+    camera.position.set(0, 0.04, 4.9)
     camera.lookAt(0, 0, 0)
 
     // Environment + luci IDENTICHE a BustinaGLB
@@ -152,10 +156,11 @@ async function init() {
     layoutRing(0)
 
     renderer.render(scene, camera)
-    requestAnimationFrame(() => requestAnimationFrame(() => emit('ready')))
+    requestAnimationFrame(() => requestAnimationFrame(() => { glReady.value = true; emit('ready') }))
     startLoop()
   } catch (e) {
     console.error('[PackCarouselGL] init failed', e)
+    glReady.value = true
     emit('ready')  // il parent gestisce comunque il flusso
   }
 }
@@ -174,8 +179,8 @@ function layoutRing(t: number) {
     // La frontale respira leggermente (invito al tap)
     const front = Math.max(0, zN)
     m.position.y = front * Math.sin(t * 1.4) * 0.02
-    // Scala: davanti piena, dietro ridotta
-    m.scale.setScalar(0.62 + 0.38 * (zN + 1) / 2)
+    // Scala: davanti piena, dietro ridotta (× fattore globale "più piccole")
+    m.scale.setScalar((0.55 + 0.45 * (zN + 1) / 2) * PACK_SCALE)
     // Leggero tilt coverflow verso il centro
     m.rotation.y = -Math.sin(th) * 0.42
     m.renderOrder = Math.round(zN * 100)
@@ -250,9 +255,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <!-- Fade-in quando il primo frame è pronto: niente pop/flash alla comparsa -->
   <canvas
     ref="canvasRef"
-    :style="{ width: width + 'px', height: height + 'px', display: 'block', touchAction: 'pan-y', cursor: 'grab' }"
+    :style="{ width: width + 'px', height: height + 'px', display: 'block', touchAction: 'pan-y', cursor: 'grab',
+              opacity: glReady ? 1 : 0, transition: 'opacity 0.35s ease' }"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
     @pointerup="onPointerUp"

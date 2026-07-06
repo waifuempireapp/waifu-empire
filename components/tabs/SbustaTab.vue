@@ -113,6 +113,9 @@ const bustaInAnimazione = ref(false)
 // identici (PackCarouselGL — la scelta è estetica: il contenuto è già generato).
 const packPicked = ref(false)
 const vw = ref(typeof window !== 'undefined' ? window.innerWidth : 430)
+const _onVwResize = () => { vw.value = window.innerWidth }
+onMounted(() => window.addEventListener('resize', _onVwResize, { passive: true }))
+onUnmounted(() => window.removeEventListener('resize', _onVwResize))
 const transizioneCarta = ref(false)
 
 // Stato video carta immersiva
@@ -913,11 +916,11 @@ function cfTouchEnd(e: TouchEvent) {
       </div>
 
       <PackCarouselGL
-        :count="8"
+        :count="20"
         :color="dropColore"
         :texture-url="dropAttivo?.asset_bustina ?? null"
         :model-url="dropAttivo?.asset_glb ?? null"
-        :width="Math.min(430, vw)"
+        :width="vw"
         :height="440"
         @pick="packPicked = true"
       />

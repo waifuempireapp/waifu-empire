@@ -36,7 +36,7 @@ export function preloadBustina(url?: string | null): void {
 </script>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, onActivated, onDeactivated } from 'vue'
 
 const props = withDefaults(defineProps<{
   textureUrl?: string | null
@@ -248,6 +248,20 @@ function onTouchMove(e: TouchEvent) {
 function onTouchEnd() { targetTiltX = 0; targetTiltY = 0 }
 
 onMounted(() => { init() })
+
+// KeepAlive (Home): quando il tab non è attivo il componente resta vivo ma
+// FERMA il render loop (niente GPU sprecata); al ritorno riparte sullo stesso
+// contesto WebGL → il pack riappare istantaneo, senza re-init né flash.
+let pausedByKeepAlive = false
+onDeactivated(() => {
+  if (animId !== null) { cancelAnimationFrame(animId); animId = null; pausedByKeepAlive = true }
+})
+onActivated(() => {
+  if (pausedByKeepAlive && renderer && scene && camera && mesh) {
+    pausedByKeepAlive = false
+    animate((window as any).__THREE__ as typeof import('three'))
+  }
+})
 
 onBeforeUnmount(() => {
   // 1. Ferma il loop di animazione
