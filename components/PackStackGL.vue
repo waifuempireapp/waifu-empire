@@ -12,6 +12,7 @@ const props = withDefaults(defineProps<{
   count?:      number          // quante bustine (default 10)
   color?:      string | null   // colore espansione
   textureUrl?: string | null   // texture bustina (asset_bustina)
+  modelUrl?:   string | null   // GLB dell'espansione (default: bustina standard)
   width?:      number
   height?:     number
 }>(), { count: 10, width: 300, height: 420 })
@@ -106,9 +107,25 @@ async function init() {
     const rim = new THREE.DirectionalLight(0xa78bfa, 0.5)
     rim.position.set(-2, -1, 2); scene.add(rim)
 
-    // Carica il modello UNA volta
-    const gltf = await new GLTFLoader().loadAsync('/bustine/bustina_asset.glb')
-    const src = gltf.scene.children[0] as import('three').Mesh
+    // Carica il modello UNA volta: GLB dell'espansione se valido, altrimenti standard
+    const DEFAULT_GLB = '/bustine/bustina_asset.glb'
+    const findMesh = (g: { scene: import('three').Group }): import('three').Mesh | null => {
+      let m: import('three').Mesh | null = null
+      g.scene.traverse((o: import('three').Object3D) => {
+        if (!m && (o as import('three').Mesh).isMesh) m = o as import('three').Mesh
+      })
+      return m
+    }
+    const loader = new GLTFLoader()
+    let src: import('three').Mesh | null = null
+    try {
+      src = findMesh(await loader.loadAsync(props.modelUrl || DEFAULT_GLB))
+    } catch { /* file mancante → fallback sotto */ }
+    if (!src && props.modelUrl && props.modelUrl !== DEFAULT_GLB) {
+      console.warn(`[PackStackGL] ${props.modelUrl} non valido, uso la bustina standard`)
+      src = findMesh(await loader.loadAsync(DEFAULT_GLB))
+    }
+    if (!src) throw new Error('Nessuna mesh bustina disponibile')
     sharedGeo = src.geometry.clone()
     applyPlanarUVs(sharedGeo, THREE)
 

@@ -26,6 +26,7 @@ import { getDb } from '~/utils/firebase'
 import { ikUrl } from '~/utils/imagekitUrl'
 import { AVATAR_BY_WAIFU, BASE_AVATAR_IDS, AVATAR_PRESETS } from '~/composables/useAvatar'
 import { preloadBustina } from '~/components/BustinaGLB.vue'
+import { bustinaGlbUrl } from '~/utils/bustina'
 // ikUrl rimosso — non più usato nel template (carte acquisite rimosse dalla nav)
 
 definePageMeta({ middleware: 'auth' })
@@ -156,8 +157,8 @@ async function caricaTutto(uid: string) {
   // + preload dei GLB delle espansioni attive (la Home usa quello del primo drop)
   listDropsAttivi().then(d => {
     gameStore.setDropsAttivi(d as never)
-    for (const drop of (d as { asset_glb?: string | null }[] ?? [])) {
-      if (drop?.asset_glb) preloadBustina(drop.asset_glb)
+    for (const drop of (d as { nome?: string | null; asset_glb?: string | null }[] ?? [])) {
+      preloadBustina(bustinaGlbUrl(drop))
     }
   }).catch(() => { })
 
@@ -505,12 +506,21 @@ function handleSetTab(t: string) {
       ════════════════════════════════════════════════════════════════════ -->
 
       <!-- ═══ TAB: COLLEZIONE ════════════════════════════════════════════ -->
-      <LazyCollezioneTab v-if="tab === 'collezione'" :profilo="gameStore.profilo" :collezione="gameStore.collezione as any"
-        :waifu-cat="gameStore.catalogoWaifu" :mosse-cat="gameStore.catalogoMosse" :stat-config="statConfig"
-        :initial-sub-tab="collezioneSubTab"
-        @notif="(t: string, c: string) => mostraNotif(t, c)"
-        @update-profilo="(p: unknown) => gameStore.setProfilo(p as never)"
-        @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)" />
+      <!-- ErrorBoundary diagnostico: su iOS la collezione risultava invisibile —
+           se la causa è un errore JS di render, qui diventa VISIBILE a schermo -->
+      <NuxtErrorBoundary v-if="tab === 'collezione'" @error="(e: unknown) => console.error('[collezione]', e)">
+        <LazyCollezioneTab :profilo="gameStore.profilo" :collezione="gameStore.collezione as any"
+          :waifu-cat="gameStore.catalogoWaifu" :mosse-cat="gameStore.catalogoMosse" :stat-config="statConfig"
+          :initial-sub-tab="collezioneSubTab"
+          @notif="(t: string, c: string) => mostraNotif(t, c)"
+          @update-profilo="(p: unknown) => gameStore.setProfilo(p as never)"
+          @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)" />
+        <template #error="{ error }">
+          <div style="padding:48px 24px;text-align:center;color:#ff6b6b;font-family:var(--ff-body,sans-serif);font-size:14px;line-height:1.6;">
+            ⚠ Errore nella Collezione:<br>{{ (error as any)?.message ?? error }}
+          </div>
+        </template>
+      </NuxtErrorBoundary>
 
       <!-- ═══ TAB: MAPPA ════════════════════════════════════════════════ -->
       <LazyMappaTab v-if="tab === 'mappa'" :profilo="gameStore.profilo" :collezione="gameStore.collezione as any"

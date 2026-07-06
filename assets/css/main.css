@@ -437,6 +437,18 @@ input:focus, textarea:focus, select:focus {
 .foil--strong { opacity: 0.85; }
 .foil--soft   { opacity: 0.30; }
 
+/* ── FIX iOS: niente blend mode su iPhone/iPad ─────────────────────────────
+   Su WebKit iOS mix-blend-mode (screen/overlay) dentro contenitori compositati
+   può mandare in BLANK il paint dell'intero stacking context → griglia della
+   Collezione invisibile. Il foil resta come gradiente luminoso semplice.
+   @supports (-webkit-touch-callout:none) = solo iOS (tutti i browser iOS sono WebKit). */
+@supports (-webkit-touch-callout: none) {
+  .foil, .ntabs-btn__shine { mix-blend-mode: normal; }
+  .foil         { opacity: 0.20; }
+  .foil--strong { opacity: 0.28; }
+  .foil--soft   { opacity: 0.10; }
+}
+
 /* ========== MAPPA: contenitore scrollabile ========== */
 .mappa-scroll-container {
   width: 100%;

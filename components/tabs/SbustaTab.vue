@@ -21,6 +21,7 @@ import { useMissionsStore } from '~/stores/missions'
 import { ikUrl } from '~/utils/imagekitUrl'
 import { resolveMoveImage } from '~/utils/moves'
 import { preloadBustina } from '~/components/BustinaGLB.vue'
+import { bustinaGlbUrl } from '~/utils/bustina'
 import PackCarouselGL from '~/components/PackCarouselGL.vue'
 import MoveCard from '~/components/moves/MoveCard.vue'
 import SummaryCardTile from '~/components/SummaryCardTile.vue'
@@ -133,7 +134,7 @@ onMounted(async () => {
     if (lista.length > 0) dropSelId.value = lista[0].id as string
     // Preload dei modelli 3D delle bustine del carosello (cache condivisa per URL)
     preloadBustina()
-    for (const d of lista) { if ((d as any).asset_glb) preloadBustina((d as any).asset_glb) }
+    for (const d of lista) preloadBustina(bustinaGlbUrl(d as any))
   } catch {
     // ignora
   } finally {
@@ -895,6 +896,7 @@ function cfTouchEnd(e: TouchEvent) {
           :count="multiPackCarte.length"
           :color="dropColore"
           :texture-url="dropAttivo?.asset_bustina ?? null"
+          :model-url="bustinaGlbUrl(dropAttivo)"
           :width="300" :height="420"
         />
         <!-- Riflesso finto sotto il canvas -->
@@ -929,7 +931,7 @@ function cfTouchEnd(e: TouchEvent) {
         :count="20"
         :color="dropColore"
         :texture-url="dropAttivo?.asset_bustina ?? null"
-        :model-url="dropAttivo?.asset_glb ?? null"
+        :model-url="bustinaGlbUrl(dropAttivo)"
         :width="vw"
         :height="530"
         @picked="packPicked = true"
@@ -959,7 +961,7 @@ function cfTouchEnd(e: TouchEvent) {
         <BustinaGLB
           :texture-url="dropAttivo?.asset_bustina ?? null"
           :color="dropColore"
-          :model-url="dropAttivo?.asset_glb ?? null"
+          :model-url="bustinaGlbUrl(dropAttivo)"
           :ripping="bustaInAnimazione"
           :width="280" :height="460"
         />
@@ -1220,7 +1222,7 @@ function cfTouchEnd(e: TouchEvent) {
             <BustinaGLB
               :color="d.colore || C.violet"
               :texture-url="null"
-              :model-url="d.asset_glb ?? null"
+              :model-url="bustinaGlbUrl(d)"
               :label="(d.nome||'DROP').toUpperCase()"
               :label-color="d.id===dropSelId ? (d.colore||'#e8c448') : 'rgba(255,255,255,0.45)'"
               :width="185" :height="300"

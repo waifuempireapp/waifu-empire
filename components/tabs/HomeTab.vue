@@ -271,7 +271,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
         <BustinaGLB
           :color="totalPack > 0 ? ((drop?.colore as string) || '#6b1a3a') : '#5a3e0a'"
           :texture-url="null"
-          :model-url="(drop?.asset_glb as string) || null"
+          :model-url="bustinaGlbUrl(drop as any)"
           :width="115" :height="185"
           :passive="true"
         />

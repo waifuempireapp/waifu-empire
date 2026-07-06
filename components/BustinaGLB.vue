@@ -8,17 +8,34 @@
 // geometria sorgente. Permette modelli diversi per espansione.
 const DEFAULT_BUSTINA = '/bustine/bustina_asset.glb'
 const _glbMeshCache = new Map<string, Promise<import('three').Mesh>>()
+
+async function _loadMeshRaw(url: string): Promise<import('three').Mesh> {
+  const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
+  const gltf = await new GLTFLoader().loadAsync(url)
+  // Trova la prima Mesh nella gerarchia (struttura GLB variabile)
+  let found: import('three').Mesh | null = null
+  gltf.scene.traverse((o: import('three').Object3D) => {
+    if (!found && (o as import('three').Mesh).isMesh) found = o as import('three').Mesh
+  })
+  const mesh = found ?? (gltf.scene.children[0] as import('three').Mesh | undefined)
+  if (!mesh || !(mesh as import('three').Mesh).isMesh) throw new Error(`GLB senza mesh: ${url}`)
+  return mesh
+}
+
 function loadBustinaMesh(url: string = DEFAULT_BUSTINA): Promise<import('three').Mesh> {
   if (!_glbMeshCache.has(url)) {
     _glbMeshCache.set(url, (async () => {
-      const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
-      const gltf = await new GLTFLoader().loadAsync(url)
-      // Trova la prima Mesh nella gerarchia (struttura GLB variabile)
-      let found: import('three').Mesh | null = null
-      gltf.scene.traverse((o: import('three').Object3D) => {
-        if (!found && (o as import('three').Mesh).isMesh) found = o as import('three').Mesh
-      })
-      return (found ?? gltf.scene.children[0]) as import('three').Mesh
+      try {
+        return await _loadMeshRaw(url)
+      } catch (e) {
+        // GLB dell'espansione mancante/vuoto → fallback alla bustina standard
+        if (url !== DEFAULT_BUSTINA) {
+          console.warn(`[BustinaGLB] ${url} non valido, uso la bustina standard`, e)
+          return loadBustinaMesh(DEFAULT_BUSTINA)
+        }
+        _glbMeshCache.delete(url)  // non avvelenare la cache del default
+        throw e
+      }
     })())
   }
   return _glbMeshCache.get(url)!

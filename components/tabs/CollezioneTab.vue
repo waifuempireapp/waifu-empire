@@ -619,13 +619,15 @@ function apriNegozio() {
             lineHeight: 1.4,
           }">{{ t.n }}</span>
 
-          <!-- Sheen overlay quando attivo -->
+          <!-- Sheen overlay quando attivo — SENZA mix-blend-mode: su Safari/iOS
+               i blend mode possono mandare in blank il paint dell'intero
+               stacking context (sospetta causa della Collezione invisibile) -->
           <span
             v-if="tabSub === t.k"
             :style="{
               position: 'absolute', inset: 0, borderRadius: 'inherit',
-              background: 'linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.22) 50%, transparent 65%)',
-              opacity: 0.55, mixBlendMode: 'overlay', pointerEvents: 'none',
+              background: 'linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.18) 50%, transparent 65%)',
+              opacity: 0.5, pointerEvents: 'none',
             }"
           />
           <!-- Icona Lucide (componente dinamico) -->

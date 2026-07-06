@@ -138,13 +138,25 @@ async function init() {
     const rim = new THREE.DirectionalLight(0xa78bfa, 0.5)
     rim.position.set(-2, -1, 2); scene.add(rim)
 
-    // Modello: quello dell'espansione se presente, altrimenti standard
-    const gltf = await new GLTFLoader().loadAsync(props.modelUrl || DEFAULT_BUSTINA)
+    // Modello: quello dell'espansione se presente, altrimenti standard.
+    // Se il GLB dell'espansione manca o è vuoto → fallback alla bustina standard.
+    const findMesh = (g: { scene: import('three').Group }): import('three').Mesh | null => {
+      let m: import('three').Mesh | null = null
+      g.scene.traverse((o: import('three').Object3D) => {
+        if (!m && (o as import('three').Mesh).isMesh) m = o as import('three').Mesh
+      })
+      return m
+    }
+    const loader = new GLTFLoader()
     let src: import('three').Mesh | null = null
-    gltf.scene.traverse((o: import('three').Object3D) => {
-      if (!src && (o as import('three').Mesh).isMesh) src = o as import('three').Mesh
-    })
-    src = src ?? (gltf.scene.children[0] as import('three').Mesh)
+    try {
+      src = findMesh(await loader.loadAsync(props.modelUrl || DEFAULT_BUSTINA))
+    } catch { /* file mancante → fallback sotto */ }
+    if (!src && props.modelUrl && props.modelUrl !== DEFAULT_BUSTINA) {
+      console.warn(`[PackCarouselGL] ${props.modelUrl} non valido, uso la bustina standard`)
+      src = findMesh(await loader.loadAsync(DEFAULT_BUSTINA))
+    }
+    if (!src) throw new Error('Nessuna mesh bustina disponibile')
     const srcMat = (Array.isArray(src!.material) ? src!.material[0] : src!.material) as import('three').MeshStandardMaterial | undefined
     const useModelMat = !!(srcMat && srcMat.map)
 
