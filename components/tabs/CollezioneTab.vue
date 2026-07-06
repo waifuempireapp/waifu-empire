@@ -106,7 +106,6 @@ function onToggleSort(key: string) {
     sortDir.value = 'desc'
     sortKey.value = key
   }
-  visibiliWaifu.value = 12
 }
 
 // ── Filtri outfit/pose ────────────────────────────────────────
@@ -118,7 +117,8 @@ const drops       = ref<any[]>([])
 const filtroDropId = ref('tutti')
 
 // ── Paginazione ───────────────────────────────────────────────
-const visibiliWaifu  = ref(12)
+// Waifu: NIENTE paginazione — tutte le carte sono renderizzate subito
+// (le immagini si scaldano in preload); resta solo per outfit/pose.
 const visibiliOutfit = ref(12)
 const visibiliPose   = ref(12)
 
@@ -333,7 +333,7 @@ const totScambiabili = computed(() =>
 function _preload(entries: typeof waifuEntries.value) {
   if (typeof window === 'undefined') return
   try {
-    entries.slice(0, visibiliWaifu.value + 6).forEach(({ w }) => {
+    entries.forEach(({ w }) => {
       const url = ikUrl(w?.asset_statica ?? null, 'card')
       if (url) { const img = new Image(); img.src = url }
     })
@@ -590,7 +590,6 @@ const filtroCombo = computed({
     else if (v === 'crescita') filtroLevelUp.value = 'no'
     else if (v === 'hot') filtroHot.value = 'hot'
     else if (v === 'sfw') filtroHot.value = 'non-hot'
-    visibiliWaifu.value = 12
   },
 })
 
@@ -703,9 +702,9 @@ function apriNegozio() {
           <!-- Ricerca -->
           <div :style="{ display:'flex', alignItems:'center', gap:'8px', padding:'10px 14px', background:'var(--theme-bg-secondary)', border:'1px solid var(--theme-border)', borderRadius:'12px', marginBottom:'10px', boxShadow:'0 2px 8px var(--theme-shadow)' }">
             <Search :size="14" stroke-width="1.5" :style="{ color:'var(--theme-text-3)', flexShrink:0 }" />
-            <input v-model="filtroNome" @input="visibiliWaifu = 12" :placeholder="$t('collection.search_placeholder')"
+            <input v-model="filtroNome"  :placeholder="$t('collection.search_placeholder')"
               :style="{ flex:1, background:'transparent !important', border:'none !important', boxShadow:'none !important', outline:'none', color:'var(--theme-text)', fontSize:'14px', fontFamily:FF.body, padding:'6px 0' }" />
-            <button v-if="filtroNome" @click="filtroNome = ''; visibiliWaifu = 12"
+            <button v-if="filtroNome" @click="filtroNome = ''"
               :style="{ background:'none', border:'none', cursor:'pointer', color:'var(--theme-text-3)', padding:0, display:'flex', alignItems:'center' }"><X :size="14" stroke-width="1.5" /></button>
             <span :style="{ fontFamily:FF.mono, fontSize:'13px', color:'var(--theme-text-3)', fontWeight:700, flexShrink:0 }">{{ waifuPossedute }}/{{ waifuGridEntries.length }}</span>
           </div>
@@ -787,9 +786,9 @@ function apriNegozio() {
 
         <!-- Griglia waifu 3 colonne — tutto il catalogo: possedute = carta,
              non possedute = slot placeholder '?' (stile pagina mosse) -->
-        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:16px;">
+        <div style="display:flex;flex-wrap:wrap;gap:2px 4px;margin-top:10px;margin-bottom:10px;">
           <div
-            v-for="{ id, dati, w, owned } in waifuGridEntries.slice(0, visibiliWaifu)"
+            v-for="{ id, dati, w, owned } in waifuGridEntries"
             :key="id"
             :class="owned ? 'card-fade-up card-clickable collection-card-item' : 'collection-card-item'"
             :style="{ width:'calc(33.33% - 3px)', display:'flex', flexDirection:'column', alignItems:'center' }"
@@ -861,34 +860,7 @@ function apriNegozio() {
           </PannelloOrnato>
         </div>
 
-        <!-- Carica altre waifu -->
-        <div v-if="visibiliWaifu < waifuGridEntries.length" :style="{ textAlign: 'center', marginTop: '0' }">
-          <button
-            @click="visibiliWaifu += 12"
-            :style="{
-              padding: '13px 28px',
-              background: 'var(--surface)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-medium)',
-              borderRadius: '99px',
-              fontFamily: FF.label,
-              fontSize: '13px',
-              fontWeight: 700,
-              letterSpacing: '1.5px',
-              cursor: 'pointer',
-              boxShadow: 'var(--shadow-float)',
-              transition: 'background 0.2s, transform 0.15s',
-              textTransform: 'uppercase',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '7px',
-              marginBottom: '30px',
-            }"
-          >
-            Carica altre ({{ waifuGridEntries.length - visibiliWaifu }} rimanenti)
-          </button>
-        </div>
+
       </div>
 
       <!-- ══════════════════════════════════════════════════════

@@ -131,7 +131,7 @@ const listExpanded = ref(false)
     </div>
 
     <!-- ===== CLASSIFICA WAIFU ===== -->
-    <ClassificaWaifuRankingList v-if="subTab === 'waifu'" :user="user" />
+    <WaifuRankingList v-if="subTab === 'waifu'" :user="user" />
 
     <!-- ===== CLASSIFICA GIOCATORI ===== -->
     <template v-if="subTab === 'giocatori'">

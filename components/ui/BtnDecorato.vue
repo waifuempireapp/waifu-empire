@@ -31,7 +31,8 @@ const VARIANTS = {
   primary: {
     bg:      'linear-gradient(180deg, rgba(245,197,96,0.32), rgba(245,197,96,0.10))',
     bgHover: 'linear-gradient(180deg, rgba(255,233,168,0.45), rgba(245,197,96,0.18))',
-    color:   '#2a1f00',
+    // Font BIANCO (richiesta UX) — leggibile sul gold grazie alla text-shadow
+    color:   '#ffffff',
     border:  'rgba(255,233,168,0.6)',
     shadow:
       '0 1px 0 rgba(255,255,255,0.55) inset, ' +
@@ -79,6 +80,7 @@ const btnStyle = computed((): CSSProperties => ({
   padding:         `${s.value.py}px ${s.value.px}px`,
   background:      v.value.bg,
   color:           v.value.color,
+  textShadow:      '0 1px 3px rgba(0,0,0,0.35)',
   border:          `1px solid ${v.value.border}`,
   borderRadius:    `${s.value.br}px`,
   fontFamily:      "var(--ff-label, 'Saira Condensed', sans-serif)",

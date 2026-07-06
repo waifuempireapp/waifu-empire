@@ -176,5 +176,7 @@ async function onAssign(waifuId: string) {
 .moves-list__vs-pill:hover { transform: translateY(-1px); }
 .moves-list__vs-pill.is-active { color: #0c0a16; }
 
-.moves-list__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+/* Più aria tra le carte mossa (gap verticale e laterale) + padding laterale:
+   le carte risultano un po' più piccole e ben distanziate */
+.moves-list__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 14px; padding: 0 6px; }
 </style>

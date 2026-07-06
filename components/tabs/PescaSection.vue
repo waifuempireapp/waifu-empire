@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Heart } from 'lucide-vue-next'
 import type { ProfiloUtente, Collezione } from '~/types/game'
 import type { CSSProperties } from 'vue'
 import { useAuthStore } from '~/stores/auth'
@@ -513,7 +514,7 @@ onUnmounted(() => {
 
       <div
         style="display:flex;align-items:center;gap:7px;background:rgba(255,80,160,0.1);border:1px solid rgba(255,80,160,0.3);border-radius:999px;padding:6px 14px;">
-        <span style="font-size:16px;line-height:1">💋</span>
+        <Heart :size="16" stroke-width="1.5" style="color:#D946A8;flex-shrink:0;" />
         <div>
           <div
             style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;color:rgba(255,80,160,0.75);letter-spacing:0.2em;text-transform:uppercase;line-height:1;font-weight:700;">

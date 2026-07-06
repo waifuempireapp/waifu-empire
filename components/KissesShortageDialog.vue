@@ -2,6 +2,7 @@
      Sostituisce l'overlay a piena pagina (KissesShortageModal) in questo caso d'uso:
      mostra quanti Kisses mancano e offre "Ricarica" (apre lo shop) o "Annulla". -->
 <script setup lang="ts">
+import { Heart } from 'lucide-vue-next'
 const props = withDefaults(defineProps<{
   missingKisses?: number
 }>(), {
@@ -32,7 +33,7 @@ function ricarica() {
              box-shadow:0 12px 40px var(--theme-shadow);
              padding:24px 22px;text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center"
     >
-      <div style="font-size:40px;line-height:1">💋</div>
+      <Heart :size="40" stroke-width="1.5" style="color:#D946A8;" />
 
       <div style="font-family:'Unbounded',sans-serif;font-size:13px;letter-spacing:2px;color:#ff4d9e">
         {{ $t('modal.insufficient_kisses_title') }}

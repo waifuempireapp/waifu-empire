@@ -6,6 +6,7 @@
   Script invariato; solo il template è stato ridisegnato.
   ============================================================ -->
 <script setup lang="ts">
+import { Heart } from 'lucide-vue-next'
 const { t } = useI18n()
 import type { Collezione } from '~/types/game'
 import PescaCardTile from '~/components/PescaCardTile.vue'
@@ -199,7 +200,7 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
         fontSize:'12px', fontWeight:800, letterSpacing:'0.08em',
         color: puoPescare ? '#ff4d9e' : 'rgba(255,255,255,0.45)',
       }">
-        <span>💋</span>
+        <Heart :size="13" stroke-width="1.5" style="color:#D946A8;flex-shrink:0;" />
         <span>{{ kissesCost }} {{ $t('pesca.kisses_per_pick') }}</span>
       </div>
     </div>

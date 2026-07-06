@@ -34,12 +34,13 @@ export default defineEventHandler(async (event) => {
     // Se non ci sono risultati pre-computati, calcola live dai voti
     if (!rankingData) {
       const votesSnap = await adminDb.collection('swap_votes').get();
+      // Punteggio dallo swipe: +1 per ogni cuore (like), -1 per ogni X (dislike)
       const counts: Record<string, number> = {};
       for (const d of votesSnap.docs) {
         const data = d.data() as any;
-        if (data.vote !== 'like') continue;
+        if (data.vote !== 'like' && data.vote !== 'dislike') continue;
         if (resetAt && (data.timestamp?.toMillis?.() ?? 0) < resetAt) continue;
-        counts[data.waifuId] = (counts[data.waifuId] ?? 0) + 1;
+        counts[data.waifuId] = (counts[data.waifuId] ?? 0) + (data.vote === 'like' ? 1 : -1);
       }
       const top100Ids = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 100).map(([id, likes]) => ({ waifuId: id, likeCount: likes, nome: id }));
       if (top100Ids.length > 0) {
