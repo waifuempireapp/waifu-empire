@@ -786,7 +786,7 @@ function apriNegozio() {
 
         <!-- Griglia waifu 3 colonne — tutto il catalogo: possedute = carta,
              non possedute = slot placeholder '?' (stile pagina mosse) -->
-        <div style="display:flex;flex-wrap:wrap;gap:2px 4px;margin-top:10px;margin-bottom:10px;">
+        <div style="display:flex;flex-wrap:wrap;gap:0px 2px;margin-top:8px;margin-bottom:8px;">
           <div
             v-for="{ id, dati, w, owned } in waifuGridEntries"
             :key="id"
@@ -794,7 +794,7 @@ function apriNegozio() {
             :style="{ width:'calc(33.33% - 3px)', display:'flex', flexDirection:'column', alignItems:'center' }"
           >
             <!-- Slot NON posseduto: placeholder con '?' (stesso ingombro della carta) -->
-            <div v-if="!owned" style="zoom:0.92;flex-shrink:0;">
+            <div v-if="!owned" style="zoom:0.98;flex-shrink:0;">
               <div :style="{
                 width:'143px', height:'215px', borderRadius:'12px',
                 border:'1.5px dashed var(--theme-border)',
@@ -805,7 +805,7 @@ function apriNegozio() {
               </div>
             </div>
 
-            <div v-else style="zoom:0.92;flex-shrink:0;position:relative;">
+            <div v-else style="zoom:0.98;flex-shrink:0;position:relative;">
             <CartaWaifu
               :waifu="w"
               :datiCollezione="dati"
@@ -828,7 +828,7 @@ function apriNegozio() {
               boxShadow:'0 0 10px rgba(255,69,0,0.65)', pointerEvents:'none',
               textTransform:'uppercase', whiteSpace:'nowrap',
             }">🔥 HOT</div>
-            <!-- Chip LV — bottom-right della carta; font compensato per zoom:0.92 -->
+            <!-- Chip LV — bottom-right della carta; font compensato per zoom:0.98 -->
             <div :style="{
               position:'absolute', bottom:'10px', right:'6px', zIndex:20,
               background:'rgba(4,2,14,0.88)',
