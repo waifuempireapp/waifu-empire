@@ -4,6 +4,7 @@
   Recupera dati da /api/waifu-ranking/current con token Firebase.
   ============================================================ -->
 <script setup lang="ts">
+import { Heart } from 'lucide-vue-next'
 import { getCollezione } from '~/utils/firestoreService'
 
 const props = defineProps<{ user: any }>()
@@ -24,7 +25,7 @@ const PRIZE_COLORS = [
   '#ffc861','#b0bec5','#cd7f32','#ec4899',
   '#a855f7','#6cf0e0','#58e0a3','#f59e0b','#3b82f6','#ef4444',
 ]
-const PAGE_SIZE = 10
+const PAGE_SIZE = 50
 
 const RARITY_CHAIN  = ['comune','raro','epico','leggendario','immersivo']
 const RARITY_COLORS: Record<string, string> = {
@@ -138,11 +139,14 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
             textTransform: 'uppercase', marginBottom: '4px',
           }">
             ✦ Classifica Settimanale Waifu ✦
-            <span v-if="isLive" :style="{
-              marginLeft: '8px',
+          </div>
+          <!-- LIVE su riga propria -->
+          <div v-if="isLive" :style="{ marginBottom: '4px' }">
+            <span :style="{
+              display: 'inline-block',
               background: 'rgba(6,214,160,0.15)', border: '1px solid rgba(6,214,160,0.5)',
-              borderRadius: '999px', padding: '2px 8px',
-              fontSize: '12px', color: '#06d6a0',
+              borderRadius: '999px', padding: '2px 10px',
+              fontFamily: FF.label, fontSize: '12px', color: '#06d6a0', letterSpacing: '0.15em',
             }">{{ $t("leaderboard.live") }}</span>
           </div>
           <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)' }">
@@ -175,7 +179,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
 
         <!-- Righe waifu -->
         <div v-for="(item, j) in currentPageItems" :key="item.waifuId" :style="{
-          position: 'relative', borderRadius: '16px', overflow: 'hidden',
+          position: 'relative', borderRadius: '16px', overflow: 'visible',
           background: (page * PAGE_SIZE + j) < 3
             ? `linear-gradient(135deg, ${PRIZE_COLORS[page * PAGE_SIZE + j] ?? PRIZE_COLORS[9]}18, var(--theme-surface))`
             : 'var(--theme-shimmer)',
@@ -278,24 +282,27 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
               </div>
             </div>
 
-            <!-- Premio top 10 -->
-            <div :style="{ flexShrink: 0, textAlign: 'right' }">
-              <template v-if="(page * PAGE_SIZE + j) < 10">
-                <div :style="{ display: 'flex', alignItems: 'center', gap: '5px', justifyContent: 'flex-end' }">
-                  <KissesIcon :size="14" />
-                  <span :style="{
-                    fontFamily: FF.label, fontSize: '18px', fontWeight: 800,
-                    color: PRIZE_COLORS[Math.min(page * PAGE_SIZE + j, 9)],
-                  }">{{ item.prize }}</span>
-                </div>
-                <div :style="{
-                  fontFamily: FF.label, fontSize: '11px', fontWeight: 700,
-                  color: 'var(--theme-text-3)', letterSpacing: '0.12em',
-                  textTransform: 'uppercase', marginTop: '2px',
-                }">{{ $t("leaderboard.prize_lc") }}</div>
-              </template>
-              <div v-else :style="{ fontFamily: FF.label, fontSize: '13px', color: 'var(--theme-text-3)' }">—</div>
-            </div>
+          </div>
+
+          <!-- Chip PREMIO — semi-esterno in alto a destra (top 10), cuore outline come l'header -->
+          <div v-if="(page * PAGE_SIZE + j) < 10" :style="{
+            position: 'absolute', top: '-11px', right: '-6px', zIndex: 5,
+            display: 'inline-flex', alignItems: 'center', gap: '5px',
+            background: 'var(--theme-surface)',
+            border: `1.5px solid ${PRIZE_COLORS[Math.min(page * PAGE_SIZE + j, 9)]}aa`,
+            borderRadius: '999px', padding: '4px 12px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.35)',
+            pointerEvents: 'none', whiteSpace: 'nowrap',
+          }">
+            <Heart :size="13" stroke-width="1.5" style="color:#D946A8;flex-shrink:0;" />
+            <span :style="{
+              fontFamily: FF.label, fontSize: '14px', fontWeight: 800,
+              color: PRIZE_COLORS[Math.min(page * PAGE_SIZE + j, 9)],
+            }">{{ item.prize }}</span>
+            <span :style="{
+              fontFamily: FF.label, fontSize: '11px', fontWeight: 700,
+              color: 'var(--theme-text-3)', letterSpacing: '0.12em', textTransform: 'uppercase',
+            }">{{ $t("leaderboard.prize_lc") }}</span>
           </div>
         </div>
 
