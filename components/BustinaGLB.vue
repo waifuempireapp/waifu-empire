@@ -299,8 +299,12 @@ onBeforeUnmount(() => {
     @touchend.passive="onTouchEnd"
   >
 
-    <!-- ── Layer 1: CSS 2D — fallback finché il 3D non è pronto O se il WebGL fallisce/perde il contesto ── -->
-    <div v-show="!glReady || failed" :style="{
+    <!-- ── Layer 1: CSS 2D — fallback finché il 3D non è pronto O se il WebGL fallisce/perde il contesto.
+         Appare con RITARDO (~0.45s): sui re-mount (cambio tab) l'init col GLB in cache
+         è più rapido → il placeholder non fa in tempo a vedersi → niente flash. ── -->
+    <!-- v-if (non v-show): l'animazione di comparsa ritardata riparte ogni volta
+         che il fallback deve mostrarsi (mount, context-loss WebGL, re-init) -->
+    <div v-if="!glReady || failed" class="bustina-fallback" :style="{
       position: 'absolute', inset: '0',
       borderRadius: '10px',
       background: color
@@ -379,3 +383,15 @@ onBeforeUnmount(() => {
 
   </div>
 </template>
+
+<style scoped>
+/* Il fallback 2D parte invisibile e compare solo dopo 0.45s: se il canvas 3D
+   arriva prima (mesh in cache, re-mount da cambio tab) non si vede alcun flash. */
+.bustina-fallback {
+  opacity: 0;
+  animation: bustinaFallbackIn 0.3s ease-out 0.45s forwards;
+}
+@keyframes bustinaFallbackIn {
+  to { opacity: 1; }
+}
+</style>

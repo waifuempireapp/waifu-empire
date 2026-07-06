@@ -94,7 +94,8 @@ const cardShrinkStyle = computed(() => ({
   transition: 'transform 0.3s ease, margin-bottom 0.3s ease, padding 0.3s ease',
   transform: cardShrink.value ? 'scale(0.6)' : 'none',
   marginBottom: cardShrink.value ? `-${Math.round(cardOuterH.value * 0.28)}px` : '0px',
-  padding: cardShrink.value ? '4px 16px 4px' : '16px 16px 26px',
+  // Top più alto: i chip sbordano di -20px sopra la carta → senza spazio si schiacciano
+  padding: cardShrink.value ? '12px 16px 4px' : '26px 16px 26px',
 }))
 onMounted(() => { nextTick(measureCard) })
 watch([statsOpen, battleOpen], () => { nextTick(measureCard) })
