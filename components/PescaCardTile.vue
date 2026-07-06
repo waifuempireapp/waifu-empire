@@ -59,15 +59,17 @@ const src = computed(() => props.carta.immagine ? (ikUrl(props.carta.immagine, '
       <div v-if="!isMossa" style="position:absolute;bottom:4px;left:4px;z-index:3;border-radius:999px;padding:2px 7px;font-size:10px;font-weight:800;text-transform:capitalize;background:#fff;"
            :style="{ color: rarColor, boxShadow:'0 1px 4px rgba(0,0,0,0.25)' }">{{ carta.rarita || '?' }}</div>
 
-      <!-- MOSSA: pannello info nei 36% inferiori -->
-      <div v-if="isMossa" :style="{ position:'absolute', left:0, right:0, bottom:0, height:'36%', background:'var(--theme-surface)', borderTop:`1px solid ${(typeMeta?.accent ?? rarColor)}55`, padding:'3px 5px', display:'flex', flexDirection:'column', gap:'1px', overflow:'hidden' }">
+      <!-- MOSSA: pannello info nei 36% inferiori.
+           BG scuro theme-independent IDENTICO a MoveCard/PescaMoveOverlay: il
+           pannello descrizione deve avere lo stesso colore in TUTTE le viste. -->
+      <div v-if="isMossa" :style="{ position:'absolute', left:0, right:0, bottom:0, height:'36%', background:'rgba(12,10,24,0.94)', borderTop:`1px solid ${(typeMeta?.accent ?? rarColor)}55`, padding:'3px 5px', display:'flex', flexDirection:'column', gap:'1px', overflow:'hidden' }">
         <!-- Danno -->
         <div style="display:flex;align-items:baseline;gap:3px;">
           <span :style="{ fontFamily:`var(--ff-display,'Unbounded',sans-serif)`, fontSize:'13px', fontWeight:800, lineHeight:1, color: typeMeta?.accent ?? rarColor }">{{ carta.danno ?? 0 }}</span>
-          <span :style="{ fontFamily:`var(--ff-label,'Saira Condensed',sans-serif)`, fontSize:'7px', letterSpacing:'0.1em', color:'var(--theme-text-3)', textTransform:'uppercase' }">DMG</span>
+          <span :style="{ fontFamily:`var(--ff-label,'Saira Condensed',sans-serif)`, fontSize:'7px', letterSpacing:'0.1em', color:'rgba(238,232,246,0.5)', textTransform:'uppercase' }">DMG</span>
         </div>
         <!-- Descrizione (1-2 righe) -->
-        <div :style="{ fontFamily:`var(--ff-body,'Nunito',sans-serif)`, fontSize:'7.5px', lineHeight:1.2, color:'var(--theme-text-2)', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }">{{ carta.descrizione }}</div>
+        <div :style="{ fontFamily:`var(--ff-body,'Nunito',sans-serif)`, fontSize:'7.5px', lineHeight:1.2, color:'rgba(238,232,246,0.82)', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }">{{ carta.descrizione }}</div>
         <!-- Chip tipo (basso-dx, bg bianco) -->
         <div v-if="typeMeta" :style="{ position:'absolute', bottom:'3px', right:'4px', background:'#fff', color: typeMeta.accent, borderRadius:'999px', padding:'1px 6px', fontFamily:`var(--ff-label,'Saira Condensed',sans-serif)`, fontSize:'8px', fontWeight:900, letterSpacing:'0.06em', boxShadow:'0 1px 4px rgba(0,0,0,0.25)', display:'flex', alignItems:'center', gap:'2px' }">
           <span>{{ typeMeta.icon }}</span>{{ typeMeta.label }}

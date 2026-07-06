@@ -1374,12 +1374,13 @@ const mvp = computed(() => {
         }">CRITICAL HIT!</span>
       </div>
 
-      <!-- ── ZONA 1: Header compatto ── -->
+      <!-- ── ZONA 1: Header compatto — altezza FISSA: il timer che appare/scompare
+           non deve far alzare/abbassare tutta l'arena ── -->
       <div :style="{
         flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between',
-        padding:'4px 10px',
+        padding:'0 10px', height:'46px',
         background:'var(--theme-surface)', backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)',
-        borderBottom:'0.8px solid rgba(167,139,250,0.2)', minHeight:'36px',
+        borderBottom:'0.8px solid rgba(167,139,250,0.2)',
       }">
         <span :style="{
           fontFamily:'\'Unbounded\', sans-serif',
@@ -1414,16 +1415,19 @@ const mvp = computed(() => {
           border:'1px solid rgba(155,89,255,.25)',borderRadius:'4px',padding:'2px 6px',
         }">PVP</span>
 
-        <!-- Timer -->
-        <div v-if="isChoose" :style="{
+        <!-- Timer — SEMPRE renderizzato (visibility) e con box ad altezza fissa:
+             la sua comparsa/scomparsa non cambia più l'altezza dell'header -->
+        <div :style="{
           fontFamily:'var(--ff-display)', fontWeight:900,
-          fontSize: `${timerSize}px`, color:timerCol,
-          animation:timerAnim, transformOrigin:'center',
+          fontSize: `${timerSize}px`, color:timerCol, lineHeight:1,
+          animation: isChoose ? timerAnim : 'none', transformOrigin:'center',
           background:timerBg,
-          borderRadius:'999px', padding:'4px 12px',
+          borderRadius:'999px', padding:'0 12px',
           border:`1.5px solid ${timerCol}55`,
-          minWidth:'72px', textAlign:'center',
+          minWidth:'72px', height:'34px',
+          display:'flex', alignItems:'center', justifyContent:'center',
           transition:'color 0.3s, background 0.3s',
+          visibility: isChoose ? 'visible' : 'hidden',
         }">
           ⏱ {{ timer }}s
         </div>
