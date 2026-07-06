@@ -15,7 +15,7 @@ import { RARITA, type RaritaKey, RARITY_MULTIPLIERS_DEFAULT } from '~/utils/cons
 import { computeHp, computeSpeed, computeCritChance } from '~/utils/battleEngine'
 import { resolveWaifuStat } from '~/utils/waifuStats'
 import { ARCHETIPI } from '~/utils/promptGenerator'
-import { ikUrl } from '~/utils/imagekitUrl'
+import { ikUrl, ikImgFallback } from '~/utils/imagekitUrl'
 
 // ── Tipi ────────────────────────────────────────────────────
 interface DatiCollezione {
@@ -283,7 +283,7 @@ function onMouseLeave(e: MouseEvent) {
 
       <!-- Censurata: immagine sfocata + overlay blocco -->
       <div v-if="censurata" style="width: 100%; height: 100%; position: 'relative'">
-        <img v-if="imgSrc" :src="imgSrc" :alt="waifu.nome"
+        <img @error="ikImgFallback" v-if="imgSrc" :src="imgSrc" :alt="waifu.nome"
           :style="{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', filter: 'blur(14px) brightness(0.3)' }" />
         <div :style="{
           position: 'absolute', inset: '0',
@@ -316,7 +316,7 @@ function onMouseLeave(e: MouseEvent) {
       </div>
 
       <!-- Immagine carta — caricamento immediato (no "carta nera" che si valorizza) -->
-      <img
+      <img @error="ikImgFallback"
         v-else-if="imgSrc"
         :src="imgSrc"
         :alt="waifu.nome"

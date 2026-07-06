@@ -60,6 +60,37 @@ export function ikUrl(url: string | null | undefined, preset: ImageKitPreset = '
 }
 
 /**
+ * Fallback @error per le immagini ImageKit: su ImageKit i file vengono a volte
+ * rinominati aggiungendo o togliendo il suffisso _N (es. "_2") prima
+ * dell'estensione → il vecchio URL 404a. Questo handler ritenta:
+ *   1° errore → toggla il suffisso _N (lo toglie se c'è, aggiunge _2 se manca)
+ *   2° errore → riprova nella forma Unicode opposta (NFC ↔ NFD, per gli accenti)
+ * Uso: <img :src="ikUrl(...)" @error="ikImgFallback" />
+ */
+export function ikImgFallback(ev: Event): void {
+  const img = ev?.target as HTMLImageElement | null
+  if (!img || !img.src) return
+  const tried = Number(img.dataset.ikFallback ?? 0)
+  if (tried >= 2) return
+  img.dataset.ikFallback = String(tried + 1)
+
+  let u: string
+  try { u = decodeURI(img.src) } catch { u = img.src }
+
+  let alt: string
+  if (tried === 0) {
+    // Toggle del suffisso _N prima dell'estensione
+    alt = /_\d+\.(\w+)(\?.*)?$/.test(u)
+      ? u.replace(/_\d+(\.\w+)((\?.*)?)$/, '$1$2')
+      : u.replace(/(\.\w+)((\?.*)?)$/, '_2$1$2')
+  } else {
+    // Forma Unicode opposta (file macOS in NFD vs stringhe NFC)
+    alt = u === u.normalize('NFD') ? u.normalize('NFC') : u.normalize('NFD')
+  }
+  if (alt !== u) img.src = encodeURI(alt)
+}
+
+/**
  * Restituisce l'URL ottimizzata per la carta waifu.
  * Usa asset_statica oppure asset_immersiva come fallback.
  *

@@ -5,6 +5,7 @@
   ============================================================ -->
 <script setup lang="ts">
 import { Heart } from 'lucide-vue-next'
+import { ikUrl, ikImgFallback } from '~/utils/imagekitUrl'
 import { getCollezione } from '~/utils/firestoreService'
 
 const props = defineProps<{ user: any }>()
@@ -228,7 +229,8 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
               overflow: 'hidden', flexShrink: 0,
               border: `1px solid ${PRIZE_COLORS[Math.min(page * PAGE_SIZE + j, 9)]}40`,
             }">
-              <img :src="item.image" :alt="item.nome"
+              <img :src="ikUrl(item.image, 'thumbnail') ?? item.image" :alt="item.nome"
+                @error="ikImgFallback"
                 :style="{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 10%' }" />
             </div>
 
