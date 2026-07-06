@@ -421,7 +421,7 @@ const visiblePages = computed(() => {
 
       <!-- Popup assegnazione rapida mosse -->
       <RandomMovesModal v-if="showRandomMoves"
-        :collezione="collezione" :waifu-cat="waifuCat ?? []" :mosse-cat="mosseCat ?? []"
+        :collezione="collezione ?? null" :waifu-cat="waifuCat ?? []" :mosse-cat="mosseCat ?? []"
         @close="showRandomMoves = false"
         @update-collezione="(c) => emit('updateCollezione', c)"
         @notif="(t, c) => emit('notif', t, c)" />

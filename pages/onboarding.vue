@@ -34,11 +34,11 @@ async function conferma() {
     // Creazione lato server (admin SDK): controllo nome univoco + scrittura
     // profilo/collezione senza dipendere dalle Firestore Rules del client.
     const token = await authStore.user.getIdToken()
-    const res = await $fetch<{ success?: boolean; taken?: boolean }>('/api/onboarding/create-empire', {
+    const res = await $fetch('/api/onboarding/create-empire', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: { nomeImpero: nome, coloreImpero: coloreImpero.value, email: authStore.user.email, displayName: authStore.user.displayName },
-    })
+    }) as { success?: boolean; taken?: boolean }
     if (res.taken) { erroreNome.value = 'Questo nome è già preso. Scegline un altro!'; return }
     if (!res.success) { erroreNome.value = 'Creazione non riuscita. Riprova.'; return }
     router.replace('/gioco')
