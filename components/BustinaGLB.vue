@@ -249,6 +249,12 @@ watch(() => props.ripping, (val) => {
   if (val && !glReady.value) setTimeout(() => emit('done'), 700)
 })
 
+// Se il modello dell'espansione cambia dopo il mount (drop arrivato più tardi,
+// cambio espansione con componente keep-alive) → re-init con il GLB giusto.
+watch(() => props.modelUrl, (nuovo, vecchio) => {
+  if (nuovo !== vecchio) { glReady.value = false; init() }
+})
+
 function onPointerMove(e: PointerEvent) {
   const el = wrapperRef.value; if (!el) return
   const r = el.getBoundingClientRect()

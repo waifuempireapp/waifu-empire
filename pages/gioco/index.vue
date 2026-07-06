@@ -153,9 +153,10 @@ async function caricaTutto(uid: string) {
         return catalogRef
       })
 
-  // Pre-fetch drops in background + store (per la bustina dell'espansione in Home)
-  // + preload dei GLB delle espansioni attive (la Home usa quello del primo drop)
-  listDropsAttivi().then(d => {
+  // Drops: AWAITED insieme al resto (in parallelo). La Home ha bisogno del drop
+  // PRIMA di montare la bustina 3D, altrimenti parte col modello standard e non
+  // si aggiorna. Appena arrivano, preload immediato dei GLB delle espansioni.
+  const dropsPromise = listDropsAttivi().then(d => {
     gameStore.setDropsAttivi(d as never)
     for (const drop of (d as { nome?: string | null; asset_glb?: string | null }[] ?? [])) {
       preloadBustina(bustinaGlbUrl(drop))
@@ -166,6 +167,7 @@ async function caricaTutto(uid: string) {
     getUserProfile(uid),
     getCollezione(uid),
     catalogPromise,
+    dropsPromise,
   ])
 
   if (!profilo) {
@@ -265,11 +267,13 @@ async function caricaTutto(uid: string) {
   caricato.value = true
   await nextTick()
 
-  // Breve attesa della bustina (cap 1s) solo per una transizione morbida: se il 3D
-  // è lento non paghiamo più i 5s di prima.
+  // La loading screen resta finché il pacchetto 3D della Home non è PRONTO
+  // (richiesta UX: mai vedere il placeholder in Home). Il GLB è già in preload
+  // dall'inizio del caricamento, quindi di solito è questione di poco; il cap
+  // a 10s evita comunque un loader infinito se WebGL/rete falliscono.
   await new Promise<void>(resolve => {
     window.addEventListener('bustina:ready', () => resolve(), { once: true })
-    setTimeout(resolve, 1000)
+    setTimeout(resolve, 10000)
   })
 
   appReady.value = true
