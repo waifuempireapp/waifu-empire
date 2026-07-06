@@ -154,7 +154,8 @@
     "n_packs_label": "{n} Packs",
     "open_all": "×10 ALLE ÖFFNEN",
     "packs_available_label": "Packs verfügbar",
-    "buy_error": "Kauffehler"
+    "buy_error": "Kauffehler",
+    "pick_pack": "Tippe auf das Päckchen, das du öffnen willst!"
   },
   "map": {
     "title": "Weltkarte",

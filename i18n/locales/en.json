@@ -176,7 +176,8 @@
     "n_packs_label": "{n} Packs",
     "open_all": "×10 OPEN ALL",
     "packs_available_label": "packs available",
-    "buy_error": "Purchase error"
+    "buy_error": "Purchase error",
+    "pick_pack": "Tap the booster pack you want to open!"
   },
   "map": {
     "title": "World Map",

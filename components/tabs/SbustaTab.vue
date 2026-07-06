@@ -106,6 +106,22 @@ const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 // Nuovi stati per l'animazione di apertura pacchetto in stile Pokémon Pocket
 const bustaAperta = ref(false)
 const bustaInAnimazione = ref(false)
+
+// ── Scelta bustina stile Pokémon Pocket ──────────────────────
+// Prima dello strappo l'utente "sceglie" la bustina da un carosello di pack
+// identici (la scelta è estetica: il contenuto è già stato generato).
+const packPicked    = ref(false)
+const packPickerRef = ref<HTMLElement | null>(null)
+const PICKER_PACKS  = 6
+
+// Quando il carosello appare, centra lo scroll sul pack centrale
+watch([stato, bustaAperta, packPicked], async () => {
+  if (stato.value === 'reveal' && !bustaAperta.value && !packPicked.value) {
+    await nextTick()
+    const el = packPickerRef.value
+    if (el) el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2
+  }
+})
 const transizioneCarta = ref(false)
 
 // Stato video carta immersiva
@@ -324,6 +340,7 @@ async function apri(tipoPacchetto: string) {
   indiceRivelato.value = -1
   bustaAperta.value = false
   bustaInAnimazione.value = false
+  packPicked.value = false   // riparte dalla scelta della bustina (carosello)
   stato.value = 'reveal'
 
   // Preload immediato: le immagini arrivano durante l'animazione del pack (≥1.3s)
@@ -888,6 +905,54 @@ function cfTouchEnd(e: TouchEvent) {
       <button v-if="multiPhase === 'exiting'" class="multi-skip-btn" @click.stop="skipMultiOpening">{{ $t('sbusta.skip_exit') }}</button>
     </div>
 
+    <!-- 1b-pre. SCELTA BUSTINA — carosello stile Pokémon Pocket: pack identici,
+         scorri e tocca quella che vuoi aprire (scelta estetica, contenuto già generato) -->
+    <div v-else-if="stato === 'reveal' && !bustaAperta && !packPicked"
+      :style="{
+        position:'absolute', inset:0, zIndex:250,
+        display:'flex', flexDirection:'column', justifyContent:'center',
+        background:`radial-gradient(circle at center, ${dropColore}28 0%, transparent 100%)`,
+      }">
+      <div style="text-align:center;margin-bottom:26px;padding:0 30px;animation:pulseSoft 2s infinite;">
+        <p :style="{ fontFamily: FF.label, fontSize: '15px', color: 'var(--theme-text-2)', textTransform: 'uppercase', letterSpacing: '3px', fontWeight: 700 }">
+          {{ $t('sbusta.pick_pack') }}
+        </p>
+      </div>
+
+      <div ref="packPickerRef" class="pack-picker">
+        <div
+          v-for="i in PICKER_PACKS" :key="i"
+          class="pack-pick"
+          :style="{ border: `1.5px solid ${dropColore}55`, boxShadow: `0 10px 30px rgba(0,0,0,0.45), 0 0 18px ${dropColore}33` }"
+          @click.stop="packPicked = true"
+        >
+          <!-- Grafica pack 2D: texture dell'espansione se presente, altrimenti gradiente -->
+          <div :style="{
+            position:'absolute', inset:0,
+            background: `linear-gradient(160deg, ${dropColore}ee 0%, ${dropColore}77 45%, rgba(8,4,22,0.97) 100%)`,
+          }" />
+          <img
+            v-if="dropAttivo?.asset_bustina"
+            :src="dropAttivo.asset_bustina"
+            :style="{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.5, pointerEvents:'none' }"
+            @error="(e:any) => { e.target.style.display='none' }"
+          />
+          <!-- Shine + linee decorative (stesso look del pack 3D in attesa) -->
+          <div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(135deg,transparent 30%,rgba(255,255,255,0.09) 50%,transparent 70%);" />
+          <div :style="{ position:'absolute', top:'14px', left:'12px', right:'12px', height:'1px', background:`linear-gradient(90deg,transparent,${dropColore}66,transparent)` }" />
+          <div :style="{ position:'absolute', bottom:'14px', left:'12px', right:'12px', height:'1px', background:`linear-gradient(90deg,transparent,${dropColore}66,transparent)` }" />
+          <!-- Nome espansione -->
+          <div :style="{
+            position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center',
+            padding:'0 12px', textAlign:'center',
+            fontFamily:'var(--ff-display,Unbounded,sans-serif)', fontSize:'15px', fontWeight:900,
+            color:'rgba(255,255,255,0.92)', textShadow:`0 0 18px ${dropColore}`,
+            letterSpacing:'0.02em', lineHeight:1.25, textTransform:'uppercase',
+          }">{{ dropAttivo?.nome ?? 'DROP' }}</div>
+        </div>
+      </div>
+    </div>
+
     <!-- 1b. APRI 1 — FASE DI SBUSTO INTERATTIVA (tap per aprire) -->
     <div v-else-if="!bustaAperta"
       :style="{
@@ -1349,6 +1414,36 @@ function cfTouchEnd(e: TouchEvent) {
 
 <!-- STILI ANIMAZIONI NEON E RIVELAZIONE IN PRESERVE-3D -->
 <style scoped>
+/* ── Carosello scelta bustina (stile Pokémon TCG Pocket) ── */
+.pack-picker {
+  display: flex;
+  gap: 22px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  /* padding laterale = centra il primo/ultimo pack e fa sbordare i vicini */
+  padding: 24px calc(50vw - 95px) 34px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.pack-picker::-webkit-scrollbar { display: none; }
+.pack-pick {
+  position: relative;
+  flex: 0 0 190px;
+  height: 310px;
+  border-radius: 12px;
+  overflow: hidden;
+  scroll-snap-align: center;
+  cursor: pointer;
+  /* niente fill-mode 'both': su iOS con Reduce Motion resterebbe a opacity 0 */
+  animation: packPickIn 0.35s ease-out;
+  transition: transform 0.15s ease;
+}
+.pack-pick:active { transform: scale(0.96); }
+@keyframes packPickIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* Fade-in morbido quando la bustina riappare tra un'apertura e l'altra (APRI 10) */
 .booster-pack-wrapper {
   transition: opacity 0.35s ease;

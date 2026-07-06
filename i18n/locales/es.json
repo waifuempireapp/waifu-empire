@@ -154,7 +154,8 @@
     "n_packs_label": "{n} Sobres",
     "open_all": "×10 ABRIR TODO",
     "packs_available_label": "sobres disponibles",
-    "buy_error": "Error de compra"
+    "buy_error": "Error de compra",
+    "pick_pack": "¡Toca el sobre que quieras abrir!"
   },
   "map": {
     "title": "Mapa del Mundo",

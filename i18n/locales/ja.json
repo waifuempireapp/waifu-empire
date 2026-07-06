@@ -154,7 +154,8 @@
     "n_packs_label": "{n} パック",
     "open_all": "×10 全部開封",
     "packs_available_label": "パック利用可能",
-    "buy_error": "購入エラー"
+    "buy_error": "購入エラー",
+    "pick_pack": "開けたいパックをタップ！"
   },
   "map": {
     "title": "ワールドマップ",

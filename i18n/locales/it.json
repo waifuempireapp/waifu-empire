@@ -176,7 +176,8 @@
     "n_packs_label": "{n} Bustine",
     "open_all": "×10 APRI TUTTI",
     "packs_available_label": "pacchetti disponibili",
-    "buy_error": "Errore acquisto"
+    "buy_error": "Errore acquisto",
+    "pick_pack": "Tocca la bustina che vuoi aprire!"
   },
   "map": {
     "title": "Mappa del Mondo",
