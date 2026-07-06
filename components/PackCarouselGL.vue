@@ -18,7 +18,11 @@ const props = withDefaults(defineProps<{
   height?:     number
 }>(), { count: 20, width: 400, height: 430 })
 
-const emit = defineEmits<{ ready: []; pick: [] }>()
+const emit = defineEmits<{
+  ready:  []
+  picked: []   // tap 1: bustina scelta → zoom, le altre cadono
+  open:   []   // tap 2: strappo completato → il parent mostra le carte
+}>()
 
 // Bounds del modello (identici a BustinaGLB) per il planar UV mapping
 const XMIN = -0.5768, XMAX = 0.5731
@@ -55,6 +59,19 @@ let dragging = false
 let lastX = 0
 let movedPx = 0
 let velocity = 0
+
+// Fasi interne: tutto avviene NELLA stessa scena (zero re-mount = zero flash).
+// wheel → (tap) → zooming (la scelta zooma, le altre cadono) → zoomed →
+// (tap) → ripping (strappo 3D) → emit('open')
+type PickPhase = 'wheel' | 'zooming' | 'zoomed' | 'ripping'
+let pickPhase: PickPhase = 'wheel'
+let chosenIdx = -1
+let phaseT0 = 0
+let chosenMat: import('three').MeshStandardMaterial | null = null
+// Stato di partenza della bustina scelta all'inizio di zoom/rip
+const chosenFrom = { x: 0, y: 0, z: 0, s: 1 }
+// Parametri di caduta delle bustine scartate (deterministici per indice)
+let fallParams: { vy: number; vx: number; vr: number }[] = []
 
 function applyPlanarUVs(geo: import('three').BufferGeometry, THREE: typeof import('three')) {
   const pos = geo.attributes.position
@@ -194,30 +211,133 @@ function layoutRing(t: number) {
   }
 }
 
+const easeInOut = (p: number) => p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2
+const easeOut   = (p: number) => 1 - Math.pow(1 - p, 3)
+
 function startLoop() {
   const t0 = performance.now()
   const loop = () => {
     animId = requestAnimationFrame(loop)
     if (!renderer || !scene || !camera) return
-    const t = (performance.now() - t0) / 1000
-    if (!dragging) {
-      // Inerzia + aggancio morbido alla bustina più vicina
-      if (Math.abs(velocity) > 0.0004) {
-        rotation += velocity
-        velocity *= 0.93
-        const step = (Math.PI * 2) / Math.max(3, meshes.length)
-        targetRotation = Math.round(rotation / step) * step
-      } else {
-        rotation += (targetRotation - rotation) * 0.12
+    const now = performance.now()
+    const t = (now - t0) / 1000
+
+    if (pickPhase === 'wheel') {
+      if (!dragging) {
+        // Inerzia + aggancio morbido alla bustina più vicina
+        if (Math.abs(velocity) > 0.0004) {
+          rotation += velocity
+          velocity *= 0.93
+          const step = (Math.PI * 2) / Math.max(3, meshes.length)
+          targetRotation = Math.round(rotation / step) * step
+        } else {
+          rotation += (targetRotation - rotation) * 0.12
+        }
+      }
+      layoutRing(t)
+    } else if (pickPhase === 'zooming') {
+      const p = Math.min((now - phaseT0) / 700, 1)
+      const e = easeInOut(p)
+      const chosen = meshes[chosenIdx]
+      if (chosen) {
+        // La scelta zooma verso il centro/camera con arco morbido
+        chosen.position.x = chosenFrom.x + (0 - chosenFrom.x) * e
+        chosen.position.y = chosenFrom.y + (-0.05 - chosenFrom.y) * e + Math.sin(e * Math.PI) * 0.12
+        chosen.position.z = chosenFrom.z + (3.4 - chosenFrom.z) * e
+        chosen.scale.setScalar(chosenFrom.s + (0.78 - chosenFrom.s) * e)
+        chosen.rotation.y *= (1 - e)
+        chosen.renderOrder = 500
+      }
+      // Le altre cadono giù con gravità e leggera deriva
+      for (let i = 0; i < meshes.length; i++) {
+        if (i === chosenIdx) continue
+        const m = meshes[i]
+        const f = fallParams[i]
+        m.position.y -= f.vy * e * 0.14
+        m.position.x += f.vx * 0.012
+        m.rotation.z += f.vr * 0.02
+        if (m.position.y < -4.5) m.visible = false
+      }
+      if (p >= 1) pickPhase = 'zoomed'
+    } else if (pickPhase === 'zoomed') {
+      // Respiro d'attesa (invito al secondo tap), identico al pack singolo
+      const chosen = meshes[chosenIdx]
+      if (chosen) {
+        chosen.position.y = -0.05 + Math.sin(t * 0.7) * 0.03
+        chosen.rotation.y = Math.sin(t * 0.45) * 0.08
+        chosen.rotation.x = Math.sin(t * 0.3) * 0.03
+      }
+    } else if (pickPhase === 'ripping') {
+      const p = Math.min((now - phaseT0) / 900, 1)
+      const chosen = meshes[chosenIdx]
+      if (chosen) {
+        const e = easeOut(p)
+        // Strappo: torsione 3D + piccolo lift, poi caduta con dissolvenza
+        chosen.rotation.x = e * Math.PI * 0.25
+        chosen.rotation.y = e * Math.PI * 0.4
+        chosen.scale.setScalar(0.78 * (1 - e * 0.3))
+        chosen.position.y = -0.05 + Math.sin(Math.min(p / 0.45, 1) * Math.PI) * 0.22 - Math.max(0, p - 0.4) ** 2 * 6
+        if (chosenMat) chosenMat.opacity = 1 - Math.max(0, (p - 0.5) / 0.5)
+      }
+      if (p >= 1) {
+        pickPhase = 'wheel' // stato neutro: il parent sta già mostrando le carte
+        emit('open')
       }
     }
-    layoutRing(t)
+
     renderer.render(scene, camera)
   }
   loop()
 }
 
-// ── Interazione: drag = gira la ruota · tap = scegli ─────────────────────────
+/** Indice della bustina frontale (quella con cos(θ) massimo). */
+function frontIndex(): number {
+  const n = meshes.length
+  const step = (Math.PI * 2) / Math.max(3, n)
+  let best = 0, bestZ = -Infinity
+  for (let i = 0; i < n; i++) {
+    const zN = Math.cos(i * step + rotation)
+    if (zN > bestZ) { bestZ = zN; best = i }
+  }
+  return best
+}
+
+/** Tap 1: scegli la frontale → zoom + caduta delle altre. */
+async function startPick() {
+  chosenIdx = frontIndex()
+  const chosen = meshes[chosenIdx]
+  if (!chosen) return
+  chosenFrom.x = chosen.position.x
+  chosenFrom.y = chosen.position.y
+  chosenFrom.z = chosen.position.z
+  chosenFrom.s = chosen.scale.x
+  // Materiale clonato per la scelta: serve la trasparenza nel rip finale
+  try {
+    const THREE = await import('three')
+    const src = chosen.material as import('three').MeshStandardMaterial
+    chosenMat = src.clone() as import('three').MeshStandardMaterial
+    chosenMat.transparent = true
+    chosen.material = chosenMat
+    void THREE
+  } catch { /* senza clone il rip salta solo la dissolvenza */ }
+  // Parametri di caduta deterministici (per indice) per le scartate
+  fallParams = meshes.map((_, i) => ({
+    vy: 2.6 + ((i * 37) % 17) / 10,
+    vx: (((i * 53) % 11) - 5) / 6,
+    vr: (((i * 29) % 9) - 4) / 5,
+  }))
+  phaseT0 = performance.now()
+  pickPhase = 'zooming'
+  emit('picked')
+}
+
+/** Tap 2: strappa la bustina scelta. */
+function startRip() {
+  phaseT0 = performance.now()
+  pickPhase = 'ripping'
+}
+
+// ── Interazione: drag = gira la ruota · tap 1 = scegli · tap 2 = apri ────────
 function onPointerDown(e: PointerEvent) {
   dragging = true
   lastX = e.clientX
@@ -226,7 +346,7 @@ function onPointerDown(e: PointerEvent) {
   ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
 }
 function onPointerMove(e: PointerEvent) {
-  if (!dragging) return
+  if (!dragging || pickPhase !== 'wheel') return
   const dx = e.clientX - lastX
   lastX = e.clientX
   movedPx += Math.abs(dx)
@@ -237,10 +357,15 @@ function onPointerMove(e: PointerEvent) {
 function onPointerUp() {
   if (!dragging) return
   dragging = false
-  const step = (Math.PI * 2) / Math.max(3, meshes.length)
-  targetRotation = Math.round(rotation / step) * step
-  // Tap (nessun drag significativo) → scelta della bustina frontale
-  if (movedPx < 10) emit('pick')
+  if (pickPhase === 'wheel') {
+    const step = (Math.PI * 2) / Math.max(3, meshes.length)
+    targetRotation = Math.round(rotation / step) * step
+    // Tap (nessun drag significativo) → la frontale zooma, le altre cadono
+    if (movedPx < 10) startPick()
+  } else if (pickPhase === 'zoomed' && movedPx < 10) {
+    // Secondo tap → strappo nella STESSA scena (niente re-mount, niente flash)
+    startRip()
+  }
 }
 
 onMounted(() => { init() })
@@ -250,7 +375,8 @@ onBeforeUnmount(() => {
   sharedGeo?.dispose()
   ;(sharedMat as any)?.map?.dispose?.()
   sharedMat?.dispose()
-  sharedGeo = null; sharedMat = null
+  chosenMat?.dispose()
+  sharedGeo = null; sharedMat = null; chosenMat = null
   scene?.clear()
   scene = null; camera = null; meshes = []
   if (renderer) {

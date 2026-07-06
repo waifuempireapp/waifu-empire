@@ -303,6 +303,14 @@ function eseguiTaglioBustina() {
   }, 1000)
 }
 
+// Strappo completato DENTRO la ruota 3D (PackCarouselGL): si passa subito alle
+// carte — la scena è la stessa fino a qui, quindi nessun flash intermedio.
+function onCarouselOpen() {
+  bustaAperta.value = true
+  bustaInAnimazione.value = false
+  avviaRivelazione(carteRivelate.value)
+}
+
 // Apri singolo pacchetto
 // Collezione base: se non è ancora caricata (es. account appena creato)
 // usa una collezione vuota. saveCollezione usa merge:true, quindi le nuove
@@ -900,10 +908,10 @@ function cfTouchEnd(e: TouchEvent) {
       <button v-if="multiPhase === 'exiting'" class="multi-skip-btn" @click.stop="skipMultiOpening">{{ $t('sbusta.skip_exit') }}</button>
     </div>
 
-    <!-- 1b-pre. SCELTA BUSTINA — ruota 3D stile Pokémon Pocket: N bustine reali su
-         un anello (1 sola scena WebGL), trascina per girare all'infinito, tocca
-         quella davanti per aprirla (scelta estetica, contenuto già generato) -->
-    <div v-else-if="stato === 'reveal' && !bustaAperta && !packPicked"
+    <!-- 1b-pre. SCELTA E APERTURA BUSTINA — ruota 3D stile Pokémon Pocket.
+         TUTTO nella stessa scena WebGL (zero re-mount = zero flash):
+         tap 1 → la bustina scelta zooma e le altre cadono · tap 2 → strappo → carte -->
+    <div v-else-if="stato === 'reveal' && !bustaAperta"
       class="phase-enter"
       :style="{
         position:'absolute', inset:0, zIndex:250,
@@ -913,7 +921,7 @@ function cfTouchEnd(e: TouchEvent) {
       }">
       <div style="text-align:center;margin-bottom:14px;padding:0 30px;animation:pulseSoft 2s infinite;">
         <p :style="{ fontFamily: FF.label, fontSize: '15px', color: 'var(--theme-text-2)', textTransform: 'uppercase', letterSpacing: '3px', fontWeight: 700 }">
-          {{ $t('sbusta.pick_pack') }}
+          {{ packPicked ? $t('sbusta.tap_to_open') : $t('sbusta.pick_pack') }}
         </p>
       </div>
 
@@ -924,7 +932,8 @@ function cfTouchEnd(e: TouchEvent) {
         :model-url="dropAttivo?.asset_glb ?? null"
         :width="vw"
         :height="530"
-        @pick="packPicked = true"
+        @picked="packPicked = true"
+        @open="onCarouselOpen"
       />
     </div>
 
