@@ -253,8 +253,11 @@ function controlEffect(side: 'player' | 'enemy'): ActiveEffect | undefined {
   return fieldEffects.value[side].find(e => e.kind === 'control')
 }
 
-// La sostituzione della waifu attiva (per qualsiasi motivo) termina subito
-// gli effetti sul suo lato — requisito esplicito del game design.
+// REGOLA (game design): l'effetto è legato alla waifu che lo SUBISCE, non a chi
+// l'ha lanciato. Termina SOLO se viene sostituita/KO la waifu colpita; se invece
+// muore o viene cambiata la waifu dell'ATTACCANTE, l'effetto sul bersaglio
+// continua normalmente. Per questo ogni watch svuota SOLO il proprio lato:
+// pActive → effetti subiti dalla waifu del giocatore; eActive → da quella nemica.
 watch(pActive, () => { fieldEffects.value = { ...fieldEffects.value, player: [] } })
 watch(eActive, () => { fieldEffects.value = { ...fieldEffects.value, enemy: [] } })
 
