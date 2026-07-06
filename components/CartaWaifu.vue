@@ -12,7 +12,7 @@ import {
 } from 'lucide-vue-next'
 
 import { RARITA, type RaritaKey, RARITY_MULTIPLIERS_DEFAULT } from '~/utils/constants'
-import { computeHp } from '~/utils/battleEngine'
+import { computeHp, computeSpeed, computeCritChance } from '~/utils/battleEngine'
 import { resolveWaifuStat } from '~/utils/waifuStats'
 import { ARCHETIPI } from '~/utils/promptGenerator'
 import { ikUrl } from '~/utils/imagekitUrl'
@@ -161,8 +161,15 @@ const hp   = computed(() =>
   ?? (props.datiCollezione as any)?.battleStats?.maxHp
   ?? computeHp(props.waifu as any, (RARITY_MULTIPLIERS_DEFAULT as Record<string, { multiplier: number }>)[props.waifu.rarita]?.multiplier ?? 1)
 )
-const vel  = computed(() => props.datiCollezione?.velocita ?? props.waifu.velocita_base ?? null)
-const crit = computed(() => props.datiCollezione?.crit_chance ?? props.waifu.crit_chance_base ?? null)
+// Vel e Crit: come l'HP, se non memorizzati vengono CALCOLATI al volo — così
+// il valore compare in TUTTE le viste della carta (sbusto, pick, zoom, ecc.),
+// non solo in collezione dove datiCollezione li ha salvati.
+const _rarMult = computed(() =>
+  (RARITY_MULTIPLIERS_DEFAULT as Record<string, { multiplier: number }>)[props.waifu.rarita]?.multiplier ?? 1)
+const vel  = computed(() =>
+  props.datiCollezione?.velocita ?? props.waifu.velocita_base ?? Math.round(computeSpeed(props.waifu as any)))
+const crit = computed(() =>
+  props.datiCollezione?.crit_chance ?? props.waifu.crit_chance_base ?? computeCritChance(props.waifu as any, _rarMult.value))
 const hasCombatStats = computed(() => hp.value != null || vel.value != null || crit.value != null)
 
 // Simbolo archetipo corrente
