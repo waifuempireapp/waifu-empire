@@ -293,6 +293,9 @@ const waifuGridEntries = computed(() => {
     list = list.filter(({ w }) => w.hot === true)
   if (filtroHot.value === 'non-hot')
     list = list.filter(({ w }) => !w.hot)
+  // Toggle 'solo possedute': via i placeholder '?'
+  if (soloPossedute.value)
+    list = list.filter(e => e.owned)
   // Filtri che hanno senso solo sulle possedute → escludono i placeholder
   if (filtroScambiabile.value)
     list = list.filter(e => e.owned && (e.dati.copie ?? 0) >= 2)
@@ -608,6 +611,47 @@ const sortCombo = computed({
 
 const { t } = useI18n()
 
+// ── Opzioni per i dropdown custom (stile iOS) ────────────────
+const filtroOptions = computed(() => [
+  { value: '', label: t('collection.filter_all') },
+  { header: t('collection.filter_rarity_group') },
+  { value: 'rarita:comune',      label: t('collection.filter_common') },
+  { value: 'rarita:raro',        label: t('collection.filter_rare') },
+  { value: 'rarita:epico',       label: t('collection.filter_epic') },
+  { value: 'rarita:leggendario', label: t('collection.filter_legendary') },
+  { value: 'rarita:immersivo',   label: t('collection.filter_immersive') },
+  ...(drops.value.length > 0 ? [
+    { header: t('collection.filter_drop_group') },
+    ...drops.value.map((d: any) => ({ value: `drop:${d.id}`, label: d.nome || d.id })),
+  ] : []),
+  { header: t('collection.filter_special_group') },
+  { value: 'scambiabili', label: t('collection.filter_tradeable') },
+  { value: 'pronti',      label: t('collection.filter_ready_levelup') },
+  { value: 'crescita',    label: t('collection.filter_growing') },
+  ...(props.profilo?.hardPass ? [
+    { value: 'hot', label: t('collection.filter_hot') },
+    { value: 'sfw', label: t('collection.filter_sfw') },
+  ] : []),
+])
+
+const sortOptions = computed(() => [
+  { value: '',                  label: t('collection.sort_default') },
+  { value: 'rarita:desc',       label: t('collection.sort_rarity_desc') },
+  { value: 'rarita:asc',        label: t('collection.sort_rarity_asc') },
+  { value: 'livello:desc',      label: t('collection.sort_level_desc') },
+  { value: 'livello:asc',       label: t('collection.sort_level_asc') },
+  { value: 'copie:desc',        label: t('collection.sort_copies_desc') },
+  { value: 'copie:asc',         label: t('collection.sort_copies_asc') },
+  { value: 'tette:desc',        label: t('collection.sort_stat_desc') },
+  { value: 'taglia_piedi:desc', label: t('collection.sort_feet_desc') },
+  { value: 'eta:desc',          label: t('collection.sort_age_desc') },
+  { value: 'colore_capelli:desc', label: t('collection.sort_hair_desc') },
+  { value: 'esperienza:desc',   label: t('collection.sort_exp_desc') },
+])
+
+// Toggle: nasconde i placeholder '?' e mostra solo le waifu possedute
+const soloPossedute = ref(false)
+
 function apriNegozio() {
   if (typeof window !== 'undefined') window.dispatchEvent(new window.Event('impero:apri-negozio'))
 }
@@ -709,53 +753,35 @@ function apriNegozio() {
             <span :style="{ fontFamily:FF.mono, fontSize:'13px', color:'var(--theme-text-3)', fontWeight:700, flexShrink:0 }">{{ waifuPossedute }}/{{ waifuGridEntries.length }}</span>
           </div>
 
-          <!-- Le 2 select 50/50 -->
-          <div style="display:flex;gap:8px;">
+          <!-- Filtra + Ordina (dropdown custom stile iOS) + toggle solo-possedute -->
+          <div style="display:flex;gap:8px;align-items:flex-end;">
             <!-- FILTRA -->
-            <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+            <div style="flex:1;display:flex;flex-direction:column;gap:4px;min-width:0;">
               <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--theme-text-2)' }">{{ $t('collection.filter_label') }}</div>
-              <select v-model="filtroCombo"
-                :style="{ width:'100%', background:'var(--theme-input-bg)', border:`1.5px solid ${filtroCombo ? 'var(--theme-accent)' : 'var(--theme-border)'}`, color:'var(--theme-text)', borderRadius:'10px', padding:'12px 14px', fontSize:'16px', fontFamily:FF.body, cursor:'pointer', fontWeight:600, outline:'none', appearance:'none', WebkitAppearance:'none' }">
-                <option value="">{{ $t('collection.filter_all') }}</option>
-                <optgroup :label="$t('collection.filter_rarity_group')">
-                  <option value="rarita:comune">{{ $t('collection.filter_common') }}</option>
-                  <option value="rarita:raro">{{ $t('collection.filter_rare') }}</option>
-                  <option value="rarita:epico">{{ $t('collection.filter_epic') }}</option>
-                  <option value="rarita:leggendario">{{ $t('collection.filter_legendary') }}</option>
-                  <option value="rarita:immersivo">{{ $t('collection.filter_immersive') }}</option>
-                </optgroup>
-                <optgroup v-if="drops.length > 0" :label="$t('collection.filter_drop_group')">
-                  <option v-for="d in drops" :key="d.id" :value="`drop:${d.id}`">{{ d.nome || d.id }}</option>
-                </optgroup>
-                <optgroup :label="$t('collection.filter_special_group')">
-                  <option value="scambiabili">{{ $t('collection.filter_tradeable') }}</option>
-                  <option value="pronti">{{ $t('collection.filter_ready_levelup') }}</option>
-                  <option value="crescita">{{ $t('collection.filter_growing') }}</option>
-                  <option v-if="profilo?.hardPass" value="hot">{{ $t('collection.filter_hot') }}</option>
-                  <option v-if="profilo?.hardPass" value="sfw">{{ $t('collection.filter_sfw') }}</option>
-                </optgroup>
-              </select>
+              <DropdownSelect v-model="filtroCombo" :options="filtroOptions" :label="$t('collection.filter_label')" :placeholder="$t('collection.filter_all')" />
             </div>
 
             <!-- ORDINA -->
-            <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+            <div style="flex:1;display:flex;flex-direction:column;gap:4px;min-width:0;">
               <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--theme-text-2)' }">{{ $t('collection.sort_label') }}</div>
-              <select v-model="sortCombo"
-                :style="{ width:'100%', background:'var(--theme-input-bg)', border:`1.5px solid ${sortCombo ? 'var(--theme-accent)' : 'var(--theme-border)'}`, color:'var(--theme-text)', borderRadius:'10px', padding:'12px 14px', fontSize:'16px', fontFamily:FF.body, cursor:'pointer', fontWeight:600, outline:'none', appearance:'none', WebkitAppearance:'none' }">
-                <option value="">{{ $t('collection.sort_default') }}</option>
-                <option value="rarita:desc">{{ $t('collection.sort_rarity_desc') }}</option>
-                <option value="rarita:asc">{{ $t('collection.sort_rarity_asc') }}</option>
-                <option value="livello:desc">{{ $t('collection.sort_level_desc') }}</option>
-                <option value="livello:asc">{{ $t('collection.sort_level_asc') }}</option>
-                <option value="copie:desc">{{ $t('collection.sort_copies_desc') }}</option>
-                <option value="copie:asc">{{ $t('collection.sort_copies_asc') }}</option>
-                <option value="tette:desc">{{ $t('collection.sort_stat_desc') }}</option>
-                <option value="taglia_piedi:desc">{{ $t('collection.sort_feet_desc') }}</option>
-                <option value="eta:desc">{{ $t('collection.sort_age_desc') }}</option>
-                <option value="colore_capelli:desc">{{ $t('collection.sort_hair_desc') }}</option>
-                <option value="esperienza:desc">{{ $t('collection.sort_exp_desc') }}</option>
-              </select>
+              <DropdownSelect v-model="sortCombo" :options="sortOptions" :label="$t('collection.sort_label')" :placeholder="$t('collection.sort_default')" />
             </div>
+
+            <!-- Toggle: nascondi i placeholder '?' (solo carte possedute) -->
+            <button
+              type="button"
+              @click="soloPossedute = !soloPossedute"
+              :title="soloPossedute ? 'Mostra anche le carte mancanti' : 'Mostra solo le carte possedute'"
+              :style="{
+                flexShrink: 0, width: '47px', height: '47px', borderRadius: '10px',
+                background: soloPossedute ? 'var(--theme-tab-active)' : 'var(--theme-input-bg)',
+                border: `1.5px solid ${soloPossedute ? 'var(--theme-accent)' : 'var(--theme-border)'}`,
+                color: soloPossedute ? 'var(--theme-accent)' : 'var(--theme-text-3)',
+                fontFamily: FF.display, fontSize: '19px', fontWeight: 900,
+                cursor: 'pointer', display: 'grid', placeItems: 'center', lineHeight: 1,
+                textDecoration: soloPossedute ? 'line-through' : 'none',
+              }"
+            >?</button>
           </div>
         </div>
 
