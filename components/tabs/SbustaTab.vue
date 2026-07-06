@@ -114,7 +114,8 @@ const bustaInAnimazione = ref(false)
 // identici (PackCarouselGL — la scelta è estetica: il contenuto è già generato).
 const packPicked = ref(false)
 const vw = ref(typeof window !== 'undefined' ? window.innerWidth : 430)
-const _onVwResize = () => { vw.value = window.innerWidth }
+const vh = ref(typeof window !== 'undefined' ? window.innerHeight : 800)
+const _onVwResize = () => { vw.value = window.innerWidth; vh.value = window.innerHeight }
 onMounted(() => window.addEventListener('resize', _onVwResize, { passive: true }))
 onUnmounted(() => window.removeEventListener('resize', _onVwResize))
 const transizioneCarta = ref(false)
@@ -921,22 +922,25 @@ function cfTouchEnd(e: TouchEvent) {
         background:`radial-gradient(circle at center, ${dropColore}28 0%, transparent 100%)`,
         overflow:'hidden',
       }">
-      <div style="text-align:center;margin-bottom:14px;padding:0 30px;animation:pulseSoft 2s infinite;">
-        <p :style="{ fontFamily: FF.label, fontSize: '15px', color: 'var(--theme-text-2)', textTransform: 'uppercase', letterSpacing: '3px', fontWeight: 700 }">
-          {{ packPicked ? $t('sbusta.tap_to_open') : $t('sbusta.pick_pack') }}
-        </p>
-      </div>
-
+      <!-- Canvas 3D a TUTTO schermo: lo zoom della bustina non viene mai tagliato -->
       <PackCarouselGL
         :count="20"
         :color="dropColore"
         :texture-url="dropAttivo?.asset_bustina ?? null"
         :model-url="bustinaGlbUrl(dropAttivo)"
         :width="vw"
-        :height="530"
+        :height="vh"
+        style="position:absolute;inset:0;"
         @picked="packPicked = true"
         @open="onCarouselOpen"
       />
+
+      <!-- Titolo in overlay sopra il canvas (non intercetta il drag) -->
+      <div style="position:absolute;top:calc(24px + env(safe-area-inset-top));left:0;right:0;text-align:center;padding:0 30px;animation:pulseSoft 2s infinite;pointer-events:none;z-index:2;">
+        <p :style="{ fontFamily: FF.label, fontSize: '15px', color: 'var(--theme-text-2)', textTransform: 'uppercase', letterSpacing: '3px', fontWeight: 700 }">
+          {{ packPicked ? $t('sbusta.tap_to_open') : $t('sbusta.pick_pack') }}
+        </p>
+      </div>
     </div>
 
     <!-- 1b. APRI 1 — FASE DI SBUSTO INTERATTIVA (tap per aprire) -->

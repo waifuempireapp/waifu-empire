@@ -30,19 +30,20 @@ const YMIN = -1.0038, YMAX = 1.0008
 
 const DEFAULT_BUSTINA = '/bustine/bustina_asset.glb'
 
-// Geometria dell'anello: con ~20 bustine serve un anello ampio perché non si
-// accavallino troppo; la profondità accentua l'effetto ruota.
-const SPREAD_X = 3.3
-const DEPTH_Z  = 2.2
-// Le bustine dietro salgono verso l'alto (prospettiva "dall'alto"): 0 davanti,
-// LIFT_Y dietro → si vedono scorrere sopra quelle frontali.
-const LIFT_Y = 0.55
-// Bustine leggermente più piccole rispetto alla singola (richiesta UX)
-const PACK_SCALE = 0.8
+// Geometria dell'anello: compatto — ~5 bustine visibili davanti, quelle dietro
+// vicine (non lontanissime) che scorrono appena sopra.
+const SPREAD_X = 2.55
+const DEPTH_Z  = 1.35
+// Le bustine dietro salgono leggermente (prospettiva dall'alto)
+const LIFT_Y = 0.32
+// Bustine piccole (ne entrano 5 davanti); la CENTRALE viene ingrandita col focus
+const PACK_SCALE = 0.6
+const FOCUS_BOOST = 0.22   // +22% di scala sulla bustina frontale
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const glReady   = ref(false)   // fade-in del canvas: niente pop alla comparsa
 
+let T3: typeof import('three') | null = null   // modulo three (per il raycast del tap)
 let renderer: import('three').WebGLRenderer     | null = null
 let scene:    import('three').Scene             | null = null
 let camera:   import('three').PerspectiveCamera | null = null
@@ -96,6 +97,7 @@ async function init() {
   }
   try {
     const THREE = await import('three')
+    T3 = THREE
     const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
     const { RoomEnvironment } = await import('three/examples/jsm/environments/RoomEnvironment.js')
 
@@ -120,13 +122,11 @@ async function init() {
     }
 
     scene = new THREE.Scene()
-    // FOV più ampio + camera arretrata e mira più bassa: la base delle bustine
-    // frontali resta DENTRO il frustum (prima veniva tagliata in basso)
-    camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 100)
-    // Camera leggermente rialzata e inclinata verso il basso: la ruota si vede
-    // in prospettiva e i pacchetti dietro scorrono visibili sopra quelli davanti
-    camera.position.set(0, 1.3, 5.8)
-    camera.lookAt(0, -0.05, 0)
+    // Canvas fullscreen: camera arretrata e fov ampio per inquadrare 5 bustine
+    // davanti + la fila dietro, e per NON tagliare la bustina durante lo zoom
+    camera = new THREE.PerspectiveCamera(50, W / H, 0.1, 100)
+    camera.position.set(0, 1.05, 8)
+    camera.lookAt(0, 0.1, 0)
 
     // Environment + luci IDENTICHE a BustinaGLB
     const pmrem = new THREE.PMREMGenerator(renderer)
@@ -215,8 +215,9 @@ function layoutRing(t: number) {
     // Profondità: le bustine dietro salgono (LIFT_Y) e la frontale respira
     const front = Math.max(0, zN)
     m.position.y = ((1 - zN) / 2) * LIFT_Y + front * Math.sin(t * 1.4) * 0.02
-    // Scala: davanti piena, dietro MOLTO ridotta (× fattore globale "più piccole")
-    m.scale.setScalar((0.42 + 0.58 * (zN + 1) / 2) * PACK_SCALE)
+    // Scala: falloff morbido (dietro vicine, non minuscole) + FOCUS sulla centrale
+    const focus = Math.pow(front, 10)   // ≈1 solo per la bustina frontale
+    m.scale.setScalar((0.68 + 0.32 * (zN + 1) / 2) * PACK_SCALE * (1 + focus * FOCUS_BOOST))
     // Leggero tilt coverflow verso il centro
     m.rotation.y = -Math.sin(th) * 0.42
     m.renderOrder = Math.round(zN * 100)
@@ -236,14 +237,14 @@ function startLoop() {
 
     if (pickPhase === 'wheel') {
       if (!dragging) {
-        // Inerzia + aggancio morbido alla bustina più vicina
+        // Inerzia + aggancio morbido alla bustina più vicina (rotazione lenta)
         if (Math.abs(velocity) > 0.0004) {
           rotation += velocity
-          velocity *= 0.93
+          velocity *= 0.95
           const step = (Math.PI * 2) / Math.max(3, meshes.length)
           targetRotation = Math.round(rotation / step) * step
         } else {
-          rotation += (targetRotation - rotation) * 0.12
+          rotation += (targetRotation - rotation) * 0.09
         }
       }
       layoutRing(t)
@@ -255,7 +256,7 @@ function startLoop() {
         // La scelta zooma verso il centro/camera con arco morbido
         chosen.position.x = chosenFrom.x + (0 - chosenFrom.x) * e
         chosen.position.y = chosenFrom.y + (-0.05 - chosenFrom.y) * e + Math.sin(e * Math.PI) * 0.12
-        chosen.position.z = chosenFrom.z + (3.4 - chosenFrom.z) * e
+        chosen.position.z = chosenFrom.z + (5.9 - chosenFrom.z) * e
         chosen.scale.setScalar(chosenFrom.s + (0.78 - chosenFrom.s) * e)
         chosen.rotation.y *= (1 - e)
         chosen.renderOrder = 500
@@ -362,18 +363,33 @@ function onPointerMove(e: PointerEvent) {
   const dx = e.clientX - lastX
   lastX = e.clientX
   movedPx += Math.abs(dx)
-  const d = (dx / props.width) * Math.PI * 1.15
+  // Sensibilità ridotta: rotazione più lenta e controllata sotto il dito
+  const d = (dx / props.width) * Math.PI * 0.7
   rotation += d
   velocity = d
 }
-function onPointerUp() {
+/** true se il tap ha colpito la bustina FRONTALE (raycast sulla scena). */
+function tapHitsFrontPack(e: PointerEvent): boolean {
+  if (!T3 || !camera || !canvasRef.value) return false
+  const rect = canvasRef.value.getBoundingClientRect()
+  const ndc = new T3.Vector2(
+    ((e.clientX - rect.left) / rect.width) * 2 - 1,
+    -((e.clientY - rect.top) / rect.height) * 2 + 1,
+  )
+  const ray = new T3.Raycaster()
+  ray.setFromCamera(ndc, camera)
+  const hits = ray.intersectObjects(meshes.filter(m => m.visible), false)
+  return hits.length > 0 && hits[0].object === meshes[frontIndex()]
+}
+
+function onPointerUp(e: PointerEvent) {
   if (!dragging) return
   dragging = false
   if (pickPhase === 'wheel') {
     const step = (Math.PI * 2) / Math.max(3, meshes.length)
     targetRotation = Math.round(rotation / step) * step
-    // Tap (nessun drag significativo) → la frontale zooma, le altre cadono
-    if (movedPx < 10) startPick()
+    // Tap SOLO sulla bustina centrale → zoom; tap altrove non fa nulla
+    if (movedPx < 10 && tapHitsFrontPack(e)) startPick()
   } else if (pickPhase === 'zoomed' && movedPx < 10) {
     // Secondo tap → strappo nella STESSA scena (niente re-mount, niente flash)
     startRip()
