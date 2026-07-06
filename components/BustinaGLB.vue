@@ -23,6 +23,16 @@ function loadBustinaMesh(url: string = DEFAULT_BUSTINA): Promise<import('three')
   }
   return _glbMeshCache.get(url)!
 }
+
+// Preload proattivo: scalda il chunk three.js + scarica/parsa il GLB in cache
+// PRIMA che la bustina venga montata (es. durante la loading screen del gioco).
+// Al mount successivo init() trova tutto pronto → il canvas 3D appare subito,
+// senza far vedere il placeholder 2D.
+export function preloadBustina(url?: string | null): void {
+  import('three').catch(() => {})
+  import('three/examples/jsm/environments/RoomEnvironment.js').catch(() => {})
+  loadBustinaMesh(url || DEFAULT_BUSTINA).catch(() => {})
+}
 </script>
 
 <script setup lang="ts">

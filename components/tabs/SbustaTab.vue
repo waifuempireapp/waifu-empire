@@ -19,6 +19,8 @@ import { TIMER } from '~/utils/constants'
 import { useAuthStore } from '~/stores/auth'
 import { useMissionsStore } from '~/stores/missions'
 import { ikUrl } from '~/utils/imagekitUrl'
+import { resolveMoveImage } from '~/utils/moves'
+import { preloadBustina } from '~/components/BustinaGLB.vue'
 import MoveCard from '~/components/moves/MoveCard.vue'
 import SummaryCardTile from '~/components/SummaryCardTile.vue'
 
@@ -119,6 +121,9 @@ onMounted(async () => {
     const lista = await listDropsAttivi()
     dropsAttivi.value = lista
     if (lista.length > 0) dropSelId.value = lista[0].id as string
+    // Preload dei modelli 3D delle bustine del carosello (cache condivisa per URL)
+    preloadBustina()
+    for (const d of lista) { if ((d as any).asset_glb) preloadBustina((d as any).asset_glb) }
   } catch {
     // ignora
   } finally {
@@ -152,25 +157,33 @@ const tipoDaAprire = computed<string>(() => {
 })
 
 // ── Generazione e aggiornamento pacchetto ────────────────────
-async function _generaEAggiorna(tipoPacchetto: string, nuovaCollezione: any) {
+// Draw puro delle carte (nessuna mutazione della collezione): separato così il
+// pack può essere PRE-generato mentre l'utente è ancora nel menu espansioni.
+function _generaCarte(tipoPacchetto: string, collezioneRef: any): any[] | null {
   const drop = dropAttivo.value
   const hasHardPass = props.profilo?.hardPass === true
   const filteredWaifuCat = hasHardPass ? props.waifuCat : props.waifuCat.filter((w: any) => !w.hot)
   const wp = drop?.waifuIds ? filteredWaifuCat.filter((w: any) => drop.waifuIds.includes(w.id)) : filteredWaifuCat
   const mp = props.mosseCat
-  if (wp.length === 0) {
-    emit('notif', t('sbusta.no_waifu_in_drop'), C.err)
-    return null
-  }
+  if (wp.length === 0) return null
   const escludiDoppioni = tipoPacchetto === 'benvenuto'
-  const waifuPossedute = escludiDoppioni ? Object.keys(nuovaCollezione.waifu || {}) : []
-  const carte = generaPacchetto({
+  const waifuPossedute = escludiDoppioni ? Object.keys(collezioneRef?.waifu || {}) : []
+  return generaPacchetto({
     waifuPool: wp as any,
     mossePool: mp as any,
     escludiDoppioniWaifu: escludiDoppioni,
     waifuPossedute,
     godPackProb: props.godPackProb,
   })
+}
+
+async function _generaEAggiorna(tipoPacchetto: string, nuovaCollezione: any, cartePronte?: any[] | null) {
+  // Riusa il pack pre-generato se disponibile, altrimenti draw al volo
+  const carte = cartePronte ?? _generaCarte(tipoPacchetto, nuovaCollezione)
+  if (!carte) {
+    emit('notif', t('sbusta.no_waifu_in_drop'), C.err)
+    return null
+  }
 
   carte.forEach((c: any) => {
     if (c.tipo === 'waifu') {
@@ -208,10 +221,43 @@ function preloadCarteImages(pacchetti: any[][]) {
           if (i) urls.add(i)
         }
       }
+      // Carte mossa: stesso preset usato da MoveCard nel reveal
+      for (const c of carte) {
+        if (c.tipo !== 'mossa') continue
+        const m = resolveMoveImage(c.data, 'card')
+        if (m) urls.add(m)
+      }
     }
     urls.forEach(url => { const img = new Image(); img.src = url })
   } catch { /* mai propagare errori di preload */ }
 }
+
+// ── Pre-draw del prossimo pack ───────────────────────────────
+// Quando l'utente è nel menu espansioni (idle), generiamo GIÀ le 5 carte del
+// prossimo pack e ne scaldiamo le immagini: all'APRI la prima carta appare
+// senza alcuna latenza. Stessa probabilità del draw normale, solo anticipato.
+// Il pack pre-generato è legato a (tipo, espansione, hardPass): se cambia
+// qualcosa viene rigenerato; viene consumato una sola volta.
+const prePack = ref<{ key: string; carte: any[] } | null>(null)
+const prePackKey = () => `${tipoDaAprire.value}|${dropSelId.value ?? ''}|${props.profilo?.hardPass === true}`
+
+function preparaProssimoPack() {
+  try {
+    if (stato.value !== 'idle' || totalePacchetti.value <= 0 || !props.waifuCat?.length) return
+    const key = prePackKey()
+    if (prePack.value?.key === key) return
+    const carte = _generaCarte(tipoDaAprire.value, collezioneBase())
+    if (!carte || carte.length === 0) { prePack.value = null; return }
+    prePack.value = { key, carte }
+    preloadCarteImages([carte])
+  } catch { /* il pre-draw non deve mai rompere la UI */ }
+}
+
+watch(
+  [stato, dropSelId, tipoDaAprire, () => props.waifuCat?.length, () => props.profilo?.hardPass],
+  () => { if (stato.value === 'idle') preparaProssimoPack() },
+  { immediate: true },
+)
 
 function avviaRivelazione(_carte: any[]) {
   setTimeout(() => { indiceRivelato.value = 0 }, 1500)
@@ -255,9 +301,12 @@ async function apri(tipoPacchetto: string) {
   const uid = authStore.user?.uid
   if (!uid) { emit('notif', t('sbusta.no_pack_available'), C.err); return }
   const nuova = JSON.parse(JSON.stringify(collezioneBase()))
+  // Consuma il pack pre-generato nel menu (immagini già calde → prima carta istantanea)
+  const pronte = prePack.value?.key === prePackKey() ? prePack.value.carte : null
+  prePack.value = null
   let carte
   try {
-    carte = await _generaEAggiorna(tipoPacchetto, nuova)
+    carte = await _generaEAggiorna(tipoPacchetto, nuova, pronte)
   } catch (e: any) {
     console.error('apri: errore generazione', e)
     emit('notif', '❌ ' + (e?.message ?? 'Errore apertura pacchetto'), C.err)

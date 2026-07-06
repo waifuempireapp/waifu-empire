@@ -25,6 +25,7 @@ import { STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT } from '~/utils/constants'
 import { getDb } from '~/utils/firebase'
 import { ikUrl } from '~/utils/imagekitUrl'
 import { AVATAR_BY_WAIFU, BASE_AVATAR_IDS, AVATAR_PRESETS } from '~/composables/useAvatar'
+import { preloadBustina } from '~/components/BustinaGLB.vue'
 // ikUrl rimosso — non più usato nel template (carte acquisite rimosse dalla nav)
 
 definePageMeta({ middleware: 'auth' })
@@ -135,18 +136,30 @@ watch(
 watch(tab, () => { if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'instant' }) })
 
 async function caricaTutto(uid: string) {
-  // Invalida cache catalogo localStorage se obsoleta
-  if (!catalogRef) await checkAndInvalidateCatalogCache()
+  // Preload del pack 3D DURANTE la loading screen: three.js + GLB standard subito,
+  // così la Home mostra direttamente il canvas 3D senza placeholder 2D.
+  preloadBustina()
 
+  // Catalogo: il check versione (1 read) va fatto PRIMA di leggere la cache
+  // localStorage, ma è incatenato dentro la promise → corre IN PARALLELO alle
+  // letture di profilo/collezione invece di serializzarle.
   const catalogPromise = catalogRef
     ? Promise.resolve(catalogRef)
-    : Promise.all([listWaifu(), listMosse()]).then(([ws, ms]) => {
-      catalogRef = { ws: ws ?? [], ms: ms ?? [] }
-      return catalogRef
-    })
+    : checkAndInvalidateCatalogCache()
+      .then(() => Promise.all([listWaifu(), listMosse()]))
+      .then(([ws, ms]) => {
+        catalogRef = { ws: ws ?? [], ms: ms ?? [] }
+        return catalogRef
+      })
 
   // Pre-fetch drops in background + store (per la bustina dell'espansione in Home)
-  listDropsAttivi().then(d => gameStore.setDropsAttivi(d as never)).catch(() => { })
+  // + preload dei GLB delle espansioni attive (la Home usa quello del primo drop)
+  listDropsAttivi().then(d => {
+    gameStore.setDropsAttivi(d as never)
+    for (const drop of (d as { asset_glb?: string | null }[] ?? [])) {
+      if (drop?.asset_glb) preloadBustina(drop.asset_glb)
+    }
+  }).catch(() => { })
 
   const [profilo, collezione, catalog] = await Promise.all([
     getUserProfile(uid),
@@ -164,19 +177,17 @@ async function caricaTutto(uid: string) {
   const adminEmailsList = ((runtimeConfig.public.adminEmails as string) || '').split(',').map(s => s.trim().toLowerCase())
   isAdmin.value = adminEmailsList.includes(authStore.user?.email?.toLowerCase() ?? '')
 
-  // Ricarica energia (lazy)
+  // Ricarica energia + pacchetti omaggio (lazy). Le SCRITTURE vanno in background:
+  // la UI usa già i valori aggiornati (updatedProfile), non serve aspettare Firestore.
   let updatedProfile = { ...profilo }
+  const pendingWrites: Record<string, unknown> = {}
   const ricE = calcolaRicaricaEnergia(profilo.ultimaRicaricaEnergia as any, (profilo.energia as number) ?? 10)
   if (ricE.deveAggiornare) {
     updatedProfile.energia = ricE.nuovaEnergia
     updatedProfile.ultimaRicaricaEnergia = new Date(ricE.ultimaRicaricaAggiornata as string | number)
-    await updateUserProfile(uid, {
-      energia: ricE.nuovaEnergia,
-      ultimaRicaricaEnergia: new Date(ricE.ultimaRicaricaAggiornata as string | number),
-    })
+    pendingWrites.energia = ricE.nuovaEnergia
+    pendingWrites.ultimaRicaricaEnergia = updatedProfile.ultimaRicaricaEnergia
   }
-
-  // Ricarica pacchetti omaggio (lazy)
   const ricP = calcolaRicaricaPacchettiOmaggio(
     profilo.ultimaRicaricaPacchetti as any,
     (profilo.pacchettiOmaggio as number) ?? 0,
@@ -184,10 +195,11 @@ async function caricaTutto(uid: string) {
   if (ricP.deveAggiornare) {
     updatedProfile.pacchettiOmaggio = ricP.nuoviPacchetti
     updatedProfile.ultimaRicaricaPacchetti = new Date(ricP.ultimaRicaricaAggiornata as string | number)
-    await updateUserProfile(uid, {
-      pacchettiOmaggio: ricP.nuoviPacchetti,
-      ultimaRicaricaPacchetti: new Date(ricP.ultimaRicaricaAggiornata as string | number),
-    })
+    pendingWrites.pacchettiOmaggio = ricP.nuoviPacchetti
+    pendingWrites.ultimaRicaricaPacchetti = updatedProfile.ultimaRicaricaPacchetti
+  }
+  if (Object.keys(pendingWrites).length > 0) {
+    updateUserProfile(uid, pendingWrites).catch(e => console.warn('[gioco] ricarica non salvata', e))
   }
 
   // Aggiorna store globale
@@ -220,22 +232,25 @@ async function caricaTutto(uid: string) {
     if (updated) getCollezione(uid).then(nuova => gameStore.setCollezione(nuova as never)).catch(() => { })
   }).catch(() => { })
 
-  // Configurazioni stat_ranges e upgrade_steps da Firestore
-  try {
-    const db = getDb()
-    const [rDoc, sDoc, gDoc] = await Promise.all([
-      getDoc(doc(db, 'config', 'stat_ranges')),
-      getDoc(doc(db, 'config', 'upgrade_steps')),
-      getDoc(doc(db, 'config', 'pack_config')),
-    ])
-    statConfig.value = {
-      ranges: rDoc.exists() ? { ...STAT_RANGES_DEFAULT, ...rDoc.data() } : STAT_RANGES_DEFAULT,
-      steps: sDoc.exists() ? { ...UPGRADE_STEPS_DEFAULT, ...sDoc.data() } : UPGRADE_STEPS_DEFAULT,
-    }
-    if (gDoc.exists() && gDoc.data()?.god_pack_prob !== undefined) {
-      godPackProb.value = Number(gDoc.data()!.god_pack_prob)
-    }
-  } catch { /* usa defaults */ }
+  // Configurazioni stat_ranges/upgrade_steps/pack_config: in BACKGROUND.
+  // Esistono già i default → non c'è motivo di bloccare la home per 3 letture.
+  ;(async () => {
+    try {
+      const db = getDb()
+      const [rDoc, sDoc, gDoc] = await Promise.all([
+        getDoc(doc(db, 'config', 'stat_ranges')),
+        getDoc(doc(db, 'config', 'upgrade_steps')),
+        getDoc(doc(db, 'config', 'pack_config')),
+      ])
+      statConfig.value = {
+        ranges: rDoc.exists() ? { ...STAT_RANGES_DEFAULT, ...rDoc.data() } : STAT_RANGES_DEFAULT,
+        steps: sDoc.exists() ? { ...UPGRADE_STEPS_DEFAULT, ...sDoc.data() } : UPGRADE_STEPS_DEFAULT,
+      }
+      if (gDoc.exists() && gDoc.data()?.god_pack_prob !== undefined) {
+        godPackProb.value = Number(gDoc.data()!.god_pack_prob)
+      }
+    } catch { /* usa defaults */ }
+  })()
 
   // Pre-fetch feed pesca in BACKGROUND — NON blocca la home: serve solo quando
   // l'utente apre la Pesca. (Prima era awaited → aggiungeva secondi al primo accesso.)
@@ -565,9 +580,9 @@ function handleSetTab(t: string) {
       </button>
     </nav>
 
-    <!-- FAB Missioni — cerchio Pocket-style con shadow float -->
+    <!-- FAB Missioni — cerchio Pocket-style, visibile SOLO su Home e Mappa -->
     <button
-      v-if="tab !== 'missioni' && tab !== 'swap'"
+      v-if="tab === 'home' || tab === 'mappa'"
       class="missioni-fab-pocket"
       @click="() => { tabPrimaDiMissioni = tab; gameStore.setTab('missioni') }"
     >
