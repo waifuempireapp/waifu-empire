@@ -287,19 +287,20 @@ function avanzaCartaManuale() {
       revealTilt.value = { x: 0, y: 0 }
     }
     transizioneCarta.value = false
-  }, 350) // Tempo coerente con l'animazione CSS d'uscita
+  }, 430) // Tempo coerente con l'animazione CSS d'uscita (0.45s)
 }
 
 
 
 function eseguiTaglioBustina() {
   bustaInAnimazione.value = true
-  // 850ms = durata effettiva dell'animazione di strappo (ripOpenEffect 0.8s)
+  // ~95% dell'animazione di strappo (1.05s): la fase carte entra in crossfade
+  // mentre la bustina finisce di volare via → transizione senza tagli
   setTimeout(() => {
     bustaAperta.value = true
     bustaInAnimazione.value = false
     avviaRivelazione(carteRivelate.value)
-  }, 850)
+  }, 1000)
 }
 
 // Apri singolo pacchetto
@@ -903,6 +904,7 @@ function cfTouchEnd(e: TouchEvent) {
          un anello (1 sola scena WebGL), trascina per girare all'infinito, tocca
          quella davanti per aprirla (scelta estetica, contenuto già generato) -->
     <div v-else-if="stato === 'reveal' && !bustaAperta && !packPicked"
+      class="phase-enter"
       :style="{
         position:'absolute', inset:0, zIndex:250,
         display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
@@ -928,6 +930,7 @@ function cfTouchEnd(e: TouchEvent) {
 
     <!-- 1b. APRI 1 — FASE DI SBUSTO INTERATTIVA (tap per aprire) -->
     <div v-else-if="!bustaAperta"
+      class="phase-enter"
       :style="{
         position:'absolute', inset:0, zIndex:250,
         display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
@@ -980,6 +983,7 @@ function cfTouchEnd(e: TouchEvent) {
 
       <!-- Area Centrale di Gioco delle Carte -->
       <div
+        class="phase-enter"
         style="position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 0; z-index: 5;"
         @click="onRevealTap">
 
@@ -1391,29 +1395,27 @@ function cfTouchEnd(e: TouchEvent) {
 .booster-pack-wrapper {
   transition: opacity 0.35s ease;
 }
-/* Animazione di Strappo Olografico della Bustina */
+/* Animazione di Strappo Olografico della Bustina — arco continuo, senza scatti */
 .booster-pack-wrapper.rip-animation {
-  animation: ripOpenEffect 0.8s cubic-bezier(0.45, 0, 0.55, 1) forwards;
+  animation: ripOpenEffect 1.05s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 @keyframes ripOpenEffect {
-  0% {
-    transform: scale(1) rotate(0deg);
-  }
+  0%   { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+  25%  { transform: translateY(-6px) scale(1.04) rotate(-2deg); opacity: 1; }
+  45%  { transform: translateY(-16px) scale(1.01) rotate(-1deg); opacity: 0.96; }
+  65%  { transform: translateY(60px) scale(0.9) rotate(1deg); opacity: 0.75; }
+  100% { transform: translateY(620px) scale(0.42) rotate(2deg); opacity: 0; }
+}
 
-  30% {
-    transform: scale(1.05) rotate(-3deg);
-  }
-
-  60% {
-    transform: translateY(-20px) scale(0.95);
-    opacity: 0.8;
-  }
-
-  100% {
-    transform: translateY(600px) scale(0.4);
-    opacity: 0;
-  }
+/* Entrata morbida delle fasi (ruota → bustina singola → carte): fade+scale,
+   niente tagli secchi al cambio di schermata */
+.phase-enter {
+  animation: phaseEnter 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes phaseEnter {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 /* Linea Pulsante di Taglio */
@@ -1437,7 +1439,7 @@ function cfTouchEnd(e: TouchEvent) {
 
 /* Splendida Animazione di Swipe/Uscita Carta Principale (Pokémon Pocket Style) */
 .main-reveal-card-container.slide-out-animation {
-  animation: cardSlideUpAway 0.38s cubic-bezier(0.3, 0.8, 0.4, 1) forwards;
+  animation: cardSlideUpAway 0.45s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
 
 @keyframes cardSlideUpAway {
@@ -1531,17 +1533,18 @@ function cfTouchEnd(e: TouchEvent) {
 }
 
 /*
-  Gradi: 180°=retro (start) → 540°=1 giro (retro) → 900°=2 giri (retro)
-  → 720°=fine (720 mod 360 = 0° = fronte). Retro → gira ×2 con zoom → fronte.
+  Gradi: 180°=retro (start) → giri completi SEMPRE in avanti → 1080° (mod 360 = 0°
+  = fronte). Niente inversione di rotazione alla fine: prima tornava indietro di
+  180° (900→720) e si percepiva come uno scatto.
 */
 @keyframes legendaryReveal {
-  /* retro → 2 giravolte fluide con zoom graduale → fronte. Più step = movimento più smooth */
+  /* retro → giravolte fluide con zoom graduale → fronte, rotazione monotona */
   0%   { transform: rotateY(180deg) scale(1); }
-  20%  { transform: rotateY(450deg) scale(1.12); }
-  40%  { transform: rotateY(720deg) scale(1.22); }
-  58%  { transform: rotateY(900deg) scale(1.3); }
-  78%  { transform: rotateY(900deg) scale(1.3); }  /* pausa in zoom sul fronte */
-  100% { transform: rotateY(720deg) scale(1); }    /* zoom-out morbido, fronte */
+  22%  { transform: rotateY(450deg) scale(1.12); }
+  45%  { transform: rotateY(720deg) scale(1.24); }
+  62%  { transform: rotateY(900deg) scale(1.3); }
+  80%  { transform: rotateY(900deg) scale(1.3); }   /* pausa suspense sul retro, in zoom */
+  100% { transform: rotateY(1080deg) scale(1); }    /* mezzo giro finale + zoom-out → fronte */
 }
 
 @keyframes legendaryGlow {

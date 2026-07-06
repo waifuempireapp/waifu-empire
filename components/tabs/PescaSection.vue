@@ -236,13 +236,13 @@ function aprePack(pack: Pack) {
             pickPhase.value = 'pick'
             shuffleStep.value = 0
             shuffledOrder.value = fisherYates(Array.from({ length: n }, (_, i) => i))
-          }, 450)
+          }, 560)
           shuffleTimeouts.value.push(t5)
-        }, 400)
+        }, 520)
         shuffleTimeouts.value.push(t4)
-      }, 450)
+      }, 560)
       shuffleTimeouts.value.push(t3)
-    }, 500)
+    }, 620)
     shuffleTimeouts.value.push(t2)
   }, 1200)
   shuffleTimeouts.value.push(t1)
@@ -257,20 +257,22 @@ function cardStyle(uiIdx: number): CSSProperties {
   let zIndex = 1
   let transition = 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
 
-  // Fase revealing/revealed: flip 3D
+  // Fase revealing/revealed: flip 3D.
+  // NB: rotate(360deg) mantenuto ovunque dopo lo shuffle (≡ 0° visivamente):
+  // senza, il browser interpolerebbe 360→0 con un giro all'indietro (scatto).
   if (pickPhase.value === 'revealing' || pickPhase.value === 'revealed') {
     if (isChosen && isFlipped) {
       zIndex = 10
-      transform = 'scale(1.08) translateY(-10px)'
-      transition = 'transform 0.5s cubic-bezier(0.175,0.885,0.32,1.275)'
+      transform = 'rotate(360deg) scale(1.08) translateY(-10px)'
+      transition = 'transform 0.5s cubic-bezier(0.34,1.15,0.64,1)'
     } else if (isFlipped) {
       zIndex = 3
-      transform = 'scale(1)'
+      transform = 'rotate(360deg) scale(1)'
       transition = 'transform 0.45s ease'
     } else {
       zIndex = 1
-      transform = 'scale(0.97)'
-      transition = 'transform 0.3s ease'
+      transform = 'rotate(360deg) scale(0.97)'
+      transition = 'transform 0.35s ease'
     }
     return {
       aspectRatio: '2/3', borderRadius: '13px', overflow: 'visible',
@@ -293,12 +295,12 @@ function cardStyle(uiIdx: number): CSSProperties {
       // Le carte lasciano la griglia e volano fluide verso il mazzo centrale sovrapponendosi in modo impreciso
       transform = `perspective(1000px) translate3d(${base.x}px, ${base.y}px, 0) rotate(${base.r}deg) scale(0.95)`
       zIndex = base.z
-      transition = 'transform 0.45s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s'
+      transition = 'transform 0.58s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s'
     } else if (shuffleStep.value === 2) {
       // Il blocco mazzo ruota vistosamente in 3D nello spazio prospettico simulando il retro delle carte
       transform = `perspective(1000px) translate3d(${base.x}px, ${base.y}px, 50px) rotateY(180deg) rotateX(12deg) scale(1.05)`
       zIndex = base.z
-      transition = 'transform 0.5s cubic-bezier(0.34, 1.3, 0.64, 1)'
+      transition = 'transform 0.6s cubic-bezier(0.33, 1, 0.68, 1)'
     } else if (shuffleStep.value === 3) {
       // Esplosione a incrocio: le carte schizzano in fuori invertendo la profondità visiva per ingannare l'occhio
       const burstVectors = [
@@ -311,18 +313,19 @@ function cardStyle(uiIdx: number): CSSProperties {
       const b = burstVectors[uiIdx]
       transform = `perspective(1000px) translate3d(${b.x}px, ${b.y}px, 10px) rotate(${b.r}deg) scale(0.98)`
       zIndex = b.z
-      transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+      transition = 'transform 0.52s cubic-bezier(0.34, 1.15, 0.64, 1)'
     } else if (shuffleStep.value === 4) {
-      // Chiusura lampo sul mazzo con avvitamento completo prima della distribuzione finale
+      // Chiusura morbida sul mazzo con avvitamento completo prima della distribuzione finale
       transform = `perspective(1000px) translate3d(${base.x}px, ${base.y}px, 0) rotate(360deg) scale(1)`
       zIndex = base.z
-      transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
+      transition = 'transform 0.5s cubic-bezier(0.34, 1.15, 0.64, 1)'
     }
   } else if (pickPhase.value === 'pick') {
-    // Fase di scelta: rimbalzo morbido stile Pokémon Pocket quando l'utente seleziona o deseleziona la carta
+    // Fase di scelta: rimbalzo morbido stile Pokémon Pocket quando l'utente
+    // seleziona/deseleziona. rotate(360deg) = continuità con lo shuffle (no back-spin).
     zIndex = isSel ? 10 : 2
-    transform = isSel ? 'scale(1.08) translateY(-14px)' : 'scale(1)'
-    transition = 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+    transform = isSel ? 'rotate(360deg) scale(1.08) translateY(-14px)' : 'rotate(360deg) scale(1)'
+    transition = 'all 0.38s cubic-bezier(0.34, 1.15, 0.64, 1)'
   }
 
   return {
