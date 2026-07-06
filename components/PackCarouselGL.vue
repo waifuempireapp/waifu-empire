@@ -28,8 +28,11 @@ const DEFAULT_BUSTINA = '/bustine/bustina_asset.glb'
 
 // Geometria dell'anello: con ~20 bustine serve un anello ampio perché non si
 // accavallino troppo; la profondità accentua l'effetto ruota.
-const SPREAD_X = 2.7
-const DEPTH_Z  = 1.6
+const SPREAD_X = 3.3
+const DEPTH_Z  = 2.2
+// Le bustine dietro salgono verso l'alto (prospettiva "dall'alto"): 0 davanti,
+// LIFT_Y dietro → si vedono scorrere sopra quelle frontali.
+const LIFT_Y = 0.55
 // Bustine leggermente più piccole rispetto alla singola (richiesta UX)
 const PACK_SCALE = 0.8
 
@@ -101,8 +104,10 @@ async function init() {
 
     scene = new THREE.Scene()
     camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 100)
-    camera.position.set(0, 0.04, 4.9)
-    camera.lookAt(0, 0, 0)
+    // Camera leggermente rialzata e inclinata verso il basso: la ruota si vede
+    // in prospettiva e i pacchetti dietro scorrono visibili sopra quelli davanti
+    camera.position.set(0, 1.25, 5.4)
+    camera.lookAt(0, 0.15, 0)
 
     // Environment + luci IDENTICHE a BustinaGLB
     const pmrem = new THREE.PMREMGenerator(renderer)
@@ -176,11 +181,11 @@ function layoutRing(t: number) {
     const m = meshes[i]
     m.position.x = Math.sin(th) * SPREAD_X
     m.position.z = zN * DEPTH_Z
-    // La frontale respira leggermente (invito al tap)
+    // Profondità: le bustine dietro salgono (LIFT_Y) e la frontale respira
     const front = Math.max(0, zN)
-    m.position.y = front * Math.sin(t * 1.4) * 0.02
-    // Scala: davanti piena, dietro ridotta (× fattore globale "più piccole")
-    m.scale.setScalar((0.55 + 0.45 * (zN + 1) / 2) * PACK_SCALE)
+    m.position.y = ((1 - zN) / 2) * LIFT_Y + front * Math.sin(t * 1.4) * 0.02
+    // Scala: davanti piena, dietro MOLTO ridotta (× fattore globale "più piccole")
+    m.scale.setScalar((0.42 + 0.58 * (zN + 1) / 2) * PACK_SCALE)
     // Leggero tilt coverflow verso il centro
     m.rotation.y = -Math.sin(th) * 0.42
     m.renderOrder = Math.round(zN * 100)
