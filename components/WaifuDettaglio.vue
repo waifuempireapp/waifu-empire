@@ -276,14 +276,14 @@ onUnmounted(() => {
             :isHot="false"
             :censurata="false"
           />
-          <!-- Chip TIPO — top-left angolo -->
+          <!-- Chip TIPO — top-right angolo, bg pieno come i chip LV/copie -->
           <div v-if="waifu.tipo" :style="{
-            position: 'absolute', top: '-16px', left: '0px', zIndex: 20,
-            background: tc(waifu.tipo).bg, border: `2px solid ${tc(waifu.tipo).border}`,
+            position: 'absolute', top: '-20px', right: '-30px', zIndex: 20,
+            background: 'var(--theme-surface)', border: `2px solid ${tc(waifu.tipo).border}`,
             borderRadius: '999px', padding: '8px 20px',
             fontFamily: FF.label, fontSize: '17px', fontWeight: 900,
             color: tc(waifu.tipo).txt, letterSpacing: '0.12em', textTransform: 'uppercase',
-            boxShadow: `0 3px 16px ${tc(waifu.tipo).border}66`,
+            boxShadow: '0 2px 10px rgba(0,0,0,0.6)',
             whiteSpace: 'nowrap', pointerEvents: 'none',
           }">⚡ {{ typeLabel(waifu.tipo) }}</div>
           <!-- Chip LV — bottom-left angolo -->
