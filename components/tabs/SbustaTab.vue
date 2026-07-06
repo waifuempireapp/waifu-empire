@@ -260,7 +260,9 @@ watch(
 )
 
 function avviaRivelazione(_carte: any[]) {
-  setTimeout(() => { indiceRivelato.value = 0 }, 1500)
+  // Prima carta il prima possibile: le immagini sono già precaricate (pre-draw
+  // nel menu + preloadCarteImages), serve solo un beat per lo stacco visivo.
+  setTimeout(() => { indiceRivelato.value = 0 }, 400)
 }
 
 // Avanza alla carta successiva con animazione di sfilamento (Swipe/Click)
@@ -282,11 +284,12 @@ function avanzaCartaManuale() {
 
 function eseguiTaglioBustina() {
   bustaInAnimazione.value = true
+  // 850ms = durata effettiva dell'animazione di strappo (ripOpenEffect 0.8s)
   setTimeout(() => {
     bustaAperta.value = true
     bustaInAnimazione.value = false
     avviaRivelazione(carteRivelate.value)
-  }, 1000)
+  }, 850)
 }
 
 // Apri singolo pacchetto
@@ -1324,14 +1327,15 @@ function cfTouchEnd(e: TouchEvent) {
     </div>
   </div>
 
-  <!-- ── Modale kisses insufficienti ───────────────────────── -->
-  <KissesShortageModal
-    v-if="sfidaShortage"
-    :missing-kisses="Math.max(SFIDA_COSTO_KISSES, SFIDA_COSTO_10) - (profilo?.kisses ?? 0)"
-    :current-kisses="profilo?.kisses ?? 0"
-    @success="(newKisses: number) => { emit('updateProfilo', { kisses: newKisses }); sfidaShortage = false; sfidaConferma = true }"
-    @cancel="sfidaShortage = false"
-  />
+  <!-- ── Dialog kisses insufficienti — piccolo, centrato nel viewport ──
+       Teleport su body: fuori dagli antenati con transform → il fixed centra davvero. -->
+  <Teleport to="body">
+    <KissesShortageDialog
+      v-if="sfidaShortage"
+      :missing-kisses="SFIDA_COSTO_10 - (profilo?.kisses ?? 0)"
+      @cancel="sfidaShortage = false"
+    />
+  </Teleport>
 
   <!-- Zoom carta: vista ingrandita al tap nel riepilogo -->
   <div v-if="zoomCard" @click="zoomCard = null"
