@@ -429,7 +429,7 @@ const visiblePages = computed(() => {
 
       <!-- Griglia waifu 2 colonne — card verticali (nome, immagine, mosse 2×2 sotto) -->
       <div :style="{ flex: 1, overflowY: 'auto', padding: '24px 16px 0' }">
-        <div :style="{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px 12px' }">
+        <div class="bm-waifu-grid" :style="{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px 12px' }">
           <div
             v-for="w in pageWaifu"
             :key="w.id"

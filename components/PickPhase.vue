@@ -525,7 +525,7 @@ function hpBarData(hp: number, maxHp: number) {
       <div :style="C.section">
         <div :style="C.label">IL TUO ROSTER</div>
         <!-- Griglia 2 colonne — più spaziatura verticale + margini -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px 16px;padding:14px 14px 18px;">
+        <div class="pick-waifu-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:30px 16px;padding:14px 14px 18px;">
           <template v-for="(w, idx) in activeRoster" :key="w.id ?? idx">
             <button
               :style="({
@@ -612,7 +612,7 @@ function hpBarData(hp: number, maxHp: number) {
         </div>
 
         <!-- Griglia 2 colonne avversario — più spaziatura verticale + margini -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px 16px;padding:14px 14px 18px;">
+        <div class="pick-waifu-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:30px 16px;padding:14px 14px 18px;">
           <template v-for="(w, idx) in opponentRoster" :key="w.id ?? idx">
             <div
               :style="({

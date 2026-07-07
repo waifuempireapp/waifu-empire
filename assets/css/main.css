@@ -3008,6 +3008,18 @@ input:focus, textarea:focus, select:focus {
   /* ── FAB missioni ── */
   .missioni-fab-pocket { right: 32px !important; bottom: 32px !important; width: 60px !important; height: 60px !important; }
 
+  /* ── SEZIONI COMBATTIMENTO: griglie pensate per telefono (2 colonne
+     full-width) → su desktop le carte esplodevano. Colonne auto-fill con
+     larghezza card da desktop (220-260px) e contenuto centrato. ── */
+  .bm-waifu-grid,
+  .pick-waifu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+    gap: 26px 18px !important;
+    max-width: 1240px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
   /* Scrollbar discreta da app desktop */
   ::-webkit-scrollbar { width: 10px; }
   ::-webkit-scrollbar-thumb { background: var(--theme-border); border-radius: 99px; }
