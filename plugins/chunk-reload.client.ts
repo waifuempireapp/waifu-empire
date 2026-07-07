@@ -10,10 +10,39 @@ export default defineNuxtPlugin((nuxtApp) => {
   let reloading = false
   const reload = () => {
     if (reloading) return
+    // Anti-loop: max 2 reload automatici per minuto
+    const now = Date.now()
+    const hist = JSON.parse(sessionStorage.getItem('chunk_reloads') ?? '[]').filter((t: number) => now - t < 60_000)
+    if (hist.length >= 2) return
+    hist.push(now)
+    sessionStorage.setItem('chunk_reloads', JSON.stringify(hist))
     reloading = true
     // Ricarica bypassando la cache dell'HTML
     window.location.reload()
   }
+
+  // Dynamic import falliti (Lazy components, tab, overlay): promise rejection
+  // globale con i messaggi tipici dei chunk stantii → ricarica
+  const CHUNK_ERR = /dynamically imported module|Importing a module script|error loading dynamically|Failed to fetch.*module|module script failed/i
+  window.addEventListener('unhandledrejection', (e) => {
+    const msg = String(e.reason?.message ?? e.reason ?? '')
+    if (CHUNK_ERR.test(msg)) {
+      e.preventDefault()
+      console.warn('[chunk-reload] dynamic import fallito, ricarico:', msg)
+      reload()
+    }
+  })
+
+  // Errori Vue da componenti async che non si caricano
+  nuxtApp.vueApp.config.errorHandler = ((err: unknown, _i: unknown, info: string) => {
+    const msg = String((err as Error)?.message ?? err ?? '')
+    if (CHUNK_ERR.test(msg)) {
+      console.warn('[chunk-reload] async component fallito, ricarico:', msg)
+      reload()
+      return
+    }
+    console.error('[app error]', err, info)
+  }) as any
 
   // Vite emette questo evento quando un dynamic import / preload fallisce
   window.addEventListener('vite:preloadError', (e) => {

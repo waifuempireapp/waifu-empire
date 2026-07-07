@@ -284,6 +284,18 @@ async function caricaTutto(uid: string) {
   })
 
   appReady.value = true
+
+  // PRELOAD di tutti i chunk lazy (tab + overlay) appena l'app è visibile:
+  // "APRI ORA" e i cambi tab non dipendono più dalla rete → niente schermate
+  // nere se la connessione va giù o se un deploy cambia gli hash dei chunk.
+  const warmChunks = () => {
+    preloadComponents([
+      'SbustaTab', 'PescaSection', 'CollezioneTab', 'MappaTab',
+      'ClassificaTab', 'SwapTab', 'NegozioOverlay',
+    ]).catch(() => { /* best effort */ })
+  }
+  if ('requestIdleCallback' in window) (window as any).requestIdleCallback(warmChunks, { timeout: 3000 })
+  else setTimeout(warmChunks, 800)
 }
 
 // ── Ricarica bustina omaggio on-demand (timer scaduto in Home) ────────

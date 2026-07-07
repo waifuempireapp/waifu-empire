@@ -277,17 +277,34 @@ onMounted(() => { init() })
 
 // KeepAlive (Home): quando il tab non è attivo il componente resta vivo ma
 // FERMA il render loop (niente GPU sprecata); al ritorno riparte sullo stesso
-// contesto WebGL → il pack riappare istantaneo, senza re-init né flash.
+// contesto WebGL → il pack riappare istantaneo. Se però iOS ha UCCISO il
+// contesto mentre eravamo via (standby, altri canvas), si RE-INIZIALIZZA
+// subito: mai placeholder al ritorno.
 let pausedByKeepAlive = false
 onDeactivated(() => {
   if (animId !== null) { cancelAnimationFrame(animId); animId = null; pausedByKeepAlive = true }
 })
 onActivated(() => {
-  if (pausedByKeepAlive && renderer && scene && camera && mesh) {
+  if (failed.value || !glReady.value || !renderer || !mesh) {
+    pausedByKeepAlive = false
+    failed.value = false
+    init()   // contesto perso mentre eravamo via → re-init immediato (mesh in cache)
+  } else if (pausedByKeepAlive && renderer && scene && camera && mesh) {
     pausedByKeepAlive = false
     animate((window as any).__THREE__ as typeof import('three'))
   }
 })
+
+// Ritorno dallo standby (pagina di nuovo visibile): se il contesto WebGL è
+// morto nel frattempo, re-init subito invece di restare sul fallback 2D.
+function _onVisibility() {
+  if (document.visibilityState === 'visible' && (failed.value || !glReady.value)) {
+    failed.value = false
+    init()
+  }
+}
+onMounted(() => document.addEventListener('visibilitychange', _onVisibility))
+onBeforeUnmount(() => document.removeEventListener('visibilitychange', _onVisibility))
 
 onBeforeUnmount(() => {
   // 1. Ferma il loop di animazione
@@ -429,7 +446,9 @@ onBeforeUnmount(() => {
    arriva prima (mesh in cache, re-mount da cambio tab) non si vede alcun flash. */
 .bustina-fallback {
   opacity: 0;
-  animation: bustinaFallbackIn 0.3s ease-out 0.45s forwards;
+  /* delay lungo: i re-init (mesh in cache) finiscono molto prima → la W non si vede mai;
+     compare solo su dispositivi realmente senza WebGL */
+  animation: bustinaFallbackIn 0.35s ease-out 1.2s forwards;
 }
 @keyframes bustinaFallbackIn {
   to { opacity: 1; }
