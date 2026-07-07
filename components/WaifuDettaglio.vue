@@ -77,7 +77,11 @@ const slotPicker = ref<string | null>(null)
 // per lasciare spazio alle mosse.
 const scrolled = ref(false)
 function onDetailScroll(e: Event) {
-  scrolled.value = (e.target as HTMLElement).scrollTop > 12
+  const st = (e.target as HTMLElement).scrollTop
+  // Isteresi: senza, il rimpicciolimento della carta cambiava il layout e lo
+  // scroll rimbalzava su/giù in loop. Entra nello shrink oltre 60px, esce sotto 8.
+  if (!scrolled.value && st > 60) scrolled.value = true
+  else if (scrolled.value && st < 8) scrolled.value = false
 }
 const cardShrink = computed(() => scrolled.value && (statsOpen.value || battleOpen.value))
 const cardOuter = ref<HTMLElement | null>(null)
@@ -315,8 +319,8 @@ onUnmounted(() => {
       <div style="flex:1;overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;" @scroll.passive="onDetailScroll">
         <div style="max-width:440px;margin:0 auto;padding:8px 16px calc(24px + env(safe-area-inset-bottom));">
 
-          <!-- Bottone LEVEL UP -->
-          <div v-if="dati.levelup_pending" style="display:flex;justify-content:center;margin-bottom:14px;">
+          <!-- Bottone LEVEL UP — disponibile con 3+ copie (o flag pending dal server) -->
+          <div v-if="dati.levelup_pending || (dati.copie ?? 0) >= 3" style="display:flex;justify-content:center;margin-bottom:14px;">
             <button @click="emit('levelUp')" :style="{
               background: `linear-gradient(135deg, rgba(88,224,163,0.22), rgba(6,214,160,0.12))`,
               border: `1.5px solid ${C.ok}88`, borderRadius: '999px', padding: '11px 28px',

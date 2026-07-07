@@ -71,13 +71,17 @@ async function onToggleTheme() {
   }
 }
 
-// Dropdown lingua
-const langDropdownOpen = ref(false)
+// Dropdown lingua (DropdownSelect stile iOS — bottom sheet su body, sempre cliccabile)
+const langModel = computed({
+  get: () => String(currentLocale.value),
+  set: (code: string) => { switchLocale(code) },
+})
+const langOptions = computed(() =>
+  availableLocales.value.map(l => ({ value: l.code, label: l.name })))
 
 async function switchLocale(code: string) {
   await setLocale(code as 'en' | 'it' | 'de' | 'es' | 'ja')
   if (typeof window !== 'undefined') localStorage.setItem('waifu_locale', code) // cache veloce
-  langDropdownOpen.value = false
   // Persisti la lingua sul profilo Firebase (legata all'account)
   const uid = authStore.user?.uid
   if (uid) {
@@ -216,31 +220,8 @@ async function switchLocale(code: string) {
       <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px;color:var(--theme-text-2);">
         <Globe :size="13" stroke-width="1.5" /> {{ $t('settings.language.title') }}
       </div>
-      <!-- Overlay chiudi dropdown — z-index 45: sopra il contenuto tab, sotto navbar (z-50) e FAB (z-60) -->
-      <div v-if="langDropdownOpen" @click="langDropdownOpen = false" style="position:fixed;inset:0;z-index:45;" />
-      <div style="position:relative;z-index:46;">
-        <button
-          @click="langDropdownOpen = !langDropdownOpen"
-          style="width:100%;background:var(--theme-input-bg);border:1.5px solid var(--theme-border-2);box-shadow:none !important;color:var(--theme-text);border-radius:14px !important;padding:12px 44px 12px 18px;font-size:15px;font-family:var(--ff-body,'DM Sans',sans-serif);font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:space-between;"
-          :style="langDropdownOpen ? 'border-radius:14px 14px 0 0 !important;' : ''"
-        >
-          <span>{{ currentLocaleName }}</span>
-          <span :style="{ transition:'transform 0.2s', transform:langDropdownOpen?'rotate(180deg)':'rotate(0)', color:'var(--theme-accent)', fontSize:'18px', lineHeight:1 }">▾</span>
-        </button>
-        <div v-if="langDropdownOpen" style="position:absolute;top:100%;left:0;right:0;z-index:46;background:var(--theme-surface);border:1.5px solid var(--theme-border-2);border-top:none;border-radius:0 0 14px 14px;overflow:hidden;box-shadow:0 12px 32px var(--theme-shadow);">
-          <button
-            v-for="loc in availableLocales"
-            :key="loc.code"
-            @click="switchLocale(loc.code)"
-            style="width:100%;padding:12px 18px;border:none !important;border-radius:0 !important;box-shadow:none !important;cursor:pointer;text-align:left;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:14px;font-weight:600;display:flex;align-items:center;gap:10px;color:var(--theme-text);"
-            :style="{ background: loc.code===currentLocale ? 'color-mix(in srgb, var(--theme-accent) 14%, transparent)' : 'transparent' }"
-          >
-            <span v-if="loc.code===currentLocale" style="font-size:12px;">✓</span>
-            <span v-else style="width:12px;display:inline-block;"></span>
-            {{ loc.name }}
-          </button>
-        </div>
-      </div>
+      <!-- DropdownSelect (bottom-sheet su body): niente più voci sotto la navbar -->
+      <DropdownSelect v-model="langModel" :options="langOptions" :label="$t('settings.language.title')" :placeholder="currentLocaleName" />
     </div>
 
     <!-- Voci menu — stile full-page, non dentro una card -->
