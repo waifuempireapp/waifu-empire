@@ -20,6 +20,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   ready:  []
+  failed: []   // init WebGL fallito → il parent ripiega sulla bustina singola
   picked: []   // tap 1: bustina scelta → zoom, le altre cadono
   open:   []   // tap 2: strappo completato → il parent mostra le carte
 }>()
@@ -200,8 +201,7 @@ async function init() {
     startLoop()
   } catch (e) {
     console.error('[PackCarouselGL] init failed', e)
-    glReady.value = true
-    emit('ready')  // il parent gestisce comunque il flusso
+    emit('failed')  // il parent ripiega sul flusso bustina singola
   }
 }
 

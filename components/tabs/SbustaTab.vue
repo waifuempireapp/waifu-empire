@@ -113,6 +113,22 @@ const bustaInAnimazione = ref(false)
 // Prima dello strappo l'utente "sceglie" la bustina da una ruota 3D di pack
 // identici (PackCarouselGL — la scelta è estetica: il contenuto è già generato).
 const packPicked = ref(false)
+// Fallback ruota: su alcuni WebView (APK Android) il canvas della ruota può
+// non inizializzare → si ripiega sulla schermata bustina singola classica.
+const wheelFailed = ref(false)
+let wheelWatchdog: ReturnType<typeof setTimeout> | null = null
+function armWheelWatchdog() {
+  if (wheelWatchdog) clearTimeout(wheelWatchdog)
+  // 8s: al primo avvio il GLB (≈6.6MB) può impiegare qualche secondo su rete mobile
+  wheelWatchdog = setTimeout(() => { wheelFailed.value = true }, 8000)
+}
+function onWheelReady() {
+  if (wheelWatchdog) { clearTimeout(wheelWatchdog); wheelWatchdog = null }
+}
+function onWheelFailed() {
+  if (wheelWatchdog) { clearTimeout(wheelWatchdog); wheelWatchdog = null }
+  wheelFailed.value = true
+}
 const vw = ref(typeof window !== 'undefined' ? window.innerWidth : 430)
 const vh = ref(typeof window !== 'undefined' ? window.innerHeight : 800)
 const _onVwResize = () => { vw.value = window.innerWidth; vh.value = window.innerHeight }
@@ -346,6 +362,7 @@ async function apri(tipoPacchetto: string) {
   bustaAperta.value = false
   bustaInAnimazione.value = false
   packPicked.value = false   // riparte dalla scelta della bustina (carosello)
+  if (!wheelFailed.value) armWheelWatchdog()
   stato.value = 'reveal'
 
   // Preload immediato: le immagini arrivano durante l'animazione del pack (≥1.3s)
@@ -914,7 +931,7 @@ function cfTouchEnd(e: TouchEvent) {
     <!-- 1b-pre. SCELTA E APERTURA BUSTINA — ruota 3D stile Pokémon Pocket.
          TUTTO nella stessa scena WebGL (zero re-mount = zero flash):
          tap 1 → la bustina scelta zooma e le altre cadono · tap 2 → strappo → carte -->
-    <div v-else-if="stato === 'reveal' && !bustaAperta"
+    <div v-else-if="stato === 'reveal' && !bustaAperta && !wheelFailed"
       class="phase-enter"
       :style="{
         position:'absolute', inset:0, zIndex:250,
@@ -931,6 +948,8 @@ function cfTouchEnd(e: TouchEvent) {
         :width="vw"
         :height="vh"
         style="position:absolute;inset:0;"
+        @ready="onWheelReady"
+        @failed="onWheelFailed"
         @picked="packPicked = true"
         @open="onCarouselOpen"
       />
