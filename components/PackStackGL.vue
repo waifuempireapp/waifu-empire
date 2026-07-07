@@ -17,7 +17,7 @@ const props = withDefaults(defineProps<{
   height?:     number
 }>(), { count: 10, width: 300, height: 420 })
 
-const emit = defineEmits<{ ready: [] }>()
+const emit = defineEmits<{ ready: []; failed: [] }>()
 
 // Bounds del modello (identici a BustinaGLB) per il planar UV mapping
 const XMIN = -0.5768, XMAX = 0.5731
@@ -177,7 +177,8 @@ async function init() {
     startLoop(THREE)
   } catch (e) {
     console.error('[PackStackGL] init failed', e)
-    emit('ready')  // sblocca l'overlay: il parent gestisce il fallback
+    emit('failed')  // il parent salta la cerimonia dello stack
+    emit('ready')   // sblocca comunque l'overlay anti-FOUC
   }
 }
 

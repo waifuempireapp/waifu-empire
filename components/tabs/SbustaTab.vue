@@ -103,6 +103,8 @@ const multiPhase = ref<'stack' | 'exiting' | 'revealing'>('stack')
 const multiExitedCount = ref(0)     // quante bustine sono già uscite
 const multiPackDivider = ref(false) // intermezzo "Bustina X completata" tra i gruppi
 const packStackRef = ref<{ animateSinglePackExit: (i: number) => void } | null>(null)
+// Stack 3D fallito (WebView senza WebGL): salta la cerimonia di uscita
+const stackFailed = ref(false)
 const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
 // Nuovi stati per l'animazione di apertura pacchetto in stile Pokémon Pocket
@@ -488,6 +490,8 @@ function apriMulti(tipoPacchetto: string) {
 // Lo stack resta FERMO finché l'utente non tocca → poi uscita una alla volta
 async function onStackTap() {
   if (multiPhase.value !== 'stack') return
+  // Scena 3D non disponibile → niente cerimonia, dritto alle carte
+  if (stackFailed.value) { startMultiReveal(); return }
   multiPhase.value = 'exiting'
   const n = multiPackCarte.value.length
   for (let i = 0; i < n; i++) {
@@ -911,6 +915,7 @@ function cfTouchEnd(e: TouchEvent) {
         <!-- Stack 3D: 1 sola scena Three.js con N cloni del modello .glb -->
         <PackStackGL
           ref="packStackRef"
+          @failed="stackFailed = true"
           :count="multiPackCarte.length"
           :color="dropColore"
           :texture-url="dropAttivo?.asset_bustina ?? null"
