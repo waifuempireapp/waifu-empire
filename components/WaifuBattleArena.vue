@@ -1579,12 +1579,14 @@ const mvp = computed(() => {
                   </span>
                 </div>
 
-                <!-- Effetti attivi sulla waifu avversaria -->
-                <div v-if="fieldEffects.enemy.length" :style="{ display:'flex',gap:'4px',flexWrap:'wrap',marginTop:'5px' }">
-                  <span v-for="e in fieldEffects.enemy" :key="e.status" :style="effectChipStyle(e)">
-                    {{ e.label }} · {{ e.turni }}t
-                  </span>
-                </div>
+              </div>
+
+              <!-- Effetti attivi: FUORI dalla card, riga sotto la sezione nome/HP
+                   (dentro il box strabordavano dal bordo) -->
+              <div v-if="fieldEffects.enemy.length" :style="{ display:'flex',gap:'4px',flexWrap:'wrap',marginTop:'6px',justifyContent:'flex-start' }">
+                <span v-for="e in fieldEffects.enemy" :key="e.status" :style="effectChipStyle(e)">
+                  {{ e.label }} · {{ e.turni }}t
+                </span>
               </div>
             </template>
           </div>
@@ -1770,12 +1772,13 @@ const mvp = computed(() => {
                   <span :style="{ fontFamily:'var(--ff-label)',fontSize:'13px',color:'var(--theme-text-3)' }">/{{ player.maxHp }}</span>
                 </div>
 
-                <!-- Effetti attivi sulla propria waifu -->
-                <div v-if="fieldEffects.player.length" :style="{ display:'flex',gap:'4px',flexWrap:'wrap',marginTop:'5px' }">
-                  <span v-for="e in fieldEffects.player" :key="e.status" :style="effectChipStyle(e)">
-                    {{ e.label }} · {{ e.turni }}t
-                  </span>
-                </div>
+              </div>
+
+              <!-- Effetti attivi: FUORI dalla card, riga sotto la sezione nome/HP -->
+              <div v-if="fieldEffects.player.length" :style="{ display:'flex',gap:'4px',flexWrap:'wrap',marginTop:'6px',justifyContent:'flex-end' }">
+                <span v-for="e in fieldEffects.player" :key="e.status" :style="effectChipStyle(e)">
+                  {{ e.label }} · {{ e.turni }}t
+                </span>
               </div>
             </template>
           </div>
@@ -1798,11 +1801,13 @@ const mvp = computed(() => {
         overflowY:'auto', WebkitOverflowScrolling:'touch',
       }">
 
-        <!-- Timer progress bar -->
-        <div v-if="isChoose" :style="{ height:'3px',background:'var(--theme-border)' }">
+        <!-- Timer progress bar — traccia SEMPRE renderizzata: se sparisse col
+             v-if tutto il pannello sotto salirebbe/scenderebbe di 3px -->
+        <div :style="{ height:'3px',background:'var(--theme-border)',flexShrink:0 }">
           <div :style="{
             height:'100%', background:timerCol,
-            width:`${(timer/30)*100}%`, transition:'width 1s linear,background .5s',
+            width: isChoose ? `${(timer/30)*100}%` : '0%',
+            transition:'width 1s linear,background .5s',
           }"/>
         </div>
 
@@ -1835,7 +1840,7 @@ const mvp = computed(() => {
                 <button class="wba-bench-slot"
                   @click="isSwap ? handlePlayerSwap(i) : handleVoluntarySwap(i)"
                   :style="{
-                    width:'128px',height:'128px',borderRadius:'50%',overflow:'hidden',flexShrink:0,
+                    width:'128px',height:'128px',borderRadius:'8px',overflow:'hidden',flexShrink:0,
                     border:'2.5px solid #00e676',
                     boxShadow:'0 0 14px rgba(0,230,118,.38),0 0 0 1px rgba(0,230,118,.18)',
                     background:'var(--theme-bg-secondary)', position:'relative',
@@ -1896,7 +1901,7 @@ const mvp = computed(() => {
                 <button class="wba-bench-slot"
                   @click="handleVoluntarySwap(i, { isPPExhausted: true })"
                   :style="{
-                    width:'128px',height:'128px',borderRadius:'50%',overflow:'hidden',flexShrink:0,
+                    width:'128px',height:'128px',borderRadius:'8px',overflow:'hidden',flexShrink:0,
                     border:'2.5px solid #00e676',
                     boxShadow:'0 0 14px rgba(0,230,118,.38),0 0 0 1px rgba(0,230,118,.18)',
                     background:'var(--theme-bg-secondary)', position:'relative',
@@ -1968,7 +1973,7 @@ const mvp = computed(() => {
               <template v-for="(w, i) in pTeam" :key="w.id">
                 <button v-if="i !== pActive" disabled class="wba-bench-slot"
                   :style="{
-                    width:'72px',height:'72px',borderRadius:'50%',overflow:'hidden',flexShrink:0,
+                    width:'72px',height:'72px',borderRadius:'8px',overflow:'hidden',flexShrink:0,
                     border:`2.5px solid ${w.isKO ? 'rgba(255,255,255,.1)' : (TYPE_COLORS[w.type]?.border ?? '#444')}`,
                     boxShadow:'0 2px 8px var(--theme-shadow)',
                     background:'var(--theme-bg-secondary)', position:'relative',
