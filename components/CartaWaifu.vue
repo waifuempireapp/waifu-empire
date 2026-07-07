@@ -77,6 +77,11 @@ defineExpose({ videoEl })
 // ── Stato locale ─────────────────────────────────────────────
 const videoFinito = ref(false)
 
+// Avvia il video quando il parent attiva la modalità immersiva
+watch(() => props.videoAttivo, (v) => {
+  if (v && videoEl.value) { videoFinito.value = false; videoEl.value.currentTime = 0; videoEl.value.play().catch(() => handleVideoEnd()) }
+})
+
 // ── Palette rarità ───────────────────────────────────────────
 const RARITY_BORDER: Record<string, { outer: string; inner: string; glow: string; bg: string }> = {
   comune:      { outer: '#b4bcc8', inner: '#dfe5ef', glow: 'rgba(180,188,200,0.45)', bg: 'linear-gradient(160deg, #293142 0%, #0c0e1a 100%)' },
@@ -387,6 +392,7 @@ function onMouseLeave(e: MouseEvent) {
         muted
         playsinline
         @ended="handleVideoEnd"
+        @error="handleVideoEnd"
       />
       <!-- Overlay "Rivedi" al termine del video -->
       <div v-if="videoFinito" :style="{

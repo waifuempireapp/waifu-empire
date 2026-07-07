@@ -487,7 +487,7 @@ export async function createPackSnapshot(
       if (c.tipo === 'waifu')  immagine = (d.asset_statica || d.asset_immersiva || d.immagine) as string | null
       else if (c.tipo === 'outfit') immagine = (d.asset || d.immagine) as string | null
       else immagine = (d.immagine || d.immagine_url || d.imageUrl) as string | null
-      const base = { tipo: c.tipo, id: d.id ?? null, rarita: d.rarita ?? null, nome: d.nome ?? null, immagine: immagine ?? null, hot: d.hot === true }
+      const base = { tipo: c.tipo, id: d.id ?? null, rarita: d.rarita ?? null, nome: d.nome ?? null, immagine: immagine ?? null, hot: d.hot === true, video: (c.tipo === 'waifu' ? (d.asset_video ?? null) : null) as string | null }
       // Le mosse portano anche danno/tipo/descrizione per la preview pesca
       if (c.tipo === 'mossa') {
         return { ...base,

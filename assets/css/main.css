@@ -2998,8 +2998,9 @@ input:focus, textarea:focus, select:focus {
   .ht-hero-title { font-size: 34px !important; }
   .ht-hero-cta { font-size: 16px !important; padding: 16px 44px !important; }
 
-  /* ── Griglia collezione waifu: 5 colonne ── */
+  /* ── Griglia collezione waifu: 5 colonne + aria verticale ── */
   .collection-card-item { width: calc(20% - 2px) !important; }
+  .waifu-grid { gap: 28px 10px !important; }
 
   /* ── Griglia mosse: 5 colonne, più aria ── */
   .moves-list__grid { grid-template-columns: repeat(5, 1fr) !important; gap: 22px 18px !important; }

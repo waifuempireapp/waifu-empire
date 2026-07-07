@@ -812,7 +812,7 @@ function apriNegozio() {
 
         <!-- Griglia waifu 3 colonne — tutto il catalogo: possedute = carta,
              non possedute = slot placeholder '?' (stile pagina mosse) -->
-        <div style="display:flex;flex-wrap:wrap;gap:0px 2px;margin-top:8px;margin-bottom:8px;">
+        <div class="waifu-grid" style="display:flex;flex-wrap:wrap;gap:0px 2px;margin-top:8px;margin-bottom:8px;">
           <div
             v-for="{ id, dati, w, owned } in waifuGridEntries"
             :key="id"

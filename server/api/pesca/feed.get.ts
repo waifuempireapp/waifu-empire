@@ -109,7 +109,7 @@ function buildGhostCards(
   const mosseCount = isGodPack ? 0 : 2
   for (let i = 0; i < waifuCount; i++) {
     const w = randPick(waifuPool)
-    if (w) cards.push({ tipo: 'waifu', id: w.id, rarita: w.rarita || 'comune', nome: w.nome || '', immagine: cardUrl(w, 'waifu'), hot: w.hot === true })
+    if (w) cards.push({ tipo: 'waifu', id: w.id, rarita: w.rarita || 'comune', nome: w.nome || '', immagine: cardUrl(w, 'waifu'), hot: w.hot === true, video: (w.asset_video || null) as string | null })
   }
   for (let i = 0; i < mosseCount; i++) {
     const m = randPick(mossePool)

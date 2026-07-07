@@ -70,6 +70,9 @@ const STAT_DEFS = [
 
 // Accordion
 const statsOpen  = ref(false)
+// Overlay video immersiva (solo carte con asset_video)
+const videoOpen  = ref(false)
+const videoError = ref(false)
 const battleOpen = ref(false)
 const slotPicker = ref<string | null>(null)
 
@@ -319,6 +322,17 @@ onUnmounted(() => {
       <div style="flex:1;overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;" @scroll.passive="onDetailScroll">
         <div style="max-width:440px;margin:0 auto;padding:8px 16px calc(24px + env(safe-area-inset-bottom));">
 
+          <!-- Bottone GUARDA IMMERSIVA (solo carte con video) -->
+          <div v-if="waifu.asset_video" style="display:flex;justify-content:center;margin-bottom:14px;">
+            <button @click="videoOpen = true; videoError = false" :style="{
+              background: 'linear-gradient(135deg, rgba(255,126,182,0.22), rgba(167,139,250,0.14))',
+              border: '1.5px solid rgba(255,126,182,0.6)', borderRadius: '999px', padding: '11px 28px',
+              fontFamily: FF.label, fontSize: '12px', fontWeight: 800, color: '#ff7eb6',
+              letterSpacing: '0.18em', cursor: 'pointer', boxShadow: '0 0 20px rgba(255,126,182,0.35)',
+              textTransform: 'uppercase',
+            }">▶ Guarda immersiva</button>
+          </div>
+
           <!-- Bottone LEVEL UP — disponibile con 3+ copie (o flag pending dal server) -->
           <div v-if="dati.levelup_pending || (dati.copie ?? 0) >= 3" style="display:flex;justify-content:center;margin-bottom:14px;">
             <button @click="emit('levelUp')" :style="{
@@ -506,6 +520,23 @@ onUnmounted(() => {
       </div>
 
     </div>
+
+  <!-- Overlay VIDEO IMMERSIVA -->
+  <div v-if="videoOpen" @click="videoOpen = false"
+    style="position:fixed;inset:0;z-index:99995;background:rgba(4,2,14,0.9);backdrop-filter:blur(10px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;">
+    <video v-if="!videoError" :src="waifu.asset_video" autoplay playsinline controls loop
+      @click.stop
+      @error="videoError = true"
+      style="max-width:100%;max-height:78dvh;border-radius:16px;box-shadow:0 0 60px rgba(255,126,182,0.35);" />
+    <div v-else :style="{ fontFamily: FF.body, fontSize: '14px', color: 'var(--theme-text-2)', textAlign: 'center', padding: '30px 20px' }">
+      🎬 Video immersivo in arrivo…
+    </div>
+    <button @click="videoOpen = false" :style="{
+      background: 'none', border: '1px solid var(--theme-border)', borderRadius: '999px',
+      color: 'var(--theme-text-2)', fontFamily: FF.label, fontSize: '11px',
+      padding: '10px 26px', cursor: 'pointer', letterSpacing: '0.2em', textTransform: 'uppercase',
+    }">Chiudi</button>
+  </div>
   </Teleport>
 </template>
 

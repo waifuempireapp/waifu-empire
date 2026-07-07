@@ -697,6 +697,14 @@ function rivediVideoSbusto() {
     sbusVideoRef.value.play()
   }
 }
+/** Apre l'overlay video immersivo per la carta appena rivelata (se ha il video). */
+function apriVideoSbusto(cartaData: any) {
+  if (!cartaData?.asset_video) return
+  sbusCartaImmersiva.value = cartaData
+  sbusVideoFinito.value = false
+  sbusVideoAttivo.value = true
+}
+
 function chiudiVideoSbusto() {
   sbusVideoAttivo.value = false
   sbusVideoFinito.value = false
@@ -783,6 +791,13 @@ watch(indiceRivelato, async (idx) => {
 })
 
 function onFlipEnd(e: AnimationEvent) {
+  // Carta immersiva con video → apri l'overlay video al termine del flip
+  if (e.animationName?.startsWith('legendaryReveal')) {
+    const c = cartaCorrente.value
+    if (c?.tipo === 'waifu' && c?.data?.rarita === 'immersivo' && c?.data?.asset_video) {
+      setTimeout(() => apriVideoSbusto(c.data), 250)
+    }
+  }
   // Ignora gli animationend che bubblano dai figli (shimmer/foil/glow di CartaWaifu):
   // reagisci SOLO all'animazione di flip che gira sul body stesso.
   if (e.target !== e.currentTarget) return
