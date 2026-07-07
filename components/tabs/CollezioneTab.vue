@@ -1185,130 +1185,139 @@ function apriNegozio() {
     />
 
     <!-- ══════════════════════════════════════════════════════════
-         MODALE LEVEL UP PANEL (overlay fisso)
+         MODALE LEVEL UP PANEL — Teleport su body: deve stare SOPRA
+         il dettaglio waifu (z 9000) e il suo video (z 99995); dentro
+         al tab finirebbe in uno stacking context più basso.
     ══════════════════════════════════════════════════════════ -->
-    <div
-      v-if="mostraLevelUp"
-      :style="{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9500,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
-      }"
-      @click.self="waifuSel = null; lvlPreview = null"
-    >
-      <div :style="{
-        background: 'rgba(10,7,38,0.97)', border: '1px solid rgba(245,158,11,0.4)',
-        borderRadius: '20px', padding: '24px', maxWidth: '420px', width: '100%',
-        boxShadow: '0 0 60px rgba(245,158,11,0.15)',
-      }">
+    <Teleport to="body">
+      <div
+        v-if="mostraLevelUp"
+        :style="{
+          position: 'fixed', inset: 0, zIndex: 100000,
+          background: 'var(--theme-overlay)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px',
+        }"
+        @click.self="waifuSel = null; lvlPreview = null"
+      >
         <div :style="{
-          fontFamily: FF.display, fontSize: '18px', color: C.gold,
-          marginBottom: '4px', textAlign: 'center',
+          width: '100%', maxWidth: '400px', maxHeight: '86dvh', overflowY: 'auto',
+          background: 'var(--theme-surface)', border: '1px solid var(--theme-border)',
+          borderRadius: '18px', padding: '24px 22px',
+          boxShadow: '0 12px 40px var(--theme-shadow)',
         }">
-          ⬆ Level Up — {{ catalogWaifuSel?.nome }}
-        </div>
-        <div :style="{
-          fontFamily: FF.label, fontSize: '9px', color: 'rgba(245,158,11,0.6)',
-          textAlign: 'center', marginBottom: '20px', letterSpacing: '0.2em',
-        }">{{ $t("collection.choose_stat") }}</div>
-
-        <!-- Preview velocità / crit -->
-        <div :style="{ display: 'flex', gap: '12px', marginBottom: '20px', justifyContent: 'center' }">
           <div :style="{
-            textAlign: 'center', padding: '8px 16px',
-            background: 'rgba(174,156,255,0.08)', borderRadius: '10px',
-            border: '1px solid rgba(174,156,255,0.2)',
+            fontFamily: FF.display, fontSize: '13px', letterSpacing: '2px',
+            color: 'var(--accent-gold)', marginBottom: '6px', textAlign: 'center',
           }">
-            <div :style="{ fontFamily: FF.label, fontSize: '13px', color: 'rgba(174,156,255,0.6)', marginBottom: '4px' }">{{ $t("collection.stat_speed") }}</div>
-            <div :style="{ fontFamily: FF.mono, fontSize: '16px', color: lvlPreview ? '#aef0d8' : '#f5e6d3' }">
-              {{ lvlPreview ? lvlCalcPreview(lvlPreview.stat, lvlPreview.delta).velocita : lvlCurrentVel }}
-            </div>
-            <div v-if="lvlPreview" :style="{ fontFamily: FF.label, fontSize: '13px', color: 'rgba(245,158,11,0.5)' }">
-              era {{ lvlCurrentVel }}
-            </div>
+            ⬆ Level Up — {{ catalogWaifuSel?.nome }}
           </div>
           <div :style="{
-            textAlign: 'center', padding: '8px 16px',
-            background: 'rgba(255,126,182,0.08)', borderRadius: '10px',
-            border: '1px solid rgba(255,126,182,0.2)',
-          }">
-            <div :style="{ fontFamily: FF.label, fontSize: '13px', color: 'rgba(255,126,182,0.6)', marginBottom: '4px' }">{{ $t("collection.stat_crit") }}</div>
-            <div :style="{ fontFamily: FF.mono, fontSize: '16px', color: lvlPreview ? '#aef0d8' : '#f5e6d3' }">
-              {{ lvlPreview ? lvlCalcPreview(lvlPreview.stat, lvlPreview.delta).crit_chance : lvlCurrentCrit }}%
+            fontFamily: FF.label, fontSize: '9px', color: 'var(--theme-text-3)',
+            textAlign: 'center', marginBottom: '18px', letterSpacing: '0.2em', textTransform: 'uppercase',
+          }">{{ $t("collection.choose_stat") }}</div>
+
+          <!-- Preview velocità / crit -->
+          <div :style="{ display: 'flex', gap: '12px', marginBottom: '18px', justifyContent: 'center' }">
+            <div :style="{
+              textAlign: 'center', padding: '8px 16px', minWidth: '96px',
+              background: 'var(--theme-surface-2)', borderRadius: '12px',
+              border: '1px solid var(--theme-border)',
+            }">
+              <div :style="{ fontFamily: FF.label, fontSize: '12px', color: 'var(--theme-text-2)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px' }">{{ $t("collection.stat_speed") }}</div>
+              <div :style="{ fontFamily: FF.mono, fontSize: '16px', fontWeight: 700, color: lvlPreview ? 'var(--theme-accent)' : 'var(--theme-text)' }">
+                {{ lvlPreview ? lvlCalcPreview(lvlPreview.stat, lvlPreview.delta).velocita : lvlCurrentVel }}
+              </div>
+              <div v-if="lvlPreview" :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-text-3)' }">
+                era {{ lvlCurrentVel }}
+              </div>
             </div>
-            <div v-if="lvlPreview" :style="{ fontFamily: FF.label, fontSize: '13px', color: 'rgba(245,158,11,0.5)' }">
-              era {{ lvlCurrentCrit }}%
+            <div :style="{
+              textAlign: 'center', padding: '8px 16px', minWidth: '96px',
+              background: 'var(--theme-surface-2)', borderRadius: '12px',
+              border: '1px solid var(--theme-border)',
+            }">
+              <div :style="{ fontFamily: FF.label, fontSize: '12px', color: 'var(--theme-text-2)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px' }">{{ $t("collection.stat_crit") }}</div>
+              <div :style="{ fontFamily: FF.mono, fontSize: '16px', fontWeight: 700, color: lvlPreview ? 'var(--theme-accent)' : 'var(--theme-text)' }">
+                {{ lvlPreview ? lvlCalcPreview(lvlPreview.stat, lvlPreview.delta).crit_chance : lvlCurrentCrit }}%
+              </div>
+              <div v-if="lvlPreview" :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-text-3)' }">
+                era {{ lvlCurrentCrit }}%
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Stat picker -->
-        <div :style="{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }">
-          <div
-            v-for="({ key, label, min, max }) in STAT_DEFS"
-            :key="key"
-            :style="{
-              display: 'flex', alignItems: 'center', gap: '10px',
-              padding: '8px 12px', borderRadius: '10px',
-              background: lvlPreview?.stat === key ? 'rgba(245,158,11,0.08)' : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${lvlPreview?.stat === key ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.06)'}`,
-            }"
-          >
-            <div :style="{ flex: 1, fontFamily: FF.label, fontSize: '10px', color: '#f5e6d3' }">{{ $t('card.stat_' + key) }}</div>
-            <div :style="{ fontFamily: FF.mono, fontSize: '12px', color: 'rgba(174,156,255,0.7)', minWidth: '40px', textAlign: 'center' }">
-              {{ lvlStatBase[key] ?? 0 }}
+          <!-- Stat picker -->
+          <div :style="{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '18px' }">
+            <div
+              v-for="({ key, min, max }) in STAT_DEFS"
+              :key="key"
+              :style="{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '9px 12px', borderRadius: '12px',
+                background: lvlPreview?.stat === key ? 'var(--theme-tab-active)' : 'var(--theme-surface-2)',
+                border: `1px solid ${lvlPreview?.stat === key ? 'var(--theme-border-2)' : 'var(--theme-border)'}`,
+              }"
+            >
+              <div :style="{ flex: 1, fontFamily: FF.body, fontSize: '13px', fontWeight: 600, color: 'var(--theme-text)' }">{{ $t('card.stat_' + key) }}</div>
+              <div :style="{ fontFamily: FF.mono, fontSize: '13px', fontWeight: 700, color: 'var(--theme-accent)', minWidth: '44px', textAlign: 'center' }">
+                {{ lvlStatBase[key] ?? 0 }}
+              </div>
+              <button
+                @click="lvlPreview = { stat: key, delta: -1 }"
+                :disabled="(lvlStatBase[key] ?? 0) <= min"
+                :style="{
+                  width: '30px', height: '30px',
+                  background: lvlPreview?.stat === key && lvlPreview?.delta === -1 ? 'var(--theme-accent-pink)' : 'var(--theme-surface)',
+                  border: '1px solid var(--theme-input-border)', borderRadius: '10px',
+                  color: lvlPreview?.stat === key && lvlPreview?.delta === -1 ? '#fff' : 'var(--theme-text)',
+                  opacity: (lvlStatBase[key] ?? 0) <= min ? 0.35 : 1,
+                  cursor: (lvlStatBase[key] ?? 0) <= min ? 'not-allowed' : 'pointer', fontSize: '15px', lineHeight: 1,
+                }"
+              >−</button>
+              <button
+                @click="lvlPreview = { stat: key, delta: +1 }"
+                :disabled="(lvlStatBase[key] ?? 0) >= max"
+                :style="{
+                  width: '30px', height: '30px',
+                  background: lvlPreview?.stat === key && lvlPreview?.delta === 1 ? 'var(--theme-accent)' : 'var(--theme-surface)',
+                  border: '1px solid var(--theme-input-border)', borderRadius: '10px',
+                  color: lvlPreview?.stat === key && lvlPreview?.delta === 1 ? '#fff' : 'var(--theme-text)',
+                  opacity: (lvlStatBase[key] ?? 0) >= max ? 0.35 : 1,
+                  cursor: (lvlStatBase[key] ?? 0) >= max ? 'not-allowed' : 'pointer', fontSize: '15px', lineHeight: 1,
+                }"
+              >+</button>
             </div>
-            <button
-              @click="lvlPreview = { stat: key, delta: -1 }"
-              :disabled="(lvlStatBase[key] ?? 0) <= min"
-              :style="{
-                width: '28px', height: '28px',
-                background: lvlPreview?.stat === key && lvlPreview?.delta === -1 ? 'rgba(236,72,153,0.3)' : 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px',
-                color: '#f5e6d3',
-                cursor: (lvlStatBase[key] ?? 0) <= min ? 'not-allowed' : 'pointer', fontSize: '14px',
-              }"
-            >−</button>
-            <button
-              @click="lvlPreview = { stat: key, delta: +1 }"
-              :disabled="(lvlStatBase[key] ?? 0) >= max"
-              :style="{
-                width: '28px', height: '28px',
-                background: lvlPreview?.stat === key && lvlPreview?.delta === 1 ? 'rgba(6,214,160,0.3)' : 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px',
-                color: '#f5e6d3',
-                cursor: (lvlStatBase[key] ?? 0) >= max ? 'not-allowed' : 'pointer', fontSize: '14px',
-              }"
-            >+</button>
           </div>
-        </div>
 
-        <!-- Pulsanti level up -->
-        <div :style="{ display: 'flex', gap: '10px' }">
-          <button
-            @click="lvlApply"
-            :disabled="!lvlPreview || lvlBusy"
-            :style="{
-              flex: 1, padding: '12px',
-              background: lvlPreview && !lvlBusy ? 'linear-gradient(135deg,#f59e0b,#ec4899)' : 'rgba(255,255,255,0.1)',
-              border: 'none', borderRadius: '12px',
-              color: lvlPreview && !lvlBusy ? '#000' : 'rgba(255,255,255,0.4)',
-              fontFamily: FF.label, fontSize: '11px', fontWeight: 700,
-              cursor: lvlPreview && !lvlBusy ? 'pointer' : 'not-allowed',
-              letterSpacing: '0.1em',
-            }"
-          ><Check v-if="!lvlBusy" :size="14" stroke-width="2" style="display:inline-block;vertical-align:middle;margin-right:4px;" />{{ lvlBusy ? $t('collection.applying') : $t('collection.confirm') }}</button>
-          <button
-            @click="waifuSel = null; lvlPreview = null"
-            :style="{
-              padding: '12px 16px',
-              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: '12px', color: '#f5e6d3',
-              fontFamily: FF.label, fontSize: '11px', cursor: 'pointer',
-            }"
-          >{{ $t("collection.cancel") }}</button>
+          <!-- Pulsanti level up -->
+          <div :style="{ display: 'flex', gap: '10px' }">
+            <button
+              @click="waifuSel = null; lvlPreview = null"
+              :style="{
+                flex: 1, padding: '12px 0',
+                background: 'none', border: '1px solid var(--theme-border)',
+                borderRadius: '12px', color: 'var(--theme-text-3)',
+                fontFamily: FF.display, fontSize: '10px', cursor: 'pointer', letterSpacing: '1px',
+              }"
+            >{{ $t("collection.cancel") }}</button>
+            <button
+              @click="lvlApply"
+              :disabled="!lvlPreview || lvlBusy"
+              :style="{
+                flex: 1.4, padding: '12px 0',
+                background: lvlPreview && !lvlBusy ? 'var(--accent-gold)' : 'var(--theme-surface-2)',
+                border: 'none', borderRadius: '12px',
+                color: lvlPreview && !lvlBusy ? '#2A2213' : 'var(--theme-text-3)',
+                fontFamily: FF.display, fontSize: '10px', fontWeight: 700,
+                cursor: lvlPreview && !lvlBusy ? 'pointer' : 'not-allowed',
+                letterSpacing: '1px',
+                boxShadow: lvlPreview && !lvlBusy ? '0 6px 18px rgba(224,178,62,0.35)' : 'none',
+              }"
+            ><Check v-if="!lvlBusy" :size="14" stroke-width="2.5" style="display:inline-block;vertical-align:middle;margin-right:4px;" />{{ lvlBusy ? $t('collection.applying') : $t('collection.confirm') }}</button>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
 
   </div>
 </template>
