@@ -2907,58 +2907,108 @@ input:focus, textarea:focus, select:focus {
 /* ═══════════════════════════════════════════════════════════════════════════
    LAYOUT DESKTOP — attivo SOLO su schermi larghi con mouse (hover+pointer fine):
    mobile e tablet touch restano ESATTAMENTE come sono.
-   La bottom-nav diventa una SIDEBAR sinistra, il contenuto si sposta a destra
-   e le griglie si allargano: l'app legge come applicazione desktop.
+   NB: molti stili base sono SCOPED nei componenti (specificità più alta):
+   qui serve !important per vincere sul layout desktop.
    ═══════════════════════════════════════════════════════════════════════════ */
 @media (min-width: 1152px) and (hover: hover) and (pointer: fine) {
 
-  /* ── Bottom-nav → SIDEBAR sinistra ── */
+  /* ── Bottom-nav → SIDEBAR sinistra da vera app desktop ── */
   .bnav-pocket {
-    top: 0; bottom: 0; left: 0; right: auto;
-    width: 240px; height: 100vh;
-    flex-direction: column;
-    justify-content: flex-start;
-    gap: 4px;
-    padding: 96px 14px 20px;
-    border-top: none;
+    top: 0 !important; bottom: 0 !important; left: 0 !important; right: auto !important;
+    width: 264px !important; height: 100vh !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    gap: 6px !important;
+    padding: 118px 18px 24px !important;
+    border-top: none !important;
     border-right: 1px solid var(--border-subtle);
-    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.12);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
+  }
+  /* Brand in cima alla sidebar */
+  .bnav-pocket::before {
+    content: "WAIFU\2019S EMPIRE";
+    position: absolute; top: 34px; left: 0; right: 0;
+    text-align: center;
+    font-family: var(--ff-display, 'Unbounded', sans-serif);
+    font-size: 17px; font-weight: 900; letter-spacing: 0.06em;
+    background: linear-gradient(120deg, #f5c560, #ff85b6 55%, #a78bfa);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .bnav-pocket::after {
+    content: ""; position: absolute; top: 78px; left: 18px; right: 18px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--theme-border), transparent);
   }
   .bnav-pocket__btn {
-    flex: none;
+    flex: none !important;
     width: 100%;
-    flex-direction: row;
-    justify-content: flex-start;
-    gap: 14px;
-    padding: 13px 18px;
-    border-radius: 12px;
-    transition: background 0.15s;
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 16px !important;
+    padding: 15px 20px !important;
+    min-height: 0 !important;
+    border-radius: 14px !important;
+    transition: background 0.15s, transform 0.1s !important;
   }
-  .bnav-pocket__btn:hover { background: var(--theme-shimmer); }
+  .bnav-pocket__btn:hover  { background: var(--theme-shimmer); }
+  .bnav-pocket__btn:active { transform: scale(0.98) !important; }
   .bnav-pocket__btn--active { background: var(--theme-tab-active); }
-  .bnav-pocket__label { font-size: 13px; letter-spacing: 0.12em; }
-  .bnav-pocket__dot { top: 50%; left: 6px; transform: translateY(-50%); }
-  .bnav-pocket__icon--active { transform: scale(1.05); }
+  /* Icone grandi da sidebar */
+  .bnav-pocket__icon { width: 26px !important; height: 26px !important; }
+  .bnav-pocket__icon--active { transform: none !important; }
+  .bnav-pocket__label {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.1em !important;
+  }
+  .bnav-pocket__dot {
+    top: 50% !important; left: 7px !important;
+    transform: translateY(-50%) !important;
+    width: 5px !important; height: 22px !important; border-radius: 99px !important;
+  }
 
-  /* ── Contenuto e header spostati a destra della sidebar ── */
-  .game-container { padding-left: 240px; }
-  /* overlay full-screen (sbusto, pesca, battaglia, dettagli) restano inset-0
-     e COPRONO anche la sidebar: esperienza immersiva invariata */
+  /* ── Contenuto e header a destra della sidebar ── */
+  .game-container { padding-left: 264px; }
+
+  /* Header: allineato al contenuto, non più da telefono */
+  .hdr-root, header.sticky { padding-left: 40px !important; padding-right: 40px !important; }
+
+  /* ── HOME a 2 colonne: hero grande a sinistra, azioni in colonna a destra ── */
+  .ht-root {
+    max-width: 1240px !important;
+    margin: 0 auto !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr);
+    gap: 26px;
+    align-items: stretch;
+    padding: 28px 24px 40px !important;
+  }
+  .ht-hero-panel { margin: 0 !important; height: 100%; min-height: 560px; }
+  .ht-actions-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;   /* impilate in colonna a destra */
+    gap: 26px !important;
+    margin: 0 !important;
+    align-content: stretch;
+  }
+  .ht-action-card { min-height: 0 !important; height: 100%; }
+  .ht-action-emoji { font-size: 56px !important; }
+  .ht-action-title { font-size: 20px !important; }
+  .ht-hero-title { font-size: 34px !important; }
+  .ht-hero-cta { font-size: 16px !important; padding: 16px 44px !important; }
 
   /* ── Griglia collezione waifu: 5 colonne ── */
   .collection-card-item { width: calc(20% - 2px) !important; }
 
   /* ── Griglia mosse: 5 colonne, più aria ── */
   .moves-list__grid { grid-template-columns: repeat(5, 1fr) !important; gap: 22px 18px !important; }
-  .moves-list { max-width: 1200px; }
+  .moves-list { max-width: 1240px !important; }
 
-  /* ── FAB missioni: non sovrapposto al contenuto largo ── */
-  .missioni-fab-pocket { right: 28px; bottom: 28px; }
+  /* ── FAB missioni ── */
+  .missioni-fab-pocket { right: 32px !important; bottom: 32px !important; width: 60px !important; height: 60px !important; }
 
-  /* ── Hero Home: pannello contenuto, non full-bleed sformato ── */
-  .ht-root { max-width: 1080px; margin: 0 auto; }
-
-  /* Scrollbar più discreta, da app desktop */
+  /* Scrollbar discreta da app desktop */
   ::-webkit-scrollbar { width: 10px; }
   ::-webkit-scrollbar-thumb { background: var(--theme-border); border-radius: 99px; }
   ::-webkit-scrollbar-track { background: transparent; }
