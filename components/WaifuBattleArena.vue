@@ -1168,22 +1168,21 @@ const swapDisabled = computed(() =>
   !isChoose.value || isAnim.value || (props.isPvP && props.pvpWaiting)
   || !pTeam.value.some((w, i) => i !== pActive.value && !w.isKO) || turn.value <= 1)
 
-// Abbandona: primo tap chiede conferma (2.6s), secondo tap = sconfitta dichiarata
+// Abbandona: popup di conferma → 'Sì' chiude subito la partita con la sconfitta
 const confirmQuit = ref(false)
-let confirmQuitTimer: ReturnType<typeof setTimeout> | null = null
-function tapAbbandona() {
-  if (!confirmQuit.value) {
-    confirmQuit.value = true
-    if (confirmQuitTimer) clearTimeout(confirmQuitTimer)
-    confirmQuitTimer = setTimeout(() => { confirmQuit.value = false }, 2600)
-    return
-  }
-  if (confirmQuitTimer) { clearTimeout(confirmQuitTimer); confirmQuitTimer = null }
+function quitBattle() {
   confirmQuit.value = false
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null }
   isAnim.value = false
   resolveActive = false
   phase.value = 'defeat'
+}
+// Chiude il popup cambio volontario senza cambiare e torna alla scelta mossa
+function cancelVoluntarySwap() {
+  if (phase.value !== 'voluntarySwap') return
+  showBench.value = false
+  phase.value   = 'playerChoose'
+  message.value = 'Scegli la tua mossa!'
 }
 
 const sEnemy  = computed(() => isMobile.value ? 145 : 185)
@@ -1550,7 +1549,7 @@ const mvp = computed(() => {
         <!-- Enemy Zone (top ~47% mobile, 52% desktop) -->
         <div :style="{ flex: isMobile ? '0 0 47%' : '0 0 52%', position:'relative', overflow:'hidden' }">
           <!-- HUD nemico: top-left (nascosto nei raid: la barra HP boss in alto lo sostituisce) -->
-          <div :style="{ position:'absolute', top:'15px', left:'12px', zIndex:3 }">
+          <div :style="{ position:'absolute', top:'15px', left:'12px', zIndex:3, display:'flex', flexDirection:'column', alignItems:'flex-start' }">
             <template v-if="enemy && !isBoss">
               <!-- EnemyHud inline — specchia il layout del player HUD -->
               <div :style="{
@@ -1608,9 +1607,8 @@ const mvp = computed(() => {
 
               </div>
 
-              <!-- Effetti attivi: FUORI dalla card, riga sotto la sezione nome/HP
-                   (dentro il box strabordavano dal bordo) -->
-              <div v-if="fieldEffects.enemy.length" :style="{ display:'flex',gap:'4px',flexWrap:'wrap',marginTop:'6px',justifyContent:'flex-start' }">
+              <!-- Effetti di stato: SOPRA alla card, impilati uno sopra l'altro -->
+              <div v-if="fieldEffects.enemy.length" :style="{ order:-1, display:'flex', flexDirection:'column', alignItems:'flex-start', gap:'4px', marginBottom:'6px' }">
                 <span v-for="e in fieldEffects.enemy" :key="e.status" :style="effectChipStyle(e)">
                   {{ e.label }} · {{ e.turni }}t
                 </span>
@@ -1755,7 +1753,7 @@ const mvp = computed(() => {
           </div>
 
           <!-- HUD giocatore: bottom-right -->
-          <div :style="{ position:'absolute', right:'12px', bottom:'10px', zIndex:3 }">
+          <div :style="{ position:'absolute', right:'12px', bottom:'10px', zIndex:3, display:'flex', flexDirection:'column', alignItems:'flex-end' }">
             <template v-if="player">
               <div :style="{
                 background:'var(--theme-surface)', backdropFilter:'blur(12px)',
@@ -1801,8 +1799,8 @@ const mvp = computed(() => {
 
               </div>
 
-              <!-- Effetti attivi: FUORI dalla card, riga sotto la sezione nome/HP -->
-              <div v-if="fieldEffects.player.length" :style="{ display:'flex',gap:'4px',flexWrap:'wrap',marginTop:'6px',justifyContent:'flex-end' }">
+              <!-- Effetti di stato: SOPRA alla card, impilati uno sopra l'altro -->
+              <div v-if="fieldEffects.player.length" :style="{ order:-1, display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'4px', marginBottom:'6px' }">
                 <span v-for="e in fieldEffects.player" :key="e.status" :style="effectChipStyle(e)">
                   {{ e.label }} · {{ e.turni }}t
                 </span>
@@ -1819,9 +1817,7 @@ const mvp = computed(() => {
            alto (fase cambio) scrolla internamente (overflowY:auto). -->
       <div :style="{
         flexShrink:0,
-        height: (isSwap || isVolSwap || (allPPOut && isChoose))
-          ? 'min(430px, 54dvh)'
-          : isMobile ? 'clamp(225px, 31dvh, 270px)' : 'clamp(220px, 30dvh, 280px)',
+        height: isMobile ? 'clamp(225px, 31dvh, 270px)' : 'clamp(220px, 30dvh, 280px)',
         display:'flex', flexDirection:'column',
         background:'var(--theme-surface)',
         borderTop:'1px solid var(--theme-border)',
@@ -1838,133 +1834,8 @@ const mvp = computed(() => {
           }"/>
         </div>
 
-        <!-- ── Fase swap (KO o volontario) ── -->
-        <div v-if="isSwap || isVolSwap" :style="{
-          flex:1,padding:'10px 14px',overflowY:'auto',
-          display:'flex',flexDirection:'column',justifyContent:'center',
-        }">
-          <div :style="{
-            fontFamily:'var(--ff-label)',fontSize:'12px',letterSpacing:'1.8px',textAlign:'center',marginBottom:'12px',
-            color: isSwap ? '#ff4d4d' : '#f5a623',
-          }">
-            {{ isSwap ? '⚠ SCEGLI LA PROSSIMA WAIFU' : '↻ SCEGLI LA WAIFU DA MANDARE IN CAMPO' }}
-          </div>
-          <div :style="{ display:'flex',gap:'12px',justifyContent:'center',flexWrap:'wrap' }">
-            <template v-for="(w, i) in pTeam" :key="w.id">
-              <div v-if="i !== pActive && !w.isKO" :style="{ display:'flex',flexDirection:'column',alignItems:'center',gap:'6px', position:'relative' }">
-                <!-- Chip TIPO — rettangolare (radius 8px), in alto a destra dello slot -->
-                <div v-if="w.type" :style="{
-                  position:'absolute', top:'-9px', right:'-9px', zIndex:6,
-                  background:'var(--theme-surface)',
-                  border:`1.5px solid ${(TYPE_COLORS[w.type]?.border ?? '#555')}`,
-                  color:(TYPE_COLORS[w.type]?.border ?? '#999'),
-                  borderRadius:'8px', padding:'3px 9px',
-                  fontFamily:'var(--ff-label)', fontSize:'11px', fontWeight:800,
-                  letterSpacing:'.06em', textTransform:'uppercase',
-                  boxShadow:'0 2px 8px rgba(0,0,0,0.4)', pointerEvents:'none',
-                }">{{ w.type }}</div>
-                <!-- BenchSlot inline -->
-                <button class="wba-bench-slot"
-                  @click="isSwap ? handlePlayerSwap(i) : handleVoluntarySwap(i)"
-                  :style="{
-                    width:'128px',height:'128px',borderRadius:'8px',overflow:'hidden',flexShrink:0,
-                    border:'2.5px solid #00e676',
-                    boxShadow:'0 0 14px rgba(0,230,118,.38),0 0 0 1px rgba(0,230,118,.18)',
-                    background:'var(--theme-bg-secondary)', position:'relative',
-                    cursor:'pointer',padding:0,
-                    filter: w.isKO ? 'grayscale(1) brightness(.36)' : 'none',
-                    animation:'benchPop .22s ease-out',
-                  }"
-                >
-                  <img v-if="w.image" :src="ikUrl(w.image, 'thumbnail') ?? ''" :alt="w.name"
-                    :style="{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top' }"/>
-                  <div v-else :style="{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:'13px',opacity:.22 }">◈</div>
-                  <div :style="{ position:'absolute',bottom:0,left:0,right:0,height:'3px',background:'var(--theme-border)' }">
-                    <div :style="{
-                      width:`${w.maxHp > 0 ? Math.max(0, Math.min(100, (w.hp / w.maxHp) * 100)) : 0}%`,
-                      height:'100%',
-                      background: (w.maxHp > 0 ? (w.hp / w.maxHp) * 100 : 0) > 50 ? '#00e676' : (w.maxHp > 0 ? (w.hp / w.maxHp) * 100 : 0) > 25 ? '#ffd666' : '#ff4d4d',
-                    }"/>
-                  </div>
-                </button>
-                <span :style="{ fontFamily:'var(--ff-label)',fontSize:'14px',fontWeight:700,color:'var(--theme-text-2)',textAlign:'center',maxWidth:'120px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }">
-                  {{ w.name }}
-                </span>
-                <!-- HpBar mini -->
-                <div :style="{ width:'110px' }">
-                  <div :style="{ height:'3px',background:'var(--theme-border)',borderRadius:'3px',overflow:'hidden' }">
-                    <div :style="{
-                      width:`${w.maxHp > 0 ? Math.max(0, Math.min(100, (w.hp / w.maxHp) * 100)) : 0}%`,
-                      height:'100%', background:'#00e676', borderRadius:'3px',
-                    }"/>
-                  </div>
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
-
-        <!-- ── PP esauriti: cambio forzato ── -->
-        <div v-else-if="allPPOut && isChoose" :style="{
-          flex:1,padding:'10px 14px',overflowY:'auto',
-          display:'flex',flexDirection:'column',justifyContent:'center',
-        }">
-          <div :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'#ff4d4d',letterSpacing:'1.8px',textAlign:'center',marginBottom:'12px' }">
-            ⚠ PP ESAURITI — SOSTITUISCI LA WAIFU
-          </div>
-          <div :style="{ display:'flex',gap:'12px',justifyContent:'center',flexWrap:'wrap' }">
-            <template v-for="(w, i) in pTeam" :key="w.id">
-              <div v-if="i !== pActive && !w.isKO" :style="{ display:'flex',flexDirection:'column',alignItems:'center',gap:'6px', position:'relative' }">
-                <div v-if="w.type" :style="{
-                  position:'absolute', top:'-9px', right:'-9px', zIndex:6,
-                  background:'var(--theme-surface)',
-                  border:`1.5px solid ${(TYPE_COLORS[w.type]?.border ?? '#555')}`,
-                  color:(TYPE_COLORS[w.type]?.border ?? '#999'),
-                  borderRadius:'8px', padding:'3px 9px',
-                  fontFamily:'var(--ff-label)', fontSize:'11px', fontWeight:800,
-                  letterSpacing:'.06em', textTransform:'uppercase',
-                  boxShadow:'0 2px 8px rgba(0,0,0,0.4)', pointerEvents:'none',
-                }">{{ w.type }}</div>
-                <button class="wba-bench-slot"
-                  @click="handleVoluntarySwap(i, { isPPExhausted: true })"
-                  :style="{
-                    width:'128px',height:'128px',borderRadius:'8px',overflow:'hidden',flexShrink:0,
-                    border:'2.5px solid #00e676',
-                    boxShadow:'0 0 14px rgba(0,230,118,.38),0 0 0 1px rgba(0,230,118,.18)',
-                    background:'var(--theme-bg-secondary)', position:'relative',
-                    cursor:'pointer',padding:0,
-                    animation:'benchPop .22s ease-out',
-                  }"
-                >
-                  <img v-if="w.image" :src="ikUrl(w.image, 'thumbnail') ?? ''" :alt="w.name"
-                    :style="{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top' }"/>
-                  <div v-else :style="{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:'13px',opacity:.22 }">◈</div>
-                  <div :style="{ position:'absolute',bottom:0,left:0,right:0,height:'3px',background:'var(--theme-border)' }">
-                    <div :style="{
-                      width:`${w.maxHp > 0 ? Math.max(0, Math.min(100, (w.hp / w.maxHp) * 100)) : 0}%`,
-                      height:'100%',
-                      background: (w.maxHp > 0 ? (w.hp / w.maxHp) * 100 : 0) > 50 ? '#00e676' : (w.maxHp > 0 ? (w.hp / w.maxHp) * 100 : 0) > 25 ? '#ffd666' : '#ff4d4d',
-                    }"/>
-                  </div>
-                </button>
-                <span :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'var(--theme-text-3)',textAlign:'center',maxWidth:'64px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }">
-                  {{ w.name }}
-                </span>
-                <div :style="{ width:'64px' }">
-                  <div :style="{ height:'3px',background:'var(--theme-border)',borderRadius:'3px',overflow:'hidden' }">
-                    <div :style="{
-                      width:`${w.maxHp > 0 ? Math.max(0, Math.min(100, (w.hp / w.maxHp) * 100)) : 0}%`,
-                      height:'100%', background:'#00e676', borderRadius:'3px',
-                    }"/>
-                  </div>
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
-
-        <!-- ── Menù azioni → griglia mosse ── -->
-        <template v-else>
+        <!-- ── Menù azioni → griglia mosse (il cambio waifu è un popup a parte) ── -->
+        <template v-if="!(isSwap || isVolSwap || (allPPOut && isChoose))">
           <!-- Menù: MOSSE | WAIFU | ABBANDONA — un unico "bottone" (bordo e
                radius condivisi) con i segmenti divisi da linee verticali -->
           <div v-if="actionMenu === 'menu'" :style="{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'12px 14px' }">
@@ -1986,7 +1857,7 @@ const mvp = computed(() => {
                   color:'#a78bfa', opacity: (!isChoose || isAnim || (isPvP && pvpWaiting)) ? .35 : 1,
                 }"
               >⚔ MOSSE</button>
-              <div :style="{ width:'1px', background:'var(--theme-border-2)', margin:'9px 0', flexShrink:0 }"/>
+              <div :style="{ width:'1px', background:'var(--theme-border-2)', flexShrink:0 }"/>
               <button
                 :disabled="swapDisabled"
                 @click="startVoluntarySwap"
@@ -1997,18 +1868,17 @@ const mvp = computed(() => {
                   color:'#00b4ff', opacity: swapDisabled ? .35 : 1,
                 }"
               >↻ WAIFU</button>
-              <div :style="{ width:'1px', background:'var(--theme-border-2)', margin:'9px 0', flexShrink:0 }"/>
+              <div :style="{ width:'1px', background:'var(--theme-border-2)', flexShrink:0 }"/>
               <button
-                @click="tapAbbandona"
+                @click="confirmQuit = true"
                 :style="{
                   flex:1, border:'none', cursor:'pointer',
-                  background: confirmQuit ? 'rgba(255,77,77,.16)' : 'none',
+                  background:'none',
                   boxShadow:'inset 0 0 0 1.5px rgba(255,77,77,.55)',
-                  borderRadius:'0 9px 9px 0',
                   fontFamily:'var(--ff-label)', fontSize:'15px', fontWeight:800, letterSpacing:'.12em',
-                  color:'#ff4d4d', transition:'background .15s',
+                  color:'#ff4d4d',
                 }"
-              >{{ confirmQuit ? 'SICURO?' : 'ABBANDONA' }}</button>
+              >ABBANDONA</button>
             </div>
           </div>
 
@@ -2050,7 +1920,7 @@ const mvp = computed(() => {
                   @pointerleave="moveLongPressEnd"
                   @pointercancel="moveLongPressEnd"
                   @contextmenu.prevent
-                  @click="() => { if (consumeLongPress()) return; if (move && (move.pp ?? 0) > 0 && !isMoveBlocked(lastPMove, i, move)) handleMove(i) }"
+                  @click="() => { if (consumeLongPress()) return; if (move && (move.pp ?? 0) > 0 && !isMoveBlocked(lastPMove, i, move)) { handleMove(i); actionMenu = 'menu' } }"
                   :style="(() => {
                     if (!move) return {
                       height:'100%',borderRadius:'12px',
@@ -2144,6 +2014,116 @@ const mvp = computed(() => {
           </div>
           </template>
         </template>
+      </div>
+    </div>
+
+    <!-- ── POPUP CAMBIO WAIFU — a tutto schermo e scrollabile ── -->
+    <div v-if="isSwap || isVolSwap || (allPPOut && isChoose)" :style="{
+      position:'fixed', inset:0, zIndex:500,
+      background:'var(--theme-bg)',
+      display:'flex', flexDirection:'column',
+      paddingTop:'max(14px, env(safe-area-inset-top))',
+    }">
+      <div :style="{ flexShrink:0, position:'relative', padding:'16px 56px 12px', textAlign:'center' }">
+        <div :style="{
+          fontFamily:'var(--ff-label)', fontSize:'13px', letterSpacing:'1.8px', fontWeight:800,
+          color: isVolSwap ? '#f5a623' : '#ff4d4d',
+        }">
+          {{ isVolSwap ? '↻ SCEGLI LA WAIFU DA MANDARE IN CAMPO' : isSwap ? '⚠ SCEGLI LA PROSSIMA WAIFU' : '⚠ PP ESAURITI — SOSTITUISCI LA WAIFU' }}
+        </div>
+        <button v-if="isVolSwap" @click="cancelVoluntarySwap" :style="{
+          position:'absolute', right:'14px', top:'50%', transform:'translateY(-50%)',
+          width:'36px', height:'36px', display:'grid', placeItems:'center',
+          background:'none', border:'1px solid var(--theme-border-2)', borderRadius:'10px',
+          color:'var(--theme-text-2)', fontSize:'15px', cursor:'pointer', lineHeight:1,
+        }">✕</button>
+      </div>
+      <div :style="{ flex:1, overflowY:'auto', WebkitOverflowScrolling:'touch', touchAction:'pan-y', padding:'14px 16px calc(28px + env(safe-area-inset-bottom))' }">
+        <div :style="{
+          display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))',
+          gap:'20px 16px', maxWidth:'860px', margin:'0 auto',
+        }">
+          <template v-for="(w, i) in pTeam" :key="w.id">
+            <div v-if="i !== pActive && !w.isKO" :style="{ display:'flex', flexDirection:'column', gap:'8px', position:'relative' }">
+              <!-- Chip TIPO — rettangolare 8px, alto-destra dello slot -->
+              <div v-if="w.type" :style="{
+                position:'absolute', top:'-9px', right:'-9px', zIndex:6,
+                background:'var(--theme-surface)',
+                border:`1.5px solid ${(TYPE_COLORS[w.type]?.border ?? '#555')}`,
+                color:(TYPE_COLORS[w.type]?.border ?? '#999'),
+                borderRadius:'8px', padding:'3px 9px',
+                fontFamily:'var(--ff-label)', fontSize:'11px', fontWeight:800,
+                letterSpacing:'.06em', textTransform:'uppercase',
+                boxShadow:'0 2px 8px rgba(0,0,0,0.4)', pointerEvents:'none',
+              }">{{ w.type }}</div>
+              <!-- Slot RETTANGOLARE (radius 8px) a tutta larghezza colonna -->
+              <button class="wba-bench-slot"
+                @click="isSwap ? handlePlayerSwap(i) : handleVoluntarySwap(i, { isPPExhausted: !isSwap && !isVolSwap })"
+                :style="{
+                  width:'100%', aspectRatio:'3/4', borderRadius:'8px', overflow:'hidden',
+                  border:'2.5px solid #00e676',
+                  boxShadow:'0 0 14px rgba(0,230,118,.32),0 0 0 1px rgba(0,230,118,.15)',
+                  background:'var(--theme-bg-secondary)', position:'relative',
+                  cursor:'pointer', padding:0,
+                  animation:'benchPop .22s ease-out',
+                }"
+              >
+                <img v-if="w.image" :src="ikUrl(w.image, 'card') ?? ''" :alt="w.name"
+                  :style="{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top' }"/>
+                <div v-else :style="{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:'13px',opacity:.22 }">◈</div>
+                <div :style="{ position:'absolute',bottom:0,left:0,right:0,height:'4px',background:'var(--theme-border)' }">
+                  <div :style="{
+                    width:`${w.maxHp > 0 ? Math.max(0, Math.min(100, (w.hp / w.maxHp) * 100)) : 0}%`,
+                    height:'100%',
+                    background: (w.maxHp > 0 ? (w.hp / w.maxHp) * 100 : 0) > 50 ? '#00e676' : (w.maxHp > 0 ? (w.hp / w.maxHp) * 100 : 0) > 25 ? '#ffd666' : '#ff4d4d',
+                  }"/>
+                </div>
+              </button>
+              <div :style="{ textAlign:'center' }">
+                <div :style="{ fontFamily:'var(--ff-label)',fontSize:'14px',fontWeight:700,color:'var(--theme-text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }">
+                  {{ w.name }}
+                </div>
+                <div :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'var(--theme-text-3)' }">
+                  {{ Math.max(0, w.hp) }}/{{ w.maxHp }} HP
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── POPUP CONFERMA ABBANDONO ── -->
+    <div v-if="confirmQuit"
+      style="position:fixed;inset:0;z-index:640;background:rgba(4,2,14,0.72);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;"
+      @click.self="confirmQuit = false">
+      <div :style="{
+        width:'100%', maxWidth:'320px',
+        background:'var(--theme-surface)', border:'1px solid var(--theme-border)',
+        borderRadius:'18px', padding:'24px 22px', textAlign:'center',
+        boxShadow:'0 12px 40px var(--theme-shadow)',
+      }">
+        <div :style="{ fontFamily:'var(--ff-display)', fontSize:'15px', fontWeight:800, color:'#ff4d4d', letterSpacing:'.06em', marginBottom:'8px' }">
+          ABBANDONARE LA PARTITA?
+        </div>
+        <div :style="{ fontFamily:'var(--ff-body)', fontSize:'13px', lineHeight:1.5, color:'var(--theme-text-2)', marginBottom:'18px' }">
+          La battaglia si concluderà subito con la tua sconfitta.
+        </div>
+        <div :style="{ display:'flex', gap:'10px' }">
+          <button @click="confirmQuit = false" :style="{
+            flex:1, padding:'12px 0', background:'none',
+            border:'1px solid var(--theme-border)', borderRadius:'12px',
+            color:'var(--theme-text-3)', fontFamily:'var(--ff-label)', fontSize:'12px', fontWeight:800,
+            letterSpacing:'.08em', cursor:'pointer',
+          }">ANNULLA</button>
+          <button @click="quitBattle" :style="{
+            flex:1.3, padding:'12px 0', background:'#ff4d4d',
+            border:'none', borderRadius:'12px',
+            color:'#fff', fontFamily:'var(--ff-label)', fontSize:'12px', fontWeight:800,
+            letterSpacing:'.08em', cursor:'pointer',
+            boxShadow:'0 6px 18px rgba(255,77,77,0.4)',
+          }">SÌ, ABBANDONA</button>
+        </div>
       </div>
     </div>
 
