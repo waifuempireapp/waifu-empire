@@ -117,10 +117,13 @@ export function calculateDamage(
 ): { damage: number; isCrit: boolean; effectiveness: string; multiplier: number } {
   const { multiplier, label: effectiveness } = getEffectiveness(move.type, attacker.type, defender.type)
   const isCrit = Math.random() < (attacker.critChance ?? 0.05)
-  const rawPower = isCrit
-    ? (move.damage_crit ?? move.critPower ?? Math.round((move.power ?? 0) * 1.25))
-    : (move.power ?? 0)
-  const damage = Math.max(1, Math.round(rawPower * multiplier))
+  // CRITICO = danno base + BONUS critico (es. mossa da 30 → 30 + bonus),
+  // NON una sostituzione del danno base.
+  const base = move.power ?? 0
+  const critBonus = isCrit
+    ? Math.max(1, (move.damage_crit ?? move.critPower ?? Math.round(base * 0.25)))
+    : 0
+  const damage = Math.max(1, Math.round((base + critBonus) * multiplier))
   return { damage, isCrit, effectiveness, multiplier }
 }
 

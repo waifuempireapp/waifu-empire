@@ -144,7 +144,7 @@ const teams = computed(() => props.collezione.teams || {})
 
 async function salvaTeam() {
   if (!teamNome.value.trim()) { emit('notif', t('collection.enter_team_name'), '#ff3d3d'); return }
-  if (teamWaifu.value.length !== 5) { emit('notif', t('collection.select_5_waifu'), '#ff3d3d'); return }
+  if (teamWaifu.value.length < 5 || teamWaifu.value.length > 8) { emit('notif', t('collection.select_5_waifu'), '#ff3d3d'); return }
   const nomiEsistenti = Object.entries(teams.value)
     .filter(([id]) => id !== teamInEdit.value)
     .map(([, t]: [string, any]) => (t.nome as string).toLowerCase())
@@ -533,7 +533,7 @@ function teamToggleWaifu(id: string) {
     const mosseOk = Object.values(dati.mosse_slot ?? {}).filter(Boolean).length >= 1
     if (!mosseOk) { emit('notif', t('collection.equip_1_move'), '#f5a623'); return }
   }
-  if (teamWaifu.value.length >= 5) { emit('notif', t('collection.team_max_5'), '#f5a623'); return }
+  if (teamWaifu.value.length >= 8) { emit('notif', t('collection.team_max_5'), '#f5a623'); return }
   teamWaifu.value = [...teamWaifu.value, id]
 }
 
@@ -939,7 +939,7 @@ function apriNegozio() {
               fontFamily: FF.label, fontSize: '14px', color: C.ok,
               letterSpacing: '0.24em', marginBottom: '10px', textAlign: 'center',
               textTransform: 'uppercase', fontWeight: 700,
-            }">Seleziona waifu (max 5) ({{ teamWaifu.length }}/5)</div>
+            }">Seleziona waifu (5–8) ({{ teamWaifu.length }}/8)</div>
 
             <!-- Barra filtri team -->
             <div :style="{
@@ -1099,8 +1099,8 @@ function apriNegozio() {
               <BtnDecorato
                 variant="primary" size="md"
                 @click="salvaTeam"
-                :disabled="teamWaifu.length !== 5 || !teamNome.trim()"
-              >SALVA ({{ teamWaifu.length }}/5)</BtnDecorato>
+                :disabled="teamWaifu.length < 5 || teamWaifu.length > 8 || !teamNome.trim()"
+              >SALVA ({{ teamWaifu.length }}/8)</BtnDecorato>
             </div>
           </div>
         </PannelloOrnato>

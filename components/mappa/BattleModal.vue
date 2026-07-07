@@ -4,6 +4,7 @@
 // Icone Lucide — X per chiudi, Swords per battaglia, Zap per velocità
 import { X, Swords, Zap } from 'lucide-vue-next'
 import { useAuthStore } from '~/stores/auth'
+import { ikUrl } from '~/utils/imagekitUrl'
 import { RARITA } from '~/utils/constants'
 import { computeSpeed, computeCritChance, computeHp } from '~/utils/battleEngine'
 import RandomMovesModal from '~/components/RandomMovesModal.vue'
@@ -94,7 +95,7 @@ useScrollLock(true)
 // ── Stato ─────────────────────────────────────────────────────────────────────
 const teams   = computed(() => props.collezione?.teams ?? {})
 const presets = computed(() =>
-  Object.entries(teams.value).filter(([, t]: [string, any]) => t.waifu?.length === 5)
+  Object.entries(teams.value).filter(([, t]: [string, any]) => (t.waifu?.length ?? 0) >= 5 && (t.waifu?.length ?? 0) <= 8)
 )
 const hasTeams = computed(() => presets.value.length > 0)
 
@@ -173,7 +174,7 @@ function toggle(id: string) {
 
 function selectPreset(id: string, presetWaifu: string[]) {
   const valid = presetWaifu.filter(wid => ownedWaifu.value.some((w: any) => w.id === wid))
-  if (valid.length === 5) {
+  if (valid.length >= 5 && valid.length <= 8) {
     selectedIds.value    = valid
     activePresetId.value = id
   }
@@ -452,7 +453,7 @@ const visiblePages = computed(() => {
             <div :style="{ width:'100%', aspectRatio:'3/4', borderRadius:'10px', overflow:'hidden', background:'var(--theme-bg-secondary)', border:`2px solid ${rarColors[w.rarita] || 'var(--theme-border)'}` }">
               <img
                 v-if="w.asset_immagine || w.asset_statica || w.asset_immersiva"
-                :src="w.asset_immagine || w.asset_statica || w.asset_immersiva"
+                :src="ikUrl(w.asset_immagine || w.asset_statica || w.asset_immersiva, 'card') ?? ''"
                 :alt="w.nome"
                 loading="eager" decoding="async"
                 @load="markImgLoaded(w.id)"

@@ -2903,3 +2903,63 @@ input:focus, textarea:focus, select:focus {
 .rarity-badge--epico { background: rgba(167,139,250,0.2); color: #a78bfa; border: 1px solid rgba(167,139,250,0.3); }
 .rarity-badge--leggendario { background: rgba(245,166,35,0.2); color: #f5a623; border: 1px solid rgba(245,166,35,0.4); }
 .rarity-badge--immersivo { background: rgba(236,72,153,0.2); color: #f472b6; border: 1px solid rgba(236,72,153,0.3); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LAYOUT DESKTOP — attivo SOLO su schermi larghi con mouse (hover+pointer fine):
+   mobile e tablet touch restano ESATTAMENTE come sono.
+   La bottom-nav diventa una SIDEBAR sinistra, il contenuto si sposta a destra
+   e le griglie si allargano: l'app legge come applicazione desktop.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (min-width: 1152px) and (hover: hover) and (pointer: fine) {
+
+  /* ── Bottom-nav → SIDEBAR sinistra ── */
+  .bnav-pocket {
+    top: 0; bottom: 0; left: 0; right: auto;
+    width: 240px; height: 100vh;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: 96px 14px 20px;
+    border-top: none;
+    border-right: 1px solid var(--border-subtle);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.12);
+  }
+  .bnav-pocket__btn {
+    flex: none;
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 14px;
+    padding: 13px 18px;
+    border-radius: 12px;
+    transition: background 0.15s;
+  }
+  .bnav-pocket__btn:hover { background: var(--theme-shimmer); }
+  .bnav-pocket__btn--active { background: var(--theme-tab-active); }
+  .bnav-pocket__label { font-size: 13px; letter-spacing: 0.12em; }
+  .bnav-pocket__dot { top: 50%; left: 6px; transform: translateY(-50%); }
+  .bnav-pocket__icon--active { transform: scale(1.05); }
+
+  /* ── Contenuto e header spostati a destra della sidebar ── */
+  .game-container { padding-left: 240px; }
+  /* overlay full-screen (sbusto, pesca, battaglia, dettagli) restano inset-0
+     e COPRONO anche la sidebar: esperienza immersiva invariata */
+
+  /* ── Griglia collezione waifu: 5 colonne ── */
+  .collection-card-item { width: calc(20% - 2px) !important; }
+
+  /* ── Griglia mosse: 5 colonne, più aria ── */
+  .moves-list__grid { grid-template-columns: repeat(5, 1fr) !important; gap: 22px 18px !important; }
+  .moves-list { max-width: 1200px; }
+
+  /* ── FAB missioni: non sovrapposto al contenuto largo ── */
+  .missioni-fab-pocket { right: 28px; bottom: 28px; }
+
+  /* ── Hero Home: pannello contenuto, non full-bleed sformato ── */
+  .ht-root { max-width: 1080px; margin: 0 auto; }
+
+  /* Scrollbar più discreta, da app desktop */
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--theme-border); border-radius: 99px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+}

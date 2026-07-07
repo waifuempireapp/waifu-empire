@@ -31,6 +31,7 @@ import {
   type MoveInstance,
 } from '~/utils/battleEngine'
 import { ikUrl } from '~/utils/imagekitUrl'
+import backCardImg from '~/assets/images/back_card.png'
 import { moves as MOVES_DATA } from '~/assets/moves/moves-data'
 
 // ─── PROPS ────────────────────────────────────────────────────────────────────
@@ -133,6 +134,26 @@ const BATTLE_CSS = `
   @keyframes floatDmg {0%{opacity:1;transform:translateY(0) scale(.82)}20%{transform:translateY(-24px) scale(1.18)}65%{opacity:1;transform:translateY(-55px) scale(1)}100%{opacity:0;transform:translateY(-82px) scale(.85)}}
   @keyframes hpCrit   {0%,100%{filter:brightness(1)}50%{filter:brightness(1.8) saturate(1.5)}}
   .wba-hp-crit { animation: hpCrit 0.8s ease-in-out infinite; }
+  /* ── Moneta (effetti bloccanti): testa = retro carta · croce = grigio ── */
+  .wba-coin-scene { width: 150px; height: 150px; perspective: 700px; }
+  .wba-coin {
+    position: relative; width: 100%; height: 100%;
+    transform-style: preserve-3d;
+  }
+  .wba-coin--spin  { animation: coinSpin 0.55s linear infinite; }
+  .wba-coin--heads { animation: coinLandHeads 0.5s ease-out forwards; }
+  .wba-coin--tails { animation: coinLandTails 0.5s ease-out forwards; }
+  .wba-coin__face {
+    position: absolute; inset: 0; border-radius: 50%;
+    overflow: hidden; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    border: 3px solid #f5c560; box-shadow: 0 0 26px rgba(245,197,96,0.5);
+    background: #0a0618;
+  }
+  .wba-coin__face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .wba-coin__face--back { transform: rotateY(180deg); }
+  @keyframes coinSpin { from { transform: rotateY(0) } to { transform: rotateY(360deg) } }
+  @keyframes coinLandHeads { from { transform: rotateY(0) }   to { transform: rotateY(720deg) } }
+  @keyframes coinLandTails { from { transform: rotateY(0) }   to { transform: rotateY(900deg) } }
   @keyframes timerUrg {0%,100%{transform:scale(1)}50%{transform:scale(1.16)}}
   @keyframes benchPop {from{transform:scale(.88);opacity:.65}to{transform:scale(1);opacity:1}}
   @keyframes victPop  {0%{transform:scale(.5);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
@@ -292,6 +313,28 @@ function consumeLongPress(): boolean {
   return fired
 }
 
+// ── LANCIO MONETA (effetti bloccanti) ────────────────────────────────────────
+// Se la waifu è vittima di un effetto CONTROL (immobilizzo/stordimento), a
+// inizio turno lancia una moneta: TESTA → l'effetto svanisce e attacca
+// normalmente; CROCE → l'effetto permane e salta il turno.
+const coinFlip = ref<{ who: string; result: 'testa' | 'croce'; done: boolean } | null>(null)
+function flipCoinFor(who: string): Promise<boolean> {
+  return new Promise(resolve => {
+    const heads = Math.random() < 0.5
+    coinFlip.value = { who, result: heads ? 'testa' : 'croce', done: false }
+    // 1.7s di rotazione + 0.9s per leggere il risultato
+    setTimeout(() => { if (coinFlip.value) coinFlip.value.done = true }, 1700)
+    setTimeout(() => { coinFlip.value = null; resolve(heads) }, 2600)
+  })
+}
+/** Rimuove gli effetti control dal lato indicato (moneta: testa). */
+function clearControl(side: 'player' | 'enemy') {
+  fieldEffects.value = {
+    ...fieldEffects.value,
+    [side]: fieldEffects.value[side].filter(e => e.kind !== 'control'),
+  }
+}
+
 /** Stile chip effetto per gli HUD: colore per tipo di effetto. */
 const EFFECT_CHIP_COLORS: Record<ActiveEffect['kind'], string> = {
   dot: '#ff6b4a', control: '#b46bff', debuff: '#9aa4b5', buff: '#58e0a3', shield: '#4ac3ff',
@@ -398,6 +441,19 @@ let pvpOpMoveLocal: number | null = null
 
 /** Blocca lo scroll del body durante la battaglia */
 useScrollLock(true)
+
+// Pre-render: scalda subito le immagini di ENTRAMBI i team (sprite 'normal' +
+// bench 'thumbnail') così in combattimento non si vede mai un caricamento.
+onMounted(() => {
+  try {
+    for (const w of [...pTeam.value, ...eTeam.value]) {
+      for (const preset of ['normal', 'thumbnail'] as const) {
+        const u = ikUrl(w.image ?? null, preset)
+        if (u) { const img = new Image(); img.decoding = 'async'; img.src = u }
+      }
+    }
+  } catch { /* best effort */ }
+})
 
 // Tema — colori adattivi per light/dark mode
 const { isDark } = useTheme()
@@ -681,9 +737,15 @@ async function handleVoluntarySwap(newIdx: number, { isPPExhausted = false } = {
       const move = cpuAttacker.moves[eMi]
 
       const cpuCtrl = controlEffect('enemy')
+      let cpuFreed = true
       if (cpuCtrl && move) {
-        message.value = `${cpuAttacker.name} è ${cpuCtrl.label}! Non può attaccare!`
-        await wait(800)
+        message.value = `${cpuAttacker.name} è ${cpuCtrl.label}! Lancio della moneta…`
+        cpuFreed = await flipCoinFor(cpuAttacker.name)
+        if (cpuFreed) { clearControl('enemy'); message.value = `TESTA! ${cpuAttacker.name} si libera!`; await wait(500) }
+        else { message.value = `CROCE… ${cpuAttacker.name} salta il turno!`; await wait(700) }
+      }
+      if (cpuCtrl && !cpuFreed) {
+        /* turno saltato */
       } else if (move && (move.pp ?? 0) > 0) {
         eAnim.value   = 'wba-aL'
         message.value = `${cpuAttacker.name} usa ${move.name}!`
@@ -864,12 +926,21 @@ async function resolveTurn(pMi: number, eMi: number, _externalResult: null = nul
     const move = att.moves[mi]
     if (!move) return false
 
-    // Effetto control (immobilizzo/stordimento): la waifu salta l'attacco
+    // Effetto control (immobilizzo/stordimento): LANCIO DELLA MONETA a inizio
+    // turno — testa: l'effetto svanisce e attacca; croce: salta il turno.
     const ctrl = controlEffect(side)
     if (ctrl) {
-      message.value = `${att.name} è ${ctrl.label}! Non può attaccare!`
-      await wait(800)
-      return false
+      message.value = `${att.name} è ${ctrl.label}! Lancio della moneta…`
+      const heads = await flipCoinFor(att.name)
+      if (heads) {
+        clearControl(side)
+        message.value = `TESTA! ${att.name} si libera da ${ctrl.label}!`
+        await wait(600)
+      } else {
+        message.value = `CROCE… ${att.name} resta ${ctrl.label} e salta il turno!`
+        await wait(800)
+        return false
+      }
     }
 
     const dmgCalc = calculateDamage(att, move, def)
@@ -1718,7 +1789,9 @@ const mvp = computed(() => {
            alto (fase cambio) scrolla internamente (overflowY:auto). -->
       <div :style="{
         flexShrink:0,
-        height: isMobile ? 'clamp(225px, 31dvh, 270px)' : 'clamp(220px, 30dvh, 280px)',
+        height: (isSwap || isVolSwap || (allPPOut && isChoose))
+          ? 'min(430px, 54dvh)'
+          : isMobile ? 'clamp(225px, 31dvh, 270px)' : 'clamp(220px, 30dvh, 280px)',
         display:'flex', flexDirection:'column',
         background:'var(--theme-surface)',
         borderTop:'1px solid var(--theme-border)',
@@ -1746,12 +1819,23 @@ const mvp = computed(() => {
           </div>
           <div :style="{ display:'flex',gap:'12px',justifyContent:'center',flexWrap:'wrap' }">
             <template v-for="(w, i) in pTeam" :key="w.id">
-              <div v-if="i !== pActive && !w.isKO" :style="{ display:'flex',flexDirection:'column',alignItems:'center',gap:'5px' }">
+              <div v-if="i !== pActive && !w.isKO" :style="{ display:'flex',flexDirection:'column',alignItems:'center',gap:'6px', position:'relative' }">
+                <!-- Chip TIPO — rettangolare (radius 8px), in alto a destra dello slot -->
+                <div v-if="w.type" :style="{
+                  position:'absolute', top:'-9px', right:'-9px', zIndex:6,
+                  background:'var(--theme-surface)',
+                  border:`1.5px solid ${(TYPE_COLORS[w.type]?.border ?? '#555')}`,
+                  color:(TYPE_COLORS[w.type]?.border ?? '#999'),
+                  borderRadius:'8px', padding:'3px 9px',
+                  fontFamily:'var(--ff-label)', fontSize:'11px', fontWeight:800,
+                  letterSpacing:'.06em', textTransform:'uppercase',
+                  boxShadow:'0 2px 8px rgba(0,0,0,0.4)', pointerEvents:'none',
+                }">{{ w.type }}</div>
                 <!-- BenchSlot inline -->
                 <button class="wba-bench-slot"
                   @click="isSwap ? handlePlayerSwap(i) : handleVoluntarySwap(i)"
                   :style="{
-                    width:'106px',height:'106px',borderRadius:'50%',overflow:'hidden',flexShrink:0,
+                    width:'128px',height:'128px',borderRadius:'50%',overflow:'hidden',flexShrink:0,
                     border:'2.5px solid #00e676',
                     boxShadow:'0 0 14px rgba(0,230,118,.38),0 0 0 1px rgba(0,230,118,.18)',
                     background:'var(--theme-bg-secondary)', position:'relative',
@@ -1771,15 +1855,11 @@ const mvp = computed(() => {
                     }"/>
                   </div>
                 </button>
-                <span :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'var(--theme-text-3)',textAlign:'center',maxWidth:'64px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }">
+                <span :style="{ fontFamily:'var(--ff-label)',fontSize:'14px',fontWeight:700,color:'var(--theme-text-2)',textAlign:'center',maxWidth:'120px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }">
                   {{ w.name }}
                 </span>
-                <!-- Tipo waifu (utile per scegliere il matchup nel cambio) -->
-                <span v-if="w.type" :style="{ fontFamily:'var(--ff-label)',fontSize:'11px',fontWeight:800,letterSpacing:'.4px',color:(TYPE_COLORS[w.type]?.border ?? 'var(--theme-text-3)') }">
-                  {{ w.type }}
-                </span>
                 <!-- HpBar mini -->
-                <div :style="{ width:'64px' }">
+                <div :style="{ width:'110px' }">
                   <div :style="{ height:'3px',background:'var(--theme-border)',borderRadius:'3px',overflow:'hidden' }">
                     <div :style="{
                       width:`${w.maxHp > 0 ? Math.max(0, Math.min(100, (w.hp / w.maxHp) * 100)) : 0}%`,
@@ -1802,11 +1882,21 @@ const mvp = computed(() => {
           </div>
           <div :style="{ display:'flex',gap:'12px',justifyContent:'center',flexWrap:'wrap' }">
             <template v-for="(w, i) in pTeam" :key="w.id">
-              <div v-if="i !== pActive && !w.isKO" :style="{ display:'flex',flexDirection:'column',alignItems:'center',gap:'5px' }">
+              <div v-if="i !== pActive && !w.isKO" :style="{ display:'flex',flexDirection:'column',alignItems:'center',gap:'6px', position:'relative' }">
+                <div v-if="w.type" :style="{
+                  position:'absolute', top:'-9px', right:'-9px', zIndex:6,
+                  background:'var(--theme-surface)',
+                  border:`1.5px solid ${(TYPE_COLORS[w.type]?.border ?? '#555')}`,
+                  color:(TYPE_COLORS[w.type]?.border ?? '#999'),
+                  borderRadius:'8px', padding:'3px 9px',
+                  fontFamily:'var(--ff-label)', fontSize:'11px', fontWeight:800,
+                  letterSpacing:'.06em', textTransform:'uppercase',
+                  boxShadow:'0 2px 8px rgba(0,0,0,0.4)', pointerEvents:'none',
+                }">{{ w.type }}</div>
                 <button class="wba-bench-slot"
                   @click="handleVoluntarySwap(i, { isPPExhausted: true })"
                   :style="{
-                    width:'106px',height:'106px',borderRadius:'50%',overflow:'hidden',flexShrink:0,
+                    width:'128px',height:'128px',borderRadius:'50%',overflow:'hidden',flexShrink:0,
                     border:'2.5px solid #00e676',
                     boxShadow:'0 0 14px rgba(0,230,118,.38),0 0 0 1px rgba(0,230,118,.18)',
                     background:'var(--theme-bg-secondary)', position:'relative',
@@ -1827,10 +1917,6 @@ const mvp = computed(() => {
                 </button>
                 <span :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'var(--theme-text-3)',textAlign:'center',maxWidth:'64px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }">
                   {{ w.name }}
-                </span>
-                <!-- Tipo waifu (utile per scegliere il matchup nella sostituzione) -->
-                <span v-if="w.type" :style="{ fontFamily:'var(--ff-label)',fontSize:'11px',fontWeight:800,letterSpacing:'.4px',color:(TYPE_COLORS[w.type]?.border ?? 'var(--theme-text-3)') }">
-                  {{ w.type }}
                 </span>
                 <div :style="{ width:'64px' }">
                   <div :style="{ height:'3px',background:'var(--theme-border)',borderRadius:'3px',overflow:'hidden' }">
@@ -2044,6 +2130,31 @@ const mvp = computed(() => {
           </div>
         </template>
       </div>
+    </div>
+
+    <!-- Overlay LANCIO MONETA (effetti bloccanti) -->
+    <div v-if="coinFlip"
+      style="position:fixed;inset:0;z-index:650;background:rgba(4,2,14,0.78);backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;">
+      <div :style="{ fontFamily:'var(--ff-label)', fontSize:'14px', letterSpacing:'0.22em', color:'var(--theme-text-2)', textTransform:'uppercase', fontWeight:700 }">
+        {{ coinFlip.who }} · lancio della moneta
+      </div>
+      <!-- Moneta 3D: testa = retro carta, croce = stessa immagine in scala di grigi -->
+      <div class="wba-coin-scene">
+        <div class="wba-coin" :class="coinFlip.done ? (coinFlip.result === 'testa' ? 'wba-coin--heads' : 'wba-coin--tails') : 'wba-coin--spin'">
+          <div class="wba-coin__face wba-coin__face--front">
+            <img :src="backCardImg" alt="testa" />
+          </div>
+          <div class="wba-coin__face wba-coin__face--back">
+            <img :src="backCardImg" alt="croce" style="filter:grayscale(1) brightness(0.85);" />
+          </div>
+        </div>
+      </div>
+      <div v-if="coinFlip.done" :style="{
+        fontFamily:'var(--ff-display)', fontSize:'22px', fontWeight:900, letterSpacing:'0.1em',
+        color: coinFlip.result === 'testa' ? '#58e0a3' : '#ff5b6c',
+        textShadow: `0 0 24px ${coinFlip.result === 'testa' ? '#58e0a377' : '#ff5b6c77'}`,
+        animation:'fadeMsg 0.25s ease-out',
+      }">{{ coinFlip.result === 'testa' ? 'TESTA!' : 'CROCE…' }}</div>
     </div>
 
     <!-- Popup dettaglio mossa (long-press): carta completa con la spiegazione -->

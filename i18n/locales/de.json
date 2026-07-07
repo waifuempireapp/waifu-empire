@@ -245,7 +245,7 @@
     "cancel": "ABBRECHEN",
     "save": "SPEICHERN",
     "enter_team_name": "Name eingeben",
-    "select_5_waifu": "Genau 5 Waifu wählen",
+    "select_5_waifu": "Wähle 5 bis 8 Waifus für das Team",
     "team_name_exists": "Name bereits vergeben",
     "team_saved": "Team gespeichert!",
     "team_deleted": "Team gelöscht",
@@ -265,7 +265,8 @@
     "moves_count": "⚔ {n}/4 Moves",
     "no_waifu_short": "Keine Waifu",
     "change_filters": "Ändere die Filter.",
-    "equip_1_move": "Weise mindestens 1 Angriff zu"
+    "equip_1_move": "Weise mindestens 1 Angriff zu",
+    "team_max_5": "Maximal 8 Waifus pro Team"
   },
   "swap": {
     "loading": "Laden…",
