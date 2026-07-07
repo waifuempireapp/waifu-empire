@@ -8,6 +8,10 @@
 // geometria sorgente. Permette modelli diversi per espansione.
 const DEFAULT_BUSTINA = '/bustine/bustina_asset.glb'
 const _glbMeshCache = new Map<string, Promise<import('three').Mesh>>()
+// Poster per modello: fotogramma catturato al primo render riuscito. Se il
+// contesto WebGL muore (WebView Android), il fallback mostra QUESTO — cioè il
+// pacchetto vero — invece di un placeholder.
+const _posterCache = new Map<string, string>()
 
 async function _loadMeshRaw(url: string): Promise<import('three').Mesh> {
   const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
@@ -73,6 +77,8 @@ const canvasRef  = ref<HTMLCanvasElement | null>(null)
 const wrapperRef = ref<HTMLDivElement | null>(null)
 const glReady    = ref(false)  // canvas 3D pronto → aumenta opacity sopra il 2D
 const failed     = ref(false)  // init fallito o context perso → mostra fallback 2D
+// Poster del pacchetto (fotogramma del primo render): fallback identico al 3D
+const poster     = ref<string | null>(_posterCache.get('' ) ?? null)
 
 const XMIN = -0.5768, XMAX = 0.5731
 const YMIN = -1.0038, YMAX = 1.0008
@@ -101,6 +107,23 @@ function applyPlanarUVs(geo: import('three').BufferGeometry) {
     uvs[i * 2] = u; uvs[i * 2 + 1] = v
   }
   geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2))
+}
+
+// Re-init automatico con backoff dopo un context-lost: non dipende da cambi
+// tab o visibility — riprova finché il WebView concede di nuovo un contesto.
+let reinitTimer: ReturnType<typeof setTimeout> | null = null
+let reinitTries = 0
+function scheduleReinit() {
+  if (reinitTimer) return
+  const delay = Math.min(800 * Math.pow(2, reinitTries), 8000)
+  reinitTimer = setTimeout(async () => {
+    reinitTimer = null
+    reinitTries++
+    failed.value = false
+    await init()
+    if (!glReady.value && reinitTries < 6) scheduleReinit()
+    else if (glReady.value) reinitTries = 0
+  }, delay)
 }
 
 async function init() {
@@ -138,6 +161,10 @@ async function init() {
         if (animId !== null) { cancelAnimationFrame(animId); animId = null }
         glReady.value = false
         failed.value = true
+        // AUTO-RETRY: il WebView può uccidere il contesto mentre la Home è
+        // coperta da un overlay (nessun evento di tab/visibility) → riprova
+        // da solo con backoff finché il contesto torna disponibile.
+        scheduleReinit()
       }, { passive: false })
       canvasRef.value!.addEventListener('webglcontextrestored', () => {
         console.log('[BustinaGLB] WebGL context restored, re-init')
@@ -198,15 +225,26 @@ async function init() {
     // Anti-flash bianco: upload della texture in GPU prima del primo frame
     const _m = mesh.material as import('three').MeshStandardMaterial
     if (_m?.map) renderer.initTexture(_m.map)
+    // Poster: renderizza subito un frame e catturalo → futuro fallback = pack vero
+    try {
+      renderer.render(scene, camera)
+      const key = props.modelUrl || DEFAULT_BUSTINA
+      if (!_posterCache.has(key)) {
+        const shot = canvasRef.value!.toDataURL('image/jpeg', 0.85)
+        if (shot && shot.length > 2000) _posterCache.set(key, shot)
+      }
+      poster.value = _posterCache.get(key) ?? null
+    } catch { /* il poster è solo un extra */ }
     glReady.value = true
     failed.value = false
     window.dispatchEvent(new Event('bustina:ready'))
     animate(THREE)
   } catch (e) {
-    console.warn('[BustinaGLB] WebGL non disponibile, uso fallback 2D', e)
+    console.warn('[BustinaGLB] WebGL non disponibile, uso fallback', e)
     glReady.value = false
-    failed.value = true   // → mostra il fallback 2D
+    failed.value = true   // → mostra il fallback (poster se disponibile)
     window.dispatchEvent(new Event('bustina:ready'))
+    scheduleReinit()
   }
 }
 
@@ -255,7 +293,11 @@ watch(() => props.ripping, (val) => {
 // Se il modello dell'espansione cambia dopo il mount (drop arrivato più tardi,
 // cambio espansione con componente keep-alive) → re-init con il GLB giusto.
 watch(() => props.modelUrl, (nuovo, vecchio) => {
-  if (nuovo !== vecchio) { glReady.value = false; init() }
+  if (nuovo !== vecchio) {
+    poster.value = _posterCache.get(nuovo || DEFAULT_BUSTINA) ?? null
+    glReady.value = false
+    init()
+  }
 })
 
 function onPointerMove(e: PointerEvent) {
@@ -307,6 +349,7 @@ onMounted(() => document.addEventListener('visibilitychange', _onVisibility))
 onBeforeUnmount(() => document.removeEventListener('visibilitychange', _onVisibility))
 
 onBeforeUnmount(() => {
+  if (reinitTimer) { clearTimeout(reinitTimer); reinitTimer = null }
   // 1. Ferma il loop di animazione
   if (animId !== null) { cancelAnimationFrame(animId); animId = null }
 
@@ -385,21 +428,13 @@ onBeforeUnmount(() => {
       <!-- Linee decorative -->
       <div :style="{ position:'absolute', top:'16px', left:'14px', right:'14px', height:'1px', background:`linear-gradient(90deg, transparent, ${color||'#a78bfa'}44, transparent)`, pointerEvents:'none', zIndex:3 }" />
       <div :style="{ position:'absolute', bottom:'16px', left:'14px', right:'14px', height:'1px', background:`linear-gradient(90deg, transparent, ${color||'#a78bfa'}44, transparent)`, pointerEvents:'none', zIndex:3 }" />
-      <!-- Logo text fallback puro CSS (nessuna img → zero broken image) -->
-      <div :style="{
-        position: 'absolute', inset: '0',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 1,
-        fontFamily: `var(--ff-display,'Unbounded',sans-serif)`,
-        fontSize: `${Math.round(width * 0.09)}px`,
-        fontWeight: 900,
-        color: `${color || '#a78bfa'}cc`,
-        letterSpacing: '-0.02em',
-        userSelect: 'none',
-        textAlign: 'center',
-        lineHeight: 1.1,
-        textShadow: `0 0 20px ${color || '#a78bfa'}66`,
-      }">W</div>
+      <!-- Poster: fotogramma del pacchetto REALE catturato al primo render →
+           il fallback è visivamente identico al 3D (niente lettera W) -->
+      <img
+        v-if="poster"
+        :src="poster"
+        :style="{ position:'absolute', inset:'0', width:'100%', height:'100%', objectFit:'contain', zIndex:4, pointerEvents:'none' }"
+      />
     </div>
 
     <!-- ── Layer 2: Canvas 3D — si sovrappone quando pronto ── -->
