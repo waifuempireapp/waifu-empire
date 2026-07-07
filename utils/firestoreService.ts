@@ -368,28 +368,22 @@ export async function getConfig(docId: string): Promise<Record<string, unknown> 
 // CLASSIFICA
 // ══════════════════════════════════════════════════════════════
 
+// La classifica viene calcolata dal SERVER (/api/classifica/top): il client
+// non può listare la collection users (rules) → prima dava
+// "Missing or insufficient permissions".
+async function _fetchClassifica(mode: 'globale' | 'settimanale', limitN: number): Promise<Record<string, unknown>[]> {
+  const { getFirebaseAuth } = await import('~/utils/firebase')
+  const user = getFirebaseAuth().currentUser
+  if (!user) return []
+  const token = await user.getIdToken()
+  const res = await $fetch(`/api/classifica/top?mode=${mode}&limit=${limitN}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  }) as { utenti?: Record<string, unknown>[] }
+  return res.utenti ?? []
+}
+
 export async function getClassifica(limitN = 100): Promise<Record<string, unknown>[]> {
-  const db   = getDb()
-  const q    = query(collection(db, 'users'), limit(200))
-  const snap = await getDocs(q)
-  const utenti = snap.docs.map(d => ({ id: d.id, ...d.data() } as Record<string, any>))
-  const conScore = utenti.map(u => {
-    const pixelCount = (u.pixelCount as number) ?? 0
-    return {
-      ...u,
-      _pixelCount:  pixelCount,
-      _territori:   pixelCount,
-      _hasHardPass: (u.hardPass === true) ? 1 : 0,
-      _nomeDisplay: (u.nomeImpero || u.nome || (u.email as string)?.split('@')[0]) ?? 'Giocatore',
-      _creatoTs:    (u.creato as any)?.toMillis?.() ?? Number(u.creato) ?? 0,
-    }
-  })
-  conScore.sort((a, b) => {
-    if (b._pixelCount !== a._pixelCount) return (b._pixelCount as number) - (a._pixelCount as number)
-    if (b._hasHardPass !== a._hasHardPass) return (b._hasHardPass as number) - (a._hasHardPass as number)
-    return (a._creatoTs as number) - (b._creatoTs as number)
-  })
-  return conScore.slice(0, limitN)
+  return _fetchClassifica('globale', limitN)
 }
 
 export function premioPerPosizione(pos: number): number {
@@ -870,22 +864,5 @@ export async function incrementaPunteggiSettimana(uid: string, punti = 100): Pro
 }
 
 export async function getClassificaSettimanale(limitN = 200): Promise<Record<string, unknown>[]> {
-  const db   = getDb()
-  const q    = query(collection(db, 'users'), limit(500))
-  const snap = await getDocs(q)
-  const utenti = snap.docs.map(d => {
-    const data = d.data() as Record<string, any>
-    return {
-      id: d.id, ...data,
-      _nomeDisplay: data.nomeImpero || data.nome || (data.email as string)?.split('@')[0] || 'Giocatore',
-      _punteggi:    (data.punteggiSettimana as number) ?? 0,
-      _territori:   Object.values((data.territoriUtente as Record<string, any>) || {}).filter((t: any) => t?.conquistato).length,
-    }
-  })
-  utenti.sort((a, b) => {
-    if (b._punteggi !== a._punteggi) return b._punteggi - a._punteggi
-    if (b._territori !== a._territori) return b._territori - a._territori
-    return (((a as any).creato as any)?.toMillis?.() ?? 0) - (((b as any).creato as any)?.toMillis?.() ?? 0)
-  })
-  return utenti.slice(0, limitN)
+  return _fetchClassifica('settimanale', limitN)
 }

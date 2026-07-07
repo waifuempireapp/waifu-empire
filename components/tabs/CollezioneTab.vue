@@ -854,6 +854,19 @@ function apriNegozio() {
               boxShadow:'0 0 10px rgba(255,69,0,0.65)', pointerEvents:'none',
               textTransform:'uppercase', whiteSpace:'nowrap',
             }">🔥 HOT</div>
+            <!-- Chip '+' — top-right: level-up disponibile (3+ copie della carta).
+                 Se c'è anche il chip HOT, il '+' si sposta a fianco. -->
+            <div v-if="(dati?.copie ?? 0) >= 3" :style="{
+              position:'absolute', top:'-8px',
+              right: (w.hot === true && (profilo?.hardPass || false)) ? '78px' : '-8px',
+              zIndex:26,
+              width:'26px', height:'26px', borderRadius:'50%',
+              background:'var(--theme-surface)',
+              border:`2px solid ${C.ok}`,
+              color:C.ok, display:'grid', placeItems:'center',
+              fontFamily:FF.display, fontSize:'17px', fontWeight:900, lineHeight:1,
+              boxShadow:`0 0 10px ${C.ok}66`, pointerEvents:'none',
+            }">+</div>
             <!-- Chip LV — bottom-right della carta; font compensato per zoom:0.98 -->
             <div :style="{
               position:'absolute', bottom:'10px', right:'6px', zIndex:20,

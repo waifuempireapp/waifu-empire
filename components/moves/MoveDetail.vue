@@ -75,6 +75,9 @@ function pick(w: PickWaifu) {
 </script>
 
 <template>
+  <!-- Teleport su body + z-index massimo: il dettaglio mossa sta SOPRA a
+       header, bottom-nav e qualsiasi stacking context degli antenati -->
+  <Teleport to="body">
   <div class="md-backdrop" @click="emit('close')">
     <div class="md-sheet glass-panel" :style="{ fontFamily: FF.body, borderColor: `${meta.accent}66` }" @click.stop>
       <button class="md-close" @click="emit('close')" :aria-label="'Chiudi'"><X :size="18" stroke-width="2" /></button>
@@ -140,11 +143,12 @@ function pick(w: PickWaifu) {
       </div>
     </div>
   </div>
+  </Teleport>
 </template>
 
 <style scoped>
 .md-backdrop {
-  position: fixed; inset: 0; z-index: 300;
+  position: fixed; inset: 0; z-index: 99990;
   background: rgba(6, 4, 16, 0.72);
   backdrop-filter: blur(6px);
   display: flex; align-items: center; justify-content: center;
