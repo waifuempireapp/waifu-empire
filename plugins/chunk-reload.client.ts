@@ -56,4 +56,26 @@ export default defineNuxtPlugin((nuxtApp) => {
     console.warn('[chunk-reload] app:chunkError, ricarico la pagina')
     reload()
   })
+
+  // ── Auto-update proattivo ─────────────────────────────────────
+  // La SPA (e la PWA/APK che la incapsula) resta sui chunk della build con
+  // cui è partita: dopo un deploy l'utente continua a vedere la versione
+  // vecchia finché non ricarica a mano. Al rientro in foreground dopo un
+  // po' di background confrontiamo il build id con /_nuxt/builds/latest.json
+  // e, se è cambiato, ricarichiamo subito (non aspettiamo il chunk 404).
+  const currentBuildId = (nuxtApp.$config as any)?.app?.buildId as string | undefined
+  let hiddenAt = 0
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return }
+    if (!currentBuildId || !hiddenAt || Date.now() - hiddenAt < 30_000) return
+    try {
+      const res = await fetch(`/_nuxt/builds/latest.json?_=${Date.now()}`, { cache: 'no-store' })
+      if (!res.ok) return
+      const latest = await res.json() as { id?: string }
+      if (latest?.id && latest.id !== currentBuildId) {
+        console.warn('[chunk-reload] nuova build deployata, ricarico:', latest.id)
+        reload()
+      }
+    } catch { /* offline o endpoint mancante: ignora */ }
+  })
 })

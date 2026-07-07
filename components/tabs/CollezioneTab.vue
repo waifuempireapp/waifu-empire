@@ -1228,7 +1228,7 @@ function apriNegozio() {
                 {{ lvlPreview ? lvlCalcPreview(lvlPreview.stat, lvlPreview.delta).velocita : lvlCurrentVel }}
               </div>
               <div v-if="lvlPreview" :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-text-3)' }">
-                era {{ lvlCurrentVel }}
+                {{ $t('collection.was') }} {{ lvlCurrentVel }}
               </div>
             </div>
             <div :style="{
@@ -1241,7 +1241,7 @@ function apriNegozio() {
                 {{ lvlPreview ? lvlCalcPreview(lvlPreview.stat, lvlPreview.delta).crit_chance : lvlCurrentCrit }}%
               </div>
               <div v-if="lvlPreview" :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-text-3)' }">
-                era {{ lvlCurrentCrit }}%
+                {{ $t('collection.was') }} {{ lvlCurrentCrit }}%
               </div>
             </div>
           </div>
