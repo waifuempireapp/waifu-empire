@@ -395,32 +395,33 @@ const STAT_DEFS = [
 const lvlPreview = ref<{ stat: string; delta: number } | null>(null)
 const lvlBusy    = ref(false)
 
-const lvlStatBase = computed(() => {
+// Solo chiavi estetiche: stat risolte (reali o deterministiche, le stesse della
+// carta) + override personali. NIENTE spread del catalogo intero: questa base
+// viene persistita in stat_personali al momento dell'apply.
+const lvlStatBase = computed<Record<string, number>>(() => {
   if (!catalogWaifuSel.value || !datiWaifuSel.value) return {}
-  // resolveWaifuStats: valorizza i campi estetici mancanti nel catalogo con gli
-  // stessi valori deterministici mostrati su carta e dettaglio (niente più 0)
-  return { ...catalogWaifuSel.value, ...resolveWaifuStats(catalogWaifuSel.value), ...(datiWaifuSel.value.stat_personali ?? {}) }
+  return { ...resolveWaifuStats(catalogWaifuSel.value), ...(datiWaifuSel.value.stat_personali ?? {}) }
 })
 
-function lvlCalcPreview(stat: string, delta: number) {
-  const waifu = catalogWaifuSel.value
-  if (!waifu) return { velocita: 0, crit_chance: 0 }
-  const newStats = { ...lvlStatBase.value, [stat]: (lvlStatBase.value[stat] ?? 0) + delta }
-  const { velocita, crit_chance } = computeAndSaveStats(waifu, waifu.rarita ?? 'comune', { [stat]: newStats[stat] })
-  return { velocita, crit_chance: Math.round(crit_chance * 100) }
-}
-
-const lvlCurrentVel = computed(() => {
-  const d = datiWaifuSel.value
+// Derivate (velocità/critico/HP): baseline e preview escono dalla STESSA
+// pipeline con la STESSA base risolta. Prima la preview passava solo la stat
+// modificata → i campi mancanti nel catalogo cadevano sui default delle
+// formule e ogni scelta sembrava peggiorare tutto.
+const lvlDerived = computed(() => {
   const w = catalogWaifuSel.value
-  if (!d || !w) return 0
-  return Math.round(d.velocita ?? computeAndSaveStats(w, w.rarita ?? 'comune', d.stat_personali ?? {}).velocita)
-})
-const lvlCurrentCrit = computed(() => {
-  const d = datiWaifuSel.value
-  const w = catalogWaifuSel.value
-  if (!d || !w) return 0
-  return Math.round((d.crit_chance ?? computeAndSaveStats(w, w.rarita ?? 'comune', d.stat_personali ?? {}).crit_chance) * 100)
+  if (!w) return []
+  const calc = (stats: Record<string, any>) => {
+    const r = computeAndSaveStats(w, w.rarita ?? 'comune', stats)
+    return { velocita: r.velocita, crit: Math.round(r.crit_chance * 100), hp: r.hp }
+  }
+  const base = calc(lvlStatBase.value)
+  const pv   = lvlPreview.value
+  const next = pv ? calc({ ...lvlStatBase.value, [pv.stat]: (lvlStatBase.value[pv.stat] ?? 0) + pv.delta }) : null
+  return [
+    { label: t('collection.stat_speed'), cur: base.velocita, nuovo: next?.velocita ?? null, suff: '' },
+    { label: t('collection.stat_crit'),  cur: base.crit,     nuovo: next?.crit ?? null,     suff: '%' },
+    { label: t('collection.stat_hp'),    cur: base.hp,       nuovo: next?.hp ?? null,       suff: '' },
+  ]
 })
 
 async function lvlApply() {
@@ -433,14 +434,16 @@ async function lvlApply() {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: { stat: lvlPreview.value.stat, delta: lvlPreview.value.delta },
     }) as any
+    // Stessa base persistita dal server: tutta la base risolta + la modifica
     const newStatPersonali = {
-      ...(datiWaifuSel.value?.stat_personali ?? {}),
+      ...lvlStatBase.value,
       [lvlPreview.value.stat]: (lvlStatBase.value[lvlPreview.value.stat] ?? 0) + lvlPreview.value.delta,
     }
     const patch: Record<string, unknown> = {
       livello: data.livello,
       velocita: data.velocita,
       crit_chance: data.crit_chance,
+      hp: data.hp,
       stat_personali: newStatPersonali,
       levelup_pending: false,
     }
@@ -1216,32 +1219,23 @@ function apriNegozio() {
             textAlign: 'center', marginBottom: '18px', letterSpacing: '0.2em', textTransform: 'uppercase',
           }">{{ $t("collection.choose_stat") }}</div>
 
-          <!-- Preview velocità / crit -->
-          <div :style="{ display: 'flex', gap: '12px', marginBottom: '18px', justifyContent: 'center' }">
-            <div :style="{
-              textAlign: 'center', padding: '8px 16px', minWidth: '96px',
+          <!-- Derivate: TUTTE le stat che cambiano, con differenza colorata
+               (verde +N / rosso −N) rispetto al valore attuale -->
+          <div :style="{ display: 'flex', gap: '10px', marginBottom: '18px' }">
+            <div v-for="row in lvlDerived" :key="row.label" :style="{
+              flex: 1, textAlign: 'center', padding: '8px 4px',
               background: 'var(--theme-surface-2)', borderRadius: '12px',
               border: '1px solid var(--theme-border)',
             }">
-              <div :style="{ fontFamily: FF.label, fontSize: '12px', color: 'var(--theme-text-2)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px' }">{{ $t("collection.stat_speed") }}</div>
-              <div :style="{ fontFamily: FF.mono, fontSize: '16px', fontWeight: 700, color: lvlPreview ? 'var(--theme-accent)' : 'var(--theme-text)' }">
-                {{ lvlPreview ? lvlCalcPreview(lvlPreview.stat, lvlPreview.delta).velocita : lvlCurrentVel }}
+              <div :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-text-2)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }">{{ row.label }}</div>
+              <div :style="{ fontFamily: FF.mono, fontSize: '15px', fontWeight: 700, color: 'var(--theme-text)' }">
+                {{ row.nuovo ?? row.cur }}{{ row.suff }}
               </div>
-              <div v-if="lvlPreview" :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-text-3)' }">
-                {{ $t('collection.was') }} {{ lvlCurrentVel }}
-              </div>
-            </div>
-            <div :style="{
-              textAlign: 'center', padding: '8px 16px', minWidth: '96px',
-              background: 'var(--theme-surface-2)', borderRadius: '12px',
-              border: '1px solid var(--theme-border)',
-            }">
-              <div :style="{ fontFamily: FF.label, fontSize: '12px', color: 'var(--theme-text-2)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '4px' }">{{ $t("collection.stat_crit") }}</div>
-              <div :style="{ fontFamily: FF.mono, fontSize: '16px', fontWeight: 700, color: lvlPreview ? 'var(--theme-accent)' : 'var(--theme-text)' }">
-                {{ lvlPreview ? lvlCalcPreview(lvlPreview.stat, lvlPreview.delta).crit_chance : lvlCurrentCrit }}%
-              </div>
-              <div v-if="lvlPreview" :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-text-3)' }">
-                {{ $t('collection.was') }} {{ lvlCurrentCrit }}%
+              <div :style="{
+                fontFamily: FF.mono, fontSize: '11px', fontWeight: 800, minHeight: '15px', marginTop: '2px',
+                color: row.nuovo == null || row.nuovo === row.cur ? 'var(--theme-text-3)' : (row.nuovo > row.cur ? C.ok : C.err),
+              }">
+                <template v-if="row.nuovo != null">{{ row.nuovo === row.cur ? '=' : (row.nuovo > row.cur ? '+' + (row.nuovo - row.cur) : '−' + (row.cur - row.nuovo)) + row.suff }}</template>
               </div>
             </div>
           </div>

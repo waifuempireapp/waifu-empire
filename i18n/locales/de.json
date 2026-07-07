@@ -266,7 +266,8 @@
     "no_waifu_short": "Keine Waifu",
     "change_filters": "Ändere die Filter.",
     "equip_1_move": "Weise mindestens 1 Angriff zu",
-    "team_max_5": "Maximal 8 Waifus pro Team"
+    "team_max_5": "Maximal 8 Waifus pro Team",
+    "stat_hp": "KP"
   },
   "swap": {
     "loading": "Laden…",

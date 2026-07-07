@@ -241,6 +241,7 @@ async function init() {
     animate(THREE)
   } catch (e) {
     console.warn('[BustinaGLB] WebGL non disponibile, uso fallback', e)
+    rethrowIfStaleChunk(e)  // chunk vecchio post-deploy → chunk-reload ricarica
     glReady.value = false
     failed.value = true   // → mostra il fallback (poster se disponibile)
     window.dispatchEvent(new Event('bustina:ready'))

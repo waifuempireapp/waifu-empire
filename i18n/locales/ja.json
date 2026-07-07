@@ -266,7 +266,8 @@
     "no_waifu_short": "ワイフなし",
     "change_filters": "フィルターを変更してください。",
     "equip_1_move": "攻撃技を1つ以上割り当ててください",
-    "team_max_5": "チームは最大8人まで"
+    "team_max_5": "チームは最大8人まで",
+    "stat_hp": "HP"
   },
   "swap": {
     "loading": "読み込み中…",

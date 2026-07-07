@@ -4,6 +4,7 @@
 import { defineEventHandler, getHeader, getRouterParam, readBody, createError } from 'h3';
 import { getAdminAuth, getAdminDb } from '../../../utils/firebaseAdmin';
 import { computeAndSaveStats } from '../../../utils/gameLogic';
+import { resolveWaifuStats } from '../../../../utils/waifuStats';
 
 const STAT_RANGES: Record<string, { min: number; max: number }> = {
   tette:          { min: 1,  max: 7    },
@@ -60,8 +61,17 @@ export default defineEventHandler(async (event) => {
   const currentLevel: number = userWaifu.livello ?? 1;
   if (currentLevel >= 10) throw createError({ statusCode: 422, message: 'Livello massimo raggiunto' });
 
+  // Base = stat estetiche RISOLTE (reali dal catalogo o generate deterministicamente
+  // dall'id, le stesse mostrate su carta/dettaglio) + override personali.
+  // Prima si usava il catalogo raw: i campi mancanti cadevano sui default fissi
+  // delle formule → velocita/crit ricalcolate da una base diversa da quella
+  // visualizzata (ogni level-up sembrava peggiorare le stat).
   const statPersonali = userWaifu.stat_personali ?? {};
-  const currentValue: number = statPersonali[stat] ?? catalog[stat] ?? 0;
+  const statBase: Record<string, number> = {
+    ...resolveWaifuStats({ ...catalog, id: catalog.id ?? waifuId }),
+    ...statPersonali,
+  };
+  const currentValue: number = statBase[stat] ?? 0;
   const range = STAT_RANGES[stat];
   const newValue: number = currentValue + delta;
 
@@ -69,7 +79,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 422, message: `${stat} fuori range (${range.min}–${range.max})` });
   }
 
-  const newStatPersonali = { ...statPersonali, [stat]: newValue };
+  // Persistiamo TUTTA la base: da qui in poi i valori sono congelati sul doc
+  const newStatPersonali = { ...statBase, [stat]: newValue };
   const rarityConfig = cfgSnap.exists ? cfgSnap.data()! : null;
   const { velocita, crit_chance, hp } = computeAndSaveStats(catalog, catalog.rarita ?? 'comune', newStatPersonali, rarityConfig);
 

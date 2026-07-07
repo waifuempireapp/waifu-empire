@@ -317,7 +317,8 @@
     "moves_count": "⚔ {n}/4 mosse",
     "no_waifu_short": "Nessuna waifu",
     "change_filters": "Cambia i filtri.",
-    "equip_1_move": "Assegna almeno 1 mossa attacco"
+    "equip_1_move": "Assegna almeno 1 mossa attacco",
+    "stat_hp": "HP"
   },
   "swap": {
     "loading": "Caricamento…",

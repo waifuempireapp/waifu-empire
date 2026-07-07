@@ -317,7 +317,8 @@
     "moves_count": "⚔ {n}/4 moves",
     "no_waifu_short": "No waifu",
     "change_filters": "Change the filters.",
-    "equip_1_move": "Assign at least 1 attack move"
+    "equip_1_move": "Assign at least 1 attack move",
+    "stat_hp": "HP"
   },
   "swap": {
     "loading": "Loading…",

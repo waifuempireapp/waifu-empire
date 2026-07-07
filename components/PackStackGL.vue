@@ -177,6 +177,7 @@ async function init() {
     startLoop(THREE)
   } catch (e) {
     console.error('[PackStackGL] init failed', e)
+    rethrowIfStaleChunk(e)  // chunk vecchio post-deploy → chunk-reload ricarica
     emit('failed')  // il parent salta la cerimonia dello stack
     emit('ready')   // sblocca comunque l'overlay anti-FOUC
   }

@@ -121,8 +121,9 @@ const wheelFailed = ref(false)
 let wheelWatchdog: ReturnType<typeof setTimeout> | null = null
 function armWheelWatchdog() {
   if (wheelWatchdog) clearTimeout(wheelWatchdog)
-  // 8s: al primo avvio il GLB (≈6.6MB) può impiegare qualche secondo su rete mobile
-  wheelWatchdog = setTimeout(() => { wheelFailed.value = true }, 8000)
+  // 12s: al primo avvio il GLB (≈6.6MB) può impiegare parecchi secondi su rete
+  // mobile — meglio aspettare che degradare alla schermata senza carosello
+  wheelWatchdog = setTimeout(() => { wheelFailed.value = true }, 12000)
 }
 function onWheelReady() {
   if (wheelWatchdog) { clearTimeout(wheelWatchdog); wheelWatchdog = null }
@@ -364,7 +365,10 @@ async function apri(tipoPacchetto: string) {
   bustaAperta.value = false
   bustaInAnimazione.value = false
   packPicked.value = false   // riparte dalla scelta della bustina (carosello)
-  if (!wheelFailed.value) armWheelWatchdog()
+  // Ogni sbusto RITENTA la ruota: un fallimento (rete lenta, contesto GL perso)
+  // non deve toglierla per sempre — prima wheelFailed restava true a vita
+  wheelFailed.value = false
+  armWheelWatchdog()
   stato.value = 'reveal'
 
   // Preload immediato: le immagini arrivano durante l'animazione del pack (≥1.3s)

@@ -201,6 +201,7 @@ async function init() {
     startLoop()
   } catch (e) {
     console.error('[PackCarouselGL] init failed', e)
+    rethrowIfStaleChunk(e)  // chunk vecchio post-deploy → chunk-reload ricarica
     emit('failed')  // il parent ripiega sul flusso bustina singola
   }
 }

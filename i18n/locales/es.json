@@ -266,7 +266,8 @@
     "no_waifu_short": "Ninguna waifu",
     "change_filters": "Cambia los filtros.",
     "equip_1_move": "Asigna al menos 1 movimiento de ataque",
-    "team_max_5": "Máximo 8 waifus por equipo"
+    "team_max_5": "Máximo 8 waifus por equipo",
+    "stat_hp": "PS"
   },
   "swap": {
     "loading": "Cargando…",
