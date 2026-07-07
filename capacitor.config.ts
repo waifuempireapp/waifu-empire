@@ -10,7 +10,7 @@ const config: CapacitorConfig = {
   // Identificativo univoco dell'app (bundle ID)
   appId: 'com.imperodellewaifu.app',
   // Nome visualizzato sul dispositivo mobile
-  appName: 'Impero delle Waifu',
+  appName: "Waifu's Empire",
   // Cartella output di `nuxt build` → usata da `cap sync`
   webDir: 'dist',
   server: {

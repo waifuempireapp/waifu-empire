@@ -32,12 +32,12 @@ const DEFAULT_BUSTINA = '/bustine/bustina_asset.glb'
 
 // Geometria dell'anello: compatto — ~5 bustine visibili davanti, quelle dietro
 // vicine (non lontanissime) che scorrono appena sopra.
-const SPREAD_X = 2.55
-const DEPTH_Z  = 1.35
+const SPREAD_X = 2.9
+const DEPTH_Z  = 1.45
 // Le bustine dietro salgono leggermente (prospettiva dall'alto)
 const LIFT_Y = 0.32
 // Bustine piccole (ne entrano 5 davanti); la CENTRALE viene ingrandita col focus
-const PACK_SCALE = 0.6
+const PACK_SCALE = 0.7
 const FOCUS_BOOST = 0.22   // +22% di scala sulla bustina frontale
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -182,10 +182,11 @@ async function init() {
       })
     }
 
-    // N cloni sull'anello (geometria + materiale condivisi → leggero)
+    // N cloni sull'anello — geometria condivisa, MATERIALE clonato per mesh
+    // (texture condivisa): serve per la patina biancastra sulle bustine dietro
     const n = Math.max(3, props.count)
     for (let i = 0; i < n; i++) {
-      const m = new THREE.Mesh(sharedGeo, sharedMat)
+      const m = new THREE.Mesh(sharedGeo, (sharedMat as import('three').MeshStandardMaterial).clone())
       scene.add(m)
       meshes.push(m)
     }
@@ -224,6 +225,10 @@ function layoutRing(t: number) {
     // Leggero tilt coverflow verso il centro
     m.rotation.y = -Math.sin(th) * 0.42
     m.renderOrder = Math.round(zN * 100)
+    // Patina biancastra sulle bustine NON frontali (effetto "disabilitate"):
+    // emissive verso il bianco proporzionale alla profondità
+    const wash = Math.max(0, (1 - zN) / 2) * 0.5
+    ;(m.material as import('three').MeshStandardMaterial).emissive.setRGB(wash, wash, wash)
   }
 }
 
@@ -256,6 +261,7 @@ function startLoop() {
       const e = easeInOut(p)
       const chosen = meshes[chosenIdx]
       if (chosen) {
+        ;(chosen.material as import('three').MeshStandardMaterial).emissive.setRGB(0, 0, 0)
         // La scelta zooma verso il centro/camera con arco morbido
         chosen.position.x = chosenFrom.x + (0 - chosenFrom.x) * e
         chosen.position.y = chosenFrom.y + (-0.05 - chosenFrom.y) * e + Math.sin(e * Math.PI) * 0.12
@@ -404,6 +410,7 @@ onMounted(() => { init() })
 onBeforeUnmount(() => {
   if (animId !== null) { cancelAnimationFrame(animId); animId = null }
   sharedGeo?.dispose()
+  for (const m of meshes) (m.material as import('three').Material)?.dispose?.()
   ;(sharedMat as any)?.map?.dispose?.()
   sharedMat?.dispose()
   chosenMat?.dispose()
