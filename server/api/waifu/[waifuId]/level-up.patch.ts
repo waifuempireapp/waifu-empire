@@ -50,7 +50,12 @@ export default defineEventHandler(async (event) => {
   const coll = collSnap.exists ? collSnap.data()! : {};
   const userWaifu = (coll as any).waifu?.[waifuId];
   if (!userWaifu) throw createError({ statusCode: 404, message: 'Waifu non in collezione' });
-  if (!userWaifu.levelup_pending) throw createError({ statusCode: 422, message: 'Nessun level-up disponibile' });
+  // Level-up disponibile se: flag pending OPPURE 3+ copie (che vengono consumate)
+  const copieAttuali: number = userWaifu.copie ?? 0;
+  const usaCopie = !userWaifu.levelup_pending;
+  if (usaCopie && copieAttuali < 3) {
+    throw createError({ statusCode: 422, message: 'Servono almeno 3 copie per il level-up' });
+  }
 
   const currentLevel: number = userWaifu.livello ?? 1;
   if (currentLevel >= 10) throw createError({ statusCode: 422, message: 'Livello massimo raggiunto' });
@@ -68,6 +73,7 @@ export default defineEventHandler(async (event) => {
   const rarityConfig = cfgSnap.exists ? cfgSnap.data()! : null;
   const { velocita, crit_chance, hp } = computeAndSaveStats(catalog, catalog.rarita ?? 'comune', newStatPersonali, rarityConfig);
 
+  const nuoveCopie = usaCopie ? copieAttuali - 3 : copieAttuali;
   await adminDb.doc(`users/${uid}/collezione/main`).update({
     [`waifu.${waifuId}.stat_personali`]:  newStatPersonali,
     [`waifu.${waifuId}.velocita`]:        velocita,
@@ -75,7 +81,8 @@ export default defineEventHandler(async (event) => {
     [`waifu.${waifuId}.hp`]:              hp,
     [`waifu.${waifuId}.livello`]:         currentLevel + 1,
     [`waifu.${waifuId}.levelup_pending`]: false,
+    [`waifu.${waifuId}.copie`]:           nuoveCopie,
   });
 
-  return { success: true, livello: currentLevel + 1, velocita, crit_chance, hp, [stat]: newValue };
+  return { success: true, livello: currentLevel + 1, velocita, crit_chance, hp, copie: nuoveCopie, [stat]: newValue };
 });

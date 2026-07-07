@@ -447,37 +447,18 @@ function onMouseLeave(e: MouseEvent) {
         </div>
       </div>
 
-      <!-- Stelle rarità -->
-      <div style="display: flex; gap: 1.5px; margin-top: 1px; flex-shrink: 0;">
-        <span
-          v-for="i in rar.stelle"
-          :key="i"
-          :style="{
-            color: rb.inner,
-            fontSize: `${Math.round(11 * scale)}px`,
-            textShadow: `0 0 6px ${rb.glow}`,
-            filter: `drop-shadow(0 0 3px ${rb.inner})`,
-          }"
-        >&#9733;</span>
-      </div>
+      <!-- Rarità come SCRITTA al posto delle stelle (in alto, non copre l'art) -->
+      <div :style="{
+        marginTop: '1px', flexShrink: 0,
+        color: rb.inner,
+        fontSize: `${Math.round(8.5 * scale)}px`,
+        fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase',
+        fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
+        textShadow: `0 0 8px ${rb.glow}`,
+        lineHeight: 1,
+      }">{{ rar.nome }}</div>
     </div>
 
-    <!-- TAG RARITÀ (pill laterale destro) -->
-    <div :style="{
-      position: 'absolute', top: `${Math.round(46 * scale)}px`, right: '0',
-      background: `linear-gradient(135deg, ${rb.outer}, ${rb.inner})`,
-      color: '#000',
-      padding: `${Math.round(2.5 * scale)}px ${Math.round(9 * scale)}px`,
-      fontSize: `${Math.round(7.5 * scale)}px`,
-      fontWeight: '800', letterSpacing: '0.2em',
-      fontFamily: `var(--ff-label, 'Saira Condensed', sans-serif)`,
-      borderRadius: `${Math.round(5 * scale)}px 0 0 ${Math.round(5 * scale)}px`,
-      textTransform: 'uppercase',
-      boxShadow: `0 2px 12px ${rb.glow}, 0 0 0 1px rgba(255,255,255,0.18) inset`,
-      zIndex: videoAttivo ? '0' : '5',
-      opacity: videoAttivo ? '0' : '1',
-      transition: 'opacity 0.3s ease',
-    }">{{ rar.nome }}</div>
 
     <!-- OVERLAY BOTTOM: combat stats + linea ornamento + stat circles -->
     <div :style="{

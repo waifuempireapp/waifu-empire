@@ -379,7 +379,8 @@ const catalogWaifuSel = computed(() =>
   waifuSel.value ? props.waifuCat.find((w: any) => w.id === waifuSel.value) : null
 )
 const mostraLevelUp = computed(() =>
-  !!waifuSel.value && !!datiWaifuSel.value?.levelup_pending && !!catalogWaifuSel.value
+  !!waifuSel.value && !!catalogWaifuSel.value
+    && (!!datiWaifuSel.value?.levelup_pending || (datiWaifuSel.value?.copie ?? 0) >= 3)
 )
 
 // ── LevelUp Panel state ───────────────────────────────────────
@@ -436,13 +437,15 @@ async function lvlApply() {
       ...(datiWaifuSel.value?.stat_personali ?? {}),
       [lvlPreview.value.stat]: (lvlStatBase.value[lvlPreview.value.stat] ?? 0) + lvlPreview.value.delta,
     }
-    const patch = {
+    const patch: Record<string, unknown> = {
       livello: data.livello,
       velocita: data.velocita,
       crit_chance: data.crit_chance,
       stat_personali: newStatPersonali,
       levelup_pending: false,
     }
+    // Il level-up da 3 copie le CONSUMA: allinea il valore locale a quello del server
+    if (typeof data.copie === 'number') patch.copie = data.copie
     const nuova = JSON.parse(JSON.stringify(props.collezione))
     nuova.waifu[waifuSel.value!] = { ...datiWaifuSel.value, ...patch }
     emit('updateCollezione', nuova)
@@ -854,18 +857,16 @@ function apriNegozio() {
               boxShadow:'0 0 10px rgba(255,69,0,0.65)', pointerEvents:'none',
               textTransform:'uppercase', whiteSpace:'nowrap',
             }">🔥 HOT</div>
-            <!-- Chip '+' — top-right: level-up disponibile (3+ copie della carta).
-                 Se c'è anche il chip HOT, il '+' si sposta a fianco. -->
+            <!-- Chip '+' — ORO come il LV, appoggiato all'angolo alto-destro del
+                 chip livello (level-up disponibile: 3+ copie) -->
             <div v-if="(dati?.copie ?? 0) >= 3" :style="{
-              position:'absolute', top:'-8px',
-              right: (w.hot === true && (profilo?.hardPass || false)) ? '78px' : '-8px',
-              zIndex:26,
-              width:'26px', height:'26px', borderRadius:'50%',
-              background:'var(--theme-surface)',
-              border:`2px solid ${C.ok}`,
-              color:C.ok, display:'grid', placeItems:'center',
-              fontFamily:FF.display, fontSize:'17px', fontWeight:900, lineHeight:1,
-              boxShadow:`0 0 10px ${C.ok}66`, pointerEvents:'none',
+              position:'absolute', bottom:'30px', right:'0px', zIndex:26,
+              width:'22px', height:'22px', borderRadius:'50%',
+              background:'rgba(4,2,14,0.92)',
+              border:`2px solid ${C.gold}`,
+              color:C.gold, display:'grid', placeItems:'center',
+              fontFamily:FF.display, fontSize:'15px', fontWeight:900, lineHeight:1,
+              boxShadow:`0 0 10px ${C.gold}66`, pointerEvents:'none',
             }">+</div>
             <!-- Chip LV — bottom-right della carta; font compensato per zoom:0.98 -->
             <div :style="{
