@@ -1159,6 +1159,33 @@ const isVolSwap       = computed(() => phase.value === 'voluntarySwap')
 const isWaitingKoRepl = computed(() => phase.value === 'pvpWaitingKoReplacement')
 const allPPOut        = computed(() => (player.value?.moves ?? []).every(m => (m.pp ?? 0) <= 0))
 
+// ── Menù azioni pre-mosse: MOSSE / WAIFU / ABBANDONA ─────────────────────────
+// Sostituisce la vecchia riga panchina sopra la griglia: si sceglie prima
+// l'azione, poi si vede la griglia mosse o lo slideover di cambio.
+const actionMenu = ref<'menu' | 'moves'>('menu')
+watch(isChoose, (v) => { if (v) actionMenu.value = 'menu' })
+const swapDisabled = computed(() =>
+  !isChoose.value || isAnim.value || (props.isPvP && props.pvpWaiting)
+  || !pTeam.value.some((w, i) => i !== pActive.value && !w.isKO) || turn.value <= 1)
+
+// Abbandona: primo tap chiede conferma (2.6s), secondo tap = sconfitta dichiarata
+const confirmQuit = ref(false)
+let confirmQuitTimer: ReturnType<typeof setTimeout> | null = null
+function tapAbbandona() {
+  if (!confirmQuit.value) {
+    confirmQuit.value = true
+    if (confirmQuitTimer) clearTimeout(confirmQuitTimer)
+    confirmQuitTimer = setTimeout(() => { confirmQuit.value = false }, 2600)
+    return
+  }
+  if (confirmQuitTimer) { clearTimeout(confirmQuitTimer); confirmQuitTimer = null }
+  confirmQuit.value = false
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null }
+  isAnim.value = false
+  resolveActive = false
+  phase.value = 'defeat'
+}
+
 const sEnemy  = computed(() => isMobile.value ? 145 : 185)
 const sPlayer = computed(() => isMobile.value ? 162 : 210)
 
@@ -1936,82 +1963,64 @@ const mvp = computed(() => {
           </div>
         </div>
 
-        <!-- ── Griglia mosse normale ── -->
+        <!-- ── Menù azioni → griglia mosse ── -->
         <template v-else>
-          <!-- Bench row + bottone cambio -->
-          <div :style="{ flexShrink:0,display:'flex',alignItems:'center',padding:'4px 12px 3px',gap:'8px' }">
-            <!-- Bottone CAMBIA -->
-            <div :style="{ flexShrink:0,width:'52px' }">
+          <!-- Menù: MOSSE | WAIFU | ABBANDONA — un unico "bottone" (bordo e
+               radius condivisi) con i segmenti divisi da linee verticali -->
+          <div v-if="actionMenu === 'menu'" :style="{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'12px 14px' }">
+            <div :style="{
+              width:'100%', maxWidth:'520px', height:'62px',
+              display:'flex', alignItems:'stretch',
+              background:'var(--theme-surface-2)',
+              border:'1px solid var(--theme-border-2)',
+              borderRadius:'10px', overflow:'hidden',
+              boxShadow:'0 2px 12px var(--theme-shadow)',
+            }">
               <button
-                :disabled="!isChoose || isAnim || (isPvP && pvpWaiting) || !pTeam.some((w, i) => i !== pActive && !w.isKO) || turn <= 1"
+                :disabled="!isChoose || isAnim || (isPvP && pvpWaiting)"
+                @click="actionMenu = 'moves'"
+                :style="{
+                  flex:1.15, background:'none', border:'none',
+                  cursor: (!isChoose || isAnim || (isPvP && pvpWaiting)) ? 'not-allowed' : 'pointer',
+                  fontFamily:'var(--ff-label)', fontSize:'15px', fontWeight:800, letterSpacing:'.12em',
+                  color:'#a78bfa', opacity: (!isChoose || isAnim || (isPvP && pvpWaiting)) ? .35 : 1,
+                }"
+              >⚔ MOSSE</button>
+              <div :style="{ width:'1px', background:'var(--theme-border-2)', margin:'9px 0', flexShrink:0 }"/>
+              <button
+                :disabled="swapDisabled"
                 @click="startVoluntarySwap"
                 :style="{
-                  fontFamily:'var(--ff-label)',fontSize:'12px',letterSpacing:'.6px',
-                  background: (!isChoose || isAnim || (isPvP && pvpWaiting) || !pTeam.some((w, i) => i !== pActive && !w.isKO) || turn <= 1)
-                    ? 'var(--theme-shimmer)'
-                    : 'linear-gradient(rgba(167,139,250,0.25), rgba(167,139,250,0.08))',
-                  border: (!isChoose || isAnim || (isPvP && pvpWaiting) || !pTeam.some((w, i) => i !== pActive && !w.isKO) || turn <= 1)
-                    ? '0.8px solid var(--theme-border)'
-                    : '0.8px solid rgba(167,139,250,0.4)',
-                  borderRadius:'12px',
-                  color: (!isChoose || isAnim || (isPvP && pvpWaiting) || !pTeam.some((w, i) => i !== pActive && !w.isKO) || turn <= 1)
-                    ? 'rgba(167,139,250,0.25)' : '#a78bfa',
-                  backdropFilter: 'blur(8px)',
-                  padding:'5px 4px',
-                  cursor: (!isChoose || isAnim || (isPvP && pvpWaiting) || !pTeam.some((w, i) => i !== pActive && !w.isKO) || turn <= 1) ? 'not-allowed' : 'pointer',
-                  display:'flex',flexDirection:'column',alignItems:'center',gap:'1px',width:'100%',
-                  transition:'background .15s',
+                  flex:1, background:'none', border:'none',
+                  cursor: swapDisabled ? 'not-allowed' : 'pointer',
+                  fontFamily:'var(--ff-label)', fontSize:'15px', fontWeight:800, letterSpacing:'.12em',
+                  color:'#00b4ff', opacity: swapDisabled ? .35 : 1,
                 }"
-              >
-                <span :style="{ fontSize:'13px' }">↻</span>
-                <span>CAMBIA</span>
-              </button>
-            </div>
-
-            <!-- Slot bench display-only -->
-            <div :style="{ display:'flex',gap:'7px',flex:1,justifyContent:'center' }">
-              <template v-for="(w, i) in pTeam" :key="w.id">
-                <button v-if="i !== pActive" disabled class="wba-bench-slot"
-                  :style="{
-                    width:'72px',height:'72px',borderRadius:'8px',overflow:'hidden',flexShrink:0,
-                    border:`2.5px solid ${w.isKO ? 'rgba(255,255,255,.1)' : (TYPE_COLORS[w.type]?.border ?? '#444')}`,
-                    boxShadow:'0 2px 8px var(--theme-shadow)',
-                    background:'var(--theme-bg-secondary)', position:'relative',
-                    cursor:'default',padding:0,
-                    filter: w.isKO ? 'grayscale(1) brightness(.36)' : 'none',
-                  }"
-                >
-                  <img v-if="w.image" :src="ikUrl(w.image, 'thumbnail') ?? ''" :alt="w.name"
-                    :style="{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top' }"/>
-                  <div v-else :style="{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:'13px',opacity:.22 }">◈</div>
-                  <div v-if="!w.isKO" :style="{ position:'absolute',bottom:0,left:0,right:0,height:'3px',background:'var(--theme-border)' }">
-                    <div :style="{
-                      width:`${w.maxHp > 0 ? Math.max(0, Math.min(100, (w.hp / w.maxHp) * 100)) : 0}%`,
-                      height:'100%',
-                      background: (w.maxHp > 0 ? (w.hp / w.maxHp) * 100 : 0) > 50 ? '#00e676' : (w.maxHp > 0 ? (w.hp / w.maxHp) * 100 : 0) > 25 ? '#ffd666' : '#ff4d4d',
-                    }"/>
-                  </div>
-                  <div v-if="w.isKO" :style="{ position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center' }">
-                    <span :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'#ff4d4d',fontWeight:900 }">KO</span>
-                  </div>
-                </button>
-              </template>
-            </div>
-
-            <!-- PvP waiting indicator -->
-            <div :style="{ flexShrink:0,width:'52px',textAlign:'center' }">
-              <template v-if="isPvP && pvpWaiting">
-                <div :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'rgba(0,200,255,.4)',letterSpacing:'.5px' }">ATTESA</div>
-                <div :style="{ display:'flex',gap:'3px',justifyContent:'center',marginTop:'3px' }">
-                  <div v-for="k in [0,1,2]" :key="k" :style="{
-                    width:'4px',height:'4px',borderRadius:'50%',background:'rgba(0,200,255,.4)',
-                    animation:`dotPulse 1.1s ease-in-out ${k * 0.36}s infinite`,
-                  }"/>
-                </div>
-              </template>
+              >↻ WAIFU</button>
+              <div :style="{ width:'1px', background:'var(--theme-border-2)', margin:'9px 0', flexShrink:0 }"/>
+              <button
+                @click="tapAbbandona"
+                :style="{
+                  flex:1, border:'none', cursor:'pointer',
+                  background: confirmQuit ? 'rgba(255,77,77,.16)' : 'none',
+                  boxShadow:'inset 0 0 0 1.5px rgba(255,77,77,.55)',
+                  borderRadius:'0 9px 9px 0',
+                  fontFamily:'var(--ff-label)', fontSize:'15px', fontWeight:800, letterSpacing:'.12em',
+                  color:'#ff4d4d', transition:'background .15s',
+                }"
+              >{{ confirmQuit ? 'SICURO?' : 'ABBANDONA' }}</button>
             </div>
           </div>
 
+          <template v-else>
+          <!-- Torna al menù azioni -->
+          <div :style="{ flexShrink:0, padding:'6px 12px 0' }">
+            <button @click="actionMenu = 'menu'" :style="{
+              background:'none', border:'none', cursor:'pointer', padding:'4px 6px',
+              fontFamily:'var(--ff-label)', fontSize:'12px', fontWeight:800, letterSpacing:'.1em',
+              color:'var(--theme-text-3)',
+            }">← MENU</button>
+          </div>
 
           <!-- Griglia mosse 2×2 -->
           <div :style="{ flex:1,position:'relative',padding:'2px 10px 6px',display:'flex',flexDirection:'column',minHeight:0 }">
@@ -2133,6 +2142,7 @@ const mvp = computed(() => {
               </template>
             </div>
           </div>
+          </template>
         </template>
       </div>
     </div>
