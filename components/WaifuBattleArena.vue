@@ -771,7 +771,9 @@ async function handleVoluntarySwap(newIdx: number, { isPPExhausted = false } = {
 
         if (isCrit) { message.value = 'Colpo critico! 💥'; await wait(350) }
         if (effectiveness === 'Super efficace!') { message.value = 'Super efficace!'; await wait(350) }
+        else if (effectiveness === 'Efficace!') { message.value = 'Efficace!'; await wait(350) }
         else if (effectiveness === 'Poco efficace…') { message.value = 'Poco efficace…'; await wait(350) }
+        else if (effectiveness === 'Non efficace') { message.value = 'Non ha effetto!'; await wait(350) }
 
         // Applica l'eventuale effetto della mossa CPU sulla waifu appena entrata
         if (move.effect && !newDef.isKO) applyMoveEffect('enemy', move)
@@ -1015,7 +1017,9 @@ async function resolveTurn(pMi: number, eMi: number, _externalResult: null = nul
     const msgs: string[] = []
     if (isCrit) msgs.push('Colpo critico! 💥')
     if (effectiveness === 'Super efficace!') msgs.push('Super efficace!')
+    else if (effectiveness === 'Efficace!') msgs.push('Efficace!')
     else if (effectiveness === 'Poco efficace…') msgs.push('Poco efficace…')
+    else if (effectiveness === 'Non efficace') msgs.push('Non ha effetto!')
     if (effMult < 1 && fieldEffects.value[side === 'player' ? 'enemy' : 'player'].some(e => e.kind === 'shield')) msgs.push('Lo scudo assorbe parte del danno!')
     if (move.effect && !newDef.isKO && move.effect.kind !== 'buff' && move.effect.kind !== 'shield') msgs.push(`${newDef.name} subisce: ${move.effect.label}!`)
     for (const m of msgs) { await wait(250); message.value = m }
@@ -1273,8 +1277,10 @@ function getEffDisplay(moveType: string, enemyType: string, playerType: string):
   const { label } = getEffectiveness(moveType, playerType, enemyType)
   const col = (_TYPE_COLORS_UI[moveType] ?? TYPE_COLORS[moveType])?.border ?? '#9ca3af'
   if (label === 'Super efficace!') return { col, lbl: 'Super efficace!', bold: true }
+  if (label === 'Efficace!')       return { col, lbl: 'Efficace',        bold: true }
   if (label === 'Poco efficace…')  return { col, lbl: 'Poco efficace',   bold: true }
-  return { col, lbl: 'Efficace', bold: false }
+  if (label === 'Non efficace')    return { col, lbl: 'Non efficace',    bold: true }
+  return { col, lbl: 'Normale', bold: false }
 }
 
 // ─── MVP (risultato) ──────────────────────────────────────────────────────────

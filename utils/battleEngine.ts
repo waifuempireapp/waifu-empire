@@ -76,17 +76,20 @@ export const TYPE_COLORS: Record<string, { bg: string; text: string; border: str
 }
 
 /**
- * Type chart generata a runtime dal ciclo pentagonale.
- * typeChart[moveType][defenderType] → moltiplicatore (0.5 | 1.0 | 1.5)
+ * Type chart generata a runtime dal ciclo pentagonale — 5 livelli:
+ *   battuto diretto   (di = ai+1) → ×2.0  Super efficace
+ *   battuto indiretto (di = ai+2) → ×1.5  Efficace
+ *   stesso tipo       (di = ai)   → ×1.0  Normale
+ *   contro-indiretto  (di = ai+3) → ×0.0  Non efficace (immune)
+ *   contro-diretto    (di = ai+4) → ×0.5  Poco efficace
  */
 export const typeChart: Record<string, Record<string, number>> = (() => {
+  const MULT_BY_DELTA = [1.0, 2.0, 1.5, 0.0, 0.5]
   const chart: Record<string, Record<string, number>> = {}
   TYPE_NAMES.forEach((attacker, ai) => {
     chart[attacker] = {}
     TYPE_NAMES.forEach((defender, di) => {
-      const beats  = (ai + 1) % 5 === di
-      const beaten = (di + 1) % 5 === ai
-      chart[attacker][defender] = beats ? 1.5 : beaten ? 0.5 : 1.0
+      chart[attacker][defender] = MULT_BY_DELTA[(di - ai + 5) % 5]
     })
   })
   return chart
@@ -99,7 +102,9 @@ export const typeChart: Record<string, Record<string, number>> = (() => {
 export function getEffectiveness(moveType: string, _attackerType: string, defenderType: string): { multiplier: number; label: string } {
   const multiplier = typeChart[moveType]?.[defenderType] ?? 1.0
   let label = 'Normale'
-  if (multiplier >= 1.5) label = 'Super efficace!'
+  if (multiplier >= 2)        label = 'Super efficace!'
+  else if (multiplier >= 1.5) label = 'Efficace!'
+  else if (multiplier === 0)  label = 'Non efficace'
   else if (multiplier <= 0.5) label = 'Poco efficace…'
   return { multiplier, label }
 }
@@ -117,13 +122,11 @@ export function calculateDamage(
 ): { damage: number; isCrit: boolean; effectiveness: string; multiplier: number } {
   const { multiplier, label: effectiveness } = getEffectiveness(move.type, attacker.type, defender.type)
   const isCrit = Math.random() < (attacker.critChance ?? 0.05)
-  // CRITICO = danno base + BONUS critico (es. mossa da 30 → 30 + bonus),
-  // NON una sostituzione del danno base.
+  // danno = potenza × efficacia tipo (0 / 0.5 / 1 / 1.5 / 2) × 1.75 se critico.
+  // Con efficacia 0 la mossa NON fa danno (niente minimo a 1).
   const base = move.power ?? 0
-  const critBonus = isCrit
-    ? Math.max(1, (move.damage_crit ?? move.critPower ?? Math.round(base * 0.25)))
-    : 0
-  const damage = Math.max(1, Math.round((base + critBonus) * multiplier))
+  const raw  = base * multiplier * (isCrit ? 1.75 : 1)
+  const damage = multiplier === 0 ? 0 : Math.max(1, Math.round(raw))
   return { damage, isCrit, effectiveness, multiplier }
 }
 
