@@ -330,7 +330,10 @@
       "Bash(kill %1)",
       "Bash(pkill -f \"nuxi dev --port 3210\")",
       "Bash(pkill -f \".output/server/index.mjs\")",
-      "Bash(npm remove *)"
+      "Bash(npm remove *)",
+      "Bash(sed -i '' 's|http://localhost:3210|http://localhost:3212|' .test-carousel.tmp.mjs)",
+      "Bash(SHOT=/private/tmp/claude-501/-Users-lazzari-Documents-Anime-Waifu-waifu-empire-nuxt/7eeae835-0174-42a6-8478-2bac2d68f0d8/scratchpad/carousel2.png node .test-carousel.tmp.mjs)",
+      "Bash(pkill -f \"nuxi dev --port 3212\")"
     ],
     "additionalDirectories": [
       "/private/tmp",

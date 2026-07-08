@@ -164,11 +164,26 @@ async function init() {
     sharedGeo = src!.geometry.clone()
 
     if (useModelMat) {
-      // Il GLB dell'espansione ha già la sua texture incorporata
+      // Il GLB dell'espansione ha già la sua texture incorporata.
+      // ATTENZIONE: se è esportato "unlit" (KHR_materials_unlit, come
+      // bustina_impero_stellare.glb) GLTFLoader crea un MeshBasicMaterial
+      // SENZA emissive → la patina in animazione faceva crashare l'init
+      // ("Cannot read properties of undefined (reading 'setRGB')") e il
+      // carosello ripiegava sempre sulla bustina singola. In quel caso
+      // ricostruiamo un MeshStandardMaterial con la stessa texture.
       const m = srcMat!.clone()
       if (m.map) m.map.colorSpace = THREE.SRGBColorSpace
-      m.envMapIntensity = 1.2
-      sharedMat = m
+      if ((m as unknown as { emissive?: unknown }).emissive) {
+        m.envMapIntensity = 1.2
+        sharedMat = m
+      } else {
+        sharedMat = new THREE.MeshStandardMaterial({
+          map: m.map ?? null,
+          color: (m.color?.clone?.() as import('three').Color | undefined) ?? new THREE.Color(0xffffff),
+          metalness: 0.3, roughness: 0.5, envMapIntensity: 1.2,
+          emissive: new THREE.Color(0x000000),
+        })
+      }
     } else {
       applyPlanarUVs(sharedGeo, THREE)
       let tex: import('three').Texture | undefined
@@ -229,7 +244,7 @@ function layoutRing(t: number) {
     // Patina biancastra sulle bustine NON frontali (effetto "disabilitate"):
     // emissive verso il bianco proporzionale alla profondità
     const wash = Math.max(0, (1 - zN) / 2) * 0.5
-    ;(m.material as import('three').MeshStandardMaterial).emissive.setRGB(wash, wash, wash)
+    ;(m.material as import('three').MeshStandardMaterial).emissive?.setRGB(wash, wash, wash)
   }
 }
 
@@ -262,7 +277,7 @@ function startLoop() {
       const e = easeInOut(p)
       const chosen = meshes[chosenIdx]
       if (chosen) {
-        ;(chosen.material as import('three').MeshStandardMaterial).emissive.setRGB(0, 0, 0)
+        ;(chosen.material as import('three').MeshStandardMaterial).emissive?.setRGB(0, 0, 0)
         // La scelta zooma verso il centro/camera con arco morbido
         chosen.position.x = chosenFrom.x + (0 - chosenFrom.x) * e
         chosen.position.y = chosenFrom.y + (-0.05 - chosenFrom.y) * e + Math.sin(e * Math.PI) * 0.12
