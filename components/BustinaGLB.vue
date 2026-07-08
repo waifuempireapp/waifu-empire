@@ -12,6 +12,22 @@ const _glbMeshCache = new Map<string, Promise<import('three').Mesh>>()
 // contesto WebGL muore (WebView Android), il fallback mostra QUESTO — cioè il
 // pacchetto vero — invece di un placeholder.
 const _posterCache = new Map<string, string>()
+// Poster PERSISTENTE (localStorage): al riavvio dell'app il fallback mostra
+// subito il pacchetto reale catturato in una sessione precedente — il
+// placeholder sfumato resta solo per il primissimo avvio in assoluto.
+function _posterLoad(key: string): string | null {
+  const m = _posterCache.get(key)
+  if (m) return m
+  try {
+    const v = localStorage.getItem('bustina_poster:' + key)
+    if (v) { _posterCache.set(key, v); return v }
+  } catch { /* storage non disponibile */ }
+  return null
+}
+function _posterSave(key: string, shot: string): void {
+  _posterCache.set(key, shot)
+  try { localStorage.setItem('bustina_poster:' + key, shot) } catch { /* quota piena */ }
+}
 
 async function _loadMeshRaw(url: string): Promise<import('three').Mesh> {
   const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
@@ -78,7 +94,7 @@ const wrapperRef = ref<HTMLDivElement | null>(null)
 const glReady    = ref(false)  // canvas 3D pronto → aumenta opacity sopra il 2D
 const failed     = ref(false)  // init fallito o context perso → mostra fallback 2D
 // Poster del pacchetto (fotogramma del primo render): fallback identico al 3D
-const poster     = ref<string | null>(_posterCache.get('' ) ?? null)
+const poster     = ref<string | null>(_posterLoad(props.modelUrl || DEFAULT_BUSTINA))
 
 const XMIN = -0.5768, XMAX = 0.5731
 const YMIN = -1.0038, YMAX = 1.0008
@@ -121,7 +137,7 @@ function scheduleReinit() {
     reinitTries++
     failed.value = false
     await init()
-    if (!glReady.value && reinitTries < 6) scheduleReinit()
+    if (!glReady.value && reinitTries < 10) scheduleReinit()
     else if (glReady.value) reinitTries = 0
   }, delay)
 }
@@ -231,7 +247,7 @@ async function init() {
       const key = props.modelUrl || DEFAULT_BUSTINA
       if (!_posterCache.has(key)) {
         const shot = canvasRef.value!.toDataURL('image/jpeg', 0.85)
-        if (shot && shot.length > 2000) _posterCache.set(key, shot)
+        if (shot && shot.length > 2000) _posterSave(key, shot)
       }
       poster.value = _posterCache.get(key) ?? null
     } catch { /* il poster è solo un extra */ }
@@ -295,7 +311,7 @@ watch(() => props.ripping, (val) => {
 // cambio espansione con componente keep-alive) → re-init con il GLB giusto.
 watch(() => props.modelUrl, (nuovo, vecchio) => {
   if (nuovo !== vecchio) {
-    poster.value = _posterCache.get(nuovo || DEFAULT_BUSTINA) ?? null
+    poster.value = _posterLoad(nuovo || DEFAULT_BUSTINA)
     glReady.value = false
     init()
   }
@@ -405,7 +421,7 @@ onBeforeUnmount(() => {
          è più rapido → il placeholder non fa in tempo a vedersi → niente flash. ── -->
     <!-- v-if (non v-show): l'animazione di comparsa ritardata riparte ogni volta
          che il fallback deve mostrarsi (mount, context-loss WebGL, re-init) -->
-    <div v-if="!glReady || failed" class="bustina-fallback" :style="{
+    <div v-if="!glReady || failed" class="bustina-fallback" :class="{ 'bustina-fallback--poster': !!poster }" :style="{
       position: 'absolute', inset: '0',
       borderRadius: '10px',
       background: color
@@ -488,5 +504,11 @@ onBeforeUnmount(() => {
 }
 @keyframes bustinaFallbackIn {
   to { opacity: 1; }
+}
+/* Con il poster (fotogramma del pacchetto REALE, anche da sessioni precedenti
+   via localStorage) niente attesa: si vede subito il pack, mai il placeholder */
+.bustina-fallback--poster {
+  opacity: 1;
+  animation: none;
 }
 </style>

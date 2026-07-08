@@ -125,8 +125,12 @@ function armWheelWatchdog() {
   // mobile — meglio aspettare che degradare alla schermata senza carosello
   wheelWatchdog = setTimeout(() => { wheelFailed.value = true }, 12000)
 }
+// La ruota è coperta da un velo di loading finché il canvas non ha renderizzato:
+// niente pop-in delle bustine (o loading o scena pronta, mai vuoto/flash)
+const wheelReadyUi = ref(false)
 function onWheelReady() {
   if (wheelWatchdog) { clearTimeout(wheelWatchdog); wheelWatchdog = null }
+  wheelReadyUi.value = true
 }
 function onWheelFailed() {
   if (wheelWatchdog) { clearTimeout(wheelWatchdog); wheelWatchdog = null }
@@ -368,6 +372,7 @@ async function apri(tipoPacchetto: string) {
   // Ogni sbusto RITENTA la ruota: un fallimento (rete lenta, contesto GL perso)
   // non deve toglierla per sempre — prima wheelFailed restava true a vita
   wheelFailed.value = false
+  wheelReadyUi.value = false
   armWheelWatchdog()
   stato.value = 'reveal'
 
@@ -977,6 +982,19 @@ function cfTouchEnd(e: TouchEvent) {
         @picked="packPicked = true"
         @open="onCarouselOpen"
       />
+
+      <!-- Velo di caricamento: copre la scena finché la ruota non ha
+           renderizzato il primo frame, poi dissolve (zero pop-in) -->
+      <div :style="{
+        position:'absolute', inset:0, zIndex:4,
+        background:'var(--theme-bg)',
+        display:'flex', alignItems:'center', justifyContent:'center',
+        opacity: wheelReadyUi ? 0 : 1,
+        pointerEvents: wheelReadyUi ? 'none' : 'auto',
+        transition:'opacity 0.35s ease',
+      }">
+        <AppLoading />
+      </div>
 
       <!-- Titolo in overlay sopra il canvas (non intercetta il drag) -->
       <div style="position:absolute;top:calc(24px + env(safe-area-inset-top));left:0;right:0;text-align:center;padding:0 30px;animation:pulseSoft 2s infinite;pointer-events:none;z-index:2;">
