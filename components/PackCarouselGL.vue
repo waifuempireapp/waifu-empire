@@ -164,26 +164,16 @@ async function init() {
     sharedGeo = src!.geometry.clone()
 
     if (useModelMat) {
-      // Il GLB dell'espansione ha già la sua texture incorporata.
-      // ATTENZIONE: se è esportato "unlit" (KHR_materials_unlit, come
-      // bustina_impero_stellare.glb) GLTFLoader crea un MeshBasicMaterial
-      // SENZA emissive → la patina in animazione faceva crashare l'init
-      // ("Cannot read properties of undefined (reading 'setRGB')") e il
-      // carosello ripiegava sempre sulla bustina singola. In quel caso
-      // ricostruiamo un MeshStandardMaterial con la stessa texture.
+      // Il GLB dell'espansione ha già la sua texture incorporata: la teniamo
+      // COM'È (anche se unlit → MeshBasicMaterial: colori identici all'artwork,
+      // niente sbiancamento da luci/tonemapping). NB: i materiali unlit non
+      // hanno 'emissive' → mai toccarla senza guardia (crashava l'init).
       const m = srcMat!.clone()
       if (m.map) m.map.colorSpace = THREE.SRGBColorSpace
-      if ((m as unknown as { emissive?: unknown }).emissive) {
-        m.envMapIntensity = 1.2
-        sharedMat = m
-      } else {
-        sharedMat = new THREE.MeshStandardMaterial({
-          map: m.map ?? null,
-          color: (m.color?.clone?.() as import('three').Color | undefined) ?? new THREE.Color(0xffffff),
-          metalness: 0.3, roughness: 0.5, envMapIntensity: 1.2,
-          emissive: new THREE.Color(0x000000),
-        })
+      if ((m as unknown as { envMapIntensity?: number }).envMapIntensity !== undefined) {
+        (m as unknown as { envMapIntensity: number }).envMapIntensity = 1.2
       }
+      sharedMat = m
     } else {
       applyPlanarUVs(sharedGeo, THREE)
       let tex: import('three').Texture | undefined
@@ -241,10 +231,14 @@ function layoutRing(t: number) {
     // Leggero tilt coverflow verso il centro
     m.rotation.y = -Math.sin(th) * 0.42
     m.renderOrder = Math.round(zN * 100)
-    // Patina biancastra sulle bustine NON frontali (effetto "disabilitate"):
-    // emissive verso il bianco proporzionale alla profondità
-    const wash = Math.max(0, (1 - zN) / 2) * 0.5
-    ;(m.material as import('three').MeshStandardMaterial).emissive?.setRGB(wash, wash, wash)
+    // Patina "disabilitata" SOLO sulla metà POSTERIORE dell'anello (zN < 0):
+    // le bustine davanti restano coi colori pieni dell'artwork.
+    // Materiale con emissive → schiarisce; unlit (MeshBasicMaterial) → scurisce
+    // via color (l'emissive non esiste).
+    const wash = zN < 0 ? -zN * 0.45 : 0
+    const mat = m.material as import('three').MeshStandardMaterial
+    if (mat.emissive) mat.emissive.setRGB(wash, wash, wash)
+    else if (mat.color) mat.color.setRGB(1 - wash * 0.75, 1 - wash * 0.75, 1 - wash * 0.75)
   }
 }
 
@@ -277,7 +271,11 @@ function startLoop() {
       const e = easeInOut(p)
       const chosen = meshes[chosenIdx]
       if (chosen) {
-        ;(chosen.material as import('three').MeshStandardMaterial).emissive?.setRGB(0, 0, 0)
+        {
+          const cm = chosen.material as import('three').MeshStandardMaterial
+          if (cm.emissive) cm.emissive.setRGB(0, 0, 0)
+          else if (cm.color) cm.color.setRGB(1, 1, 1)
+        }
         // La scelta zooma verso il centro/camera con arco morbido
         chosen.position.x = chosenFrom.x + (0 - chosenFrom.x) * e
         chosen.position.y = chosenFrom.y + (-0.05 - chosenFrom.y) * e + Math.sin(e * Math.PI) * 0.12
