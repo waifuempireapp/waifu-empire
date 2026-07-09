@@ -481,7 +481,9 @@
     "item_hard_pass": "Hard Pass",
     "item_hard_pass_desc": "Unlock Hot cards",
     "item_trade_pass": "Trade Pass",
-    "item_trade_pass_desc": "Unlimited trades forever"
+    "item_trade_pass_desc": "Unlimited trades forever",
+    "item_challenge_pack_10": "Challenge Pack ×10",
+    "item_challenge_pack_10_desc": "+10 challenge packs"
   },
   "modal": {
     "insufficient_kisses_title": "INSUFFICIENT KISSES",

@@ -341,7 +341,8 @@
       "Bash(awk '/@keyframes/{k=$2} /255,255,255/{print k\": \"$0}' assets/css/main.css)",
       "Bash(sed -n '/\\\\.reveal-flip {/,/^}/p' components/tabs/SbustaTab.vue)",
       "Bash(sed -n '/\\\\.reveal-flip__face {/,/^}/p' components/tabs/SbustaTab.vue)",
-      "Bash(sed -n '/\\\\.main-reveal-card-container/,/^}/p' components/tabs/SbustaTab.vue)"
+      "Bash(sed -n '/\\\\.main-reveal-card-container/,/^}/p' components/tabs/SbustaTab.vue)",
+      "Bash(python3 -c \"import json; d=json.load\\(open\\('i18n/locales/it.json'\\)\\); print\\('shop keys:', list\\(d.get\\('shop',{}\\).keys\\(\\)\\)\\)\")"
     ],
     "additionalDirectories": [
       "/private/tmp",

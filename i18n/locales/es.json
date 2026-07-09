@@ -403,7 +403,9 @@
     "missing_kisses": "FALTAN {n}",
     "insufficient": "Besos insuficientes — se necesitan {cost}",
     "purchase_success": "✓ ¡{item} comprado!",
-    "purchase_error": "Error de compra"
+    "purchase_error": "Error de compra",
+    "item_challenge_pack_10": "Pack Desafío ×10",
+    "item_challenge_pack_10_desc": "+10 packs de desafío"
   },
   "modal": {
     "insufficient_kisses_title": "BESOS INSUFICIENTES",

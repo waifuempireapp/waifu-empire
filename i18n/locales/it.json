@@ -481,7 +481,9 @@
     "item_hard_pass": "Hard Pass",
     "item_hard_pass_desc": "Sblocca carte Hot",
     "item_trade_pass": "Trade Pass",
-    "item_trade_pass_desc": "Scambi illimitati per sempre"
+    "item_trade_pass_desc": "Scambi illimitati per sempre",
+    "item_challenge_pack_10": "Pack Sfida ×10",
+    "item_challenge_pack_10_desc": "+10 pacchetti sfida"
   },
   "modal": {
     "insufficient_kisses_title": "KISSES INSUFFICIENTI",

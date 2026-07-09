@@ -403,7 +403,9 @@
     "missing_kisses": "FEHLEN {n}",
     "insufficient": "Küsse reichen nicht — {cost} benötigt",
     "purchase_success": "✓ {item} gekauft!",
-    "purchase_error": "Kauffehler"
+    "purchase_error": "Kauffehler",
+    "item_challenge_pack_10": "Herausforderungs-Pack ×10",
+    "item_challenge_pack_10_desc": "+10 Herausforderungs-Packs"
   },
   "modal": {
     "insufficient_kisses_title": "KÜSSE UNZUREICHEND",

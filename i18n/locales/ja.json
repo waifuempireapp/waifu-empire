@@ -403,7 +403,9 @@
     "missing_kisses": "{n}キス不足",
     "insufficient": "キスが不足 — {cost}キス必要",
     "purchase_success": "✓ {item}を購入しました！",
-    "purchase_error": "購入エラー"
+    "purchase_error": "購入エラー",
+    "item_challenge_pack_10": "チャレンジパック ×10",
+    "item_challenge_pack_10_desc": "チャレンジパック +10"
   },
   "modal": {
     "insufficient_kisses_title": "キス不足",
