@@ -260,7 +260,7 @@ function startLoop() {
         // Inerzia + aggancio morbido alla bustina più vicina (rotazione lenta)
         if (Math.abs(velocity) > 0.0004) {
           rotation += velocity
-          velocity *= 0.95
+          velocity *= 0.90
           const step = (Math.PI * 2) / Math.max(3, meshes.length)
           targetRotation = Math.round(rotation / step) * step
         } else {
@@ -389,9 +389,10 @@ function onPointerMove(e: PointerEvent) {
   lastX = e.clientX
   movedPx += Math.abs(dx)
   // Sensibilità ridotta: rotazione più lenta e controllata sotto il dito
-  const d = (dx / props.width) * Math.PI * 0.7
+  const d = (dx / props.width) * Math.PI * 0.42
   rotation += d
-  velocity = d
+  // Velocità di lancio limitata → l'inerzia non parte troppo veloce
+  velocity = Math.max(-0.05, Math.min(0.05, d))
 }
 /** true se il tap ha colpito la bustina FRONTALE (raycast sulla scena). */
 function tapHitsFrontPack(e: PointerEvent): boolean {
