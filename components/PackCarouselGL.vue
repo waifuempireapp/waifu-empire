@@ -35,8 +35,9 @@ const DEFAULT_BUSTINA = '/bustine/bustina_asset.glb'
 // vicine (non lontanissime) che scorrono appena sopra.
 const SPREAD_X = 2.9
 const DEPTH_Z  = 1.45
-// Le bustine dietro salgono leggermente (prospettiva dall'alto)
-const LIFT_Y = 0.32
+// Arco verticale: le bustine DAVANTI scendono, quelle DIETRO salgono
+// (prospettiva dall'alto più marcata → meno "orizzontale")
+const LIFT_Y = 0.34
 // Bustine piccole (ne entrano 5 davanti); la CENTRALE viene ingrandita col focus
 const PACK_SCALE = 0.7
 const FOCUS_BOOST = 0.22   // +22% di scala sulla bustina frontale
@@ -222,9 +223,10 @@ function layoutRing(t: number) {
     const m = meshes[i]
     m.position.x = Math.sin(th) * SPREAD_X
     m.position.z = zN * DEPTH_Z
-    // Profondità: le bustine dietro salgono (LIFT_Y) e la frontale respira
+    // Arco verticale SIMMETRICO: davanti (zN=1) scende di LIFT_Y, dietro
+    // (zN=-1) sale di LIFT_Y → l'anello sembra visto dall'alto, non piatto.
     const front = Math.max(0, zN)
-    m.position.y = ((1 - zN) / 2) * LIFT_Y + front * Math.sin(t * 1.4) * 0.02
+    m.position.y = -zN * LIFT_Y + front * Math.sin(t * 1.4) * 0.02
     // Scala: falloff morbido (dietro vicine, non minuscole) + FOCUS sulla centrale
     const focus = Math.pow(front, 10)   // ≈1 solo per la bustina frontale
     m.scale.setScalar((0.68 + 0.32 * (zN + 1) / 2) * PACK_SCALE * (1 + focus * FOCUS_BOOST))
