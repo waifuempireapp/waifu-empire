@@ -73,6 +73,10 @@ function chiudiPesca() {
 
 // Sub-tab iniziale della Collezione (per navigazione da altri punti, es. mosse)
 const collezioneSubTab = ref('waifu')
+const notificheAperte = ref(false)
+function onNotificheLette() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('impero:notifiche-lette'))
+}
 
 // ── Listener eventi globali (window.addEventListener) ─────────────────
 onMounted(() => {
@@ -80,6 +84,7 @@ onMounted(() => {
   window.addEventListener('impero:apri-pesca', () => {
     pescaAperta.value = true
   })
+  window.addEventListener('impero:apri-notifiche', () => { notificheAperte.value = true })
   // Naviga a Collezione → Mosse (es. dal link nella schermata battaglia)
   window.addEventListener('impero:collezione-mosse', () => {
     collezioneSubTab.value = 'mosse'
@@ -291,7 +296,7 @@ async function caricaTutto(uid: string) {
   const warmChunks = () => {
     preloadComponents([
       'SbustaTab', 'PescaSection', 'CollezioneTab', 'MappaTab',
-      'ClassificaTab', 'SwapTab', 'NegozioOverlay',
+      'ClassificaTab', 'SwapTab', 'NegozioOverlay', 'NotificheOverlay',
     ]).catch(() => { /* best effort */ })
   }
   if ('requestIdleCallback' in window) (window as any).requestIdleCallback(warmChunks, { timeout: 3000 })
@@ -455,6 +460,11 @@ function handleSetTab(t: string) {
         {{ notif.testo }}
       </div>
     </Transition>
+
+    <!-- Centro notifiche: aperto dal Bell nell'header -->
+    <LazyNotificheOverlay v-if="notificheAperte"
+      @close="notificheAperte = false"
+      @read="onNotificheLette" />
 
     <!-- Overlay negozio: accessibile da qualsiasi tab tramite evento globale -->
     <LazyNegozioOverlay v-if="negozioAperto" :profilo="gameStore.profilo"

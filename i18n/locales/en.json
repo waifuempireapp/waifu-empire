@@ -704,5 +704,11 @@
   "avatar": {
     "unlocked": "✨ {name} avatar unlocked!",
     "locked_hint": "Get the {name} card to unlock"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications",
+    "rarity_up_title": "Rarity increased",
+    "rarity_up_body": "increased in rarity:"
   }
 }

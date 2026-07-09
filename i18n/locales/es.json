@@ -605,5 +605,11 @@
   "avatar": {
     "unlocked": "✨ ¡Avatar de {name} desbloqueado!",
     "locked_hint": "Consigue la carta de {name} para desbloquearlo"
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "empty": "Sin notificaciones",
+    "rarity_up_title": "Rareza aumentada",
+    "rarity_up_body": "subió de rareza:"
   }
 }

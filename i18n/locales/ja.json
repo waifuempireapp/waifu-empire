@@ -605,5 +605,11 @@
   "avatar": {
     "unlocked": "✨ {name}のアバターを解放しました！",
     "locked_hint": "{name}のカードを入手して解放"
+  },
+  "notifications": {
+    "title": "通知",
+    "empty": "通知はありません",
+    "rarity_up_title": "レアリティ上昇",
+    "rarity_up_body": "のレアリティが上がりました："
   }
 }

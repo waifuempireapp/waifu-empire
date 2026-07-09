@@ -1,6 +1,7 @@
 // GET /api/waifu-ranking/current — classifica settimanale corrente + waifu in pausa
 import { defineEventHandler, getHeader, createError } from 'h3';
 import { getAdminAuth, getAdminDb } from '../../utils/firebaseAdmin';
+import { ensureMonthlyClosure } from '../../utils/rankingClosure';
 
 function getWeekId(date = new Date()): string {
   const year = date.getUTCFullYear();
@@ -37,6 +38,9 @@ export default defineEventHandler(async (event) => {
     if (!token) throw createError({ statusCode: 401, message: 'Non autorizzato' });
     const decoded = await getAdminAuth().verifyIdToken(token);
     const uid: string = decoded.uid;
+
+    // Fine mese: chiudi la classifica del mese concluso (winner upgrade), idempotente
+    try { await ensureMonthlyClosure(); } catch (e) { console.error('[ranking] closure', e); }
 
     const adminDb = getAdminDb();
     const weekId = getWeekId();

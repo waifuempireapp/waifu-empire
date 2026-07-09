@@ -19,6 +19,25 @@ defineEmits<{ logout: []; goSettings: [] }>()
 
 const { avatarUrl, setAvatar } = useAvatar()
 const gameStore = useGameStore()
+const authStore = useAuthStore()
+
+// Badge notifiche non lette (rarità delle waifu, ecc.)
+const unreadNotif = ref(0)
+async function refreshNotifBadge() {
+  try {
+    const token = await authStore.user?.getIdToken()
+    if (!token) return
+    const data = await ($fetch('/api/notifiche/list', { headers: { Authorization: `Bearer ${token}` } })) as { unread: number }
+    unreadNotif.value = data.unread ?? 0
+  } catch { /* silenzioso */ }
+}
+function apriNotifiche() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('impero:apri-notifiche'))
+}
+onMounted(() => {
+  refreshNotifBadge()
+  if (typeof window !== 'undefined') window.addEventListener('impero:notifiche-lette', () => { unreadNotif.value = 0 })
+})
 
 // Determina se avatarUrl è un colore hex (preset) o un'immagine reale
 const isColorPreset = computed(() =>
@@ -151,9 +170,9 @@ const pendingFriendRequests = computed(() => {
           cursor: pointer; padding: 0 12px;
           min-height: 38px; font-weight: 700;
           display: inline-flex; align-items: center; gap: 5px;
-        " @click="() => { }">
+        " @click="apriNotifiche">
         <Bell :size="20" stroke-width="1.5" style="color:var(--theme-text-2);" />
-        <span v-if="pendingFriendRequests > 0" style="
+        <span v-if="(unreadNotif + pendingFriendRequests) > 0" style="
             position: absolute; top: 4px; right: 4px;
             background: #ff5b6c; color: #fff;
             font-size: 7px; font-weight: 800;
@@ -163,7 +182,7 @@ const pendingFriendRequests = computed(() => {
             display: flex; align-items: center; justify-content: center;
             padding: 0 0 0 2px;
             border: 1.5px solid var(--theme-surface);
-          ">{{ pendingFriendRequests > 9 ? '9+' : pendingFriendRequests }}</span>
+          ">{{ (unreadNotif + pendingFriendRequests) > 9 ? '9+' : (unreadNotif + pendingFriendRequests) }}</span>
       </button>
 
       <!-- NEGOZIO (al posto del vecchio bottone ESCI) -->

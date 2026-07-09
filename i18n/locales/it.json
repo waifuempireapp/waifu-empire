@@ -704,5 +704,11 @@
   "avatar": {
     "unlocked": "✨ Avatar di {name} sbloccato!",
     "locked_hint": "Trova la carta di {name} per sbloccarlo"
+  },
+  "notifications": {
+    "title": "Notifiche",
+    "empty": "Nessuna notifica",
+    "rarity_up_title": "Aumento di rarità",
+    "rarity_up_body": "è salita di rarità:"
   }
 }

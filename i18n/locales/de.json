@@ -605,5 +605,11 @@
   "avatar": {
     "unlocked": "✨ Avatar von {name} freigeschaltet!",
     "locked_hint": "Hol dir die {name}-Karte zum Freischalten"
+  },
+  "notifications": {
+    "title": "Benachrichtigungen",
+    "empty": "Keine Benachrichtigungen",
+    "rarity_up_title": "Seltenheit erhöht",
+    "rarity_up_body": "ist in der Seltenheit gestiegen:"
   }
 }
