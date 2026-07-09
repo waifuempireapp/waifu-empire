@@ -19,6 +19,7 @@ const FF = {
   display: "var(--ff-display, 'Unbounded', sans-serif)",
   label:   "var(--ff-label, 'Saira Condensed', sans-serif)",
   body:    "var(--ff-body, 'DM Sans', sans-serif)",
+  mono:    "var(--ff-mono, 'JetBrains Mono', monospace)",
 }
 
 const MEDAL       = ['👑', '🥈', '🥉']
@@ -48,6 +49,23 @@ const loading     = ref(true)
 const page        = ref(0)
 const now         = Date.now()
 
+// Countdown fine votazioni (fine mese): tick ogni secondo
+const votingEndsAt = ref<number | null>(null)
+const nowTick      = ref(Date.now())
+let tickTimer: ReturnType<typeof setInterval> | null = null
+onMounted(() => { tickTimer = setInterval(() => { nowTick.value = Date.now() }, 1000) })
+onBeforeUnmount(() => { if (tickTimer) clearInterval(tickTimer) })
+const monthCountdown = computed(() => {
+  if (!votingEndsAt.value) return ''
+  const ms = votingEndsAt.value - nowTick.value
+  if (ms <= 0) return 'chiuse'
+  const s = Math.floor(ms / 1000)
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60)
+  if (d > 0) return `${d}g ${h}h ${m}m`
+  if (h > 0) return `${h}h ${m}m ${s % 60}s`
+  return `${m}m ${s % 60}s`
+})
+
 onMounted(async () => {
   try {
     const token = await props.user.getIdToken()
@@ -60,6 +78,7 @@ onMounted(async () => {
     collezione.value  = collData
     hasHardPass.value = !!rankRes.hasHardPass
     isLive.value      = !!rankRes.isLive
+    votingEndsAt.value = rankRes.votingEndsAt ?? null
   } finally { loading.value = false }
 })
 
@@ -122,7 +141,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
           Classifica non ancora disponibile
         </div>
         <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-3)', marginTop: '6px' }">
-          I voti della settimana vengono calcolati ogni domenica
+          I voti si azzerano il 1° di ogni mese
         </div>
       </div>
 
@@ -139,19 +158,25 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
             letterSpacing: '0.2em', color: C.sakura,
             textTransform: 'uppercase', marginBottom: '4px',
           }">
-            ✦ Classifica Settimanale Waifu ✦
+            ✦ Classifica Waifu del Mese ✦
           </div>
-          <!-- LIVE su riga propria -->
-          <div v-if="isLive" :style="{ marginBottom: '4px' }">
-            <span :style="{
-              display: 'inline-block',
+          <!-- LIVE + tempo rimanente alle votazioni (fine mese) -->
+          <div v-if="isLive || monthCountdown" :style="{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', marginBottom: '4px', flexWrap:'wrap' }">
+            <span v-if="isLive" :style="{
+              display: 'inline-flex', alignItems:'center', gap:'5px',
               background: 'rgba(6,214,160,0.15)', border: '1px solid rgba(6,214,160,0.5)',
               borderRadius: '999px', padding: '2px 10px',
               fontFamily: FF.label, fontSize: '12px', color: '#06d6a0', letterSpacing: '0.15em',
-            }">{{ $t("leaderboard.live") }}</span>
+            }"><span :style="{ width:'6px', height:'6px', borderRadius:'50%', background:'#06d6a0', display:'inline-block' }"/>{{ $t("leaderboard.live") }}</span>
+            <span v-if="monthCountdown" :style="{
+              display: 'inline-flex', alignItems:'center', gap:'5px',
+              background: 'var(--theme-surface-2)', border: '1px solid var(--theme-border-2)',
+              borderRadius: '999px', padding: '2px 10px',
+              fontFamily: FF.mono, fontSize: '12px', color: 'var(--theme-text-2)', letterSpacing: '0.04em',
+            }">⏳ {{ monthCountdown }}</span>
           </div>
           <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)' }">
-            Top 50 · le prime 10 ricevono Kisses bonus ogni settimana
+            Top 50 del mese · le prime 10 ricevono Kisses bonus a fine mese
           </div>
         </div>
 

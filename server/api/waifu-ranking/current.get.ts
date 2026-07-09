@@ -9,6 +9,28 @@ function getWeekId(date = new Date()): string {
   return `${year}-W${String(weekNum).padStart(2, '0')}`;
 }
 
+// Mese corrente YYYY-MM (Europe/Rome): la classifica waifu dura un mese esatto
+function monthKey(ts = Date.now()): string {
+  return new Date(ts).toLocaleDateString('fr-CA', { timeZone: 'Europe/Rome' }).slice(0, 7);
+}
+// Istante UTC della mezzanotte italiana del 1° del mese successivo (fine votazioni).
+// L'offset di Roma è a ore intere → la mezzanotte Rome cade su un'ora UTC esatta.
+function nextMonthStartRome(): number {
+  const cur = monthKey();
+  let t = Date.now();
+  for (let i = 0; i < 24 * 40; i++) {
+    t += 3600000;
+    if (monthKey(t) !== cur) {
+      // t è nel mese nuovo: arretra fino alla prima ora UTC di quel giorno Rome
+      const day = new Date(t).toLocaleDateString('fr-CA', { timeZone: 'Europe/Rome' });
+      let b = t;
+      while (new Date(b - 3600000).toLocaleDateString('fr-CA', { timeZone: 'Europe/Rome' }) === day) b -= 3600000;
+      return b;
+    }
+  }
+  return t;
+}
+
 export default defineEventHandler(async (event) => {
   try {
     const token = getHeader(event, 'Authorization')?.replace('Bearer ', '');
@@ -33,11 +55,14 @@ export default defineEventHandler(async (event) => {
     // Classifica SEMPRE live dai totali cumulativi (waifu_vote_totals):
     // ogni swipe incrementa score (+1 cuore / -1 X) → entrando nella sezione
     // si vede subito l'effetto degli ultimi voti.
+    const currentMonth = monthKey();
     let rankingData: Record<string, any> | null = null;
     {
-      const totalsSnap = await adminDb.collection('waifu_vote_totals').get();
+      // Solo i voti del MESE corrente: la classifica riparte da zero ogni mese
+      const totalsSnap = await adminDb.collection('waifu_vote_monthly')
+        .where('monthKey', '==', currentMonth).get();
       const top100Ids = totalsSnap.docs
-        .map(d => ({ waifuId: d.id, likeCount: (d.data() as any).score ?? 0, nome: d.id }))
+        .map(d => { const x = d.data() as any; return { waifuId: x.waifuId as string, likeCount: x.score ?? 0, nome: x.waifuId as string }; })
         .sort((a, b) => b.likeCount - a.likeCount)
         .slice(0, 100);
       if (top100Ids.length > 0) {
@@ -88,7 +113,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    return { ranking: enrichedRanking, paused, weekId, hasHardPass, isLive: !!(rankingData?.isLive) };
+    return { ranking: enrichedRanking, paused, weekId, monthKey: currentMonth, votingEndsAt: nextMonthStartRome(), hasHardPass, isLive: !!(rankingData?.isLive) };
   } catch (e: any) {
     if (e.statusCode) throw e;
     throw createError({ statusCode: 500, message: e.message });

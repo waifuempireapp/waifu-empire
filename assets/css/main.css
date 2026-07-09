@@ -3003,7 +3003,7 @@ input:focus, textarea:focus, select:focus {
   .waifu-grid { gap: 28px 10px !important; }
 
   /* ── Griglia mosse: 5 colonne, più aria ── */
-  .moves-list__grid { grid-template-columns: repeat(5, 1fr) !important; gap: 22px 18px !important; }
+  .moves-list__grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 22px 18px !important; }
   .moves-list { max-width: 1240px !important; }
 
   /* ── FAB missioni ── */

@@ -340,6 +340,12 @@ function getBattleStats(w: WaifuDoc): Record<string, unknown> {
   return (w._battleStats ?? w.battleStats ?? {}) as Record<string, unknown>
 }
 
+/** Tipo elemento: dal CATALOGO (tipo/tipologia); i _battleStats hanno un type random */
+function getWaifuType(w: WaifuDoc): string {
+  const raw = w as Record<string, unknown>
+  return (raw.tipo as string) ?? (raw.tipologia as string) ?? (getBattleStats(w).type as string) ?? 'Arcana'
+}
+
 /** Calcola la rarità normalizzata (lowercase) per i lookup di stile */
 function getWaifuRarita(w: WaifuDoc): string {
   return (w.rarità ?? w.rarita ?? w.rarity ?? 'Comune') as string
@@ -549,8 +555,8 @@ function hpBarData(hp: number, maxHp: number) {
               </div>
               <!-- Chip tipo top-right della card -->
               <div style="position:absolute;top:-10px;right:-10px;z-index:4;"
-                :style="getTypeBadgeStyle((getBattleStats(w).type as string) ?? 'Arcana')">
-                {{ (getBattleStats(w).type as string) ?? 'Arcana' }}
+                :style="getTypeBadgeStyle(getWaifuType(w))">
+                {{ getWaifuType(w) }}
               </div>
 
               <!-- Immagine full-width -->
@@ -627,8 +633,8 @@ function hpBarData(hp: number, maxHp: number) {
               } as CSSProperties)"
             >
               <div style="position:absolute;top:-10px;right:-10px;z-index:4;"
-                :style="getTypeBadgeStyle((getBattleStats(w).type as string) ?? 'Arcana')">
-                {{ (getBattleStats(w).type as string) ?? 'Arcana' }}
+                :style="getTypeBadgeStyle(getWaifuType(w))">
+                {{ getWaifuType(w) }}
               </div>
               <div :style="({ width:'100%', height:'160px', borderRadius:'10px 10px 0 0', overflow:'hidden', background:'var(--theme-bg-secondary)', border:`2px solid ${getRarityStyle(getWaifuRarita(w)).badge}`, borderBottom:'none' } as CSSProperties)">
                 <template v-if="getWaifuImgUrl(w)">

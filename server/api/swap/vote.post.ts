@@ -10,6 +10,11 @@ function dayKey(ts = Date.now()): string {
   return new Date(ts).toLocaleDateString('fr-CA', { timeZone: 'Europe/Rome' });
 }
 
+// Mese corrente YYYY-MM (Europe/Rome): la classifica waifu si azzera ogni mese
+function monthKey(ts = Date.now()): string {
+  return dayKey(ts).slice(0, 7);
+}
+
 // Restituisce il timestamp UTC corrispondente alla mezzanotte italiana del giorno successivo
 function nextMidnightRome(): Date {
   const now = new Date();
@@ -124,6 +129,17 @@ export default defineEventHandler(async (event) => {
     // legge questi totali → aggiornamento in tempo reale.
     batch.set(adminDb.collection('waifu_vote_totals').doc(waifuId), {
       waifuId,
+      score:    FieldValue.increment(vote === 'like' ? 1 : -1),
+      likes:    FieldValue.increment(vote === 'like' ? 1 : 0),
+      dislikes: FieldValue.increment(vote === 'dislike' ? 1 : 0),
+      updated_at: Timestamp.now(),
+    }, { merge: true });
+    // Punteggio MENSILE: la classifica waifu dura dal 1° alla fine del mese e
+    // riparte da zero ogni mese. Doc per (mese, waifu) → la vista legge solo
+    // il mese corrente.
+    const mk = monthKey();
+    batch.set(adminDb.collection('waifu_vote_monthly').doc(`${mk}__${waifuId}`), {
+      monthKey: mk, waifuId,
       score:    FieldValue.increment(vote === 'like' ? 1 : -1),
       likes:    FieldValue.increment(vote === 'like' ? 1 : 0),
       dislikes: FieldValue.increment(vote === 'dislike' ? 1 : 0),

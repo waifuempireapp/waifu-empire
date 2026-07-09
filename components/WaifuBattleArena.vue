@@ -949,7 +949,8 @@ async function resolveTurn(pMi: number, eMi: number, _externalResult: null = nul
     const { isCrit, effectiveness } = dmgCalc
     // Modificatori degli effetti attivi (buff/debuff propri, scudo del difensore)
     const effMult = effectDamageMult(side)
-    const damage  = Math.max(1, Math.round(dmgCalc.damage * effMult))
+    // 'Non efficace' (x0) deve restare 0: niente minimo forzato a 1
+    const damage  = dmgCalc.damage === 0 ? 0 : Math.max(1, Math.round(dmgCalc.damage * effMult))
     lastCritFlag = isCrit
 
     if (side === 'player') { pAnim.value = 'wba-aR' } else { eAnim.value = 'wba-aL' }
@@ -1171,6 +1172,25 @@ watch(isChoose, (v) => { if (v) actionMenu.value = 'menu' })
 const swapDisabled = computed(() =>
   !isChoose.value || isAnim.value || (props.isPvP && props.pvpWaiting)
   || !pTeam.value.some((w, i) => i !== pActive.value && !w.isKO) || turn.value <= 1)
+
+// ── Long-press su uno slot del cambio: dettaglio waifu (tipo + mosse) ──
+const swapDetail = ref<WaifuBattleStat | null>(null)
+let swapLpTimer: ReturnType<typeof setTimeout> | null = null
+let swapLpFired = false
+function swapPressStart(w: WaifuBattleStat) {
+  swapLpFired = false
+  if (swapLpTimer) clearTimeout(swapLpTimer)
+  swapLpTimer = setTimeout(() => { swapLpFired = true; swapDetail.value = w }, 420)
+}
+function swapPressEnd() {
+  if (swapLpTimer) { clearTimeout(swapLpTimer); swapLpTimer = null }
+}
+/** true se il tap era un long-press: il click di selezione va ignorato */
+function consumeSwapLongPress(): boolean {
+  const fired = swapLpFired
+  swapLpFired = false
+  return fired
+}
 
 // Abbandona: popup di conferma → 'Sì' chiude subito la partita con la sconfitta
 const confirmQuit = ref(false)
@@ -1844,9 +1864,9 @@ const mvp = computed(() => {
         <template v-if="!(isSwap || isVolSwap || (allPPOut && isChoose))">
           <!-- Menù: MOSSE | WAIFU | ABBANDONA — un unico "bottone" (bordo e
                radius condivisi) con i segmenti divisi da linee verticali -->
-          <div v-if="actionMenu === 'menu'" :style="{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'12px 14px' }">
+          <div v-if="actionMenu === 'menu'" :style="{ flex:1, display:'flex', alignItems:'stretch', justifyContent:'center', padding:'10px 12px', minHeight:0 }">
             <div :style="{
-              width:'100%', maxWidth:'520px', height:'62px',
+              width:'100%', maxWidth:'720px',
               display:'flex', alignItems:'stretch',
               background:'var(--theme-surface-2)',
               border:'1px solid var(--theme-border-2)',
@@ -1859,7 +1879,7 @@ const mvp = computed(() => {
                 :style="{
                   flex:1.15, background:'none', border:'none',
                   cursor: (!isChoose || isAnim || (isPvP && pvpWaiting)) ? 'not-allowed' : 'pointer',
-                  fontFamily:'var(--ff-label)', fontSize:'15px', fontWeight:800, letterSpacing:'.12em',
+                  fontFamily:'var(--ff-label)', fontSize:'12px', fontWeight:800, letterSpacing:'.14em',
                   color:'#a78bfa', opacity: (!isChoose || isAnim || (isPvP && pvpWaiting)) ? .35 : 1,
                 }"
               >⚔ MOSSE</button>
@@ -1870,7 +1890,7 @@ const mvp = computed(() => {
                 :style="{
                   flex:1, background:'none', border:'none',
                   cursor: swapDisabled ? 'not-allowed' : 'pointer',
-                  fontFamily:'var(--ff-label)', fontSize:'15px', fontWeight:800, letterSpacing:'.12em',
+                  fontFamily:'var(--ff-label)', fontSize:'12px', fontWeight:800, letterSpacing:'.14em',
                   color:'#00b4ff', opacity: swapDisabled ? .35 : 1,
                 }"
               >↻ WAIFU</button>
@@ -1881,7 +1901,7 @@ const mvp = computed(() => {
                   flex:1, border:'none', cursor:'pointer',
                   background:'none',
                   boxShadow:'inset 0 0 0 1.5px rgba(255,77,77,.55)',
-                  fontFamily:'var(--ff-label)', fontSize:'15px', fontWeight:800, letterSpacing:'.12em',
+                  fontFamily:'var(--ff-label)', fontSize:'12px', fontWeight:800, letterSpacing:'.14em',
                   color:'#ff4d4d',
                 }"
               >ABBANDONA</button>
@@ -2064,7 +2084,12 @@ const mvp = computed(() => {
               }">{{ w.type }}</div>
               <!-- Slot RETTANGOLARE (radius 8px) a tutta larghezza colonna -->
               <button class="wba-bench-slot"
-                @click="isSwap ? handlePlayerSwap(i) : handleVoluntarySwap(i, { isPPExhausted: !isSwap && !isVolSwap })"
+                @pointerdown="swapPressStart(w)"
+                @pointerup="swapPressEnd"
+                @pointerleave="swapPressEnd"
+                @pointercancel="swapPressEnd"
+                @contextmenu.prevent
+                @click="() => { if (consumeSwapLongPress()) return; isSwap ? handlePlayerSwap(i) : handleVoluntarySwap(i, { isPPExhausted: !isSwap && !isVolSwap }) }"
                 :style="{
                   width:'100%', aspectRatio:'3/4', borderRadius:'8px', overflow:'hidden',
                   border:'2.5px solid #00e676',
@@ -2095,6 +2120,54 @@ const mvp = computed(() => {
               </div>
             </div>
           </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── DETTAGLIO WAIFU (long-press nel cambio): tipo + mosse ── -->
+    <div v-if="swapDetail" @click="swapDetail = null"
+      style="position:fixed;inset:0;z-index:620;background:rgba(4,2,14,0.82);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:22px;">
+      <div @click.stop :style="{
+        width:'100%', maxWidth:'340px', maxHeight:'86dvh', overflowY:'auto',
+        background:'var(--theme-surface)', border:'1px solid var(--theme-border)',
+        borderRadius:'18px', padding:'16px', boxShadow:'0 12px 40px var(--theme-shadow)',
+      }">
+        <div :style="{ display:'flex', gap:'12px', alignItems:'flex-start', marginBottom:'12px' }">
+          <div :style="{ width:'96px', aspectRatio:'3/4', borderRadius:'8px', overflow:'hidden', flexShrink:0, border:`2px solid ${(TYPE_COLORS[swapDetail.type]?.border ?? '#555')}` }">
+            <img v-if="swapDetail.image" :src="ikUrl(swapDetail.image, 'thumbnail') ?? ''" :alt="swapDetail.name"
+              :style="{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top' }"/>
+          </div>
+          <div :style="{ flex:1, minWidth:0 }">
+            <div :style="{ fontFamily:'var(--ff-display)', fontSize:'16px', fontWeight:900, color:'var(--theme-text)', marginBottom:'6px' }">{{ swapDetail.name }}</div>
+            <span :style="{
+              display:'inline-block', background:'var(--theme-surface-2)',
+              border:`1.5px solid ${(TYPE_COLORS[swapDetail.type]?.border ?? '#555')}`,
+              color:(TYPE_COLORS[swapDetail.type]?.border ?? '#999'),
+              borderRadius:'8px', padding:'3px 10px', marginBottom:'8px',
+              fontFamily:'var(--ff-label)', fontSize:'11px', fontWeight:800, letterSpacing:'.06em', textTransform:'uppercase',
+            }">{{ swapDetail.type }}</span>
+            <div :style="{ fontFamily:'var(--ff-label)', fontSize:'13px', color:'var(--theme-text-2)' }">
+              HP {{ Math.max(0, swapDetail.hp) }}/{{ swapDetail.maxHp }} · VEL {{ swapDetail.speed }} · CRIT {{ Math.round((swapDetail.critChance ?? 0) * 100) }}%
+            </div>
+          </div>
+        </div>
+        <!-- Mosse con tipologia -->
+        <div :style="{ display:'flex', flexDirection:'column', gap:'7px' }">
+          <div v-for="(mv, mi) in swapDetail.moves" :key="mi" :style="{
+            display:'flex', alignItems:'center', gap:'8px',
+            padding:'8px 10px', borderRadius:'10px',
+            background:'var(--theme-surface-2)', border:'1px solid var(--theme-border)',
+          }">
+            <span :style="{
+              flexShrink:0, background:'var(--theme-surface)',
+              border:`1.5px solid ${(TYPE_COLORS[mv.type]?.border ?? '#555')}`,
+              color:(TYPE_COLORS[mv.type]?.border ?? '#999'),
+              borderRadius:'8px', padding:'2px 8px',
+              fontFamily:'var(--ff-label)', fontSize:'10px', fontWeight:800, letterSpacing:'.05em', textTransform:'uppercase',
+            }">{{ mv.type }}</span>
+            <span :style="{ flex:1, fontFamily:'var(--ff-label)', fontSize:'13px', fontWeight:700, color:'var(--theme-text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }">{{ mv.name }}</span>
+            <span :style="{ fontFamily:'var(--ff-mono)', fontSize:'12px', color:'var(--theme-text-2)', flexShrink:0 }">{{ mv.power }} · PP {{ mv.pp }}/{{ mv.maxPp }}</span>
+          </div>
         </div>
       </div>
     </div>

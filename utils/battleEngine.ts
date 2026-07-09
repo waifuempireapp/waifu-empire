@@ -363,7 +363,10 @@ export function initBattleWaifu(waifuFirestore: Record<string, unknown>, collect
     level,
     hp:     maxHp,
     maxHp,
-    type:   (bs.type as string) ?? (waifuFirestore.tipo as string) ?? (waifuFirestore.tipologia as string) ?? _pick([...TYPE_NAMES] as string[]),
+    // TIPO: il catalogo (tipo/tipologia) è la fonte di verità — i _battleStats
+    // salvati contengono un type GENERATO A CASO all'acquisizione (bug: in
+    // battaglia i tipi non corrispondevano alla carta, o cadevano su 'Arcana')
+    type:   (waifuFirestore.tipo as string) ?? (waifuFirestore.tipologia as string) ?? (bs.type as string) ?? _pick([...TYPE_NAMES] as string[]),
     speed:  savedSpeed != null
       ? Math.min(rarCfg.vel_max, Math.max(rarCfg.vel_min, Math.round(savedSpeed)))
       : Math.min(rarCfg.vel_max, Math.max(rarCfg.vel_min, Math.round(calculateSpeed(waifuFirestore, rarCfg.multiplier, rarCfg)))),
@@ -401,10 +404,13 @@ export function generateCPUMovesFromCatalog(waifuRarita: string, mosseCat: Recor
       ? Math.round(danno * 1.25)
       : Math.round((m.danno_critico as number) ?? danno * 1.25)
     return {
+      id: (m.id as string) ?? undefined,
       name: (m.nome as string) ?? 'Mossa', type: (m.tipologia as string) ?? 'Arcana', rarity: (m.rarita as string) ?? 'comune',
       power: danno, damage_crit: damageCrit, critPower: damageCrit, critPowerPerc: 0,
       pp: Math.round((m.pp as number) ?? 5), maxPp: Math.round((m.pp as number) ?? 5),
       ability: (m.abilita as string) ?? null,
+      // Senza questo la CPU non applicava MAI gli effetti delle mosse
+      effect: ((m.effect as MoveEffect | undefined) ?? _EFFECT_BY_MOVE_ID[(m.id as string) ?? '']) ?? null,
     }
   })
 }

@@ -586,12 +586,17 @@ const filtroCombo = computed({
     if (filtroHot.value === 'non-hot') return 'sfw'
     return ''
   },
+  // CUMULABILE: ogni selezione tocca SOLO la propria categoria (rarità, drop,
+  // speciali, hot) e si somma alle altre. '' (Tutte) azzera tutto.
   set(v: string) {
-    filtroRarita.value = 'tutte'
-    filtroDropId.value = 'tutti'
-    filtroScambiabile.value = false
-    filtroLevelUp.value = 'tutti'
-    filtroHot.value = 'tutti'
+    if (v === '') {
+      filtroRarita.value = 'tutte'
+      filtroDropId.value = 'tutti'
+      filtroScambiabile.value = false
+      filtroLevelUp.value = 'tutti'
+      filtroHot.value = 'tutti'
+      return
+    }
     if (v.startsWith('rarita:')) filtroRarita.value = v.replace('rarita:', '')
     else if (v.startsWith('drop:')) filtroDropId.value = v.replace('drop:', '')
     else if (v === 'scambiabili') filtroScambiabile.value = true
@@ -601,6 +606,27 @@ const filtroCombo = computed({
     else if (v === 'sfw') filtroHot.value = 'non-hot'
   },
 })
+
+// Chip dei filtri attivi (rimovibili singolarmente) — rende visibile il cumulo
+const filtriAttivi = computed(() => {
+  const out: Array<{ value: string; label: string }> = []
+  const lbl = (v: string) => (filtroOptions.value.find((o: any) => o.value === v) as any)?.label ?? v
+  if (filtroRarita.value !== 'tutte') out.push({ value: `rarita:${filtroRarita.value}`, label: lbl(`rarita:${filtroRarita.value}`) })
+  if (filtroDropId.value !== 'tutti') out.push({ value: `drop:${filtroDropId.value}`, label: lbl(`drop:${filtroDropId.value}`) })
+  if (filtroScambiabile.value) out.push({ value: 'scambiabili', label: lbl('scambiabili') })
+  if (filtroLevelUp.value === 'si') out.push({ value: 'pronti', label: lbl('pronti') })
+  if (filtroLevelUp.value === 'no') out.push({ value: 'crescita', label: lbl('crescita') })
+  if (filtroHot.value === 'hot') out.push({ value: 'hot', label: lbl('hot') })
+  if (filtroHot.value === 'non-hot') out.push({ value: 'sfw', label: lbl('sfw') })
+  return out
+})
+function rimuoviFiltro(v: string) {
+  if (v.startsWith('rarita:')) filtroRarita.value = 'tutte'
+  else if (v.startsWith('drop:')) filtroDropId.value = 'tutti'
+  else if (v === 'scambiabili') filtroScambiabile.value = false
+  else if (v === 'pronti' || v === 'crescita') filtroLevelUp.value = 'tutti'
+  else if (v === 'hot' || v === 'sfw') filtroHot.value = 'tutti'
+}
 
 // ── Select unificata ORDINA ───────────────────────────────────
 const sortCombo = computed({
@@ -780,6 +806,7 @@ function apriNegozio() {
               :title="soloPossedute ? 'Mostra anche le carte mancanti' : 'Mostra solo le carte possedute'"
               :style="{
                 flexShrink: 0, width: '47px', height: '47px', borderRadius: '10px',
+                alignSelf: 'center',
                 background: soloPossedute ? 'var(--theme-tab-active)' : 'var(--theme-input-bg)',
                 border: `1.5px solid ${soloPossedute ? 'var(--theme-accent)' : 'var(--theme-border)'}`,
                 color: soloPossedute ? 'var(--theme-accent)' : 'var(--theme-text-3)',
@@ -788,6 +815,21 @@ function apriNegozio() {
                 textDecoration: soloPossedute ? 'line-through' : 'none',
               }"
             >?</button>
+          </div>
+
+          <!-- Filtri attivi (cumulabili): chip rimovibili -->
+          <div v-if="filtriAttivi.length" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
+            <button
+              v-for="f in filtriAttivi" :key="f.value"
+              @click="rimuoviFiltro(f.value)"
+              :style="{
+                display:'inline-flex', alignItems:'center', gap:'6px',
+                background:'var(--theme-tab-active)', border:'1px solid var(--theme-border-2)',
+                borderRadius:'999px', padding:'5px 10px', cursor:'pointer',
+                fontFamily:FF.label, fontSize:'11px', fontWeight:800, letterSpacing:'.06em',
+                color:'var(--theme-accent)', textTransform:'uppercase',
+              }"
+            >{{ f.label }} <span style="opacity:.7;">✕</span></button>
           </div>
         </div>
 

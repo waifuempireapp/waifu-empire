@@ -51,10 +51,14 @@ function isOwned(move: Move): boolean {
 
 const filterType   = ref<MoveType | 'all'>('all')
 const defenderType = ref<MoveType | null>(null)
+// Nasconde le mosse non possedute (solo in modalità collezione)
+const soloPossedute = ref(false)
 
-const filteredMoves = computed(() =>
-  filterType.value === 'all' ? allMoves.value : allMoves.value.filter(m => m.type === filterType.value),
-)
+const filteredMoves = computed(() => {
+  let list = filterType.value === 'all' ? allMoves.value : allMoves.value.filter(m => m.type === filterType.value)
+  if (soloPossedute.value && hasCollection.value) list = list.filter(m => ownedIds.value.has(m.id))
+  return list
+})
 
 // ── Dettaglio + assegnazione ─────────────────────────────────────────────
 const detailMove = ref<Move | null>(null)
@@ -118,6 +122,16 @@ async function onAssign(waifuId: string) {
         @click="filterType = t">
         <span :style="{ marginRight: '5px' }">{{ TYPE_META[t].icon }}</span>{{ TYPE_META[t].label }}
       </button>
+      <!-- Solo possedute: via i lucchetti dalla vetrina -->
+      <button
+        v-if="hasCollection"
+        class="moves-list__pill"
+        :class="{ 'is-active': soloPossedute }"
+        :style="soloPossedute
+          ? { background: 'var(--theme-accent)', borderColor: 'var(--theme-accent)', color: '#fff', fontFamily: FF.label, marginLeft: 'auto' }
+          : { fontFamily: FF.label, marginLeft: 'auto' }"
+        @click="soloPossedute = !soloPossedute"
+      >Solo possedute</button>
     </div>
 
     <!-- Anteprima danno vs tipo -->
@@ -178,5 +192,5 @@ async function onAssign(waifuId: string) {
 
 /* Più aria tra le carte mossa (gap verticale e laterale) + padding laterale:
    le carte risultano un po' più piccole e ben distanziate */
-.moves-list__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 14px; padding: 0 6px; }
+.moves-list__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 14px; padding: 0 6px; }
 </style>

@@ -333,7 +333,15 @@
       "Bash(npm remove *)",
       "Bash(sed -i '' 's|http://localhost:3210|http://localhost:3212|' .test-carousel.tmp.mjs)",
       "Bash(SHOT=/private/tmp/claude-501/-Users-lazzari-Documents-Anime-Waifu-waifu-empire-nuxt/7eeae835-0174-42a6-8478-2bac2d68f0d8/scratchpad/carousel2.png node .test-carousel.tmp.mjs)",
-      "Bash(pkill -f \"nuxi dev --port 3212\")"
+      "Bash(pkill -f \"nuxi dev --port 3212\")",
+      "Bash(pkill -f \"nuxi dev --port 3213\")",
+      "Bash(awk '{print $5, $6, $7, $8}')",
+      "Bash(awk '/export function calculateDamageSeeded/,/^}/' utils/battleEngine.ts)",
+      "Bash(awk 'NR>=940 && NR<=1120' components/tabs/CollezioneTab.vue)",
+      "Bash(awk '/@keyframes/{k=$2} /255,255,255/{print k\": \"$0}' assets/css/main.css)",
+      "Bash(sed -n '/\\\\.reveal-flip {/,/^}/p' components/tabs/SbustaTab.vue)",
+      "Bash(sed -n '/\\\\.reveal-flip__face {/,/^}/p' components/tabs/SbustaTab.vue)",
+      "Bash(sed -n '/\\\\.main-reveal-card-container/,/^}/p' components/tabs/SbustaTab.vue)"
     ],
     "additionalDirectories": [
       "/private/tmp",

@@ -82,6 +82,9 @@ onUnmounted(() => {
 
 const myBs  = computed(() => props.myStarter?._battleStats  ?? props.myStarter?.battleStats  ?? {})
 const oppBs = computed(() => props.opponentStarter?._battleStats ?? props.opponentStarter?.battleStats ?? {})
+// Tipo elemento dal CATALOGO (tipo/tipologia): i _battleStats hanno un type random
+const myType  = computed(() => ((props.myStarter as any)?.tipo ?? (props.myStarter as any)?.tipologia ?? (myBs.value as any)?.type ?? 'Arcana') as string)
+const oppType = computed(() => ((props.opponentStarter as any)?.tipo ?? (props.opponentStarter as any)?.tipologia ?? (oppBs.value as any)?.type ?? 'Arcana') as string)
 
 /** Stile badge tipo elemento */
 function getTypeBadgeStyle(type?: string): CSSProperties {
@@ -145,8 +148,8 @@ function getTypeBadgeStyle(type?: string): CSSProperties {
           {{ myStarter?.nome ?? myStarter?.name ?? '—' }}
         </div>
         <!-- TypeBadge -->
-        <span :style="getTypeBadgeStyle((myBs.type as string) ?? 'Arcana')">
-          {{ (myBs.type as string) ?? 'Arcana' }}
+        <span :style="getTypeBadgeStyle(myType)">
+          {{ myType }}
         </span>
       </div>
 
@@ -171,8 +174,8 @@ function getTypeBadgeStyle(type?: string): CSSProperties {
           {{ opponentStarter?.nome ?? opponentStarter?.name ?? '—' }}
         </div>
         <!-- TypeBadge -->
-        <span :style="getTypeBadgeStyle((oppBs.type as string) ?? 'Arcana')">
-          {{ (oppBs.type as string) ?? 'Arcana' }}
+        <span :style="getTypeBadgeStyle(oppType)">
+          {{ oppType }}
         </span>
       </div>
     </div>

@@ -330,9 +330,19 @@ function eseguiTaglioBustina() {
 
 // Strappo completato DENTRO la ruota 3D (PackCarouselGL): si passa subito alle
 // carte — la scena è la stessa fino a qui, quindi nessun flash intermedio.
+// Su Android WebView smontare un <canvas> WebGL di colpo fa flashare il
+// compositor di BIANCO: teniamo la scena montata ~0.5s in dissolvenza mentre
+// le carte compaiono sopra, poi la togliamo dal DOM.
+const wheelLinger = ref(false)
+const stackLinger = ref(false)
+// APRI 10: velo di loading sopra lo stack finché la scena non ha renderizzato
+// (prima restava il campo vuoto per tutto il tempo del caricamento GLB)
+const stackReadyUi = ref(false)
 function onCarouselOpen() {
   bustaAperta.value = true
   bustaInAnimazione.value = false
+  wheelLinger.value = true
+  setTimeout(() => { wheelLinger.value = false }, 550)
   avviaRivelazione(carteRivelate.value)
 }
 
@@ -453,6 +463,7 @@ async function apriMultiSequenza(seq: string[]) {
   bustaAperta.value = false
   bustaInAnimazione.value = false
   multiPhase.value = 'stack'
+  stackReadyUi.value = false
   multiExitedCount.value = 0
   stato.value = 'reveal_multi'
 
@@ -521,6 +532,8 @@ function skipMultiOpening() {
 
 // ── FASE 2: reveal carte a gruppi di 5 ──
 function startMultiReveal() {
+  stackLinger.value = true
+  setTimeout(() => { stackLinger.value = false }, 550)
   multiPhase.value = 'revealing'
   multiPackIndice.value = 0
   const carte = multiPackCarte.value[0]
@@ -920,13 +933,17 @@ function cfTouchEnd(e: TouchEvent) {
     </button>
 
     <!-- 1a. APRI 10 — stack FERMO → (tap) → uscita una alla volta -->
-    <div v-if="stato === 'reveal_multi' && (multiPhase === 'stack' || multiPhase === 'exiting')"
+    <div v-if="stato === 'reveal_multi' && (multiPhase === 'stack' || multiPhase === 'exiting' || stackLinger)"
       class="pack-stack-scene"
       :style="{
-        position:'absolute', inset:0, zIndex:250,
+        position:'absolute', inset:0,
+        zIndex: (multiPhase === 'stack' || multiPhase === 'exiting') ? 250 : 2,
         display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
         background:`radial-gradient(circle at center, ${dropColore}28 0%, transparent 100%)`,
         overflow:'hidden',
+        opacity: (multiPhase === 'stack' || multiPhase === 'exiting') ? 1 : 0,
+        pointerEvents: (multiPhase === 'stack' || multiPhase === 'exiting') ? 'auto' : 'none',
+        transition: 'opacity 0.4s ease',
       }"
       @click="onStackTap">
       <!-- Contatore / titolo -->
@@ -935,10 +952,23 @@ function cfTouchEnd(e: TouchEvent) {
         <template v-else>{{ $t('sbusta.n_packs_label', { n: multiPackCarte.length }) }}</template>
       </p>
 
+      <!-- Velo di caricamento: copre finché lo stack non ha renderizzato -->
+      <div v-if="multiPhase === 'stack'" :style="{
+        position:'absolute', inset:0, zIndex:6,
+        background:'var(--theme-bg)',
+        display:'flex', alignItems:'center', justifyContent:'center',
+        opacity: stackReadyUi ? 0 : 1,
+        pointerEvents: stackReadyUi ? 'none' : 'auto',
+        transition:'opacity 0.35s ease',
+      }">
+        <AppLoading />
+      </div>
+
       <div class="pack-stack-container">
         <!-- Stack 3D: 1 sola scena Three.js con N cloni del modello .glb -->
         <PackStackGL
           ref="packStackRef"
+          @ready="stackReadyUi = true"
           @failed="stackFailed = true"
           :count="multiPackCarte.length"
           :color="dropColore"
@@ -960,13 +990,16 @@ function cfTouchEnd(e: TouchEvent) {
     <!-- 1b-pre. SCELTA E APERTURA BUSTINA — ruota 3D stile Pokémon Pocket.
          TUTTO nella stessa scena WebGL (zero re-mount = zero flash):
          tap 1 → la bustina scelta zooma e le altre cadono · tap 2 → strappo → carte -->
-    <div v-else-if="stato === 'reveal' && !bustaAperta && !wheelFailed"
+    <div v-else-if="stato === 'reveal' && (!bustaAperta || wheelLinger) && !wheelFailed"
       class="phase-enter"
       :style="{
-        position:'absolute', inset:0, zIndex:250,
+        position:'absolute', inset:0, zIndex: bustaAperta ? 2 : 250,
         display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
         background:`radial-gradient(circle at center, ${dropColore}28 0%, transparent 100%)`,
         overflow:'hidden',
+        opacity: bustaAperta ? 0 : 1,
+        pointerEvents: bustaAperta ? 'none' : 'auto',
+        transition: 'opacity 0.4s ease',
       }">
       <!-- Canvas 3D a TUTTO schermo: lo zoom della bustina non viene mai tagliato -->
       <PackCarouselGL
