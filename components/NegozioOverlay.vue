@@ -276,7 +276,7 @@ onUnmounted(() => { document.getElementById('paypal-sdk-shop')?.remove() })
 }
 @media (min-width: 640px) { .neg-overlay { align-items: center; } }
 .neg-panel {
-  width: 100%; max-width: 520px; max-height: 92dvh;
+  width: 100%; max-width: 440px; max-height: 92dvh;
   display: flex; flex-direction: column;
   background: var(--theme-surface);
   border: 1px solid var(--theme-border);
@@ -285,13 +285,17 @@ onUnmounted(() => { document.getElementById('paypal-sdk-shop')?.remove() })
   overflow: hidden;
   position: relative;
 }
-@media (min-width: 640px) { .neg-panel { border-radius: 22px; } }
+/* Da tablet in su: card centrata con margini laterali garantiti */
+@media (min-width: 640px) {
+  .neg-panel { border-radius: 22px; max-width: min(440px, calc(100vw - 32px)); }
+}
 
 .neg-head {
-  flex-shrink: 0; display: flex; align-items: center; gap: 12px;
-  padding: 16px 18px; border-bottom: 1px solid var(--theme-border);
+  flex-shrink: 0; display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px; border-bottom: 1px solid var(--theme-border);
 }
-.neg-title { font-size: 16px; font-weight: 900; color: var(--theme-text); flex: 1; }
+.neg-title { font-size: 15px; font-weight: 900; color: var(--theme-text); flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .neg-kisses {
   display: flex; align-items: center; gap: 5px;
   background: var(--theme-surface-2); border: 1px solid var(--theme-border);
@@ -312,23 +316,23 @@ onUnmounted(() => { document.getElementById('paypal-sdk-shop')?.remove() })
 .neg-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 18px; }
 
 .neg-section-title {
-  font-size: 13px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 12px;
+  font-size: 12px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 12px;
 }
 
-.neg-beni { display: flex; flex-direction: column; gap: 10px; }
+.neg-beni { display: flex; flex-direction: column; gap: 9px; }
 .neg-bene {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 10px;
   background: var(--theme-surface-2); border: 1px solid var(--theme-border);
-  border-radius: 14px; padding: 12px 14px;
+  border-radius: 14px; padding: 11px 12px;
 }
-.neg-bene-emoji { font-size: 22px; flex-shrink: 0; }
+.neg-bene-emoji { font-size: 19px; flex-shrink: 0; }
 .neg-bene-txt { flex: 1; min-width: 0; }
-.neg-bene-label { font-size: 13px; font-weight: 800; color: var(--theme-text); }
-.neg-bene-desc { font-size: 11px; color: var(--theme-text-2); margin-top: 2px; line-height: 1.35; }
+.neg-bene-label { font-size: 12.5px; font-weight: 800; color: var(--theme-text); }
+.neg-bene-desc { font-size: 10.5px; color: var(--theme-text-2); margin-top: 2px; line-height: 1.35; }
 .neg-buy {
-  flex-shrink: 0; padding: 9px 14px; border-radius: 999px; border: none; cursor: pointer;
-  background: var(--theme-accent); color: #fff; font-size: 12px; font-weight: 800; letter-spacing: 0.04em;
-  min-width: 74px; transition: transform 0.12s, background 0.15s;
+  flex-shrink: 0; padding: 8px 12px; border-radius: 999px; border: none; cursor: pointer;
+  background: var(--theme-accent); color: #fff; font-size: 11.5px; font-weight: 800; letter-spacing: 0.03em;
+  min-width: 66px; white-space: nowrap; transition: transform 0.12s, background 0.15s;
 }
 .neg-buy:hover:not(:disabled) { transform: translateY(-1px); }
 .neg-buy--off { background: var(--theme-surface); color: var(--theme-text-3); cursor: not-allowed; border: 1px solid var(--theme-border); }
@@ -336,18 +340,27 @@ onUnmounted(() => { document.getElementById('paypal-sdk-shop')?.remove() })
 .neg-divider { height: 2px; background: var(--theme-border-2); opacity: 0.6; border-radius: 999px; margin: 22px 0 18px; }
 
 .neg-recharge-desc { font-size: 12px; color: var(--theme-text-2); margin-bottom: 14px; line-height: 1.5; }
-.neg-tagli { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-@media (min-width: 480px) { .neg-tagli { grid-template-columns: repeat(4, 1fr); } }
+/* Sezione tagli: unica riga che scorre in ORIZZONTALE se non ci sta (solo
+   questa sezione scrolla, non tutto il popup). Le card non si stringono. */
+.neg-tagli {
+  display: flex; gap: 10px; margin-bottom: 16px;
+  overflow-x: auto; overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px; scroll-snap-type: x proximity;
+}
+.neg-tagli::-webkit-scrollbar { height: 4px; }
+.neg-tagli::-webkit-scrollbar-thumb { background: var(--theme-border-2); border-radius: 999px; }
 .neg-taglio {
+  flex: 0 0 92px; scroll-snap-align: start;
   background: var(--theme-surface-2); border: 2px solid var(--theme-border);
-  border-radius: 14px; padding: 12px 8px; text-align: center; cursor: pointer;
+  border-radius: 14px; padding: 11px 6px; text-align: center; cursor: pointer;
   transition: transform 0.12s, border-color 0.15s, box-shadow 0.15s;
 }
 .neg-taglio:hover { transform: translateY(-2px); }
 .neg-taglio--sel { border-color: var(--theme-accent-pink); box-shadow: 0 0 14px rgba(217,70,168,0.28); }
-.neg-taglio-k { display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 17px; font-weight: 900; color: var(--theme-text); margin-bottom: 3px; }
-.neg-taglio-price { font-size: 14px; font-weight: 800; }
-.neg-taglio-bonus { font-size: 10px; margin-top: 3px; font-weight: 700; }
+.neg-taglio-k { display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 15px; font-weight: 900; color: var(--theme-text); margin-bottom: 3px; }
+.neg-taglio-price { font-size: 13px; font-weight: 800; }
+.neg-taglio-bonus { font-size: 9px; margin-top: 3px; font-weight: 700; }
 
 .neg-paypal { min-height: 46px; margin-bottom: 10px; }
 .neg-pp-msg { text-align: center; font-size: 12px; padding: 12px 0; color: var(--theme-text-2); }

@@ -122,11 +122,12 @@ export function calculateDamage(
 ): { damage: number; isCrit: boolean; effectiveness: string; multiplier: number } {
   const { multiplier, label: effectiveness } = getEffectiveness(move.type, attacker.type, defender.type)
   const isCrit = Math.random() < (attacker.critChance ?? 0.05)
-  // danno = potenza × efficacia tipo (0 / 0.5 / 1 / 1.5 / 2) × 1.75 se critico.
-  // Con efficacia 0 la mossa NON fa danno (niente minimo a 1).
+  // danno = potenza SCRITTA × efficacia tipo (0 / 0.5 / 1 / 1.5 / 2) × 1.75 se
+  // critico. È PROPORZIONALE al valore mostrato: se la potenza è 0 (o l'efficacia
+  // è 0) il danno è 0 — nessun minimo forzato a 1.
   const base = move.power ?? 0
   const raw  = base * multiplier * (isCrit ? 1.75 : 1)
-  const damage = multiplier === 0 ? 0 : Math.max(1, Math.round(raw))
+  const damage = Math.max(0, Math.round(raw))
   return { damage, isCrit, effectiveness, multiplier }
 }
 

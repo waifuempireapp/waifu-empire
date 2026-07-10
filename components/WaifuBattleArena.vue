@@ -949,8 +949,8 @@ async function resolveTurn(pMi: number, eMi: number, _externalResult: null = nul
     const { isCrit, effectiveness } = dmgCalc
     // Modificatori degli effetti attivi (buff/debuff propri, scudo del difensore)
     const effMult = effectDamageMult(side)
-    // 'Non efficace' (x0) deve restare 0: niente minimo forzato a 1
-    const damage  = dmgCalc.damage === 0 ? 0 : Math.max(1, Math.round(dmgCalc.damage * effMult))
+    // Danno PROPORZIONALE: 0 resta 0, nessun minimo forzato a 1
+    const damage  = Math.max(0, Math.round(dmgCalc.damage * effMult))
     lastCritFlag = isCrit
 
     if (side === 'player') { pAnim.value = 'wba-aR' } else { eAnim.value = 'wba-aL' }
@@ -1864,13 +1864,13 @@ const mvp = computed(() => {
         <template v-if="!(isSwap || isVolSwap || (allPPOut && isChoose))">
           <!-- Menù: MOSSE | WAIFU | ABBANDONA — un unico "bottone" (bordo e
                radius condivisi) con i segmenti divisi da linee verticali -->
-          <div v-if="actionMenu === 'menu'" :style="{ flex:1, display:'flex', alignItems:'stretch', justifyContent:'center', padding:'10px 12px', minHeight:0 }">
+          <div v-if="actionMenu === 'menu'" :style="{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'10px 12px', minHeight:0 }">
             <div :style="{
-              width:'100%', maxWidth:'720px',
+              width:'100%', maxWidth:'720px', height:'50%', minHeight:'88px',
               display:'flex', alignItems:'stretch',
               background:'var(--theme-surface-2)',
               border:'1px solid var(--theme-border-2)',
-              borderRadius:'10px', overflow:'hidden',
+              borderRadius:'12px', overflow:'hidden',
               boxShadow:'0 2px 12px var(--theme-shadow)',
             }">
               <button
@@ -1998,40 +1998,37 @@ const mvp = computed(() => {
                       }">{{ move.name }}</span>
                       <Lock v-if="isMoveBlocked(lastPMove, i, move)" :size="11" stroke-width="1.5" style="flex-shrink:0;color:var(--theme-text-2);" />
                     </div>
-                    <!-- Riga PP + efficacia -->
-                    <div :style="{ display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%' }">
-                      <!-- PpDots inline -->
-                      <div :style="{ display:'flex',gap:'3px',alignItems:'center' }">
-                        <template v-for="(_, di) in Array.from({ length: Math.min(move.maxPp ?? 8, 8) })" :key="di">
-                          <div :style="{
-                            width:'5px',height:'5px',borderRadius:'50%',flexShrink:0,
-                            background: (move.pp ?? 0) <= 0 ? _DISABLED_MOVE_STYLE.color : (_TYPE_COLORS_UI[move.type]?.border ?? '#555'),
-                            opacity: di < Math.max(0, Math.min(Math.min(move.maxPp ?? 8, 8), Math.round((move.pp ?? 0) * Math.min(move.maxPp ?? 8, 8) / (move.maxPp ?? 8)))) ? 1 : 0.22,
-                          }"/>
-                        </template>
-                        <span :style="{
-                          fontFamily:'var(--ff-label)', fontSize:'12px',
-                          color: (move.pp ?? 0) <= 0 ? _DISABLED_MOVE_STYLE.color : (_TYPE_COLORS_UI[move.type]?.border ?? '#555'),
-                          marginLeft:'3px',opacity:0.85,flexShrink:0,
-                        }">{{ move.pp ?? 0 }}/{{ move.maxPp ?? 8 }}</span>
-                      </div>
-                      <!-- Efficacia / cooldown label -->
-                      <div :style="{ display:'flex',alignItems:'center',gap:'4px' }">
-                        <span v-if="isMoveBlocked(lastPMove, i, move)" :style="{
-                          fontFamily:'var(--ff-label)',fontSize:'12px',
-                          color:`${(_TYPE_COLORS_UI[move.type]?.border ?? '#555')}88`,letterSpacing:'.5px',
-                        }"><Lock :size="7" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:2px;" />1 turno</span>
-                        <span v-else-if="(move.pp ?? 0) <= 0" :style="{
-                          fontFamily:'var(--ff-label)',fontSize:'12px',
-                          color:_DISABLED_MOVE_STYLE.color,textDecoration:'line-through',
-                        }">PP 0</span>
-                        <span v-else :style="{
-                          fontFamily:'var(--ff-body)',fontSize:'12px',
-                          fontWeight: getEffDisplay(move.type, enemy?.type ?? 'Arcana', player?.type ?? 'Arcana').bold ? 700 : 500,
-                          color: getEffDisplay(move.type, enemy?.type ?? 'Arcana', player?.type ?? 'Arcana').col,
-                          letterSpacing:'.3px',whiteSpace:'nowrap',
-                        }">{{ getEffDisplay(move.type, enemy?.type ?? 'Arcana', player?.type ?? 'Arcana').lbl }}</span>
-                      </div>
+                    <!-- Riga PP (dots + conteggio) -->
+                    <div :style="{ display:'flex',gap:'3px',alignItems:'center',width:'100%' }">
+                      <template v-for="(_, di) in Array.from({ length: Math.min(move.maxPp ?? 8, 8) })" :key="di">
+                        <div :style="{
+                          width:'5px',height:'5px',borderRadius:'50%',flexShrink:0,
+                          background: (move.pp ?? 0) <= 0 ? _DISABLED_MOVE_STYLE.color : (_TYPE_COLORS_UI[move.type]?.border ?? '#555'),
+                          opacity: di < Math.max(0, Math.min(Math.min(move.maxPp ?? 8, 8), Math.round((move.pp ?? 0) * Math.min(move.maxPp ?? 8, 8) / (move.maxPp ?? 8)))) ? 1 : 0.22,
+                        }"/>
+                      </template>
+                      <span :style="{
+                        fontFamily:'var(--ff-label)', fontSize:'12px',
+                        color: (move.pp ?? 0) <= 0 ? _DISABLED_MOVE_STYLE.color : (_TYPE_COLORS_UI[move.type]?.border ?? '#555'),
+                        marginLeft:'3px',opacity:0.85,flexShrink:0,
+                      }">{{ move.pp ?? 0 }}/{{ move.maxPp ?? 8 }}</span>
+                    </div>
+                    <!-- Efficacia / cooldown — SOTTO ai PP, su riga propria -->
+                    <div :style="{ display:'flex',alignItems:'center',gap:'4px',width:'100%' }">
+                      <span v-if="isMoveBlocked(lastPMove, i, move)" :style="{
+                        fontFamily:'var(--ff-label)',fontSize:'12px',
+                        color:`${(_TYPE_COLORS_UI[move.type]?.border ?? '#555')}88`,letterSpacing:'.5px',
+                      }"><Lock :size="7" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:2px;" />1 turno</span>
+                      <span v-else-if="(move.pp ?? 0) <= 0" :style="{
+                        fontFamily:'var(--ff-label)',fontSize:'12px',
+                        color:_DISABLED_MOVE_STYLE.color,textDecoration:'line-through',
+                      }">PP 0</span>
+                      <span v-else :style="{
+                        fontFamily:'var(--ff-body)',fontSize:'12px',
+                        fontWeight: getEffDisplay(move.type, enemy?.type ?? 'Arcana', player?.type ?? 'Arcana').bold ? 700 : 500,
+                        color: getEffDisplay(move.type, enemy?.type ?? 'Arcana', player?.type ?? 'Arcana').col,
+                        letterSpacing:'.3px',whiteSpace:'nowrap',
+                      }">{{ getEffDisplay(move.type, enemy?.type ?? 'Arcana', player?.type ?? 'Arcana').lbl }}</span>
                     </div>
                   </template>
                 </button>

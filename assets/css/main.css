@@ -236,7 +236,8 @@ html, body {
   font-family: var(--ff-body);
   color: var(--theme-text);
   min-height: 100vh;
-  overflow-x: hidden;
+  max-width: 100%;
+  overflow-x: clip;
   -webkit-font-smoothing: antialiased;
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -270,6 +271,14 @@ body {
 
 #__next, main, body > div { position: relative; z-index: 1; }
 a { color: inherit; text-decoration: none; }
+
+/* ── Nessuno scroll orizzontale a livello di pagina/app/overlay ──
+   Ovunque il contenuto non deve mai superare la larghezza dello schermo.
+   `clip` contiene anche i figli position:fixed senza creare uno scroll
+   container (a differenza di `hidden`). Gli scroller orizzontali VOLUTI
+   (righe di chip tipo, ecc.) restano tali: hanno il proprio overflow-x:auto
+   su un contenitore più interno che questa regola non tocca. */
+#__nuxt, .game-container { max-width: 100vw; overflow-x: clip; }
 button { font-family: inherit; cursor: pointer; }
 
 h1, h2, h3, h4 {
