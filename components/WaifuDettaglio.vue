@@ -71,6 +71,12 @@ const STAT_DEFS = [
 // Accordion
 const statsOpen  = ref(false)
 // Overlay video immersiva (solo carte con asset_video)
+// Il bottone 'Guarda immersiva' appare solo se il file esiste davvero (HEAD 1x)
+const videoOk = ref(false)
+watch(() => (props.waifu as any)?.asset_video, (u) => {
+  videoOk.value = false
+  if (u) videoExists(u).then((ok) => { videoOk.value = ok })
+}, { immediate: true })
 const videoOpen  = ref(false)
 const videoError = ref(false)
 const battleOpen = ref(false)
@@ -323,7 +329,7 @@ onUnmounted(() => {
         <div style="max-width:440px;margin:0 auto;padding:8px 16px calc(24px + env(safe-area-inset-bottom));">
 
           <!-- Bottone GUARDA IMMERSIVA (solo carte con video) -->
-          <div v-if="waifu.asset_video" style="display:flex;justify-content:center;margin-bottom:14px;">
+          <div v-if="waifu.asset_video && videoOk" style="display:flex;justify-content:center;margin-bottom:14px;">
             <button @click="videoOpen = true; videoError = false" :style="{
               background: 'linear-gradient(135deg, rgba(255,126,182,0.22), rgba(167,139,250,0.14))',
               border: '1.5px solid rgba(255,126,182,0.6)', borderRadius: '999px', padding: '11px 28px',

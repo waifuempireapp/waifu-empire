@@ -101,6 +101,7 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
         borderRadius: '20px 20px 0 0',
         border: '1px solid var(--theme-border)', borderBottom: 'none',
         maxHeight: '70dvh', display: 'flex', flexDirection: 'column',
+        overflow: 'hidden',
         paddingBottom: 'env(safe-area-inset-bottom, 12px)',
         boxShadow: '0 -12px 40px rgba(0,0,0,0.5)',
       }">
@@ -113,8 +114,10 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
           }">{{ label }}</div>
         </div>
 
-        <!-- Opzioni scrollabili -->
-        <div style="overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 12px 14px;">
+        <!-- Opzioni scrollabili: flex:1 + min-height:0 sono OBBLIGATORI dentro
+             un flex column con maxHeight, altrimenti il figlio non si comprime
+             e lo scroll non parte mai -->
+        <div style="flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;padding:4px 12px 14px;">
           <template v-for="(o, i) in options" :key="i">
             <!-- Header di sezione -->
             <div v-if="'header' in o" :style="{

@@ -78,16 +78,15 @@ const chosenFrom = { x: 0, y: 0, z: 0, s: 1 }
 // Parametri di caduta delle bustine scartate (deterministici per indice)
 let fallParams: { vy: number; vx: number; vr: number }[] = []
 
-function applyPlanarUVs(geo: import('three').BufferGeometry, THREE: typeof import('three'), flipV = false) {
+function applyPlanarUVs(geo: import('three').BufferGeometry, THREE: typeof import('three')) {
   const pos = geo.attributes.position
   const normals = geo.attributes.normal
   const uvs = new Float32Array(pos.count * 2)
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), y = pos.getY(i), nz = normals.getZ(i)
     let u = (x - XMIN) / (XMAX - XMIN)
-    let v = (y - YMIN) / (YMAX - YMIN)
+    const v = (y - YMIN) / (YMAX - YMIN)
     if (nz < 0) u = 1 - u
-    if (flipV) v = 1 - v   // opened_pack.glb: facce orientate al contrario
     uvs[i * 2] = u; uvs[i * 2 + 1] = v
   }
   geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2))
@@ -162,16 +161,7 @@ async function init() {
       src = findMesh(await loader.loadAsync(DEFAULT_BUSTINA))
     }
     if (!src) throw new Error('Nessuna mesh bustina disponibile')
-    // Modello del PACCHETTO APERTO per lo swipe-taglio (facoltativo).
-    // I due GLB (chiuso/aperto) condividono già origine e proporzioni: si usa
-    // la geometria com'è, solo con le stesse UV planari della chiusa.
-    try {
-      const og = findMesh(await loader.loadAsync(OPENED_BUSTINA))
-      if (og) {
-        openedGeo = og.geometry.clone()
-        applyPlanarUVs(openedGeo, THREE, true)
-      }
-    } catch { /* senza modello aperto lo swipe usa la sola dissolvenza */ }
+
     const srcMat = (Array.isArray(src!.material) ? src!.material[0] : src!.material) as import('three').MeshStandardMaterial | undefined
     const useModelMat = !!(srcMat && srcMat.map)
 
@@ -293,8 +283,8 @@ function startLoop() {
         }
         // La scelta zooma verso il centro/camera con arco morbido
         chosen.position.x = chosenFrom.x + (0 - chosenFrom.x) * e
-        chosen.position.y = chosenFrom.y + (0.62 - chosenFrom.y) * e + Math.sin(e * Math.PI) * 0.12
-        chosen.position.z = chosenFrom.z + (5.9 - chosenFrom.z) * e
+        chosen.position.y = chosenFrom.y + (-0.05 - chosenFrom.y) * e + Math.sin(e * Math.PI) * 0.12
+        chosen.position.z = chosenFrom.z + (5.25 - chosenFrom.z) * e
         chosen.scale.setScalar(chosenFrom.s + (0.78 - chosenFrom.s) * e)
         chosen.rotation.y *= (1 - e)
         chosen.renderOrder = 500
@@ -323,10 +313,9 @@ function startLoop() {
       }
       const chosen = meshes[chosenIdx]
       if (chosen) {
-        ensureOpenedMesh()
         // Respiro d'attesa solo quando NON si sta tagliando
         if (!ripDrag && ripSettle === 'none' && ripProgress === 0) {
-          chosen.position.y = 0.62 + Math.sin(t * 0.7) * 0.03
+          chosen.position.y = -0.05 + Math.sin(t * 0.7) * 0.03
           chosen.rotation.y = Math.sin(t * 0.45) * 0.08
           chosen.rotation.x = Math.sin(t * 0.3) * 0.03
         }
@@ -348,16 +337,15 @@ function startLoop() {
       }
     } else if (pickPhase === 'ripping') {
       const p = Math.min((now - phaseT0) / 900, 1)
-      // Lo strappo anima il modello APERTO se presente (la chiusa è già svanita)
-      const target = openedMesh ?? meshes[chosenIdx]
-      const mat = openedMesh ? openedMat : chosenMat
-      if (target) {
+      const chosen = meshes[chosenIdx]
+      if (chosen) {
         const e = easeOut(p)
-        target.rotation.x = e * Math.PI * 0.25
-        target.rotation.y = e * Math.PI * 0.4
-        target.scale.setScalar(0.78 * (1 - e * 0.3))
-        target.position.y = 0.62 + Math.sin(Math.min(p / 0.45, 1) * Math.PI) * 0.22 - Math.max(0, p - 0.4) ** 2 * 6
-        if (mat) mat.opacity = (openedMesh ? 1 : 1) - Math.max(0, (p - 0.5) / 0.5)
+        // Strappo: torsione 3D + piccolo lift, poi caduta con dissolvenza
+        chosen.rotation.x = e * Math.PI * 0.25
+        chosen.rotation.y = e * Math.PI * 0.4
+        chosen.scale.setScalar(0.78 * (1 - e * 0.3))
+        chosen.position.y = -0.05 + Math.sin(Math.min(p / 0.45, 1) * Math.PI) * 0.22 - Math.max(0, p - 0.4) ** 2 * 6
+        if (chosenMat) chosenMat.opacity = 1 - Math.max(0, (p - 0.5) / 0.5)
       }
       if (p >= 1) {
         pickPhase = 'wheel' // stato neutro: il parent sta già mostrando le carte
@@ -418,13 +406,9 @@ function startRip() {
 }
 
 // ── SWIPE-TAGLIO (fase 'zoomed'): trascina per "tagliare" la bustina ─────────
-// Durante lo swipe la bustina CHIUSA sfuma verso il modello APERTO
-// (opened_pack.glb) sovrapposto; oltre il 55% il taglio si completa da solo,
-// altrimenti torna indietro. Con epicGlow → burst di luce dorata.
-const OPENED_BUSTINA = '/bustine/opened_pack.glb'
-let openedGeo:  import('three').BufferGeometry | null = null
-let openedMesh: import('three').Mesh | null = null
-let openedMat:  import('three').MeshStandardMaterial | null = null
+// Lo swipe inclina progressivamente la bustina come un taglio; oltre il 55%
+// si completa da solo con lo strappo (torsione + caduta), altrimenti rientra.
+// Con epicGlow → burst di luce dorata al completamento.
 let ripDrag = false
 let ripStartX = 0
 let ripProgress = 0
@@ -432,31 +416,11 @@ let ripSettle: 'none' | 'complete' | 'cancel' = 'none'
 let ripFired = false
 const glowActive = ref(false)
 
-function ensureOpenedMesh() {
-  if (!T3 || !scene || openedMesh || !openedGeo || !chosenMat) return
-  openedMat = chosenMat.clone() as import('three').MeshStandardMaterial
-  openedMat.transparent = true
-  openedMat.opacity = 0
-  openedMesh = new T3.Mesh(openedGeo, openedMat)
-  openedMesh.renderOrder = 501
-  openedMesh.visible = false
-  scene.add(openedMesh)
-}
-
-/** Applica il progresso del taglio: closed fade-out ↔ opened fade-in. */
+/** Applica il progresso del taglio: tilt crescente + leggera dissolvenza. */
 function applyRipVisual(chosen: import('three').Mesh) {
-  chosen.rotation.z = -ripProgress * 0.10
-  if (openedMesh && openedMat) {
-    if (chosenMat) chosenMat.opacity = 1 - ripProgress
-    openedMesh.visible = ripProgress > 0.01
-    openedMesh.position.copy(chosen.position)
-    openedMesh.scale.copy(chosen.scale)
-    openedMesh.rotation.copy(chosen.rotation)
-    openedMat.opacity = ripProgress
-  } else if (chosenMat) {
-    // Senza modello aperto: leggera dissolvenza (il twist finale resta visibile)
-    chosenMat.opacity = 1 - ripProgress * 0.3
-  }
+  chosen.rotation.z = -ripProgress * 0.14
+  chosen.rotation.x = ripProgress * 0.20
+  if (chosenMat) chosenMat.opacity = 1 - ripProgress * 0.25
 }
 
 // ── Interazione: drag = gira la ruota · tap 1 = scegli · tap 2 = apri ────────
@@ -530,8 +494,6 @@ onBeforeUnmount(() => {
   ;(sharedMat as any)?.map?.dispose?.()
   sharedMat?.dispose()
   chosenMat?.dispose()
-  openedGeo?.dispose(); openedMat?.dispose()
-  openedGeo = null; openedMesh = null; openedMat = null
   sharedGeo = null; sharedMat = null; chosenMat = null
   scene?.clear()
   scene = null; camera = null; meshes = []

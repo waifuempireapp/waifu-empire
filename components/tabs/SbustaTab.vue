@@ -726,8 +726,10 @@ function rivediVideoSbusto() {
   }
 }
 /** Apre l'overlay video immersivo per la carta appena rivelata (se ha il video). */
-function apriVideoSbusto(cartaData: any) {
+async function apriVideoSbusto(cartaData: any) {
   if (!cartaData?.asset_video) return
+  // Il file potrebbe non essere ancora su ImageKit: niente overlay (e niente 404)
+  if (!(await videoExists(cartaData.asset_video))) return
   sbusCartaImmersiva.value = cartaData
   sbusVideoFinito.value = false
   sbusVideoAttivo.value = true

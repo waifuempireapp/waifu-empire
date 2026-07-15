@@ -351,7 +351,8 @@
       "Bash(node --input-type=module -e ' *)",
       "Bash(pkill -f \"nuxi dev --port 3215\")",
       "Bash(echo \"BUILD=$?\")",
-      "Bash(echo \"TYPES=$?\")"
+      "Bash(echo \"TYPES=$?\")",
+      "Bash(pkill -f \"nuxi dev --port 3216\")"
     ],
     "additionalDirectories": [
       "/private/tmp",

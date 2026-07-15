@@ -381,6 +381,11 @@ async function confermaScelta() {
       return false
     })
 
+    // Video immersivi: se il file non esiste ancora su ImageKit (404),
+    // azzera il campo PRIMA che i <video> montino → niente errori in console
+    for (const c of shuffledCards) {
+      if (c?.video) videoExists(c.video).then((ok) => { if (!ok) c.video = null })
+    }
     inPlaceCards.value   = shuffledCards
     inPlaceNew.value     = isNewArr
     inPlaceFlipped.value = new Set()
