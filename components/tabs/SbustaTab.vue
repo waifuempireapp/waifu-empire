@@ -137,10 +137,12 @@ const wheelReadyUi = ref(false)
 function onWheelReady() {
   if (wheelWatchdog) { clearTimeout(wheelWatchdog); wheelWatchdog = null }
   wheelReadyUi.value = true
+  spegniVelo()
 }
 function onWheelFailed() {
   if (wheelWatchdog) { clearTimeout(wheelWatchdog); wheelWatchdog = null }
   wheelFailed.value = true
+  spegniVelo()
 }
 const vw = ref(typeof window !== 'undefined' ? window.innerWidth : 430)
 const vh = ref(typeof window !== 'undefined' ? window.innerHeight : 800)
@@ -341,6 +343,20 @@ function eseguiTaglioBustina() {
 // le carte compaiono sopra, poi la togliamo dal DOM.
 const wheelLinger = ref(false)
 const stackLinger = ref(false)
+// Velo a tinta piena che copre l'INTERA transizione menu → ruota/stack:
+// lo smontaggio del canvas del menu flashava il compositor (Android/Chrome).
+// Si accende al click su APRI e si spegne quando la scena 3D è pronta.
+const veloTransizione = ref(false)
+let veloTimeout: ReturnType<typeof setTimeout> | null = null
+function accendiVelo() {
+  veloTransizione.value = true
+  if (veloTimeout) clearTimeout(veloTimeout)
+  veloTimeout = setTimeout(() => { veloTransizione.value = false }, 10000)  // safety
+}
+function spegniVelo() {
+  if (veloTimeout) { clearTimeout(veloTimeout); veloTimeout = null }
+  veloTransizione.value = false
+}
 // APRI 10: velo di loading sopra lo stack finché la scena non ha renderizzato
 // (prima restava il campo vuoto per tutto il tempo del caricamento GLB)
 const stackReadyUi = ref(false)
@@ -363,6 +379,7 @@ function collezioneBase(): any {
 async function apri(tipoPacchetto: string) {
   const uid = authStore.user?.uid
   if (!uid) { emit('notif', t('sbusta.no_pack_available'), C.err); return }
+  accendiVelo()
   const nuova = JSON.parse(JSON.stringify(collezioneBase()))
   // Consuma il pack pre-generato nel menu (immagini già calde → prima carta istantanea)
   const pronte = prePack.value?.key === prePackKey() ? prePack.value.carte : null
@@ -443,6 +460,7 @@ function sequenzaMista(max: number): string[] {
 // Apre una sequenza di pacchetti (tipi anche misti): genera le carte, avvia il
 // reveal e decrementa i contatori PER TIPO. È il cuore condiviso degli "apri N".
 async function apriMultiSequenza(seq: string[]) {
+  accendiVelo()
   const uid = authStore.user?.uid
   if (!uid) { emit('notif', t('sbusta.no_pack_available'), C.err); return }
   if (seq.length < 1) { emit('notif', t('sbusta.no_pack_available'), C.err); return }
@@ -976,8 +994,8 @@ function cfTouchEnd(e: TouchEvent) {
         <!-- Stack 3D: 1 sola scena Three.js con N cloni del modello .glb -->
         <PackStackGL
           ref="packStackRef"
-          @ready="stackReadyUi = true"
-          @failed="stackFailed = true"
+          @ready="stackReadyUi = true; spegniVelo()"
+          @failed="stackFailed = true; spegniVelo()"
           :count="multiPackCarte.length"
           :color="dropColore"
           :texture-url="dropAttivo?.asset_bustina ?? null"
@@ -1505,10 +1523,24 @@ function cfTouchEnd(e: TouchEvent) {
       <div v-else-if="zoomCard.tipo === 'mossa'" style="width:300px;"><MoveCard :move="(zoomCard.data as any)" :owned="true" :large="true" /></div>
     </div>
   </div>
+
+  <!-- Velo transizione APRI: copre lo smontaggio del menu (flash compositor)
+       finché la scena 3D (ruota/stack) non è pronta -->
+  <Transition name="velo-fade">
+    <div v-if="veloTransizione"
+      style="position:fixed;inset:0;z-index:260;background:var(--theme-bg);display:flex;align-items:center;justify-content:center;">
+      <AppLoading />
+    </div>
+  </Transition>
 </template>
 
 <!-- STILI ANIMAZIONI NEON E RIVELAZIONE IN PRESERVE-3D -->
 <style scoped>
+/* Il velo appare ISTANTANEO (deve coprire il flash) e sfuma solo in uscita */
+.velo-fade-enter-active { transition: none; }
+.velo-fade-leave-active { transition: opacity 0.3s ease; }
+.velo-fade-leave-to { opacity: 0; }
+
 /* Fade-in morbido quando la bustina riappare tra un'apertura e l'altra (APRI 10) */
 .booster-pack-wrapper {
   transition: opacity 0.35s ease;
