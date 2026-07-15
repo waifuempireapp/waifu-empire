@@ -88,7 +88,8 @@ export function isMoveCompatible(mossa: Record<string, unknown>, waifu: Record<s
   if (mossa.rarita === 'immersivo' && mossa.nome_waifu && mossa.nome_waifu !== waifu.nome) {
     return { compatibile: false, motivo: `Questa mossa è esclusiva di ${mossa.nome_waifu}` }
   }
-  const TYPES = ['Arcana', 'Natura', 'Abisso', 'Ferro', 'Fuoco']
+  // Stesso ordine ciclico di TYPE_NAMES (battleEngine): Fuoco→Natura→Ferro→Arcana→Abisso
+  const TYPES = ['Fuoco', 'Natura', 'Ferro', 'Arcana', 'Abisso']
   const moveIdx  = TYPES.indexOf(mossa.tipologia as string)
   const waifuIdx = TYPES.indexOf((waifu.tipo ?? waifu.tipologia) as string)
   if (moveIdx !== -1 && waifuIdx !== -1) {

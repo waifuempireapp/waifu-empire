@@ -62,8 +62,11 @@ export interface BattleTracker {
 }
 
 // ── TYPE CHART ───────────────────────────────────────────────
-/** Ciclo pentagonale: Arcana → Natura → Abisso → Ferro → Fuoco → Arcana */
-export const TYPE_NAMES = ['Arcana', 'Natura', 'Abisso', 'Ferro', 'Fuoco'] as const
+/** Ciclo pentagonale TEMATICO: Fuoco brucia la Natura, la Natura corrode il
+ *  Ferro, il Ferro (freddo) spezza l'Arcana, l'Arcana esorcizza l'Abisso,
+ *  l'Abisso (le profondità) spegne il Fuoco. L'ordine determina la typeChart:
+ *  i → i+1 = ×2 (super efficace), i → i+2 = ×1.5 (efficace). */
+export const TYPE_NAMES = ['Fuoco', 'Natura', 'Ferro', 'Arcana', 'Abisso'] as const
 export type TypeName = typeof TYPE_NAMES[number]
 
 /** Colori UI per tipo (bg, text, border). */

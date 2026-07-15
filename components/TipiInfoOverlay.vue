@@ -30,7 +30,7 @@ function arrow(i: number, j: number) {
   const a = nodePos(i), b = nodePos(j)
   const dx = b.x - a.x, dy = b.y - a.y
   const len = Math.hypot(dx, dy)
-  const PAD = 25
+  const PAD = 28
   return {
     x1: a.x + (dx / len) * PAD, y1: a.y + (dy / len) * PAD,
     x2: b.x - (dx / len) * PAD, y2: b.y - (dy / len) * PAD,
@@ -75,10 +75,10 @@ const relazioni = TYPES.map((t, i) => ({
             </template>
             <!-- Nodi -->
             <template v-for="(t, i) in TYPES" :key="'n'+t">
-              <circle :cx="nodePos(i).x" :cy="nodePos(i).y" r="21"
+              <circle :cx="nodePos(i).x" :cy="nodePos(i).y" r="24"
                 :fill="'var(--theme-surface)'" :stroke="colOf(t)" stroke-width="2.5" />
-              <text :x="nodePos(i).x" :y="nodePos(i).y + 3.5" text-anchor="middle"
-                :fill="colOf(t)" :style="{ fontFamily: FF.label, fontSize: '10px', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }">
+              <text :x="nodePos(i).x" :y="nodePos(i).y + 3" text-anchor="middle"
+                :fill="colOf(t)" :style="{ fontFamily: FF.label, fontSize: '8.5px', fontWeight: 800, letterSpacing: '0.03em', textTransform: 'uppercase' }">
                 {{ t }}
               </text>
             </template>
@@ -92,12 +92,12 @@ const relazioni = TYPES.map((t, i) => ({
         <!-- ── Moltiplicatori di danno ── -->
         <div class="tipi-section-title" :style="{ fontFamily: FF.label }">Moltiplicatori di danno</div>
         <div class="tipi-mults" :style="{ fontFamily: FF.body }">
-          <div class="tipi-mult"><b style="color:#58e0a3">×2</b> Super efficace <span>+100% danno</span></div>
-          <div class="tipi-mult"><b style="color:#8bd17c">×1.5</b> Efficace <span>+50% danno</span></div>
-          <div class="tipi-mult"><b style="color:var(--theme-text-2)">×1</b> Normale <span>danno pieno</span></div>
-          <div class="tipi-mult"><b style="color:#f5a623">×0.5</b> Poco efficace <span>−50% danno</span></div>
-          <div class="tipi-mult"><b style="color:#ff5b6c">×0</b> Non efficace <span>nessun danno</span></div>
-          <div class="tipi-mult"><b style="color:#f5c560">×1.75</b> Colpo critico <span>sul risultato finale</span></div>
+          <div class="tipi-mult"><b style="color:#58e0a3">×2</b><em>Super efficace</em><span>+100%</span></div>
+          <div class="tipi-mult"><b style="color:#8bd17c">×1.5</b><em>Efficace</em><span>+50%</span></div>
+          <div class="tipi-mult"><b style="color:var(--theme-text-2)">×1</b><em>Normale</em><span>pieno</span></div>
+          <div class="tipi-mult"><b style="color:#f5a623">×0.5</b><em>Poco efficace</em><span>−50%</span></div>
+          <div class="tipi-mult"><b style="color:#ff5b6c">×0</b><em>Non efficace</em><span>nessuno</span></div>
+          <div class="tipi-mult"><b style="color:#f5c560">×1.75</b><em>Critico</em><span>sul totale</span></div>
         </div>
 
         <!-- ── Schede per tipo ── -->
@@ -158,15 +158,17 @@ const relazioni = TYPES.map((t, i) => ({
   font-size: 12px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase;
   color: var(--theme-text-2); margin: 18px 0 10px;
 }
-.tipi-mults { display: flex; flex-direction: column; gap: 6px; }
+/* Moltiplicatori: 3 colonne compatte (valore, nome, percentuale) */
+.tipi-mults { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .tipi-mult {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
   background: var(--theme-surface-2); border: 1px solid var(--theme-border);
-  border-radius: 12px; padding: 9px 12px;
-  font-size: 12.5px; color: var(--theme-text); font-weight: 600;
+  border-radius: 12px; padding: 9px 4px; text-align: center;
+  color: var(--theme-text);
 }
-.tipi-mult b { min-width: 44px; font-size: 14px; }
-.tipi-mult span { margin-left: auto; color: var(--theme-text-3); font-size: 11px; font-weight: 500; }
+.tipi-mult b { font-size: 15px; line-height: 1.1; }
+.tipi-mult em { font-style: normal; font-size: 10px; font-weight: 700; line-height: 1.2; }
+.tipi-mult span { color: var(--theme-text-3); font-size: 9.5px; font-weight: 500; }
 
 .tipi-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .tipi-card {

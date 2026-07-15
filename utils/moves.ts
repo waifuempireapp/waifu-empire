@@ -25,14 +25,14 @@ export const TYPE_META: Record<MoveType, TypeMeta> = {
 
 export const ALL_TYPES: MoveType[] = ['arcana', 'natura', 'ferro', 'abisso', 'fuoco']
 
-// ── Efficacia di tipo (catena pentagonale) ───────────────────────────────────
-// Ogni tipo "batte" il successivo: Arcana→Natura→Abisso→Ferro→Fuoco→Arcana.
+// ── Efficacia di tipo (catena pentagonale TEMATICA) ─────────────────────────
+// Fuoco→Natura→Ferro→Arcana→Abisso→Fuoco (stesso ciclo di battleEngine).
 const BATTE: Record<MoveType, MoveType> = {
-  arcana: 'natura',
-  natura: 'abisso',
-  abisso: 'ferro',
-  ferro:  'fuoco',
-  fuoco:  'arcana',
+  fuoco:  'natura',
+  natura: 'ferro',
+  ferro:  'arcana',
+  arcana: 'abisso',
+  abisso: 'fuoco',
 }
 
 export const SUPER_EFFICACE = 1.5

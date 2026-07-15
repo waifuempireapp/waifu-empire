@@ -353,7 +353,8 @@
       "Bash(echo \"BUILD=$?\")",
       "Bash(echo \"TYPES=$?\")",
       "Bash(pkill -f \"nuxi dev --port 3216\")",
-      "Bash(pkill -f \"nuxi dev --port 3217\")"
+      "Bash(pkill -f \"nuxi dev --port 3217\")",
+      "Bash(cd /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt *)"
     ],
     "additionalDirectories": [
       "/private/tmp",
