@@ -122,7 +122,7 @@ const effColor   = computed(() => effLabel.value === 'super' ? '#22c55e' : effLa
   flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
 }
-.mc--lg .mc__desc { font-size: 14px; line-height: 1.42; }
+.mc--lg .mc__desc { font-size: 12px; line-height: 1.4; }
 .mc__type {
   position: absolute; bottom: 4px; right: 5px;
   background: #fff; border-radius: 999px; padding: 1px 7px;

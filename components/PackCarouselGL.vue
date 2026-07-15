@@ -16,6 +16,8 @@ const props = withDefaults(defineProps<{
   modelUrl?:   string | null   // GLB dell'espansione (default: standard)
   width?:      number
   height?:     number
+  /** true se il pack contiene una leggendaria/immersiva → burst di luce all'apertura */
+  epicGlow?: boolean
 }>(), { count: 20, width: 400, height: 430 })
 
 const emit = defineEmits<{
@@ -33,7 +35,7 @@ const DEFAULT_BUSTINA = '/bustine/bustina_asset.glb'
 
 // Geometria dell'anello: compatto — ~5 bustine visibili davanti, quelle dietro
 // vicine (non lontanissime) che scorrono appena sopra.
-const SPREAD_X = 2.9
+const SPREAD_X = 3.5
 const DEPTH_Z  = 1.45
 // Arco verticale: le bustine DAVANTI scendono, quelle DIETRO salgono
 // (prospettiva dall'alto più marcata → meno "orizzontale")
@@ -76,15 +78,16 @@ const chosenFrom = { x: 0, y: 0, z: 0, s: 1 }
 // Parametri di caduta delle bustine scartate (deterministici per indice)
 let fallParams: { vy: number; vx: number; vr: number }[] = []
 
-function applyPlanarUVs(geo: import('three').BufferGeometry, THREE: typeof import('three')) {
+function applyPlanarUVs(geo: import('three').BufferGeometry, THREE: typeof import('three'), flipV = false) {
   const pos = geo.attributes.position
   const normals = geo.attributes.normal
   const uvs = new Float32Array(pos.count * 2)
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), y = pos.getY(i), nz = normals.getZ(i)
     let u = (x - XMIN) / (XMAX - XMIN)
-    const v = (y - YMIN) / (YMAX - YMIN)
+    let v = (y - YMIN) / (YMAX - YMIN)
     if (nz < 0) u = 1 - u
+    if (flipV) v = 1 - v   // opened_pack.glb: facce orientate al contrario
     uvs[i * 2] = u; uvs[i * 2 + 1] = v
   }
   geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2))
@@ -159,6 +162,16 @@ async function init() {
       src = findMesh(await loader.loadAsync(DEFAULT_BUSTINA))
     }
     if (!src) throw new Error('Nessuna mesh bustina disponibile')
+    // Modello del PACCHETTO APERTO per lo swipe-taglio (facoltativo).
+    // I due GLB (chiuso/aperto) condividono già origine e proporzioni: si usa
+    // la geometria com'è, solo con le stesse UV planari della chiusa.
+    try {
+      const og = findMesh(await loader.loadAsync(OPENED_BUSTINA))
+      if (og) {
+        openedGeo = og.geometry.clone()
+        applyPlanarUVs(openedGeo, THREE, true)
+      }
+    } catch { /* senza modello aperto lo swipe usa la sola dissolvenza */ }
     const srcMat = (Array.isArray(src!.material) ? src!.material[0] : src!.material) as import('three').MeshStandardMaterial | undefined
     const useModelMat = !!(srcMat && srcMat.map)
 
@@ -280,7 +293,7 @@ function startLoop() {
         }
         // La scelta zooma verso il centro/camera con arco morbido
         chosen.position.x = chosenFrom.x + (0 - chosenFrom.x) * e
-        chosen.position.y = chosenFrom.y + (-0.05 - chosenFrom.y) * e + Math.sin(e * Math.PI) * 0.12
+        chosen.position.y = chosenFrom.y + (0.62 - chosenFrom.y) * e + Math.sin(e * Math.PI) * 0.12
         chosen.position.z = chosenFrom.z + (5.9 - chosenFrom.z) * e
         chosen.scale.setScalar(chosenFrom.s + (0.78 - chosenFrom.s) * e)
         chosen.rotation.y *= (1 - e)
@@ -298,24 +311,53 @@ function startLoop() {
       }
       if (p >= 1) pickPhase = 'zoomed'
     } else if (pickPhase === 'zoomed') {
-      // Respiro d'attesa (invito al secondo tap), identico al pack singolo
+      // Le scartate continuano a cadere finché non escono dallo schermo
+      // (durante 'zooming' i frame potrebbero non bastare, es. WebView lente)
+      for (let i = 0; i < meshes.length; i++) {
+        if (i === chosenIdx || !meshes[i].visible) continue
+        const m = meshes[i]
+        const f = fallParams[i]
+        m.position.y -= (f?.vy ?? 3) * 0.14
+        m.rotation.z += (f?.vr ?? 0.4) * 0.02
+        if (m.position.y < -4.5) m.visible = false
+      }
       const chosen = meshes[chosenIdx]
       if (chosen) {
-        chosen.position.y = -0.05 + Math.sin(t * 0.7) * 0.03
-        chosen.rotation.y = Math.sin(t * 0.45) * 0.08
-        chosen.rotation.x = Math.sin(t * 0.3) * 0.03
+        ensureOpenedMesh()
+        // Respiro d'attesa solo quando NON si sta tagliando
+        if (!ripDrag && ripSettle === 'none' && ripProgress === 0) {
+          chosen.position.y = 0.62 + Math.sin(t * 0.7) * 0.03
+          chosen.rotation.y = Math.sin(t * 0.45) * 0.08
+          chosen.rotation.x = Math.sin(t * 0.3) * 0.03
+        }
+        // Rientro/completamento automatico dopo il rilascio
+        if (ripSettle === 'cancel') {
+          ripProgress = Math.max(0, ripProgress - 0.07)
+          if (ripProgress <= 0) { ripProgress = 0; ripSettle = 'none' }
+        } else if (ripSettle === 'complete') {
+          ripProgress = Math.min(1, ripProgress + 0.08)
+          if (ripProgress >= 1 && !ripFired) {
+            ripFired = true
+            // Burst di luce SOLO se il pack contiene leggendaria/immersiva
+            if (props.epicGlow) { glowActive.value = true; setTimeout(() => { glowActive.value = false }, 1300) }
+            // Piccola pausa col pacchetto aperto in vista, poi strappo finale
+            setTimeout(() => startRip(), props.epicGlow ? 620 : 320)
+          }
+        }
+        applyRipVisual(chosen)
       }
     } else if (pickPhase === 'ripping') {
       const p = Math.min((now - phaseT0) / 900, 1)
-      const chosen = meshes[chosenIdx]
-      if (chosen) {
+      // Lo strappo anima il modello APERTO se presente (la chiusa è già svanita)
+      const target = openedMesh ?? meshes[chosenIdx]
+      const mat = openedMesh ? openedMat : chosenMat
+      if (target) {
         const e = easeOut(p)
-        // Strappo: torsione 3D + piccolo lift, poi caduta con dissolvenza
-        chosen.rotation.x = e * Math.PI * 0.25
-        chosen.rotation.y = e * Math.PI * 0.4
-        chosen.scale.setScalar(0.78 * (1 - e * 0.3))
-        chosen.position.y = -0.05 + Math.sin(Math.min(p / 0.45, 1) * Math.PI) * 0.22 - Math.max(0, p - 0.4) ** 2 * 6
-        if (chosenMat) chosenMat.opacity = 1 - Math.max(0, (p - 0.5) / 0.5)
+        target.rotation.x = e * Math.PI * 0.25
+        target.rotation.y = e * Math.PI * 0.4
+        target.scale.setScalar(0.78 * (1 - e * 0.3))
+        target.position.y = 0.62 + Math.sin(Math.min(p / 0.45, 1) * Math.PI) * 0.22 - Math.max(0, p - 0.4) ** 2 * 6
+        if (mat) mat.opacity = (openedMesh ? 1 : 1) - Math.max(0, (p - 0.5) / 0.5)
       }
       if (p >= 1) {
         pickPhase = 'wheel' // stato neutro: il parent sta già mostrando le carte
@@ -369,10 +411,52 @@ async function startPick() {
   emit('picked')
 }
 
-/** Tap 2: strappa la bustina scelta. */
+/** Avvio dello strappo finale (dopo lo swipe completato). */
 function startRip() {
   phaseT0 = performance.now()
   pickPhase = 'ripping'
+}
+
+// ── SWIPE-TAGLIO (fase 'zoomed'): trascina per "tagliare" la bustina ─────────
+// Durante lo swipe la bustina CHIUSA sfuma verso il modello APERTO
+// (opened_pack.glb) sovrapposto; oltre il 55% il taglio si completa da solo,
+// altrimenti torna indietro. Con epicGlow → burst di luce dorata.
+const OPENED_BUSTINA = '/bustine/opened_pack.glb'
+let openedGeo:  import('three').BufferGeometry | null = null
+let openedMesh: import('three').Mesh | null = null
+let openedMat:  import('three').MeshStandardMaterial | null = null
+let ripDrag = false
+let ripStartX = 0
+let ripProgress = 0
+let ripSettle: 'none' | 'complete' | 'cancel' = 'none'
+let ripFired = false
+const glowActive = ref(false)
+
+function ensureOpenedMesh() {
+  if (!T3 || !scene || openedMesh || !openedGeo || !chosenMat) return
+  openedMat = chosenMat.clone() as import('three').MeshStandardMaterial
+  openedMat.transparent = true
+  openedMat.opacity = 0
+  openedMesh = new T3.Mesh(openedGeo, openedMat)
+  openedMesh.renderOrder = 501
+  openedMesh.visible = false
+  scene.add(openedMesh)
+}
+
+/** Applica il progresso del taglio: closed fade-out ↔ opened fade-in. */
+function applyRipVisual(chosen: import('three').Mesh) {
+  chosen.rotation.z = -ripProgress * 0.10
+  if (openedMesh && openedMat) {
+    if (chosenMat) chosenMat.opacity = 1 - ripProgress
+    openedMesh.visible = ripProgress > 0.01
+    openedMesh.position.copy(chosen.position)
+    openedMesh.scale.copy(chosen.scale)
+    openedMesh.rotation.copy(chosen.rotation)
+    openedMat.opacity = ripProgress
+  } else if (chosenMat) {
+    // Senza modello aperto: leggera dissolvenza (il twist finale resta visibile)
+    chosenMat.opacity = 1 - ripProgress * 0.3
+  }
 }
 
 // ── Interazione: drag = gira la ruota · tap 1 = scegli · tap 2 = apri ────────
@@ -381,9 +465,17 @@ function onPointerDown(e: PointerEvent) {
   lastX = e.clientX
   movedPx = 0
   velocity = 0
+  if (pickPhase === 'zoomed' && ripSettle === 'none') { ripDrag = true; ripStartX = e.clientX }
   ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
 }
 function onPointerMove(e: PointerEvent) {
+  // Fase zoomed: lo swipe orizzontale è il TAGLIO della bustina
+  if (ripDrag && pickPhase === 'zoomed') {
+    movedPx += Math.abs(e.clientX - lastX)
+    lastX = e.clientX
+    ripProgress = Math.max(0, Math.min(1, Math.abs(e.clientX - ripStartX) / (props.width * 0.45)))
+    return
+  }
   if (!dragging || pickPhase !== 'wheel') return
   const dx = e.clientX - lastX
   lastX = e.clientX
@@ -416,9 +508,16 @@ function onPointerUp(e: PointerEvent) {
     targetRotation = Math.round(rotation / step) * step
     // Tap SOLO sulla bustina centrale → zoom; tap altrove non fa nulla
     if (movedPx < 10 && tapHitsFrontPack(e)) startPick()
-  } else if (pickPhase === 'zoomed' && movedPx < 10) {
-    // Secondo tap → strappo nella STESSA scena (niente re-mount, niente flash)
-    startRip()
+  } else if (pickPhase === 'zoomed') {
+    // Rilascio dello swipe-taglio: oltre il 55% si completa, sennò rientra.
+    // (il semplice tap dà solo un piccolo accenno di taglio che rientra)
+    if (ripDrag) {
+      ripDrag = false
+      if (ripFired) return
+      if (ripProgress > 0.55) ripSettle = 'complete'
+      else if (ripProgress > 0.01) ripSettle = 'cancel'
+      else if (movedPx < 10) { ripProgress = 0.14; ripSettle = 'cancel' }
+    }
   }
 }
 
@@ -431,6 +530,8 @@ onBeforeUnmount(() => {
   ;(sharedMat as any)?.map?.dispose?.()
   sharedMat?.dispose()
   chosenMat?.dispose()
+  openedGeo?.dispose(); openedMat?.dispose()
+  openedGeo = null; openedMesh = null; openedMat = null
   sharedGeo = null; sharedMat = null; chosenMat = null
   scene?.clear()
   scene = null; camera = null; meshes = []
@@ -443,15 +544,34 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <!-- Fade-in quando il primo frame è pronto: niente pop/flash alla comparsa -->
-  <canvas
-    ref="canvasRef"
-    :style="{ width: width + 'px', height: height + 'px', display: 'block', touchAction: 'pan-y', cursor: 'grab',
-              opacity: glReady ? 1 : 0, transition: 'opacity 0.35s ease' }"
-    @pointerdown="onPointerDown"
-    @pointermove="onPointerMove"
-    @pointerup="onPointerUp"
-    @pointercancel="onPointerUp"
-    @pointerleave="onPointerUp"
-  />
+  <div :style="{ position: 'relative', width: width + 'px', height: height + 'px' }">
+    <!-- Fade-in quando il primo frame è pronto: niente pop/flash alla comparsa -->
+    <canvas
+      ref="canvasRef"
+      :style="{ width: width + 'px', height: height + 'px', display: 'block', touchAction: 'pan-y', cursor: 'grab',
+                opacity: glReady ? 1 : 0, transition: 'opacity 0.35s ease' }"
+      @pointerdown="onPointerDown"
+      @pointermove="onPointerMove"
+      @pointerup="onPointerUp"
+      @pointercancel="onPointerUp"
+      @pointerleave="onPointerUp"
+    />
+    <!-- Burst di luce dorata: SOLO per pack con leggendaria/immersiva -->
+    <div v-if="glowActive" class="pcg-glow" />
+  </div>
 </template>
+
+<style scoped>
+.pcg-glow {
+  position: absolute; inset: 0; pointer-events: none; z-index: 5;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255,226,140,0.9) 0%, rgba(255,180,70,0.4) 26%, transparent 60%);
+  mix-blend-mode: screen;
+  animation: pcgGlow 1.25s ease-out forwards;
+}
+@keyframes pcgGlow {
+  0%   { opacity: 0; transform: scale(0.55); }
+  16%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.7); }
+}
+</style>

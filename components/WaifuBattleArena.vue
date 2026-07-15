@@ -447,7 +447,7 @@ useScrollLock(true)
 onMounted(() => {
   try {
     for (const w of [...pTeam.value, ...eTeam.value]) {
-      for (const preset of ['normal', 'thumbnail'] as const) {
+      for (const preset of ['normal', 'thumbnail', 'card'] as const) {
         const u = ikUrl(w.image ?? null, preset)
         if (u) { const img = new Image(); img.decoding = 'async'; img.src = u }
       }

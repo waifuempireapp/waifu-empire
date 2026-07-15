@@ -125,6 +125,12 @@ function armWheelWatchdog() {
   // mobile — meglio aspettare che degradare alla schermata senza carosello
   wheelWatchdog = setTimeout(() => { wheelFailed.value = true }, 12000)
 }
+// true se il pack appena generato contiene leggendaria/immersiva → burst di
+// luce all'apertura (swipe-taglio) nella ruota
+const packHasEpic = computed(() =>
+  (carteRivelate.value ?? []).some((c: any) => c?.tipo === 'waifu' && (c?.data?.rarita === 'leggendario' || c?.data?.rarita === 'immersivo')),
+)
+
 // La ruota è coperta da un velo di loading finché il canvas non ha renderizzato:
 // niente pop-in delle bustine (o loading o scena pronta, mai vuoto/flash)
 const wheelReadyUi = ref(false)
@@ -1007,6 +1013,7 @@ function cfTouchEnd(e: TouchEvent) {
         :color="dropColore"
         :texture-url="dropAttivo?.asset_bustina ?? null"
         :model-url="bustinaGlbUrl(dropAttivo)"
+        :epic-glow="packHasEpic"
         :width="vw"
         :height="vh"
         style="position:absolute;inset:0;"
@@ -1032,7 +1039,7 @@ function cfTouchEnd(e: TouchEvent) {
       <!-- Titolo in overlay sopra il canvas (non intercetta il drag) -->
       <div style="position:absolute;top:calc(24px + env(safe-area-inset-top));left:0;right:0;text-align:center;padding:0 30px;animation:pulseSoft 2s infinite;pointer-events:none;z-index:2;">
         <p :style="{ fontFamily: FF.label, fontSize: '15px', color: 'var(--theme-text-2)', textTransform: 'uppercase', letterSpacing: '3px', fontWeight: 700 }">
-          {{ packPicked ? $t('sbusta.tap_to_open') : $t('sbusta.pick_pack') }}
+          {{ packPicked ? $t('sbusta.swipe_to_open') : $t('sbusta.pick_pack') }}
         </p>
       </div>
     </div>

@@ -7,7 +7,7 @@
   ============================================================ -->
 <script setup lang="ts">
 // Icone Lucide — sostituiscono le emoji per consistenza cross-device
-import { Heart, Zap, Bell, ShoppingCart } from 'lucide-vue-next'
+import { Heart, Zap, Bell, ShoppingCart, Info } from 'lucide-vue-next'
 import type { ProfiloUtente } from '~/types/game'
 
 const props = defineProps<{
@@ -33,6 +33,9 @@ async function refreshNotifBadge() {
 }
 function apriNotifiche() {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('impero:apri-notifiche'))
+}
+function apriTipiInfo() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('impero:apri-tipi'))
 }
 onMounted(() => {
   refreshNotifBadge()
@@ -157,23 +160,13 @@ const pendingFriendRequests = computed(() => {
         ">{{ initials }}</span>
     </button>
 
-    <!-- ── DESTRA: admin + campanella + EXIT ─────────────────── -->
-    <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+    <!-- ── DESTRA: campanella + negozio + info tipi — stesso stile delle pill ── -->
+    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
 
-      <button class="btn-3d" style="
-          position: relative;
-          width: 38px; height: 38px;
-          font-family: var(--ff-label,'Saira Condensed',sans-serif);
-          font-size: 14px; letter-spacing: 0.13em;
-          text-transform: uppercase;
-          border-radius: 99px;
-          cursor: pointer; padding: 0 12px;
-          min-height: 38px; font-weight: 700;
-          display: inline-flex; align-items: center; gap: 5px;
-        " @click="apriNotifiche">
-        <Bell :size="20" stroke-width="1.5" style="color:var(--theme-text-2);" />
+      <button class="hdr-btn" style="position:relative;" @click="apriNotifiche">
+        <Bell :size="17" stroke-width="1.6" style="color:var(--theme-text-2);" />
         <span v-if="(unreadNotif + pendingFriendRequests) > 0" style="
-            position: absolute; top: 4px; right: 4px;
+            position: absolute; top: 2px; right: 2px;
             background: #ff5b6c; color: #fff;
             font-size: 7px; font-weight: 800;
             font-family: var(--ff-body);
@@ -185,22 +178,32 @@ const pendingFriendRequests = computed(() => {
           ">{{ (unreadNotif + pendingFriendRequests) > 9 ? '9+' : (unreadNotif + pendingFriendRequests) }}</span>
       </button>
 
-      <!-- NEGOZIO (al posto del vecchio bottone ESCI) -->
-      <button class="btn-3d" style="
-          width: 38px; height: 38px;
-          font-family: var(--ff-label,'Saira Condensed',sans-serif);
-          font-size: 12px; letter-spacing: 0.13em;
-          text-transform: uppercase;
-          color: var(--theme-accent);
-          border-radius: 99px;
-          cursor: pointer; padding: 0 12px;
-          min-height: 38px; font-weight: 700;
-          display: inline-flex; align-items: center; gap: 5px;
-        " @click="gameStore.toggleNegozio(true)">
-        <ShoppingCart :size="15" stroke-width="1.8" />
-        <!-- {{ $t('settings.shop') }} -->
+      <!-- NEGOZIO -->
+      <button class="hdr-btn" @click="gameStore.toggleNegozio(true)">
+        <ShoppingCart :size="16" stroke-width="1.8" style="color:var(--theme-accent);" />
+      </button>
+
+      <!-- INFO TIPI: cerchio delle debolezze/efficacie -->
+      <button class="hdr-btn" @click="apriTipiInfo">
+        <Info :size="17" stroke-width="1.8" style="color:var(--theme-text-2);" />
       </button>
 
     </div>
   </header>
 </template>
+
+<style scoped>
+/* Bottoni header: STESSO stile delle pill di sinistra (surface, bordo accent,
+   full-round, 38px, ombra) → i 4 elementi risultano allineati e coerenti */
+.hdr-btn {
+  width: 38px; height: 38px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-accent);
+  border-radius: 999px;
+  box-shadow: var(--shadow-float);
+  cursor: pointer; padding: 0;
+  transition: transform 0.12s;
+}
+.hdr-btn:active { transform: scale(0.92); }
+</style>

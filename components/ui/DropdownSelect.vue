@@ -10,22 +10,52 @@ import { Check, ChevronDown } from 'lucide-vue-next'
 type Opt = { value: string; label: string } | { header: string }
 
 const props = withDefaults(defineProps<{
-  modelValue: string
+  modelValue: string | string[]
   options:    Opt[]
   label?:     string        // titolo dello sheet
   placeholder?: string      // label mostrata quando modelValue === ''
-}>(), { label: '', placeholder: '—' })
+  /** selezione multipla: checkbox accanto alle voci, lo sheet resta aperto,
+      il click su una voce attiva la toglie. modelValue è string[] */
+  multi?:     boolean
+}>(), { label: '', placeholder: '—', multi: false })
 
-const emit = defineEmits<{ 'update:modelValue': [v: string] }>()
+const emit = defineEmits<{ 'update:modelValue': [v: string | string[]] }>()
 
 const open = ref(false)
 
+const selectedArr = computed<string[]>(() =>
+  props.multi ? (Array.isArray(props.modelValue) ? props.modelValue : []) : [],
+)
+
+function isActive(v: string): boolean {
+  return props.multi ? selectedArr.value.includes(v) : props.modelValue === v
+}
+
 const currentLabel = computed(() => {
+  if (props.multi) {
+    const sel = selectedArr.value
+    if (sel.length === 0) return props.placeholder
+    const labels = sel
+      .map(v => (props.options.find(o => 'value' in o && o.value === v) as { label?: string } | undefined)?.label)
+      .filter(Boolean) as string[]
+    if (labels.length <= 2) return labels.join(' · ')
+    return `${labels[0]} +${labels.length - 1}`
+  }
   const found = props.options.find(o => 'value' in o && o.value === props.modelValue) as { label?: string } | undefined
   return found?.label ?? props.placeholder
 })
 
 function pick(v: string) {
+  if (props.multi) {
+    // '' = "Tutte": azzera la selezione. Le altre voci si TOGGLANO
+    if (v === '') { emit('update:modelValue', []); return }
+    const cur = [...selectedArr.value]
+    const idx = cur.indexOf(v)
+    if (idx >= 0) cur.splice(idx, 1)
+    else cur.push(v)
+    emit('update:modelValue', cur)
+    return // multi: lo sheet resta aperto
+  }
   emit('update:modelValue', v)
   open.value = false
 }
@@ -45,7 +75,7 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
     :style="{
       width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
       background: 'var(--theme-input-bg)',
-      border: `1.5px solid ${modelValue ? 'var(--theme-accent)' : 'var(--theme-border)'}`,
+      border: `1.5px solid ${(multi ? selectedArr.length > 0 : !!modelValue) ? 'var(--theme-accent)' : 'var(--theme-border)'}`,
       color: 'var(--theme-text)', borderRadius: '10px', padding: '12px 14px',
       fontSize: '15px', fontFamily: `var(--ff-body,'DM Sans',sans-serif)`, fontWeight: 600,
       cursor: 'pointer', textAlign: 'left',
@@ -96,15 +126,25 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
             <!-- Opzione -->
             <button v-else type="button" @click="pick(o.value)" :style="{
               width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
-              background: modelValue === o.value ? 'var(--theme-tab-active)' : 'transparent',
-              border: `1px solid ${modelValue === o.value ? 'var(--theme-accent)' : 'transparent'}`,
+              background: isActive(o.value) ? 'var(--theme-tab-active)' : 'var(--theme-surface-2)',
+              border: `1px solid ${isActive(o.value) ? 'var(--theme-accent)' : 'var(--theme-border)'}`,
               borderRadius: '12px', padding: '13px 14px', cursor: 'pointer', textAlign: 'left',
+              marginBottom: '8px',
               fontFamily: `var(--ff-body,'DM Sans',sans-serif)`, fontSize: '15px',
-              fontWeight: modelValue === o.value ? 700 : 500,
-              color: modelValue === o.value ? 'var(--theme-accent)' : 'var(--theme-text)',
+              fontWeight: isActive(o.value) ? 700 : 500,
+              color: isActive(o.value) ? 'var(--theme-accent)' : 'var(--theme-text)',
             }">
               <span>{{ o.label }}</span>
-              <Check v-if="modelValue === o.value" :size="16" stroke-width="2.5" style="flex-shrink:0;" />
+              <!-- Multi: checkbox laterale (si toggla ricliccando) -->
+              <span v-if="multi && o.value !== ''" :style="{
+                width: '20px', height: '20px', borderRadius: '6px', flexShrink: 0,
+                border: `2px solid ${isActive(o.value) ? 'var(--theme-accent)' : 'var(--theme-border-2)'}`,
+                background: isActive(o.value) ? 'var(--theme-accent)' : 'transparent',
+                display: 'grid', placeItems: 'center',
+              }">
+                <Check v-if="isActive(o.value)" :size="13" stroke-width="3.5" style="color:#fff;" />
+              </span>
+              <Check v-else-if="isActive(o.value)" :size="16" stroke-width="2.5" style="flex-shrink:0;" />
             </button>
           </template>
         </div>

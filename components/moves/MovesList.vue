@@ -96,7 +96,8 @@ async function onAssign(waifuId: string) {
     console.error('[MovesList] assegnazione fallita', e)
     emit('notif', 'Errore assegnazione', '#ff5b6c')
   }
-  detailMove.value = null
+  // Il popup RESTA aperto: si possono assegnare più waifu di fila.
+  // Si chiude solo con la ✕ in alto a destra (@close).
 }
 </script>
 

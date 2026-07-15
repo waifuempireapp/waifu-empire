@@ -413,7 +413,7 @@ const listExpanded = ref(false)
         v-if="!loading"
         :style="{
           background: 'var(--theme-surface)', border: '1px solid var(--theme-border)',
-          borderRadius: '16px', marginBottom: '14px',
+          borderRadius: '16px', marginTop: '26px', marginBottom: '14px',
           boxShadow: '0 4px 16px var(--theme-shadow)', overflow: 'hidden',
         }"
       >

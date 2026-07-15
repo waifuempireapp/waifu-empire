@@ -279,6 +279,13 @@ a { color: inherit; text-decoration: none; }
    (righe di chip tipo, ecc.) restano tali: hanno il proprio overflow-x:auto
    su un contenitore più interno che questa regola non tocca. */
 #__nuxt, .game-container { max-width: 100vw; overflow-x: clip; }
+
+/* Tablet (es. iPad): la griglia waifu della collezione aveva row-gap ~0 —
+   il gap verticale desktop parte da 1152px e il layout phone non copre
+   le larghezze intermedie. */
+@media (min-width: 640px) and (max-width: 1151.9px) {
+  .waifu-grid { row-gap: 26px !important; }
+}
 button { font-family: inherit; cursor: pointer; }
 
 h1, h2, h3, h4 {

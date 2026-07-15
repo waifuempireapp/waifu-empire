@@ -91,7 +91,7 @@ const waifuDettaglioCat  = computed(() => waifuDettaglioId.value ? props.waifuCa
 const waifuDettaglioDati = computed(() => waifuDettaglioId.value ? props.collezione.waifu?.[waifuDettaglioId.value] : null)
 
 // ── Filtri waifu ─────────────────────────────────────────────
-const filtroRarita      = ref('tutte')
+const filtroRarita      = ref<string[]>([])   // multi: vuoto = tutte
 const filtroNome        = ref('')
 const filtroScambiabile = ref(false)
 const filtroHot         = ref('tutti')
@@ -114,7 +114,7 @@ const filtroRaritaPose   = ref('tutte')
 
 // ── Drop attivi ───────────────────────────────────────────────
 const drops       = ref<any[]>([])
-const filtroDropId = ref('tutti')
+const filtroDropId = ref<string[]>([])        // multi: vuoto = tutti
 
 // ── Paginazione ───────────────────────────────────────────────
 // Waifu: NIENTE paginazione — tutte le carte sono renderizzate subito
@@ -134,10 +134,17 @@ onMounted(() => {
 })
 
 // ── Computed: drop selezionato ────────────────────────────────
-const dropSelezionato = computed(() => drops.value.find(d => d.id === filtroDropId.value) || null)
-const dropWaifuIds    = computed(() => dropSelezionato.value ? new Set(dropSelezionato.value.waifuIds || []) : null)
-const dropOutfitIds   = computed(() => dropSelezionato.value ? new Set(dropSelezionato.value.outfitIds || []) : null)
-const dropPoseIds     = computed(() => dropSelezionato.value ? new Set(dropSelezionato.value.poseIds || []) : null)
+// Drop selezionati (multi): gli id ammessi sono l'UNIONE dei drop scelti
+const dropsSelezionati = computed(() => drops.value.filter(d => filtroDropId.value.includes(d.id)))
+const _unionIds = (key: string) => {
+  if (dropsSelezionati.value.length === 0) return null
+  const set = new Set<string>()
+  for (const d of dropsSelezionati.value) for (const id of ((d as any)[key] || [])) set.add(id)
+  return set
+}
+const dropWaifuIds    = computed(() => _unionIds('waifuIds'))
+const dropOutfitIds   = computed(() => _unionIds('outfitIds'))
+const dropPoseIds     = computed(() => _unionIds('poseIds'))
 
 // ── Team helpers ──────────────────────────────────────────────
 const teams = computed(() => props.collezione.teams || {})
@@ -233,8 +240,8 @@ const waifuEntries = computed(() => {
 
   if (filtroNome.value)
     entries = entries.filter(({ w }) => (w.nome || '').toLowerCase().includes(filtroNome.value.toLowerCase()))
-  if (filtroRarita.value !== 'tutte')
-    entries = entries.filter(({ w }) => w.rarita === filtroRarita.value)
+  if (filtroRarita.value.length > 0)
+    entries = entries.filter(({ w }) => filtroRarita.value.includes(w.rarita))
   if (dropWaifuIds.value)
     entries = entries.filter(({ w }) => dropWaifuIds.value!.has(w.id))
   if (filtroScambiabile.value)
@@ -285,8 +292,8 @@ const waifuGridEntries = computed(() => {
   // Filtri di catalogo (valgono anche per i placeholder)
   if (filtroNome.value)
     list = list.filter(({ w }) => (w.nome || '').toLowerCase().includes(filtroNome.value.toLowerCase()))
-  if (filtroRarita.value !== 'tutte')
-    list = list.filter(({ w }) => w.rarita === filtroRarita.value)
+  if (filtroRarita.value.length > 0)
+    list = list.filter(({ w }) => filtroRarita.value.includes(w.rarita))
   if (dropWaifuIds.value)
     list = list.filter(({ w }) => dropWaifuIds.value!.has(w.id))
   if (filtroHot.value === 'hot')
@@ -574,59 +581,37 @@ onUnmounted(() => {
   }
 })
 
-// ── Select unificata FILTRA ───────────────────────────────────
-const filtroCombo = computed({
-  get(): string {
-    if (filtroRarita.value !== 'tutte') return `rarita:${filtroRarita.value}`
-    if (filtroDropId.value !== 'tutti') return `drop:${filtroDropId.value}`
-    if (filtroScambiabile.value) return 'scambiabili'
-    if (filtroLevelUp.value === 'si') return 'pronti'
-    if (filtroLevelUp.value === 'no') return 'crescita'
-    if (filtroHot.value === 'hot') return 'hot'
-    if (filtroHot.value === 'non-hot') return 'sfw'
-    return ''
+// ── Select unificata FILTRA — MULTI-SELECT con checkbox ─────────────────────
+// modelValue = array dei valori attivi; il toggle avviene nel DropdownSelect.
+// pronti/crescita e hot/sfw sono mutuamente esclusivi: vince l'ultimo cliccato.
+const filtroCombo = computed<string[]>({
+  get(): string[] {
+    const out: string[] = []
+    for (const r of filtroRarita.value) out.push(`rarita:${r}`)
+    for (const d of filtroDropId.value) out.push(`drop:${d}`)
+    if (filtroScambiabile.value) out.push('scambiabili')
+    if (filtroLevelUp.value === 'si') out.push('pronti')
+    if (filtroLevelUp.value === 'no') out.push('crescita')
+    if (filtroHot.value === 'hot') out.push('hot')
+    if (filtroHot.value === 'non-hot') out.push('sfw')
+    return out
   },
-  // CUMULABILE: ogni selezione tocca SOLO la propria categoria (rarità, drop,
-  // speciali, hot) e si somma alle altre. '' (Tutte) azzera tutto.
-  set(v: string) {
-    if (v === '') {
-      filtroRarita.value = 'tutte'
-      filtroDropId.value = 'tutti'
-      filtroScambiabile.value = false
-      filtroLevelUp.value = 'tutti'
-      filtroHot.value = 'tutti'
-      return
+  set(arr: string[]) {
+    filtroRarita.value = arr.filter(v => v.startsWith('rarita:')).map(v => v.slice(7))
+    filtroDropId.value = arr.filter(v => v.startsWith('drop:')).map(v => v.slice(5))
+    filtroScambiabile.value = arr.includes('scambiabili')
+    // esclusivi: tieni l'ultimo dei due se presenti entrambi
+    const lastOf = (a: string, b: string) => {
+      const ia = arr.lastIndexOf(a), ib = arr.lastIndexOf(b)
+      if (ia < 0 && ib < 0) return null
+      return ia > ib ? a : b
     }
-    if (v.startsWith('rarita:')) filtroRarita.value = v.replace('rarita:', '')
-    else if (v.startsWith('drop:')) filtroDropId.value = v.replace('drop:', '')
-    else if (v === 'scambiabili') filtroScambiabile.value = true
-    else if (v === 'pronti') filtroLevelUp.value = 'si'
-    else if (v === 'crescita') filtroLevelUp.value = 'no'
-    else if (v === 'hot') filtroHot.value = 'hot'
-    else if (v === 'sfw') filtroHot.value = 'non-hot'
+    const lv = lastOf('pronti', 'crescita')
+    filtroLevelUp.value = lv === 'pronti' ? 'si' : lv === 'crescita' ? 'no' : 'tutti'
+    const ht = lastOf('hot', 'sfw')
+    filtroHot.value = ht === 'hot' ? 'hot' : ht === 'sfw' ? 'non-hot' : 'tutti'
   },
 })
-
-// Chip dei filtri attivi (rimovibili singolarmente) — rende visibile il cumulo
-const filtriAttivi = computed(() => {
-  const out: Array<{ value: string; label: string }> = []
-  const lbl = (v: string) => (filtroOptions.value.find((o: any) => o.value === v) as any)?.label ?? v
-  if (filtroRarita.value !== 'tutte') out.push({ value: `rarita:${filtroRarita.value}`, label: lbl(`rarita:${filtroRarita.value}`) })
-  if (filtroDropId.value !== 'tutti') out.push({ value: `drop:${filtroDropId.value}`, label: lbl(`drop:${filtroDropId.value}`) })
-  if (filtroScambiabile.value) out.push({ value: 'scambiabili', label: lbl('scambiabili') })
-  if (filtroLevelUp.value === 'si') out.push({ value: 'pronti', label: lbl('pronti') })
-  if (filtroLevelUp.value === 'no') out.push({ value: 'crescita', label: lbl('crescita') })
-  if (filtroHot.value === 'hot') out.push({ value: 'hot', label: lbl('hot') })
-  if (filtroHot.value === 'non-hot') out.push({ value: 'sfw', label: lbl('sfw') })
-  return out
-})
-function rimuoviFiltro(v: string) {
-  if (v.startsWith('rarita:')) filtroRarita.value = 'tutte'
-  else if (v.startsWith('drop:')) filtroDropId.value = 'tutti'
-  else if (v === 'scambiabili') filtroScambiabile.value = false
-  else if (v === 'pronti' || v === 'crescita') filtroLevelUp.value = 'tutti'
-  else if (v === 'hot' || v === 'sfw') filtroHot.value = 'tutti'
-}
 
 // ── Select unificata ORDINA ───────────────────────────────────
 const sortCombo = computed({
@@ -790,7 +775,7 @@ function apriNegozio() {
             <!-- FILTRA -->
             <div style="flex:1;display:flex;flex-direction:column;gap:4px;min-width:0;">
               <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--theme-text-2)' }">{{ $t('collection.filter_label') }}</div>
-              <DropdownSelect v-model="filtroCombo" :options="filtroOptions" :label="$t('collection.filter_label')" :placeholder="$t('collection.filter_all')" />
+              <DropdownSelect v-model="filtroCombo" :options="filtroOptions" :multi="true" :label="$t('collection.filter_label')" :placeholder="$t('collection.filter_all')" />
             </div>
 
             <!-- ORDINA -->
@@ -817,20 +802,6 @@ function apriNegozio() {
             >?</button>
           </div>
 
-          <!-- Filtri attivi (cumulabili): chip rimovibili -->
-          <div v-if="filtriAttivi.length" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
-            <button
-              v-for="f in filtriAttivi" :key="f.value"
-              @click="rimuoviFiltro(f.value)"
-              :style="{
-                display:'inline-flex', alignItems:'center', gap:'6px',
-                background:'var(--theme-tab-active)', border:'1px solid var(--theme-border-2)',
-                borderRadius:'999px', padding:'5px 10px', cursor:'pointer',
-                fontFamily:FF.label, fontSize:'11px', fontWeight:800, letterSpacing:'.06em',
-                color:'var(--theme-accent)', textTransform:'uppercase',
-              }"
-            >{{ f.label }} <span style="opacity:.7;">✕</span></button>
-          </div>
         </div>
 
         <!-- Avviso trade esauriti -->

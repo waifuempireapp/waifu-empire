@@ -155,7 +155,8 @@
     "open_all": "×10 全部開封",
     "packs_available_label": "パック利用可能",
     "buy_error": "購入エラー",
-    "pick_pack": "開けたいパックをタップ！"
+    "pick_pack": "開けたいパックをタップ！",
+    "swipe_to_open": "スワイプしてパックを開ける"
   },
   "map": {
     "title": "ワールドマップ",

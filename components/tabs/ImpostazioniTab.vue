@@ -5,6 +5,16 @@ import { User, Heart, Globe, Settings, LogOut, Check, Lock } from 'lucide-vue-ne
 import { useAuthStore } from '~/stores/auth'
 import { useGameStore } from '~/stores/game'
 import { useAvatar, AVATAR_PRESETS, isAvatarUnlocked } from '~/composables/useAvatar'
+
+// Precarica TUTTE le icone avatar all'apertura del tab: senza questo si
+// caricavano una alla volta man mano che entravano in viewport
+onMounted(() => {
+  try {
+    for (const p of AVATAR_PRESETS) {
+      if (p.image) { const img = new Image(); img.decoding = 'async'; img.src = p.image }
+    }
+  } catch { /* best effort */ }
+})
 import { updateUserProfile } from '~/utils/firestoreService'
 
 const authStore = useAuthStore()

@@ -36,7 +36,11 @@ export function usePageReady(waitForSelector?: string, minDelay = 600) {
           const canvas = (el.querySelector('canvas') ?? el.closest('canvas')) as HTMLCanvasElement | null
           if (canvas) {
             const checkCanvas = () => {
-              if (canvas.width > 0 && canvas.height > 0) {
+              // Dimensioni reali E canvas VISIBILE: BustinaGLB tiene opacity 0
+              // finché il GLB non ha davvero renderizzato → senza questo check
+              // l'overlay spariva troppo presto e si vedeva il placeholder.
+              const visible = parseFloat(getComputedStyle(canvas).opacity || '1') > 0.05
+              if (canvas.width > 0 && canvas.height > 0 && visible) {
                 // 2 frame extra di sicurezza: il primo schedula, il secondo conferma il paint
                 requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
               } else {
@@ -49,8 +53,9 @@ export function usePageReady(waitForSelector?: string, minDelay = 600) {
           }
         }
         checkElement()
-        // Timeout di sicurezza: se il canvas non appare mai, non bloccare oltre 3s
-        setTimeout(resolve, 3000)
+        // Timeout di sicurezza: meglio un loading più lungo che un placeholder
+        // (primo download del GLB su rete mobile ≈ qualche secondo)
+        setTimeout(resolve, 9000)
       }))
     } else {
       checks.push(new Promise<void>(resolve => {

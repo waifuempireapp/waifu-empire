@@ -346,7 +346,12 @@
       "Bash(pkill -f \"nuxi dev --port 3214\")",
       "Bash(pkill -f \"nuxi typecheck\")",
       "Bash(echo \"BUILD_EXIT=$?\")",
-      "Bash(echo \"TYPES_EXIT=$?\")"
+      "Bash(echo \"TYPES_EXIT=$?\")",
+      "Bash(SHOTDIR=/private/tmp/claude-501/-Users-lazzari-Documents-Anime-Waifu-waifu-empire-nuxt/7eeae835-0174-42a6-8478-2bac2d68f0d8/scratchpad node .test-carousel.tmp.mjs)",
+      "Bash(node --input-type=module -e ' *)",
+      "Bash(pkill -f \"nuxi dev --port 3215\")",
+      "Bash(echo \"BUILD=$?\")",
+      "Bash(echo \"TYPES=$?\")"
     ],
     "additionalDirectories": [
       "/private/tmp",
