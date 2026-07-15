@@ -313,27 +313,13 @@ function startLoop() {
       }
       const chosen = meshes[chosenIdx]
       if (chosen) {
-        // Respiro d'attesa solo quando NON si sta tagliando
-        if (!ripDrag && ripSettle === 'none' && ripProgress === 0) {
+        if (!cutLine.value) computeCutLine()
+        // La bustina NON si muove durante il taglio: respiro solo a riposo
+        if (!ripDrag) {
           chosen.position.y = -0.05 + Math.sin(t * 0.7) * 0.03
           chosen.rotation.y = Math.sin(t * 0.45) * 0.08
           chosen.rotation.x = Math.sin(t * 0.3) * 0.03
         }
-        // Rientro/completamento automatico dopo il rilascio
-        if (ripSettle === 'cancel') {
-          ripProgress = Math.max(0, ripProgress - 0.07)
-          if (ripProgress <= 0) { ripProgress = 0; ripSettle = 'none' }
-        } else if (ripSettle === 'complete') {
-          ripProgress = Math.min(1, ripProgress + 0.08)
-          if (ripProgress >= 1 && !ripFired) {
-            ripFired = true
-            // Burst di luce SOLO se il pack contiene leggendaria/immersiva
-            if (props.epicGlow) { glowActive.value = true; setTimeout(() => { glowActive.value = false }, 1300) }
-            // Piccola pausa col pacchetto aperto in vista, poi strappo finale
-            setTimeout(() => startRip(), props.epicGlow ? 620 : 320)
-          }
-        }
-        applyRipVisual(chosen)
       }
     } else if (pickPhase === 'ripping') {
       const p = Math.min((now - phaseT0) / 900, 1)
@@ -405,22 +391,33 @@ function startRip() {
   pickPhase = 'ripping'
 }
 
-// ── SWIPE-TAGLIO (fase 'zoomed'): trascina per "tagliare" la bustina ─────────
-// Lo swipe inclina progressivamente la bustina come un taglio; oltre il 55%
-// si completa da solo con lo strappo (torsione + caduta), altrimenti rientra.
-// Con epicGlow → burst di luce dorata al completamento.
+// ── SWIPE-TAGLIO (fase 'zoomed') ──────────────────────────────────────────────
+// La bustina resta FERMA: lo swipe disegna una LINEA DI TAGLIO luminosa che
+// segue il dito lungo la parte alta del pacchetto (proiettata dal 3D in px).
+// Solo quando il taglio va DA PARTE A PARTE la bustina si apre (strappo).
 let ripDrag = false
-let ripStartX = 0
-let ripProgress = 0
-let ripSettle: 'none' | 'complete' | 'cancel' = 'none'
 let ripFired = false
+let cutDir: 'ltr' | 'rtl' = 'ltr'
 const glowActive = ref(false)
+// Linea di taglio in coordinate schermo: y + estremi orizzontali della bustina
+const cutLine = ref<{ y: number; xL: number; xR: number } | null>(null)
+const cutOn   = ref(false)   // dito giù: scintilla visibile
+const cutX    = ref(0)       // posizione della scintilla (px)
+const cutFrom = ref(0)       // bordo di partenza (px, dipende dalla direzione)
 
-/** Applica il progresso del taglio: tilt crescente + leggera dissolvenza. */
-function applyRipVisual(chosen: import('three').Mesh) {
-  chosen.rotation.z = -ripProgress * 0.14
-  chosen.rotation.x = ripProgress * 0.20
-  if (chosenMat) chosenMat.opacity = 1 - ripProgress * 0.25
+/** Proietta la linea di taglio della bustina zoomata in pixel schermo. */
+function computeCutLine() {
+  if (!T3 || !camera) return
+  const scale = 0.78
+  const yWorld = -0.05 + 0.60 * scale       // poco sotto il bordo superiore
+  const zWorld = 5.25
+  const toPx = (xWorld: number) => {
+    const v = new T3!.Vector3(xWorld, yWorld, zWorld).project(camera!)
+    return { x: (v.x * 0.5 + 0.5) * props.width, y: (-v.y * 0.5 + 0.5) * props.height }
+  }
+  const L = toPx(-0.60 * scale)
+  const R = toPx(0.60 * scale)
+  cutLine.value = { y: (L.y + R.y) / 2, xL: L.x, xR: R.x }
 }
 
 // ── Interazione: drag = gira la ruota · tap 1 = scegli · tap 2 = apri ────────
@@ -429,15 +426,33 @@ function onPointerDown(e: PointerEvent) {
   lastX = e.clientX
   movedPx = 0
   velocity = 0
-  if (pickPhase === 'zoomed' && ripSettle === 'none') { ripDrag = true; ripStartX = e.clientX }
+  if (pickPhase === 'zoomed' && !ripFired && cutLine.value) {
+    ripDrag = true
+    // Direzione: si taglia dal lato più vicino al punto di partenza
+    const mid = (cutLine.value.xL + cutLine.value.xR) / 2
+    cutDir = e.clientX <= mid ? 'ltr' : 'rtl'
+    cutFrom.value = cutDir === 'ltr' ? cutLine.value.xL : cutLine.value.xR
+    cutX.value = Math.max(cutLine.value.xL, Math.min(cutLine.value.xR, e.clientX))
+    cutOn.value = true
+  }
   ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
 }
 function onPointerMove(e: PointerEvent) {
-  // Fase zoomed: lo swipe orizzontale è il TAGLIO della bustina
-  if (ripDrag && pickPhase === 'zoomed') {
+  // Fase zoomed: lo swipe muove la SCINTILLA lungo la linea di taglio
+  if (ripDrag && pickPhase === 'zoomed' && cutLine.value) {
     movedPx += Math.abs(e.clientX - lastX)
     lastX = e.clientX
-    ripProgress = Math.max(0, Math.min(1, Math.abs(e.clientX - ripStartX) / (props.width * 0.45)))
+    const { xL, xR } = cutLine.value
+    cutX.value = Math.max(xL, Math.min(xR, e.clientX))
+    // Da parte a parte → APERTURA (anche senza rilasciare)
+    const done = cutDir === 'ltr' ? cutX.value >= xR - 2 : cutX.value <= xL + 2
+    if (done && !ripFired) {
+      ripFired = true
+      ripDrag = false
+      cutOn.value = false
+      if (props.epicGlow) { glowActive.value = true; setTimeout(() => { glowActive.value = false }, 1300) }
+      setTimeout(() => startRip(), props.epicGlow ? 480 : 180)
+    }
     return
   }
   if (!dragging || pickPhase !== 'wheel') return
@@ -473,15 +488,8 @@ function onPointerUp(e: PointerEvent) {
     // Tap SOLO sulla bustina centrale → zoom; tap altrove non fa nulla
     if (movedPx < 10 && tapHitsFrontPack(e)) startPick()
   } else if (pickPhase === 'zoomed') {
-    // Rilascio dello swipe-taglio: oltre il 55% si completa, sennò rientra.
-    // (il semplice tap dà solo un piccolo accenno di taglio che rientra)
-    if (ripDrag) {
-      ripDrag = false
-      if (ripFired) return
-      if (ripProgress > 0.55) ripSettle = 'complete'
-      else if (ripProgress > 0.01) ripSettle = 'cancel'
-      else if (movedPx < 10) { ripProgress = 0.14; ripSettle = 'cancel' }
-    }
+    // Rilascio senza aver tagliato da parte a parte: la scintilla svanisce
+    if (ripDrag) { ripDrag = false; cutOn.value = false }
   }
 }
 
@@ -518,6 +526,22 @@ onBeforeUnmount(() => {
       @pointercancel="onPointerUp"
       @pointerleave="onPointerUp"
     />
+    <!-- LINEA DI TAGLIO: traccia luminosa che segue il dito sulla bustina -->
+    <template v-if="cutOn && cutLine">
+      <!-- guida sottile su tutta la larghezza della bustina -->
+      <div class="pcg-cut-guide" :style="{
+        left: cutLine.xL + 'px', width: (cutLine.xR - cutLine.xL) + 'px', top: (cutLine.y - 1) + 'px',
+      }" />
+      <!-- porzione già tagliata: brillante -->
+      <div class="pcg-cut-done" :style="{
+        left: Math.min(cutFrom, cutX) + 'px',
+        width: Math.abs(cutX - cutFrom) + 'px',
+        top: (cutLine.y - 2) + 'px',
+      }" />
+      <!-- scintilla sul punto di taglio -->
+      <div class="pcg-cut-spark" :style="{ left: cutX + 'px', top: cutLine.y + 'px' }" />
+    </template>
+
     <!-- Burst di luce dorata: SOLO per pack con leggendaria/immersiva -->
     <div v-if="glowActive" class="pcg-glow" />
   </div>
@@ -535,5 +559,32 @@ onBeforeUnmount(() => {
   0%   { opacity: 0; transform: scale(0.55); }
   16%  { opacity: 1; }
   100% { opacity: 0; transform: scale(1.7); }
+}
+
+/* ── Effetti del TAGLIO (la bustina resta ferma) ── */
+.pcg-cut-guide {
+  position: absolute; height: 2px; pointer-events: none; z-index: 6;
+  background: rgba(255,255,255,0.22);
+  border-radius: 2px;
+}
+.pcg-cut-done {
+  position: absolute; height: 4px; pointer-events: none; z-index: 7;
+  background: linear-gradient(90deg, rgba(255,240,190,0.95), #fff);
+  border-radius: 3px;
+  box-shadow: 0 0 10px rgba(255,225,140,0.95), 0 0 26px rgba(255,190,80,0.6);
+}
+.pcg-cut-spark {
+  position: absolute; width: 18px; height: 18px; pointer-events: none; z-index: 8;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, rgba(255,235,170,0.95) 35%, rgba(255,190,80,0.35) 65%, transparent 75%);
+  box-shadow:
+    0 0 14px 4px rgba(255,230,150,0.9),
+    0 0 34px 10px rgba(255,180,70,0.45);
+  animation: pcgSpark 0.5s ease-in-out infinite alternate;
+}
+@keyframes pcgSpark {
+  from { transform: translate(-50%, -50%) scale(0.85); }
+  to   { transform: translate(-50%, -50%) scale(1.25); }
 }
 </style>
