@@ -409,7 +409,7 @@ const cutFrom = ref(0)       // bordo di partenza (px, dipende dalla direzione)
 function computeCutLine() {
   if (!T3 || !camera) return
   const scale = 0.78
-  const yWorld = -0.05 + 0.60 * scale       // poco sotto il bordo superiore
+  const yWorld = -0.05 + 0.72 * scale       // al confine crimpatura/artwork
   const zWorld = 5.25
   const toPx = (xWorld: number) => {
     const v = new T3!.Vector3(xWorld, yWorld, zWorld).project(camera!)
@@ -566,15 +566,15 @@ onBeforeUnmount(() => {
    sembrare un righello perfettamente dritto. */
 .pcg-cut-guide {
   position: absolute; height: 2px; pointer-events: none; z-index: 6;
-  background: rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.09);
   border-radius: 2px;
-  filter: blur(1.5px);
+  filter: blur(2.5px);
 }
 .pcg-cut-done {
   position: absolute; height: 4px; pointer-events: none; z-index: 7;
   background: linear-gradient(90deg, rgba(255,240,190,0.75), rgba(255,255,255,0.9));
   border-radius: 3px;
-  filter: blur(2px);
+  filter: blur(3px);
   box-shadow: 0 0 12px rgba(255,225,140,0.8), 0 0 30px rgba(255,190,80,0.45);
 }
 .pcg-cut-spark {
