@@ -286,7 +286,10 @@ a { color: inherit; text-decoration: none; }
    Blob di colore sfocati + vignetta, fissi dietro a tutto il contenuto. */
 .game-container::before {
   content: '';
-  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  /* z-index NEGATIVO: sta dietro a tutto senza toccare la posizione dei figli
+     (la vecchia regola .game-container > * { position:relative } sovrascriveva
+     il position:fixed della sidebar desktop rompendo il layout) */
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background:
     radial-gradient(58% 42% at 18% -4%,  rgba(139,111,216,0.16), transparent 62%),
     radial-gradient(46% 34% at 88% 12%,  rgba(217,70,168,0.09),  transparent 60%),
@@ -299,7 +302,6 @@ a { color: inherit; text-decoration: none; }
     radial-gradient(70% 48% at 50% 112%, rgba(108,240,224,0.07), transparent 62%),
     radial-gradient(120% 90% at 50% 50%, transparent 55%, rgba(0,0,0,0.32) 100%);
 }
-.game-container > * { position: relative; z-index: 1; }
 
 /* Glow ambientale da mettere DIETRO gli elementi hero (bustina home, ecc.) */
 .hero-glow { position: relative; }
