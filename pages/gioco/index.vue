@@ -625,6 +625,11 @@ function handleSetTab(t: string) {
           :class="{ 'bnav-pocket__icon--active': tab === t.id }"
         />
 
+        <!-- Label: nascosta su mobile (footer solo icone), visibile nella
+             sidebar DESKTOP (override nel blocco desktop di main.css) -->
+        <span class="bnav-pocket__label" :class="{ 'bnav-pocket__label--active': tab === t.id }">
+          {{ $t(t.labelKey) }}
+        </span>
       </button>
     </nav>
 
@@ -709,8 +714,9 @@ function handleSetTab(t: string) {
   filter: drop-shadow(0 0 5px rgba(139,111,216,0.45));
 }
 
-/* Label */
+/* Label: SOLO desktop (sidebar) — su mobile il footer è a sole icone */
 .bnav-pocket__label {
+  display: none;
   font-family: var(--ff-body, 'Nunito', sans-serif);
   font-size: 9px; font-weight: 700;
   letter-spacing: 0.08em; text-transform: uppercase;

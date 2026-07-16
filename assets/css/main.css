@@ -2974,6 +2974,7 @@ input:focus, textarea:focus, select:focus {
   .bnav-pocket__icon { width: 26px !important; height: 26px !important; }
   .bnav-pocket__icon--active { transform: none !important; }
   .bnav-pocket__label {
+    display: inline !important;   /* su mobile è nascosta: qui torna visibile */
     font-size: 15px !important;
     font-weight: 700 !important;
     letter-spacing: 0.1em !important;
