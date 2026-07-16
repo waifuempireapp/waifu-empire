@@ -3014,9 +3014,18 @@ input:focus, textarea:focus, select:focus {
   .ht-hero-title { font-size: 34px !important; }
   .ht-hero-cta { font-size: 16px !important; padding: 16px 44px !important; }
 
-  /* ── Griglia collezione waifu: 5 colonne + aria verticale ── */
-  .collection-card-item { width: calc(20% - 2px) !important; }
-  .waifu-grid { gap: 28px 10px !important; }
+  /* ── Griglia collezione waifu: come le MOSSE — carte ingrandite (zoom),
+     margine garantito e colonne auto in base alla larghezza dello schermo ── */
+  .waifu-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)) !important;
+    gap: 34px 16px !important;
+    justify-items: center;
+  }
+  .collection-card-item { width: auto !important; }
+  /* la CartaWaifu ha dimensioni fisse (143px): la si ingrandisce con zoom
+     (sovrascrive lo zoom:0.98 inline) — vale per carta E placeholder '?' */
+  .collection-card-item > div:first-child { zoom: 1.32 !important; }
 
   /* ── Griglia mosse: 5 colonne, più aria ── */
   .moves-list__grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 22px 18px !important; }

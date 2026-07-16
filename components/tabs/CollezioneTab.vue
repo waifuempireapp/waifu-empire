@@ -644,10 +644,13 @@ const filtroOptions = computed(() => [
   { header: t('collection.filter_special_group') },
   { value: 'scambiabili', label: t('collection.filter_tradeable') },
   { value: 'pronti',      label: t('collection.filter_ready_levelup') },
-  { value: 'crescita',    label: t('collection.filter_growing') },
+  { value: 'crescita',    label: t('collection.filter_growing'),
+    info: 'Waifu non ancora pronte al level-up: hanno meno di 3 copie. Trovane altre per farle crescere!' },
   ...(props.profilo?.hardPass ? [
-    { value: 'hot', label: t('collection.filter_hot') },
-    { value: 'sfw', label: t('collection.filter_sfw') },
+    // HOT temporaneamente disabilitato
+    // { value: 'hot', label: t('collection.filter_hot') },
+    { value: 'sfw', label: t('collection.filter_sfw'),
+      info: 'Safe For Work: nasconde le carte Hot 🔥 e mostra solo quelle adatte a tutti.' },
   ] : []),
 ])
 

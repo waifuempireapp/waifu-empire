@@ -707,7 +707,7 @@ async function onTerritoryClick(territoryId: string) {
               width: '38px', height: '38px',
               background: 'var(--theme-accent-pink)', border: 'none',
               borderRadius: '50%', fontSize: '20px', lineHeight: 1,
-              cursor: 'pointer', display: 'grid', placeItems: 'center',
+              cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0,
               boxShadow: '0 4px 12px var(--theme-shadow)',
             }"
           >
@@ -721,7 +721,7 @@ async function onTerritoryClick(territoryId: string) {
               width: '38px', height: '38px',
               background: 'var(--theme-accent-pink)', border: 'none',
               borderRadius: '50%', fontSize: '22px', lineHeight: 1,
-              cursor: 'pointer', display: 'grid', placeItems: 'center',
+              cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0,
               boxShadow: '0 4px 12px var(--theme-shadow)',
             }"
           >
@@ -808,7 +808,7 @@ async function onTerritoryClick(territoryId: string) {
             background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)',
             border: '1.5px solid rgba(255,255,255,0.3)',
             color: '#fff', fontFamily: FF.display, fontSize: '18px', fontWeight: 800,
-            cursor: 'pointer', display: 'grid', placeItems: 'center', lineHeight: 1,
+            cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0, lineHeight: 1,
             boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
           }"
         >?</button>
@@ -822,7 +822,7 @@ async function onTerritoryClick(territoryId: string) {
             background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)',
             border: '1.5px solid rgba(255,255,255,0.3)',
             color: '#fff', fontSize: '17px',
-            cursor: 'pointer', display: 'grid', placeItems: 'center', lineHeight: 1,
+            cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0, lineHeight: 1,
             boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
           }"
         >📖</button>

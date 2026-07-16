@@ -7,7 +7,7 @@
 <script setup lang="ts">
 import { Check, ChevronDown } from 'lucide-vue-next'
 
-type Opt = { value: string; label: string } | { header: string }
+type Opt = { value: string; label: string; info?: string } | { header: string }
 
 const props = withDefaults(defineProps<{
   modelValue: string | string[]
@@ -22,6 +22,8 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{ 'update:modelValue': [v: string | string[]] }>()
 
 const open = ref(false)
+// Voce con la spiegazione ⓘ espansa (solo una alla volta)
+const infoOpen = ref<string | null>(null)
 
 const selectedArr = computed<string[]>(() =>
   props.multi ? (Array.isArray(props.modelValue) ? props.modelValue : []) : [],
@@ -137,7 +139,28 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
               fontWeight: isActive(o.value) ? 700 : 500,
               color: isActive(o.value) ? 'var(--theme-accent)' : 'var(--theme-text)',
             }">
-              <span>{{ o.label }}</span>
+              <span :style="{ flex: 1, minWidth: 0 }">
+                {{ o.label }}
+                <!-- Spiegazione espansa dal tap sulla ⓘ -->
+                <span v-if="'info' in o && o.info && infoOpen === o.value" :style="{
+                  display: 'block', marginTop: '5px',
+                  fontSize: '12px', fontWeight: 500, lineHeight: 1.45,
+                  color: 'var(--theme-text-2)',
+                }">{{ o.info }}</span>
+              </span>
+              <!-- ⓘ: spiega cos'è questa voce (non seleziona) -->
+              <span
+                v-if="'info' in o && o.info"
+                @click.stop="infoOpen = infoOpen === o.value ? null : o.value"
+                :style="{
+                  width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
+                  border: `1.5px solid ${infoOpen === o.value ? 'var(--theme-accent)' : 'var(--theme-border-2)'}`,
+                  color: infoOpen === o.value ? 'var(--theme-accent)' : 'var(--theme-text-3)',
+                  display: 'grid', placeItems: 'center',
+                  fontSize: '11px', fontWeight: 800, fontStyle: 'italic',
+                  fontFamily: 'Georgia, serif', cursor: 'pointer',
+                }"
+              >i</span>
               <!-- Multi: checkbox laterale (si toggla ricliccando) -->
               <span v-if="multi && o.value !== ''" :style="{
                 width: '20px', height: '20px', borderRadius: '6px', flexShrink: 0,

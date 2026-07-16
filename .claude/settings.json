@@ -354,7 +354,8 @@
       "Bash(echo \"TYPES=$?\")",
       "Bash(pkill -f \"nuxi dev --port 3216\")",
       "Bash(pkill -f \"nuxi dev --port 3217\")",
-      "Bash(cd /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt *)"
+      "Bash(cd /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt *)",
+      "Bash(awk '/\\\\.bnav-pocket \\\\{/,/^}/' pages/gioco/index.vue)"
     ],
     "additionalDirectories": [
       "/private/tmp",

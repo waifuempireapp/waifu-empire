@@ -246,7 +246,7 @@ async function switchLocale(code: string) {
       </button>
       <!-- Negozio rimosso: ora è nell'header. Restano Admin (sopra) ed Esci (sotto). -->
       <button
-        style="display:flex;align-items:center;gap:14px;padding:14px 20px;background:transparent;border:none;cursor:pointer;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:15px;font-weight:700;width:100%;text-align:left;margin-top:4px;"
+        style="display:flex;align-items:center;gap:14px;padding:14px 20px;background:transparent;border:none;cursor:pointer;font-family:var(--ff-body,'DM Sans',sans-serif);font-size:15px;font-weight:700;width:100%;text-align:left;margin-top:22px;"
         :style="{ color: isDark ? '#E74C3C' : '#C0392B' }"
         @click="authStore.logout()"
       >

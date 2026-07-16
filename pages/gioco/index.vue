@@ -602,7 +602,7 @@ function handleSetTab(t: string) {
          Tab attiva: dot viola + icona piena colore accent.
          Tab inattiva: outline sottile, opacity ridotta.
     ──────────────────────────────────────────────────────────────────── -->
-    <nav class="fixed bottom-0 left-0 right-0 z-50 flex bnav-pocket">
+    <nav v-if="tab !== 'swap'" class="fixed bottom-0 left-0 right-0 z-50 flex bnav-pocket">
       <button
         v-for="t in TABS" :key="t.id"
         class="bnav-pocket__btn"
@@ -625,10 +625,6 @@ function handleSetTab(t: string) {
           :class="{ 'bnav-pocket__icon--active': tab === t.id }"
         />
 
-        <!-- Label sotto l'icona -->
-        <span class="bnav-pocket__label" :class="{ 'bnav-pocket__label--active': tab === t.id }">
-          {{ $t(t.labelKey) }}
-        </span>
       </button>
     </nav>
 
@@ -671,7 +667,8 @@ function handleSetTab(t: string) {
   -webkit-backdrop-filter: blur(24px);
   border-top: 1px solid var(--border-subtle);
   box-shadow: 0 -4px 20px rgba(110,79,196,0.06);
-  height: 72px;
+  /* Senza label basta meno altezza: icone centrate */
+  height: 58px;
   transform: translateZ(0); /* prevent iOS jank */
 }
 [data-theme="dark"] .bnav-pocket {
@@ -680,12 +677,11 @@ function handleSetTab(t: string) {
 
 .bnav-pocket__btn {
   flex: 1;
-  display: flex; flex-direction: column;
+  display: flex;
   align-items: center; justify-content: center;
-  gap: 3px;
   border: none; background: transparent;
   cursor: pointer; position: relative;
-  padding: 8px 4px 10px;
+  padding: 0;
   min-height: 44px;
   transition: opacity 0.18s;
 }

@@ -212,6 +212,13 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
   <!-- Card waifu centrata -->
   <div v-else class="swap-arena">
 
+    <!-- X: chiude lo swipe e torna alla home (il footer qui è nascosto) -->
+    <button
+      class="swap-close-x"
+      aria-label="Chiudi"
+      @click="$emit('setTab', 'home')"
+    >✕</button>
+
     <SwapCard
       v-if="currentWaifu"
       :key="currentWaifu?.id ?? currentIdx"
@@ -238,6 +245,22 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
 </template>
 
 <style scoped>
+.swap-close-x {
+  position: fixed;
+  top: calc(14px + env(safe-area-inset-top));
+  right: 14px;
+  z-index: 80;
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  padding: 0; line-height: 1;
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border-2);
+  border-radius: 12px;
+  color: var(--theme-text-2);
+  font-size: 16px; cursor: pointer;
+  box-shadow: 0 4px 14px var(--theme-shadow);
+}
+
 .swap-state-screen {
   display: flex; flex-direction: column;
   min-height: 70vh; align-items: center; justify-content: center;

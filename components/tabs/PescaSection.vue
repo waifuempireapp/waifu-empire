@@ -286,10 +286,10 @@ function cardStyle(uiIdx: number): CSSProperties {
       aspectRatio: '2/3', borderRadius: '13px', overflow: 'visible',
       position: 'relative', cursor: 'default',
       border: isChosen && isFlipped
-        ? '2px solid #ff4d9e'
+        ? '2px solid #a78bfa'
         : isFlipped ? '1.5px solid rgba(245,166,35,0.45)' : '1.5px solid rgba(245,166,35,0.15)',
       boxShadow: isChosen && isFlipped
-        ? '0 0 32px rgba(255,77,158,0.7), 0 0 0 1px rgba(255,77,158,0.3) inset'
+        ? '0 0 20px 5px rgba(167,139,250,0.75), 0 0 50px 16px rgba(167,139,250,0.35)'
         : isFlipped ? '0 6px 20px rgba(0,0,0,0.5)' : '0 3px 10px rgba(0,0,0,0.4)',
       background: 'var(--theme-bg-secondary)',
       zIndex, transform, transition,
@@ -342,9 +342,9 @@ function cardStyle(uiIdx: number): CSSProperties {
     overflow: pickPhase.value === 'reveal' ? 'hidden' : 'visible',
     position: 'relative',
     cursor: pickPhase.value === 'pick' ? 'pointer' : 'default',
-    border: isSel ? '2px solid #ff4d9e' : '1.5px solid rgba(245,166,35,0.28)',
+    border: isSel ? '2px solid #a78bfa' : '1.5px solid rgba(245,166,35,0.28)',
     boxShadow: isSel
-      ? '0 0 28px rgba(255,77,158,0.6), 0 0 0 1px rgba(255,77,158,0.25) inset'
+      ? '0 0 18px 4px rgba(167,139,250,0.75), 0 0 46px 14px rgba(167,139,250,0.38)'
       : '0 6px 20px rgba(0,0,0,0.6)',
     background: 'var(--theme-bg-secondary)',
     zIndex,
@@ -594,7 +594,6 @@ onUnmounted(() => {
                     <div :style="{position:'absolute',inset:0,transformStyle:'preserve-3d',transition:'transform 0.55s cubic-bezier(0.4,0,0.2,1)',transform:(pickPhase==='revealing'||pickPhase==='revealed')&&inPlaceFlipped.has(0)?'rotateY(180deg)':'rotateY(0deg)'}">
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:13px;overflow:hidden;">
                         <img src="~/assets/images/back_card.png" style="width:100%;height:100%;object-fit:cover;display:block;"/>
-                        <div v-if="pickPhase==='pick'&&selectedCardIndex===0" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">{{ $t('pesca.chosen') }}</div>
                       </div>
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
                         <video v-if="inPlaceCards[0]?.video" :src="inPlaceCards[0].video ?? undefined" autoplay muted loop playsinline @error="(e:any) => e.target.style.display='none'" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/><img v-else-if="inPlaceCards[0]?.immagine" @error="ikImgFallback" :src="ikUrl(inPlaceCards[0].immagine, 'card') ?? ''" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
@@ -619,7 +618,6 @@ onUnmounted(() => {
                     <div :style="{position:'absolute',inset:0,transformStyle:'preserve-3d',transition:'transform 0.55s cubic-bezier(0.4,0,0.2,1)',transform:(pickPhase==='revealing'||pickPhase==='revealed')&&inPlaceFlipped.has(1)?'rotateY(180deg)':'rotateY(0deg)'}">
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:13px;overflow:hidden;">
                         <img src="~/assets/images/back_card.png" style="width:100%;height:100%;object-fit:cover;display:block;"/>
-                        <div v-if="pickPhase==='pick'&&selectedCardIndex===1" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">{{ $t('pesca.chosen') }}</div>
                       </div>
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
                         <video v-if="inPlaceCards[1]?.video" :src="inPlaceCards[1].video ?? undefined" autoplay muted loop playsinline @error="(e:any) => e.target.style.display='none'" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/><img v-else-if="inPlaceCards[1]?.immagine" @error="ikImgFallback" :src="ikUrl(inPlaceCards[1].immagine, 'card') ?? ''" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
@@ -646,7 +644,6 @@ onUnmounted(() => {
                     <div :style="{position:'absolute',inset:0,transformStyle:'preserve-3d',transition:'transform 0.55s cubic-bezier(0.4,0,0.2,1)',transform:(pickPhase==='revealing'||pickPhase==='revealed')&&inPlaceFlipped.has(2)?'rotateY(180deg)':'rotateY(0deg)'}">
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:13px;overflow:hidden;">
                         <img src="~/assets/images/back_card.png" style="width:100%;height:100%;object-fit:cover;display:block;"/>
-                        <div v-if="pickPhase==='pick'&&selectedCardIndex===2" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">{{ $t('pesca.chosen') }}</div>
                       </div>
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
                         <video v-if="inPlaceCards[2]?.video" :src="inPlaceCards[2].video ?? undefined" autoplay muted loop playsinline @error="(e:any) => e.target.style.display='none'" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/><img v-else-if="inPlaceCards[2]?.immagine" @error="ikImgFallback" :src="ikUrl(inPlaceCards[2].immagine, 'card') ?? ''" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
@@ -670,7 +667,6 @@ onUnmounted(() => {
                     <div :style="{position:'absolute',inset:0,transformStyle:'preserve-3d',transition:'transform 0.55s cubic-bezier(0.4,0,0.2,1)',transform:(pickPhase==='revealing'||pickPhase==='revealed')&&inPlaceFlipped.has(3)?'rotateY(180deg)':'rotateY(0deg)'}">
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:13px;overflow:hidden;">
                         <img src="~/assets/images/back_card.png" style="width:100%;height:100%;object-fit:cover;display:block;"/>
-                        <div v-if="pickPhase==='pick'&&selectedCardIndex===3" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">{{ $t('pesca.chosen') }}</div>
                       </div>
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
                         <video v-if="inPlaceCards[3]?.video" :src="inPlaceCards[3].video ?? undefined" autoplay muted loop playsinline @error="(e:any) => e.target.style.display='none'" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/><img v-else-if="inPlaceCards[3]?.immagine" @error="ikImgFallback" :src="ikUrl(inPlaceCards[3].immagine, 'card') ?? ''" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
@@ -694,7 +690,6 @@ onUnmounted(() => {
                     <div :style="{position:'absolute',inset:0,transformStyle:'preserve-3d',transition:'transform 0.55s cubic-bezier(0.4,0,0.2,1)',transform:(pickPhase==='revealing'||pickPhase==='revealed')&&inPlaceFlipped.has(4)?'rotateY(180deg)':'rotateY(0deg)'}">
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:13px;overflow:hidden;">
                         <img src="~/assets/images/back_card.png" style="width:100%;height:100%;object-fit:cover;display:block;"/>
-                        <div v-if="pickPhase==='pick'&&selectedCardIndex===4" style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);letter-spacing:2px;color:#ff4d9e;font-weight:800;">{{ $t('pesca.chosen') }}</div>
                       </div>
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
                         <video v-if="inPlaceCards[4]?.video" :src="inPlaceCards[4].video ?? undefined" autoplay muted loop playsinline @error="(e:any) => e.target.style.display='none'" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/><img v-else-if="inPlaceCards[4]?.immagine" @error="ikImgFallback" :src="ikUrl(inPlaceCards[4].immagine, 'card') ?? ''" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
