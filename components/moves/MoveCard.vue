@@ -109,7 +109,7 @@ const effColor   = computed(() => effLabel.value === 'super' ? '#22c55e' : effLa
   padding: 4px 6px; display: flex; flex-direction: column; gap: 1px; overflow: hidden;
 }
 .mc__dmg-row { display: flex; align-items: baseline; gap: 3px; }
-.mc__dmg { font-family: var(--ff-display, 'Unbounded', sans-serif); font-size: 14px; font-weight: 800; line-height: 1; }
+.mc__dmg { font-family: var(--ff-display, 'Fredoka', sans-serif); font-size: 14px; font-weight: 800; line-height: 1; }
 .mc__dmg-lbl { font-size: 7px; letter-spacing: 0.1em; color: rgba(238,232,246,0.5); text-transform: uppercase; }
 .mc__arrow { font-size: 10px; color: rgba(238,232,246,0.5); }
 .mc__eff { font-size: 12px; font-weight: 800; }

@@ -93,7 +93,7 @@ function actionBtn(color: string, bg: string) {
       <div style="position:absolute;bottom:0;left:0;right:0;height:50%;background:linear-gradient(transparent,rgba(3,2,12,0.95))" />
 
       <div style="position:absolute;bottom:20px;left:18px;right:18px">
-        <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:22px;color:#fff;font-weight:800">{{ waifu.nome }}</div>
+        <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:22px;color:#fff;font-weight:800">{{ waifu.nome }}</div>
         <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.2em;color:rgba(241,235,255,0.5);text-transform:uppercase;margin-top:3px">
           {{ waifu.rarita }} · {{ waifu.tipo }}
           <span v-if="expansionName" style="color:rgba(174,156,255,0.6);margin-left:6px">· {{ expansionName }}</span>

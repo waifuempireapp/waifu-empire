@@ -1,6 +1,7 @@
 <!-- Tab Swap: sistema di votazione waifu con guadagno Kisses e classifica settimanale -->
 <script setup lang="ts">
 import SwapCard from '~/components/swap/SwapCard.vue'
+import { Ban, Sparkles } from 'lucide-vue-next'
 import SwapRewardToast from '~/components/swap/SwapRewardToast.vue'
 import SwapMilestoneModal from '~/components/swap/SwapMilestoneModal.vue'
 import AdSlot from '~/components/swap/AdSlot.vue'
@@ -199,7 +200,7 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
 
   <!-- Schermata limite voti giornalieri -->
   <div v-else-if="isLimitReached" class="swap-state-screen swap-state-screen--limit">
-    <div style="font-size:56px">🚫</div>
+    <Ban :size="56" stroke-width="1.5" style="color:#ff5b6c;opacity:0.8;" />
     <div class="swap-limit-title">{{ $t('swap.limit_reached') }}</div>
     <div class="swap-limit-desc">{{ $t('swap.limit_explanation') }}</div>
     <div class="swap-limit-timer">{{ countdown }}</div>
@@ -229,7 +230,7 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
 
     <!-- Hai visto tutto -->
     <div v-else-if="exhausted" class="swap-exhausted">
-      <div style="font-size:56px">✨</div>
+      <Sparkles :size="56" stroke-width="1.5" style="color:#f5c560;opacity:0.85;" />
       <div class="swap-exhausted-text">{{ t('swap.all_seen') }}<br/>{{ t('swap.come_back_soon') }}</div>
       <button @click="resetQueue" class="swap-btn-reload">{{ t('swap.reload') }}</button>
     </div>

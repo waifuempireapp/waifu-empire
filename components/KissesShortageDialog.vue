@@ -35,7 +35,7 @@ function ricarica() {
     >
       <Heart :size="40" stroke-width="1.5" style="color:#D946A8;" />
 
-      <div style="font-family:'Unbounded',sans-serif;font-size:13px;letter-spacing:2px;color:#ff4d9e">
+      <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:13px;letter-spacing:2px;color:#ff4d9e">
         {{ $t('modal.insufficient_kisses_title') }}
       </div>
 
@@ -47,13 +47,13 @@ function ricarica() {
         <button
           @click="emit('cancel')"
           style="flex:1;background:none;border:1px solid var(--theme-border);border-radius:12px;
-                 color:var(--theme-text-3);font-family:'Unbounded',sans-serif;font-size:10px;
+                 color:var(--theme-text-3);font-family:var(--ff-display,'Fredoka',sans-serif);font-size:10px;
                  padding:12px 0;cursor:pointer;letter-spacing:1px"
         >{{ $t('modal.cancel') }}</button>
         <button
           @click="ricarica"
           style="flex:1.4;background:#ff4d9e;border:none;border-radius:12px;color:#fff;
-                 font-family:'Unbounded',sans-serif;font-size:10px;font-weight:700;
+                 font-family:var(--ff-display,'Fredoka',sans-serif);font-size:10px;font-weight:700;
                  padding:12px 0;cursor:pointer;letter-spacing:1px;
                  box-shadow:0 6px 18px rgba(255,77,158,0.4)"
         >{{ $t('modal.recharge_kisses') }}</button>

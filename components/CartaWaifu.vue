@@ -61,6 +61,8 @@ const props = defineProps<{
   onVideoEnd?:     () => void
   isHot?:          boolean
   censurata?:      boolean
+  /** griglia collezione: art-first — nasconde le stat estetiche (orbs) */
+  minimal?:        boolean
 }>()
 
 // ── Emits ────────────────────────────────────────────────────
@@ -359,6 +361,12 @@ function onMouseLeave(e: MouseEvent) {
 
       <!-- Holo foil per rarità epico+ (non censurata) -->
       <div v-if="showFoil && !censurata" :class="['foil', waifu.rarita === 'immersivo' ? 'foil--strong' : '']" />
+      <!-- Anello di rarità ANIMATO: gradiente che scorre sul bordo -->
+      <div
+        v-if="waifu.rarita === 'leggendario' || waifu.rarita === 'immersivo'"
+        class="rarity-ring"
+        :class="waifu.rarita === 'immersivo' ? 'rarity-ring--imm' : 'rarity-ring--leg'"
+      />
 
       <!-- Badge HOT -->
       <div v-if="isHot && !censurata" :style="{
@@ -424,7 +432,7 @@ function onMouseLeave(e: MouseEvent) {
       <div style="min-width: 0;">
         <!-- Nome waifu -->
         <div :style="{
-          fontFamily: `var(--ff-display, 'Unbounded', sans-serif)`,
+          fontFamily: `var(--ff-display, 'Fredoka', sans-serif)`,
           fontSize: `${Math.round(14 * scale)}px`, fontWeight: '700',
           color: '#fff', letterSpacing: '-0.005em',
           textShadow: `0 0 12px ${rb.glow}, 0 2px 4px rgba(0,0,0,0.85)`,
@@ -445,6 +453,14 @@ function onMouseLeave(e: MouseEvent) {
             flexShrink: '0',
           }"><component :is="archetipoSym.icon" :size="Math.round(16 * scale)" stroke-width="1.5" /></div>
         </div>
+      </div>
+
+      <!-- Tipo: SOLO icona, chip mini in alto a destra -->
+      <div v-if="(waifu as any).tipo" :style="{
+        position: 'absolute', top: `${Math.round(6 * scale)}px`, right: `${Math.round(6 * scale)}px`,
+        zIndex: 5, opacity: videoAttivo ? 0 : 1, transition: 'opacity 0.3s',
+      }">
+        <TypeIcon :type="(waifu as any).tipo" :size="Math.round(11 * scale)" chip />
       </div>
 
       <!-- Rarità come SCRITTA al posto delle stelle (in alto, non copre l'art) -->
@@ -509,14 +525,14 @@ function onMouseLeave(e: MouseEvent) {
       </div>
 
       <!-- Linea ornamento -->
-      <div :style="{
+      <div v-if="!minimal" :style="{
         width: '70%', height: '1px', margin: `0 auto ${Math.round(7 * scale)}px`,
         background: `linear-gradient(90deg, transparent, ${rb.inner}cc, transparent)`,
         boxShadow: `0 0 6px ${rb.glow}`,
       }" />
 
-      <!-- Stat circles -->
-      <div style="display: flex; justify-content: space-around; align-items: center;">
+      <!-- Stat circles (nascoste in minimal: la griglia è art-first) -->
+      <div v-if="!minimal" style="display: flex; justify-content: space-around; align-items: center;">
         <!-- Tette -->
         <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
           <div :style="{ position: 'relative', width: `${statSize}px`, height: `${statSize}px` }">
@@ -681,6 +697,28 @@ function onMouseLeave(e: MouseEvent) {
 </template>
 
 <style scoped>
+/* ── Anello di rarità animato (bordo vivo per le carte top) ── */
+@property --ring-ang { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+.rarity-ring {
+  position: absolute; inset: 0; border-radius: inherit;
+  pointer-events: none; z-index: 6;
+  padding: 2.5px;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  animation: ringSpin 3.2s linear infinite;
+}
+.rarity-ring--leg {
+  background: conic-gradient(from var(--ring-ang),
+    #f5c560, #fff3cf 22%, #f5a623 45%, #ffdf8e 70%, #f5c560);
+}
+.rarity-ring--imm {
+  background: conic-gradient(from var(--ring-ang),
+    #ff6ec7, #ffd36e 20%, #8bff9e 40%, #6ec7ff 60%, #b06eff 80%, #ff6ec7);
+  filter: saturate(1.3);
+}
+@keyframes ringSpin { to { --ring-ang: 360deg; } }
+
 /* Shimmer animato su hover per rarità leggendario e immersivo.
    Aggiunge un riflesso luminoso che scorre sulla carta. */
 @keyframes rarityShimmerSweep {

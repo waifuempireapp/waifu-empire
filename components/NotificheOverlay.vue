@@ -5,6 +5,7 @@
   ============================================================ -->
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
+import { Bell, Trophy } from 'lucide-vue-next'
 import { ikUrl } from '~/utils/imagekitUrl'
 
 const emit = defineEmits<{ close: []; read: [] }>()
@@ -12,7 +13,7 @@ const authStore = useAuthStore()
 const { t } = useI18n()
 
 const FF = {
-  display: "var(--ff-display, 'Unbounded', sans-serif)",
+  display: "var(--ff-display, 'Fredoka', sans-serif)",
   label:   "var(--ff-label, 'Saira Condensed', sans-serif)",
   body:    "var(--ff-body, 'DM Sans', sans-serif)",
 }
@@ -61,7 +62,7 @@ onMounted(async () => {
       <AppLoading v-if="loading" />
 
       <div v-else-if="notifiche.length === 0" class="notif-empty">
-        <div style="font-size:42px;opacity:.4;margin-bottom:10px">🔔</div>
+        <Bell :size="42" stroke-width="1.5" style="opacity:0.35;margin-bottom:10px;" />
         <div :style="{ fontFamily: FF.label, color: 'var(--theme-text-2)', fontSize: '14px', fontWeight: 700 }">{{ t('notifications.empty') }}</div>
       </div>
 
@@ -73,7 +74,7 @@ onMounted(async () => {
           </div>
           <div class="notif-body">
             <div class="notif-item-title" :style="{ fontFamily: FF.label }">
-              <span style="font-size:15px">🏆</span> {{ t('notifications.rarity_up_title') }}
+              <Trophy :size="14" stroke-width="2" style="display:inline-block;vertical-align:-2px;" /> {{ t('notifications.rarity_up_title') }}
             </div>
             <div class="notif-item-text" :style="{ fontFamily: FF.body }">
               <strong>{{ n.nome }}</strong>

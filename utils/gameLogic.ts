@@ -253,19 +253,26 @@ export function calcolaRicaricaEnergia(
   return { nuovaEnergia: TIMER.MAX_ENERGIA, prossimaRicarica: null, ultimaRicaricaAggiornata: oraAttuale, deveAggiornare: true }
 }
 
-/** Calcola la ricarica dei pacchetti omaggio (2 ogni 12 ore). */
+/** Ricarica pacchetti omaggio: +1 OGNI 12 ORE fino a MAX 5.
+ *  A 5/5 il timer NON corre: riparte solo quando si scende sotto il massimo
+ *  (chi consuma da pieno resetta ultimaRicaricaPacchetti = adesso). */
+export const OMAGGIO_MAX = 5
+export const OMAGGIO_ORE = 12
 export function calcolaRicaricaPacchettiOmaggio(
   ultimaRicarica: { toMillis?: () => number } | number | null | undefined,
   attualiPacchetti = 0,
 ): { nuoviPacchetti: number; ultimaRicaricaAggiornata?: number; deveAggiornare: boolean } {
-  const MAX_PACCHETTI = 2
-  const ORE_RICARICA  = 12
-  if (attualiPacchetti >= MAX_PACCHETTI) return { nuoviPacchetti: MAX_PACCHETTI, deveAggiornare: false }
+  if (attualiPacchetti >= OMAGGIO_MAX) return { nuoviPacchetti: OMAGGIO_MAX, deveAggiornare: false }
   const oraAttuale   = Date.now()
   const lastTs       = (ultimaRicarica as any)?.toMillis ? (ultimaRicarica as any).toMillis() : Number(ultimaRicarica) || 0
   const oreTrascorse = (oraAttuale - lastTs) / (1000 * 60 * 60)
-  if (oreTrascorse < ORE_RICARICA) return { nuoviPacchetti: attualiPacchetti, deveAggiornare: false }
-  return { nuoviPacchetti: MAX_PACCHETTI, ultimaRicaricaAggiornata: oraAttuale, deveAggiornare: true }
+  const dovute       = Math.floor(oreTrascorse / OMAGGIO_ORE)
+  if (dovute <= 0) return { nuoviPacchetti: attualiPacchetti, deveAggiornare: false }
+  const nuovi = Math.min(OMAGGIO_MAX, attualiPacchetti + dovute)
+  // Se si raggiunge il massimo l'orologio si ferma "adesso"; altrimenti scala
+  // di N ricariche esatte così il residuo del timer non va perso.
+  const nuovaUltima = nuovi >= OMAGGIO_MAX ? oraAttuale : lastTs + dovute * OMAGGIO_ORE * 3600000
+  return { nuoviPacchetti: nuovi, ultimaRicaricaAggiornata: nuovaUltima, deveAggiornare: true }
 }
 
 // ── STATISTICHE ───────────────────────────────────────────────

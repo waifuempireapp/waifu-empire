@@ -118,12 +118,12 @@ function getTypeBadgeStyle(type?: string): CSSProperties {
     } as CSSProperties)"
   >
     <!-- Sopratitolo -->
-    <div style="font-family:Orbitron;font-size:11px;color:#f5a623;letter-spacing:3px;margin-bottom:10px">
+    <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:11px;color:#f5a623;letter-spacing:3px;margin-bottom:10px">
       RIVELAZIONE
     </div>
 
     <!-- Titolo principale -->
-    <div style="font-family:Orbitron;font-size:22px;font-weight:900;color:#eedcd4;letter-spacing:4px;margin-bottom:28px;text-align:center">
+    <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:22px;font-weight:900;color:#eedcd4;letter-spacing:4px;margin-bottom:28px;text-align:center">
       ⚔ BATTAGLIA!
     </div>
 
@@ -132,7 +132,7 @@ function getTypeBadgeStyle(type?: string): CSSProperties {
 
       <!-- Starter del giocatore -->
       <div style="text-align:center">
-        <div style="font-family:Orbitron;font-size:8px;color:#00C8FF;letter-spacing:2px;margin-bottom:6px">
+        <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:8px;color:#00C8FF;letter-spacing:2px;margin-bottom:6px">
           {{ myName }}
         </div>
         <div style="width:100px;height:148px;border-radius:10px;overflow:hidden;border:2px solid rgba(0,200,255,.4);background:var(--surface)">
@@ -144,7 +144,7 @@ function getTypeBadgeStyle(type?: string): CSSProperties {
           />
           <div v-else style="display:flex;align-items:center;justify-content:center;height:100%;font-size:32px;opacity:.2">◈</div>
         </div>
-        <div style="font-family:Orbitron;font-size:10px;color:#eedcd4;margin-top:6px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:10px;color:#eedcd4;margin-top:6px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
           {{ myStarter?.nome ?? myStarter?.name ?? '—' }}
         </div>
         <!-- TypeBadge -->
@@ -154,11 +154,11 @@ function getTypeBadgeStyle(type?: string): CSSProperties {
       </div>
 
       <!-- VS centrale -->
-      <div style="font-family:Orbitron;font-size:26px;font-weight:900;color:#ff2d78;margin-bottom:36px">VS</div>
+      <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:26px;font-weight:900;color:#ff2d78;margin-bottom:36px">VS</div>
 
       <!-- Starter avversario -->
       <div style="text-align:center">
-        <div style="font-family:Orbitron;font-size:8px;color:#FF3355;letter-spacing:2px;margin-bottom:6px">
+        <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:8px;color:#FF3355;letter-spacing:2px;margin-bottom:6px">
           {{ opponentName }}
         </div>
         <div style="width:100px;height:148px;border-radius:10px;overflow:hidden;border:2px solid rgba(255,50,80,.4);background:var(--surface)">
@@ -170,7 +170,7 @@ function getTypeBadgeStyle(type?: string): CSSProperties {
           />
           <div v-else style="display:flex;align-items:center;justify-content:center;height:100%;font-size:32px;opacity:.2">◈</div>
         </div>
-        <div style="font-family:Orbitron;font-size:10px;color:#eedcd4;margin-top:6px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:10px;color:#eedcd4;margin-top:6px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
           {{ opponentStarter?.nome ?? opponentStarter?.name ?? '—' }}
         </div>
         <!-- TypeBadge -->
@@ -182,7 +182,7 @@ function getTypeBadgeStyle(type?: string): CSSProperties {
 
     <!-- Pulsante avvio battaglia -->
     <button
-      style="padding:14px 40px;background:linear-gradient(135deg,#f5a623,#d4880a);border:none;border-radius:12px;cursor:pointer;font-family:Orbitron;font-size:13px;font-weight:700;color:#000;letter-spacing:2px;box-shadow:rgba(245,166,35,0.4) 0px 8px 24px 0px"
+      style="padding:14px 40px;background:linear-gradient(135deg,#f5a623,#d4880a);border:none;border-radius:12px;cursor:pointer;font-family:var(--ff-display,'Fredoka',sans-serif);font-size:13px;font-weight:700;color:#000;letter-spacing:2px;box-shadow:rgba(245,166,35,0.4) 0px 8px 24px 0px"
       @click="emit('start')"
     >
       ⚔ INIZIA LA BATTAGLIA

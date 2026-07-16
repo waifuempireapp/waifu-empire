@@ -178,7 +178,7 @@ const hovered = ref(false)
       <div style="min-width:0">
         <!-- Nome -->
         <div :style="{
-          fontFamily: `var(--ff-display, 'Unbounded', sans-serif)`,
+          fontFamily: `var(--ff-display, 'Fredoka', sans-serif)`,
           fontSize: `${Math.round(13 * scale)}px`, fontWeight: 700,
           color: '#fff', letterSpacing: '-0.005em',
           textShadow: `0 0 12px ${rb.glow}, 0 2px 4px rgba(0,0,0,0.85)`,

@@ -103,7 +103,7 @@ onMounted(async () => {
       </div>
       <h1
         class="m-0 font-extrabold"
-        style="font-family: var(--ff-display, 'Unbounded', sans-serif); font-size: clamp(22px, 5vw, 32px); letter-spacing: -0.01em; line-height: 0.95; color: var(--theme-text);"
+        style="font-family: var(--ff-display, 'Fredoka', sans-serif); font-size: clamp(22px, 5vw, 32px); letter-spacing: -0.01em; line-height: 0.95; color: var(--theme-text);"
       >
         <span :style="{ color: C.sakura }">♥</span>
         <span class="shimmer-text"> Amici & Scambi</span>

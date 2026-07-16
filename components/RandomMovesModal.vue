@@ -20,7 +20,7 @@ const emit = defineEmits<{ close: []; updateCollezione: [c: any]; notif: [t: str
 
 const authStore = useAuthStore()
 const FF = {
-  display: "var(--ff-display, 'Unbounded', sans-serif)",
+  display: "var(--ff-display, 'Fredoka', sans-serif)",
   label:   "var(--ff-label, 'Saira Condensed', sans-serif)",
   body:    "var(--ff-body, 'Nunito', sans-serif)",
 }

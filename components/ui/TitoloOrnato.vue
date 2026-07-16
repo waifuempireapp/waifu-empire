@@ -10,7 +10,7 @@ const props = withDefaults(defineProps<{
 const sizes = { 1: { fs:'clamp(20px,3.8vw,30px)', ls:0, mb:12, fw:800 }, 2: { fs:'clamp(15px,2.6vw,20px)', ls:0.5, mb:9, fw:700 }, 3: { fs:'clamp(12px,2vw,15px)', ls:1.5, mb:7, fw:700 } }
 const s = computed(() => sizes[props.livello] ?? sizes[1])
 const textStyle = computed(() => ({
-  fontFamily:"var(--ff-display,'Unbounded',sans-serif)",
+  fontFamily:"var(--ff-display,'Fredoka',sans-serif)",
   fontSize: s.value.fs, fontWeight: s.value.fw, letterSpacing: `${s.value.ls}px`,
   color: props.colore,
   textShadow: props.glow ? `0 0 18px ${props.colore}55, 0 0 32px ${props.colore}22` : 'none',

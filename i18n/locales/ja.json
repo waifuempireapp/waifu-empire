@@ -196,7 +196,8 @@
     "your_offer": "あなたのオファー（Kisses）",
     "territory_conquered": "領地を征服！",
     "conquering": "征服中…",
-    "owner": "オーナー：{name}"
+    "owner": "オーナー：{name}",
+    "victory_rewards_title": "勝利報酬！"
   },
   "collection": {
     "title": "コレクション",

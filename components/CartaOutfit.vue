@@ -200,7 +200,7 @@ function onMouseLeave(e: MouseEvent) {
         <div :style="{
           fontSize: `${Math.round(22 * scale)}px`, fontWeight: '800', color: sc.primary,
           opacity: '0.5',
-          fontFamily: `var(--ff-display, 'Unbounded', sans-serif)`,
+          fontFamily: `var(--ff-display, 'Fredoka', sans-serif)`,
           textShadow: `0 0 10px ${sc.primary}`,
           position: 'relative',
         }">{{ iniziale }}</div>
@@ -280,7 +280,7 @@ function onMouseLeave(e: MouseEvent) {
 
       <!-- Nome outfit -->
       <div :style="{
-        fontFamily: `var(--ff-display, 'Unbounded', sans-serif)`,
+        fontFamily: `var(--ff-display, 'Fredoka', sans-serif)`,
         fontSize: `${Math.round(12 * scale)}px`, fontWeight: '700',
         color: '#fff', letterSpacing: '-0.005em', lineHeight: '1.15',
         marginBottom: `${Math.round(4 * scale)}px`,

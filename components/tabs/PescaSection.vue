@@ -516,10 +516,10 @@ onUnmounted(() => {
         <div style="display:flex;align-items:center;gap:8px;">
           <div>
             <span
-              style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:var(--theme-text);letter-spacing:0.02em;">WAIFU
+              style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:16px;font-weight:800;color:var(--theme-text);letter-spacing:0.02em;">WAIFU
             </span>
             <span
-              style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:rgb(255, 77, 158);letter-spacing:0.02em;">{{ $t('pesca.fish_label') }}</span>
+              style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:16px;font-weight:800;color:rgb(255, 77, 158);letter-spacing:0.02em;">{{ $t('pesca.fish_label') }}</span>
           </div>
         </div>
       </div>
@@ -736,7 +736,7 @@ onUnmounted(() => {
       <div v-if="immaginiCaricate && !error && packs.length === 0"
            style="text-align:center;padding:60px 24px;display:flex;flex-direction:column;align-items:center;gap:10px;">
         <div style="font-size:52px;">🎣</div>
-        <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:var(--theme-text);">{{ $t('pesca.no_packs_title') }}</div>
+        <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:16px;font-weight:800;color:var(--theme-text);">{{ $t('pesca.no_packs_title') }}</div>
         <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;color:var(--theme-text-2);max-width:260px;line-height:1.4;">{{ $t('pesca.no_packs_sub') }}</div>
       </div>
 
@@ -772,10 +772,10 @@ onUnmounted(() => {
         <div v-if="zoomCard.rarita" style="position:absolute;bottom:8px;left:8px;background:#fff;color:#1a1a2e;border-radius:999px;padding:2px 9px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:800;text-transform:capitalize;box-shadow:0 1px 4px rgba(0,0,0,0.3);">{{ zoomCard.rarita }}</div>
       </div>
       <div style="padding:12px 14px;">
-        <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:17px;font-weight:800;color:var(--theme-text);">{{ zoomCard.nome }}</div>
+        <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:17px;font-weight:800;color:var(--theme-text);">{{ zoomCard.nome }}</div>
         <template v-if="zoomCard.tipo === 'mossa'">
           <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
-            <span style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:22px;font-weight:800;" :style="{ color: (zoomCard.tipoMossa && TYPE_META[zoomCard.tipoMossa as MoveType]?.accent) || 'var(--theme-text)' }">{{ zoomCard.danno ?? 0 }}<small style="font-size:10px;color:var(--theme-text-3);margin-left:3px;">POTENZA</small></span>
+            <span style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:22px;font-weight:800;" :style="{ color: (zoomCard.tipoMossa && TYPE_META[zoomCard.tipoMossa as MoveType]?.accent) || 'var(--theme-text)' }">{{ zoomCard.danno ?? 0 }}<small style="font-size:10px;color:var(--theme-text-3);margin-left:3px;">POTENZA</small></span>
             <span v-if="zoomCard.tipoMossa && TYPE_META[zoomCard.tipoMossa as MoveType]" style="margin-left:auto;background:#fff;border-radius:999px;padding:2px 10px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;font-weight:900;box-shadow:0 1px 4px rgba(0,0,0,0.3);" :style="{ color: TYPE_META[zoomCard.tipoMossa as MoveType].accent }">{{ TYPE_META[zoomCard.tipoMossa as MoveType].icon }} {{ TYPE_META[zoomCard.tipoMossa as MoveType].label }}</span>
           </div>
           <p v-if="zoomCard.descrizione" style="margin:8px 0 0;font-family:var(--ff-body,'Nunito',sans-serif);font-size:12.5px;line-height:1.45;color:var(--theme-text-2);">{{ zoomCard.descrizione }}</p>

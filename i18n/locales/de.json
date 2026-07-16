@@ -196,7 +196,8 @@
     "your_offer": "Dein Angebot (Kisses)",
     "territory_conquered": "Gebiet erobert!",
     "conquering": "Eroberung…",
-    "owner": "Besitzer: {name}"
+    "owner": "Besitzer: {name}",
+    "victory_rewards_title": "Siegesbelohnungen!"
   },
   "collection": {
     "title": "Sammlung",

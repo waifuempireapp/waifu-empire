@@ -5,6 +5,7 @@
   Componenti mappa principali delegati a ~/components/mappa/* (da migrare).
   ============================================================ -->
 <script setup lang="ts">
+import { Trophy, Mail, BookOpen } from 'lucide-vue-next'
 import { PIXEL_NAMES, LAND_SET, GRID_SIZE } from '~/utils/worldMap'
 import { isHexAdjacentToEmpire } from '~/utils/hexGrid'
 import { ikUrl } from '~/utils/imagekitUrl'
@@ -48,7 +49,7 @@ const C = {
 
 // Famiglie font brand
 const FF = {
-  display: "var(--ff-display, 'Unbounded', sans-serif)",
+  display: "var(--ff-display, 'Fredoka', sans-serif)",
   label:   "var(--ff-label, 'Saira Condensed', sans-serif)",
   body:    "var(--ff-body, 'DM Sans', sans-serif)",
   mono:    "var(--ff-mono, 'JetBrains Mono', monospace)",
@@ -70,6 +71,9 @@ const pendingOffersCount = ref(0)
 const attackError        = ref<string | null>(null)
 const showInfoModal      = ref(false)
 const conquestAnim       = ref<any>(null) // { pixelName, oldColor, newColor, empireName }
+// Popup PREMI VITTORIA: appare DOPO l'animazione di conquista
+const PREMIO_VITTORIA_KISSES = 17   // 1/3 del costo di una bustina (50)
+const victoryReward      = ref<{ kisses: number } | null>(null)
 const showBattle         = ref(false)
 const raidAttackMode     = ref(false) // distingue BattleModal normale da raid
 const showRound          = ref(false)
@@ -463,8 +467,9 @@ const handleRoundComplete = async (
         }
         emit('updateProfilo', {
           ...props.profilo,
-          pixelCount:      ((props.profilo?.pixelCount as number) ?? 0) + 1,
-          pacchettiSfida:  ((props.profilo?.pacchettiSfida as number) ?? 0) + 1,
+          pixelCount: ((props.profilo?.pixelCount as number) ?? 0) + 1,
+          // Premio vittoria: KISSES (1/3 del costo bustina), niente più pack
+          kisses:     ((props.profilo?.kisses as number) ?? 0) + PREMIO_VITTORIA_KISSES,
         })
         showTutorial.value = false
       } else if (data.status === 'defender_wins') {
@@ -711,7 +716,7 @@ async function onTerritoryClick(territoryId: string) {
               boxShadow: '0 4px 12px var(--theme-shadow)',
             }"
           >
-            🏆
+            <Trophy :size="18" stroke-width="2" style="color:#fff;" />
           </button>
           <!-- Bottone offerte: rotondo, solo emoji 💌 -->
           <button
@@ -725,7 +730,7 @@ async function onTerritoryClick(territoryId: string) {
               boxShadow: '0 4px 12px var(--theme-shadow)',
             }"
           >
-            💌
+            <Mail :size="18" stroke-width="2" style="color:#fff;" />
             <span v-if="pendingOffersCount > 0" :style="{ position: 'absolute', top: '-5px', right: '-5px', background: '#ff5b6c', color: '#fff', width: '17px', height: '17px', borderRadius: '50%', display: 'grid', placeItems: 'center', fontFamily: FF.mono, fontSize: '9px', fontWeight: 800, border: '1.5px solid var(--theme-surface)' }">{{ pendingOffersCount }}</span>
           </button>
         </div>
@@ -825,7 +830,7 @@ async function onTerritoryClick(territoryId: string) {
             cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0, lineHeight: 1,
             boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
           }"
-        >📖</button>
+        ><BookOpen :size="17" stroke-width="2" /></button>
         <!-- Sfondo mare sempre visibile come base (sotto al canvas) -->
         <div
           style="width:100%;height:520px;display:block;user-select:none;border-radius:16px;
@@ -908,8 +913,39 @@ async function onTerritoryClick(territoryId: string) {
         :new-color="conquestAnim.newColor"
         :empire-name="conquestAnim.empireName"
         :old-empire-name="conquestAnim.oldEmpireName"
-        @done="conquestAnim = null"
+        @done="conquestAnim = null; victoryReward = { kisses: PREMIO_VITTORIA_KISSES }"
       />
+
+      <!-- ── Popup PREMI VITTORIA (dopo la conquista) ─────────────────── -->
+      <div v-if="victoryReward"
+        style="position:fixed;inset:0;z-index:640;background:rgba(4,2,14,0.72);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px;"
+        @click.self="victoryReward = null">
+        <div :style="{
+          width:'100%', maxWidth:'300px', textAlign:'center',
+          background:'var(--theme-surface)', border:'1px solid var(--theme-border)',
+          borderRadius:'20px', padding:'26px 22px',
+          boxShadow:'0 12px 40px var(--theme-shadow)',
+        }">
+          <div :style="{ fontFamily:'var(--ff-display)', fontSize:'17px', fontWeight:800, color:'#f5c560', letterSpacing:'.04em', marginBottom:'12px' }">
+            {{ $t('map.victory_rewards_title') }}
+          </div>
+          <div :style="{
+            display:'inline-flex', alignItems:'center', gap:'8px',
+            background:'var(--theme-surface-2)', border:'1px solid var(--theme-border-2)',
+            borderRadius:'999px', padding:'10px 18px', marginBottom:'18px',
+          }">
+            <KissesIcon :size="18" />
+            <span :style="{ fontFamily:'var(--ff-display)', fontSize:'20px', fontWeight:800, color:'var(--theme-accent-pink)' }">+{{ victoryReward.kisses }}</span>
+          </div>
+          <div>
+            <button @click="victoryReward = null" :style="{
+              width:'100%', padding:'12px 0', border:'none', borderRadius:'12px', cursor:'pointer',
+              background:'var(--theme-accent)', color:'#fff',
+              fontFamily:'var(--ff-display)', fontSize:'13px', fontWeight:700, letterSpacing:'.05em',
+            }">OK</button>
+          </div>
+        </div>
+      </div>
 
       <!-- ── Info Modal ─────────────────────────────────────────────────── -->
       <InfoModal v-if="showInfoModal" @close="showInfoModal = false" />

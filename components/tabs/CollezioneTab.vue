@@ -34,7 +34,7 @@ const C = {
   inkLine: 'rgba(174,156,255,0.12)',
 }
 const FF = {
-  display: "var(--ff-display,'Unbounded',sans-serif)",
+  display: "var(--ff-display,'Fredoka',sans-serif)",
   label:   "var(--ff-label,'Saira Condensed',sans-serif)",
   body:    "var(--ff-body,'DM Sans',sans-serif)",
   mono:    "var(--ff-mono,'JetBrains Mono',monospace)",
@@ -581,6 +581,19 @@ onUnmounted(() => {
   }
 })
 
+// ── Progresso collezione per drop (set completion, stile dex) ───────────────
+const dropProgress = computed(() => {
+  const ownedIds = new Set(Object.keys(props.collezione.waifu ?? {}))
+  return drops.value
+    .map((d: any) => {
+      const ids: string[] = d.waifuIds ?? []
+      if (!ids.length) return null
+      const owned = ids.filter(id => ownedIds.has(id)).length
+      return { id: d.id, nome: d.nome || d.id, owned, total: ids.length, colore: d.colore || 'var(--theme-accent)' }
+    })
+    .filter(Boolean) as Array<{ id: string; nome: string; owned: number; total: number; colore: string }>
+})
+
 // ── Select unificata FILTRA — MULTI-SELECT con checkbox ─────────────────────
 // modelValue = array dei valori attivi; il toggle avviene nel DropdownSelect.
 // pronti/crescita e hot/sfw sono mutuamente esclusivi: vince l'ultimo cliccato.
@@ -828,6 +841,36 @@ function apriNegozio() {
           >{{ $t("collection.buy_trade_pass") }}</button>
         </div>
 
+        <!-- Progresso per espansione: quante waifu del set possiedi -->
+        <div v-if="dropProgress.length" :style="{ display:'flex', flexDirection:'column', gap:'8px', margin:'14px 0 4px' }">
+          <div v-for="dp in dropProgress" :key="dp.id" :style="{
+            display:'flex', alignItems:'center', gap:'12px',
+            background:'var(--theme-surface)', border:'1px solid var(--theme-border)',
+            borderRadius:'14px', padding:'10px 14px',
+          }">
+            <div :style="{ flex:1, minWidth:0 }">
+              <div :style="{
+                display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'6px',
+                fontFamily:FF.body, fontSize:'12.5px', fontWeight:800, color:'var(--theme-text)',
+              }">
+                <span :style="{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }">{{ dp.nome }}</span>
+                <span :style="{ fontFamily:FF.mono, fontSize:'12px', color: dp.owned >= dp.total ? '#58e0a3' : 'var(--theme-text-2)', flexShrink:0, marginLeft:'8px' }">
+                  {{ dp.owned }}/{{ dp.total }}<template v-if="dp.owned >= dp.total"> ✓</template>
+                </span>
+              </div>
+              <div :style="{ height:'7px', background:'var(--theme-surface-2)', borderRadius:'99px', overflow:'hidden', border:'1px solid var(--theme-border)' }">
+                <div :style="{
+                  width: Math.min(100, Math.round(dp.owned / dp.total * 100)) + '%', height:'100%', borderRadius:'99px',
+                  background: dp.owned >= dp.total
+                    ? 'linear-gradient(90deg,#58e0a3,#8ef0c4)'
+                    : `linear-gradient(90deg, ${dp.colore}, var(--theme-accent-pink))`,
+                  transition:'width .5s ease',
+                }" />
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Griglia waifu 3 colonne — tutto il catalogo: possedute = carta,
              non possedute = slot placeholder '?' (stile pagina mosse) -->
         <div class="waifu-grid" style="display:flex;flex-wrap:wrap;gap:0px 2px;margin-top:8px;margin-bottom:8px;">
@@ -852,6 +895,7 @@ function apriNegozio() {
             <div v-else style="zoom:0.98;flex-shrink:0;position:relative;">
             <CartaWaifu
               :waifu="w"
+              :minimal="true"
               :datiCollezione="dati"
               dimensione="piccola"
               tipo="auto"
@@ -876,11 +920,11 @@ function apriNegozio() {
                  chip livello (level-up disponibile: 3+ copie) -->
             <div v-if="(dati?.copie ?? 0) >= 3" :style="{
               position:'absolute', bottom:'30px', right:'0px', zIndex:26,
-              width:'22px', height:'22px', borderRadius:'50%',
+              width:'19px', height:'19px', borderRadius:'50%',
               background:'rgba(4,2,14,0.92)',
               border:`2px solid ${C.gold}`,
               color:C.gold, display:'grid', placeItems:'center',
-              fontFamily:FF.display, fontSize:'15px', fontWeight:900, lineHeight:1,
+              fontFamily:FF.display, fontSize:'13px', fontWeight:900, lineHeight:1,
               boxShadow:`0 0 10px ${C.gold}66`, pointerEvents:'none',
             }">+</div>
             <!-- Chip LV — bottom-right della carta; font compensato per zoom:0.98 -->

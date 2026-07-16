@@ -129,10 +129,10 @@ async function switchLocale(code: string) {
         <img v-if="isImageUrl" :src="avatarUrl!" alt="" @error="setAvatar(null)" style="width:100%;height:100%;object-fit:cover;display:block;" />
         <span
           v-else-if="!isColorPreset"
-          style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:18px;font-weight:800;color:#F0ECF8;user-select:none;line-height:1;"
+          style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:18px;font-weight:800;color:#F0ECF8;user-select:none;line-height:1;"
         >{{ initials }}</span>
       </div>
-      <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:16px;font-weight:800;color:var(--theme-text);margin-top:4px;">
+      <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:16px;font-weight:800;color:var(--theme-text);margin-top:4px;">
         {{ gameStore.profilo?.nomeImpero ?? '—' }}
       </div>
       <div style="font-family:var(--ff-mono,'JetBrains Mono',monospace);font-size:11px;color:var(--theme-text-3);">

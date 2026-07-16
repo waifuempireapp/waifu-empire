@@ -355,12 +355,14 @@
       "Bash(pkill -f \"nuxi dev --port 3216\")",
       "Bash(pkill -f \"nuxi dev --port 3217\")",
       "Bash(cd /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt *)",
-      "Bash(awk '/\\\\.bnav-pocket \\\\{/,/^}/' pages/gioco/index.vue)"
+      "Bash(awk '/\\\\.bnav-pocket \\\\{/,/^}/' pages/gioco/index.vue)",
+      "Bash(awk '/async function _generaEAggiorna/,/^}/' components/tabs/SbustaTab.vue)"
     ],
     "additionalDirectories": [
       "/private/tmp",
       "/Users/lazzari/Desktop",
-      "/tmp"
+      "/tmp",
+      "/Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt/server/api/mappa/battle/*"
     ]
   }
 }

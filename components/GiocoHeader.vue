@@ -154,7 +154,7 @@ const pendingFriendRequests = computed(() => {
       <!-- Cerchio colorato preset — nessun testo sopra il colore -->
       <!-- Iniziali giocatore se nessun avatar impostato -->
       <span v-else-if="!isColorPreset" style="
-          font-family: var(--ff-display,'Unbounded',sans-serif);
+          font-family: var(--ff-display,'Fredoka',sans-serif);
           font-size: 18px; font-weight: 800; color: #F0ECF8;
           user-select: none; line-height: 1;
         ">{{ initials }}</span>

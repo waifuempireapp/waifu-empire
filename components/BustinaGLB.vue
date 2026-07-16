@@ -477,7 +477,7 @@ onBeforeUnmount(() => {
         marginTop: '10px',
         width: width + 'px',
         textAlign: 'center',
-        fontFamily: `var(--ff-display,'Unbounded',sans-serif)`,
+        fontFamily: `var(--ff-display,'Fredoka',sans-serif)`,
         fontSize: `${Math.max(8, Math.round(width * 0.058))}px`,
         fontWeight: 800,
         color: labelColor || '#ffffff',

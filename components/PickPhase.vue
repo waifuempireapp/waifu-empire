@@ -131,7 +131,7 @@ const C = {
 
 const FF = {
   label:   "var(--ff-label, 'Saira Condensed', sans-serif)",
-  display: "var(--ff-display, 'Unbounded', sans-serif)",
+  display: "var(--ff-display, 'Fredoka', sans-serif)",
   body:    "var(--ff-body, 'DM Sans', sans-serif)",
   mono:    "var(--ff-mono, 'JetBrains Mono', monospace)",
 }
@@ -502,7 +502,7 @@ function hpBarData(hp: number, maxHp: number) {
     <div :style="C.header">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:18px;font-weight:900;color:var(--theme-text)">
+          <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:18px;font-weight:900;color:var(--theme-text)">
             Scelta Team
           </div>
           <div
@@ -574,7 +574,7 @@ function hpBarData(hp: number, maxHp: number) {
 
               <!-- Nome + stats sotto l'immagine -->
               <div style="padding:8px 10px 0;display:flex;flex-direction:column;gap:6px;">
-                <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:13px;font-weight:900;color:var(--theme-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:13px;font-weight:900;color:var(--theme-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
                   {{ w.nome ?? w.name ?? '—' }}
                 </div>
                 <!-- Stats: ⚡ VEL  💚 HP(grande)  💥 CRIT -->
@@ -648,7 +648,7 @@ function hpBarData(hp: number, maxHp: number) {
                 <div v-else :style="{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:'32px',color:getRarityStyle(getWaifuRarita(w)).badge,opacity:0.3 }">◈</div>
               </div>
               <div style="padding:8px 10px 0;">
-                <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:13px;font-weight:900;color:var(--theme-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:13px;font-weight:900;color:var(--theme-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
                   {{ w.nome ?? w.name ?? '—' }}
                 </div>
                 <div style="font-family:var(--ff-body,'DM Sans',sans-serif);font-size:11px;color:var(--theme-text-3);margin-top:4px;">

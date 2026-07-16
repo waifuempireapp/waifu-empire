@@ -231,7 +231,7 @@ function onMouseLeave(e: MouseEvent) {
           filter: `drop-shadow(0 0 4px ${rb.glow})`,
         }">&#9884;</span>
         <div :style="{
-          fontFamily: `var(--ff-display, 'Unbounded', sans-serif)`,
+          fontFamily: `var(--ff-display, 'Fredoka', sans-serif)`,
           fontSize: `${Math.round(12 * scale)}px`, fontWeight: '700',
           color: '#fff', letterSpacing: '-0.005em', lineHeight: '1.15',
           textShadow: `0 0 10px ${rb.glow}, 0 2px 4px rgba(0,0,0,0.85)`,

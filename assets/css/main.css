@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Unbounded:wght@500;600;700;800;900&family=Saira+Condensed:wght@500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Fredoka:wght@400;500;600;700&family=Unbounded:wght@600;700;800&family=JetBrains+Mono:wght@600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -126,11 +126,13 @@
   --text-mute:    #6b6390;
   --text-faint:   #3e3760;
 
-  /* Tipografia — Nunito come primario body/label (stile Pokémon Pocket) */
-  --ff-display:  'Unbounded', system-ui, sans-serif;
-  --ff-label:    'Nunito', 'Saira Condensed', sans-serif;
-  --ff-body:     'Nunito', 'DM Sans', system-ui, sans-serif;
-  --ff-mono:     'JetBrains Mono', ui-monospace, monospace;
+  /* Tipografia — 2 famiglie ROTONDE e morbide (stile Pokémon Pocket):
+     Fredoka per titoli/display, Nunito per tutto il resto.
+     I numeri usano Nunito con cifre tabulari (via --ff-mono alias). */
+  --ff-display:  'Fredoka', 'Nunito', system-ui, sans-serif;
+  --ff-label:    'Nunito', system-ui, sans-serif;
+  --ff-body:     'Nunito', system-ui, sans-serif;
+  --ff-mono:     'Nunito', system-ui, sans-serif;
 
   /* ---------- ALIAS LEGACY (mantengono il codice esistente funzionante) ---------- */
   --bg-deep:       var(--ink-void);
@@ -279,6 +281,48 @@ a { color: inherit; text-decoration: none; }
    (righe di chip tipo, ecc.) restano tali: hanno il proprio overflow-x:auto
    su un contenitore più interno che questa regola non tocca. */
 #__nuxt, .game-container { max-width: 100vw; overflow-x: clip; }
+
+/* ── ATMOSFERA: la pagina non è mai un fondo piatto ──
+   Blob di colore sfocati + vignetta, fissi dietro a tutto il contenuto. */
+.game-container::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(58% 42% at 18% -4%,  rgba(139,111,216,0.16), transparent 62%),
+    radial-gradient(46% 34% at 88% 12%,  rgba(217,70,168,0.09),  transparent 60%),
+    radial-gradient(70% 48% at 50% 112%, rgba(108,240,224,0.06), transparent 62%);
+}
+[data-theme="dark"] .game-container::before {
+  background:
+    radial-gradient(58% 42% at 18% -4%,  rgba(139,111,216,0.20), transparent 62%),
+    radial-gradient(46% 34% at 88% 12%,  rgba(255,77,158,0.10),  transparent 60%),
+    radial-gradient(70% 48% at 50% 112%, rgba(108,240,224,0.07), transparent 62%),
+    radial-gradient(120% 90% at 50% 50%, transparent 55%, rgba(0,0,0,0.32) 100%);
+}
+.game-container > * { position: relative; z-index: 1; }
+
+/* Glow ambientale da mettere DIETRO gli elementi hero (bustina home, ecc.) */
+.hero-glow { position: relative; }
+.hero-glow::before {
+  content: '';
+  position: absolute; inset: -12% -18%; z-index: 0; pointer-events: none;
+  background: radial-gradient(50% 42% at 50% 46%, rgba(139,111,216,0.35), rgba(217,70,168,0.12) 55%, transparent 75%);
+  filter: blur(6px);
+  animation: heroGlowPulse 5s ease-in-out infinite;
+}
+.hero-glow > * { position: relative; z-index: 1; }
+@keyframes heroGlowPulse {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.06); }
+}
+
+/* ── JUICE: pressione morbida su TUTTI i bottoni (usa `scale`, proprietà
+   separata da transform → non rompe i translate esistenti) ── */
+button { transition: scale 0.12s ease; }
+button:active:not(:disabled) { scale: 0.96; }
+
+/* Numeri tabulari dove servono cifre allineate */
+.tabular, [class*="countdown"], [class*="timer"] { font-variant-numeric: tabular-nums; }
 
 /* Tablet (es. iPad): la griglia waifu della collezione aveva row-gap ~0 —
    il gap verticale desktop parte da 1152px e il layout phone non copre
@@ -563,6 +607,8 @@ input:focus, textarea:focus, select:focus {
 /* Griglia collezione mobile (3 carte / riga) */
 @media (max-width: 768px) and (orientation: portrait) {
   .collection-card-grid { gap: 6px !important; }
+  /* stesso respiro verticale della griglia mosse */
+  .waifu-grid { row-gap: 18px !important; }
   .collection-card-item {
     width: calc(33.333% - 6px) !important;
     min-width: 0 !important;
@@ -652,7 +698,7 @@ input:focus, textarea:focus, select:focus {
   min-width: 0; position: relative; cursor: pointer; user-select: none;
 }
 .hdr-empire-name {
-  font-family: 'Unbounded', sans-serif;
+  font-family: var(--ff-display,'Fredoka',sans-serif);
   font-size: 15px; font-weight: 800;
   color: #fff;
   letter-spacing: -0.005em;
@@ -829,7 +875,7 @@ input:focus, textarea:focus, select:focus {
   text-transform: uppercase; margin-bottom: 6px;
 }
 .ht-hero__title {
-  font-family: 'Unbounded', sans-serif;
+  font-family: var(--ff-display,'Fredoka',sans-serif);
   font-size: clamp(28px, 6vw, 44px);
   font-weight: 800;
   margin: 0; letter-spacing: -0.01em;
@@ -928,7 +974,7 @@ input:focus, textarea:focus, select:focus {
   text-align: center; z-index: 1;
 }
 .ht-pack-card__symbol {
-  font-family: 'Unbounded', sans-serif;
+  font-family: var(--ff-display,'Fredoka',sans-serif);
   font-size: 46px;
   margin-bottom: 4px;
 }
@@ -943,7 +989,7 @@ input:focus, textarea:focus, select:focus {
   padding: 20px 10px 11px; text-align: center; z-index: 2;
 }
 .ht-pack-card__cta {
-  font-family: 'Unbounded', sans-serif; font-size: 12px;
+  font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 12px;
   font-weight: 800; color: #fff; letter-spacing: -0.005em;
   text-shadow: 0 1px 4px rgba(0,0,0,0.6);
 }
@@ -990,7 +1036,7 @@ input:focus, textarea:focus, select:focus {
   margin-bottom: 6px; font-weight: 700;
 }
 .ht-drop__title {
-  font-family: 'Unbounded', sans-serif; font-size: clamp(20px, 5vw, 28px);
+  font-family: var(--ff-display,'Fredoka',sans-serif); font-size: clamp(20px, 5vw, 28px);
   font-weight: 800; color: #fff;
   letter-spacing: -0.01em; line-height: 1.1;
   margin-bottom: 6px;
@@ -1006,7 +1052,7 @@ input:focus, textarea:focus, select:focus {
 }
 .ht-drop__cta {
   padding: 10px 20px; border-radius: 999px; border: none; cursor: pointer;
-  font-family: 'Unbounded', sans-serif; font-size: 11px; font-weight: 800;
+  font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 11px; font-weight: 800;
   letter-spacing: 0.04em;
   background: linear-gradient(135deg, #f5c560, #ffa033);
   color: #1a0d00;
@@ -1175,7 +1221,7 @@ input:focus, textarea:focus, select:focus {
 .ht-amici__avatar {
   width: 32px; height: 32px; border-radius: 50%;
   display: grid; place-items: center; flex-shrink: 0;
-  font-family: 'Unbounded', sans-serif; font-size: 12px; font-weight: 700;
+  font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 12px; font-weight: 700;
   color: #fff;
 }
 .ht-amici__text { flex: 1; min-width: 0; }
@@ -1309,7 +1355,7 @@ input:focus, textarea:focus, select:focus {
   flex-shrink: 0;
 }
 .missioni-modal__title {
-  font-family: 'Unbounded', sans-serif; font-size: 16px; font-weight: 800;
+  font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 16px; font-weight: 800;
   color: var(--theme-text); letter-spacing: -0.01em;
 }
 .missioni-modal__close {
@@ -1560,12 +1606,12 @@ input:focus, textarea:focus, select:focus {
 }
 .sb-pack-card__center { text-align: center; z-index: 1; }
 .sb-pack-card__symbol {
-  font-family: 'Unbounded', sans-serif; font-size: 52px;
+  font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 52px;
   margin-bottom: 8px;
   text-shadow: 0 0 24px currentColor;
 }
 .sb-pack-card__name {
-  font-family: 'Unbounded', sans-serif; font-size: 13px; font-weight: 800;
+  font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 13px; font-weight: 800;
   color: #fff; letter-spacing: -0.01em; line-height: 1.2;
   text-shadow: 0 0 14px rgba(255,255,255,0.3);
 }
@@ -1611,7 +1657,7 @@ input:focus, textarea:focus, select:focus {
 }
 .sb-btn-open {
   width: 100%; padding: 14px 20px; border: none; border-radius: 14px;
-  cursor: pointer; font-family: 'Unbounded', sans-serif; font-size: 13px;
+  cursor: pointer; font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 13px;
   font-weight: 800; letter-spacing: 0.02em; transition: all 0.15s;
   display: flex; align-items: center; justify-content: center; gap: 8px;
 }
@@ -1732,7 +1778,7 @@ input:focus, textarea:focus, select:focus {
 .sb-badge-new {
   position: absolute; top: 8px; right: 8px;
   background: linear-gradient(135deg, #f5a623, #ff2d78);
-  color: #fff; font-family: 'Unbounded', sans-serif;
+  color: #fff; font-family: var(--ff-display,'Fredoka',sans-serif);
   font-size: 9px; font-weight: 800; letter-spacing: 0.04em;
   padding: 4px 9px; border-radius: 6px;
   border: 1px solid rgba(255,255,255,0.4);
@@ -1742,7 +1788,7 @@ input:focus, textarea:focus, select:focus {
 .sb-badge-hot {
   position: absolute; top: 8px; left: 8px;
   background: linear-gradient(135deg, #ff4500, #ff8c00);
-  color: #fff; font-family: 'Unbounded', sans-serif;
+  color: #fff; font-family: var(--ff-display,'Fredoka',sans-serif);
   font-size: 9px; font-weight: 800; letter-spacing: 0.04em;
   padding: 4px 9px; border-radius: 6px;
   border: 1px solid rgba(255,255,255,0.4);
@@ -1761,7 +1807,7 @@ input:focus, textarea:focus, select:focus {
   width: 100%;
 }
 .sb-badge-godpack__title {
-  font-family: 'Unbounded', sans-serif; font-size: 14px; font-weight: 800;
+  font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 14px; font-weight: 800;
   letter-spacing: 0.04em; color: #f5a623;
   text-shadow: 0 0 16px rgba(245,166,35,0.8);
 }
@@ -1778,7 +1824,7 @@ input:focus, textarea:focus, select:focus {
 }
 .sb-btn-ancora {
   width: 100%; padding: 13px 20px; border-radius: 14px; border: none; cursor: pointer;
-  font-family: 'Unbounded', sans-serif; font-size: 12px; font-weight: 800;
+  font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 12px; font-weight: 800;
   background: linear-gradient(135deg, rgba(167,139,250,0.25), rgba(167,139,250,0.1));
   border: 1px solid rgba(167,139,250,0.4);
   color: var(--c-violet); transition: all 0.15s;
@@ -1799,7 +1845,7 @@ input:focus, textarea:focus, select:focus {
 }
 .sb-btn-next-pack {
   width: 100%; padding: 13px 20px; border-radius: 14px; border: none; cursor: pointer;
-  font-family: 'Unbounded', sans-serif; font-size: 12px; font-weight: 800;
+  font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 12px; font-weight: 800;
   background: linear-gradient(135deg, #f5c560, #ffa033);
   color: #1a0d00;
   box-shadow: 0 0 20px rgba(245,197,96,0.4);
@@ -1871,7 +1917,7 @@ input:focus, textarea:focus, select:focus {
 }
 .sb-pack-closed__tap-hint {
   margin-top: 28px;
-  font-family: 'Unbounded', sans-serif; font-size: 13px; font-weight: 800;
+  font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 13px; font-weight: 800;
   color: #fff; letter-spacing: 0.04em;
   animation: pulseSoft 1.6s ease-in-out infinite;
   text-shadow: 0 0 18px rgba(245,197,96,0.6);
@@ -1971,7 +2017,7 @@ input:focus, textarea:focus, select:focus {
   opacity: 0.2;
 }
 .sb-peek-card__symbol {
-  font-family: 'Unbounded', sans-serif; font-size: 28px; opacity: 0.5;
+  font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 28px; opacity: 0.5;
   color: currentColor;
 }
 .sb-peek-card__idx {
@@ -1997,7 +2043,7 @@ input:focus, textarea:focus, select:focus {
   animation: sbResultsEnter 0.4s ease-out;
 }
 .sb-results__title {
-  font-family: 'Unbounded', sans-serif; font-size: 18px; font-weight: 800;
+  font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 18px; font-weight: 800;
   color: #fff; letter-spacing: -0.01em;
   margin-bottom: 4px; text-align: center;
 }
@@ -2015,7 +2061,7 @@ input:focus, textarea:focus, select:focus {
 .sb-btn-avanti {
   margin-top: 24px;
   padding: 14px 48px; border: none; border-radius: 999px; cursor: pointer;
-  font-family: 'Unbounded', sans-serif; font-size: 14px; font-weight: 800;
+  font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 14px; font-weight: 800;
   background: linear-gradient(135deg, #6cf0e0, #a78bfa);
   color: #fff;
   box-shadow: 0 0 24px rgba(108,240,224,0.4), 0 8px 24px rgba(0,0,0,0.4);
@@ -2106,7 +2152,7 @@ input:focus, textarea:focus, select:focus {
   background: linear-gradient(90deg, transparent, rgba(245,197,96,0.18), transparent);
   border-top: 1px solid rgba(245,197,96,0.3);
   border-bottom: 1px solid rgba(245,197,96,0.3);
-  font-family: 'Unbounded', sans-serif; font-size: 13px; font-weight: 800;
+  font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 13px; font-weight: 800;
   color: #f5c560;
   text-shadow: 0 0 18px rgba(245,197,96,0.7);
   animation: pulseStrong 1.5s ease-in-out infinite;
@@ -2347,7 +2393,7 @@ input:focus, textarea:focus, select:focus {
 }
 .sb-btn-qty {
   padding: 12px 0; border-radius: 12px; border: none; cursor: pointer;
-  font-family: 'Unbounded', sans-serif; font-size: 12px; font-weight: 800;
+  font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 12px; font-weight: 800;
   transition: all 0.15s; display: flex; align-items: center;
   justify-content: center; gap: 6px;
 }
@@ -2392,7 +2438,7 @@ input:focus, textarea:focus, select:focus {
 }
 .sb-opening__tap-label {
   margin-top: 20px; z-index: 2;
-  font-family: 'Unbounded', sans-serif; font-size: 12px; font-weight: 800;
+  font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 12px; font-weight: 800;
   color: #fff; letter-spacing: 0.04em;
   animation: pulseSoft 1.4s ease-in-out infinite;
   text-shadow: 0 0 14px rgba(245,197,96,0.5);
@@ -2946,7 +2992,7 @@ input:focus, textarea:focus, select:focus {
     content: "WAIFU\2019S EMPIRE";
     position: absolute; top: 34px; left: 0; right: 0;
     text-align: center;
-    font-family: var(--ff-display, 'Unbounded', sans-serif);
+    font-family: var(--ff-display, 'Fredoka', sans-serif);
     font-size: 17px; font-weight: 900; letter-spacing: 0.06em;
     background: linear-gradient(120deg, #f5c560, #ff85b6 55%, #a78bfa);
     -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -3028,9 +3074,9 @@ input:focus, textarea:focus, select:focus {
      (sovrascrive lo zoom:0.98 inline) — vale per carta E placeholder '?' */
   .collection-card-item > div:first-child { zoom: 1.32 !important; }
 
-  /* ── Griglia mosse: 5 colonne, più aria ── */
-  .moves-list__grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 22px 18px !important; }
-  .moves-list { max-width: 1240px !important; }
+  /* ── Griglia mosse: STESSE colonne/gap della griglia waifu ── */
+  .moves-list__grid { grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)) !important; gap: 34px 16px !important; }
+  .moves-list { max-width: none !important; }
 
   /* ── FAB missioni ── */
   .missioni-fab-pocket { right: 32px !important; bottom: 32px !important; width: 60px !important; height: 60px !important; }

@@ -39,7 +39,7 @@ const C = {
   inkLine: 'rgba(174,156,255,0.12)',
 }
 const FF = {
-  display: "var(--ff-display,'Unbounded',sans-serif)",
+  display: "var(--ff-display,'Fredoka',sans-serif)",
   label: "var(--ff-label,'Saira Condensed',sans-serif)",
   body: "var(--ff-body,'DM Sans',sans-serif)",
   mono: "var(--ff-mono,'JetBrains Mono',monospace)",
@@ -302,6 +302,11 @@ watch(
   { immediate: true },
 )
 
+// Vibrazione leggera quando la carta rivelata è NUOVA
+watch(() => !!(cartaCorrente.value as any)?.isNuova && indiceRivelato.value >= 0, (v) => {
+  if (v) { try { navigator.vibrate?.(45) } catch { /* ns */ } }
+})
+
 function avviaRivelazione(_carte: any[]) {
   // Prima carta il prima possibile: le immagini sono già precaricate (pre-draw
   // nel menu + preloadCarteImages), serve solo un beat per lo stacco visivo.
@@ -425,9 +430,13 @@ async function apri(tipoPacchetto: string) {
       emit('updateProfilo', { pacchettiBenvenuto: n })
       await updateUserProfile(uid, { pacchettiBenvenuto: n })
     } else if (tipoPacchetto === 'omaggio') {
-      const n = Number(props.profilo?.pacchettiOmaggio ?? 0) - 1
-      emit('updateProfilo', { pacchettiOmaggio: n })
-      await updateUserProfile(uid, { pacchettiOmaggio: n })
+      const prima = Number(props.profilo?.pacchettiOmaggio ?? 0)
+      const n = prima - 1
+      const patch: Record<string, unknown> = { pacchettiOmaggio: n }
+      // Da PIENO (5/5) il timer era fermo: riparte ADESSO, dopo l'apertura
+      if (prima >= 5) patch.ultimaRicaricaPacchetti = new Date()
+      emit('updateProfilo', patch)
+      await updateUserProfile(uid, patch as any)
     } else {
       const n = Number(props.profilo?.pacchettiSfida ?? 0) - 1
       emit('updateProfilo', { pacchettiSfida: n })
@@ -500,9 +509,14 @@ async function apriMultiSequenza(seq: string[]) {
   try {
     await saveCollezione(uid, nuova as any)
     // Decremento per-tipo (scala solo i tipi effettivamente aperti)
-    const patch: Record<string, number> = {}
+    const patch: Record<string, unknown> = {}
     if (aperti.benvenuto) patch.pacchettiBenvenuto = Number(props.profilo?.pacchettiBenvenuto ?? 0) - aperti.benvenuto
-    if (aperti.omaggio)   patch.pacchettiOmaggio   = Number(props.profilo?.pacchettiOmaggio ?? 0) - aperti.omaggio
+    if (aperti.omaggio) {
+      const prima = Number(props.profilo?.pacchettiOmaggio ?? 0)
+      patch.pacchettiOmaggio = prima - aperti.omaggio
+      // Da PIENO il timer era fermo: riparte dopo l'apertura
+      if (prima >= 5) patch.ultimaRicaricaPacchetti = new Date()
+    }
     if (aperti.sfida)     patch.pacchettiSfida     = Number(props.profilo?.pacchettiSfida ?? 0) - aperti.sfida
     if (Object.keys(patch).length) {
       emit('updateProfilo', patch)
@@ -1130,6 +1144,8 @@ function cfTouchEnd(e: TouchEvent) {
           @mousemove="onRevealMouseMove" @mouseleave="onRevealMouseLeave"
           @touchstart.passive="onRevealTouchStart" @touchmove.passive="onRevealTouchMove" @touchend.passive="onRevealTouchEnd">
           <!-- Badge NEW — visibile sopra tutto, nessun overflow che lo taglia -->
+          <!-- Burst di raggi celebrativo: SOLO carta mai posseduta -->
+          <div v-if="cartaCorrente.isNuova" class="reveal-newburst" aria-hidden="true" />
           <div v-if="cartaCorrente.isNuova"
             style="position:absolute;top:-28px;left:-10px;z-index:200;background:linear-gradient(135deg,#00b4ff,#00e676);border:2.5px solid #fff;border-radius:999px;padding:5px 16px;font-family:var(--ff-label);font-size:15px;font-weight:900;color:#000;box-shadow:0 4px 16px rgba(0,180,255,0.65);pointer-events:none;">
             NEW</div>
@@ -1438,7 +1454,7 @@ function cfTouchEnd(e: TouchEvent) {
       </div>
 
       <!-- Titolo -->
-      <div :style="{fontFamily:`var(--ff-display,'Unbounded',sans-serif)`,fontSize:'17px',fontWeight:900,letterSpacing:'0.1em',color:popupColor.main,textTransform:'uppercase',marginBottom:'5px',textShadow:`0 0 22px ${popupColor.main}88`}">
+      <div :style="{fontFamily:`var(--ff-display,'Fredoka',sans-serif)`,fontSize:'17px',fontWeight:900,letterSpacing:'0.1em',color:popupColor.main,textTransform:'uppercase',marginBottom:'5px',textShadow:`0 0 22px ${popupColor.main}88`}">
         {{ $t('sbusta.pack_modal_title', { type: $t('sbusta.pack_' + popupApertura.tipoPacchetto) }) }}
       </div>
 
@@ -1451,13 +1467,13 @@ function cfTouchEnd(e: TouchEvent) {
       <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:18px;">
         <!-- APRI 1 -->
         <button @click="() => { const t = popupApertura!.tipoPacchetto; popupApertura = null; apri(t) }"
-          :style="{width:'100%',padding:'15px 24px',borderRadius:'999px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',background:popupColor.btn1,border:`1.5px solid ${popupColor.border}`,boxShadow:`0 4px 24px ${popupColor.glow},inset 0 1px 0 rgba(255,255,255,0.1)`,fontFamily:`var(--ff-display,'Unbounded',sans-serif)`,fontSize:'15px',fontWeight:800,color:popupColor.btn1txt,letterSpacing:'0.12em',textTransform:'uppercase'}">
+          :style="{width:'100%',padding:'15px 24px',borderRadius:'999px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',background:popupColor.btn1,border:`1.5px solid ${popupColor.border}`,boxShadow:`0 4px 24px ${popupColor.glow},inset 0 1px 0 rgba(255,255,255,0.1)`,fontFamily:`var(--ff-display,'Fredoka',sans-serif)`,fontSize:'15px',fontWeight:800,color:popupColor.btn1txt,letterSpacing:'0.12em',textTransform:'uppercase'}">
           <span style="font-size:18px;line-height:1;">🃏</span> {{ $t('sbusta.open_1_main') }}
         </button>
         <!-- APRI 10 -->
         <button v-if="contaPackPopup >= 2"
           @click="() => { const t = popupApertura!.tipoPacchetto; popupApertura = null; apriMulti(t) }"
-          :style="{width:'100%',padding:'15px 20px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',background:popupColor.btn2bg,border:`1.5px solid ${popupColor.btn2border}`,boxShadow:`0 4px 18px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.04)`,fontFamily:`var(--ff-display,'Unbounded',sans-serif)`,fontSize:'13px',fontWeight:800,color:popupColor.btn2txt,letterSpacing:'0.08em',textTransform:'uppercase',borderRadius:'8px',clipPath:'polygon(14px 0%,calc(100% - 14px) 0%,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0% calc(100% - 14px),0% 14px)'}">
+          :style="{width:'100%',padding:'15px 20px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',background:popupColor.btn2bg,border:`1.5px solid ${popupColor.btn2border}`,boxShadow:`0 4px 18px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.04)`,fontFamily:`var(--ff-display,'Fredoka',sans-serif)`,fontSize:'13px',fontWeight:800,color:popupColor.btn2txt,letterSpacing:'0.08em',textTransform:'uppercase',borderRadius:'8px',clipPath:'polygon(14px 0%,calc(100% - 14px) 0%,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0% calc(100% - 14px),0% 14px)'}">
           <span style="font-size:18px;line-height:1;">🃏</span> {{ $t('sbusta.open_all') }}
         </button>
       </div>
@@ -1536,6 +1552,24 @@ function cfTouchEnd(e: TouchEvent) {
 
 <!-- STILI ANIMAZIONI NEON E RIVELAZIONE IN PRESERVE-3D -->
 <style scoped>
+/* Burst celebrativo per la carta NUOVA: raggi che esplodono una volta */
+.reveal-newburst {
+  position: absolute; inset: -34%; z-index: 1; pointer-events: none;
+  background: repeating-conic-gradient(
+    rgba(255,215,130,0.28) 0deg 7deg,
+    transparent 7deg 24deg
+  );
+  border-radius: 50%;
+  -webkit-mask: radial-gradient(circle, #fff 30%, transparent 68%);
+          mask: radial-gradient(circle, #fff 30%, transparent 68%);
+  animation: newBurst 1.15s ease-out forwards;
+}
+@keyframes newBurst {
+  0%   { opacity: 0; transform: scale(0.35) rotate(0deg); }
+  18%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.25) rotate(38deg); }
+}
+
 /* Il velo appare ISTANTANEO (deve coprire il flash) e sfuma solo in uscita */
 .velo-fade-enter-active { transition: none; }
 .velo-fade-leave-active { transition: opacity 0.3s ease; }

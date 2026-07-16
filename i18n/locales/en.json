@@ -228,7 +228,8 @@
     "your_offer": "Your offer (Kisses)",
     "territory_conquered": "Territory Conquered!",
     "conquering": "Conquering…",
-    "owner": "Owner: {name}"
+    "owner": "Owner: {name}",
+    "victory_rewards_title": "Victory rewards!"
   },
   "collection": {
     "title": "Collection",

@@ -112,7 +112,7 @@ onUnmounted(() => { document.getElementById('paypal-sdk-modal')?.remove() })
       style="text-align:center;gap:16px;display:flex;flex-direction:column;align-items:center"
     >
       <div style="font-size:48px">💖</div>
-      <div style="font-family:'Unbounded',sans-serif;font-size:14px;color:#00e676;letter-spacing:2px">{{ $t('modal.kisses_purchased_title') }}</div>
+      <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:14px;color:#00e676;letter-spacing:2px">{{ $t('modal.kisses_purchased_title') }}</div>
       <div style="font-family:'DM Sans',sans-serif;font-size:13px;color:rgba(238,232,220,0.7)">
         {{ $t('modal.kisses_added_msg', { n: taglioScelto?.kisses }) }}
       </div>
@@ -122,7 +122,7 @@ onUnmounted(() => { document.getElementById('paypal-sdk-modal')?.remove() })
     <template v-else>
       <!-- Intestazione -->
       <div style="text-align:center">
-        <div style="font-family:'Unbounded',sans-serif;font-size:12px;letter-spacing:3px;color:#ff4d9e;margin-bottom:6px">
+        <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:12px;letter-spacing:3px;color:#ff4d9e;margin-bottom:6px">
           {{ $t('modal.insufficient_kisses_title') }}
         </div>
         <div style="font-family:'DM Sans',sans-serif;font-size:13px;color:rgba(238,232,220,0.55)">
@@ -145,11 +145,11 @@ onUnmounted(() => { document.getElementById('paypal-sdk-modal')?.remove() })
         >
           <div style="display:flex;align-items:center;justify-content:center;gap:3px;margin-bottom:4px">
             <KissesIcon :size="12" />
-            <span :style="{ fontFamily:`'Unbounded',sans-serif`, fontSize:'11px', color: selectedId === t.id ? '#ff4d9e' : '#eedcd4', fontWeight:700 }">
+            <span :style="{ fontFamily:`var(--ff-display,'Fredoka',sans-serif)`, fontSize:'11px', color: selectedId === t.id ? '#ff4d9e' : '#eedcd4', fontWeight:700 }">
               {{ t.kisses }}
             </span>
           </div>
-          <div style="font-family:'Unbounded',sans-serif;font-size:10px;color:#f5a623;font-weight:700">€{{ t.price_eur }}</div>
+          <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:10px;color:#f5a623;font-weight:700">€{{ t.price_eur }}</div>
           <div v-if="(t.bonus ?? 0) > 0" style="font-size:8px;color:#00e676;margin-top:2px;font-family:'DM Sans',sans-serif">
             +{{ t.bonus }} bonus
           </div>
@@ -157,10 +157,10 @@ onUnmounted(() => { document.getElementById('paypal-sdk-modal')?.remove() })
       </div>
 
       <!-- Area PayPal / stato -->
-      <div v-if="stato === 'error'" style="color:#ff4d4d;font-family:'Unbounded',sans-serif;font-size:10px;text-align:center">
+      <div v-if="stato === 'error'" style="color:#ff4d4d;font-family:var(--ff-display,'Fredoka',sans-serif);font-size:10px;text-align:center">
         {{ errMsg }}
       </div>
-      <div v-else-if="stato === 'loading'" style="color:rgba(238,232,220,0.5);font-family:'Unbounded',sans-serif;font-size:10px">
+      <div v-else-if="stato === 'loading'" style="color:rgba(238,232,220,0.5);font-family:var(--ff-display,'Fredoka',sans-serif);font-size:10px">
         {{ $t('modal.completing_purchase') }}
       </div>
       <div v-else style="width:100%;max-width:320px">
@@ -171,7 +171,7 @@ onUnmounted(() => { document.getElementById('paypal-sdk-modal')?.remove() })
       <button
         @click="emit('cancel')"
         style="background:none;border:1px solid rgba(255,255,255,0.15);border-radius:8px;
-               color:rgba(238,232,220,0.4);font-family:'Unbounded',sans-serif;
+               color:rgba(238,232,220,0.4);font-family:var(--ff-display,'Fredoka',sans-serif);
                font-size:9px;padding:8px 20px;cursor:pointer;letter-spacing:1px"
       >{{ $t('modal.cancel') }}</button>
     </template>

@@ -95,7 +95,7 @@ const emit = defineEmits<{
 
 const C = { gold:'#f5c560', goldL:'#ffe9a8', sakura:'#ff85b6', aqua:'#6cf0e0', violet:'#a78bfa', ok:'#58e0a3', err:'#ff5b6c' }
 const FF = {
-  display: "var(--ff-display, 'Unbounded', sans-serif)",
+  display: "var(--ff-display, 'Fredoka', sans-serif)",
   label:   "var(--ff-label, 'Saira Condensed', sans-serif)",
   body:    "var(--ff-body, 'DM Sans', sans-serif)",
 }
