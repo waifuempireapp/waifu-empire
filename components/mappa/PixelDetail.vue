@@ -224,7 +224,7 @@ onUnmounted(() => {
             fontFamily: FF.display, fontSize: '20px', letterSpacing: '0.04em',
             color: 'var(--theme-text)', fontWeight: 900, lineHeight: 1.1, marginBottom: '8px',
           }">
-            {{ pixel.ownerName || 'CPU' }}
+            {{ maskOffensiveName(pixel.ownerName || 'CPU') }}
             <span v-if="isOwn" :style="{ color: C.aqua, fontSize: '13px', fontWeight: 600 }"> {{ $t('map.yours_suffix') }}</span>
           </div>
 

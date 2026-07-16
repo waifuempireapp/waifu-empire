@@ -4,6 +4,7 @@
 // scrittura non dipendono dalle Firestore Rules lato client, che permettono
 // solo l'accesso al proprio documento.
 import { defineEventHandler, getHeader, readBody, createError } from 'h3'
+import { isOffensiveName } from '../../../utils/profanity'
 import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminAuth, getAdminDb } from '../../utils/firebaseAdmin'
 
@@ -28,6 +29,10 @@ export default defineEventHandler(async (event) => {
 
   const body = await readBody(event)
   const nome = String(body?.nomeImpero ?? '').trim()
+  // Nomi offensivi vietati (multilingua, anti-leet): bloccati alla fonte
+  if (isOffensiveName(nome)) {
+    throw createError({ statusCode: 422, message: 'Questo nome non è consentito. Scegline un altro!' })
+  }
   const colore = String(body?.coloreImpero ?? '#f59e0b')
   if (!nome) throw createError({ statusCode: 400, message: 'Nome impero mancante' })
   if (nome.length > 40) throw createError({ statusCode: 400, message: 'Nome troppo lungo' })

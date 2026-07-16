@@ -697,27 +697,6 @@ function onMouseLeave(e: MouseEvent) {
 </template>
 
 <style scoped>
-/* ── Anello di rarità animato (bordo vivo per le carte top) ── */
-@property --ring-ang { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
-.rarity-ring {
-  position: absolute; inset: 0; border-radius: inherit;
-  pointer-events: none; z-index: 6;
-  padding: 2.5px;
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-          mask-composite: exclude;
-  animation: ringSpin 3.2s linear infinite;
-}
-.rarity-ring--leg {
-  background: conic-gradient(from var(--ring-ang),
-    #f5c560, #fff3cf 22%, #f5a623 45%, #ffdf8e 70%, #f5c560);
-}
-.rarity-ring--imm {
-  background: conic-gradient(from var(--ring-ang),
-    #ff6ec7, #ffd36e 20%, #8bff9e 40%, #6ec7ff 60%, #b06eff 80%, #ff6ec7);
-  filter: saturate(1.3);
-}
-@keyframes ringSpin { to { --ring-ang: 360deg; } }
 
 /* Shimmer animato su hover per rarità leggendario e immersivo.
    Aggiunge un riflesso luminoso che scorre sulla carta. */

@@ -4,6 +4,7 @@
 // doc → "Missing or insufficient permissions"). Restituisce solo campi PUBBLICI.
 import { defineEventHandler, getHeader, getQuery, createError } from 'h3'
 import { getAdminAuth, getAdminDb } from '../../utils/firebaseAdmin'
+import { maskOffensiveName } from '../../../utils/profanity'
 
 export default defineEventHandler(async (event) => {
   const token = getHeader(event, 'Authorization')?.replace('Bearer ', '')
@@ -25,11 +26,12 @@ export default defineEventHandler(async (event) => {
     return {
       id: d.id,
       // Solo campi pubblici/di gioco — niente email né dati sensibili
-      nomeImpero:   u.nomeImpero ?? null,
+      // Nomi offensivi già registrati: mascherati (P***e)
+      nomeImpero:   maskOffensiveName(u.nomeImpero ?? null) || null,
       coloreImpero: u.coloreImpero ?? null,
       avatar:       u.avatar ?? null,
       livelloMappa: u.livelloMappa ?? 1,
-      _nomeDisplay: u.nomeImpero || u.nome || (typeof u.email === 'string' ? u.email.split('@')[0] : null) || 'Giocatore',
+      _nomeDisplay: maskOffensiveName(u.nomeImpero || u.nome || (typeof u.email === 'string' ? u.email.split('@')[0] : null) || 'Giocatore'),
       _pixelCount:  (u.pixelCount as number) ?? 0,
       _territori:   mode === 'settimanale'
         ? Object.values((u.territoriUtente as Record<string, any>) || {}).filter((t: any) => t?.conquistato).length

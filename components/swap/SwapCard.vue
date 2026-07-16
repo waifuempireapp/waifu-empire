@@ -87,7 +87,7 @@ function actionBtn(color: string, bg: string) {
         style="width:100%;height:100%;object-fit:cover;pointer-events:none"
       />
       <div v-else style="width:100%;height:100%;background:linear-gradient(180deg,#1b1638,#251f48);display:grid;place-items:center">
-        <img src="~/assets/images/New_Logo.png" alt="" style="width:80px;height:80px;object-fit:contain;opacity:0.82;" />
+        <span style="font-family:var(--ff-display);font-size:30px;font-weight:700;color:var(--theme-text-3);opacity:.55;">?</span>
       </div>
 
       <div style="position:absolute;bottom:0;left:0;right:0;height:50%;background:linear-gradient(transparent,rgba(3,2,12,0.95))" />

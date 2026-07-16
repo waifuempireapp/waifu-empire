@@ -323,6 +323,28 @@ a { color: inherit; text-decoration: none; }
 button { transition: scale 0.12s ease; }
 button:active:not(:disabled) { scale: 0.96; }
 
+/* ── Anello di rarità animato — GLOBALE: carte waifu E carte mossa ── */
+@property --ring-ang { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+.rarity-ring {
+  position: absolute; inset: 0; border-radius: inherit;
+  pointer-events: none; z-index: 6;
+  padding: 2.5px;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  animation: ringSpin 3.2s linear infinite;
+}
+.rarity-ring--leg {
+  background: conic-gradient(from var(--ring-ang),
+    #f5c560, #fff3cf 22%, #f5a623 45%, #ffdf8e 70%, #f5c560);
+}
+.rarity-ring--imm {
+  background: conic-gradient(from var(--ring-ang),
+    #ff6ec7, #ffd36e 20%, #8bff9e 40%, #6ec7ff 60%, #b06eff 80%, #ff6ec7);
+  filter: saturate(1.3);
+}
+@keyframes ringSpin { to { --ring-ang: 360deg; } }
+
 /* Numeri tabulari dove servono cifre allineate */
 .tabular, [class*="countdown"], [class*="timer"] { font-variant-numeric: tabular-nums; }
 
@@ -611,6 +633,9 @@ input:focus, textarea:focus, select:focus {
   .collection-card-grid { gap: 6px !important; }
   /* stesso respiro verticale della griglia mosse */
   .waifu-grid { row-gap: 18px !important; }
+  /* card mossa larga come la carta waifu (143px x zoom 0.88) */
+  .moves-list__grid { justify-items: center; }
+  .moves-list__grid .mc { width: 100%; max-width: 128px; }
   .collection-card-item {
     width: calc(33.333% - 6px) !important;
     min-width: 0 !important;
@@ -3076,8 +3101,14 @@ input:focus, textarea:focus, select:focus {
      (sovrascrive lo zoom:0.98 inline) — vale per carta E placeholder '?' */
   .collection-card-item > div:first-child { zoom: 1.32 !important; }
 
-  /* ── Griglia mosse: STESSE colonne/gap della griglia waifu ── */
-  .moves-list__grid { grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)) !important; gap: 34px 16px !important; }
+  /* ── Griglia mosse: STESSE colonne/gap della griglia waifu, e card mossa
+     della STESSA larghezza visiva della carta waifu (189px = 143 x zoom 1.32) ── */
+  .moves-list__grid {
+    grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)) !important;
+    gap: 34px 16px !important;
+    justify-items: center;
+  }
+  .moves-list__grid .mc { width: 189px; max-width: 100%; }
   .moves-list { max-width: none !important; }
 
   /* ── FAB missioni ── */

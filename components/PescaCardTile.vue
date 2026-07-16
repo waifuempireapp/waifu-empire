@@ -49,7 +49,7 @@ const src = computed(() => props.carta.immagine ? (ikUrl(props.carta.immagine, '
            :style="{ position:'absolute', left:0, right:0, top:0, height: isMossa ? '64%' : '100%', width:'100%', objectFit:'cover', objectPosition:'center 15%', display:'block' }"
            @error="imgFail = true" />
       <div v-else :style="{ position:'absolute', left:0, right:0, top:0, height: isMossa ? '64%' : '100%', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--surface-sunken)' }">
-        <img src="~/assets/images/New_Logo.png" alt="" style="width:50%;height:auto;display:block;opacity:0.7;" />
+        <span style="font-family:var(--ff-display);font-size:30px;font-weight:700;color:var(--theme-text-3);opacity:.55;">?</span>
       </div>
 
       <!-- Marcatore MOSSA (alto-sx) -->

@@ -463,7 +463,7 @@ const handleRoundComplete = async (
           pixelName: battSnap?.name || `(${battSnap?.pixelX}, ${battSnap?.pixelY})`,
           oldColor, newColor,
           empireName: (props.profilo?.nomeImpero as string) || 'Tu',
-          oldEmpireName: battSnap?.defenderUid === 'CPU' ? 'CPU' : (battSnap?.defenderName || '?'),
+          oldEmpireName: battSnap?.defenderUid === 'CPU' ? 'CPU' : maskOffensiveName(battSnap?.defenderName || '?'),
         }
         emit('updateProfilo', {
           ...props.profilo,

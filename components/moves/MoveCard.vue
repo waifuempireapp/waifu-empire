@@ -21,6 +21,12 @@ const emit = defineEmits<{ open: [] }>()
 function onClick() { if (props.owned) emit('open') }
 
 const meta   = computed(() => TYPE_META[props.move.type])
+// Colore del BORDO per RARITÀ (come le carte waifu)
+const RARITY_BORDER: Record<string, string> = {
+  comune: '#9ca3af', raro: '#3b82f6', epico: '#a855f7', leggendario: '#f5c560', immersivo: '#ec4899',
+}
+const rarita   = computed(() => String((props.move as any).rarita ?? (props.move as any).rarity ?? 'comune').toLowerCase())
+const rarColor = computed(() => RARITY_BORDER[rarita.value] ?? RARITY_BORDER.comune)
 const name   = computed(() => (props.move as any).name ?? (props.move as any).nome ?? '')
 const danno  = computed(() => (props.move.damage ?? (props.move as any).danno ?? 0) as number)
 const descr  = computed(() => props.move.effectDescription ?? '')
@@ -38,7 +44,10 @@ const effColor   = computed(() => effLabel.value === 'super' ? '#22c55e' : effLa
 <template>
   <div class="mc" :class="{ 'mc--clickable': owned, 'mc--locked': !owned, 'mc--lg': large }" @click="onClick">
     <!-- Box ratio 2:3 -->
-    <div class="mc__box" :style="{ borderColor: `${meta.accent}aa`, boxShadow: `0 4px 16px rgba(0,0,0,0.28), 0 0 14px ${meta.accent}33` }">
+    <div class="mc__box" :style="{ borderColor: rarColor, boxShadow: `0 4px 16px rgba(0,0,0,0.28), 0 0 14px ${rarColor}44` }">
+      <!-- Anello di rarità ANIMATO (stesse classi delle carte waifu) -->
+      <div v-if="rarita === 'leggendario' || rarita === 'immersivo'" class="rarity-ring"
+        :class="rarita === 'immersivo' ? 'rarity-ring--imm' : 'rarity-ring--leg'" />
 
       <!-- Immagine ai 2/3 -->
       <img v-if="imgSrc && !imgFail" :src="imgSrc" :alt="name" loading="lazy" class="mc__img" @error="imgFail = true" />

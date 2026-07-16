@@ -43,7 +43,7 @@ const waifuImg = computed(() => {
         <img v-if="waifuImg && !imgFail" :src="waifuImg" :alt="nome"
           style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" @error="imgFail = true" />
         <div v-else style="width:100%;height:100%;display:grid;place-items:center;">
-          <img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:auto;object-fit:contain;opacity:0.72;" />
+          <span style="font-family:var(--ff-display);font-size:30px;font-weight:700;color:var(--theme-text-3);opacity:.55;">?</span>
         </div>
         <div v-if="rarita" style="position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,0.6);border-radius:999px;padding:2px 6px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:8px;font-weight:800;color:#fff;text-transform:capitalize;">{{ rarita }}</div>
       </div>

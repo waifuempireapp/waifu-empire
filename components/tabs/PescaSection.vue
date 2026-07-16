@@ -587,7 +587,7 @@ onUnmounted(() => {
                   @click="onPickCard(0)">
                   <template v-if="pickPhase === 'reveal'">
                     <img v-if="selectedPack.cards?.[0]?.immagine" @error="ikImgFallback" :src="ikUrl(selectedPack.cards[0].immagine, 'card') ?? ''" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
-                    <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
+                    <div v-else style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--theme-surface-2),var(--theme-bg-secondary));"><span style="font-family:var(--ff-display);font-size:34px;font-weight:700;color:var(--theme-text-3);opacity:.55;">?</span></div>
                   </template>
                   <!-- CSS 3D flip: back face (default) → front face (quando inPlaceFlipped) -->
                   <template v-else>
@@ -597,7 +597,7 @@ onUnmounted(() => {
                       </div>
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
                         <video v-if="inPlaceCards[0]?.video" :src="inPlaceCards[0].video ?? undefined" autoplay muted loop playsinline @error="(e:any) => e.target.style.display='none'" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/><img v-else-if="inPlaceCards[0]?.immagine" @error="ikImgFallback" :src="ikUrl(inPlaceCards[0].immagine, 'card') ?? ''" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
-                        <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
+                        <div v-else style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--theme-surface-2),var(--theme-bg-secondary));"><span style="font-family:var(--ff-display);font-size:34px;font-weight:700;color:var(--theme-text-3);opacity:.55;">?</span></div>
                         <div v-if="inPlaceNew[0]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">{{ $t('pesca.new_badge') }}</div>
                         <div v-if="inPlaceCards[0]?.tipo === 'mossa'" style="position:absolute;top:6px;right:6px;z-index:5;background:rgba(139,111,216,0.92);border:1.5px solid rgba(255,255,255,0.35);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:900;color:#fff;letter-spacing:0.08em;">⚔ MOSSA</div>
                         <div v-if="inPlaceCards[0]?.rarita" style="position:absolute;bottom:5px;left:5px;background:#fff;border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#1a1a2e;letter-spacing:0.06em;text-transform:capitalize;box-shadow:0 1px 4px rgba(0,0,0,0.3);">{{ inPlaceCards[0].rarita }}</div>
@@ -611,7 +611,7 @@ onUnmounted(() => {
                   @click="onPickCard(1)">
                   <template v-if="pickPhase === 'reveal'">
                     <img v-if="selectedPack.cards?.[1]?.immagine" @error="ikImgFallback" :src="ikUrl(selectedPack.cards[1].immagine, 'card') ?? ''" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
-                    <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
+                    <div v-else style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--theme-surface-2),var(--theme-bg-secondary));"><span style="font-family:var(--ff-display);font-size:34px;font-weight:700;color:var(--theme-text-3);opacity:.55;">?</span></div>
                   </template>
                   <!-- CSS 3D flip -->
                   <template v-else>
@@ -621,7 +621,7 @@ onUnmounted(() => {
                       </div>
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
                         <video v-if="inPlaceCards[1]?.video" :src="inPlaceCards[1].video ?? undefined" autoplay muted loop playsinline @error="(e:any) => e.target.style.display='none'" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/><img v-else-if="inPlaceCards[1]?.immagine" @error="ikImgFallback" :src="ikUrl(inPlaceCards[1].immagine, 'card') ?? ''" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
-                        <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
+                        <div v-else style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--theme-surface-2),var(--theme-bg-secondary));"><span style="font-family:var(--ff-display);font-size:34px;font-weight:700;color:var(--theme-text-3);opacity:.55;">?</span></div>
                         <div v-if="inPlaceNew[1]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">{{ $t('pesca.new_badge') }}</div>
                         <div v-if="inPlaceCards[1]?.tipo === 'mossa'" style="position:absolute;top:6px;right:6px;z-index:5;background:rgba(139,111,216,0.92);border:1.5px solid rgba(255,255,255,0.35);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:900;color:#fff;letter-spacing:0.08em;">⚔ MOSSA</div>
                         <div v-if="inPlaceCards[1]?.rarita" style="position:absolute;bottom:5px;left:5px;background:#fff;border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#1a1a2e;letter-spacing:0.06em;text-transform:capitalize;box-shadow:0 1px 4px rgba(0,0,0,0.3);">{{ inPlaceCards[1].rarita }}</div>
@@ -637,7 +637,7 @@ onUnmounted(() => {
                     @click="onPickCard(2)">
                   <template v-if="pickPhase === 'reveal'">
                     <img v-if="selectedPack.cards?.[2]?.immagine" @error="ikImgFallback" :src="ikUrl(selectedPack.cards[2].immagine, 'card') ?? ''" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
-                    <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
+                    <div v-else style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--theme-surface-2),var(--theme-bg-secondary));"><span style="font-family:var(--ff-display);font-size:34px;font-weight:700;color:var(--theme-text-3);opacity:.55;">?</span></div>
                   </template>
                   <!-- CSS 3D flip -->
                   <template v-else>
@@ -647,7 +647,7 @@ onUnmounted(() => {
                       </div>
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
                         <video v-if="inPlaceCards[2]?.video" :src="inPlaceCards[2].video ?? undefined" autoplay muted loop playsinline @error="(e:any) => e.target.style.display='none'" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/><img v-else-if="inPlaceCards[2]?.immagine" @error="ikImgFallback" :src="ikUrl(inPlaceCards[2].immagine, 'card') ?? ''" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
-                        <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
+                        <div v-else style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--theme-surface-2),var(--theme-bg-secondary));"><span style="font-family:var(--ff-display);font-size:34px;font-weight:700;color:var(--theme-text-3);opacity:.55;">?</span></div>
                         <div v-if="inPlaceNew[2]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">{{ $t('pesca.new_badge') }}</div>
                         <div v-if="inPlaceCards[2]?.tipo === 'mossa'" style="position:absolute;top:6px;right:6px;z-index:5;background:rgba(139,111,216,0.92);border:1.5px solid rgba(255,255,255,0.35);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:900;color:#fff;letter-spacing:0.08em;">⚔ MOSSA</div>
                         <div v-if="inPlaceCards[2]?.rarita" style="position:absolute;bottom:5px;left:5px;background:#fff;border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#1a1a2e;letter-spacing:0.06em;text-transform:capitalize;box-shadow:0 1px 4px rgba(0,0,0,0.3);">{{ inPlaceCards[2].rarita }}</div>
@@ -660,7 +660,7 @@ onUnmounted(() => {
                     @click="onPickCard(3)">
                   <template v-if="pickPhase === 'reveal'">
                     <img v-if="selectedPack.cards?.[3]?.immagine" @error="ikImgFallback" :src="ikUrl(selectedPack.cards[3].immagine, 'card') ?? ''" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
-                    <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
+                    <div v-else style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--theme-surface-2),var(--theme-bg-secondary));"><span style="font-family:var(--ff-display);font-size:34px;font-weight:700;color:var(--theme-text-3);opacity:.55;">?</span></div>
                   </template>
                   <!-- CSS 3D flip -->
                   <template v-else>
@@ -670,7 +670,7 @@ onUnmounted(() => {
                       </div>
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
                         <video v-if="inPlaceCards[3]?.video" :src="inPlaceCards[3].video ?? undefined" autoplay muted loop playsinline @error="(e:any) => e.target.style.display='none'" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/><img v-else-if="inPlaceCards[3]?.immagine" @error="ikImgFallback" :src="ikUrl(inPlaceCards[3].immagine, 'card') ?? ''" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
-                        <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
+                        <div v-else style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--theme-surface-2),var(--theme-bg-secondary));"><span style="font-family:var(--ff-display);font-size:34px;font-weight:700;color:var(--theme-text-3);opacity:.55;">?</span></div>
                         <div v-if="inPlaceNew[3]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">{{ $t('pesca.new_badge') }}</div>
                         <div v-if="inPlaceCards[3]?.tipo === 'mossa'" style="position:absolute;top:6px;right:6px;z-index:5;background:rgba(139,111,216,0.92);border:1.5px solid rgba(255,255,255,0.35);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:900;color:#fff;letter-spacing:0.08em;">⚔ MOSSA</div>
                         <div v-if="inPlaceCards[3]?.rarita" style="position:absolute;bottom:5px;left:5px;background:#fff;border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#1a1a2e;letter-spacing:0.06em;text-transform:capitalize;box-shadow:0 1px 4px rgba(0,0,0,0.3);">{{ inPlaceCards[3].rarita }}</div>
@@ -683,7 +683,7 @@ onUnmounted(() => {
                     @click="onPickCard(4)">
                   <template v-if="pickPhase === 'reveal'">
                     <img v-if="selectedPack.cards?.[4]?.immagine" @error="ikImgFallback" :src="ikUrl(selectedPack.cards[4].immagine, 'card') ?? ''" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
-                    <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
+                    <div v-else style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--theme-surface-2),var(--theme-bg-secondary));"><span style="font-family:var(--ff-display);font-size:34px;font-weight:700;color:var(--theme-text-3);opacity:.55;">?</span></div>
                   </template>
                   <!-- CSS 3D flip -->
                   <template v-else>
@@ -693,7 +693,7 @@ onUnmounted(() => {
                       </div>
                       <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:13px;overflow:hidden;">
                         <video v-if="inPlaceCards[4]?.video" :src="inPlaceCards[4].video ?? undefined" autoplay muted loop playsinline @error="(e:any) => e.target.style.display='none'" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/><img v-else-if="inPlaceCards[4]?.immagine" @error="ikImgFallback" :src="ikUrl(inPlaceCards[4].immagine, 'card') ?? ''" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;"/>
-                        <div v-else style="width:100%;height:100%;display:grid;place-items:center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:55%;opacity:0.75;"/></div>
+                        <div v-else style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--theme-surface-2),var(--theme-bg-secondary));"><span style="font-family:var(--ff-display);font-size:34px;font-weight:700;color:var(--theme-text-3);opacity:.55;">?</span></div>
                         <div v-if="inPlaceNew[4]" style="position:absolute;top:6px;left:6px;z-index:5;background:linear-gradient(135deg,#00b4ff,#00e676);border:1.5px solid rgba(255,255,255,0.4);border-radius:999px;padding:2px 8px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;font-weight:900;color:#000;letter-spacing:0.06em;">{{ $t('pesca.new_badge') }}</div>
                         <div v-if="inPlaceCards[4]?.tipo === 'mossa'" style="position:absolute;top:6px;right:6px;z-index:5;background:rgba(139,111,216,0.92);border:1.5px solid rgba(255,255,255,0.35);border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:900;color:#fff;letter-spacing:0.08em;">⚔ MOSSA</div>
                         <div v-if="inPlaceCards[4]?.rarita" style="position:absolute;bottom:5px;left:5px;background:#fff;border-radius:999px;padding:2px 7px;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:9px;font-weight:800;color:#1a1a2e;letter-spacing:0.06em;text-transform:capitalize;box-shadow:0 1px 4px rgba(0,0,0,0.3);">{{ inPlaceCards[4].rarita }}</div>
