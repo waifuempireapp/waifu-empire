@@ -1635,8 +1635,9 @@ function cfTouchEnd(e: TouchEvent) {
   }
 
   100% {
-    transform: translateY(560px) translateZ(60px) rotate(9deg);
-    opacity: 0;
+    /* 115vh: esce SEMPRE oltre il fondo visibile, su qualsiasi schermo */
+    transform: translateY(115vh) translateZ(40px) rotate(9deg);
+    opacity: 1;
   }
 }
 
@@ -1686,9 +1687,11 @@ function cfTouchEnd(e: TouchEvent) {
 }
 
 .reveal-flip--playing .reveal-flip__body {
-  /* Più lenta e fluida: 3.2s con easing morbido in entrata/uscita */
-  animation: legendaryReveal 3.2s cubic-bezier(0.33, 0, 0.2, 1) forwards;
-  filter: drop-shadow(0 20px 40px rgba(255,180,0,0.3));
+  /* Rotazione CONTINUA (niente pause a scatti) con timing per-keyframe;
+     will-change per il compositing GPU; NIENTE drop-shadow animato
+     (ripaint per frame = la causa principale dello "spezzato") */
+  animation: legendaryReveal 2.6s forwards;
+  will-change: transform;
 }
 
 /* Le due facce */
@@ -1724,13 +1727,12 @@ function cfTouchEnd(e: TouchEvent) {
   180° (900→720) e si percepiva come uno scatto.
 */
 @keyframes legendaryReveal {
-  /* retro → giravolte fluide con zoom graduale → fronte, rotazione monotona */
-  0%   { transform: rotateY(180deg) scale(1); }
-  22%  { transform: rotateY(450deg) scale(1.12); }
-  45%  { transform: rotateY(720deg) scale(1.24); }
-  62%  { transform: rotateY(900deg) scale(1.3); }
-  80%  { transform: rotateY(900deg) scale(1.3); }   /* pausa suspense sul retro, in zoom */
-  100% { transform: rotateY(1080deg) scale(1); }    /* mezzo giro finale + zoom-out → fronte */
+  /* retro → accelera → velocità costante → decelera dolce sul fronte.
+     Un'unica rotazione monotona senza pause: fluidità totale. */
+  0%   { transform: rotateY(180deg) scale(1);    animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0.4); }
+  32%  { transform: rotateY(560deg) scale(1.18); animation-timing-function: linear; }
+  62%  { transform: rotateY(880deg) scale(1.28); animation-timing-function: cubic-bezier(0.22, 0.6, 0.3, 1); }
+  100% { transform: rotateY(1080deg) scale(1); }
 }
 
 @keyframes legendaryGlow {

@@ -465,9 +465,9 @@ function onPointerMove(e: PointerEvent) {
   // Velocità di lancio limitata → l'inerzia non parte troppo veloce
   velocity = Math.max(-0.05, Math.min(0.05, d))
 }
-/** true se il tap ha colpito la bustina FRONTALE (raycast sulla scena). */
-function tapHitsFrontPack(e: PointerEvent): boolean {
-  if (!T3 || !camera || !canvasRef.value) return false
+/** Indice della bustina colpita dal tap (raycast sulla scena), -1 se nessuna. */
+function tapHitPackIndex(e: PointerEvent): number {
+  if (!T3 || !camera || !canvasRef.value) return -1
   const rect = canvasRef.value.getBoundingClientRect()
   const ndc = new T3.Vector2(
     ((e.clientX - rect.left) / rect.width) * 2 - 1,
@@ -476,7 +476,8 @@ function tapHitsFrontPack(e: PointerEvent): boolean {
   const ray = new T3.Raycaster()
   ray.setFromCamera(ndc, camera)
   const hits = ray.intersectObjects(meshes.filter(m => m.visible), false)
-  return hits.length > 0 && hits[0].object === meshes[frontIndex()]
+  if (!hits.length) return -1
+  return meshes.indexOf(hits[0].object as import('three').Mesh)
 }
 
 function onPointerUp(e: PointerEvent) {
@@ -485,8 +486,22 @@ function onPointerUp(e: PointerEvent) {
   if (pickPhase === 'wheel') {
     const step = (Math.PI * 2) / Math.max(3, meshes.length)
     targetRotation = Math.round(rotation / step) * step
-    // Tap SOLO sulla bustina centrale → zoom; tap altrove non fa nulla
-    if (movedPx < 10 && tapHitsFrontPack(e)) startPick()
+    if (movedPx < 10) {
+      const hit = tapHitPackIndex(e)
+      if (hit === frontIndex() && hit >= 0) {
+        // Tap sulla CENTRALE → zoom
+        startPick()
+      } else if (hit >= 0) {
+        // Tap su una bustina LATERALE → la ruota gira e la porta davanti
+        // (percorso angolare più corto)
+        const desired = -hit * step
+        let delta = desired - rotation
+        const TAU = Math.PI * 2
+        delta = ((delta + Math.PI) % TAU + TAU) % TAU - Math.PI
+        targetRotation = rotation + delta
+        velocity = 0
+      }
+    }
   } else if (pickPhase === 'zoomed') {
     // Rilascio senza aver tagliato da parte a parte: la scintilla svanisce
     if (ripDrag) { ripDrag = false; cutOn.value = false }
@@ -568,13 +583,13 @@ onBeforeUnmount(() => {
   position: absolute; height: 4px; pointer-events: none; z-index: 6;
   background: rgba(255,255,255,0.10);
   border-radius: 3px;
-  filter: blur(4px);
+  filter: blur(3px);
 }
 .pcg-cut-done {
   position: absolute; height: 8px; pointer-events: none; z-index: 7;
   background: linear-gradient(90deg, rgba(255,240,190,0.8), rgba(255,255,255,0.95));
   border-radius: 5px;
-  filter: blur(5px);
+  filter: blur(4px);
   box-shadow: 0 0 16px rgba(255,225,140,0.85), 0 0 40px rgba(255,190,80,0.5);
 }
 .pcg-cut-spark {
