@@ -882,7 +882,7 @@ function apriNegozio() {
             :style="{ display:'flex', flexDirection:'column', alignItems:'center' }"
           >
             <!-- Slot NON posseduto: placeholder con '?' (stesso ingombro della carta) -->
-            <div v-if="!owned" style="flex-shrink:0;">
+            <div v-if="!owned" class="cw-fit" style="flex-shrink:0;">
               <div :style="{
                 width:'143px', height:'215px', borderRadius:'12px',
                 border:'1.5px dashed var(--theme-border)',
@@ -893,7 +893,7 @@ function apriNegozio() {
               </div>
             </div>
 
-            <div v-else style="flex-shrink:0;position:relative;">
+            <div v-else class="cw-fit" style="flex-shrink:0;position:relative;">
             <CartaWaifu
               :waifu="w"
               :minimal="true"

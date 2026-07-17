@@ -353,8 +353,8 @@ button:active:not(:disabled) { scale: 0.96; }
    le larghezze intermedie. */
 @media (min-width: 640px) and (max-width: 1151.9px) {
   .waifu-grid,
-  .moves-list__grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 20px 14px !important; }
-  .waifu-grid .collection-card-item > div:first-child { zoom: 1; }
+  .moves-list__grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 22px 16px !important; }
+  .waifu-grid .cw-fit { zoom: 0.98; }
 }
 button { font-family: inherit; cursor: pointer; }
 
@@ -638,11 +638,16 @@ input:focus, textarea:focus, select:focus {
 /* ── Griglia waifu: STESSO layout delle mosse, zoom FISSI per breakpoint.
    La CartaWaifu è 143px: lo zoom è tarato sulla colonna MINIMA di ogni
    range → non sborda mai; la centratura assorbe la differenza. ── */
-.waifu-grid .collection-card-item { min-width: 0; display: flex; flex-direction: column; align-items: center; }
-.waifu-grid .collection-card-item > div:first-child { zoom: 0.76; }
+.waifu-grid .collection-card-item { min-width: 0; display: flex; flex-direction: column; align-items: center; overflow: visible; }
+/* .cw-fit = wrapper della carta E del placeholder (classe esplicita nel
+   template: nessuna dipendenza dall'ordine del DOM) */
+.waifu-grid .cw-fit { zoom: 0.70; }
 @media (max-width: 379.9px) {
-  .waifu-grid .collection-card-item > div:first-child { zoom: 0.66; }
+  .waifu-grid .cw-fit { zoom: 0.62; }
 }
+/* Card mossa: leggermente più piccola della colonna → più aria tra le carte */
+.moves-list__grid { justify-items: center; }
+.moves-list__grid .mc { width: 91%; }
 
 /* Campo battaglia mobile */
 @media (max-width: 768px) and (orientation: portrait) {
@@ -3076,20 +3081,20 @@ input:focus, textarea:focus, select:focus {
   .waifu-grid {
     display: grid !important;
     grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)) !important;
-    gap: 26px 16px !important;
+    gap: 28px 18px !important;
     justify-items: center;
   }
   .collection-card-item { width: auto !important; }
-  .waifu-grid .collection-card-item > div:first-child { zoom: 1.38; }
+  .waifu-grid .cw-fit { zoom: 1.32; }
 
   /* ── Griglia mosse: STESSE colonne/gap della griglia waifu, e card mossa
      della STESSA larghezza visiva della carta waifu (189px = 143 x zoom 1.32) ── */
   .moves-list__grid {
     grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)) !important;
-    gap: 26px 16px !important;
+    gap: 28px 18px !important;
     justify-items: center;
   }
-  .moves-list__grid .mc { width: 189px; max-width: 100%; }
+  .moves-list__grid .mc { width: 186px; max-width: 91%; }
   .moves-list { max-width: none !important; }
 
   /* ── FAB missioni ── */

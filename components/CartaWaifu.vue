@@ -141,7 +141,14 @@ const usaImmersiva = computed(() => {
 const preset = computed(() => dimensione.value === 'piccola' ? 'card' : dimensione.value === 'grande' ? 'full' : 'normal')
 const imgSrc = computed(() => ikUrl(usaImmersiva.value ? props.waifu.asset_immersiva : (props.waifu.asset_statica ?? null), preset.value as any))
 
-const hasVideo  = computed(() => !!props.waifu.asset_video)
+// Il <video> si monta SOLO se il file esiste davvero su ImageKit (HEAD 1x
+// con cache): senza check ogni carta immersiva sparava GET 404 in console.
+const videoDisponibile = ref(false)
+watch(() => props.waifu?.asset_video, (u) => {
+  videoDisponibile.value = false
+  if (u) videoExists(u).then((ok) => { videoDisponibile.value = ok })
+}, { immediate: true })
+const hasVideo  = computed(() => !!props.waifu.asset_video && videoDisponibile.value)
 const showFoil  = computed(() => ['epico', 'leggendario', 'immersivo'].includes(props.waifu.rarita))
 const videoAttivo = computed(() => props.videoAttivo ?? false)
 const censurata   = computed(() => props.censurata ?? false)
