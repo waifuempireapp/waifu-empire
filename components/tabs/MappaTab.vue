@@ -922,7 +922,7 @@ async function onTerritoryClick(territoryId: string) {
         @click.self="victoryReward = null">
         <div :style="{
           width:'100%', maxWidth:'300px', textAlign:'center',
-          background:'var(--theme-surface)', border:'1px solid var(--theme-border)',
+          background:'var(--grad-primary-soft), var(--theme-surface)', border:'1px solid var(--theme-border)',
           borderRadius:'20px', padding:'26px 22px',
           boxShadow:'0 12px 40px var(--theme-shadow)',
         }">
@@ -1046,7 +1046,7 @@ async function onTerritoryClick(territoryId: string) {
         position: 'fixed', left: '50%', top: '50%',
         transform: 'translate(-50%,-50%)', zIndex: 140,
         width: 'min(92vw, 360px)',
-        background: 'var(--theme-surface)', backdropFilter: 'blur(20px)',
+        background: 'var(--grad-primary-soft), var(--theme-surface)', backdropFilter: 'blur(20px)',
         border: '1px solid var(--theme-border-2)', borderRadius: '18px',
         padding: '22px 20px', boxShadow: '0 20px 60px var(--theme-shadow)',
       }">

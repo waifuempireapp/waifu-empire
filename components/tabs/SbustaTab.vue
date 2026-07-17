@@ -1208,7 +1208,7 @@ function cfTouchEnd(e: TouchEvent) {
 
     <!-- Overlay Video Immersivo Sezione Sblocchi -->
     <div v-if="sbusVideoAttivo && sbusCartaImmersiva" @click="sbusVideoFinito ? chiudiVideoSbusto() : undefined"
-      style="position: fixed; inset: 0; background: var(--theme-surface); backdrop-filter: blur(20px); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+      style="position: fixed; inset: 0; background: var(--grad-primary-soft), var(--theme-surface); backdrop-filter: blur(20px); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center;">
       <div @click.stop style="animation: scaleIn 0.25s ease-out">
         <CartaWaifu :waifu="sbusCartaImmersiva" dimensione="grande" tipo="auto" :video-attivo="sbusVideoAttivo"
           @video-end="sbusVideoFinito = true" />
@@ -1490,7 +1490,7 @@ function cfTouchEnd(e: TouchEvent) {
   <!-- ── Modale conferma acquisto bustina sfida ─────────────── -->
   <div v-if="sfidaConferma" @click="sfidaConferma = false" :style="{
     position: 'fixed', inset: 0, zIndex: 400,
-    background: 'var(--theme-surface)', backdropFilter: 'blur(18px)',
+    background: 'var(--grad-primary-soft), var(--theme-surface)', backdropFilter: 'blur(18px)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
   }">
     <div @click.stop :style="{

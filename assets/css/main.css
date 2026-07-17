@@ -364,7 +364,8 @@ button:active:not(:disabled) { scale: 0.96; }
   --grad-title:        linear-gradient(90deg, #b7a4ff, #ff85c8 55%, #ffc37a);
 }
 
-/* Titoli di sezione: testo con gradiente */
+/* Titoli di sezione: testo con gradiente (inclusi i componenti condivisi) */
+.section-title__text,
 .collez-title, .moves-list__title, .ht-hero-title, .neg-title, .tipi-title, .notif-title {
   background-image: var(--grad-title);
   -webkit-background-clip: text; background-clip: text;
@@ -402,6 +403,18 @@ button:active:not(:disabled) { scale: 0.96; }
 
 /* Bottom nav: dot della tab attiva con gradiente */
 .bnav-pocket__dot { background-image: var(--grad-primary) !important; }
+
+/* Swipe: CTA con gradiente + stato con velo */
+.swap-btn-pass, .swap-btn-reload {
+  background-image: var(--grad-primary) !important;
+  border: none !important; color: #fff !important;
+  box-shadow: 0 5px 0 rgba(0,0,0,0.20), 0 12px 26px rgba(217,70,168,0.30) !important;
+}
+.swap-btn-pass:active, .swap-btn-reload:active { transform: translateY(4px); }
+.swap-state-screen { background-image: var(--grad-primary-soft); }
+
+/* FAB missioni con gradiente */
+.missioni-fab-pocket { background-image: var(--grad-primary) !important; border: none !important; color: #fff !important; }
 
 /* Numeri tabulari dove servono cifre allineate */
 .tabular, [class*="countdown"], [class*="timer"] { font-variant-numeric: tabular-nums; }

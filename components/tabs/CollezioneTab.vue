@@ -846,7 +846,7 @@ function apriNegozio() {
         <div v-if="dropProgress.length" :style="{ display:'flex', flexDirection:'column', gap:'8px', margin:'14px 0 18px' }">
           <div v-for="dp in dropProgress" :key="dp.id" :style="{
             display:'flex', alignItems:'center', gap:'12px',
-            background:'var(--theme-surface)', border:'1px solid var(--theme-border)',
+            background:'var(--grad-primary-soft), var(--theme-surface)', border:'1px solid var(--theme-border)',
             borderRadius:'14px', padding:'10px 14px',
           }">
             <div :style="{ flex:1, minWidth:0 }">
@@ -1004,7 +1004,7 @@ function apriNegozio() {
 
             <!-- Barra filtri team -->
             <div :style="{
-              background: 'var(--theme-surface)',
+              background: 'var(--grad-primary-soft), var(--theme-surface)',
               border: '1px solid var(--theme-border)',
               borderRadius: '14px', padding: '12px 14px', marginBottom: '14px',
               backdropFilter: 'blur(8px)',
@@ -1261,7 +1261,7 @@ function apriNegozio() {
       >
         <div :style="{
           width: '100%', maxWidth: '400px', maxHeight: '86dvh', overflowY: 'auto',
-          background: 'var(--theme-surface)', border: '1px solid var(--theme-border)',
+          background: 'var(--grad-primary-soft), var(--theme-surface)', border: '1px solid var(--theme-border)',
           borderRadius: '18px', padding: '24px 22px',
           boxShadow: '0 12px 40px var(--theme-shadow)',
         }">

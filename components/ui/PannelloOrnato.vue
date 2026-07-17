@@ -18,11 +18,12 @@ const props = withDefaults(defineProps<{
 })
 
 // Mappa delle varianti colore/sfondo
+// Token-aware: seguono il tema (prima erano navy fissi anche in light mode)
 const VARIANTS = {
-  default: { bg: 'linear-gradient(180deg, rgba(27,22,56,0.72), rgba(13,10,38,0.85))', border: 'rgba(174,156,255,0.18)' },
-  dark:    { bg: 'linear-gradient(180deg, rgba(7,5,26,0.92), rgba(3,2,12,0.96))',     border: 'rgba(174,156,255,0.10)' },
-  accent:  { bg: 'linear-gradient(180deg, rgba(245,197,96,0.10), rgba(245,197,96,0.04))', border: 'rgba(245,197,96,0.45)' },
-  purple:  { bg: 'linear-gradient(180deg, rgba(167,139,250,0.12), rgba(13,10,38,0.85))', border: 'rgba(167,139,250,0.35)' },
+  default: { bg: 'var(--grad-primary-soft), var(--theme-surface)', border: 'var(--theme-border-2)' },
+  dark:    { bg: 'var(--theme-surface-2)',                          border: 'var(--theme-border)' },
+  accent:  { bg: 'var(--grad-gold-soft), var(--theme-surface)',     border: 'rgba(245,197,96,0.45)' },
+  purple:  { bg: 'var(--grad-primary-soft), var(--theme-surface)',  border: 'var(--theme-border-2)' },
 }
 
 const v = computed(() => VARIANTS[props.variant] ?? VARIANTS.default)

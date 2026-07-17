@@ -254,7 +254,7 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
   width: 40px; height: 40px;
   display: grid; place-items: center;
   padding: 0; line-height: 1;
-  background: var(--theme-surface);
+  background: var(--grad-primary-soft), var(--theme-surface);
   border: 1px solid var(--theme-border-2);
   border-radius: 12px;
   color: var(--theme-text-2);

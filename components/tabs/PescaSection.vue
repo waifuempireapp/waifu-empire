@@ -499,7 +499,7 @@ onUnmounted(() => {
            overflow-y:auto;display:flex;flex-direction:column">
     <div style="
       position:sticky; top:0; z-index:100;
-      background:var(--theme-surface);backdrop-filter:blur(20px);
+      background:var(--grad-primary-soft), var(--theme-surface);backdrop-filter:blur(20px);
       border-bottom:1px solid var(--theme-border);
       padding:14px 18px;
       display:flex; align-items:center; justify-content:space-between;
@@ -542,7 +542,7 @@ onUnmounted(() => {
 
       <div v-if="notif" :style="{
         position: 'fixed', top: '16px', left: '50%', transform: 'translateX(-50%)',
-        background: 'var(--theme-surface)', backdropFilter: 'blur(12px)',
+        background: 'var(--grad-primary-soft), var(--theme-surface)', backdropFilter: 'blur(12px)',
         border: `1px solid ${notif.colore}80`, color: notif.colore,
         padding: '10px 24px', borderRadius: '10px',
         fontFamily: 'var(--ff-label)', letterSpacing: '2px', fontSize: '11px', zIndex: 500,
@@ -764,7 +764,7 @@ onUnmounted(() => {
   <!-- Zoom carta al tap dopo la rivelazione -->
   <div v-if="zoomCard" @click="zoomCard = null"
     style="position:fixed;inset:0;z-index:400;background:rgba(4,2,14,0.88);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px;">
-    <div @click.stop style="width:100%;max-width:300px;border-radius:16px;overflow:hidden;border:1.5px solid rgba(255,255,255,0.15);background:var(--theme-surface);">
+    <div @click.stop style="width:100%;max-width:300px;border-radius:16px;overflow:hidden;border:1.5px solid rgba(255,255,255,0.15);background:var(--grad-primary-soft), var(--theme-surface);">
       <div style="position:relative;width:100%;padding-bottom:150%;background:var(--theme-bg-secondary);">
         <img v-if="zoomCard.immagine" :src="ikUrl(zoomCard.immagine,'normal') ?? undefined" :alt="zoomCard.nome"
           style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 12%;" />

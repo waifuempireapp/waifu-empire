@@ -149,7 +149,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
         <!-- Header sezione -->
         <div :style="{
           padding: '12px 16px', borderRadius: '14px',
-          background: 'var(--theme-surface)',
+          background: 'var(--grad-primary-soft), var(--theme-surface)',
           border: '1px solid var(--theme-border)',
           textAlign: 'center', marginBottom: '4px',
         }">
@@ -228,7 +228,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
             <span :style="{
               fontFamily: FF.label, fontSize: '11px', fontWeight: 700,
               color: 'var(--theme-text-3)', letterSpacing: '0.18em',
-              background: 'var(--theme-surface)', padding: '0 8px',
+              background: 'var(--grad-primary-soft), var(--theme-surface)', padding: '0 8px',
             }">{{ $t("leaderboard.no_prize") }}</span>
           </div>
 
@@ -315,7 +315,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
           <div v-if="(page * PAGE_SIZE + j) < 10" :style="{
             position: 'absolute', top: '-11px', right: '-6px', zIndex: 5,
             display: 'inline-flex', alignItems: 'center', gap: '5px',
-            background: 'var(--theme-surface)',
+            background: 'var(--grad-primary-soft), var(--theme-surface)',
             border: `1.5px solid ${PRIZE_COLORS[Math.min(page * PAGE_SIZE + j, 9)]}aa`,
             borderRadius: '999px', padding: '4px 12px',
             boxShadow: '0 2px 10px rgba(0,0,0,0.35)',
@@ -336,7 +336,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
         <!-- CTA Swap -->
         <div :style="{
           marginTop: '8px', padding: '14px 16px', borderRadius: '14px', textAlign: 'center',
-          background: 'var(--theme-surface)', border: '1px dashed var(--theme-border)',
+          background: 'var(--grad-primary-soft), var(--theme-surface)', border: '1px dashed var(--theme-border)',
         }">
           <i18n-t keypath="leaderboard.vote_in_swap" tag="div" scope="global"
             :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.5 }">

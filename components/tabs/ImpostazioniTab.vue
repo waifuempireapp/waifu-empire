@@ -158,7 +158,7 @@ async function switchLocale(code: string) {
           :title="isAvatarUnlocked(preset, ownedWaifuIds) ? preset.label : t('avatar.locked_hint', { name: preset.waifuId.toUpperCase() })"
           style="position:relative;flex-shrink:0;width:68px;height:68px;border-radius:50%;padding:0;overflow:hidden;scroll-snap-align:start;transition:border-color 0.15s,box-shadow 0.15s;"
           :style="{
-            background: 'var(--theme-surface)',
+            background: 'var(--grad-primary-soft), var(--theme-surface)',
             cursor: isAvatarUnlocked(preset, ownedWaifuIds) ? 'pointer' : 'not-allowed',
             border: avatarValue === preset.id
               ? '3px solid var(--theme-accent)'
