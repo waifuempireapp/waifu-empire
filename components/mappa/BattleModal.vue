@@ -486,8 +486,8 @@ const visiblePages = computed(() => {
               <span :style="{ flex:1, fontFamily:FF.label, fontSize:'13px', fontWeight:700, color:'var(--theme-text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }">
                 {{ getMossa(mossaId)?.nome ?? 'Slot vuoto' }}
               </span>
-              <span v-if="getMossa(mossaId)?.danno != null" :style="{ fontFamily:FF.mono, fontSize:'12px', fontWeight:800, color:'var(--theme-text-2)', flexShrink:0 }">
-                {{ getMossa(mossaId)!.danno }} DMG
+              <span v-if="(getMossa(mossaId) as any)?.danno != null" :style="{ fontFamily:FF.mono, fontSize:'12px', fontWeight:800, color:'var(--theme-text-2)', flexShrink:0 }">
+                {{ (getMossa(mossaId) as any).danno }} DMG
               </span>
             </div>
             <div v-if="!Object.keys(detailWaifu._datiColl?.mosse_slot ?? {}).length" :style="{ fontFamily:FF.body, fontSize:'12px', color:'var(--theme-text-3)', textAlign:'center', padding:'8px 0' }">
