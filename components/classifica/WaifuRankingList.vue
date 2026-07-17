@@ -109,7 +109,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
       borderRadius: '12px', padding: '3px', marginBottom: '16px',
     }">
       <button
-        v-for="t in [{ id: 'top5', label: '🏆 Top 50' }, { id: 'pausa', label: '⏸ In pausa' }]"
+        v-for="t in [{ id: 'top5', label: '🏆 Top 50' }, { id: 'pausa', label: '⏸ Fuori gara' }]"
         :key="t.id"
         @click="subTab = (t.id as 'top5' | 'pausa'); page = 0"
         :style="{
@@ -348,6 +348,17 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
 
     <!-- ===== IN PAUSA ===== -->
     <div v-else-if="subTab === 'pausa'" :style="{ display: 'flex', flexDirection: 'column', gap: '10px' }">
+      <!-- Spiegazione: come funziona il fuori gara automatico -->
+      <div :style="{
+        background: 'var(--grad-primary-soft), var(--theme-surface)',
+        border: '1px solid var(--theme-border)', borderRadius: '14px',
+        padding: '12px 14px', fontFamily: FF.body, fontSize: '12.5px',
+        color: 'var(--theme-text-2)', lineHeight: 1.5,
+      }">
+        ⏸ Le <b :style="{ color: 'var(--theme-text)' }">prime 3 classificate</b> del mese scorso
+        + <b :style="{ color: 'var(--theme-text)' }">2 estratte a sorte</b> riposano per questo mese:
+        non compaiono nello Swipe e non ricevono voti. Rientrano in gara il 1° del mese prossimo.
+      </div>
       <div v-if="paused.length === 0" :style="{
         textAlign: 'center', padding: '40px',
         color: 'var(--theme-text-3)', fontFamily: FF.label, fontSize: '14px',

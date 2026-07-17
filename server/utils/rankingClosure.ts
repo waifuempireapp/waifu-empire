@@ -7,7 +7,7 @@
 // viene poi generata una notifica (reconcile per-utente).
 // ============================================================
 import { getAdminDb } from './firebaseAdmin'
-import { FieldValue } from 'firebase-admin/firestore'
+import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { upgradeRarity, computeAndSaveStats } from './gameLogic'
 
 const STAT_KEYS = ['tette', 'eta', 'esperienza', 'colore_capelli', 'taglia_piedi']
@@ -15,6 +15,55 @@ const STAT_KEYS = ['tette', 'eta', 'esperienza', 'colore_capelli', 'taglia_piedi
 // YYYY-MM nel fuso Europe/Rome (coerente con vote.post / current.get)
 export function monthKey(ts = Date.now()): string {
   return new Date(ts).toLocaleDateString('fr-CA', { timeZone: 'Europe/Rome' }).slice(0, 7)
+}
+
+/** Istante UTC della mezzanotte italiana del 1° del mese successivo. */
+function nextMonthStartRome(): number {
+  const cur = monthKey()
+  let t = Date.now()
+  for (let i = 0; i < 24 * 40; i++) {
+    t += 3600000
+    if (monthKey(t) !== cur) {
+      const day = new Date(t).toLocaleDateString('fr-CA', { timeZone: 'Europe/Rome' })
+      let b = t
+      while (new Date(b - 3600000).toLocaleDateString('fr-CA', { timeZone: 'Europe/Rome' }) === day) b -= 3600000
+      return b
+    }
+  }
+  return t
+}
+
+/**
+ * PAUSA AUTOMATICA (anti-monopolio): le TOP 3 del mese concluso + 2 waifu
+ * estratte a sorte restano FUORI GARA per il mese corrente (escluse dallo
+ * swipe → niente voti). Il campo pausedUntil viene SOSTITUITO: le pause del
+ * mese precedente decadono, la sezione ne mostra sempre 5.
+ */
+async function applyMonthlyPause(ranked: Array<[string, number]>): Promise<string[]> {
+  const db = getAdminDb()
+  const top = ranked.filter(([, score]) => score > 0).slice(0, 3).map(([id]) => id)
+
+  const catSnap = await db.collection('catalogo_waifu').get()
+  const pool = catSnap.docs
+    .map(d => ({ id: d.id, ...(d.data() as any) }))
+    .filter(w => !top.includes(w.id) && !(w.rarita === 'immersivo' && w.asset_video_hard))
+  const randoms: string[] = []
+  while (randoms.length < Math.min(2, pool.length) && pool.length) {
+    const i = Math.floor(Math.random() * pool.length)
+    randoms.push(pool.splice(i, 1)[0].id)
+  }
+
+  const ids = [...top, ...randoms]
+  if (!ids.length) return []
+  const until = Timestamp.fromMillis(nextMonthStartRome())
+  const pausedUntil: Record<string, Timestamp> = {}
+  for (const id of ids) pausedUntil[id] = until
+  try {
+    await db.doc('swap_config/main').update({ pausedUntil })   // sostituisce il campo intero
+  } catch {
+    await db.doc('swap_config/main').set({ pausedUntil }, { merge: true })
+  }
+  return ids
 }
 
 async function getRarityConfig(): Promise<Record<string, any> | null> {
@@ -60,8 +109,10 @@ export async function ensureMonthlyClosure(): Promise<void> {
       // Vincitrice: punteggio più alto e positivo
       const ranked = Object.entries(byMonth[mk]).sort((a, b) => b[1] - a[1])
       const [winnerId, winnerScore] = ranked[0] ?? [null, 0]
+      // Pausa automatica: top 3 del mese + 2 a sorte fuori gara per il nuovo mese
+      const pausedIds = await applyMonthlyPause(ranked).catch(() => [] as string[])
       if (!winnerId || winnerScore <= 0) {
-        await closureRef.set({ status: 'no_winner' }, { merge: true })
+        await closureRef.set({ status: 'no_winner', pausedIds }, { merge: true })
         continue
       }
 
@@ -73,7 +124,7 @@ export async function ensureMonthlyClosure(): Promise<void> {
 
       if (!newRarita) {
         // Già al massimo (immersivo): nessun upgrade, ma registra la vincitrice
-        await closureRef.set({ status: 'max_rarity', winnerId, nome: waifu.nome ?? winnerId, oldRarita, newRarita: oldRarita, score: winnerScore, image: waifu.asset_statica ?? waifu.asset_immersiva ?? null }, { merge: true })
+        await closureRef.set({ status: 'max_rarity', winnerId, nome: waifu.nome ?? winnerId, oldRarita, newRarita: oldRarita, score: winnerScore, image: waifu.asset_statica ?? waifu.asset_immersiva ?? null, pausedIds }, { merge: true })
         continue
       }
 
@@ -90,6 +141,7 @@ export async function ensureMonthlyClosure(): Promise<void> {
         status: 'done', winnerId, nome: waifu.nome ?? winnerId,
         oldRarita, newRarita, score: winnerScore,
         image: waifu.asset_statica ?? waifu.asset_immersiva ?? null,
+        pausedIds,
       }, { merge: true })
     } catch (e) {
       console.error('[rankingClosure] errore chiusura', mk, e)
