@@ -352,7 +352,7 @@ button:active:not(:disabled) { scale: 0.96; }
    il gap verticale desktop parte da 1152px e il layout phone non copre
    le larghezze intermedie. */
 @media (min-width: 640px) and (max-width: 1151.9px) {
-  .waifu-grid { row-gap: 26px !important; }
+  .waifu-grid { row-gap: 18px !important; }
 }
 button { font-family: inherit; cursor: pointer; }
 
@@ -631,8 +631,8 @@ input:focus, textarea:focus, select:focus {
 /* Griglia collezione mobile (3 carte / riga) */
 @media (max-width: 768px) and (orientation: portrait) {
   .collection-card-grid { gap: 6px !important; }
-  /* stesso respiro verticale della griglia mosse */
-  .waifu-grid { row-gap: 18px !important; }
+  /* respiro verticale COMPATTO (identico alla griglia mosse) */
+  .waifu-grid { row-gap: 12px !important; }
   /* card mossa larga come la carta waifu (143px x zoom 0.88) */
   .moves-list__grid { justify-items: center; }
   .moves-list__grid .mc { width: 100%; max-width: 128px; }
@@ -641,23 +641,12 @@ input:focus, textarea:focus, select:focus {
     min-width: 0 !important;
     transform: none !important;
   }
+  /* zoom (NON transform:scale): riduce anche il layout box → niente più
+     vuoto morto sotto le carte che gonfiava il gap verticale */
   .collection-card-item .carta-waifu-root,
-  .collection-card-item > div:first-child > div,
   .collection-card-item > div:first-child {
-    transform: scale(0.88) !important;
-    transform-origin: top center;
-  }
-  .collection-card-item:hover,
-  .collection-card-item:focus,
-  .collection-card-item:active,
-  .collection-card-item:focus-within { transform: none !important; }
-  .collection-card-item:hover .carta-waifu-root,
-  .collection-card-item:hover > div:first-child > div,
-  .collection-card-item:hover > div:first-child,
-  .collection-card-item:focus .carta-waifu-root,
-  .collection-card-item:active .carta-waifu-root {
-    transform: scale(0.88) !important;
-    transform-origin: top center;
+    transform: none !important;
+    zoom: 0.88;
   }
 }
 
@@ -3093,7 +3082,7 @@ input:focus, textarea:focus, select:focus {
   .waifu-grid {
     display: grid !important;
     grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)) !important;
-    gap: 34px 16px !important;
+    gap: 26px 16px !important;
     justify-items: center;
   }
   .collection-card-item { width: auto !important; }
@@ -3105,7 +3094,7 @@ input:focus, textarea:focus, select:focus {
      della STESSA larghezza visiva della carta waifu (189px = 143 x zoom 1.32) ── */
   .moves-list__grid {
     grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)) !important;
-    gap: 34px 16px !important;
+    gap: 26px 16px !important;
     justify-items: center;
   }
   .moves-list__grid .mc { width: 189px; max-width: 100%; }

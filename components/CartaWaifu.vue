@@ -246,20 +246,21 @@ function onMouseLeave(e: MouseEvent) {
       position: 'relative',
       cursor: censurata ? 'not-allowed' : (onClick || hasVideo ? 'pointer' : 'default'),
       borderRadius: '14px',
-      border: `${borderW}px solid ${evidenziato ? '#ffe9a8' : videoAttivo ? '#ff7eb6' : rb.outer}`,
+      // BORDO RARITÀ tutto ESTERNO (outline non occupa/copre la carta)
+      outline: `3.5px solid ${evidenziato ? '#ffe9a8' : videoAttivo ? '#ff7eb6' : rb.outer}`,
       boxShadow: evidenziato
-        ? '0 0 0 2px #ffe9a8, 0 4px 28px rgba(255,233,168,0.5), inset 0 0 20px rgba(255,233,168,0.1)'
+        ? '0 4px 28px rgba(255,233,168,0.5), inset 0 0 20px rgba(255,233,168,0.1)'
         : videoAttivo
-          ? '0 0 0 2px #ff7eb6, 0 4px 28px rgba(255,126,182,0.5), inset 0 0 22px rgba(255,126,182,0.15)'
+          ? '0 4px 28px rgba(255,126,182,0.5), inset 0 0 22px rgba(255,126,182,0.15)'
           : waifu.rarita === 'immersivo'
-            ? '0 0 0 2px #ff7eb6, 0 4px 28px rgba(255,126,182,0.45), 0 0 60px rgba(255,126,182,0.15), inset 0 0 16px rgba(0,0,0,0.3)'
+            ? '0 4px 28px rgba(255,126,182,0.45), 0 0 60px rgba(255,126,182,0.15), inset 0 0 16px rgba(0,0,0,0.3)'
             : waifu.rarita === 'leggendario'
-              ? '0 0 0 2px #ffc861, 0 4px 28px rgba(255,200,97,0.40), inset 0 0 16px rgba(0,0,0,0.3)'
+              ? '0 4px 28px rgba(255,200,97,0.40), inset 0 0 16px rgba(0,0,0,0.3)'
               : waifu.rarita === 'epico'
-                ? '0 0 0 1.5px #b573ff, 0 4px 20px rgba(181,115,255,0.35), inset 0 0 16px rgba(0,0,0,0.3)'
+                ? '0 4px 20px rgba(181,115,255,0.35), inset 0 0 16px rgba(0,0,0,0.3)'
                 : waifu.rarita === 'raro'
-                  ? '0 0 0 1.5px #5aa9ff, 0 4px 20px rgba(90,169,255,0.30), inset 0 0 16px rgba(0,0,0,0.3)'
-                  : '0 0 0 1.5px #b4bcc8, 0 4px 20px rgba(180,188,200,0.20), inset 0 0 16px rgba(0,0,0,0.3)',
+                  ? '0 4px 20px rgba(90,169,255,0.30), inset 0 0 16px rgba(0,0,0,0.3)'
+                  : '0 4px 20px rgba(180,188,200,0.20), inset 0 0 16px rgba(0,0,0,0.3)',
       overflow: 'hidden',
       background: rb.bg,
       transition: 'all 0.3s ease',

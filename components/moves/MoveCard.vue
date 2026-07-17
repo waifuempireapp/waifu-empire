@@ -44,7 +44,7 @@ const effColor   = computed(() => effLabel.value === 'super' ? '#22c55e' : effLa
 <template>
   <div class="mc" :class="{ 'mc--clickable': owned, 'mc--locked': !owned, 'mc--lg': large }" @click="onClick">
     <!-- Box ratio 2:3 -->
-    <div class="mc__box" :style="{ borderColor: rarColor, boxShadow: `0 4px 16px rgba(0,0,0,0.28), 0 0 14px ${rarColor}44` }">
+    <div class="mc__box" :style="{ outline: `3.5px solid ${rarColor}`, boxShadow: `0 4px 16px rgba(0,0,0,0.28), 0 0 14px ${rarColor}44` }">
       <!-- Anello di rarità ANIMATO (stesse classi delle carte waifu) -->
       <div v-if="rarita === 'leggendario' || rarita === 'immersivo'" class="rarity-ring"
         :class="rarita === 'immersivo' ? 'rarity-ring--imm' : 'rarity-ring--leg'" />
@@ -76,8 +76,6 @@ const effColor   = computed(() => effLabel.value === 'super' ? '#22c55e' : effLa
       </div>
     </div>
 
-    <!-- Nome -->
-    <div class="mc__name">{{ name }}</div>
   </div>
 </template>
 
@@ -91,7 +89,8 @@ const effColor   = computed(() => effLabel.value === 'super' ? '#22c55e' : effLa
 .mc__box {
   position: relative; width: 100%; padding-bottom: 150%;
   border-radius: 12px; overflow: hidden;
-  border: 1.5px solid; background: var(--theme-bg-secondary);
+  /* Il bordo rarità è un OUTLINE (tutto esterno: non copre la carta) */
+  background: var(--theme-bg-secondary);
   transition: transform 0.15s ease;
 }
 
@@ -139,8 +138,5 @@ const effColor   = computed(() => effLabel.value === 'super' ? '#22c55e' : effLa
   box-shadow: 0 1px 4px rgba(0,0,0,0.25);
   display: flex; align-items: center; gap: 2px;
 }
-.mc__name {
-  padding: 4px 0 0; text-align: center; font-size: 11px; font-weight: 700;
-  color: var(--theme-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
+
 </style>

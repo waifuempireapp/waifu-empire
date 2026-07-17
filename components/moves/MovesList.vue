@@ -186,12 +186,15 @@ async function onAssign(waifuId: string) {
 .moves-list__pill:hover { transform: translateY(-1px); }
 
 .moves-list__vs { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 8px 12px; border-radius: 14px; background: var(--theme-surface-2); border: 1px solid var(--theme-border); }
-.moves-list__vs-label { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--theme-text-3); margin-right: 4px; }
+.moves-list__vs-label {
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--theme-text-3);
+  width: 100%; margin-bottom: 2px;   /* label su riga propria: le icone vanno A CAPO */
+}
 .moves-list__vs-pill { min-width: 30px; padding: 5px 9px; border-radius: 999px; border: 1px solid var(--theme-border); background: var(--theme-surface); color: var(--theme-text-2); font-size: 13px; font-weight: 800; cursor: pointer; transition: transform 0.12s ease; }
 .moves-list__vs-pill:hover { transform: translateY(-1px); }
 .moves-list__vs-pill.is-active { color: #0c0a16; }
 
 /* Più aria tra le carte mossa (gap verticale e laterale) + padding laterale:
    le carte risultano un po' più piccole e ben distanziate */
-.moves-list__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 14px; padding: 0 6px; }
+.moves-list__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 10px; padding: 0 6px; }
 </style>
