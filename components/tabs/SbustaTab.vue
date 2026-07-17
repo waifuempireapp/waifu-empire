@@ -302,11 +302,6 @@ watch(
   { immediate: true },
 )
 
-// Vibrazione leggera quando la carta rivelata è NUOVA
-watch(() => !!(cartaCorrente.value as any)?.isNuova && indiceRivelato.value >= 0, (v) => {
-  if (v) { try { navigator.vibrate?.(45) } catch { /* ns */ } }
-})
-
 function avviaRivelazione(_carte: any[]) {
   // Prima carta il prima possibile: le immagini sono già precaricate (pre-draw
   // nel menu + preloadCarteImages), serve solo un beat per lo stacco visivo.
@@ -829,6 +824,12 @@ const revealDragOrigin = ref({ x: 0, y: 0, tx: 0, ty: 0 })
 const cartaCorrente = computed(() =>
   indiceRivelato.value >= 0 ? carteRivelate.value[indiceRivelato.value] : null
 )
+
+// Vibrazione leggera quando la carta rivelata è NUOVA
+// (dichiarato DOPO cartaCorrente: prima crashava in TDZ al setup)
+watch(() => !!(cartaCorrente.value as any)?.isNuova && indiceRivelato.value >= 0, (v) => {
+  if (v) { try { navigator.vibrate?.(45) } catch { /* ns */ } }
+})
 
 // ── Reveal speciale Leggendario / Immersivo (flip 3D dal retro) ──────
 const SPECIAL_RARITIES = ['leggendario', 'immersivo']
