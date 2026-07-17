@@ -3,6 +3,8 @@
 <script setup lang="ts">
 // Icone Lucide — X per chiudi, Swords per battaglia, Zap per velocità
 import { X, Swords, Zap } from 'lucide-vue-next'
+import MoveCard from '~/components/moves/MoveCard.vue'
+import { moves as STATIC_MOVES } from '~/assets/moves/moves-data'
 import { useAuthStore } from '~/stores/auth'
 import { ikUrl } from '~/utils/imagekitUrl'
 import { RARITA } from '~/utils/constants'
@@ -78,6 +80,25 @@ function bmPressStart(w: any) {
 }
 function bmPressEnd() { if (bmLpTimer) { clearTimeout(bmLpTimer); bmLpTimer = null } }
 function bmConsumeLp(): boolean { const f = bmLpFired; bmLpFired = false; return f }
+
+// ── Dettaglio MOSSA (click su una mossa nel dettaglio waifu) ──
+const detailMossa = ref<any>(null)
+function apriDettaglioMossa(mossaId: string | null | undefined) {
+  if (!mossaId) return
+  // La scheda del catalogo statico ha descrizione dell'effetto e immagine
+  const statica = STATIC_MOVES.find(mv => mv.id === mossaId)
+  if (statica) { detailMossa.value = statica; return }
+  const fs = props.mosseCat?.find((mv: any) => mv.id === mossaId)
+  if (fs) {
+    detailMossa.value = {
+      ...fs,
+      type: String(fs.tipologia ?? 'arcana').toLowerCase(),
+      name: fs.nome,
+      damage: fs.danno,
+      effectDescription: fs.descrizione ?? fs.effetto ?? '',
+    }
+  }
+}
 function goToCollezioneMosse() {
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('impero:collezione-mosse'))
   emit('chiudi')
@@ -471,8 +492,11 @@ const visiblePages = computed(() => {
           <!-- Mosse equipaggiate -->
           <div :style="{ fontFamily:FF.label, fontSize:'11px', fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--theme-text-2)', marginBottom:'8px' }">Mosse equipaggiate</div>
           <div :style="{ display:'flex', flexDirection:'column', gap:'7px' }">
-            <div v-for="(mossaId, slot) in (detailWaifu._datiColl?.mosse_slot ?? {})" :key="slot" :style="{
+            <div v-for="(mossaId, slot) in (detailWaifu._datiColl?.mosse_slot ?? {})" :key="slot"
+              @click.stop="apriDettaglioMossa(mossaId)"
+              :style="{
               display:'flex', alignItems:'center', gap:'9px',
+              cursor: getMossa(mossaId) ? 'pointer' : 'default',
               background: getMossa(mossaId) ? moveTypeColor(getMossa(mossaId)!.tipologia) + (isDark ? '1c' : '14') : 'var(--theme-surface-2)',
               border: `1px solid ${getMossa(mossaId) ? moveTypeColor(getMossa(mossaId)!.tipologia) + '66' : 'var(--theme-border)'}`,
               borderRadius:'11px', padding:'9px 12px',
@@ -494,6 +518,14 @@ const visiblePages = computed(() => {
               Nessuna mossa equipaggiata
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- ── DETTAGLIO MOSSA: carta completa con effetto (tap fuori per chiudere) ── -->
+      <div v-if="detailMossa" @click.stop="detailMossa = null"
+        style="position:fixed;inset:0;z-index:720;background:rgba(4,2,14,0.84);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px;">
+        <div @click.stop style="width:280px;">
+          <MoveCard :move="(detailMossa as any)" :owned="true" :large="true" />
         </div>
       </div>
 
