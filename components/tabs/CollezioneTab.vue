@@ -641,32 +641,6 @@ const sortCombo = computed({
 
 const { t } = useI18n()
 
-// ── Griglia waifu ADATTIVA: la CartaWaifu è a larghezza fissa (143px),
-// la colonna della griglia è fluida come quella delle mosse → uno zoom
-// calcolato sulla larghezza REALE della colonna la fa riempire esattamente.
-const waifuGridEl = ref<HTMLElement | null>(null)
-let waifuGridRO: ResizeObserver | null = null
-function aggiornaWaifuZoom() {
-  const el = waifuGridEl.value
-  if (!el) return
-  const cell = el.querySelector('.collection-card-item') as HTMLElement | null
-  const colW = cell?.offsetWidth ?? 0
-  if (colW < 40) return
-  const zoom = Math.min(1.55, Math.max(0.55, colW / 148))
-  el.style.setProperty('--waifu-zoom', String(Math.round(zoom * 1000) / 1000))
-}
-onMounted(() => {
-  nextTick(() => {
-    aggiornaWaifuZoom()
-    if (waifuGridEl.value && typeof ResizeObserver !== 'undefined') {
-      waifuGridRO = new ResizeObserver(() => aggiornaWaifuZoom())
-      waifuGridRO.observe(waifuGridEl.value)
-    }
-  })
-})
-onUnmounted(() => { waifuGridRO?.disconnect() })
-watch(() => waifuGridEntries.value.length, () => nextTick(aggiornaWaifuZoom))
-
 // ── Opzioni per i dropdown custom (stile iOS) ────────────────
 const filtroOptions = computed(() => [
   { value: '', label: t('collection.filter_all') },
@@ -710,6 +684,34 @@ const soloPossedute = ref(false)
 function apriNegozio() {
   if (typeof window !== 'undefined') window.dispatchEvent(new window.Event('impero:apri-negozio'))
 }
+
+// ── Griglia waifu ADATTIVA: la CartaWaifu è a larghezza fissa (143px),
+// la colonna della griglia è fluida come quella delle mosse → uno zoom
+// calcolato sulla larghezza REALE della colonna la fa riempire esattamente.
+// NB: registrato in FONDO allo script e attivato in onMounted, perché
+// waifuGridEntries dipende da ref (soloPossedute…) dichiarate più sopra.
+const waifuGridEl = ref<HTMLElement | null>(null)
+let waifuGridRO: ResizeObserver | null = null
+function aggiornaWaifuZoom() {
+  const el = waifuGridEl.value
+  if (!el) return
+  const cell = el.querySelector('.collection-card-item') as HTMLElement | null
+  const colW = cell?.offsetWidth ?? 0
+  if (colW < 40) return
+  const zoom = Math.min(1.55, Math.max(0.55, colW / 148))
+  el.style.setProperty('--waifu-zoom', String(Math.round(zoom * 1000) / 1000))
+}
+onMounted(() => {
+  nextTick(() => {
+    aggiornaWaifuZoom()
+    if (waifuGridEl.value && typeof ResizeObserver !== 'undefined') {
+      waifuGridRO = new ResizeObserver(() => aggiornaWaifuZoom())
+      waifuGridRO.observe(waifuGridEl.value)
+    }
+    watch(() => waifuGridEntries.value.length, () => nextTick(aggiornaWaifuZoom))
+  })
+})
+onUnmounted(() => { waifuGridRO?.disconnect() })
 </script>
 
 <template>
