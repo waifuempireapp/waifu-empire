@@ -36,7 +36,7 @@ onMounted(() => {
     </template>
     <template v-else>
       <KissesIcon :size="18" />
-      <span style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:20px;color:#f5c560;font-weight:800">+{{ amount }}</span>
+      <span style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:20px;color:#f5c560;font-weight:800">+{{ amount }}</span>
       <span v-if="multiplier && multiplier > 1" style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.15em;color:#6cf0e0;text-transform:uppercase">
         ×{{ multiplier.toFixed(1) }} streak {{ streakDays }}d
       </span>

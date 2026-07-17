@@ -465,9 +465,9 @@ function onPointerMove(e: PointerEvent) {
   // Velocità di lancio limitata → l'inerzia non parte troppo veloce
   velocity = Math.max(-0.05, Math.min(0.05, d))
 }
-/** true se il tap ha colpito la bustina FRONTALE (raycast sulla scena). */
-function tapHitsFrontPack(e: PointerEvent): boolean {
-  if (!T3 || !camera || !canvasRef.value) return false
+/** Indice della bustina colpita dal tap (raycast sulla scena), -1 se nessuna. */
+function tapHitPackIndex(e: PointerEvent): number {
+  if (!T3 || !camera || !canvasRef.value) return -1
   const rect = canvasRef.value.getBoundingClientRect()
   const ndc = new T3.Vector2(
     ((e.clientX - rect.left) / rect.width) * 2 - 1,
@@ -476,7 +476,8 @@ function tapHitsFrontPack(e: PointerEvent): boolean {
   const ray = new T3.Raycaster()
   ray.setFromCamera(ndc, camera)
   const hits = ray.intersectObjects(meshes.filter(m => m.visible), false)
-  return hits.length > 0 && hits[0].object === meshes[frontIndex()]
+  if (!hits.length) return -1
+  return meshes.indexOf(hits[0].object as import('three').Mesh)
 }
 
 function onPointerUp(e: PointerEvent) {
@@ -485,8 +486,22 @@ function onPointerUp(e: PointerEvent) {
   if (pickPhase === 'wheel') {
     const step = (Math.PI * 2) / Math.max(3, meshes.length)
     targetRotation = Math.round(rotation / step) * step
-    // Tap SOLO sulla bustina centrale → zoom; tap altrove non fa nulla
-    if (movedPx < 10 && tapHitsFrontPack(e)) startPick()
+    if (movedPx < 10) {
+      const hit = tapHitPackIndex(e)
+      if (hit === frontIndex() && hit >= 0) {
+        // Tap sulla CENTRALE → zoom
+        startPick()
+      } else if (hit >= 0) {
+        // Tap su una bustina LATERALE → la ruota gira e la porta davanti
+        // (percorso angolare più corto)
+        const desired = -hit * step
+        let delta = desired - rotation
+        const TAU = Math.PI * 2
+        delta = ((delta + Math.PI) % TAU + TAU) % TAU - Math.PI
+        targetRotation = rotation + delta
+        velocity = 0
+      }
+    }
   } else if (pickPhase === 'zoomed') {
     // Rilascio senza aver tagliato da parte a parte: la scintilla svanisce
     if (ripDrag) { ripDrag = false; cutOn.value = false }
@@ -549,10 +564,11 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .pcg-glow {
-  position: absolute; inset: 0; pointer-events: none; z-index: 5;
+  position: absolute; inset: -25%; pointer-events: none; z-index: 5;
   background:
-    radial-gradient(circle at 50% 44%, rgba(255,226,140,0.9) 0%, rgba(255,180,70,0.4) 26%, transparent 60%);
+    radial-gradient(circle at 50% 46%, rgba(255,226,140,0.85) 0%, rgba(255,180,70,0.32) 22%, transparent 52%);
   mix-blend-mode: screen;
+  filter: blur(22px);
   animation: pcgGlow 1.25s ease-out forwards;
 }
 @keyframes pcgGlow {
@@ -565,17 +581,17 @@ onBeforeUnmount(() => {
    Le linee sono sfumate/blurrate: devono suggerire il taglio, non
    sembrare un righello perfettamente dritto. */
 .pcg-cut-guide {
-  position: absolute; height: 2px; pointer-events: none; z-index: 6;
-  background: rgba(255,255,255,0.09);
-  border-radius: 2px;
-  filter: blur(2.5px);
-}
-.pcg-cut-done {
-  position: absolute; height: 4px; pointer-events: none; z-index: 7;
-  background: linear-gradient(90deg, rgba(255,240,190,0.75), rgba(255,255,255,0.9));
+  position: absolute; height: 4px; pointer-events: none; z-index: 6;
+  background: rgba(255,255,255,0.10);
   border-radius: 3px;
   filter: blur(3px);
-  box-shadow: 0 0 12px rgba(255,225,140,0.8), 0 0 30px rgba(255,190,80,0.45);
+}
+.pcg-cut-done {
+  position: absolute; height: 8px; pointer-events: none; z-index: 7;
+  background: linear-gradient(90deg, rgba(255,240,190,0.8), rgba(255,255,255,0.95));
+  border-radius: 5px;
+  filter: blur(4px);
+  box-shadow: 0 0 16px rgba(255,225,140,0.85), 0 0 40px rgba(255,190,80,0.5);
 }
 .pcg-cut-spark {
   position: absolute; width: 18px; height: 18px; pointer-events: none; z-index: 8;

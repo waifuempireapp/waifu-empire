@@ -16,7 +16,7 @@ const C = {
   violet: '#a78bfa', ok:    '#58e0a3', err: '#ff5b6c',
 }
 const FF = {
-  display: "var(--ff-display, 'Unbounded', sans-serif)",
+  display: "var(--ff-display, 'Fredoka', sans-serif)",
   label:   "var(--ff-label, 'Saira Condensed', sans-serif)",
   body:    "var(--ff-body, 'DM Sans', sans-serif)",
   mono:    "var(--ff-mono, 'JetBrains Mono', monospace)",
@@ -109,7 +109,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
       borderRadius: '12px', padding: '3px', marginBottom: '16px',
     }">
       <button
-        v-for="t in [{ id: 'top5', label: '🏆 Top 50' }, { id: 'pausa', label: '⏸ In pausa' }]"
+        v-for="t in [{ id: 'top5', label: '🏆 Top 50' }, { id: 'pausa', label: '⏸ Fuori gara' }]"
         :key="t.id"
         @click="subTab = (t.id as 'top5' | 'pausa'); page = 0"
         :style="{
@@ -149,7 +149,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
         <!-- Header sezione -->
         <div :style="{
           padding: '12px 16px', borderRadius: '14px',
-          background: 'var(--theme-surface)',
+          background: 'var(--grad-primary-soft), var(--theme-surface)',
           border: '1px solid var(--theme-border)',
           textAlign: 'center', marginBottom: '4px',
         }">
@@ -228,7 +228,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
             <span :style="{
               fontFamily: FF.label, fontSize: '11px', fontWeight: 700,
               color: 'var(--theme-text-3)', letterSpacing: '0.18em',
-              background: 'var(--theme-surface)', padding: '0 8px',
+              background: 'var(--grad-primary-soft), var(--theme-surface)', padding: '0 8px',
             }">{{ $t("leaderboard.no_prize") }}</span>
           </div>
 
@@ -315,7 +315,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
           <div v-if="(page * PAGE_SIZE + j) < 10" :style="{
             position: 'absolute', top: '-11px', right: '-6px', zIndex: 5,
             display: 'inline-flex', alignItems: 'center', gap: '5px',
-            background: 'var(--theme-surface)',
+            background: 'var(--grad-primary-soft), var(--theme-surface)',
             border: `1.5px solid ${PRIZE_COLORS[Math.min(page * PAGE_SIZE + j, 9)]}aa`,
             borderRadius: '999px', padding: '4px 12px',
             boxShadow: '0 2px 10px rgba(0,0,0,0.35)',
@@ -336,7 +336,7 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
         <!-- CTA Swap -->
         <div :style="{
           marginTop: '8px', padding: '14px 16px', borderRadius: '14px', textAlign: 'center',
-          background: 'var(--theme-surface)', border: '1px dashed var(--theme-border)',
+          background: 'var(--grad-primary-soft), var(--theme-surface)', border: '1px dashed var(--theme-border)',
         }">
           <i18n-t keypath="leaderboard.vote_in_swap" tag="div" scope="global"
             :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.5 }">
@@ -348,6 +348,17 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
 
     <!-- ===== IN PAUSA ===== -->
     <div v-else-if="subTab === 'pausa'" :style="{ display: 'flex', flexDirection: 'column', gap: '10px' }">
+      <!-- Spiegazione: come funziona il fuori gara automatico -->
+      <div :style="{
+        background: 'var(--grad-primary-soft), var(--theme-surface)',
+        border: '1px solid var(--theme-border)', borderRadius: '14px',
+        padding: '12px 14px', fontFamily: FF.body, fontSize: '12.5px',
+        color: 'var(--theme-text-2)', lineHeight: 1.5,
+      }">
+        ⏸ Le <b :style="{ color: 'var(--theme-text)' }">prime 3 classificate</b> del mese scorso
+        + <b :style="{ color: 'var(--theme-text)' }">2 estratte a sorte</b> riposano per questo mese:
+        non compaiono nello Swipe e non ricevono voti. Rientrano in gara il 1° del mese prossimo.
+      </div>
       <div v-if="paused.length === 0" :style="{
         textAlign: 'center', padding: '40px',
         color: 'var(--theme-text-3)', fontFamily: FF.label, fontSize: '14px',

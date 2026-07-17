@@ -131,6 +131,13 @@ const BATTLE_CSS = `
   @keyframes flash {0%{opacity:0}25%{opacity:.82}100%{opacity:0}}
   @keyframes koFx  {0%{transform:scale(1);opacity:1}60%{transform:scale(.82) translateY(10px);opacity:.4}100%{transform:scale(.38) translateY(32px);opacity:0}}
   @keyframes fadeMsg  {from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+  .wba-screenshake { animation: wbaShake 0.42s cubic-bezier(.36,.07,.19,.97); }
+  @keyframes wbaShake {
+    10%, 90% { transform: translate3d(-2px, 0, 0); }
+    20%, 80% { transform: translate3d(3px, 1px, 0); }
+    30%, 50%, 70% { transform: translate3d(-4px, -1px, 0); }
+    40%, 60% { transform: translate3d(4px, 1px, 0); }
+  }
   @keyframes floatDmg {0%{opacity:1;transform:translateY(0) scale(.82)}20%{transform:translateY(-24px) scale(1.18)}65%{opacity:1;transform:translateY(-55px) scale(1)}100%{opacity:0;transform:translateY(-82px) scale(.85)}}
   @keyframes hpCrit   {0%,100%{filter:brightness(1)}50%{filter:brightness(1.8) saturate(1.5)}}
   .wba-hp-crit { animation: hpCrit 0.8s ease-in-out infinite; }
@@ -178,7 +185,7 @@ const BATTLE_CSS = `
   .wba-boss-bar{width:100%;padding:10px 16px 12px;background:var(--theme-surface);border-bottom:1px solid var(--border-subtle);box-shadow:var(--shadow-float);position:relative;z-index:6}
   .wba-boss-bar__label{display:flex;align-items:center;gap:8px;margin-bottom:7px}
   .wba-boss-bar__badge{background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;font-family:var(--ff-label,'Nunito',sans-serif);font-size:10px;font-weight:900;letter-spacing:2px;padding:2px 9px;border-radius:9999px;box-shadow:0 0 10px rgba(231,76,60,.5)}
-  .wba-boss-bar__name{font-family:var(--ff-display,'Unbounded',sans-serif);font-size:15px;font-weight:900;color:var(--theme-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  .wba-boss-bar__name{font-family:var(--ff-display,'Fredoka',sans-serif);font-size:15px;font-weight:900;color:var(--theme-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
   .wba-boss-bar__pct{font-family:var(--ff-label,'Nunito',sans-serif);font-size:15px;font-weight:900;color:#f39c12}
   .wba-boss-bar__track{width:100%;height:14px;background:var(--surface-sunken);border-radius:9999px;overflow:hidden;border:1px solid var(--border-subtle)}
   .wba-boss-bar__fill{height:100%;background:linear-gradient(90deg,#e74c3c,#f39c12);border-radius:9999px;transition:width .5s cubic-bezier(.25,.8,.25,1);box-shadow:0 0 12px rgba(243,156,18,.5)}
@@ -365,6 +372,7 @@ const showBench = ref(false)
 // Floating damage numbers
 interface DmgFloat { id: number; dmg: number; side: 'player' | 'enemy'; isCrit: boolean }
 const dmgFloats = ref<DmgFloat[]>([])
+const screenShake = ref(false)   // shake dell'arena sul colpo critico
 
 // Fasi di battaglia e turno
 type Phase = 'entering' | 'playerChoose' | 'resolving' | 'playerSwap' | 'voluntarySwap' | 'victory' | 'defeat' | 'result' | 'pvpWaitingKoReplacement'
@@ -958,6 +966,12 @@ async function resolveTurn(pMi: number, eMi: number, _externalResult: null = nul
     await wait(ANIM_ATTACK_MS)
     if (side === 'player') { pAnim.value = '' } else { eAnim.value = '' }
     triggerFlash()
+    // JUICE: screen-shake + vibrazione sul colpo critico
+    if (isCrit && damage > 0) {
+      screenShake.value = true
+      setTimeout(() => { screenShake.value = false }, 420)
+      try { navigator.vibrate?.(60) } catch { /* non supportato */ }
+    }
     if (side === 'player') { eAnim.value = 'wba-sh' } else { pAnim.value = 'wba-sh' }
     await wait(ANIM_SHAKE_MS)
     if (side === 'player') { eAnim.value = '' } else { pAnim.value = '' }
@@ -1506,7 +1520,7 @@ const mvp = computed(() => {
         borderBottom:'0.8px solid rgba(167,139,250,0.2)',
       }">
         <span :style="{
-          fontFamily:'\'Unbounded\', sans-serif',
+          fontFamily:'var(--ff-display)',
           fontSize: isMobile ? '13px' : '16px', fontWeight:700, color:turnCol,
           minWidth: isMobile ? '64px' : '80px',
         }"><component :is="turnIcon" :size="isMobile ? 11 : 14" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:4px;" />{{ turnLabel }}</span>
@@ -1570,7 +1584,7 @@ const mvp = computed(() => {
       </div>
 
       <!-- ── ZONE 2+3+4: Arene di battaglia ── -->
-      <div :style="{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative', minHeight:0 }">
+      <div :class="{ 'wba-screenshake': screenShake }" :style="{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative', minHeight:0 }">
 
         <!-- Enemy Zone (top ~47% mobile, 52% desktop) -->
         <div :style="{ flex: isMobile ? '0 0 47%' : '0 0 52%', position:'relative', overflow:'hidden' }">

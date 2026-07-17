@@ -49,7 +49,7 @@ const src = computed(() => props.carta.immagine ? (ikUrl(props.carta.immagine, '
            :style="{ position:'absolute', left:0, right:0, top:0, height: isMossa ? '64%' : '100%', width:'100%', objectFit:'cover', objectPosition:'center 15%', display:'block' }"
            @error="imgFail = true" />
       <div v-else :style="{ position:'absolute', left:0, right:0, top:0, height: isMossa ? '64%' : '100%', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--surface-sunken)' }">
-        <img src="~/assets/images/New_Logo.png" alt="" style="width:50%;height:auto;display:block;opacity:0.7;" />
+        <span style="font-family:var(--ff-display);font-size:30px;font-weight:700;color:var(--theme-text-3);opacity:.55;">?</span>
       </div>
 
       <!-- Marcatore MOSSA (alto-sx) -->
@@ -65,7 +65,7 @@ const src = computed(() => props.carta.immagine ? (ikUrl(props.carta.immagine, '
       <div v-if="isMossa" :style="{ position:'absolute', left:0, right:0, bottom:0, height:'36%', background:'rgba(12,10,24,0.94)', borderTop:`1px solid ${(typeMeta?.accent ?? rarColor)}55`, padding:'3px 5px', display:'flex', flexDirection:'column', gap:'1px', overflow:'hidden' }">
         <!-- Danno -->
         <div style="display:flex;align-items:baseline;gap:3px;">
-          <span :style="{ fontFamily:`var(--ff-display,'Unbounded',sans-serif)`, fontSize:'13px', fontWeight:800, lineHeight:1, color: typeMeta?.accent ?? rarColor }">{{ carta.danno ?? 0 }}</span>
+          <span :style="{ fontFamily:`var(--ff-display,'Fredoka',sans-serif)`, fontSize:'13px', fontWeight:800, lineHeight:1, color: typeMeta?.accent ?? rarColor }">{{ carta.danno ?? 0 }}</span>
           <span :style="{ fontFamily:`var(--ff-label,'Saira Condensed',sans-serif)`, fontSize:'7px', letterSpacing:'0.1em', color:'rgba(238,232,246,0.5)', textTransform:'uppercase' }">DMG</span>
         </div>
         <!-- Descrizione (1-2 righe) -->

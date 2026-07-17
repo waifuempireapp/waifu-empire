@@ -22,7 +22,7 @@ const C = {
 } as const
 
 const FF = {
-  display: "var(--ff-display, 'Unbounded', sans-serif)",
+  display: "var(--ff-display, 'Fredoka', sans-serif)",
   label:   "var(--ff-label, 'Saira Condensed', sans-serif)",
   body:    "var(--ff-body, 'DM Sans', sans-serif)",
   mono:    "var(--ff-mono, 'JetBrains Mono', monospace)",
@@ -224,7 +224,7 @@ onUnmounted(() => {
             fontFamily: FF.display, fontSize: '20px', letterSpacing: '0.04em',
             color: 'var(--theme-text)', fontWeight: 900, lineHeight: 1.1, marginBottom: '8px',
           }">
-            {{ pixel.ownerName || 'CPU' }}
+            {{ maskOffensiveName(pixel.ownerName || 'CPU') }}
             <span v-if="isOwn" :style="{ color: C.aqua, fontSize: '13px', fontWeight: 600 }"> {{ $t('map.yours_suffix') }}</span>
           </div>
 

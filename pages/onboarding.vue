@@ -27,6 +27,11 @@ onMounted(async () => {
 
 async function conferma() {
   const nome = nomeImpero.value.trim()
+  // Check locale immediato (il server ri-verifica comunque)
+  if (isOffensiveName(nome)) {
+    erroreNome.value = 'Questo nome non è consentito. Scegline un altro!'
+    return
+  }
   if (!nome || !authStore.user) return
   erroreNome.value = ''
   busy.value = true

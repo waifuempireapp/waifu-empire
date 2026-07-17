@@ -69,7 +69,7 @@
     "next_pack": "ショップを訪問",
     "countdown": "次まで{time}",
     "available": "利用可能！",
-    "pesca_title": "ミステリーフィッシング",
+    "pesca_title": "ワイフドロップ",
     "pesca_available": "利用可能",
     "swap_title": "ワイフスワイプ",
     "swap_votes": "{n}票",
@@ -196,7 +196,8 @@
     "your_offer": "あなたのオファー（Kisses）",
     "territory_conquered": "領地を征服！",
     "conquering": "征服中…",
-    "owner": "オーナー：{name}"
+    "owner": "オーナー：{name}",
+    "victory_rewards_title": "勝利報酬！"
   },
   "collection": {
     "title": "コレクション",

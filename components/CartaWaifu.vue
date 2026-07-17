@@ -61,6 +61,8 @@ const props = defineProps<{
   onVideoEnd?:     () => void
   isHot?:          boolean
   censurata?:      boolean
+  /** griglia collezione: art-first — nasconde le stat estetiche (orbs) */
+  minimal?:        boolean
 }>()
 
 // ── Emits ────────────────────────────────────────────────────
@@ -139,7 +141,14 @@ const usaImmersiva = computed(() => {
 const preset = computed(() => dimensione.value === 'piccola' ? 'card' : dimensione.value === 'grande' ? 'full' : 'normal')
 const imgSrc = computed(() => ikUrl(usaImmersiva.value ? props.waifu.asset_immersiva : (props.waifu.asset_statica ?? null), preset.value as any))
 
-const hasVideo  = computed(() => !!props.waifu.asset_video)
+// Il <video> si monta SOLO se il file esiste davvero su ImageKit (HEAD 1x
+// con cache): senza check ogni carta immersiva sparava GET 404 in console.
+const videoDisponibile = ref(false)
+watch(() => props.waifu?.asset_video, (u) => {
+  videoDisponibile.value = false
+  if (u) videoExists(u).then((ok) => { videoDisponibile.value = ok })
+}, { immediate: true })
+const hasVideo  = computed(() => !!props.waifu.asset_video && videoDisponibile.value)
 const showFoil  = computed(() => ['epico', 'leggendario', 'immersivo'].includes(props.waifu.rarita))
 const videoAttivo = computed(() => props.videoAttivo ?? false)
 const censurata   = computed(() => props.censurata ?? false)
@@ -244,20 +253,21 @@ function onMouseLeave(e: MouseEvent) {
       position: 'relative',
       cursor: censurata ? 'not-allowed' : (onClick || hasVideo ? 'pointer' : 'default'),
       borderRadius: '14px',
-      border: `${borderW}px solid ${evidenziato ? '#ffe9a8' : videoAttivo ? '#ff7eb6' : rb.outer}`,
+      // BORDO RARITÀ tutto ESTERNO (outline non occupa/copre la carta)
+      outline: `3.5px solid ${evidenziato ? '#ffe9a8' : videoAttivo ? '#ff7eb6' : rb.outer}`,
       boxShadow: evidenziato
-        ? '0 0 0 2px #ffe9a8, 0 4px 28px rgba(255,233,168,0.5), inset 0 0 20px rgba(255,233,168,0.1)'
+        ? '0 4px 28px rgba(255,233,168,0.5), inset 0 0 20px rgba(255,233,168,0.1)'
         : videoAttivo
-          ? '0 0 0 2px #ff7eb6, 0 4px 28px rgba(255,126,182,0.5), inset 0 0 22px rgba(255,126,182,0.15)'
+          ? '0 4px 28px rgba(255,126,182,0.5), inset 0 0 22px rgba(255,126,182,0.15)'
           : waifu.rarita === 'immersivo'
-            ? '0 0 0 2px #ff7eb6, 0 4px 28px rgba(255,126,182,0.45), 0 0 60px rgba(255,126,182,0.15), inset 0 0 16px rgba(0,0,0,0.3)'
+            ? '0 4px 28px rgba(255,126,182,0.45), 0 0 60px rgba(255,126,182,0.15), inset 0 0 16px rgba(0,0,0,0.3)'
             : waifu.rarita === 'leggendario'
-              ? '0 0 0 2px #ffc861, 0 4px 28px rgba(255,200,97,0.40), inset 0 0 16px rgba(0,0,0,0.3)'
+              ? '0 4px 28px rgba(255,200,97,0.40), inset 0 0 16px rgba(0,0,0,0.3)'
               : waifu.rarita === 'epico'
-                ? '0 0 0 1.5px #b573ff, 0 4px 20px rgba(181,115,255,0.35), inset 0 0 16px rgba(0,0,0,0.3)'
+                ? '0 4px 20px rgba(181,115,255,0.35), inset 0 0 16px rgba(0,0,0,0.3)'
                 : waifu.rarita === 'raro'
-                  ? '0 0 0 1.5px #5aa9ff, 0 4px 20px rgba(90,169,255,0.30), inset 0 0 16px rgba(0,0,0,0.3)'
-                  : '0 0 0 1.5px #b4bcc8, 0 4px 20px rgba(180,188,200,0.20), inset 0 0 16px rgba(0,0,0,0.3)',
+                  ? '0 4px 20px rgba(90,169,255,0.30), inset 0 0 16px rgba(0,0,0,0.3)'
+                  : '0 4px 20px rgba(180,188,200,0.20), inset 0 0 16px rgba(0,0,0,0.3)',
       overflow: 'hidden',
       background: rb.bg,
       transition: 'all 0.3s ease',
@@ -359,6 +369,12 @@ function onMouseLeave(e: MouseEvent) {
 
       <!-- Holo foil per rarità epico+ (non censurata) -->
       <div v-if="showFoil && !censurata" :class="['foil', waifu.rarita === 'immersivo' ? 'foil--strong' : '']" />
+      <!-- Anello di rarità ANIMATO: gradiente che scorre sul bordo -->
+      <div
+        v-if="waifu.rarita === 'leggendario' || waifu.rarita === 'immersivo'"
+        class="rarity-ring"
+        :class="waifu.rarita === 'immersivo' ? 'rarity-ring--imm' : 'rarity-ring--leg'"
+      />
 
       <!-- Badge HOT -->
       <div v-if="isHot && !censurata" :style="{
@@ -424,7 +440,7 @@ function onMouseLeave(e: MouseEvent) {
       <div style="min-width: 0;">
         <!-- Nome waifu -->
         <div :style="{
-          fontFamily: `var(--ff-display, 'Unbounded', sans-serif)`,
+          fontFamily: `var(--ff-display, 'Fredoka', sans-serif)`,
           fontSize: `${Math.round(14 * scale)}px`, fontWeight: '700',
           color: '#fff', letterSpacing: '-0.005em',
           textShadow: `0 0 12px ${rb.glow}, 0 2px 4px rgba(0,0,0,0.85)`,
@@ -445,6 +461,14 @@ function onMouseLeave(e: MouseEvent) {
             flexShrink: '0',
           }"><component :is="archetipoSym.icon" :size="Math.round(16 * scale)" stroke-width="1.5" /></div>
         </div>
+      </div>
+
+      <!-- Tipo: SOLO icona, chip mini in alto a destra -->
+      <div v-if="(waifu as any).tipo" :style="{
+        position: 'absolute', top: `${Math.round(6 * scale)}px`, right: `${Math.round(6 * scale)}px`,
+        zIndex: 5, opacity: videoAttivo ? 0 : 1, transition: 'opacity 0.3s',
+      }">
+        <TypeIcon :type="(waifu as any).tipo" :size="Math.round(11 * scale)" chip />
       </div>
 
       <!-- Rarità come SCRITTA al posto delle stelle (in alto, non copre l'art) -->
@@ -509,14 +533,14 @@ function onMouseLeave(e: MouseEvent) {
       </div>
 
       <!-- Linea ornamento -->
-      <div :style="{
+      <div v-if="!minimal" :style="{
         width: '70%', height: '1px', margin: `0 auto ${Math.round(7 * scale)}px`,
         background: `linear-gradient(90deg, transparent, ${rb.inner}cc, transparent)`,
         boxShadow: `0 0 6px ${rb.glow}`,
       }" />
 
-      <!-- Stat circles -->
-      <div style="display: flex; justify-content: space-around; align-items: center;">
+      <!-- Stat circles (nascoste in minimal: la griglia è art-first) -->
+      <div v-if="!minimal" style="display: flex; justify-content: space-around; align-items: center;">
         <!-- Tette -->
         <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
           <div :style="{ position: 'relative', width: `${statSize}px`, height: `${statSize}px` }">
@@ -681,6 +705,7 @@ function onMouseLeave(e: MouseEvent) {
 </template>
 
 <style scoped>
+
 /* Shimmer animato su hover per rarità leggendario e immersivo.
    Aggiunge un riflesso luminoso che scorre sulla carta. */
 @keyframes rarityShimmerSweep {

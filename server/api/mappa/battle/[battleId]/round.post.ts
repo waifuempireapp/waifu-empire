@@ -91,11 +91,11 @@ export default defineEventHandler(async (event) => {
           { merge: true }
         );
 
-        // Incrementa pixelCount + aggiungi 1 pacchetto sfida (vittoria territorio)
-        // + aggiorna progresso quest giornaliera 'territori'
+        // Incrementa pixelCount + premio vittoria in KISSES (1/3 del costo di
+        // una bustina: 50/3 → 17). La bustina in premio è stata rimossa.
         await adminDb.collection('users').doc(uid).update({
           pixelCount: FieldValue.increment(1),
-          pacchettiSfida: FieldValue.increment(1),
+          kisses: FieldValue.increment(17),
           'questGiornaliere.territori.progresso': FieldValue.increment(1),
         });
 

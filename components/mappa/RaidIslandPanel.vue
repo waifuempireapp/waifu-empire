@@ -14,7 +14,7 @@ import { getDb } from '~/utils/firebase'
 const FF = {
   label:   "var(--ff-label, 'Saira Condensed', sans-serif)",
   mono:    "var(--ff-mono, 'JetBrains Mono', monospace)",
-  display: "var(--ff-display, 'Unbounded', sans-serif)",
+  display: "var(--ff-display, 'Fredoka', sans-serif)",
   body:    "var(--ff-body, 'DM Sans', sans-serif)",
 }
 

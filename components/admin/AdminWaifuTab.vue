@@ -852,7 +852,7 @@ const assocPendingCount = computed(() => Object.keys(assocPending.value).length)
                     <div style="font-size: 9px; color: rgba(255,255,255,0.4); margin-top: 4px;">{{ ed.asset_video.substring(0, 60) }}…</div>
                   </div>
                   <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                    <label style="background: rgba(236,72,153,0.15); border: 1px solid rgba(236,72,153,0.5); color: #ec4899; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 11px; font-family: Orbitron, sans-serif;">
+                    <label style="background: rgba(236,72,153,0.15); border: 1px solid rgba(236,72,153,0.5); color: #ec4899; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 11px; font-family: var(--ff-display,'Fredoka',sans-serif), sans-serif;">
                       {{ uploading === 'video' ? '⏳ CARICAMENTO...' : '▶ CARICA VIDEO' }}
                       <input type="file" accept="video/mp4,video/webm" style="display: none;" :disabled="uploading === 'video'" @change="(e: any) => e.target.files[0] && handleUpload('video', e.target.files[0])" />
                     </label>
@@ -871,7 +871,7 @@ const assocPendingCount = computed(() => Object.keys(assocPending.value).length)
                     <div style="font-size: 9px; color: rgba(255,255,255,0.4); margin-top: 4px;">{{ ed.asset_video_hard.substring(0, 60) }}…</div>
                   </div>
                   <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                    <label style="background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.5); color: #ef4444; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 11px; font-family: Orbitron, sans-serif;">
+                    <label style="background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.5); color: #ef4444; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 11px; font-family: var(--ff-display,'Fredoka',sans-serif), sans-serif;">
                       {{ uploading === 'video_hard' ? '⏳ CARICAMENTO...' : '🔞 CARICA VIDEO HARD' }}
                       <input type="file" accept="video/mp4,video/webm" style="display: none;" :disabled="uploading === 'video_hard'" @change="(e: any) => e.target.files[0] && handleUpload('video_hard', e.target.files[0])" />
                     </label>
@@ -935,7 +935,7 @@ const assocPendingCount = computed(() => Object.keys(assocPending.value).length)
               <img v-if="w.asset_statica || w.asset_immersiva" :src="ikUrl(w.asset_statica || w.asset_immersiva, 'thumbnail') || ''" :alt="w.nome" style="width: 100%; height: 100%; object-fit: cover; object-position: center 15%;" />
               <div v-else style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;"><img src="~/assets/images/New_Logo.png" alt="" style="width:60%;height:60%;object-fit:contain;opacity:0.80;" /></div>
               <div style="position: absolute; top: 0; left: 0; right: 0; padding: 4px 6px; background: linear-gradient(180deg, rgba(0,0,0,0.8), transparent);">
-                <div style="font-size: 9px; color: #fff; font-weight: 700; font-family: Orbitron; text-shadow: 0 1px 3px #000;">{{ w.nome }}</div>
+                <div style="font-size: 9px; color: #fff; font-weight: 700; font-family: var(--ff-display,'Fredoka',sans-serif); text-shadow: 0 1px 3px #000;">{{ w.nome }}</div>
                 <div :style="{ fontSize: '7px', color: (RARITA[w.rarita as keyof typeof RARITA] || RARITA.comune).colore }">{{ '★'.repeat((RARITA[w.rarita as keyof typeof RARITA] || RARITA.comune).stelle) }}</div>
               </div>
               <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 10px 4px 4px; background: linear-gradient(0deg, rgba(0,0,0,0.85), transparent); display: flex; justify-content: space-around; font-size: 8px;">
@@ -946,7 +946,7 @@ const assocPendingCount = computed(() => Object.keys(assocPending.value).length)
               </div>
               <div v-if="!w.asset_statica && !w.asset_immersiva" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(255,61,61,0.8); color: #fff; padding: 2px 8px; border-radius: 6px; font-size: 8px; font-weight: 700;">NO IMG</div>
             </div>
-            <div style="text-align: center; margin-top: 4px; font-size: 8px; opacity: 0.4; font-family: Orbitron;">click per editare</div>
+            <div style="text-align: center; margin-top: 4px; font-size: 8px; opacity: 0.4; font-family: var(--ff-display,'Fredoka',sans-serif);">click per editare</div>
           </div>
           <div v-if="waifuFiltrate.length === 0" style="padding: 30px; opacity: 0.6; font-size: 12px;">Nessuna waifu corrisponde ai filtri.</div>
         </div>
@@ -1159,23 +1159,23 @@ const assocPendingCount = computed(() => Object.keys(assocPending.value).length)
          ══════════════════════════════════════════════════════════ -->
     <div v-else-if="subTab === 'associa'" style="color: #f5e6d3;">
       <h2 style="font-family: Cinzel; font-size: 18px; color: #f59e0b; margin-bottom: 8px;">🖼 Associa Immagini a Waifu Esistenti</h2>
-      <p style="font-family: Orbitron; font-size: 10px; color: rgba(245,158,11,0.5); margin-bottom: 16px; line-height: 1.6;">
+      <p style="font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 10px; color: rgba(245,158,11,0.5); margin-bottom: 16px; line-height: 1.6;">
         Seleziona il tipo di asset, poi clicca "Seleziona" su ogni waifu per associare il file. Alla fine "Carica Tutto".
       </p>
 
       <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;">
-        <select v-model="assocTipoSel" style="font-family: Orbitron, sans-serif; font-size: 9px; background: rgba(0,0,0,0.6); border: 1px solid rgba(245,158,11,0.3); color: #f5e6d3; border-radius: 8px; padding: 7px 10px;">
+        <select v-model="assocTipoSel" style="font-family: var(--ff-display,'Fredoka',sans-serif), sans-serif; font-size: 9px; background: rgba(0,0,0,0.6); border: 1px solid rgba(245,158,11,0.3); color: #f5e6d3; border-radius: 8px; padding: 7px 10px;">
           <option v-for="t in TIPI" :key="t" :value="t">{{ TIPI_LABEL[t] }}</option>
         </select>
-        <select v-model="assocFiltro" style="font-family: Orbitron, sans-serif; font-size: 9px; background: rgba(0,0,0,0.6); border: 1px solid rgba(245,158,11,0.3); color: #f5e6d3; border-radius: 8px; padding: 7px 10px;">
+        <select v-model="assocFiltro" style="font-family: var(--ff-display,'Fredoka',sans-serif), sans-serif; font-size: 9px; background: rgba(0,0,0,0.6); border: 1px solid rgba(245,158,11,0.3); color: #f5e6d3; border-radius: 8px; padding: 7px 10px;">
           <option value="mancanti">Solo mancanti ({{ assocMancanti }})</option>
           <option value="tutte">Tutte ({{ waifuList.length }})</option>
         </select>
-        <input v-model="assocRicerca" placeholder="Cerca..." style="flex: 1; font-family: Orbitron, sans-serif; font-size: 9px; background: rgba(0,0,0,0.6); border: 1px solid rgba(245,158,11,0.3); color: #f5e6d3; border-radius: 8px; padding: 7px 12px;" />
-        <button v-if="assocPendingCount > 0 && !assocUploading" @click="assocCaricaTutto" style="font-family: Orbitron, sans-serif; font-size: 9px; padding: 7px 18px; background: linear-gradient(135deg, #f59e0b, #ec4899); border: none; border-radius: 8px; color: #000; font-weight: 700; cursor: pointer;">
+        <input v-model="assocRicerca" placeholder="Cerca..." style="flex: 1; font-family: var(--ff-display,'Fredoka',sans-serif), sans-serif; font-size: 9px; background: rgba(0,0,0,0.6); border: 1px solid rgba(245,158,11,0.3); color: #f5e6d3; border-radius: 8px; padding: 7px 12px;" />
+        <button v-if="assocPendingCount > 0 && !assocUploading" @click="assocCaricaTutto" style="font-family: var(--ff-display,'Fredoka',sans-serif), sans-serif; font-size: 9px; padding: 7px 18px; background: linear-gradient(135deg, #f59e0b, #ec4899); border: none; border-radius: 8px; color: #000; font-weight: 700; cursor: pointer;">
           ⬆ Carica Tutto ({{ assocPendingCount }})
         </button>
-        <div v-if="assocUploading" style="font-family: Orbitron, sans-serif; font-size: 9px; padding: 7px 12px; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); border-radius: 8px; color: #f59e0b;">⏳ {{ assocProgresso.fatto }}/{{ assocProgresso.totale }}</div>
+        <div v-if="assocUploading" style="font-family: var(--ff-display,'Fredoka',sans-serif), sans-serif; font-size: 9px; padding: 7px 12px; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); border-radius: 8px; color: #f59e0b;">⏳ {{ assocProgresso.fatto }}/{{ assocProgresso.totale }}</div>
       </div>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;">
@@ -1195,8 +1195,8 @@ const assocPendingCount = computed(() => Object.keys(assocPending.value).length)
             </template>
             <div v-else style="font-size: 24px; opacity: 0.3;">📷</div>
           </div>
-          <div style="font-family: Orbitron, sans-serif; font-size: 9px; color: #f59e0b; margin-bottom: 4px; font-size: 10px; font-family: Cinzel; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ (w as any).nome }}</div>
-          <div style="font-family: Orbitron, sans-serif; font-size: 7px; color: rgba(245,158,11,0.4); margin-bottom: 8px;">{{ (w as any).rarita }}</div>
+          <div style="font-family: var(--ff-display,'Fredoka',sans-serif), sans-serif; font-size: 9px; color: #f59e0b; margin-bottom: 4px; font-size: 10px; font-family: Cinzel; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ (w as any).nome }}</div>
+          <div style="font-family: var(--ff-display,'Fredoka',sans-serif), sans-serif; font-size: 7px; color: rgba(245,158,11,0.4); margin-bottom: 8px;">{{ (w as any).rarita }}</div>
           <div style="display: flex; gap: 5px;">
             <label :style="{
               flex: 1, fontFamily: 'Orbitron, sans-serif', fontSize: '9px',
@@ -1215,10 +1215,10 @@ const assocPendingCount = computed(() => Object.keys(assocPending.value).length)
                 @change="(e: any) => { if (e.target.files[0]) assocHandleFileSelect((w as any).id, e.target.files[0]); e.target.value = ''; }"
               />
             </label>
-            <button v-if="assocPending[(w as any).id]" @click="assocRimuoviPending((w as any).id)" :disabled="assocUploading" style="font-family: Orbitron, sans-serif; font-size: 9px; padding: 5px 8px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 6px; color: #ef4444; cursor: pointer;">✕</button>
+            <button v-if="assocPending[(w as any).id]" @click="assocRimuoviPending((w as any).id)" :disabled="assocUploading" style="font-family: var(--ff-display,'Fredoka',sans-serif), sans-serif; font-size: 9px; padding: 5px 8px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 6px; color: #ef4444; cursor: pointer;">✕</button>
           </div>
         </div>
-        <div v-if="assocLista.length === 0" style="grid-column: 1/-1; text-align: center; padding: 40px; color: rgba(245,158,11,0.3); font-family: Orbitron; font-size: 11px;">Nessuna waifu trovata</div>
+        <div v-if="assocLista.length === 0" style="grid-column: 1/-1; text-align: center; padding: 40px; color: rgba(245,158,11,0.3); font-family: var(--ff-display,'Fredoka',sans-serif); font-size: 11px;">Nessuna waifu trovata</div>
       </div>
     </div>
 

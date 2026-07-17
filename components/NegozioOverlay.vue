@@ -8,6 +8,7 @@
   ============================================================ -->
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
+import { Gift, Package, Zap, Flame, Repeat } from 'lucide-vue-next'
 import type { ProfiloUtente } from '~/types/game'
 
 const props = defineProps<{ profilo: ProfiloUtente | null }>()
@@ -25,7 +26,7 @@ const C = {
   gold: '#f5c560', sakura: '#ff85b6', ok: '#58e0a3', err: '#ff5b6c',
 }
 const FF = {
-  display: "var(--ff-display, 'Unbounded', sans-serif)",
+  display: "var(--ff-display, 'Fredoka', sans-serif)",
   label:   "var(--ff-label, 'Saira Condensed', sans-serif)",
   body:    "var(--ff-body, 'DM Sans', sans-serif)",
 }
@@ -50,12 +51,12 @@ function flash(testo: string, colore = C.ok) {
 }
 
 // ── Catalogo beni (metadati UI) ──────────────────────────────
-const BENI_META: Record<string, { emoji: string; titleKey: string; descKey: string }> = {
-  pack_sfida:    { emoji: '🎁', titleKey: 'shop.item_challenge_pack',    descKey: 'shop.item_challenge_pack_desc' },
-  pack_sfida_10: { emoji: '📦', titleKey: 'shop.item_challenge_pack_10', descKey: 'shop.item_challenge_pack_10_desc' },
-  energia:       { emoji: '⚡', titleKey: 'shop.item_energy',            descKey: 'shop.item_energy_desc' },
-  pass_hard:     { emoji: '🔞', titleKey: 'shop.item_hard_pass',         descKey: 'shop.item_hard_pass_desc' },
-  trade_pass:    { emoji: '🔄', titleKey: 'shop.item_trade_pass',        descKey: 'shop.item_trade_pass_desc' },
+const BENI_META: Record<string, { icon: unknown; color: string; titleKey: string; descKey: string }> = {
+  pack_sfida:    { icon: Gift,    color: '#ff85b6', titleKey: 'shop.item_challenge_pack',    descKey: 'shop.item_challenge_pack_desc' },
+  pack_sfida_10: { icon: Package, color: '#a78bfa', titleKey: 'shop.item_challenge_pack_10', descKey: 'shop.item_challenge_pack_10_desc' },
+  energia:       { icon: Zap,     color: '#f5c560', titleKey: 'shop.item_energy',            descKey: 'shop.item_energy_desc' },
+  pass_hard:     { icon: Flame,   color: '#ff5b6c', titleKey: 'shop.item_hard_pass',         descKey: 'shop.item_hard_pass_desc' },
+  trade_pass:    { icon: Repeat,  color: '#6cf0e0', titleKey: 'shop.item_trade_pass',        descKey: 'shop.item_trade_pass_desc' },
 }
 const beniOrder = ['pack_sfida', 'pack_sfida_10', 'energia', 'pass_hard', 'trade_pass']
 const beniList = computed(() =>
@@ -195,7 +196,7 @@ onUnmounted(() => { document.getElementById('paypal-sdk-shop')?.remove() })
       <div class="neg-head">
         <span class="neg-title" :style="{ fontFamily: FF.display }">{{ $t('shop.title') }}</span>
         <div class="neg-kisses">
-          <span style="color:var(--theme-accent-pink)">💋</span>
+          <KissesIcon :size="14" />
           <span :style="{ fontFamily: FF.label, fontWeight: 900, color: 'var(--theme-accent-pink)' }">{{ kisses }}</span>
         </div>
         <button class="neg-close" @click="emit('close')" :style="{ fontFamily: FF.label }">✕</button>
@@ -216,7 +217,9 @@ onUnmounted(() => { document.getElementById('paypal-sdk-shop')?.remove() })
         <div class="neg-section-title" :style="{ fontFamily: FF.label, color: C.sakura }">{{ $t('shop.buy_with_kisses') }}</div>
         <div class="neg-beni">
           <div v-for="b in beniList" :key="b.id" class="neg-bene">
-            <span class="neg-bene-emoji">{{ b.emoji }}</span>
+            <span class="neg-bene-icon" :style="{ color: b.color, background: b.color + '1c' }">
+              <component :is="b.icon" :size="18" stroke-width="2" />
+            </span>
             <div class="neg-bene-txt">
               <div class="neg-bene-label" :style="{ fontFamily: FF.body }">{{ $t(b.titleKey) }}</div>
               <div class="neg-bene-desc" :style="{ fontFamily: FF.body }">{{ $t(b.descKey) }}</div>
@@ -229,7 +232,7 @@ onUnmounted(() => { document.getElementById('paypal-sdk-shop')?.remove() })
               @click="acquistaBene(b.id)"
             >
               <template v-if="busy === b.id">…</template>
-              <template v-else>💋 {{ b.kisses }}</template>
+              <template v-else><KissesIcon :size="12" style="display:inline-block;vertical-align:-2px;" /> {{ b.kisses }}</template>
             </button>
           </div>
         </div>
@@ -248,7 +251,7 @@ onUnmounted(() => { document.getElementById('paypal-sdk-shop')?.remove() })
             :class="{ 'neg-taglio--sel': selTaglio === tg.id }"
           >
             <div class="neg-taglio-k">
-              <span style="color:var(--theme-accent-pink)">💋</span>
+              <KissesIcon :size="13" />
               <span :style="{ fontFamily: FF.display }">{{ tg.kisses }}</span>
             </div>
             <div class="neg-taglio-price" :style="{ fontFamily: FF.label, color: C.gold }">€{{ tg.price_eur }}</div>
@@ -325,7 +328,10 @@ onUnmounted(() => { document.getElementById('paypal-sdk-shop')?.remove() })
   background: var(--theme-surface-2); border: 1px solid var(--theme-border);
   border-radius: 14px; padding: 11px 12px;
 }
-.neg-bene-emoji { font-size: 19px; flex-shrink: 0; }
+.neg-bene-icon {
+  width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0;
+  display: grid; place-items: center;
+}
 .neg-bene-txt { flex: 1; min-width: 0; }
 .neg-bene-label { font-size: 12.5px; font-weight: 800; color: var(--theme-text); }
 .neg-bene-desc { font-size: 10.5px; color: var(--theme-text-2); margin-top: 2px; line-height: 1.35; }

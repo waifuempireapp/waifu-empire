@@ -87,13 +87,13 @@ function actionBtn(color: string, bg: string) {
         style="width:100%;height:100%;object-fit:cover;pointer-events:none"
       />
       <div v-else style="width:100%;height:100%;background:linear-gradient(180deg,#1b1638,#251f48);display:grid;place-items:center">
-        <img src="~/assets/images/New_Logo.png" alt="" style="width:80px;height:80px;object-fit:contain;opacity:0.82;" />
+        <span style="font-family:var(--ff-display);font-size:30px;font-weight:700;color:var(--theme-text-3);opacity:.55;">?</span>
       </div>
 
       <div style="position:absolute;bottom:0;left:0;right:0;height:50%;background:linear-gradient(transparent,rgba(3,2,12,0.95))" />
 
       <div style="position:absolute;bottom:20px;left:18px;right:18px">
-        <div style="font-family:var(--ff-display,'Unbounded',sans-serif);font-size:22px;color:#fff;font-weight:800">{{ waifu.nome }}</div>
+        <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:22px;color:#fff;font-weight:800">{{ waifu.nome }}</div>
         <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:10px;letter-spacing:0.2em;color:rgba(241,235,255,0.5);text-transform:uppercase;margin-top:3px">
           {{ waifu.rarita }} · {{ waifu.tipo }}
           <span v-if="expansionName" style="color:rgba(174,156,255,0.6);margin-left:6px">· {{ expansionName }}</span>

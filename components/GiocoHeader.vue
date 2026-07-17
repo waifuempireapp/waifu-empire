@@ -93,7 +93,7 @@ const pendingFriendRequests = computed(() => {
         display: flex; align-items: center; gap: 4px;
         padding: 0 8px;
         background: var(--theme-surface);
-        border: 1px solid var(--theme-accent);
+        border: 1px solid var(--theme-border);
         border-radius: 999px;
         height: 38px;
         box-shadow: var(--shadow-float);
@@ -110,7 +110,7 @@ const pendingFriendRequests = computed(() => {
         display: flex; align-items: center; gap: 4px;
         padding: 0 8px;
         background: var(--theme-surface);
-        border: 1px solid var(--theme-accent);
+        border: 1px solid var(--theme-border);
         border-radius: 999px;
         height: 38px;
         box-shadow: var(--shadow-float);
@@ -138,7 +138,7 @@ const pendingFriendRequests = computed(() => {
         z-index: 50;
         display: flex; align-items: center; justify-content: center;
         padding: 0;
-        border: 1px solid var(--theme-accent);
+        border: 1px solid var(--theme-border);
         transition: transform 0.15s, box-shadow 0.15s;
         flex-shrink: 0;
       " :style="{
@@ -154,7 +154,7 @@ const pendingFriendRequests = computed(() => {
       <!-- Cerchio colorato preset — nessun testo sopra il colore -->
       <!-- Iniziali giocatore se nessun avatar impostato -->
       <span v-else-if="!isColorPreset" style="
-          font-family: var(--ff-display,'Unbounded',sans-serif);
+          font-family: var(--ff-display,'Fredoka',sans-serif);
           font-size: 18px; font-weight: 800; color: #F0ECF8;
           user-select: none; line-height: 1;
         ">{{ initials }}</span>
@@ -199,7 +199,7 @@ const pendingFriendRequests = computed(() => {
   width: 38px; height: 38px; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--theme-surface);
-  border: 1px solid var(--theme-accent);
+  border: 1px solid var(--theme-border);
   border-radius: 999px;
   box-shadow: var(--shadow-float);
   cursor: pointer; padding: 0;

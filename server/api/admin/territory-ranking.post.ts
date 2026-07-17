@@ -4,7 +4,8 @@
 // - close: assegna premi e azzera punteggiSettimana
 // - reset: azzera punteggiSettimana senza assegnare premi
 import { defineEventHandler, getHeader, readBody, createError } from 'h3';
-import { getAdminAuth, getAdminDb, isAdminEmail } from '../../utils/firebaseAdmin';
+import { getAdminAuth, getAdminDb, isAdminEmail } from '../../utils/firebaseAdmin'
+import { maskOffensiveName } from '../../../utils/profanity';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getDefaultPremiClassifica, fasciaPremiPerPosizione } from '../../utils/firestoreService';
 
@@ -19,7 +20,7 @@ async function getClassifica(): Promise<{ utenti: any[]; premiConfig: any }> {
     return {
       id: d.id,
       uid: d.id,
-      nomeImpero: data.nomeImpero ?? 'Ignoto',
+      nomeImpero: maskOffensiveName(data.nomeImpero ?? 'Ignoto'),
       coloreImpero: data.coloreImpero ?? '#888',
       punteggiSettimana: data.punteggiSettimana ?? 0,
       pixelCount: data.pixelCount ?? 0,

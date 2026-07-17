@@ -39,7 +39,7 @@ const C = {
   inkLine: 'rgba(174,156,255,0.12)',
 }
 const FF = {
-  display: "var(--ff-display,'Unbounded',sans-serif)",
+  display: "var(--ff-display,'Fredoka',sans-serif)",
   label: "var(--ff-label,'Saira Condensed',sans-serif)",
   body: "var(--ff-body,'DM Sans',sans-serif)",
   mono: "var(--ff-mono,'JetBrains Mono',monospace)",
@@ -425,9 +425,13 @@ async function apri(tipoPacchetto: string) {
       emit('updateProfilo', { pacchettiBenvenuto: n })
       await updateUserProfile(uid, { pacchettiBenvenuto: n })
     } else if (tipoPacchetto === 'omaggio') {
-      const n = Number(props.profilo?.pacchettiOmaggio ?? 0) - 1
-      emit('updateProfilo', { pacchettiOmaggio: n })
-      await updateUserProfile(uid, { pacchettiOmaggio: n })
+      const prima = Number(props.profilo?.pacchettiOmaggio ?? 0)
+      const n = prima - 1
+      const patch: Record<string, unknown> = { pacchettiOmaggio: n }
+      // Da PIENO (5/5) il timer era fermo: riparte ADESSO, dopo l'apertura
+      if (prima >= 5) patch.ultimaRicaricaPacchetti = new Date()
+      emit('updateProfilo', patch)
+      await updateUserProfile(uid, patch as any)
     } else {
       const n = Number(props.profilo?.pacchettiSfida ?? 0) - 1
       emit('updateProfilo', { pacchettiSfida: n })
@@ -500,9 +504,14 @@ async function apriMultiSequenza(seq: string[]) {
   try {
     await saveCollezione(uid, nuova as any)
     // Decremento per-tipo (scala solo i tipi effettivamente aperti)
-    const patch: Record<string, number> = {}
+    const patch: Record<string, unknown> = {}
     if (aperti.benvenuto) patch.pacchettiBenvenuto = Number(props.profilo?.pacchettiBenvenuto ?? 0) - aperti.benvenuto
-    if (aperti.omaggio)   patch.pacchettiOmaggio   = Number(props.profilo?.pacchettiOmaggio ?? 0) - aperti.omaggio
+    if (aperti.omaggio) {
+      const prima = Number(props.profilo?.pacchettiOmaggio ?? 0)
+      patch.pacchettiOmaggio = prima - aperti.omaggio
+      // Da PIENO il timer era fermo: riparte dopo l'apertura
+      if (prima >= 5) patch.ultimaRicaricaPacchetti = new Date()
+    }
     if (aperti.sfida)     patch.pacchettiSfida     = Number(props.profilo?.pacchettiSfida ?? 0) - aperti.sfida
     if (Object.keys(patch).length) {
       emit('updateProfilo', patch)
@@ -815,6 +824,12 @@ const revealDragOrigin = ref({ x: 0, y: 0, tx: 0, ty: 0 })
 const cartaCorrente = computed(() =>
   indiceRivelato.value >= 0 ? carteRivelate.value[indiceRivelato.value] : null
 )
+
+// Vibrazione leggera quando la carta rivelata è NUOVA
+// (dichiarato DOPO cartaCorrente: prima crashava in TDZ al setup)
+watch(() => !!(cartaCorrente.value as any)?.isNuova && indiceRivelato.value >= 0, (v) => {
+  if (v) { try { navigator.vibrate?.(45) } catch { /* ns */ } }
+})
 
 // ── Reveal speciale Leggendario / Immersivo (flip 3D dal retro) ──────
 const SPECIAL_RARITIES = ['leggendario', 'immersivo']
@@ -1130,6 +1145,9 @@ function cfTouchEnd(e: TouchEvent) {
           @mousemove="onRevealMouseMove" @mouseleave="onRevealMouseLeave"
           @touchstart.passive="onRevealTouchStart" @touchmove.passive="onRevealTouchMove" @touchend.passive="onRevealTouchEnd">
           <!-- Badge NEW — visibile sopra tutto, nessun overflow che lo taglia -->
+          <!-- Burst di raggi celebrativo: SOLO leggendarie/immersive nuove -->
+          <div v-if="cartaCorrente.isNuova && (cartaCorrente.data?.rarita === 'leggendario' || cartaCorrente.data?.rarita === 'immersivo')"
+            class="reveal-newburst" aria-hidden="true" />
           <div v-if="cartaCorrente.isNuova"
             style="position:absolute;top:-28px;left:-10px;z-index:200;background:linear-gradient(135deg,#00b4ff,#00e676);border:2.5px solid #fff;border-radius:999px;padding:5px 16px;font-family:var(--ff-label);font-size:15px;font-weight:900;color:#000;box-shadow:0 4px 16px rgba(0,180,255,0.65);pointer-events:none;">
             NEW</div>
@@ -1191,7 +1209,7 @@ function cfTouchEnd(e: TouchEvent) {
 
     <!-- Overlay Video Immersivo Sezione Sblocchi -->
     <div v-if="sbusVideoAttivo && sbusCartaImmersiva" @click="sbusVideoFinito ? chiudiVideoSbusto() : undefined"
-      style="position: fixed; inset: 0; background: var(--theme-surface); backdrop-filter: blur(20px); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+      style="position: fixed; inset: 0; background: var(--grad-primary-soft), var(--theme-surface); backdrop-filter: blur(20px); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center;">
       <div @click.stop style="animation: scaleIn 0.25s ease-out">
         <CartaWaifu :waifu="sbusCartaImmersiva" dimensione="grande" tipo="auto" :video-attivo="sbusVideoAttivo"
           @video-end="sbusVideoFinito = true" />
@@ -1438,7 +1456,7 @@ function cfTouchEnd(e: TouchEvent) {
       </div>
 
       <!-- Titolo -->
-      <div :style="{fontFamily:`var(--ff-display,'Unbounded',sans-serif)`,fontSize:'17px',fontWeight:900,letterSpacing:'0.1em',color:popupColor.main,textTransform:'uppercase',marginBottom:'5px',textShadow:`0 0 22px ${popupColor.main}88`}">
+      <div :style="{fontFamily:`var(--ff-display,'Fredoka',sans-serif)`,fontSize:'17px',fontWeight:900,letterSpacing:'0.1em',color:popupColor.main,textTransform:'uppercase',marginBottom:'5px',textShadow:`0 0 22px ${popupColor.main}88`}">
         {{ $t('sbusta.pack_modal_title', { type: $t('sbusta.pack_' + popupApertura.tipoPacchetto) }) }}
       </div>
 
@@ -1451,13 +1469,13 @@ function cfTouchEnd(e: TouchEvent) {
       <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:18px;">
         <!-- APRI 1 -->
         <button @click="() => { const t = popupApertura!.tipoPacchetto; popupApertura = null; apri(t) }"
-          :style="{width:'100%',padding:'15px 24px',borderRadius:'999px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',background:popupColor.btn1,border:`1.5px solid ${popupColor.border}`,boxShadow:`0 4px 24px ${popupColor.glow},inset 0 1px 0 rgba(255,255,255,0.1)`,fontFamily:`var(--ff-display,'Unbounded',sans-serif)`,fontSize:'15px',fontWeight:800,color:popupColor.btn1txt,letterSpacing:'0.12em',textTransform:'uppercase'}">
+          :style="{width:'100%',padding:'15px 24px',borderRadius:'999px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',background:popupColor.btn1,border:`1.5px solid ${popupColor.border}`,boxShadow:`0 4px 24px ${popupColor.glow},inset 0 1px 0 rgba(255,255,255,0.1)`,fontFamily:`var(--ff-display,'Fredoka',sans-serif)`,fontSize:'15px',fontWeight:800,color:popupColor.btn1txt,letterSpacing:'0.12em',textTransform:'uppercase'}">
           <span style="font-size:18px;line-height:1;">🃏</span> {{ $t('sbusta.open_1_main') }}
         </button>
         <!-- APRI 10 -->
         <button v-if="contaPackPopup >= 2"
           @click="() => { const t = popupApertura!.tipoPacchetto; popupApertura = null; apriMulti(t) }"
-          :style="{width:'100%',padding:'15px 20px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',background:popupColor.btn2bg,border:`1.5px solid ${popupColor.btn2border}`,boxShadow:`0 4px 18px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.04)`,fontFamily:`var(--ff-display,'Unbounded',sans-serif)`,fontSize:'13px',fontWeight:800,color:popupColor.btn2txt,letterSpacing:'0.08em',textTransform:'uppercase',borderRadius:'8px',clipPath:'polygon(14px 0%,calc(100% - 14px) 0%,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0% calc(100% - 14px),0% 14px)'}">
+          :style="{width:'100%',padding:'15px 20px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'10px',background:popupColor.btn2bg,border:`1.5px solid ${popupColor.btn2border}`,boxShadow:`0 4px 18px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.04)`,fontFamily:`var(--ff-display,'Fredoka',sans-serif)`,fontSize:'13px',fontWeight:800,color:popupColor.btn2txt,letterSpacing:'0.08em',textTransform:'uppercase',borderRadius:'8px',clipPath:'polygon(14px 0%,calc(100% - 14px) 0%,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0% calc(100% - 14px),0% 14px)'}">
           <span style="font-size:18px;line-height:1;">🃏</span> {{ $t('sbusta.open_all') }}
         </button>
       </div>
@@ -1473,7 +1491,7 @@ function cfTouchEnd(e: TouchEvent) {
   <!-- ── Modale conferma acquisto bustina sfida ─────────────── -->
   <div v-if="sfidaConferma" @click="sfidaConferma = false" :style="{
     position: 'fixed', inset: 0, zIndex: 400,
-    background: 'var(--theme-surface)', backdropFilter: 'blur(18px)',
+    background: 'var(--grad-primary-soft), var(--theme-surface)', backdropFilter: 'blur(18px)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
   }">
     <div @click.stop :style="{
@@ -1536,6 +1554,24 @@ function cfTouchEnd(e: TouchEvent) {
 
 <!-- STILI ANIMAZIONI NEON E RIVELAZIONE IN PRESERVE-3D -->
 <style scoped>
+/* Burst celebrativo per la carta NUOVA: raggi che esplodono una volta */
+.reveal-newburst {
+  position: absolute; inset: -34%; z-index: 1; pointer-events: none;
+  background: repeating-conic-gradient(
+    rgba(255,215,130,0.28) 0deg 7deg,
+    transparent 7deg 24deg
+  );
+  border-radius: 50%;
+  -webkit-mask: radial-gradient(circle, #fff 30%, transparent 68%);
+          mask: radial-gradient(circle, #fff 30%, transparent 68%);
+  animation: newBurst 1.15s ease-out forwards;
+}
+@keyframes newBurst {
+  0%   { opacity: 0; transform: scale(0.35) rotate(0deg); }
+  18%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.25) rotate(38deg); }
+}
+
 /* Il velo appare ISTANTANEO (deve coprire il flash) e sfuma solo in uscita */
 .velo-fade-enter-active { transition: none; }
 .velo-fade-leave-active { transition: opacity 0.3s ease; }
@@ -1589,18 +1625,20 @@ function cfTouchEnd(e: TouchEvent) {
 
 /* Splendida Animazione di Swipe/Uscita Carta Principale (Pokémon Pocket Style) */
 .main-reveal-card-container.slide-out-animation {
-  animation: cardSlideUpAway 0.45s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  animation: cardSlideUpAway 0.5s cubic-bezier(0.5, 0, 0.9, 0.4) forwards;
 }
 
+/* La carta CADE in basso (gravità) invece di volare in alto */
 @keyframes cardSlideUpAway {
   0% {
-    transform: translateY(0) translateZ(0) rotateX(0);
+    transform: translateY(0) translateZ(0) rotate(0);
     opacity: 1;
   }
 
   100% {
-    transform: translateY(-500px) translateZ(150px) rotateX(-25deg);
-    opacity: 0;
+    /* 115vh: esce SEMPRE oltre il fondo visibile, su qualsiasi schermo */
+    transform: translateY(115vh) translateZ(40px) rotate(9deg);
+    opacity: 1;
   }
 }
 
@@ -1633,10 +1671,13 @@ function cfTouchEnd(e: TouchEvent) {
 .reveal-flip--playing::before {
   content: '';
   position: absolute;
-  inset: -24px;
-  border-radius: 24px;
-  background: radial-gradient(ellipse, rgba(255,200,50,0.45) 0%, transparent 70%);
-  animation: legendaryGlow 3.2s ease-in-out forwards;
+  /* Box MOLTO più grande della carta + forma circolare + blur:
+     il gradiente muore ben prima dei bordi → niente tagli squadrati */
+  inset: -48%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,200,50,0.5) 0%, rgba(255,180,40,0.16) 40%, transparent 64%);
+  filter: blur(16px);
+  animation: legendaryGlow 2.6s ease-in-out forwards;
   pointer-events: none;
   z-index: -1;
 }
@@ -1650,9 +1691,11 @@ function cfTouchEnd(e: TouchEvent) {
 }
 
 .reveal-flip--playing .reveal-flip__body {
-  /* Più lenta e fluida: 3.2s con easing morbido in entrata/uscita */
-  animation: legendaryReveal 3.2s cubic-bezier(0.33, 0, 0.2, 1) forwards;
-  filter: drop-shadow(0 20px 40px rgba(255,180,0,0.3));
+  /* Rotazione CONTINUA (niente pause a scatti) con timing per-keyframe;
+     will-change per il compositing GPU; NIENTE drop-shadow animato
+     (ripaint per frame = la causa principale dello "spezzato") */
+  animation: legendaryReveal 2.6s forwards;
+  will-change: transform;
 }
 
 /* Le due facce */
@@ -1688,13 +1731,12 @@ function cfTouchEnd(e: TouchEvent) {
   180° (900→720) e si percepiva come uno scatto.
 */
 @keyframes legendaryReveal {
-  /* retro → giravolte fluide con zoom graduale → fronte, rotazione monotona */
-  0%   { transform: rotateY(180deg) scale(1); }
-  22%  { transform: rotateY(450deg) scale(1.12); }
-  45%  { transform: rotateY(720deg) scale(1.24); }
-  62%  { transform: rotateY(900deg) scale(1.3); }
-  80%  { transform: rotateY(900deg) scale(1.3); }   /* pausa suspense sul retro, in zoom */
-  100% { transform: rotateY(1080deg) scale(1); }    /* mezzo giro finale + zoom-out → fronte */
+  /* retro → accelera → velocità costante → decelera dolce sul fronte.
+     Un'unica rotazione monotona senza pause: fluidità totale. */
+  0%   { transform: rotateY(180deg) scale(1);    animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0.4); }
+  32%  { transform: rotateY(560deg) scale(1.18); animation-timing-function: linear; }
+  62%  { transform: rotateY(880deg) scale(1.28); animation-timing-function: cubic-bezier(0.22, 0.6, 0.3, 1); }
+  100% { transform: rotateY(1080deg) scale(1); }
 }
 
 @keyframes legendaryGlow {

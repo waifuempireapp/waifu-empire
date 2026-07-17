@@ -71,7 +71,20 @@ export function ikImgFallback(ev: Event): void {
   const img = ev?.target as HTMLImageElement | null
   if (!img || !img.src) return
   const tried = Number(img.dataset.ikFallback ?? 0)
-  if (tried >= 2) return
+  if (tried >= 2) {
+    // Tentativi esauriti: MAI l'icona dell'immagine rotta — placeholder SVG
+    // a tema (gradiente scuro + '?'), la sezione resta presentabile.
+    img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="420">`
+      + `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">`
+      + `<stop offset="0" stop-color="%23262233"/><stop offset="1" stop-color="%231a1724"/>`
+      + `</linearGradient></defs>`
+      + `<rect width="100%" height="100%" fill="url(%23g)"/>`
+      + `<text x="50%" y="52%" text-anchor="middle" font-family="sans-serif" font-size="72" font-weight="700" fill="%236b6390" opacity="0.6">?</text>`
+      + `</svg>`).replace(/%23/g, '%2523')
+    img.dataset.ikFallback = '3'
+    return
+  }
   img.dataset.ikFallback = String(tried + 1)
 
   let u: string

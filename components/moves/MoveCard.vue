@@ -21,6 +21,12 @@ const emit = defineEmits<{ open: [] }>()
 function onClick() { if (props.owned) emit('open') }
 
 const meta   = computed(() => TYPE_META[props.move.type])
+// Colore del BORDO per RARITÀ (come le carte waifu)
+const RARITY_BORDER: Record<string, string> = {
+  comune: '#9ca3af', raro: '#3b82f6', epico: '#a855f7', leggendario: '#f5c560', immersivo: '#ec4899',
+}
+const rarita   = computed(() => String((props.move as any).rarita ?? (props.move as any).rarity ?? 'comune').toLowerCase())
+const rarColor = computed(() => RARITY_BORDER[rarita.value] ?? RARITY_BORDER.comune)
 const name   = computed(() => (props.move as any).name ?? (props.move as any).nome ?? '')
 const danno  = computed(() => (props.move.damage ?? (props.move as any).danno ?? 0) as number)
 const descr  = computed(() => props.move.effectDescription ?? '')
@@ -38,7 +44,10 @@ const effColor   = computed(() => effLabel.value === 'super' ? '#22c55e' : effLa
 <template>
   <div class="mc" :class="{ 'mc--clickable': owned, 'mc--locked': !owned, 'mc--lg': large }" @click="onClick">
     <!-- Box ratio 2:3 -->
-    <div class="mc__box" :style="{ borderColor: `${meta.accent}aa`, boxShadow: `0 4px 16px rgba(0,0,0,0.28), 0 0 14px ${meta.accent}33` }">
+    <div class="mc__box" :style="{ outline: `3.5px solid ${rarColor}`, boxShadow: `0 4px 16px rgba(0,0,0,0.28), 0 0 14px ${rarColor}44` }">
+      <!-- Anello di rarità ANIMATO (stesse classi delle carte waifu) -->
+      <div v-if="rarita === 'leggendario' || rarita === 'immersivo'" class="rarity-ring"
+        :class="rarita === 'immersivo' ? 'rarity-ring--imm' : 'rarity-ring--leg'" />
 
       <!-- Immagine ai 2/3 -->
       <img v-if="imgSrc && !imgFail" :src="imgSrc" :alt="name" loading="lazy" class="mc__img" @error="imgFail = true" />
@@ -67,8 +76,6 @@ const effColor   = computed(() => effLabel.value === 'super' ? '#22c55e' : effLa
       </div>
     </div>
 
-    <!-- Nome -->
-    <div class="mc__name">{{ name }}</div>
   </div>
 </template>
 
@@ -82,7 +89,8 @@ const effColor   = computed(() => effLabel.value === 'super' ? '#22c55e' : effLa
 .mc__box {
   position: relative; width: 100%; padding-bottom: 150%;
   border-radius: 12px; overflow: hidden;
-  border: 1.5px solid; background: var(--theme-bg-secondary);
+  /* Il bordo rarità è un OUTLINE (tutto esterno: non copre la carta) */
+  background: var(--theme-bg-secondary);
   transition: transform 0.15s ease;
 }
 
@@ -109,7 +117,7 @@ const effColor   = computed(() => effLabel.value === 'super' ? '#22c55e' : effLa
   padding: 4px 6px; display: flex; flex-direction: column; gap: 1px; overflow: hidden;
 }
 .mc__dmg-row { display: flex; align-items: baseline; gap: 3px; }
-.mc__dmg { font-family: var(--ff-display, 'Unbounded', sans-serif); font-size: 14px; font-weight: 800; line-height: 1; }
+.mc__dmg { font-family: var(--ff-display, 'Fredoka', sans-serif); font-size: 14px; font-weight: 800; line-height: 1; }
 .mc__dmg-lbl { font-size: 7px; letter-spacing: 0.1em; color: rgba(238,232,246,0.5); text-transform: uppercase; }
 .mc__arrow { font-size: 10px; color: rgba(238,232,246,0.5); }
 .mc__eff { font-size: 12px; font-weight: 800; }
@@ -130,8 +138,5 @@ const effColor   = computed(() => effLabel.value === 'super' ? '#22c55e' : effLa
   box-shadow: 0 1px 4px rgba(0,0,0,0.25);
   display: flex; align-items: center; gap: 2px;
 }
-.mc__name {
-  padding: 4px 0 0; text-align: center; font-size: 11px; font-weight: 700;
-  color: var(--theme-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
+
 </style>

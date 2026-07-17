@@ -69,7 +69,7 @@ const C = {
 
 // ── Font families (FF) ───────────────────────────────────────────────
 const FF = {
-  display: "var(--ff-display, 'Unbounded', sans-serif)",
+  display: "var(--ff-display, 'Fredoka', sans-serif)",
   label:   "var(--ff-label, 'Saira Condensed', sans-serif)",
   body:    "var(--ff-body, 'DM Sans', sans-serif)",
   mono:    "var(--ff-mono, 'JetBrains Mono', monospace)",
@@ -81,6 +81,10 @@ const MAX_ENERGIA = TIMER.MAX_ENERGIA  // 10
 // ── Computed dal profilo ──────────────────────────────────────────────
 const profilo   = computed(() => props.profilo ?? {})
 const collezione = computed(() => props.collezione ?? {})
+
+// Bustine omaggio: cap 5, ricarica 1 ogni 12h (timer fermo a 5/5)
+const omaggioCount = computed(() => Number(profilo.value.pacchettiOmaggio ?? 0))
+const OMAGGIO_MAX = 5
 
 const totalPack = computed(() =>
   ((profilo.value.pacchettiOmaggio as number) ?? 0) +
@@ -145,7 +149,9 @@ let ricaricaRichiesta = false   // guard: evita di emettere ricaricaPack ogni se
 
 function aggiornaCountdown() {
   const p = profilo.value
-  if (totalPack.value > 0) { countdown.value = ''; packPronto.value = false; return }
+  // Il countdown corre finché le bustine OMAGGIO sono sotto il massimo,
+  // indipendentemente dagli altri pacchetti posseduti
+  if (omaggioCount.value >= OMAGGIO_MAX) { countdown.value = ''; packPronto.value = false; return }
   const raw = p.ultimaRicaricaPacchetti as { toMillis?: () => number; seconds?: number } | number | undefined
   const lastTs = typeof raw === 'object' && raw !== null
     ? (raw.toMillis ? raw.toMillis() : (raw.seconds ?? 0) * 1000)
@@ -268,6 +274,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
       <div class="ht-hero-content">
 
         <!-- Bustina 3D: passive=true → canvas non intercetta click → il panel/button restano cliccabili -->
+        <div class="hero-glow">
         <BustinaGLB
           :color="totalPack > 0 ? ((drop?.colore as string) || '#6b1a3a') : '#5a3e0a'"
           :texture-url="null"
@@ -275,6 +282,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
           :width="115" :height="185"
           :passive="true"
         />
+        </div>
 
         <!-- Testo stato pack -->
         <div class="ht-hero-text">
@@ -285,6 +293,11 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
             <template #n><b class="ht-hero-count">{{ totalPack }}</b></template>
             <template #pack>{{ totalPack === 1 ? $t('home.pack_singular') : $t('home.pack_plural') }}</template>
           </i18n-t>
+          <!-- Bustine omaggio x/5 + prossima ricarica (visibile anche con pack > 0) -->
+          <div v-if="totalPack > 0" class="ht-hero-timer-text" style="margin-top:3px;opacity:0.85;">
+            <b>{{ omaggioCount }}/{{ OMAGGIO_MAX }}</b>
+            <template v-if="omaggioCount < OMAGGIO_MAX && countdown"> · {{ $t('home.next_in', { time: countdown }) }}</template>
+          </div>
           <div v-else class="ht-hero-timer-text">
             {{ packPronto ? $t('home.gift_pack_ready') : countdown ? $t('home.next_in', { time: countdown }) : $t('home.next_pack') }}
           </div>

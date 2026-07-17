@@ -31,7 +31,7 @@ const C = {
   err:     '#ff5b6c',
 }
 const FF = {
-  display: "var(--ff-display, 'Unbounded', sans-serif)",
+  display: "var(--ff-display, 'Fredoka', sans-serif)",
   label:   "var(--ff-label, 'Saira Condensed', sans-serif)",
   body:    "var(--ff-body, 'DM Sans', sans-serif)",
   mono:    "var(--ff-mono, 'JetBrains Mono', monospace)",
@@ -164,7 +164,7 @@ const listExpanded = ref(false)
 
       <!-- Premio settimanale: due righe di box colorati -->
       <div :style="{
-        background: 'var(--theme-surface)',
+        background: 'var(--grad-primary-soft), var(--theme-surface)',
         border: '1px solid var(--theme-border)',
         borderRadius: '16px', padding: '14px 16px 16px', marginBottom: '16px',
         boxShadow: '0 4px 16px var(--theme-shadow)', overflow: 'visible',
@@ -412,7 +412,7 @@ const listExpanded = ref(false)
       <div
         v-if="!loading"
         :style="{
-          background: 'var(--theme-surface)', border: '1px solid var(--theme-border)',
+          background: 'var(--grad-primary-soft), var(--theme-surface)', border: '1px solid var(--theme-border)',
           borderRadius: '16px', marginTop: '26px', marginBottom: '14px',
           boxShadow: '0 4px 16px var(--theme-shadow)', overflow: 'hidden',
         }"

@@ -69,7 +69,7 @@
     "next_pack": "Visitar la tienda",
     "countdown": "Próximo en {time}",
     "available": "¡Disponible!",
-    "pesca_title": "Pesca Misteriosa",
+    "pesca_title": "Waifu Drop",
     "pesca_available": "Disponible",
     "swap_title": "Swipe Waifu",
     "swap_votes": "{n} votos totales",
@@ -196,7 +196,8 @@
     "your_offer": "Tu oferta (Kisses)",
     "territory_conquered": "¡Territorio conquistado!",
     "conquering": "Conquistando…",
-    "owner": "Propietario: {name}"
+    "owner": "Propietario: {name}",
+    "victory_rewards_title": "¡Recompensas de victoria!"
   },
   "collection": {
     "title": "Colección",

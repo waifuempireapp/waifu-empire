@@ -24,7 +24,7 @@ const typeMeta = computed(() => props.carta?.tipoMossa ? TYPE_META[props.carta.t
   }">
     <!-- Danno -->
     <div style="display:flex;align-items:baseline;gap:3px;">
-      <span :style="{ fontFamily:`var(--ff-display,'Unbounded',sans-serif)`, fontSize:'14px', fontWeight:800, lineHeight:1, color: typeMeta?.accent ?? 'var(--theme-text)' }">{{ carta?.danno ?? 0 }}</span>
+      <span :style="{ fontFamily:`var(--ff-display,'Fredoka',sans-serif)`, fontSize:'14px', fontWeight:800, lineHeight:1, color: typeMeta?.accent ?? 'var(--theme-text)' }">{{ carta?.danno ?? 0 }}</span>
       <span :style="{ fontFamily:`var(--ff-label,'Saira Condensed',sans-serif)`, fontSize:'7px', letterSpacing:'0.1em', color:'rgba(238,232,246,0.5)', textTransform:'uppercase' }">DMG</span>
     </div>
     <!-- Descrizione: testo completo, scroll interno se serve (niente troncamento) -->

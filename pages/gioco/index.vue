@@ -510,8 +510,9 @@ function handleSetTab(t: string) {
       @update-collezione="() => getCollezione(authStore.user!.uid).then(c => gameStore.setCollezione(c as never)).catch(() => {})"
     />
 
-    <!-- Petali sakura decorativi — fissi su tutta la schermata -->
-    <SakuraPetals />
+    <!-- Petali sakura decorativi — DISABILITATI (pesavano sul caricamento).
+         Per riattivarli: decommenta la riga sotto. -->
+    <!-- <SakuraPetals /> -->
 
     <!-- Header Pokémon TCG Pocket: risorse sx, logo centro, campana dx -->
     <LazyGiocoHeader :profilo="gameStore.profilo" :is-admin="isAdmin" @logout="authStore.logout()" />
@@ -667,13 +668,19 @@ function handleSetTab(t: string) {
 
 /* ── Bottom Nav Pocket ────────────────────────────────────────────── */
 .bnav-pocket {
+  /* Ancoraggio ESPLICITO al fondo: non dipende dalle utility della classe
+     (fixed bottom-0 ecc.) — il footer non deve MAI stare nel flusso */
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 50;
   background: var(--theme-nav);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border-top: 1px solid var(--border-subtle);
   box-shadow: 0 -4px 20px rgba(110,79,196,0.06);
-  /* Senza label basta meno altezza: icone centrate */
-  height: 58px;
+  /* Senza label basta meno altezza: icone centrate; safe-area per iPhone */
+  height: calc(58px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   transform: translateZ(0); /* prevent iOS jank */
 }
 [data-theme="dark"] .bnav-pocket {
