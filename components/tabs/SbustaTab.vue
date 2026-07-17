@@ -1624,17 +1624,18 @@ function cfTouchEnd(e: TouchEvent) {
 
 /* Splendida Animazione di Swipe/Uscita Carta Principale (Pokémon Pocket Style) */
 .main-reveal-card-container.slide-out-animation {
-  animation: cardSlideUpAway 0.45s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  animation: cardSlideUpAway 0.5s cubic-bezier(0.5, 0, 0.9, 0.4) forwards;
 }
 
+/* La carta CADE in basso (gravità) invece di volare in alto */
 @keyframes cardSlideUpAway {
   0% {
-    transform: translateY(0) translateZ(0) rotateX(0);
+    transform: translateY(0) translateZ(0) rotate(0);
     opacity: 1;
   }
 
   100% {
-    transform: translateY(-500px) translateZ(150px) rotateX(-25deg);
+    transform: translateY(560px) translateZ(60px) rotate(9deg);
     opacity: 0;
   }
 }

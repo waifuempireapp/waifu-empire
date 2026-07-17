@@ -565,17 +565,17 @@ onBeforeUnmount(() => {
    Le linee sono sfumate/blurrate: devono suggerire il taglio, non
    sembrare un righello perfettamente dritto. */
 .pcg-cut-guide {
-  position: absolute; height: 2px; pointer-events: none; z-index: 6;
-  background: rgba(255,255,255,0.09);
-  border-radius: 2px;
-  filter: blur(2.5px);
+  position: absolute; height: 4px; pointer-events: none; z-index: 6;
+  background: rgba(255,255,255,0.10);
+  border-radius: 3px;
+  filter: blur(4px);
 }
 .pcg-cut-done {
-  position: absolute; height: 4px; pointer-events: none; z-index: 7;
-  background: linear-gradient(90deg, rgba(255,240,190,0.75), rgba(255,255,255,0.9));
-  border-radius: 3px;
-  filter: blur(3px);
-  box-shadow: 0 0 12px rgba(255,225,140,0.8), 0 0 30px rgba(255,190,80,0.45);
+  position: absolute; height: 8px; pointer-events: none; z-index: 7;
+  background: linear-gradient(90deg, rgba(255,240,190,0.8), rgba(255,255,255,0.95));
+  border-radius: 5px;
+  filter: blur(5px);
+  box-shadow: 0 0 16px rgba(255,225,140,0.85), 0 0 40px rgba(255,190,80,0.5);
 }
 .pcg-cut-spark {
   position: absolute; width: 18px; height: 18px; pointer-events: none; z-index: 8;
