@@ -171,7 +171,7 @@ async function onAssign(waifuId: string) {
 </template>
 
 <style scoped>
-.moves-list { display: flex; flex-direction: column; gap: 14px; padding: 16px; max-width: 1200px; margin: 0 auto; }
+.moves-list { display: flex; flex-direction: column; gap: 14px; max-width: 1200px; margin: 0 auto; }
 .moves-list__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .moves-list__title { margin: 0; font-size: 22px; font-weight: 800; color: var(--theme-text); letter-spacing: 0.02em; }
 .moves-list__sub { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--theme-text-3); }
