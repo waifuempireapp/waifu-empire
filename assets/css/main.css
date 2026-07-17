@@ -240,6 +240,10 @@ html, body {
   min-height: 100vh;
   max-width: 100%;
   overflow-x: clip;
+  /* ANCHE su html: di default è BIANCO e nei repaint delle transizioni
+     (mount/smontaggio canvas, overlay) il compositor lo fa trasparire per
+     un frame → i "flash bianchi" al click su APRI/pacchetti */
+  background: var(--theme-bg);
   -webkit-font-smoothing: antialiased;
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -281,6 +285,14 @@ a { color: inherit; text-decoration: none; }
    (righe di chip tipo, ecc.) restano tali: hanno il proprio overflow-x:auto
    su un contenitore più interno che questa regola non tocca. */
 #__nuxt, .game-container { max-width: 100vw; overflow-x: clip; }
+
+/* Canvas WebGL su layer GPU proprio: evita il white-flash del compositor
+   Android/Chrome durante mount/smontaggio e i cambi di scena */
+canvas {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
 
 /* ── ATMOSFERA: la pagina non è mai un fondo piatto ──
    Blob di colore sfocati + vignetta, fissi dietro a tutto il contenuto. */
