@@ -564,10 +564,11 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .pcg-glow {
-  position: absolute; inset: 0; pointer-events: none; z-index: 5;
+  position: absolute; inset: -25%; pointer-events: none; z-index: 5;
   background:
-    radial-gradient(circle at 50% 44%, rgba(255,226,140,0.9) 0%, rgba(255,180,70,0.4) 26%, transparent 60%);
+    radial-gradient(circle at 50% 46%, rgba(255,226,140,0.85) 0%, rgba(255,180,70,0.32) 22%, transparent 52%);
   mix-blend-mode: screen;
+  filter: blur(22px);
   animation: pcgGlow 1.25s ease-out forwards;
 }
 @keyframes pcgGlow {

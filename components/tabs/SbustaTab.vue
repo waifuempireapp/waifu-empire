@@ -1670,10 +1670,13 @@ function cfTouchEnd(e: TouchEvent) {
 .reveal-flip--playing::before {
   content: '';
   position: absolute;
-  inset: -24px;
-  border-radius: 24px;
-  background: radial-gradient(ellipse, rgba(255,200,50,0.45) 0%, transparent 70%);
-  animation: legendaryGlow 3.2s ease-in-out forwards;
+  /* Box MOLTO più grande della carta + forma circolare + blur:
+     il gradiente muore ben prima dei bordi → niente tagli squadrati */
+  inset: -48%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,200,50,0.5) 0%, rgba(255,180,40,0.16) 40%, transparent 64%);
+  filter: blur(16px);
+  animation: legendaryGlow 2.6s ease-in-out forwards;
   pointer-events: none;
   z-index: -1;
 }
