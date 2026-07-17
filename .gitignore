@@ -27,3 +27,4 @@ Thumbs.db
 
 # Vercel build output (locale, rigenerato ad ogni build)
 .vercel
+.nuxt-verify

@@ -5,6 +5,11 @@
 // ============================================================
 
 export default defineNuxtConfig({
+  // Directory di build separabile via env: le verifiche di build (CI/agent)
+  // usano NUXT_BUILD_DIR=.nuxt-verify e NON toccano la .nuxt del dev server
+  // in esecuzione (che altrimenti perde il manifest → 404 dev.json).
+  buildDir: process.env.NUXT_BUILD_DIR || '.nuxt',
+
   devtools: { enabled: true },
 
   // Disabilita il prefisso del percorso per i componenti nelle subdirectory
