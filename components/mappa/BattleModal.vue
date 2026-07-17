@@ -66,6 +66,18 @@ const emit = defineEmits<{
 
 // Assegnazione rapida mosse + navigazione alla collezione
 const showRandomMoves = ref(false)
+
+// ── Long-press su una card del roster: dettaglio ingrandito (stats + mosse) ──
+const detailWaifu = ref<any>(null)
+let bmLpTimer: ReturnType<typeof setTimeout> | null = null
+let bmLpFired = false
+function bmPressStart(w: any) {
+  bmLpFired = false
+  if (bmLpTimer) clearTimeout(bmLpTimer)
+  bmLpTimer = setTimeout(() => { bmLpFired = true; detailWaifu.value = w }, 420)
+}
+function bmPressEnd() { if (bmLpTimer) { clearTimeout(bmLpTimer); bmLpTimer = null } }
+function bmConsumeLp(): boolean { const f = bmLpFired; bmLpFired = false; return f }
 function goToCollezioneMosse() {
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('impero:collezione-mosse'))
   emit('chiudi')
@@ -420,6 +432,71 @@ const visiblePages = computed(() => {
         </button>
       </div>
 
+      <!-- ── DETTAGLIO INGRANDITO (long-press): carta grande + stats + mosse ── -->
+      <div v-if="detailWaifu" @click="detailWaifu = null"
+        style="position:fixed;inset:0;z-index:700;background:rgba(4,2,14,0.82);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:22px;">
+        <div @click.stop :style="{
+          width:'100%', maxWidth:'360px', maxHeight:'88dvh', overflowY:'auto',
+          background:'var(--grad-primary-soft), var(--theme-surface)',
+          border:'1px solid var(--theme-border-2)',
+          borderRadius:'18px', padding:'16px', boxShadow:'0 12px 40px var(--theme-shadow)',
+        }">
+          <div :style="{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px' }">
+            <div :style="{ fontFamily:FF.display, fontSize:'17px', fontWeight:900, color:'var(--theme-text)' }">{{ detailWaifu.nome }}</div>
+            <span :style="{
+              border:`1.5px solid ${detailWaifu.rarita === 'leggendario' ? gold : rarColors[detailWaifu.rarita] || '#aaa'}`,
+              color: detailWaifu.rarita === 'leggendario' ? gold : rarColors[detailWaifu.rarita] || '#aaa',
+              borderRadius:'999px', padding:'2px 10px',
+              fontFamily:FF.label, fontSize:'11px', fontWeight:800, textTransform:'capitalize',
+            }">{{ detailWaifu.rarita }}</span>
+          </div>
+          <!-- Immagine grande -->
+          <div :style="{ width:'70%', margin:'0 auto 12px', aspectRatio:'3/4', borderRadius:'12px', overflow:'hidden', border:`2.5px solid ${rarColors[detailWaifu.rarita] || 'var(--theme-border)'}` }">
+            <img v-if="detailWaifu.asset_immagine || detailWaifu.asset_statica || detailWaifu.asset_immersiva"
+              :src="ikUrl(detailWaifu.asset_immagine || detailWaifu.asset_statica || detailWaifu.asset_immersiva, 'card') ?? ''"
+              :alt="detailWaifu.nome" style="width:100%;height:100%;object-fit:cover;object-position:top;" />
+          </div>
+          <!-- Stats -->
+          <div :style="{ display:'flex', gap:'8px', justifyContent:'center', marginBottom:'14px' }">
+            <span :style="{ fontFamily:FF.mono, fontSize:'14px', fontWeight:800, color: isDark ? '#6cf0e0' : '#0891b2', background:'var(--theme-surface-2)', border:'1px solid var(--theme-border)', borderRadius:'999px', padding:'6px 13px', display:'flex', alignItems:'center', gap:'5px' }">
+              <Zap :size="13" stroke-width="2" />{{ statSpeed(detailWaifu) }}
+            </span>
+            <span :style="{ fontFamily:FF.mono, fontSize:'14px', fontWeight:800, color: isDark ? '#06d6a0' : '#059669', background:'var(--theme-surface-2)', border:'1px solid var(--theme-border)', borderRadius:'999px', padding:'6px 13px' }">
+              ❤ {{ statHp(detailWaifu) }}
+            </span>
+            <span :style="{ fontFamily:FF.mono, fontSize:'14px', fontWeight:800, color: gold, background:'var(--theme-surface-2)', border:'1px solid var(--theme-border)', borderRadius:'999px', padding:'6px 13px' }">
+              ✸ {{ statCrit(detailWaifu) }}%
+            </span>
+          </div>
+          <!-- Mosse equipaggiate -->
+          <div :style="{ fontFamily:FF.label, fontSize:'11px', fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--theme-text-2)', marginBottom:'8px' }">Mosse equipaggiate</div>
+          <div :style="{ display:'flex', flexDirection:'column', gap:'7px' }">
+            <div v-for="(mossaId, slot) in (detailWaifu._datiColl?.mosse_slot ?? {})" :key="slot" :style="{
+              display:'flex', alignItems:'center', gap:'9px',
+              background: getMossa(mossaId) ? moveTypeColor(getMossa(mossaId)!.tipologia) + (isDark ? '1c' : '14') : 'var(--theme-surface-2)',
+              border: `1px solid ${getMossa(mossaId) ? moveTypeColor(getMossa(mossaId)!.tipologia) + '66' : 'var(--theme-border)'}`,
+              borderRadius:'11px', padding:'9px 12px',
+            }">
+              <span :style="{
+                flexShrink:0, fontFamily:FF.label, fontSize:'10px', fontWeight:800,
+                color: getMossa(mossaId) ? moveTypeColor(getMossa(mossaId)!.tipologia) : 'var(--theme-text-3)',
+                border:`1.5px solid ${getMossa(mossaId) ? moveTypeColor(getMossa(mossaId)!.tipologia) : 'var(--theme-border)'}`,
+                borderRadius:'8px', padding:'2px 8px', textTransform:'uppercase', letterSpacing:'.04em',
+              }">{{ getMossa(mossaId)?.tipologia ?? '—' }}</span>
+              <span :style="{ flex:1, fontFamily:FF.label, fontSize:'13px', fontWeight:700, color:'var(--theme-text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }">
+                {{ getMossa(mossaId)?.nome ?? 'Slot vuoto' }}
+              </span>
+              <span v-if="getMossa(mossaId)?.danno != null" :style="{ fontFamily:FF.mono, fontSize:'12px', fontWeight:800, color:'var(--theme-text-2)', flexShrink:0 }">
+                {{ getMossa(mossaId)!.danno }} DMG
+              </span>
+            </div>
+            <div v-if="!Object.keys(detailWaifu._datiColl?.mosse_slot ?? {}).length" :style="{ fontFamily:FF.body, fontSize:'12px', color:'var(--theme-text-3)', textAlign:'center', padding:'8px 0' }">
+              Nessuna mossa equipaggiata
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Popup assegnazione rapida mosse -->
       <RandomMovesModal v-if="showRandomMoves"
         :collezione="collezione ?? null" :waifu-cat="waifuCat ?? []" :mosse-cat="mosseCat ?? []"
@@ -427,13 +504,27 @@ const visiblePages = computed(() => {
         @update-collezione="(c) => emit('updateCollezione', c)"
         @notif="(t, c) => emit('notif', t, c)" />
 
-      <!-- Griglia waifu 2 colonne — card verticali (nome, immagine, mosse 2×2 sotto) -->
-      <div :style="{ flex: 1, overflowY: 'auto', padding: '24px 16px 0' }">
-        <div class="bm-waifu-grid" :style="{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px 12px' }">
+      <!-- Griglia waifu 3 colonne — card compatte (dettaglio col long-press) -->
+      <div :style="{ flex: 1, overflowY: 'auto', padding: '14px 14px 0' }">
+        <!-- Istruzione long-press -->
+        <div :style="{
+          marginBottom: '12px', padding: '9px 12px', borderRadius: '12px',
+          background: 'var(--grad-primary-soft), var(--theme-surface)',
+          border: '1px solid var(--theme-border)',
+          fontFamily: FF.body, fontSize: '12px', color: 'var(--theme-text-2)', lineHeight: 1.45,
+        }">
+          👆 <b :style="{ color: 'var(--theme-text)' }">Tieni premuto</b> su una carta per vederla ingrandita con statistiche e mosse
+        </div>
+        <div class="bm-waifu-grid" :style="{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '18px 10px' }">
           <div
             v-for="w in pageWaifu"
             :key="w.id"
-            @click="toggle(w.id)"
+            @click="() => { if (bmConsumeLp()) return; toggle(w.id) }"
+            @pointerdown="bmPressStart(w)"
+            @pointerup="bmPressEnd"
+            @pointerleave="bmPressEnd"
+            @pointercancel="bmPressEnd"
+            @contextmenu.prevent
             :style="{
               position: 'relative', cursor: 'pointer',
               display: 'flex', flexDirection: 'column', gap: '8px',
@@ -446,7 +537,7 @@ const visiblePages = computed(() => {
             }"
           >
             <!-- Nome -->
-            <div :style="{ fontFamily:FF.display, fontSize:'15px', fontWeight:800, color:'var(--theme-text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }">
+            <div :style="{ fontFamily:FF.display, fontSize:'12px', fontWeight:800, color:'var(--theme-text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }">
               {{ w.nome }}
             </div>
             <!-- Immagine -->
@@ -471,56 +562,32 @@ const visiblePages = computed(() => {
                 background: 'var(--theme-surface)',
                 border: `1.5px solid ${w.rarita === 'leggendario' ? gold : rarColors[w.rarita] || '#aaa'}`,
                 borderRadius: '999px', padding: '2px 10px',
-                fontFamily: FF.label, fontSize: '11px', fontWeight: 800,
+                fontFamily: FF.label, fontSize: '9px', fontWeight: 800,
                 color: w.rarita === 'leggendario' ? gold : rarColors[w.rarita] || '#aaa',
                 textTransform: 'capitalize', zIndex: 3,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
               }">{{ w.rarita }}</div>
 
-            <!-- Mosse 2×2 sotto l'immagine -->
-            <div :style="{ minWidth:0, overflow:'hidden', display:'flex', flexDirection:'column', gap:'6px' }">
-
-              <!-- Mosse 2×2 sotto l'immagine — piccole -->
-              <div :style="{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'4px', overflow:'hidden' }">
-                <div
-                  v-for="(mossaId, slot) in (w._datiColl?.mosse_slot ?? {})"
-                  :key="slot"
-                  :style="{
-                    background: getMossa(mossaId) ? moveTypeColor(getMossa(mossaId)!.tipologia) + (isDark ? '20' : '15') : cardBg,
-                    border: `0.5px solid ${getMossa(mossaId) ? moveTypeColor(getMossa(mossaId)!.tipologia) + (isDark ? '66' : 'bb') : cardBorder}`,
-                    borderRadius: '10px', padding: '4px 8px',
-                    display: 'flex', flexDirection: 'column', gap: '0px', minWidth: 0, overflow: 'hidden',
-                  }"
-                >
-                  <div :style="{ fontFamily:FF.label, fontSize:'11px', fontWeight:700, color: getMossa(mossaId) ? 'var(--theme-text)' : 'var(--theme-text-3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }">
-                    {{ getMossa(mossaId)?.nome ?? '—' }}
-                  </div>
-                  <div v-if="getMossa(mossaId)?.tipologia" :style="{ fontFamily:FF.label, fontSize:'9px', fontWeight:600, color: moveTypeColor(getMossa(mossaId)!.tipologia) }">
-                    {{ getMossa(mossaId)!.tipologia }}
-                  </div>
-                </div>
-              </div>
-
-              <!-- Stats veloci: ⚡ Velocità · 💚 HP · 💥 Crit (sempre visibili) -->
-              <div :style="{ display:'flex', gap:'10px', justifyContent:'space-between' }">
-                <span :style="{ fontFamily:FF.mono, fontSize:'12px', fontWeight:600, color: isDark ? '#6cf0e0' : '#0891b2', display:'flex', alignItems:'center', gap:'3px' }">
-                  <Zap :size="12" stroke-width="1.5" />{{ statSpeed(w) }}
-                </span>
-                <span :style="{ fontFamily:FF.mono, fontSize:'12px', fontWeight:600, color: isDark ? '#06d6a0' : '#059669', display:'flex', alignItems:'center', gap:'3px' }">
-                  💚 {{ statHp(w) }}
-                </span>
-                <span :style="{ fontFamily:FF.mono, fontSize:'12px', fontWeight:600, color: gold, display:'flex', alignItems:'center', gap:'3px' }">
-                  💥 {{ statCrit(w) }}%
-                </span>
-              </div>
-            </div><!-- fine colonna destra -->
+            <!-- Card COMPATTA: mosse solo nel dettaglio (long-press).
+                 Stats veloci su una riga mini -->
+            <div :style="{ display:'flex', gap:'4px', justifyContent:'space-between', minWidth:0 }">
+              <span :style="{ fontFamily:FF.mono, fontSize:'10px', fontWeight:700, color: isDark ? '#6cf0e0' : '#0891b2', display:'flex', alignItems:'center', gap:'2px' }">
+                <Zap :size="10" stroke-width="1.5" />{{ statSpeed(w) }}
+              </span>
+              <span :style="{ fontFamily:FF.mono, fontSize:'10px', fontWeight:700, color: isDark ? '#06d6a0' : '#059669' }">
+                ❤{{ statHp(w) }}
+              </span>
+              <span :style="{ fontFamily:FF.mono, fontSize:'10px', fontWeight:700, color: gold }">
+                ✸{{ statCrit(w) }}%
+              </span>
+            </div>
 
             <!-- Badge numero selezione — in basso a destra (evita sovrapposizione col chip rarità) -->
             <div
               v-if="selectedIds.includes(w.id)"
               :style="{
-                position: 'absolute', bottom: '-12px', right: '-12px',
-                width:'30px', height:'30px', borderRadius:'50%',
+                position: 'absolute', bottom: '-9px', right: '-9px',
+                width:'24px', height:'24px', borderRadius:'50%',
                 background: gold, color: '#fff',
                 display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: '15px',
                 boxShadow: `0 2px 10px ${gold}80`,
