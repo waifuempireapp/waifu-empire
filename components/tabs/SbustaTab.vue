@@ -1144,8 +1144,9 @@ function cfTouchEnd(e: TouchEvent) {
           @mousemove="onRevealMouseMove" @mouseleave="onRevealMouseLeave"
           @touchstart.passive="onRevealTouchStart" @touchmove.passive="onRevealTouchMove" @touchend.passive="onRevealTouchEnd">
           <!-- Badge NEW — visibile sopra tutto, nessun overflow che lo taglia -->
-          <!-- Burst di raggi celebrativo: SOLO carta mai posseduta -->
-          <div v-if="cartaCorrente.isNuova" class="reveal-newburst" aria-hidden="true" />
+          <!-- Burst di raggi celebrativo: SOLO leggendarie/immersive nuove -->
+          <div v-if="cartaCorrente.isNuova && (cartaCorrente.data?.rarita === 'leggendario' || cartaCorrente.data?.rarita === 'immersivo')"
+            class="reveal-newburst" aria-hidden="true" />
           <div v-if="cartaCorrente.isNuova"
             style="position:absolute;top:-28px;left:-10px;z-index:200;background:linear-gradient(135deg,#00b4ff,#00e676);border:2.5px solid #fff;border-radius:999px;padding:5px 16px;font-family:var(--ff-label);font-size:15px;font-weight:900;color:#000;box-shadow:0 4px 16px rgba(0,180,255,0.65);pointer-events:none;">
             NEW</div>

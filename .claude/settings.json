@@ -363,7 +363,8 @@
       "Bash(NUXT_BUILD_DIR=.nuxt-verify NUXT_IGNORE_LOCK=1 npx nuxi build)",
       "Bash(curl -s -o /dev/null -w \"dev ancora vivo: %{http_code}\\\\n\" http://localhost:3001/_nuxt/builds/meta/dev.json)",
       "Bash(NUXT_BUILD_DIR=.nuxt-verify npx nuxi typecheck)",
-      "Bash(curl -s -o /dev/null -w \"dev vivo: %{http_code}\\\\n\" http://localhost:3001/_nuxt/builds/meta/dev.json)"
+      "Bash(curl -s -o /dev/null -w \"dev vivo: %{http_code}\\\\n\" http://localhost:3001/_nuxt/builds/meta/dev.json)",
+      "Bash(git pull *)"
     ],
     "additionalDirectories": [
       "/private/tmp",

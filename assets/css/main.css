@@ -345,6 +345,66 @@ button:active:not(:disabled) { scale: 0.96; }
 }
 @keyframes ringSpin { to { --ring-ang: 360deg; } }
 
+/* ════════════════════════════════════════════════════════════
+   GRADIENT SKIN — colori vivi e profondità (light + dark).
+   Solo additivo: aggancia classi esistenti, niente layout.
+   ════════════════════════════════════════════════════════════ */
+:root {
+  --grad-primary:      linear-gradient(135deg, #8B6FD8 0%, #D946A8 100%);
+  --grad-primary-soft: linear-gradient(135deg, rgba(139,111,216,0.16), rgba(217,70,168,0.10));
+  --grad-aqua-soft:    linear-gradient(150deg, rgba(34,197,180,0.16), rgba(96,164,255,0.08));
+  --grad-gold-soft:    linear-gradient(150deg, rgba(245,197,96,0.18), rgba(255,140,90,0.08));
+  --grad-title:        linear-gradient(90deg, #7c5fd0, #d3459f 55%, #e88b4a);
+}
+[data-theme="dark"] {
+  --grad-primary:      linear-gradient(135deg, #9d82ec 0%, #ff5cb8 100%);
+  --grad-primary-soft: linear-gradient(135deg, rgba(157,130,236,0.18), rgba(255,92,184,0.10));
+  --grad-aqua-soft:    linear-gradient(150deg, rgba(108,240,224,0.14), rgba(96,164,255,0.08));
+  --grad-gold-soft:    linear-gradient(150deg, rgba(245,197,96,0.15), rgba(255,140,90,0.07));
+  --grad-title:        linear-gradient(90deg, #b7a4ff, #ff85c8 55%, #ffc37a);
+}
+
+/* Titoli di sezione: testo con gradiente */
+.collez-title, .moves-list__title, .ht-hero-title, .neg-title, .tipi-title, .notif-title {
+  background-image: var(--grad-title);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Home: hero con gradiente morbido, card azioni con tinte dedicate */
+.ht-hero-panel { background-image: var(--grad-primary-soft) !important; }
+.ht-action-card { transition: transform 0.18s ease, box-shadow 0.18s ease; }
+.ht-action-card:nth-child(1) { background-image: var(--grad-aqua-soft) !important; }
+.ht-action-card:nth-child(2) { background-image: var(--grad-primary-soft) !important; }
+
+/* Effetto 3D: lift al passaggio (solo dispositivi con hover) */
+@media (hover: hover) and (pointer: fine) {
+  .ht-action-card:hover { transform: perspective(700px) translateY(-4px) rotateX(2deg); box-shadow: 0 16px 36px var(--theme-shadow); }
+  .collection-card-item.card-clickable:hover { transform: translateY(-4px); transition: transform 0.16s ease; }
+  .mc--clickable:hover .mc__box { transform: translateY(-4px); }
+}
+
+/* CTA e bottoni primari: gradiente pieno + pressa 3D (stile chunky) */
+.ht-hero-cta--pink, .neg-buy {
+  background-image: var(--grad-primary) !important;
+  border: none !important; color: #fff !important;
+  box-shadow: 0 5px 0 rgba(0,0,0,0.20), 0 12px 26px rgba(217,70,168,0.30) !important;
+}
+.ht-hero-cta--pink:active, .neg-buy:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.20), 0 4px 12px rgba(217,70,168,0.25) !important;
+}
+
+/* Filtri mosse attivi + contenitore 'danno vs tipo' */
+.moves-list__pill.is-active { background-image: var(--grad-primary) !important; border-color: transparent !important; color: #fff !important; }
+.moves-list__vs { background-image: var(--grad-primary-soft) !important; }
+
+/* Testate dei pannelli (negozio, tipi, notifiche) con velo gradiente */
+.neg-head, .tipi-head, .notif-head { background-image: var(--grad-primary-soft); }
+
+/* Bottom nav: dot della tab attiva con gradiente */
+.bnav-pocket__dot { background-image: var(--grad-primary) !important; }
+
 /* Numeri tabulari dove servono cifre allineate */
 .tabular, [class*="countdown"], [class*="timer"] { font-variant-numeric: tabular-nums; }
 
