@@ -685,33 +685,6 @@ function apriNegozio() {
   if (typeof window !== 'undefined') window.dispatchEvent(new window.Event('impero:apri-negozio'))
 }
 
-// ── Griglia waifu ADATTIVA: la CartaWaifu è a larghezza fissa (143px),
-// la colonna della griglia è fluida come quella delle mosse → uno zoom
-// calcolato sulla larghezza REALE della colonna la fa riempire esattamente.
-// NB: registrato in FONDO allo script e attivato in onMounted, perché
-// waifuGridEntries dipende da ref (soloPossedute…) dichiarate più sopra.
-const waifuGridEl = ref<HTMLElement | null>(null)
-let waifuGridRO: ResizeObserver | null = null
-function aggiornaWaifuZoom() {
-  const el = waifuGridEl.value
-  if (!el) return
-  const cell = el.querySelector('.collection-card-item') as HTMLElement | null
-  const colW = cell?.offsetWidth ?? 0
-  if (colW < 40) return
-  const zoom = Math.min(1.55, Math.max(0.55, colW / 148))
-  el.style.setProperty('--waifu-zoom', String(Math.round(zoom * 1000) / 1000))
-}
-onMounted(() => {
-  nextTick(() => {
-    aggiornaWaifuZoom()
-    if (waifuGridEl.value && typeof ResizeObserver !== 'undefined') {
-      waifuGridRO = new ResizeObserver(() => aggiornaWaifuZoom())
-      waifuGridRO.observe(waifuGridEl.value)
-    }
-    watch(() => waifuGridEntries.value.length, () => nextTick(aggiornaWaifuZoom))
-  })
-})
-onUnmounted(() => { waifuGridRO?.disconnect() })
 </script>
 
 <template>
@@ -901,7 +874,7 @@ onUnmounted(() => { waifuGridRO?.disconnect() })
 
         <!-- Griglia waifu 3 colonne — tutto il catalogo: possedute = carta,
              non possedute = slot placeholder '?' (stile pagina mosse) -->
-        <div ref="waifuGridEl" class="waifu-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 10px;margin-top:8px;margin-bottom:8px;">
+        <div class="waifu-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 12px;margin-top:8px;margin-bottom:8px;">
           <div
             v-for="{ id, dati, w, owned } in waifuGridEntries"
             :key="id"

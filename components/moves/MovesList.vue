@@ -196,5 +196,5 @@ async function onAssign(waifuId: string) {
 
 /* Più aria tra le carte mossa (gap verticale e laterale) + padding laterale:
    le carte risultano un po' più piccole e ben distanziate */
-.moves-list__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 10px; padding: 0 6px; }
+.moves-list__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 12px; padding: 0 6px; }
 </style>

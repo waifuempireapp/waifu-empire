@@ -356,7 +356,14 @@
       "Bash(pkill -f \"nuxi dev --port 3217\")",
       "Bash(cd /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt *)",
       "Bash(awk '/\\\\.bnav-pocket \\\\{/,/^}/' pages/gioco/index.vue)",
-      "Bash(awk '/async function _generaEAggiorna/,/^}/' components/tabs/SbustaTab.vue)"
+      "Bash(awk '/async function _generaEAggiorna/,/^}/' components/tabs/SbustaTab.vue)",
+      "Bash(lsof -nP -iTCP:3001 -sTCP:LISTEN)",
+      "Bash(lsof -nP -iTCP:3002 -sTCP:LISTEN)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/_nuxt/builds/meta/dev.json)",
+      "Bash(NUXT_BUILD_DIR=.nuxt-verify NUXT_IGNORE_LOCK=1 npx nuxi build)",
+      "Bash(curl -s -o /dev/null -w \"dev ancora vivo: %{http_code}\\\\n\" http://localhost:3001/_nuxt/builds/meta/dev.json)",
+      "Bash(NUXT_BUILD_DIR=.nuxt-verify npx nuxi typecheck)",
+      "Bash(curl -s -o /dev/null -w \"dev vivo: %{http_code}\\\\n\" http://localhost:3001/_nuxt/builds/meta/dev.json)"
     ],
     "additionalDirectories": [
       "/private/tmp",

@@ -352,7 +352,9 @@ button:active:not(:disabled) { scale: 0.96; }
    il gap verticale desktop parte da 1152px e il layout phone non copre
    le larghezze intermedie. */
 @media (min-width: 640px) and (max-width: 1151.9px) {
-  .waifu-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 16px 12px !important; }
+  .waifu-grid,
+  .moves-list__grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 20px 14px !important; }
+  .waifu-grid .collection-card-item > div:first-child { zoom: 1; }
 }
 button { font-family: inherit; cursor: pointer; }
 
@@ -633,12 +635,13 @@ input:focus, textarea:focus, select:focus {
   .collection-card-grid { gap: 6px !important; }
 }
 
-/* Carta waifu ADATTIVA in griglia: zoom = larghezza colonna / larghezza carta,
-   calcolato runtime (--waifu-zoom via ResizeObserver in CollezioneTab).
-   Layout waifu IDENTICO a quello delle mosse a ogni larghezza. */
-.waifu-grid .collection-card-item { min-width: 0; }
-.waifu-grid .collection-card-item > div:first-child {
-  zoom: var(--waifu-zoom, 1);
+/* ── Griglia waifu: STESSO layout delle mosse, zoom FISSI per breakpoint.
+   La CartaWaifu è 143px: lo zoom è tarato sulla colonna MINIMA di ogni
+   range → non sborda mai; la centratura assorbe la differenza. ── */
+.waifu-grid .collection-card-item { min-width: 0; display: flex; flex-direction: column; align-items: center; }
+.waifu-grid .collection-card-item > div:first-child { zoom: 0.76; }
+@media (max-width: 379.9px) {
+  .waifu-grid .collection-card-item > div:first-child { zoom: 0.66; }
 }
 
 /* Campo battaglia mobile */
@@ -3077,6 +3080,7 @@ input:focus, textarea:focus, select:focus {
     justify-items: center;
   }
   .collection-card-item { width: auto !important; }
+  .waifu-grid .collection-card-item > div:first-child { zoom: 1.38; }
 
   /* ── Griglia mosse: STESSE colonne/gap della griglia waifu, e card mossa
      della STESSA larghezza visiva della carta waifu (189px = 143 x zoom 1.32) ── */
