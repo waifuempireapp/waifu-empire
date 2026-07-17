@@ -7,17 +7,17 @@
 /* ─── LIGHT MODE ─────────────────────────────────────────────────────── */
 :root {
   /* Background — quasi bianco con punta lavanda, come Pocket */
-  --bg-base:              #F3F1F8;
-  --bg-gradient-top:      #E9E4F5;
-  --bg-gradient-bottom:   #F7F6FB;
-  --bg-hero-gradient:     linear-gradient(170deg, #B9A6E8 0%, #D5C8F0 35%, #F3F1F8 70%);
-  --bg-accent-warm:       linear-gradient(160deg, #E8956D 0%, #F3F1F8 65%);
+  --bg-base:              #E7E2F1;
+  --bg-gradient-top:      #DDD5EC;
+  --bg-gradient-bottom:   #ECE7F5;
+  --bg-hero-gradient:     linear-gradient(170deg, #B9A6E8 0%, #CCBDE8 35%, #E7E2F1 70%);
+  --bg-accent-warm:       linear-gradient(160deg, #E8956D 0%, #E7E2F1 65%);
 
   /* Superfici flottanti */
-  --surface:              #FBFAFD;
-  --surface-raised:       #FFFFFF;
-  --surface-sunken:       #ECE8F4;
-  --surface-glass:        rgba(251, 250, 253, 0.78);
+  --surface:              #EFEAF7;
+  --surface-raised:       #F3EFF9;
+  --surface-sunken:       #DFD8ED;
+  --surface-glass:        rgba(239, 234, 247, 0.80);
 
   /* Testo — mai nero puro */
   --text-primary:         #3D3A4E;
@@ -53,11 +53,11 @@
   --radius-pill:          9999px;
 
   /* ── Alias verso --theme-* (per compatibilità col codice esistente) ── */
-  --theme-bg:             #F3F1F8;
-  --theme-bg-secondary:   #E9E4F5;
-  --theme-surface:        #FBFAFD;
-  --theme-surface-2:      #ECE8F4;
-  --theme-loading:        #EDE9F5;
+  --theme-bg:             #E7E2F1;
+  --theme-bg-secondary:   #DDD5EC;
+  --theme-surface:        #EFEAF7;
+  --theme-surface-2:      #E0D9EE;
+  --theme-loading:        #E4DEF0;
 
   --theme-text:           #3D3A4E;
   --theme-text-2:         #6B6690;
@@ -72,15 +72,15 @@
   --theme-border-2:       rgba(139,111,216,0.28);
   --theme-shadow:         rgba(110,79,196,0.10);
 
-  --theme-nav:            rgba(243,241,248,0.92);
-  --theme-header:         rgba(251,250,253,0.90);
+  --theme-nav:            rgba(231,226,241,0.94);
+  --theme-header:         rgba(237,232,246,0.92);
   --theme-nav-icon:       rgba(61,58,78,0.45);
   --theme-nav-icon-active:#6E4FC4;
 
   --theme-tab-active:     rgba(139,111,216,0.10);
   --theme-tab-border:     rgba(139,111,216,0.22);
 
-  --theme-input-bg:       #FBFAFD;
+  --theme-input-bg:       #EFEAF7;
   --theme-input-border:   rgba(139,111,216,0.22);
 
   --theme-scrollbar:      rgba(139,111,216,0.30);

@@ -373,9 +373,7 @@ button:active:not(:disabled) { scale: 0.96; }
 
 /* Home: hero con gradiente morbido, card azioni con tinte dedicate */
 .ht-hero-panel { background-image: var(--grad-primary-soft) !important; }
-.ht-action-card { transition: transform 0.18s ease, box-shadow 0.18s ease; }
-.ht-action-card:nth-child(1) { background-image: var(--grad-aqua-soft) !important; }
-.ht-action-card:nth-child(2) { background-image: var(--grad-primary-soft) !important; }
+.ht-action-card { transition: transform 0.18s ease, box-shadow 0.18s ease; background-image: var(--grad-primary-soft) !important; }
 
 /* Effetto 3D: lift al passaggio (solo dispositivi con hover) */
 @media (hover: hover) and (pointer: fine) {
