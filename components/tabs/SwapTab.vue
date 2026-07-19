@@ -303,9 +303,10 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
 }
 
 .swap-arena {
+  /* Senza header ne' footer: la card e' centrata nell'INTERO viewport */
+  position: fixed; inset: 0;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  height: calc(100dvh - 175px);
   padding: 0 16px;
 }
 
