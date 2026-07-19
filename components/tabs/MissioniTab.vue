@@ -1,5 +1,20 @@
 <!-- MissioniTab.vue — Missioni giornaliere + missioni mappa con progress bar e CLAIM -->
 <script setup lang="ts">
+import { PIXEL_NAMES } from '~/utils/worldMap'
+
+/** "48_40" → "Valerion Centro 7": nome leggibile del territorio (isola+zona).
+ *  Gestisce pixel come stringa-chiave, oggetto {x,y} o {name} grezzo. */
+function nomeTerritorio(px: any): string {
+  const key = typeof px === 'string'
+    ? px
+    : (px?.x != null && px?.y != null) ? `${px.x}_${px.y}` : String(px?.name ?? '')
+  const fromMap = PIXEL_NAMES[key]
+  if (fromMap) return fromMap
+  // px.name potrebbe già essere leggibile — ma se è una chiave grezza prova a risolverla
+  const raw = String(px?.name ?? key)
+  if (/^\d+_\d+$/.test(raw)) return PIXEL_NAMES[raw] ?? `Territorio (${raw.replace('_', ', ')})`
+  return raw
+}
 import { Gift, Map as MapIcon, Target, Timer, CheckCircle, Clock, Heart, Fish } from 'lucide-vue-next'
 import { useAuthStore } from '~/stores/auth'
 import { useMissionsStore, type MissionType } from '~/stores/missions'
@@ -412,7 +427,7 @@ onUnmounted(() => {
             :style="{ background:'linear-gradient(135deg,rgba(168,85,247,0.10) 0%,var(--theme-surface) 65%)' }"
           >
             <div :style="{ fontFamily:FF.label, fontSize:'14px', color:'var(--theme-text)', fontWeight:700 }">
-              {{ px.name || `(${px.x}, ${px.y})` }}
+              {{ nomeTerritorio(px) }}
             </div>
             <div :style="{ fontFamily:FF.mono, fontSize:'13px', color:C.gold, fontWeight:800 }">
               +{{ activeMission.rewardPerPixel ?? 100 }}
