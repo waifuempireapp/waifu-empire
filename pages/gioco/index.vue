@@ -514,8 +514,9 @@ function handleSetTab(t: string) {
          Per riattivarli: decommenta la riga sotto. -->
     <!-- <SakuraPetals /> -->
 
-    <!-- Header Pokémon TCG Pocket: risorse sx, logo centro, campana dx -->
-    <LazyGiocoHeader :profilo="gameStore.profilo" :is-admin="isAdmin" @logout="authStore.logout()" />
+    <!-- Header Pokémon TCG Pocket: risorse sx, logo centro, campana dx.
+         NASCOSTO nello swipe (schermata immersiva: si esce con la X) -->
+    <LazyGiocoHeader v-if="tab !== 'swap'" :profilo="gameStore.profilo" :is-admin="isAdmin" @logout="authStore.logout()" />
 
     <!-- ── Area contenuto tab ────────────────────────────────────────── -->
     <div :class="['max-w-[1400px] mx-auto', tab === 'collezione' ? 'px-4' : 'px-4']"
