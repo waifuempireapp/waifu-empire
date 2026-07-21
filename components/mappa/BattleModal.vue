@@ -472,7 +472,7 @@ const visiblePages = computed(() => {
             }">{{ detailWaifu.rarita }}</span>
           </div>
           <!-- Immagine grande -->
-          <div :style="{ width:'70%', margin:'0 auto 12px', aspectRatio:'3/4', borderRadius:'12px', overflow:'hidden', border:`2.5px solid ${rarColors[detailWaifu.rarita] || 'var(--theme-border)'}` }">
+          <div :style="{ width:'70%', margin:'0 auto 12px', aspectRatio:'3/4', borderRadius:'12px', overflow:'hidden', border:`5px solid ${rarColors[detailWaifu.rarita] || 'var(--theme-border)'}` }">
             <img v-if="detailWaifu.asset_immagine || detailWaifu.asset_statica || detailWaifu.asset_immersiva"
               :src="ikUrl(detailWaifu.asset_immagine || detailWaifu.asset_statica || detailWaifu.asset_immersiva, 'card') ?? ''"
               :alt="detailWaifu.nome" style="width:100%;height:100%;object-fit:cover;object-position:top;" />
@@ -573,7 +573,7 @@ const visiblePages = computed(() => {
               {{ w.nome }}
             </div>
             <!-- Immagine -->
-            <div :style="{ width:'100%', aspectRatio:'3/4', borderRadius:'10px', overflow:'hidden', background:'var(--theme-bg-secondary)', border:`2px solid ${rarColors[w.rarita] || 'var(--theme-border)'}` }">
+            <div :style="{ width:'100%', aspectRatio:'3/4', borderRadius:'10px', overflow:'hidden', background:'var(--theme-bg-secondary)', border:`5px solid ${rarColors[w.rarita] || 'var(--theme-border)'}` }">
               <img
                 v-if="w.asset_immagine || w.asset_statica || w.asset_immersiva"
                 :src="ikUrl(w.asset_immagine || w.asset_statica || w.asset_immersiva, 'card') ?? ''"

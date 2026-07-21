@@ -61,6 +61,21 @@ interface Pack {
 
 // ── Stato del feed ────────────────────────────────────────────
 const packs = ref<Pack[]>((props.initialPacks as Pack[]) ?? [])
+// Filtro per espansione: chip in alto quando i pack sono di più espansioni
+const filtroEspansione = ref<string | null>(null)   // null = tutte
+const espansioniDisponibili = computed(() => {
+  const map = new Map<string, string>()
+  for (const p of packs.value) {
+    const id = (p as any).dropId
+    if (id) map.set(id, (p as any).dropName || id)
+  }
+  return [...map.entries()].map(([id, nome]) => ({ id, nome }))
+})
+const packsVisibili = computed(() =>
+  filtroEspansione.value
+    ? packs.value.filter(p => (p as any).dropId === filtroEspansione.value)
+    : packs.value,
+)
 const loading = ref(props.initialPacks === null)
 const error = ref<string | null>(null)
 
@@ -740,8 +755,37 @@ onUnmounted(() => {
         <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;color:var(--theme-text-2);max-width:260px;line-height:1.4;">{{ $t('pesca.no_packs_sub') }}</div>
       </div>
 
+      <!-- Filtro espansione (solo se ci sono pack di più espansioni) -->
+      <div v-if="immaginiCaricate && espansioniDisponibili.length > 1"
+        style="display:flex;flex-wrap:wrap;gap:8px;padding:16px 2px 0;justify-content:center;">
+        <button
+          @click="filtroEspansione = null"
+          :style="{
+            padding:'7px 16px', borderRadius:'999px', cursor:'pointer',
+            fontFamily:'var(--ff-label)', fontSize:'12px', fontWeight:800, letterSpacing:'.08em', textTransform:'uppercase',
+            border: filtroEspansione === null ? 'none' : '1px solid var(--theme-border)',
+            background: filtroEspansione === null ? 'var(--grad-primary)' : 'var(--theme-surface)',
+            color: filtroEspansione === null ? '#fff' : 'var(--theme-text-2)',
+          }"
+        >Tutte</button>
+        <button v-for="e in espansioniDisponibili" :key="e.id"
+          @click="filtroEspansione = e.id"
+          :style="{
+            padding:'7px 16px', borderRadius:'999px', cursor:'pointer',
+            fontFamily:'var(--ff-label)', fontSize:'12px', fontWeight:800, letterSpacing:'.08em', textTransform:'uppercase',
+            border: filtroEspansione === e.id ? 'none' : '1px solid var(--theme-border)',
+            background: filtroEspansione === e.id ? 'var(--grad-primary)' : 'var(--theme-surface)',
+            color: filtroEspansione === e.id ? '#fff' : 'var(--theme-text-2)',
+          }"
+        >{{ e.nome }}</button>
+      </div>
+
       <div v-show="immaginiCaricate && packs.length > 0" style="display:flex;flex-direction:column;gap:28px;padding-top:20px;overflow:visible;">
-        <div v-for="(pack, idx) in packs" :key="pack.id" style="position:relative;">
+        <div v-for="(pack, idx) in packsVisibili" :key="pack.id" style="position:relative;">
+          <!-- Badge espansione del pack -->
+          <div v-if="(pack as any).dropName"
+            style="position:absolute;top:-14px;left:16px;z-index:10;pointer-events:none;background:var(--grad-primary);border:2px solid var(--theme-surface);border-radius:999px;padding:3px 12px;font-family:var(--ff-label);font-size:11px;font-weight:900;color:#fff;letter-spacing:0.06em;box-shadow:0 3px 12px var(--theme-shadow);">
+            {{ (pack as any).dropName }}</div>
           <div
             v-if="(pack.createdAt && (Date.now() - new Date(pack.createdAt).getTime() < 3 * 60 * 60 * 1000) || pack.hasHot) && !pack.alreadyFished"
             style="position:absolute;top:-16px;right:16px;z-index:10;display:flex;gap:6px;pointer-events:none;">

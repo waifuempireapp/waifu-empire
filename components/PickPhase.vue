@@ -535,7 +535,7 @@ function hpBarData(hp: number, maxHp: number) {
           <template v-for="(w, idx) in activeRoster" :key="w.id ?? idx">
             <button
               :style="({
-                border: `2px solid ${cardBorderColor(getSlotNumber(idx) !== null, getRarityStyle(getWaifuRarita(w)))}`,
+                border: `5px solid ${cardBorderColor(getSlotNumber(idx) !== null, getRarityStyle(getWaifuRarita(w)))}`,
                 borderRadius: '12px !important',
                 background: cardBackground(getSlotNumber(idx) !== null, getRarityStyle(getWaifuRarita(w))),
                 padding: '0 0 10px',

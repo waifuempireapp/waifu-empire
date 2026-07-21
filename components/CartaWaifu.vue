@@ -254,7 +254,7 @@ function onMouseLeave(e: MouseEvent) {
       cursor: censurata ? 'not-allowed' : (onClick || hasVideo ? 'pointer' : 'default'),
       borderRadius: '14px',
       // BORDO RARITÀ tutto ESTERNO (outline non occupa/copre la carta)
-      outline: `3.5px solid ${evidenziato ? '#ffe9a8' : videoAttivo ? '#ff7eb6' : rb.outer}`,
+      outline: `5px solid ${evidenziato ? '#ffe9a8' : videoAttivo ? '#ff7eb6' : rb.outer}`,
       boxShadow: evidenziato
         ? '0 4px 28px rgba(255,233,168,0.5), inset 0 0 20px rgba(255,233,168,0.1)'
         : videoAttivo

@@ -42,7 +42,7 @@ const src = computed(() => props.carta.immagine ? (ikUrl(props.carta.immagine, '
 
     <!-- Box ratio 2:3 -->
     <div style="position:relative; width:100%; padding-bottom:150%; border-radius:10px; overflow:hidden;"
-         :style="{ border: `1.5px solid ${isMossa ? (typeMeta?.accent ?? rarColor) : rarColor}66`, boxShadow: `0 0 12px ${(isMossa ? (typeMeta?.accent ?? rarColor) : rarColor)}33`, background:'var(--theme-bg-secondary)' }">
+         :style="{ border: `5px solid ${isMossa ? (typeMeta?.accent ?? rarColor) : rarColor}`, boxShadow: `0 0 12px ${(isMossa ? (typeMeta?.accent ?? rarColor) : rarColor)}44`, background:'var(--theme-bg-secondary)' }">
 
       <!-- Immagine: piena (waifu) o ai 2/3 (mossa) -->
       <img v-if="src && !imgFail" :src="src" :alt="carta.nome"

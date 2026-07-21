@@ -843,7 +843,7 @@ function apriNegozio() {
         </div>
 
         <!-- Progresso per espansione: quante waifu del set possiedi -->
-        <div v-if="dropProgress.length" :style="{ display:'flex', flexDirection:'column', gap:'8px', margin:'14px 0 18px' }">
+        <div v-if="dropProgress.length" :style="{ display:'flex', flexDirection:'column', gap:'8px', margin:'14px 0 34px' }">
           <div v-for="dp in dropProgress" :key="dp.id" :style="{
             display:'flex', alignItems:'center', gap:'12px',
             background:'var(--grad-primary-soft), var(--theme-surface)', border:'1px solid var(--theme-border)',

@@ -44,7 +44,7 @@ const effColor   = computed(() => effLabel.value === 'super' ? '#22c55e' : effLa
 <template>
   <div class="mc" :class="{ 'mc--clickable': owned, 'mc--locked': !owned, 'mc--lg': large }" @click="onClick">
     <!-- Box ratio 2:3 -->
-    <div class="mc__box" :style="{ outline: `3.5px solid ${rarColor}`, boxShadow: `0 4px 16px rgba(0,0,0,0.28), 0 0 14px ${rarColor}44` }">
+    <div class="mc__box" :style="{ outline: `5px solid ${rarColor}`, boxShadow: `0 4px 16px rgba(0,0,0,0.28), 0 0 14px ${rarColor}44` }">
       <!-- Anello di rarità ANIMATO (stesse classi delle carte waifu) -->
       <div v-if="rarita === 'leggendario' || rarita === 'immersivo'" class="rarity-ring"
         :class="rarita === 'immersivo' ? 'rarity-ring--imm' : 'rarity-ring--leg'" />

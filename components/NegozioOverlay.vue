@@ -273,7 +273,9 @@ onUnmounted(() => { document.getElementById('paypal-sdk-shop')?.remove() })
 
 <style scoped>
 .neg-overlay {
-  position: fixed; inset: 0; z-index: 100;
+  /* Sopra a TUTTO: anche sopra l'overlay pesca (z 9999) e il dialog Kisses
+     (z 100000), altrimenti la ricarica finiva dietro al Waifu Drop */
+  position: fixed; inset: 0; z-index: 100002;
   background: var(--theme-overlay); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   display: flex; align-items: flex-end; justify-content: center;
 }

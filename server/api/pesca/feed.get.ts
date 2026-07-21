@@ -48,32 +48,18 @@ function cardUrl(c: Record<string, unknown>, tipo: string): string | null {
   return (c.immagine || null) as string | null
 }
 
+interface DropPool { id: string; nome: string; waifuPool: Record<string, unknown>[] }
 interface CatalogPools {
-  waifuPool:  Record<string, unknown>[]
+  dropsPool:  DropPool[]   // un pool per espansione attiva (o unico se nessun drop)
   mossePool:  Record<string, unknown>[]
-  activeDrop: Record<string, unknown> | null
 }
 
-/** Legge i pool dal documento pre-computato config/pack_pools (1 read vs N). */
+/** Costruisce un pool waifu PER espansione attiva (cache in memoria). */
 async function buildCatalogPools(): Promise<CatalogPools> {
   const hit = catalogCache.get('pools') as CatalogPools | null
   if (hit) return hit
 
-  const db      = getAdminDb()
-  const poolDoc = await db.collection('config').doc('pack_pools').get()
-  if (poolDoc.exists) {
-    const data      = poolDoc.data()!
-    const mosseSnap = await db.collection('catalogo_mosse').get()
-    const mossePool = mosseSnap.docs.map(d => ({ id: d.id, ...d.data() }))
-    return catalogCache.set('pools', {
-      waifuPool:  (data.waifuPool  || []) as Record<string, unknown>[],
-      mossePool,
-      activeDrop: (data.activeDrop || null) as Record<string, unknown> | null,
-    }) as CatalogPools
-  }
-
-  // Fallback: lettura diretta dei cataloghi
-  console.warn('[feed] config/pack_pools non trovato — esegui rebuild-pack-pools')
+  const db  = getAdminDb()
   const now = new Date()
   const [waifuSnap, mosseSnap, dropSnap] = await Promise.all([
     db.collection('catalogo_waifu').get(),
@@ -82,21 +68,23 @@ async function buildCatalogPools(): Promise<CatalogPools> {
   ])
   const allWaifu  = waifuSnap.docs.map(d => ({ id: d.id, ...d.data() }))
   const mossePool = mosseSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+
   const activeDrops = (dropSnap.docs.map(d => ({ id: d.id, ...d.data() } as any)) as Record<string, any>[]).filter(d => {
     if (d.inizio && new Date(d.inizio as string) > now) return false
     if (d.fine)   { const fine = new Date(d.fine as string); fine.setHours(23, 59, 59, 999); if (fine < now) return false }
     return true
   })
-  let waifuPool: Record<string, unknown>[] = allWaifu
-  if (activeDrops.length > 0) {
-    const drop = activeDrops[0]
-    if ((drop.waifuIds as string[])?.length > 0) {
-      waifuPool = allWaifu.filter(w => (drop.waifuIds as string[]).includes(w.id as string))
-    }
+
+  let dropsPool: DropPool[] = []
+  for (const drop of activeDrops) {
+    const ids = (drop.waifuIds as string[]) || []
+    const pool = ids.length > 0 ? allWaifu.filter(w => ids.includes(w.id as string)) : allWaifu
+    if (pool.length > 0) dropsPool.push({ id: drop.id as string, nome: (drop.nome as string) || '', waifuPool: pool })
   }
-  if (waifuPool.length === 0) waifuPool = allWaifu
-  const activeDrop = activeDrops[0] || null
-  return catalogCache.set('pools', { waifuPool, mossePool, activeDrop }) as CatalogPools
+  // Nessun drop attivo → un unico pool con tutto il catalogo
+  if (dropsPool.length === 0) dropsPool = [{ id: '', nome: '', waifuPool: allWaifu }]
+
+  return catalogCache.set('pools', { dropsPool, mossePool }) as CatalogPools
 }
 
 function buildGhostCards(
@@ -274,15 +262,22 @@ async function _handleFeed(_event: unknown, uid: string) {
     const availableNames       = GHOST_NAMES.filter(n => !usedActiveGhostNames.has(n))
 
     if (neededNew > 0 && availableNames.length > 0) {
-      const { waifuPool: rawWaifuPool, mossePool = [], activeDrop } = await buildCatalogPools()
-      const waifuPool = hasHardPass ? rawWaifuPool : rawWaifuPool.filter(w => !w.hot)
-      const dropId    = (activeDrop as Record<string, unknown>)?.id   || null
-      const dropName  = (activeDrop as Record<string, unknown>)?.nome || null
+      const { dropsPool, mossePool = [] } = await buildCatalogPools()
+      // Pool per-drop filtrati per Hard Pass (le carte Hot solo con Hard Pass)
+      const usablePools = dropsPool
+        .map(dp => ({ id: dp.id, nome: dp.nome, waifuPool: hasHardPass ? dp.waifuPool : dp.waifuPool.filter(w => !w.hot) }))
+        .filter(dp => dp.waifuPool.length > 0)
 
       const newBatch = db.batch()
       for (let i = 0; i < Math.min(neededNew, availableNames.length); i++) {
         const ghostName = availableNames[i]
-        const cards     = buildGhostCards(waifuPool, mossePool)
+        // Distribuzione a rotazione fra le espansioni attive: ogni ghost pack
+        // appartiene a UNA espansione (pesca separata per espansione)
+        const dp = usablePools.length > 0 ? usablePools[i % usablePools.length] : null
+        if (!dp) continue
+        const dropId   = dp.id   || null
+        const dropName = dp.nome || null
+        const cards     = buildGhostCards(dp.waifuPool, mossePool)
         // Non creare ghost pack senza carte (es. pool vuoto): genererebbe
         // pacchetti impescabili (errore 400 al fish).
         if (cards.length === 0) continue
