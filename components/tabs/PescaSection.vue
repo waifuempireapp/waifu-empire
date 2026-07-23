@@ -310,8 +310,8 @@ function cardStyle(uiIdx: number): CSSProperties {
       aspectRatio: '2/3', borderRadius: '13px', overflow: 'visible',
       position: 'relative', cursor: 'default',
       border: isChosen && isFlipped
-        ? '2px solid #a78bfa'
-        : isFlipped ? '1.5px solid rgba(245,166,35,0.45)' : '1.5px solid rgba(245,166,35,0.15)',
+        ? '5px solid #a78bfa'
+        : isFlipped ? '5px solid rgba(245,166,35,0.55)' : '5px solid rgba(245,166,35,0.28)',
       boxShadow: isChosen && isFlipped
         ? '0 0 20px 5px rgba(167,139,250,0.75), 0 0 50px 16px rgba(167,139,250,0.35)'
         : isFlipped ? '0 6px 20px rgba(0,0,0,0.5)' : '0 3px 10px rgba(0,0,0,0.4)',
@@ -366,7 +366,7 @@ function cardStyle(uiIdx: number): CSSProperties {
     overflow: pickPhase.value === 'reveal' ? 'hidden' : 'visible',
     position: 'relative',
     cursor: pickPhase.value === 'pick' ? 'pointer' : 'default',
-    border: isSel ? '2px solid #a78bfa' : '1.5px solid rgba(245,166,35,0.28)',
+    border: isSel ? '5px solid #a78bfa' : '5px solid rgba(245,166,35,0.28)',
     boxShadow: isSel
       ? '0 0 18px 4px rgba(167,139,250,0.75), 0 0 46px 14px rgba(167,139,250,0.38)'
       : '0 6px 20px rgba(0,0,0,0.6)',

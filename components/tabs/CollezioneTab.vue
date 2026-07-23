@@ -278,12 +278,30 @@ const waifuEntries = computed(() => {
   return entries
 })
 
-// ── Griglia "stile mosse": TUTTO il catalogo, ordinato per nome ──────────────
-// Le waifu possedute mostrano la carta; le altre uno slot placeholder '?'
-// (non carte disattivate): si vede quante carte mancano e dove andrebbero.
+// Rank delle espansioni per recency: inizio più RECENTE = valore più alto
+// (le espansioni nuove vanno IN CIMA, le vecchie in fondo)
+const espansioneRank = computed<Record<string, number>>(() => {
+  const r: Record<string, number> = {}
+  for (const d of drops.value as any[]) {
+    const t = d?.inizio ? new Date(d.inizio).getTime() : 0
+    r[d.id] = t
+  }
+  return r
+})
+
+// ── Griglia "stile mosse": TUTTO il catalogo ────────────────────────────────
+// Ordinamento DI BASE: raggruppato per espansione (le nuove sopra), poi
+// alfabetico dentro ciascun gruppo. Le possedute mostrano la carta; le altre
+// uno slot placeholder '?'.
 const waifuGridEntries = computed(() => {
+  const rank = espansioneRank.value
   let list = [...props.waifuCat]
-    .sort((a: any, b: any) => String(a.nome ?? a.id).localeCompare(String(b.nome ?? b.id)))
+    .sort((a: any, b: any) => {
+      const ra = rank[a.espansione_id] ?? -1
+      const rb = rank[b.espansione_id] ?? -1
+      if (rb !== ra) return rb - ra   // espansione più recente prima
+      return String(a.nome ?? a.id).localeCompare(String(b.nome ?? b.id))
+    })
     .map((w: any) => {
       const dati = props.collezione.waifu?.[w.id] ?? null
       return { id: w.id as string, w, dati, owned: !!dati }

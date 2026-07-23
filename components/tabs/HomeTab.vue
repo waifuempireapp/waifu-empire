@@ -160,10 +160,15 @@ function aggiornaCountdown() {
   const p = profilo.value
   const HR = TIMER.PACCHETTO_HOURS * 60 * 60 * 1000   // 12h
   const now = Date.now()
-  const raw = p.ultimaRicaricaPacchetti as { toMillis?: () => number; seconds?: number } | number | undefined
-  let lastTs = typeof raw === 'object' && raw !== null
-    ? (raw.toMillis ? raw.toMillis() : (raw.seconds ?? 0) * 1000)
-    : Number(raw) || 0
+  const raw = p.ultimaRicaricaPacchetti as unknown
+  // Il timestamp può arrivare come: JS Date (patch locale post-apertura),
+  // Firestore Timestamp (toMillis), {seconds} serializzato, o numero ms.
+  let lastTs = 0
+  if (raw instanceof Date) lastTs = raw.getTime()
+  else if (raw && typeof raw === 'object') {
+    const o = raw as { toMillis?: () => number; seconds?: number; _seconds?: number }
+    lastTs = o.toMillis ? o.toMillis() : ((o.seconds ?? o._seconds ?? 0) * 1000)
+  } else lastTs = Number(raw) || 0
 
   const persisted = omaggioCount.value
   // Se non c'è ancora un ancoraggio → il timer parte ADESSO (e va persistito)

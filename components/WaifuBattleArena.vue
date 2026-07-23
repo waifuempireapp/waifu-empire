@@ -138,7 +138,7 @@ const BATTLE_CSS = `
     30%, 50%, 70% { transform: translate3d(-4px, -1px, 0); }
     40%, 60% { transform: translate3d(4px, 1px, 0); }
   }
-  @keyframes floatDmg {0%{opacity:1;transform:translateY(0) scale(.82)}20%{transform:translateY(-24px) scale(1.18)}65%{opacity:1;transform:translateY(-55px) scale(1)}100%{opacity:0;transform:translateY(-82px) scale(.85)}}
+  @keyframes floatDmg {0%{opacity:1;transform:translateY(0) scale(.9)}18%{transform:translateY(-22px) scale(1.35)}62%{opacity:1;transform:translateY(-52px) scale(1.12)}100%{opacity:0;transform:translateY(-84px) scale(1)}}
   @keyframes hpCrit   {0%,100%{filter:brightness(1)}50%{filter:brightness(1.8) saturate(1.5)}}
   .wba-hp-crit { animation: hpCrit 0.8s ease-in-out infinite; }
   /* ── Moneta (effetti bloccanti): testa = retro carta · croce = grigio ── */
@@ -1498,7 +1498,7 @@ const mvp = computed(() => {
       >
         <span :style="{
           fontFamily:'var(--ff-label)', fontWeight:900,
-          fontSize: `${Math.min(34, Math.max(18, Math.round(f.dmg / 9) + 14))}px`,
+          fontSize: `${Math.min(56, Math.max(30, Math.round(f.dmg / 6) + 24))}px`,
           color: f.isCrit ? '#f5a623' : '#fff',
           textShadow: f.isCrit
             ? '0 2px 12px rgba(0,0,0,.9),0 0 22px rgba(245,166,35,.6)'
@@ -1876,47 +1876,45 @@ const mvp = computed(() => {
 
         <!-- ── Menù azioni → griglia mosse (il cambio waifu è un popup a parte) ── -->
         <template v-if="!(isSwap || isVolSwap || (allPPOut && isChoose))">
-          <!-- Menù: MOSSE | WAIFU | ABBANDONA — un unico "bottone" (bordo e
-               radius condivisi) con i segmenti divisi da linee verticali -->
+          <!-- Segmented control MOSSE | WAIFU | ABBANDONA — nessun bordo, solo
+               divisori; ABBANDONA è il segmento "selezionato" (gradiente fisso) -->
           <div v-if="actionMenu === 'menu'" :style="{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'10px 12px', minHeight:0 }">
             <div :style="{
               width:'100%', maxWidth:'720px', height:'50%', minHeight:'88px',
               display:'flex', alignItems:'stretch',
               background:'var(--theme-surface-2)',
-              border:'1px solid var(--theme-border-2)',
-              borderRadius:'12px', overflow:'hidden',
+              borderRadius:'14px', overflow:'hidden',
               boxShadow:'0 2px 12px var(--theme-shadow)',
             }">
               <button
                 :disabled="!isChoose || isAnim || (isPvP && pvpWaiting)"
                 @click="actionMenu = 'moves'"
                 :style="{
-                  flex:1.15, background:'none', border:'none',
+                  flex:1, background:'none', border:'none',
                   cursor: (!isChoose || isAnim || (isPvP && pvpWaiting)) ? 'not-allowed' : 'pointer',
-                  fontFamily:'var(--ff-label)', fontSize:'12px', fontWeight:800, letterSpacing:'.14em',
-                  color:'#a78bfa', opacity: (!isChoose || isAnim || (isPvP && pvpWaiting)) ? .35 : 1,
+                  fontFamily:'var(--ff-label)', fontSize:'13px', fontWeight:800, letterSpacing:'.14em',
+                  color:'var(--theme-text-2)', opacity: (!isChoose || isAnim || (isPvP && pvpWaiting)) ? .4 : 1,
                 }"
-              >⚔ MOSSE</button>
-              <div :style="{ width:'1px', background:'var(--theme-border-2)', flexShrink:0 }"/>
+              >MOSSE</button>
+              <div :style="{ width:'1px', background:'var(--theme-border)', margin:'14px 0', flexShrink:0 }"/>
               <button
                 :disabled="swapDisabled"
                 @click="startVoluntarySwap"
                 :style="{
                   flex:1, background:'none', border:'none',
                   cursor: swapDisabled ? 'not-allowed' : 'pointer',
-                  fontFamily:'var(--ff-label)', fontSize:'12px', fontWeight:800, letterSpacing:'.14em',
-                  color:'#00b4ff', opacity: swapDisabled ? .35 : 1,
+                  fontFamily:'var(--ff-label)', fontSize:'13px', fontWeight:800, letterSpacing:'.14em',
+                  color:'var(--theme-text-2)', opacity: swapDisabled ? .4 : 1,
                 }"
-              >↻ WAIFU</button>
-              <div :style="{ width:'1px', background:'var(--theme-border-2)', flexShrink:0 }"/>
+              >WAIFU</button>
+              <div :style="{ width:'1px', background:'var(--theme-border)', margin:'14px 0', flexShrink:0 }"/>
               <button
                 @click="confirmQuit = true"
                 :style="{
                   flex:1, border:'none', cursor:'pointer',
-                  background:'none',
-                  boxShadow:'inset 0 0 0 1.5px rgba(255,77,77,.55)',
-                  fontFamily:'var(--ff-label)', fontSize:'12px', fontWeight:800, letterSpacing:'.14em',
-                  color:'#ff4d4d',
+                  background:'var(--grad-primary)',
+                  fontFamily:'var(--ff-label)', fontSize:'13px', fontWeight:900, letterSpacing:'.14em',
+                  color:'#fff',
                 }"
               >ABBANDONA</button>
             </div>

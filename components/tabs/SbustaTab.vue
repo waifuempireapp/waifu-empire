@@ -540,7 +540,21 @@ function apriMulti(tipoPacchetto: string) {
   apriMultiSequenza(Array(Math.min(10, disp)).fill(tipoPacchetto))
 }
 
-// Lo stack resta FERMO finché l'utente non tocca → poi uscita una alla volta
+// Swipe (come APRI 1) per aprire: si trascina la PRIMA bustina verso il basso,
+// le altre cadono di conseguenza. Un semplice tap non basta: serve lo swipe.
+const stackSwipeY = ref<number | null>(null)
+function onStackPointerDown(e: PointerEvent) {
+  if (multiPhase.value !== 'stack' || !stackReadyUi.value) return
+  stackSwipeY.value = e.clientY
+}
+function onStackPointerUp(e: PointerEvent) {
+  if (multiPhase.value !== 'stack' || stackSwipeY.value === null) return
+  const dy = e.clientY - stackSwipeY.value
+  stackSwipeY.value = null
+  if (dy > 34) onStackTap() // swipe verso il basso → apri
+}
+
+// Lo stack resta FERMO finché l'utente non fa swipe → poi uscita una alla volta
 async function onStackTap() {
   if (multiPhase.value !== 'stack') return
   // Scena 3D non disponibile → niente cerimonia, dritto alle carte
@@ -551,10 +565,10 @@ async function onStackTap() {
     if (multiPhase.value !== 'exiting') return  // utente ha premuto SALTA
     multiExitedCount.value = i + 1
     packStackRef.value?.animateSinglePackExit(i)  // fire-and-forget → effetto cascata
-    await delay(120)                              // cascata un po' più lenta tra una e l'altra
+    await delay(160)                              // cascata più lenta/smooth tra una e l'altra
   }
   if (multiPhase.value !== 'exiting') return
-  await delay(1500)                                // attende la fine dell'ultima animazione
+  await delay(1700)                                // attende la fine dell'ultima animazione (dur 640)
   startMultiReveal()
 }
 
@@ -985,8 +999,10 @@ function cfTouchEnd(e: TouchEvent) {
         opacity: (multiPhase === 'stack' || multiPhase === 'exiting') ? 1 : 0,
         pointerEvents: (multiPhase === 'stack' || multiPhase === 'exiting') ? 'auto' : 'none',
         transition: 'opacity 0.4s ease',
+        touchAction: 'none',
       }"
-      @click="onStackTap">
+      @pointerdown="onStackPointerDown"
+      @pointerup="onStackPointerUp">
       <!-- Contatore / titolo -->
       <p class="pack-stack-label">
         <template v-if="multiPhase === 'exiting'">{{ $t('sbusta.exit_count', { n: multiExitedCount, total: multiPackCarte.length }) }}</template>
@@ -1022,7 +1038,7 @@ function cfTouchEnd(e: TouchEvent) {
       </div>
 
       <!-- Hint pulsante (solo a stack fermo) -->
-      <p v-if="multiPhase === 'stack'" class="pack-stack-hint">{{ $t('sbusta.tap_to_open') }}</p>
+      <p v-if="multiPhase === 'stack'" class="pack-stack-hint">{{ $t('sbusta.swipe_to_open') }}</p>
 
       <!-- SALTA → solo durante l'uscita -->
       <button v-if="multiPhase === 'exiting'" class="multi-skip-btn" @click.stop="skipMultiOpening">{{ $t('sbusta.skip_exit') }}</button>
@@ -1713,6 +1729,9 @@ function cfTouchEnd(e: TouchEvent) {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
+/* Bordo 5px anche sul RETRO durante il flip (il fronte è la CartaWaifu, che
+   ha gia' il suo outline 5px) */
+.reveal-flip__face--back { outline: 5px solid rgba(174,156,255,0.55); outline-offset: -1px; border-radius: 14px; }
 /* Il fronte è la carta in flusso normale (definisce la dimensione del body) */
 .reveal-flip__face--front {
   position: relative;

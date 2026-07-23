@@ -126,7 +126,7 @@
   --text-mute:    #6b6390;
   --text-faint:   #3e3760;
 
-  /* Tipografia — 2 famiglie ROTONDE e morbide (stile Pokémon Pocket):
+  /* Tipografia — 2 famiglie ROTONDE e morbide (stile card-game morbido):
      Fredoka per titoli/display, Nunito per tutto il resto.
      I numeri usano Nunito con cifre tabulari (via --ff-mono alias). */
   --ff-display:  'Fredoka', 'Nunito', system-ui, sans-serif;
@@ -184,7 +184,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   POKÉMON TCG POCKET DESIGN SYSTEM — WAIFU EMPIRE EDITION
+   WAIFU EMPIRE — DESIGN SYSTEM (card-game collezionabile)
    (lavanda al posto dell'azzurrino)
 ══════════════════════════════════════════════════════════════════ */
 :root {
@@ -2377,7 +2377,7 @@ input:focus, textarea:focus, select:focus {
   }
 }
 
-/* ===== Pokémon Pocket style peek — draggable card stack ===== */
+/* ===== Peek draggabile — draggable card stack ===== */
 .sb-pocket-peek {
   position: fixed; inset: 0; z-index: 200;
   background: rgba(3,2,12,0.88); backdrop-filter: blur(14px);
@@ -2622,7 +2622,7 @@ img {
 }
 
 /* =====================================================================
-   POKÉMON TCG POCKET INSPIRED UI CLASSES
+   UI CLASSES — CARD-GAME COLLEZIONABILE STYLE
    Prefissi: nav- (bottom nav), glass- (glassmorphism), pack- (hero pack),
              sub-nav- (pill navigation), rarity-glow-* (card borders),
              section- (section headers), btn-premium (CTA buttons)

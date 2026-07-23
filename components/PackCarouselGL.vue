@@ -103,6 +103,7 @@ async function init() {
     const THREE = await import('three')
     T3 = THREE
     const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
+    const { MeshoptDecoder } = await import('three/examples/jsm/libs/meshopt_decoder.module.js')
     const { RoomEnvironment } = await import('three/examples/jsm/environments/RoomEnvironment.js')
 
     const W = props.width, H = props.height
@@ -152,6 +153,7 @@ async function init() {
       return m
     }
     const loader = new GLTFLoader()
+    loader.setMeshoptDecoder(MeshoptDecoder)
     let src: import('three').Mesh | null = null
     try {
       src = findMesh(await loader.loadAsync(props.modelUrl || DEFAULT_BUSTINA))

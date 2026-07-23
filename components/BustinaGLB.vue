@@ -31,7 +31,10 @@ function _posterSave(key: string, shot: string): void {
 
 async function _loadMeshRaw(url: string): Promise<import('three').Mesh> {
   const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
-  const gltf = await new GLTFLoader().loadAsync(url)
+  const { MeshoptDecoder } = await import('three/examples/jsm/libs/meshopt_decoder.module.js')
+  const loader = new GLTFLoader()
+  loader.setMeshoptDecoder(MeshoptDecoder)
+  const gltf = await loader.loadAsync(url)
   // Trova la prima Mesh nella gerarchia (struttura GLB variabile)
   let found: import('three').Mesh | null = null
   gltf.scene.traverse((o: import('three').Object3D) => {

@@ -68,6 +68,7 @@ async function init() {
   try {
     const THREE = await import('three')
     const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
+    const { MeshoptDecoder } = await import('three/examples/jsm/libs/meshopt_decoder.module.js')
     const { RoomEnvironment } = await import('three/examples/jsm/environments/RoomEnvironment.js')
     ;(window as any).__THREE__ = THREE
 
@@ -117,6 +118,7 @@ async function init() {
       return m
     }
     const loader = new GLTFLoader()
+    loader.setMeshoptDecoder(MeshoptDecoder)
     let src: import('three').Mesh | null = null
     try {
       src = findMesh(await loader.loadAsync(props.modelUrl || DEFAULT_GLB))
@@ -214,7 +216,7 @@ function startLoop(_THREE: typeof import('three')) {
   loop()
 }
 
-// Uscita di UNA singola bustina (la frontale tra quelle rimaste): vola verso l'alto.
+// Uscita di UNA singola bustina (la frontale tra quelle rimaste): CADE verso il basso.
 // Fire-and-forget: avvia l'animazione e ritorna SUBITO, così le uscite si
 // possono sovrapporre (effetto cascata/raffica con pause brevi).
 function animateSinglePackExit(index: number): void {
@@ -229,18 +231,20 @@ function animateSinglePackExit(index: number): void {
     if (meshStates[i] === 'idle') { targets[i] = stackPos(k); k++ }
   }
 
-  const dur = 300
+  const dur = 640 // più lento → caduta smooth
   const start = performance.now()
   const sp = m.position.clone()
   const sr = m.rotation.clone()
   const ss = m.scale.x
+  const drift = (index % 2 === 0 ? -1 : 1) * 0.35 // leggera oscillazione L/R alternata
   const step = (now: number) => {
     const p = Math.min((now - start) / dur, 1)
-    const e = 1 - Math.pow(1 - p, 3) // ease-out cubic
-    m.position.set(sp.x + e * 0.5, sp.y + e * 4, sp.z + e * 1)
-    m.rotation.z = sr.z + e * 0.3
-    m.rotation.x = sr.x - e * 0.2
-    if (p > 0.6) { const f = (p - 0.6) / 0.4; m.scale.setScalar((1 - f) * ss) }
+    const eIn = p * p            // accelerazione tipo gravità sulla caduta verticale
+    const eOut = 1 - Math.pow(1 - p, 3) // rotazione/deriva morbide
+    m.position.set(sp.x + eOut * drift, sp.y - eIn * 5.2, sp.z + eOut * 0.6)
+    m.rotation.z = sr.z + eOut * 0.28 * (drift < 0 ? -1 : 1)
+    m.rotation.x = sr.x + eOut * 0.22
+    if (p > 0.7) { const f = (p - 0.7) / 0.3; m.scale.setScalar((1 - f) * ss) }
     if (p >= 1) { m.visible = false; meshStates[index] = 'gone' }
     else requestAnimationFrame(step)
   }
