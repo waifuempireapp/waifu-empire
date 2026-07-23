@@ -348,10 +348,10 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
       <!-- Chip quantità TOTALE pacchetti — alto a SINISTRA (-20,-20), solo se > 3 -->
       <div v-if="totalPack > 3" class="ht-hero-badge ht-hero-badge--total">×{{ totalPack }}</div>
 
-      <!-- Chip bustine omaggio N/3 + tempo alla ricarica completa — alto a DESTRA (-20,-20) -->
+      <!-- Chip bustine omaggio N/3 + tempo alla PROSSIMA bustina — alto a DESTRA -->
       <div class="ht-hero-badge ht-hero-badge--omaggio">
         <b>{{ omaggioEff }}/{{ OMAGGIO_MAX }}</b>
-        <span v-if="omaggioEff < OMAGGIO_MAX && countdownFull" class="ht-hero-badge__timer">{{ countdownFull }}</span>
+        <span v-if="omaggioEff < OMAGGIO_MAX && countdown" class="ht-hero-badge__timer">{{ countdown }}</span>
         <span v-else class="ht-hero-badge__timer">✓</span>
       </div>
     </div><!-- /ht-hero-wrap -->

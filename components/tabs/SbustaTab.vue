@@ -100,9 +100,8 @@ const multiPackIndice = ref(0)
 
 // ── APRI 10: tre fasi (stack fermo → uscita una alla volta → reveal a gruppi di 5) ──
 const multiPhase = ref<'stack' | 'exiting' | 'revealing'>('stack')
-const multiExitedCount = ref(0)     // quante bustine sono già uscite
 const multiPackDivider = ref(false) // intermezzo "Bustina X completata" tra i gruppi
-const packStackRef = ref<{ animateSinglePackExit: (i: number) => void } | null>(null)
+const packStackRef = ref<unknown>(null)
 // Stack 3D fallito (WebView senza WebGL): salta la cerimonia di uscita
 const stackFailed = ref(false)
 const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
@@ -492,7 +491,6 @@ async function apriMultiSequenza(seq: string[]) {
   bustaInAnimazione.value = false
   multiPhase.value = 'stack'
   stackReadyUi.value = false
-  multiExitedCount.value = 0
   stato.value = 'reveal_multi'
 
   // Tracking missioni giornaliere
@@ -540,36 +538,20 @@ function apriMulti(tipoPacchetto: string) {
   apriMultiSequenza(Array(Math.min(10, disp)).fill(tipoPacchetto))
 }
 
-// Swipe (come APRI 1) per aprire: si trascina la PRIMA bustina verso il basso,
-// le altre cadono di conseguenza. Un semplice tap non basta: serve lo swipe.
-const stackSwipeY = ref<number | null>(null)
-function onStackPointerDown(e: PointerEvent) {
-  if (multiPhase.value !== 'stack' || !stackReadyUi.value) return
-  stackSwipeY.value = e.clientY
+// La cerimonia (swipe-taglio della frontale, come APRI 1) e la caduta a cascata
+// a tutto schermo avvengono DENTRO PackStackGL, che emette 'opening' quando
+// parte la caduta e 'opened' a caduta finita.
+function onStackOpening() {
+  if (multiPhase.value === 'stack') multiPhase.value = 'exiting'
 }
-function onStackPointerUp(e: PointerEvent) {
-  if (multiPhase.value !== 'stack' || stackSwipeY.value === null) return
-  const dy = e.clientY - stackSwipeY.value
-  stackSwipeY.value = null
-  if (dy > 34) onStackTap() // swipe verso il basso → apri
+function onStackOpened() {
+  if (multiPhase.value === 'exiting') startMultiReveal()
 }
-
-// Lo stack resta FERMO finché l'utente non fa swipe → poi uscita una alla volta
-async function onStackTap() {
-  if (multiPhase.value !== 'stack') return
-  // Scena 3D non disponibile → niente cerimonia, dritto alle carte
-  if (stackFailed.value) { startMultiReveal(); return }
-  multiPhase.value = 'exiting'
-  const n = multiPackCarte.value.length
-  for (let i = 0; i < n; i++) {
-    if (multiPhase.value !== 'exiting') return  // utente ha premuto SALTA
-    multiExitedCount.value = i + 1
-    packStackRef.value?.animateSinglePackExit(i)  // fire-and-forget → effetto cascata
-    await delay(160)                              // cascata più lenta/smooth tra una e l'altra
-  }
-  if (multiPhase.value !== 'exiting') return
-  await delay(1700)                                // attende la fine dell'ultima animazione (dur 640)
-  startMultiReveal()
+// Scena 3D non disponibile (WebGL ko): niente cerimonia, dritto alle carte
+function onStackUnavailable() {
+  stackFailed.value = true
+  spegniVelo()
+  if (multiPhase.value === 'stack') startMultiReveal()
 }
 
 function skipMultiOpening() {
@@ -987,26 +969,37 @@ function cfTouchEnd(e: TouchEvent) {
       <span class="reveal-ff-btn__label">{{ $t('sbusta.skip') }}</span>
     </button>
 
-    <!-- 1a. APRI 10 — stack FERMO → (tap) → uscita una alla volta -->
+    <!-- 1a. APRI 10 — stack a TUTTO SCHERMO → (swipe-taglio della frontale) →
+         tutte le bustine cadono a cascata (cerimonia dentro PackStackGL) -->
     <div v-if="stato === 'reveal_multi' && (multiPhase === 'stack' || multiPhase === 'exiting' || stackLinger)"
       class="pack-stack-scene"
       :style="{
         position:'absolute', inset:0,
         zIndex: (multiPhase === 'stack' || multiPhase === 'exiting') ? 250 : 2,
-        display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
         background:`radial-gradient(circle at center, ${dropColore}28 0%, transparent 100%)`,
         overflow:'hidden',
         opacity: (multiPhase === 'stack' || multiPhase === 'exiting') ? 1 : 0,
         pointerEvents: (multiPhase === 'stack' || multiPhase === 'exiting') ? 'auto' : 'none',
         transition: 'opacity 0.4s ease',
-        touchAction: 'none',
-      }"
-      @pointerdown="onStackPointerDown"
-      @pointerup="onStackPointerUp">
-      <!-- Contatore / titolo -->
-      <p class="pack-stack-label">
-        <template v-if="multiPhase === 'exiting'">{{ $t('sbusta.exit_count', { n: multiExitedCount, total: multiPackCarte.length }) }}</template>
-        <template v-else>{{ $t('sbusta.n_packs_label', { n: multiPackCarte.length }) }}</template>
+      }">
+      <!-- Stack 3D a TUTTO SCHERMO: la caduta esce dal fondo dello schermo -->
+      <PackStackGL
+        ref="packStackRef"
+        @ready="stackReadyUi = true; spegniVelo()"
+        @failed="onStackUnavailable"
+        @opening="onStackOpening"
+        @opened="onStackOpened"
+        :count="multiPackCarte.length"
+        :color="dropColore"
+        :texture-url="dropAttivo?.asset_bustina ?? null"
+        :model-url="bustinaGlbUrl(dropAttivo)"
+        :width="vw" :height="vh"
+        style="position:absolute;inset:0;"
+      />
+
+      <!-- Titolo in overlay -->
+      <p class="pack-stack-label" style="position:absolute;top:calc(24px + env(safe-area-inset-top));left:0;right:0;z-index:3;pointer-events:none;">
+        {{ $t('sbusta.n_packs_label', { n: multiPackCarte.length }) }}
       </p>
 
       <!-- Velo di caricamento: copre finché lo stack non ha renderizzato -->
@@ -1021,26 +1014,10 @@ function cfTouchEnd(e: TouchEvent) {
         <AppLoading />
       </div>
 
-      <div class="pack-stack-container">
-        <!-- Stack 3D: 1 sola scena Three.js con N cloni del modello .glb -->
-        <PackStackGL
-          ref="packStackRef"
-          @ready="stackReadyUi = true; spegniVelo()"
-          @failed="stackFailed = true; spegniVelo()"
-          :count="multiPackCarte.length"
-          :color="dropColore"
-          :texture-url="dropAttivo?.asset_bustina ?? null"
-          :model-url="bustinaGlbUrl(dropAttivo)"
-          :width="300" :height="420"
-        />
-        <!-- Riflesso finto sotto il canvas -->
-        <div v-if="multiPhase === 'stack'" class="pack-stack-reflection-fake" />
-      </div>
-
       <!-- Hint pulsante (solo a stack fermo) -->
-      <p v-if="multiPhase === 'stack'" class="pack-stack-hint">{{ $t('sbusta.swipe_to_open') }}</p>
+      <p v-if="multiPhase === 'stack'" class="pack-stack-hint" style="position:absolute;bottom:calc(48px + env(safe-area-inset-bottom));left:0;right:0;z-index:3;pointer-events:none;">{{ $t('sbusta.swipe_to_open') }}</p>
 
-      <!-- SALTA → solo durante l'uscita -->
+      <!-- SALTA → solo durante la caduta -->
       <button v-if="multiPhase === 'exiting'" class="multi-skip-btn" @click.stop="skipMultiOpening">{{ $t('sbusta.skip_exit') }}</button>
     </div>
 

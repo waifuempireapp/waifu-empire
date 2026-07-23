@@ -1,9 +1,15 @@
 <!-- ============================================================
   PackStackGL — UNA sola scena Three.js con N cloni del modello
-  bustina_asset.glb impilati a ventaglio (1 solo contesto WebGL).
-  Luci/materiali/environment IDENTICI a BustinaGLB.
-  Emette 'ready' al primo frame. animateSinglePackExit(i) esposto al parent:
-  fa volare via la i-esima bustina; le rimanenti si compattano.
+  bustina impilati a ventaglio (1 solo contesto WebGL).
+  Luci/materiali/environment IDENTICI a BustinaGLB/PackCarouselGL.
+  Cerimonia IDENTICA ad APRI 1: si SWIPE-taglia la bustina frontale
+  (linea di taglio luminosa che segue il dito) e, completato il taglio,
+  TUTTE le bustine CADONO in basso a tutto schermo (come le carte reveal),
+  a cascata, la frontale per prima. Emette:
+    ready    — primo frame pronto
+    failed   — init WebGL fallito (il parent salta la cerimonia)
+    opening  — taglio completato: parte la caduta
+    opened   — tutte le bustine cadute: il parent mostra le carte
   ============================================================ -->
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
@@ -17,14 +23,16 @@ const props = withDefaults(defineProps<{
   height?:     number
 }>(), { count: 10, width: 300, height: 420 })
 
-const emit = defineEmits<{ ready: []; failed: [] }>()
+const emit = defineEmits<{ ready: []; failed: []; opening: []; opened: [] }>()
 
 // Bounds del modello (identici a BustinaGLB) per il planar UV mapping
 const XMIN = -0.5768, XMAX = 0.5731
 const YMIN = -1.0038, YMAX = 1.0008
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+const glReady   = ref(false)
 
+let T3: typeof import('three') | null = null
 let renderer: import('three').WebGLRenderer     | null = null
 let scene:    import('three').Scene             | null = null
 let camera:   import('three').PerspectiveCamera | null = null
@@ -33,11 +41,18 @@ let sharedGeo: import('three').BufferGeometry | null = null
 let sharedMat: import('three').Material | null = null
 let animId: number | null = null
 let ctxListenersAttached = false
-let tapped = false   // diventa true al primo exit: ferma il float, attiva la compattazione
-type MeshState = 'idle' | 'exiting' | 'gone'
-let meshStates: MeshState[] = []
-const basePositions: { x: number; y: number; z: number; s: number }[] = []
-const targets: { x: number; y: number; z: number; s: number }[] = []  // posizioni compattate
+
+// Fasi: stack (attesa taglio) → falling (tutte cadono) → done
+type Phase = 'stack' | 'falling' | 'done'
+let phase: Phase = 'stack'
+let fallStart = 0
+const fallBase: { x: number; y: number; z: number; s: number; drift: number; rot: number }[] = []
+
+const FALL_DUR = 680   // durata caduta singola bustina (smooth)
+const STAGGER  = 120   // ritardo a cascata tra una bustina e l'altra
+
+// Scala di base dell'intero stack (la frontale è la più grande)
+const BASE_SCALE = 0.9
 
 function applyPlanarUVs(geo: import('three').BufferGeometry, THREE: typeof import('three')) {
   const pos = geo.attributes.position
@@ -53,9 +68,9 @@ function applyPlanarUVs(geo: import('three').BufferGeometry, THREE: typeof impor
   geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2))
 }
 
-// Posizione di stack: sfalsata verso destra/alto e dietro
+// Posizione di stack: la frontale (i=0) al centro, le altre sfalsate dietro
 function stackPos(i: number) {
-  return { x: i * 0.06, y: i * 0.03, z: -i * 0.13, s: 1 - i * 0.012 }
+  return { x: i * 0.05, y: i * 0.02, z: -i * 0.12, s: (1 - i * 0.012) * BASE_SCALE }
 }
 
 async function init() {
@@ -67,6 +82,7 @@ async function init() {
   }
   try {
     const THREE = await import('three')
+    T3 = THREE
     const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')
     const { MeshoptDecoder } = await import('three/examples/jsm/libs/meshopt_decoder.module.js')
     const { RoomEnvironment } = await import('three/examples/jsm/environments/RoomEnvironment.js')
@@ -93,10 +109,11 @@ async function init() {
     }
 
     scene = new THREE.Scene()
-    // Camera: stesso fov di BustinaGLB, arretrata per inquadrare lo stack a ventaglio
-    camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 100)
-    camera.position.set(0.16, 0.12, 4.2)
-    camera.lookAt(0.16, 0.12, -0.5)
+    // Canvas a tutto schermo: camera frontale centrata sulla bustina di testa.
+    // fov verticale ampio così la caduta esce SEMPRE dal fondo dello schermo.
+    camera = new THREE.PerspectiveCamera(46, W / H, 0.1, 100)
+    camera.position.set(0, 0, 5.4)
+    camera.lookAt(0, 0, 0)
 
     // Environment + luci IDENTICHE a BustinaGLB
     const pmrem = new THREE.PMREMGenerator(renderer)
@@ -134,15 +151,14 @@ async function init() {
     sharedGeo = src.geometry.clone()
 
     if (useModelMat) {
-      // Il GLB dell'espansione ha la texture incorporata → usa il SUO materiale
-      // (prima veniva ignorato: lo stack appariva come blob colorato senza grafica)
       const m = srcMat!.clone()
       if (m.map) m.map.colorSpace = THREE.SRGBColorSpace
-      m.envMapIntensity = 1.2
+      if ((m as unknown as { envMapIntensity?: number }).envMapIntensity !== undefined) {
+        (m as unknown as { envMapIntensity: number }).envMapIntensity = 1.2
+      }
       sharedMat = m
     } else {
       applyPlanarUVs(sharedGeo, THREE)
-      // Texture espansione (condivisa da tutti i cloni)
       let tex: import('three').Texture | undefined
       if (props.textureUrl) {
         try { tex = await new THREE.TextureLoader().loadAsync(props.textureUrl); tex.colorSpace = THREE.SRGBColorSpace } catch { /* colore base */ }
@@ -168,15 +184,13 @@ async function init() {
       m.renderOrder = n - i  // il frontale davanti
       scene.add(m)
       meshes.push(m)
-      basePositions.push(p)
-      targets.push({ ...p })
-      meshStates.push('idle')
     }
 
+    computeCutLine()
     renderer.render(scene, camera)
     // 2 frame di sicurezza poi 'ready' (anti-FOUC)
-    requestAnimationFrame(() => requestAnimationFrame(() => emit('ready')))
-    startLoop(THREE)
+    requestAnimationFrame(() => requestAnimationFrame(() => { glReady.value = true; emit('ready') }))
+    startLoop()
   } catch (e) {
     console.error('[PackStackGL] init failed', e)
     rethrowIfStaleChunk(e)  // chunk vecchio post-deploy → chunk-reload ricarica
@@ -185,7 +199,9 @@ async function init() {
   }
 }
 
-function startLoop(_THREE: typeof import('three')) {
+const easeOut = (p: number) => 1 - Math.pow(1 - p, 3)
+
+function startLoop() {
   const t0 = performance.now()
   const loop = () => {
     animId = requestAnimationFrame(loop)
@@ -193,65 +209,106 @@ function startLoop(_THREE: typeof import('three')) {
     const now = performance.now()
     const t = (now - t0) / 1000
 
-    for (let i = 0; i < meshes.length; i++) {
-      const m = meshes[i]
-      if (meshStates[i] === 'exiting' || meshStates[i] === 'gone') continue
-      const tg = targets[i]
-      if (!tapped) {
-        // Stack fermo: leggerissimo float di attesa
-        m.position.x += (tg.x - m.position.x) * 0.12
-        m.position.z += (tg.z - m.position.z) * 0.12
-        m.position.y += (tg.y + Math.sin(t * 0.8 + i * 0.2) * 0.012 - m.position.y) * 0.12
-        m.rotation.y = Math.sin(t * 0.4) * 0.04
-      } else {
-        // Dopo il tap: le bustine rimaste si compattano verso il centro
-        m.position.x += (tg.x - m.position.x) * 0.15
-        m.position.y += (tg.y - m.position.y) * 0.15
-        m.position.z += (tg.z - m.position.z) * 0.15
-        m.rotation.y += (0 - m.rotation.y) * 0.15
+    if (phase === 'stack') {
+      // Stack fermo: leggerissimo float d'attesa sulla frontale + respiro stack
+      for (let i = 0; i < meshes.length; i++) {
+        const m = meshes[i]
+        const p = stackPos(i)
+        m.position.y = p.y + Math.sin(t * 0.8 + i * 0.2) * 0.012
+        m.rotation.y = Math.sin(t * 0.4) * 0.035
       }
+    } else if (phase === 'falling') {
+      let allDone = true
+      for (let i = 0; i < meshes.length; i++) {
+        const m = meshes[i]
+        const b = fallBase[i]
+        const local = now - fallStart - i * STAGGER
+        if (local < 0) { allDone = false; continue }   // ancora in attesa del suo turno
+        const p = Math.min(local / FALL_DUR, 1)
+        if (p < 1) allDone = false
+        const eIn = p * p                 // accelerazione tipo gravità (come le carte)
+        const eo = easeOut(p)
+        // Caduta verticale a tutto schermo + leggera deriva/rotazione (~9°)
+        m.position.set(b.x + eo * b.drift, b.y - eIn * 9, b.z + eo * 0.4)
+        m.rotation.z = eo * b.rot
+        m.rotation.x = eo * 0.14
+        if (p >= 1) m.visible = false
+      }
+      if (allDone) { phase = 'done'; emit('opened') }
     }
+
     renderer.render(scene, camera)
   }
   loop()
 }
 
-// Uscita di UNA singola bustina (la frontale tra quelle rimaste): CADE verso il basso.
-// Fire-and-forget: avvia l'animazione e ritorna SUBITO, così le uscite si
-// possono sovrapporre (effetto cascata/raffica con pause brevi).
-function animateSinglePackExit(index: number): void {
-  tapped = true
-  const m = meshes[index]
-  if (!m || meshStates[index] !== 'idle') return
-  meshStates[index] = 'exiting'
+// ── SWIPE-TAGLIO (come APRI 1) sulla bustina FRONTALE ────────────────────────
+// La bustina resta ferma: lo swipe muove una scintilla lungo la linea di taglio;
+// completato il taglio DA PARTE A PARTE → parte la caduta a cascata.
+let ripDrag = false
+let ripFired = false
+let cutDir: 'ltr' | 'rtl' = 'ltr'
+const cutLine = ref<{ y: number; xL: number; xR: number } | null>(null)
+const cutOn   = ref(false)
+const cutX    = ref(0)
+const cutFrom = ref(0)
 
-  // Ricompatta le rimanenti: assegna nuovi target di stack partendo da 0
-  let k = 0
-  for (let i = 0; i < meshes.length; i++) {
-    if (meshStates[i] === 'idle') { targets[i] = stackPos(k); k++ }
+/** Proietta la linea di taglio (bordo alto della frontale) in pixel schermo. */
+function computeCutLine() {
+  if (!T3 || !camera) return
+  const s = stackPos(0).s
+  const yWorld = 0.64 * s              // al confine crimpatura/artwork
+  const toPx = (xWorld: number) => {
+    const v = new T3!.Vector3(xWorld, yWorld, 0).project(camera!)
+    return { x: (v.x * 0.5 + 0.5) * props.width, y: (-v.y * 0.5 + 0.5) * props.height }
   }
-
-  const dur = 640 // più lento → caduta smooth
-  const start = performance.now()
-  const sp = m.position.clone()
-  const sr = m.rotation.clone()
-  const ss = m.scale.x
-  const drift = (index % 2 === 0 ? -1 : 1) * 0.35 // leggera oscillazione L/R alternata
-  const step = (now: number) => {
-    const p = Math.min((now - start) / dur, 1)
-    const eIn = p * p            // accelerazione tipo gravità sulla caduta verticale
-    const eOut = 1 - Math.pow(1 - p, 3) // rotazione/deriva morbide
-    m.position.set(sp.x + eOut * drift, sp.y - eIn * 5.2, sp.z + eOut * 0.6)
-    m.rotation.z = sr.z + eOut * 0.28 * (drift < 0 ? -1 : 1)
-    m.rotation.x = sr.x + eOut * 0.22
-    if (p > 0.7) { const f = (p - 0.7) / 0.3; m.scale.setScalar((1 - f) * ss) }
-    if (p >= 1) { m.visible = false; meshStates[index] = 'gone' }
-    else requestAnimationFrame(step)
-  }
-  requestAnimationFrame(step)
+  const L = toPx(-0.56 * s)
+  const R = toPx(0.56 * s)
+  cutLine.value = { y: (L.y + R.y) / 2, xL: L.x, xR: R.x }
 }
 
-defineExpose({ animateSinglePackExit })
+function startFalling() {
+  if (phase !== 'stack') return
+  phase = 'falling'
+  fallStart = performance.now()
+  fallBase.length = 0
+  for (let i = 0; i < meshes.length; i++) {
+    const m = meshes[i]
+    fallBase.push({
+      x: m.position.x, y: m.position.y, z: m.position.z, s: m.scale.x,
+      drift: (i % 2 === 0 ? -1 : 1) * (0.25 + (i % 3) * 0.12),
+      rot: (i % 2 === 0 ? -1 : 1) * (0.12 + (i % 4) * 0.03), // ~7-15°
+    })
+  }
+  emit('opening')
+}
+
+function onPointerDown(e: PointerEvent) {
+  if (phase !== 'stack' || ripFired || !cutLine.value) return
+  ripDrag = true
+  const mid = (cutLine.value.xL + cutLine.value.xR) / 2
+  cutDir = e.clientX <= mid ? 'ltr' : 'rtl'
+  cutFrom.value = cutDir === 'ltr' ? cutLine.value.xL : cutLine.value.xR
+  cutX.value = Math.max(cutLine.value.xL, Math.min(cutLine.value.xR, e.clientX))
+  cutOn.value = true
+  ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
+}
+function onPointerMove(e: PointerEvent) {
+  if (!ripDrag || phase !== 'stack' || !cutLine.value) return
+  const { xL, xR } = cutLine.value
+  cutX.value = Math.max(xL, Math.min(xR, e.clientX))
+  const done = cutDir === 'ltr' ? cutX.value >= xR - 2 : cutX.value <= xL + 2
+  if (done && !ripFired) {
+    ripFired = true
+    ripDrag = false
+    cutOn.value = false
+    startFalling()
+  }
+}
+function onPointerUp() {
+  // Rilascio senza taglio completo: la scintilla svanisce (serve lo swipe intero)
+  if (ripDrag) { ripDrag = false; cutOn.value = false }
+}
 
 onMounted(() => { init() })
 
@@ -263,7 +320,7 @@ onBeforeUnmount(() => {
   sharedMat?.dispose()
   sharedGeo = null; sharedMat = null
   scene?.clear()
-  scene = null; camera = null; meshes = []; meshStates = []
+  scene = null; camera = null; meshes = []
   if (renderer) {
     renderer.dispose()
     renderer.forceContextLoss()
@@ -273,8 +330,59 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <canvas
-    ref="canvasRef"
-    :style="{ width: width + 'px', height: height + 'px', display: 'block' }"
-  />
+  <div :style="{ position: 'relative', width: width + 'px', height: height + 'px' }">
+    <canvas
+      ref="canvasRef"
+      :style="{ width: width + 'px', height: height + 'px', display: 'block', touchAction: 'none', cursor: 'grab',
+                opacity: glReady ? 1 : 0, transition: 'opacity 0.35s ease' }"
+      @pointerdown="onPointerDown"
+      @pointermove="onPointerMove"
+      @pointerup="onPointerUp"
+      @pointercancel="onPointerUp"
+      @pointerleave="onPointerUp"
+    />
+    <!-- LINEA DI TAGLIO: traccia luminosa che segue il dito sulla frontale -->
+    <template v-if="cutOn && cutLine">
+      <div class="psg-cut-guide" :style="{
+        left: cutLine.xL + 'px', width: (cutLine.xR - cutLine.xL) + 'px', top: (cutLine.y - 1) + 'px',
+      }" />
+      <div class="psg-cut-done" :style="{
+        left: Math.min(cutFrom, cutX) + 'px',
+        width: Math.abs(cutX - cutFrom) + 'px',
+        top: (cutLine.y - 2) + 'px',
+      }" />
+      <div class="psg-cut-spark" :style="{ left: cutX + 'px', top: cutLine.y + 'px' }" />
+    </template>
+  </div>
 </template>
+
+<style scoped>
+/* ── Effetti del TAGLIO (identici ad APRI 1) ── */
+.psg-cut-guide {
+  position: absolute; height: 4px; pointer-events: none; z-index: 6;
+  background: rgba(255,255,255,0.10);
+  border-radius: 3px;
+  filter: blur(3px);
+}
+.psg-cut-done {
+  position: absolute; height: 8px; pointer-events: none; z-index: 7;
+  background: linear-gradient(90deg, rgba(255,240,190,0.8), rgba(255,255,255,0.95));
+  border-radius: 5px;
+  filter: blur(4px);
+  box-shadow: 0 0 16px rgba(255,225,140,0.85), 0 0 40px rgba(255,190,80,0.5);
+}
+.psg-cut-spark {
+  position: absolute; width: 18px; height: 18px; pointer-events: none; z-index: 8;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, rgba(255,235,170,0.95) 35%, rgba(255,190,80,0.35) 65%, transparent 75%);
+  box-shadow:
+    0 0 14px 4px rgba(255,230,150,0.9),
+    0 0 34px 10px rgba(255,180,70,0.45);
+  animation: psgSpark 0.5s ease-in-out infinite alternate;
+}
+@keyframes psgSpark {
+  from { transform: translate(-50%, -50%) scale(0.85); }
+  to   { transform: translate(-50%, -50%) scale(1.25); }
+}
+</style>
