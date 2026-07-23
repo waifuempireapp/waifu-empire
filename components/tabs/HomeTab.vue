@@ -506,7 +506,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
 }
 
 /* Badge quantità pack */
-.ht-hero-wrap { position: relative; }
+.ht-hero-wrap { position: relative; margin-top: 15px; }
 .ht-hero-badge {
   position: absolute; z-index: 6;
   font-family: var(--ff-body, 'Nunito', sans-serif);
@@ -518,13 +518,13 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
 }
 /* Totale pacchetti — angolo alto SINISTRA, sbordante -20/-20 */
 .ht-hero-badge--total {
-  top: -5px; left: -5px;
+  top: -15px; left: -5px;
   background: var(--theme-accent-pink); color: #fff;
   font-size: 15px; padding: 5px 13px;
 }
 /* Omaggio N/3 + timer — angolo alto DESTRA, sbordante -20/-20 */
 .ht-hero-badge--omaggio {
-  top: -5px; right: -5px;
+  top: -15px; right: -5px;
   background: var(--grad-primary), var(--theme-surface);
   color: #fff;
   display: inline-flex; align-items: center; gap: 7px;
