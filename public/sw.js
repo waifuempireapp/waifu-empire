@@ -1,6 +1,6 @@
 // public/sw.js
 // Cache-first per tutti gli asset Cloudinary — azzera i repeat load dal piano free
-const CACHE_NAME = 'impero-waifu-assets-v1';
+const CACHE_NAME = 'impero-waifu-assets-v2';
 
 // Installa subito senza aspettare che le vecchie tab si chiudano
 self.addEventListener('install', () => self.skipWaiting());
@@ -9,8 +9,8 @@ self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Intercetta SOLO richieste a Cloudinary (immagini e video)
-  if (!url.hostname.includes('res.cloudinary.com')) return;
+  // Intercetta le immagini/video dei CDN usati (ImageKit attuale + Cloudinary legacy)
+  if (!url.hostname.includes('ik.imagekit.io') && !url.hostname.includes('res.cloudinary.com')) return;
 
   // Strategia cache-first: usa la copia locale se esiste,
   // altrimenti scarica da Cloudinary e metti in cache

@@ -59,7 +59,7 @@ export type AvatarPreset = {
 // Carica automaticamente tutti i file .png dalla cartella icons.
 // import.meta.glob è risolto da Vite a build-time.
 const iconModules = import.meta.glob<{ default: string }>(
-  '~/assets/images/icons/*.png',
+  '~/assets/images/icons/*.webp',
   { eager: true },
 )
 
@@ -67,7 +67,7 @@ export const AVATAR_PRESETS: AvatarPreset[] = Object.entries(iconModules).map(([
   // Nome file: "MOMO — La cat girl adorabile_2.png" oppure "AKANE - La ...png"
   // Il codice è la parte prima del primo trattino (em-dash, en-dash o hyphen)
   // circondato da spazi. waifuId = codice in minuscolo.
-  const filename = (path.split('/').pop() ?? '').replace(/\.png$/i, '')
+  const filename = (path.split('/').pop() ?? '').replace(/\.webp$/i, '')
   const code = filename.split(/\s[—–-]\s/)[0]?.trim() ?? filename
   const desc = filename.slice(code.length).replace(/^\s*[—–-]\s*/, '').trim()
   const waifuId = code.toLowerCase()
