@@ -68,8 +68,8 @@
     "pack_plural": "sobres",
     "next_pack": "Visitar la tienda",
     "countdown": "Próximo en {time}",
-    "available": "¡Disponible!",
-    "pesca_title": "Waifu Drop",
+    "available": "Disponible",
+    "pesca_title": "Pesca de la Suerte",
     "pesca_available": "Disponible",
     "swap_title": "Swipe Waifu",
     "swap_votes": "{n} votos totales",
@@ -83,7 +83,7 @@
     "cta_go_packs": "Ir a sobres"
   },
   "pesca": {
-    "title": "Waifu Drop",
+    "title": "Pesca de la Suerte",
     "gems": "BESOS",
     "cancel": "CANCELAR",
     "fishing": "PESCANDO…",
@@ -156,7 +156,8 @@
     "packs_available_label": "sobres disponibles",
     "buy_error": "Error de compra",
     "pick_pack": "¡Toca el sobre que quieras abrir!",
-    "swipe_to_open": "Desliza para cortar el sobre"
+    "swipe_to_open": "Desliza para cortar el sobre",
+    "next_pack_in": "Próximo sobre: {time}"
   },
   "map": {
     "title": "Mapa del Mundo",

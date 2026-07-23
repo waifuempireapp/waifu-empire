@@ -531,7 +531,7 @@ function hpBarData(hp: number, maxHp: number) {
       <div :style="C.section">
         <div :style="C.label">IL TUO ROSTER</div>
         <!-- Griglia 2 colonne — più spaziatura verticale + margini -->
-        <div class="pick-waifu-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:30px 16px;padding:14px 14px 18px;">
+        <div class="pick-waifu-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 16px;padding:18px 12px 18px;">
           <template v-for="(w, idx) in activeRoster" :key="w.id ?? idx">
             <button
               :style="({
@@ -560,7 +560,7 @@ function hpBarData(hp: number, maxHp: number) {
               </div>
 
               <!-- Immagine full-width -->
-              <div :style="({ width:'100%', height:'160px', borderRadius:'10px 10px 0 0', overflow:'hidden', background:'var(--theme-bg-secondary)', border:`2px solid ${getRarityStyle(getWaifuRarita(w)).badge}`, borderBottom:'none' } as CSSProperties)">
+              <div :style="({ width:'100%', aspectRatio:'1/1', height:'auto', borderRadius:'8px 8px 0 0', overflow:'hidden', background:'var(--theme-bg-secondary)', border:`2px solid ${getRarityStyle(getWaifuRarita(w)).badge}`, borderBottom:'none' } as CSSProperties)">
                 <template v-if="getWaifuImgUrl(w)">
                   <img :src="getWaifuImgUrl(w) ?? ''" :alt="(w.nome ?? w.name ?? '') as string" loading="eager" decoding="sync"
                     :style="({ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top', filter: w._hotBlurred ? 'blur(5px)' : 'none' } as CSSProperties)" />
@@ -618,7 +618,7 @@ function hpBarData(hp: number, maxHp: number) {
         </div>
 
         <!-- Griglia 2 colonne avversario — più spaziatura verticale + margini -->
-        <div class="pick-waifu-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:30px 16px;padding:14px 14px 18px;">
+        <div class="pick-waifu-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 16px;padding:18px 12px 18px;">
           <template v-for="(w, idx) in opponentRoster" :key="w.id ?? idx">
             <div
               :style="({
@@ -636,7 +636,7 @@ function hpBarData(hp: number, maxHp: number) {
                 :style="getTypeBadgeStyle(getWaifuType(w))">
                 {{ getWaifuType(w) }}
               </div>
-              <div :style="({ width:'100%', height:'160px', borderRadius:'10px 10px 0 0', overflow:'hidden', background:'var(--theme-bg-secondary)', border:`2px solid ${getRarityStyle(getWaifuRarita(w)).badge}`, borderBottom:'none' } as CSSProperties)">
+              <div :style="({ width:'100%', aspectRatio:'1/1', height:'auto', borderRadius:'8px 8px 0 0', overflow:'hidden', background:'var(--theme-bg-secondary)', border:`2px solid ${getRarityStyle(getWaifuRarita(w)).badge}`, borderBottom:'none' } as CSSProperties)">
                 <template v-if="getWaifuImgUrl(w)">
                   <img :src="getWaifuImgUrl(w) ?? ''" :alt="(w.nome ?? w.name ?? '') as string" loading="eager" decoding="sync"
                     :style="({ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top', filter: w._hotBlurred ? 'blur(5px)' : 'none' } as CSSProperties)" />

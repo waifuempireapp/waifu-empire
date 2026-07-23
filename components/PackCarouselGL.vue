@@ -1,6 +1,6 @@
 <!-- ============================================================
-  PackCarouselGL — Carosello "a ruota" di bustine 3D stile Pokémon
-  TCG Pocket: UNA sola scena Three.js con N cloni del modello GLB
+  PackCarouselGL — Carosello "a ruota" di bustine 3D stile card-game
+  TCG collezionabile: UNA sola scena Three.js con N cloni del modello GLB
   disposti su un anello (1 solo contesto WebGL, niente context-loss).
   Trascina per far girare la ruota (continua, senza fine), tocca la
   bustina frontale per sceglierla → emette 'pick'.

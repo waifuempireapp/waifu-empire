@@ -844,7 +844,7 @@ const assocPendingCount = computed(() => Object.keys(assocPending.value).length)
                 <div style="margin-top: 16px; background: rgba(236,72,153,0.06); border: 1px solid rgba(236,72,153,0.3); border-radius: 8px; padding: 14px;">
                   <div style="font-family: Cinzel, serif; color: #ec4899; letter-spacing: 2px; font-size: 13px; margin-bottom: 8px;">🎬 VIDEO CARTA IMMERSIVA</div>
                   <div style="font-size: 11px; color: rgba(255,255,255,0.5); margin-bottom: 10px; line-height: 1.5;">
-                    Video animato (MP4/WebM) per l'effetto Pokémon Pocket.<br/>
+                    Video animato (MP4/WebM) per l'effetto card-game collezionabile.<br/>
                     <strong style="color: rgba(236,72,153,0.8);">Consigliato:</strong> 3–8 secondi, 9:16 o 1:1, senza audio.
                   </div>
                   <div v-if="ed.asset_video" style="margin-bottom: 10px;">

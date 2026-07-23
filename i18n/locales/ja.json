@@ -68,8 +68,8 @@
     "pack_plural": "パック",
     "next_pack": "ショップを訪問",
     "countdown": "次まで{time}",
-    "available": "利用可能！",
-    "pesca_title": "ワイフドロップ",
+    "available": "利用可能",
+    "pesca_title": "ラッキーキャッチ",
     "pesca_available": "利用可能",
     "swap_title": "ワイフスワイプ",
     "swap_votes": "{n}票",
@@ -83,7 +83,7 @@
     "cta_go_packs": "パックへ"
   },
   "pesca": {
-    "title": "ワイフドロップ",
+    "title": "ラッキーキャッチ",
     "gems": "キス",
     "cancel": "キャンセル",
     "fishing": "釣り中…",
@@ -156,7 +156,8 @@
     "packs_available_label": "パック利用可能",
     "buy_error": "購入エラー",
     "pick_pack": "開けたいパックをタップ！",
-    "swipe_to_open": "スワイプしてパックを開ける"
+    "swipe_to_open": "スワイプしてパックを開ける",
+    "next_pack_in": "次のパック: {time}"
   },
   "map": {
     "title": "ワールドマップ",

@@ -86,7 +86,7 @@ export function effectivenessLabel(attacker: MoveType, defender: MoveType): Effe
 
 /**
  * Danno efficace: la POTENZA base della mossa ricalcolata in base
- * all'efficacia di tipo contro un difensore. Indicatore stile Pokémon,
+ * all'efficacia di tipo contro un difensore. Indicatore stile card-game,
  * NON HP reali (la formula di combattimento completa è altrove).
  */
 export function effectiveDamage(move: Move, defenderType: MoveType): number {

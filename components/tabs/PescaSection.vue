@@ -63,6 +63,15 @@ interface Pack {
 const packs = ref<Pack[]>((props.initialPacks as Pack[]) ?? [])
 // Filtro per espansione: chip in alto quando i pack sono di più espansioni
 const filtroEspansione = ref<string | null>(null)   // null = tutte
+// v-model per DropdownSelect ('' = Tutte)
+const filtroEspansioneSel = computed({
+  get: () => filtroEspansione.value ?? '',
+  set: (v: string) => { filtroEspansione.value = v || null },
+})
+const espansioneOptions = computed(() => [
+  { value: '', label: 'Tutte le espansioni' },
+  ...espansioniDisponibili.value.map(e => ({ value: e.id, label: e.nome })),
+])
 const espansioniDisponibili = computed(() => {
   const map = new Map<string, string>()
   for (const p of packs.value) {
@@ -184,7 +193,7 @@ async function ricaricaFeed() {
   await caricaFeed()
 }
 
-// ── Coreografia Shuffle 3D Stile Pokémon Pocket ────────────────
+// ── Coreografia Shuffle 3D stile card-game ────────────────
 const pickPhase = ref<'reveal' | 'shuffle' | 'pick' | 'revealing' | 'revealed'>('reveal')
 // Carta ingrandita (zoom) al tap dopo la rivelazione
 const zoomCard = ref<CartaPack | null>(null)
@@ -344,7 +353,7 @@ function cardStyle(uiIdx: number): CSSProperties {
       transition = 'transform 0.5s cubic-bezier(0.34, 1.15, 0.64, 1)'
     }
   } else if (pickPhase.value === 'pick') {
-    // Fase di scelta: rimbalzo morbido stile Pokémon Pocket quando l'utente
+    // Fase di scelta: rimbalzo morbido stile card-game quando l'utente
     // seleziona/deseleziona. rotate(360deg) = continuità con lo shuffle (no back-spin).
     zIndex = isSel ? 10 : 2
     transform = isSel ? 'rotate(360deg) scale(1.08) translateY(-14px)' : 'rotate(360deg) scale(1)'
@@ -531,10 +540,7 @@ onUnmounted(() => {
         <div style="display:flex;align-items:center;gap:8px;">
           <div>
             <span
-              style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:16px;font-weight:800;color:var(--theme-text);letter-spacing:0.02em;">WAIFU
-            </span>
-            <span
-              style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:16px;font-weight:800;color:rgb(255, 77, 158);letter-spacing:0.02em;">{{ $t('pesca.fish_label') }}</span>
+              style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:16px;font-weight:800;color:var(--theme-text);letter-spacing:0.02em;">{{ $t('pesca.title') }}</span>
           </div>
         </div>
       </div>
@@ -755,29 +761,11 @@ onUnmounted(() => {
         <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:12px;color:var(--theme-text-2);max-width:260px;line-height:1.4;">{{ $t('pesca.no_packs_sub') }}</div>
       </div>
 
-      <!-- Filtro espansione (solo se ci sono pack di più espansioni) -->
+      <!-- Filtro espansione (select) — solo se ci sono pack di più espansioni -->
       <div v-if="immaginiCaricate && espansioniDisponibili.length > 1"
-        style="display:flex;flex-wrap:wrap;gap:8px;padding:16px 2px 0;justify-content:center;">
-        <button
-          @click="filtroEspansione = null"
-          :style="{
-            padding:'7px 16px', borderRadius:'999px', cursor:'pointer',
-            fontFamily:'var(--ff-label)', fontSize:'12px', fontWeight:800, letterSpacing:'.08em', textTransform:'uppercase',
-            border: filtroEspansione === null ? 'none' : '1px solid var(--theme-border)',
-            background: filtroEspansione === null ? 'var(--grad-primary)' : 'var(--theme-surface)',
-            color: filtroEspansione === null ? '#fff' : 'var(--theme-text-2)',
-          }"
-        >Tutte</button>
-        <button v-for="e in espansioniDisponibili" :key="e.id"
-          @click="filtroEspansione = e.id"
-          :style="{
-            padding:'7px 16px', borderRadius:'999px', cursor:'pointer',
-            fontFamily:'var(--ff-label)', fontSize:'12px', fontWeight:800, letterSpacing:'.08em', textTransform:'uppercase',
-            border: filtroEspansione === e.id ? 'none' : '1px solid var(--theme-border)',
-            background: filtroEspansione === e.id ? 'var(--grad-primary)' : 'var(--theme-surface)',
-            color: filtroEspansione === e.id ? '#fff' : 'var(--theme-text-2)',
-          }"
-        >{{ e.nome }}</button>
+        style="padding:16px 6px 0;max-width:420px;margin:0 auto 26px;">
+        <DropdownSelect v-model="filtroEspansioneSel" :options="espansioneOptions"
+          label="Espansione" placeholder="Tutte le espansioni" />
       </div>
 
       <div v-show="immaginiCaricate && packs.length > 0" style="display:flex;flex-direction:column;gap:28px;padding-top:20px;overflow:visible;">

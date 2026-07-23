@@ -107,11 +107,11 @@ const packStackRef = ref<{ animateSinglePackExit: (i: number) => void } | null>(
 const stackFailed = ref(false)
 const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
-// Nuovi stati per l'animazione di apertura pacchetto in stile Pokémon Pocket
+// Nuovi stati per l'animazione di apertura pacchetto in stile card-game
 const bustaAperta = ref(false)
 const bustaInAnimazione = ref(false)
 
-// ── Scelta bustina stile Pokémon Pocket ──────────────────────
+// ── Scelta bustina stile card-game ──────────────────────
 // Prima dello strappo l'utente "sceglie" la bustina da una ruota 3D di pack
 // identici (PackCarouselGL — la scelta è estetica: il contenuto è già generato).
 const packPicked = ref(false)
@@ -429,7 +429,7 @@ async function apri(tipoPacchetto: string) {
       const n = prima - 1
       const patch: Record<string, unknown> = { pacchettiOmaggio: n }
       // Da PIENO (5/5) il timer era fermo: riparte ADESSO, dopo l'apertura
-      if (prima >= 5) patch.ultimaRicaricaPacchetti = new Date()
+      if (prima >= 3) patch.ultimaRicaricaPacchetti = new Date()
       emit('updateProfilo', patch)
       await updateUserProfile(uid, patch as any)
     } else {
@@ -510,7 +510,7 @@ async function apriMultiSequenza(seq: string[]) {
       const prima = Number(props.profilo?.pacchettiOmaggio ?? 0)
       patch.pacchettiOmaggio = prima - aperti.omaggio
       // Da PIENO il timer era fermo: riparte dopo l'apertura
-      if (prima >= 5) patch.ultimaRicaricaPacchetti = new Date()
+      if (prima >= 3) patch.ultimaRicaricaPacchetti = new Date()
     }
     if (aperti.sfida)     patch.pacchettiSfida     = Number(props.profilo?.pacchettiSfida ?? 0) - aperti.sfida
     if (Object.keys(patch).length) {
@@ -954,7 +954,7 @@ function cfTouchEnd(e: TouchEvent) {
   <AppLoading v-if="dropsLoading" fullscreen />
 
   <!-- ══════════════════════════════════════════════════════════
-    REVEAL VIEW — Pokémon Pocket Style Pack Opening & 3D Stack
+    REVEAL VIEW — card-game collezionabile Style Pack Opening & 3D Stack
   ══════════════════════════════════════════════════════════════ -->
   <div v-else-if="stato === 'reveal' || stato === 'reveal_multi'"
     style="position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; overflow: hidden; background:var(--theme-bg); perspective: 1200px;">
@@ -1028,7 +1028,7 @@ function cfTouchEnd(e: TouchEvent) {
       <button v-if="multiPhase === 'exiting'" class="multi-skip-btn" @click.stop="skipMultiOpening">{{ $t('sbusta.skip_exit') }}</button>
     </div>
 
-    <!-- 1b-pre. SCELTA E APERTURA BUSTINA — ruota 3D stile Pokémon Pocket.
+    <!-- 1b-pre. SCELTA E APERTURA BUSTINA — ruota 3D stile card-game.
          TUTTO nella stessa scena WebGL (zero re-mount = zero flash):
          tap 1 → la bustina scelta zooma e le altre cadono · tap 2 → strappo → carte -->
     <div v-else-if="stato === 'reveal' && (!bustaAperta || wheelLinger) && !wheelFailed"
@@ -1319,11 +1319,6 @@ function cfTouchEnd(e: TouchEvent) {
       }"
     />
 
-    <!-- Petali sakura decorativi sfondo -->
-    <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:1;">
-      <span v-for="i in 4" :key="i"
-        :style="{ position:'absolute', fontSize:`${16+(i%2)*6}px`, opacity:0.08, top:`${(i*27)%90}%`, left:`${(i*26)%95}%`, animation:`float ${3.5+i*0.5}s ease-in-out infinite`, animationDelay:`${i*0.7}s` }">🌸</span>
-    </div>
 
     <!-- Contenuto principale centrato verticalmente come gruppo -->
     <div style="position:relative;z-index:2;display:flex;flex-direction:column;height:100%;padding:0 16px;">
@@ -1336,6 +1331,20 @@ function cfTouchEnd(e: TouchEvent) {
           ◆ Scegli l'Espansione
         </div>
         <div style="width:38px;flex-shrink:0;"></div>
+      </div>
+
+      <!-- Timer prossima bustina gratis — pill distinta in cima -->
+      <div v-if="countdown" style="display:flex;justify-content:center;flex-shrink:0;margin:2px 0 6px;">
+        <div :style="{
+          display:'inline-flex', alignItems:'center', gap:'8px',
+          background:'var(--grad-primary-soft), var(--theme-surface-2)',
+          border:'1px solid var(--theme-border-2)', borderRadius:'999px',
+          padding:'7px 16px', fontFamily:FF.label, fontSize:'12px', fontWeight:800,
+          letterSpacing:'0.06em', color:'var(--theme-text-2)',
+        }">
+          <span style="width:7px;height:7px;border-radius:50%;background:var(--theme-accent);display:inline-block;"></span>
+          {{ $t('sbusta.next_pack_in', { time: countdown }) }}
+        </div>
       </div>
 
       <!-- Messaggio nessun drop attivo -->
@@ -1623,7 +1632,7 @@ function cfTouchEnd(e: TouchEvent) {
   }
 }
 
-/* Splendida Animazione di Swipe/Uscita Carta Principale (Pokémon Pocket Style) */
+/* Splendida Animazione di Swipe/Uscita Carta Principale (card-game collezionabile Style) */
 .main-reveal-card-container.slide-out-animation {
   animation: cardSlideUpAway 0.5s cubic-bezier(0.5, 0, 0.9, 0.4) forwards;
 }
@@ -1656,7 +1665,7 @@ function cfTouchEnd(e: TouchEvent) {
   }
 }
 
-/* ── Pocket theme overrides per SbustaTab ── */
+/* ── card theme overrides per SbustaTab ── */
 /* Il chrome usa var(--theme-*) — il contenuto (pack, carte) mantiene i colori game */
 
 /* ══════════════════════════════════════════════════════════════════

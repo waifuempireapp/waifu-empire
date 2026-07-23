@@ -103,7 +103,7 @@ async function acquistaBene(beneId: string) {
     <AppLoading v-if="!caricato" fullscreen />
 
     <template v-else>
-      <!-- Header Pocket-style -->
+      <!-- Header card-style -->
       <header class="negozio-header">
         <div class="negozio-header__left">
           <button class="negozio-btn-back" @click="router.push('/gioco')">{{ $t('shop.back') }}</button>

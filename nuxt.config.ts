@@ -32,7 +32,7 @@ export default defineNuxtConfig({
   ],
 
   // main.css: @tailwind + variabili legacy + animazioni
-  // tokens.css: design token canonici Pokémon TCG Pocket (caricato dopo → sovrascrive)
+  // tokens.css: design token canonici TCG collezionabile (caricato dopo → sovrascrive)
   css: ['~/assets/css/main.css', '~/assets/css/tokens.css'],
 
   tailwindcss: {
@@ -124,6 +124,7 @@ export default defineNuxtConfig({
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no' },
         { name: 'theme-color', content: '#06030f' },
+        { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
       ],

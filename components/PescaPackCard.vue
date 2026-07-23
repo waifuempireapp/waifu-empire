@@ -1,5 +1,5 @@
 <!-- ============================================================
-  PescaPackCard — ridisegnato come nel mockup Waifu Drop.
+  PescaPackCard — carta pacchetto della lista pesca.
   Card con bordo colorato per stato, avatar lettera, badge NUOVA,
   countdown, carte in scroll orizzontale (silhouette → full art),
   bottone Drop (N Kisses) o VISUALIZZAZIONE COMPLETA.

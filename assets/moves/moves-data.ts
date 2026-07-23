@@ -32,7 +32,7 @@ export interface Move {
   id: string
   name: string
   type: MoveType
-  damage: number                  // POTENZA indicativa (stile Pokémon), non HP reali
+  damage: number                  // POTENZA indicativa (stile card-game), non HP reali
   pp?: number                     // punti potere (5–20)
   multiHit?: MultiHit
   additionalEffectLabel: string   // es. "+ Scudo Arcano" — badge breve per la card

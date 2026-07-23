@@ -1374,7 +1374,7 @@ function apriNegozio() {
 </template>
 
 <style scoped>
-/* ── Titolo sezione "Le mie carte" stile Pocket ── */
+/* ── Titolo sezione "Le mie carte" stile card-game ── */
 :deep(.section-title__text),
 .collez-title {
   font-family: var(--ff-body, 'Nunito', sans-serif);

@@ -77,7 +77,7 @@ const pendingFriendRequests = computed(() => {
       align-items: center;
       justify-content: space-between;
     ">
-    <!-- ── LINEA RAINBOW separatore in basso (stile Pocket "rainbow line") ── -->
+    <!-- ── LINEA RAINBOW separatore in basso (stile card-game "linea arcobaleno") ── -->
     <div aria-hidden="true" style="
         position: absolute;
         bottom: 0; left: 0; right: 0;

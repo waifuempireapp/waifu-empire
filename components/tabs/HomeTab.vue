@@ -1,5 +1,5 @@
 <!-- ============================================================
-  HomeTab: schermata Home rivisitata stile Pokémon TCG Pocket.
+  HomeTab: schermata Home rivisitata stile TCG collezionabile.
   Layout:
     1. Pack Hero Section — banner hero con CTA apri pacchetto
     2. Resource bar — Kisses + Energia come pill card grandi
@@ -11,6 +11,7 @@
 <script setup lang="ts">
 // Gift e Package rimossi — il bottone "APRI ORA" non mostra icone
 import { TIMER } from '~/utils/constants'
+import { Fish, Heart } from 'lucide-vue-next'
 import { ikUrl } from '~/utils/imagekitUrl'
 
 // ── Tipi locali ─────────────────────────────────────────────────────
@@ -82,9 +83,9 @@ const MAX_ENERGIA = TIMER.MAX_ENERGIA  // 10
 const profilo   = computed(() => props.profilo ?? {})
 const collezione = computed(() => props.collezione ?? {})
 
-// Bustine omaggio: cap 5, ricarica 1 ogni 12h (timer fermo a 5/5)
+// Bustine omaggio: cap 3, ricarica 1 ogni 12h (timer fermo a 3/3)
 const omaggioCount = computed(() => Number(profilo.value.pacchettiOmaggio ?? 0))
-const OMAGGIO_MAX = 5
+const OMAGGIO_MAX = 3
 
 const totalPack = computed(() =>
   ((profilo.value.pacchettiOmaggio as number) ?? 0) +
@@ -142,35 +143,56 @@ const ultimeCarte = computed<ItemCollezione[]>(() =>
 const hasCarte = computed(() => ultimeCarte.value.length > 0)
 
 // ── Countdown pacchetto (CardPacchettoOverlay) ───────────────────────
-const countdown = ref('')
+const countdown = ref('')      // tempo alla PROSSIMA bustina
+const countdownFull = ref('')  // tempo fino a ricarica COMPLETA (3/3)
+const omaggioEff = ref(0)      // conteggio EFFETTIVO (self-healing dal timestamp)
 const packPronto = ref(false)   // timer scaduto: la bustina omaggio è maturata ma non ancora in inventario
 let countdownInterval: ReturnType<typeof setInterval> | null = null
 let ricaricaRichiesta = false   // guard: evita di emettere ricaricaPack ogni secondo
 
+const fmtDur = (ms: number) => {
+  const ore = Math.floor(ms / 3600000)
+  const min = Math.floor((ms % 3600000) / 60000)
+  const sec = Math.floor((ms % 60000) / 1000)
+  return `${ore}h ${min}m ${sec}s`
+}
 function aggiornaCountdown() {
   const p = profilo.value
-  // Il countdown corre finché le bustine OMAGGIO sono sotto il massimo,
-  // indipendentemente dagli altri pacchetti posseduti
-  if (omaggioCount.value >= OMAGGIO_MAX) { countdown.value = ''; packPronto.value = false; return }
+  const HR = TIMER.PACCHETTO_HOURS * 60 * 60 * 1000   // 12h
+  const now = Date.now()
   const raw = p.ultimaRicaricaPacchetti as { toMillis?: () => number; seconds?: number } | number | undefined
-  const lastTs = typeof raw === 'object' && raw !== null
+  let lastTs = typeof raw === 'object' && raw !== null
     ? (raw.toMillis ? raw.toMillis() : (raw.seconds ?? 0) * 1000)
     : Number(raw) || 0
-  const prossima = lastTs + TIMER.PACCHETTO_HOURS * 60 * 60 * 1000
-  const diff = prossima - Date.now()
-  if (diff <= 0) {
-    countdown.value = ''
-    packPronto.value = true
-    // Chiede alla pagina di ricaricare il profilo → accredita la bustina (una sola volta)
-    if (!ricaricaRichiesta) { ricaricaRichiesta = true; emit('ricaricaPack') }
-    return
+
+  const persisted = omaggioCount.value
+  // Se non c'è ancora un ancoraggio → il timer parte ADESSO (e va persistito)
+  const senzaAncora = lastTs <= 0
+  if (senzaAncora) lastTs = now
+
+  // Accredita LOCALMENTE le bustine maturate (display self-healing): ogni 12h
+  // trascorse dall'ancoraggio vale +1 bustina, fino al massimo
+  let eff = persisted
+  while (eff < OMAGGIO_MAX && now - lastTs >= HR) { eff++; lastTs += HR }
+  omaggioEff.value = eff
+
+  if (eff >= OMAGGIO_MAX) {
+    countdown.value = ''; countdownFull.value = ''; packPronto.value = false
+  } else {
+    const diffNext = lastTs + HR - now                     // → prossima bustina
+    const mancanti = OMAGGIO_MAX - eff
+    countdown.value = fmtDur(diffNext)
+    countdownFull.value = fmtDur(diffNext + (mancanti - 1) * HR)  // → 3/3
+    packPronto.value = false
   }
-  packPronto.value = false
-  ricaricaRichiesta = false
-  const ore = Math.floor(diff / (1000 * 60 * 60))
-  const min = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-  const sec = Math.floor((diff % (1000 * 60)) / 1000)
-  countdown.value = `${ore}h ${min}m ${sec}s`
+
+  // Persisti se: sono maturate bustine (eff > persisted) o mancava l'ancora
+  if ((eff > persisted || senzaAncora) && !ricaricaRichiesta) {
+    ricaricaRichiesta = true
+    emit('ricaricaPack')
+  } else if (eff === persisted && !senzaAncora) {
+    ricaricaRichiesta = false
+  }
 }
 
 onMounted(() => {
@@ -253,15 +275,16 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
 </script>
 
 <template>
-  <!-- Home stile Pokémon TCG Pocket: pack dominante → 2 action card -->
+  <!-- Home stile TCG collezionabile: pack dominante → 2 action card -->
   <div class="ht-root">
 
     <!-- Overlay anti-FOUC: copre tutto finché la bustina 3D non è renderizzata -->
     <PageLoadingOverlay :ready="isPageReady" />
 
     <!-- ══════════════════════════════════════════════════════════════
-         1. SBUSTA — hero pack panel (pattern B Pocket)
+         1. SBUSTA — hero pack panel (pattern hero)
     ══════════════════════════════════════════════════════════════════ -->
+    <div class="ht-hero-wrap">
     <div
       class="ht-hero-panel"
       :class="totalPack > 0 ? 'ht-hero-panel--active' : 'ht-hero-panel--empty'"
@@ -293,12 +316,7 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
             <template #n><b class="ht-hero-count">{{ totalPack }}</b></template>
             <template #pack>{{ totalPack === 1 ? $t('home.pack_singular') : $t('home.pack_plural') }}</template>
           </i18n-t>
-          <!-- Bustine omaggio x/5 + prossima ricarica (visibile anche con pack > 0) -->
-          <div v-if="totalPack > 0" class="ht-hero-timer-text" style="margin-top:3px;opacity:0.85;">
-            <b>{{ omaggioCount }}/{{ OMAGGIO_MAX }}</b>
-            <template v-if="omaggioCount < OMAGGIO_MAX && countdown"> · {{ $t('home.next_in', { time: countdown }) }}</template>
-          </div>
-          <div v-else class="ht-hero-timer-text">
+          <div v-if="totalPack === 0" class="ht-hero-timer-text">
             {{ packPronto ? $t('home.gift_pack_ready') : countdown ? $t('home.next_in', { time: countdown }) : $t('home.next_pack') }}
           </div>
         </div>
@@ -320,30 +338,39 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
 
       </div>
 
-      <!-- Badge quantità pack -->
-      <div v-if="totalPack > 0" class="ht-hero-badge">×{{ totalPack }}</div>
-    </div>
+    </div><!-- /ht-hero-panel -->
+
+      <!-- Chip quantità TOTALE pacchetti — alto a SINISTRA (-20,-20), solo se > 3 -->
+      <div v-if="totalPack > 3" class="ht-hero-badge ht-hero-badge--total">×{{ totalPack }}</div>
+
+      <!-- Chip bustine omaggio N/3 + tempo alla ricarica completa — alto a DESTRA (-20,-20) -->
+      <div class="ht-hero-badge ht-hero-badge--omaggio">
+        <b>{{ omaggioEff }}/{{ OMAGGIO_MAX }}</b>
+        <span v-if="omaggioEff < OMAGGIO_MAX && countdownFull" class="ht-hero-badge__timer">{{ countdownFull }}</span>
+        <span v-else class="ht-hero-badge__timer">✓</span>
+      </div>
+    </div><!-- /ht-hero-wrap -->
 
     <!-- ══════════════════════════════════════════════════════════════
-         2. CARD AZIONI — Pesca Misteriosa + Swipe Waifu
+         CARD FEATURE — sotto il pack: Pesca Fortunata + Swipe Waifu
     ══════════════════════════════════════════════════════════════════ -->
     <div class="ht-actions-grid">
 
-      <!-- Card Pesca Misteriosa -->
+      <!-- Card Pesca Fortunata -->
       <div class="ht-action-card ht-action-card--pesca" @click="emit('apriPesca')">
-        <div class="ht-action-emoji">🎣</div>
+        <Fish class="ht-action-icon" :size="30" :stroke-width="1.6" />
         <div>
           <div class="ht-action-title">{{ $t('home.pesca_title') }}</div>
           <div class="ht-action-status ht-action-status--pesca">
             <span class="ht-action-dot ht-action-dot--pesca" />
-            Disponibile
+            {{ $t('home.available') }}
           </div>
         </div>
       </div>
 
       <!-- Card Swipe Waifu -->
       <div class="ht-action-card ht-action-card--swap" @click="emit('setTab', 'swap')">
-        <div class="ht-action-emoji">🩷</div>
+        <Heart class="ht-action-icon" :size="30" :stroke-width="1.6" />
         <div>
           <div class="ht-action-title">{{ $t('home.swap_title') }}</div>
           <div class="ht-action-status ht-action-status--swap">
@@ -352,7 +379,9 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
         </div>
       </div>
 
-    </div><!-- fine card azioni -->
+    </div><!-- fine card feature -->
+
+
 
   </div><!-- fine HomeTab -->
 </template>
@@ -472,18 +501,34 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
 }
 
 /* Badge quantità pack */
+.ht-hero-wrap { position: relative; }
 .ht-hero-badge {
-  position: absolute; top: 14px; right: 14px;
-  background: var(--theme-accent-pink);
-  color: #fff;
+  position: absolute; z-index: 6;
   font-family: var(--ff-body, 'Nunito', sans-serif);
-  font-size: 16px; font-weight: 900;
-  padding: 4px 12px;
+  font-weight: 900; line-height: 1.1;
   border-radius: var(--radius-pill);
-  border: 2px solid rgba(255,255,255,0.35);
-  line-height: 1.2; z-index: 5;
-  box-shadow: 0 2px 12px rgba(217,70,168,0.4);
-  letter-spacing: -0.02em;
+  border: 2px solid var(--theme-surface);
+  letter-spacing: -0.01em;
+  box-shadow: 0 3px 14px var(--theme-shadow);
+}
+/* Totale pacchetti — angolo alto SINISTRA, sbordante -20/-20 */
+.ht-hero-badge--total {
+  top: -5px; left: -5px;
+  background: var(--theme-accent-pink); color: #fff;
+  font-size: 15px; padding: 5px 13px;
+}
+/* Omaggio N/3 + timer — angolo alto DESTRA, sbordante -20/-20 */
+.ht-hero-badge--omaggio {
+  top: -5px; right: -5px;
+  background: var(--grad-primary), var(--theme-surface);
+  color: #fff;
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 14px; padding: 6px 13px;
+}
+.ht-hero-badge__timer {
+  font-family: var(--ff-mono, 'JetBrains Mono', monospace);
+  font-size: 11px; font-weight: 800; opacity: 0.92;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── ACTION CARDS (Pesca + Swap) ── */
@@ -512,10 +557,11 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
 .ht-action-card--pesca { box-shadow: var(--shadow-float), 0 4px 20px rgba(217,70,168,0.10); }
 .ht-action-card--swap  { box-shadow: var(--shadow-float), 0 4px 20px rgba(139,111,216,0.10); }
 
-.ht-action-emoji {
-  font-size: 48px; line-height: 1;
-  filter: drop-shadow(0 0 10px rgba(139,111,216,0.4));
+.ht-action-icon {
+  flex-shrink: 0;
+  color: var(--theme-nav-icon-active);
 }
+.ht-action-card--swap .ht-action-icon { color: var(--theme-accent-pink); }
 .ht-action-title {
   font-family: var(--ff-body, 'Nunito', sans-serif);
   font-size: 15px; font-weight: 800;

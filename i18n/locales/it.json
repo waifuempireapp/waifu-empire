@@ -68,8 +68,8 @@
     "pack_plural": "bustine",
     "next_pack": "Visita il negozio",
     "countdown": "Prossima tra {time}",
-    "available": "Disponibile!",
-    "pesca_title": "Waifu Drop",
+    "available": "Disponibile",
+    "pesca_title": "Pesca Fortunata",
     "pesca_available": "Disponibile",
     "swap_title": "Swipe Waifu",
     "swap_votes": "{n} voti totali",
@@ -83,7 +83,7 @@
     "cta_go_packs": "Vai ai pacchetti"
   },
   "pesca": {
-    "title": "Waifu Drop",
+    "title": "Pesca Fortunata",
     "gems": "KISSES",
     "blind_pick": "PESCA ALLA CIECA",
     "blind_subtitle": "Di {owner} — Scegli una carta senza sapere cosa c'è dentro",
@@ -178,7 +178,8 @@
     "packs_available_label": "pacchetti disponibili",
     "buy_error": "Errore acquisto",
     "pick_pack": "Tocca la bustina che vuoi aprire!",
-    "swipe_to_open": "Swipe per tagliare la bustina"
+    "swipe_to_open": "Swipe per tagliare la bustina",
+    "next_pack_in": "Prossima bustina: {time}"
   },
   "map": {
     "title": "Mappa del Mondo",
@@ -469,7 +470,7 @@
     "back": "← GIOCO",
     "buy_with_kisses": "ACQUISTA CON KISSES",
     "recharge_kisses": "RICARICA KISSES",
-    "recharge_desc": "Acquista Kisses con PayPal e usali per beni di gioco e Waifu Drop",
+    "recharge_desc": "Acquista Kisses con PayPal e usali per beni di gioco e Pesca Fortunata",
     "secure_payment": "Pagamento sicuro via PayPal",
     "buy_btn": "ACQUISTA",
     "missing_kisses": "MANCANO {n}",

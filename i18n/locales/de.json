@@ -68,8 +68,8 @@
     "pack_plural": "Pakete",
     "next_pack": "Shop besuchen",
     "countdown": "Nächstes in {time}",
-    "available": "Verfügbar!",
-    "pesca_title": "Waifu Drop",
+    "available": "Verfügbar",
+    "pesca_title": "Glücksfang",
     "pesca_available": "Verfügbar",
     "swap_title": "Waifu Swipe",
     "swap_votes": "{n} Gesamtstimmen",
@@ -83,7 +83,7 @@
     "cta_go_packs": "Zu den Packs"
   },
   "pesca": {
-    "title": "Waifu Drop",
+    "title": "Glücksfang",
     "gems": "KÜSSE",
     "cancel": "ABBRECHEN",
     "fishing": "WIRD GEFISCHT…",
@@ -156,7 +156,8 @@
     "packs_available_label": "Packs verfügbar",
     "buy_error": "Kauffehler",
     "pick_pack": "Tippe auf das Päckchen, das du öffnen willst!",
-    "swipe_to_open": "Wischen, um das Pack zu öffnen"
+    "swipe_to_open": "Wischen, um das Pack zu öffnen",
+    "next_pack_in": "Nächstes Pack: {time}"
   },
   "map": {
     "title": "Weltkarte",

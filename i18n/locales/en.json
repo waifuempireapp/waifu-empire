@@ -68,8 +68,8 @@
     "pack_plural": "packs",
     "next_pack": "Visit the shop",
     "countdown": "Next in {time}",
-    "available": "Available!",
-    "pesca_title": "Waifu Drop",
+    "available": "Available",
+    "pesca_title": "Lucky Catch",
     "pesca_available": "Available",
     "swap_title": "Swipe Waifu",
     "swap_votes": "{n} total votes",
@@ -83,7 +83,7 @@
     "cta_go_packs": "Go to packs"
   },
   "pesca": {
-    "title": "Waifu Drop",
+    "title": "Lucky Catch",
     "gems": "KISSES",
     "blind_pick": "BLIND PICK",
     "blind_subtitle": "By {owner} — Choose a card without knowing what's inside",
@@ -178,7 +178,8 @@
     "packs_available_label": "packs available",
     "buy_error": "Purchase error",
     "pick_pack": "Tap the booster pack you want to open!",
-    "swipe_to_open": "Swipe to cut the pack open"
+    "swipe_to_open": "Swipe to cut the pack open",
+    "next_pack_in": "Next pack: {time}"
   },
   "map": {
     "title": "World Map",
@@ -469,7 +470,7 @@
     "back": "← GAME",
     "buy_with_kisses": "BUY WITH KISSES",
     "recharge_kisses": "RECHARGE KISSES",
-    "recharge_desc": "Buy Kisses with PayPal and use them for game items and Waifu Drop",
+    "recharge_desc": "Buy Kisses with PayPal and use them for game items and Lucky Catch",
     "secure_payment": "Secure payment via PayPal",
     "buy_btn": "BUY",
     "missing_kisses": "NEED {n} MORE",

@@ -253,10 +253,10 @@ export function calcolaRicaricaEnergia(
   return { nuovaEnergia: TIMER.MAX_ENERGIA, prossimaRicarica: null, ultimaRicaricaAggiornata: oraAttuale, deveAggiornare: true }
 }
 
-/** Ricarica pacchetti omaggio: +1 OGNI 12 ORE fino a MAX 5.
+/** Ricarica pacchetti omaggio: +1 OGNI 12 ORE fino a MAX 3.
  *  A 5/5 il timer NON corre: riparte solo quando si scende sotto il massimo
  *  (chi consuma da pieno resetta ultimaRicaricaPacchetti = adesso). */
-export const OMAGGIO_MAX = 5
+export const OMAGGIO_MAX = 3
 export const OMAGGIO_ORE = 12
 export function calcolaRicaricaPacchettiOmaggio(
   ultimaRicarica: { toMillis?: () => number } | number | null | undefined,

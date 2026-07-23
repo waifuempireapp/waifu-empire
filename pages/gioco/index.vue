@@ -1,5 +1,5 @@
 <!-- ============================================================
-  Pagina principale del gioco: navigazione a 5 tab (Pokémon TCG Pocket style),
+  Pagina principale del gioco: navigazione a 5 tab (TCG collezionabile style),
   caricamento dati utente (profilo, collezione, catalogo) da Firestore.
   Pacchetti e Community usano sub-navigazione interna a pill.
   Equivalente di src/app/gioco/page.jsx nel Next.js originale.
@@ -514,7 +514,7 @@ function handleSetTab(t: string) {
          Per riattivarli: decommenta la riga sotto. -->
     <!-- <SakuraPetals /> -->
 
-    <!-- Header Pokémon TCG Pocket: risorse sx, logo centro, campana dx.
+    <!-- Header TCG collezionabile: risorse sx, logo centro, campana dx.
          NASCOSTO nello swipe (schermata immersiva: si esce con la X) -->
     <LazyGiocoHeader v-if="tab !== 'swap'" :profilo="gameStore.profilo" :is-admin="isAdmin" @logout="authStore.logout()" />
 
@@ -599,7 +599,7 @@ function handleSetTab(t: string) {
 
     </div><!-- fine area contenuto tab -->
 
-    <!-- ── Bottom Navigation (5 tab, stile Pokémon TCG Pocket) ─────────
+    <!-- ── Bottom Navigation (5 tab, stile TCG collezionabile) ─────────
          Glass panel con backdrop-blur, token-aware.
          Tab attiva: dot viola + icona piena colore accent.
          Tab inattiva: outline sottile, opacity ridotta.
@@ -635,7 +635,7 @@ function handleSetTab(t: string) {
       </button>
     </nav>
 
-    <!-- FAB Missioni — cerchio Pocket-style, visibile SOLO su Home e Mappa -->
+    <!-- FAB Missioni — cerchio card-style, visibile SOLO su Home e Mappa -->
     <button
       v-if="tab === 'home' || tab === 'mappa'"
       class="missioni-fab-pocket"
