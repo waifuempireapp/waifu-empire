@@ -5,6 +5,9 @@
   ============================================================ -->
 <script setup lang="ts">
 import { Heart } from 'lucide-vue-next'
+import crownIcon from '~/assets/icons/crown.png'
+import medal2Icon from '~/assets/icons/medal-2.png'
+import medal3Icon from '~/assets/icons/medal-3.png'
 import { ikUrl, ikImgFallback } from '~/utils/imagekitUrl'
 import { getCollezione } from '~/utils/firestoreService'
 
@@ -22,7 +25,7 @@ const FF = {
   mono:    "var(--ff-mono, 'JetBrains Mono', monospace)",
 }
 
-const MEDAL       = ['👑', '🥈', '🥉']
+const MEDAL       = [crownIcon, medal2Icon, medal3Icon]
 const PRIZE_COLORS = [
   '#ffc861','#b0bec5','#cd7f32','#ec4899',
   '#a855f7','#6cf0e0','#58e0a3','#f59e0b','#3b82f6','#ef4444',
@@ -235,9 +238,8 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
           <div :style="{ display: 'flex', alignItems: 'center', gap: '14px' }">
             <!-- Medaglia / numero posizione -->
             <div :style="{ minWidth: '40px', textAlign: 'center', flexShrink: 0 }">
-              <div v-if="(page * PAGE_SIZE + j) < 3" :style="{ fontSize: '28px', lineHeight: 1 }">
-                {{ MEDAL[page * PAGE_SIZE + j] }}
-              </div>
+              <img v-if="(page * PAGE_SIZE + j) < 3" :src="MEDAL[page * PAGE_SIZE + j]" alt=""
+                :style="{ width: '34px', height: '34px', objectFit: 'contain', margin: '0 auto', filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.3))' }" />
               <div v-else :style="{
                 width: '32px', height: '32px', borderRadius: '50%',
                 background: `${PRIZE_COLORS[Math.min(page * PAGE_SIZE + j, 9)]}18`,

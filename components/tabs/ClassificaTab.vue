@@ -5,8 +5,14 @@
   WaifuRankingList.
   ============================================================ -->
 <script setup lang="ts">
-// Icone Lucide — Trophy per il podio, Map per territori, Gift per premi
+// Icone Lucide — Trophy per l'header, Map per territori, Gift per premi
 import { Trophy, Map as MapIcon, Gift } from 'lucide-vue-next'
+// Icone colorate (podio/premi): medaglie 1/2/3, corona, trofeo
+import medal1Icon from '~/assets/icons/medal-1.png'
+import medal2Icon from '~/assets/icons/medal-2.png'
+import medal3Icon from '~/assets/icons/medal-3.png'
+import crownIcon from '~/assets/icons/crown.png'
+import trophyIcon from '~/assets/icons/trophy.png'
 import { getClassifica, premioPerPosizione } from '~/utils/firestoreService'
 
 // Prop: utente Firebase autenticato
@@ -90,10 +96,10 @@ const PODIO_INDICES = [1, 0, 2]
 const PODIO_HEIGHTS = [180, 150, 120] // altezza colonna in px
 
 // ---- Premi settimanali statici ----
-const premiTop = { label: '1°',      medal: '🥇', pack: 10, col: C.violet  }
+const premiTop = { label: '1°',      medal: medal1Icon, pack: 10, col: C.violet  }
 const premiRiga2 = [
-  { label: '2°',      medal: '🥈', pack: 5,  col: '#5a7a96' },
-  { label: '3°',      medal: '🥉', pack: 3,  col: '#ff9b6b' },
+  { label: '2°',      medal: medal2Icon, pack: 5,  col: '#5a7a96' },
+  { label: '3°',      medal: medal3Icon, pack: 3,  col: '#ff9b6b' },
 ]
 const { t: tr } = useI18n()
 const premiRiga3 = computed(() => [
@@ -184,13 +190,13 @@ const listExpanded = ref(false)
             borderRadius:'14px', padding:'14px 14px 12px',
             boxShadow:`0 6px 20px ${premiTop.col}33`,
           }">
-            <span :style="{ position:'absolute', top:'-16px', left:'-14px', fontSize:'34px', zIndex:2, filter:`drop-shadow(0 2px 10px ${premiTop.col}99)` }">{{ premiTop.medal }}</span>
+            <img :src="premiTop.medal" alt="" :style="{ position:'absolute', top:'-18px', left:'-16px', width:'42px', height:'42px', objectFit:'contain', zIndex:2, filter:`drop-shadow(0 2px 10px ${premiTop.col}99)` }" />
             <div :style="{ position:'absolute', top:'8px', right:'10px', fontFamily:FF.label, fontSize:'20px', fontWeight:800, color:premiTop.col, lineHeight:1 }">{{ premiTop.label }}</div>
             <div :style="{ display:'flex', alignItems:'center', gap:'12px', marginTop:'6px' }">
               <img src="~/assets/images/back_card.png" alt="" :style="{ width:'42px', height:'auto', borderRadius:'5px', flexShrink:0, filter:`drop-shadow(0 3px 8px ${premiTop.col}66)` }" />
               <div>
                 <div :style="{ fontFamily:FF.label, fontSize:'11px', color:'var(--theme-text-2)', letterSpacing:'0.2em', textTransform:'uppercase', marginBottom:'3px' }">{{ $t("leaderboard.header_prize") }}</div>
-                <div :style="{ fontFamily:FF.label, fontSize:'16px', fontWeight:800, color:premiTop.col, lineHeight:1.15, whiteSpace:'nowrap' }">{{ premiTop.pack }} carte waifu</div>
+                <div :style="{ fontFamily:FF.label, fontSize:'14px', fontWeight:800, color:premiTop.col, lineHeight:1.15, whiteSpace:'nowrap' }">{{ premiTop.pack }} carte waifu</div>
               </div>
             </div>
           </div>
@@ -209,7 +215,7 @@ const listExpanded = ref(false)
               boxShadow:`0 4px 14px ${p.col}22`,
             }"
           >
-            <span :style="{ position:'absolute', top:'-14px', left:'-12px', fontSize:'28px', zIndex:2, filter:`drop-shadow(0 2px 8px ${p.col}88)` }">{{ p.medal }}</span>
+            <img :src="p.medal" alt="" :style="{ position:'absolute', top:'-16px', left:'-14px', width:'34px', height:'34px', objectFit:'contain', zIndex:2, filter:`drop-shadow(0 2px 8px ${p.col}88)` }" />
             <div :style="{ position:'absolute', top:'7px', right:'9px', fontFamily:FF.label, fontSize:'17px', fontWeight:800, color:p.col, lineHeight:1 }">{{ p.label }}</div>
             <div :style="{ display:'flex', alignItems:'center', gap:'10px', marginTop:'6px' }">
               <img src="~/assets/images/back_card.png" alt="" :style="{ width:'36px', height:'auto', borderRadius:'4px', flexShrink:0, filter:`drop-shadow(0 2px 6px ${p.col}55)` }" />
@@ -324,15 +330,16 @@ const listExpanded = ref(false)
             backdropFilter: 'blur(6px)',
           }">
             <!-- Corona per il primo posto -->
-            <div
+            <img
               v-if="idx === 0"
+              :src="crownIcon" alt=""
               :style="{
-                position: 'absolute', top: '-28px', left: '50%',
+                position: 'absolute', top: '-30px', left: '50%',
                 transform: 'translateX(-50%)',
-                fontSize: '22px', color: podiumColors[idx],
-                filter: `drop-shadow(0 0 12px ${podiumColors[idx]})`,
+                width: '34px', height: '34px', objectFit: 'contain',
+                filter: `drop-shadow(0 2px 12px ${podiumColors[idx]})`,
               }"
-            >👑</div>
+            />
 
             <!-- Nome giocatore -->
             <div :style="{
@@ -397,8 +404,9 @@ const listExpanded = ref(false)
 
         <!-- Premio per la propria posizione -->
         <div :style="{ textAlign: 'right' }">
-          <div :style="{ fontFamily: FF.label, fontSize: '13px', color: C.goldL, fontWeight: 700 }">
-            {{ premioPerPosizione(mioIndice + 1) }} 🎴
+          <div :style="{ display:'inline-flex', alignItems:'center', gap:'5px', fontFamily: FF.label, fontSize: '13px', color: C.goldL, fontWeight: 700 }">
+            {{ premioPerPosizione(mioIndice + 1) }}
+            <img src="~/assets/images/back_card.png" alt="" :style="{ width:'16px', height:'auto', borderRadius:'2px' }" />
           </div>
           <div :style="{
             fontSize: '7px', color: 'var(--theme-text-3)',
@@ -429,8 +437,8 @@ const listExpanded = ref(false)
             <Trophy :size="18" stroke-width="1.5" :style="{ color: C.gold }" />
             <span :style="{ fontFamily:FF.label, fontSize:'16px', fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--theme-text)' }">{{ $t("leaderboard.full_title") }}</span>
           </div>
-          <div :style="{ display:'flex', alignItems:'center', gap:'10px' }">
-            <span v-if="classifica.length" :style="{ fontFamily:FF.label, fontSize:'13px', color:'var(--theme-text-3)' }">{{ classifica.length }} giocatori</span>
+          <div :style="{ display:'flex', alignItems:'center', gap:'0px', flexShrink:0 }">
+            <span v-if="classifica.length" :style="{ fontFamily:FF.label, fontSize:'13px', color:'var(--theme-text-3)', whiteSpace:'nowrap', marginRight:'6px' }">{{ classifica.length }} giocatori</span>
             <span :style="{ fontFamily:FF.label, fontSize:'16px', color:'var(--theme-text-3)', transition:'transform 0.25s', display:'inline-block', transform: listExpanded ? 'rotate(180deg)' : 'none' }">▾</span>
           </div>
         </div>
@@ -439,7 +447,7 @@ const listExpanded = ref(false)
         <div v-if="listExpanded">
           <!-- Stato vuoto -->
           <div v-if="classifica.length === 0" :style="{ padding: '40px', textAlign: 'center' }">
-            <Trophy :size="38" stroke-width="1" style="margin-bottom:8px;filter:drop-shadow(0 0 12px rgba(245,197,96,0.5));color:#f5c560;" />
+            <img :src="trophyIcon" alt="" style="width:46px;height:46px;object-fit:contain;margin:0 auto 8px;filter:drop-shadow(0 4px 14px rgba(245,197,96,0.55));" />
             <div :style="{ fontFamily:FF.label, fontSize:'13px', color:C.gold, letterSpacing:'0.24em', marginBottom:'6px', textTransform:'uppercase', fontWeight:700 }">{{ $t("leaderboard.empty_title") }}</div>
             <div :style="{ fontFamily:FF.body, fontSize:'13px', color:'var(--theme-text-2)', lineHeight:1.6, whiteSpace:'pre-line' }">{{ $t('leaderboard.empty_hint') }}</div>
           </div>
@@ -525,13 +533,13 @@ const listExpanded = ref(false)
       </div>
 
       <!-- Nota criteri -->
-      <div :style="{
+      <!-- <div :style="{
         textAlign:'center', marginTop:'10px',
         fontFamily:FF.label, fontSize:'11px', color:'var(--theme-text-3)',
         letterSpacing:'0.18em', textTransform:'uppercase', fontWeight:600,
       }">
         Criteri · Territori → Pass Hard (spareggio) → Iscrizione
-      </div>
+      </div> -->
 
     </template>
   </div>

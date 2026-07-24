@@ -1876,44 +1876,45 @@ const mvp = computed(() => {
 
         <!-- ── Menù azioni → griglia mosse (il cambio waifu è un popup a parte) ── -->
         <template v-if="!(isSwap || isVolSwap || (allPPOut && isChoose))">
-          <!-- Segmented control MOSSE | WAIFU | ABBANDONA — nessun bordo, solo
-               divisori; ABBANDONA è il segmento "selezionato" (gradiente fisso) -->
-          <div v-if="actionMenu === 'menu'" :style="{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'10px 12px', minHeight:0 }">
+          <!-- Segmented control MOSSE | WAIFU | ABBANDONA — pill con bordo viola,
+               riempie TUTTO lo spazio; ABBANDONA è il segmento "selezionato"
+               (gradiente fisso, come il segmented della Classifica) -->
+          <div v-if="actionMenu === 'menu'" :style="{ flex:1, display:'flex', padding:'12px', minHeight:0 }">
             <div :style="{
-              width:'100%', maxWidth:'720px', height:'50%', minHeight:'88px',
-              display:'flex', alignItems:'stretch',
-              background:'var(--theme-surface-2)',
+              flex:1, display:'flex', alignItems:'stretch',
+              border:'1.5px solid var(--theme-accent)',
               borderRadius:'14px', overflow:'hidden',
+              background:'var(--theme-surface-2)',
               boxShadow:'0 2px 12px var(--theme-shadow)',
             }">
               <button
                 :disabled="!isChoose || isAnim || (isPvP && pvpWaiting)"
                 @click="actionMenu = 'moves'"
                 :style="{
-                  flex:1, background:'none', border:'none',
+                  flex:1, background:'transparent', border:'none', borderRadius:0,
                   cursor: (!isChoose || isAnim || (isPvP && pvpWaiting)) ? 'not-allowed' : 'pointer',
-                  fontFamily:'var(--ff-label)', fontSize:'13px', fontWeight:800, letterSpacing:'.14em',
-                  color:'var(--theme-text-2)', opacity: (!isChoose || isAnim || (isPvP && pvpWaiting)) ? .4 : 1,
+                  fontFamily:'var(--ff-label)', fontSize:'14px', fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase',
+                  color:'var(--theme-accent)', opacity: (!isChoose || isAnim || (isPvP && pvpWaiting)) ? .4 : 1,
                 }"
               >MOSSE</button>
-              <div :style="{ width:'1px', background:'var(--theme-border)', margin:'14px 0', flexShrink:0 }"/>
+              <div :style="{ width:'1.5px', background:'var(--theme-accent)', opacity:.55, flexShrink:0 }"/>
               <button
                 :disabled="swapDisabled"
                 @click="startVoluntarySwap"
                 :style="{
-                  flex:1, background:'none', border:'none',
+                  flex:1, background:'transparent', border:'none', borderRadius:0,
                   cursor: swapDisabled ? 'not-allowed' : 'pointer',
-                  fontFamily:'var(--ff-label)', fontSize:'13px', fontWeight:800, letterSpacing:'.14em',
-                  color:'var(--theme-text-2)', opacity: swapDisabled ? .4 : 1,
+                  fontFamily:'var(--ff-label)', fontSize:'14px', fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase',
+                  color:'var(--theme-accent)', opacity: swapDisabled ? .4 : 1,
                 }"
               >WAIFU</button>
-              <div :style="{ width:'1px', background:'var(--theme-border)', margin:'14px 0', flexShrink:0 }"/>
+              <div :style="{ width:'1.5px', background:'var(--theme-accent)', opacity:.55, flexShrink:0 }"/>
               <button
                 @click="confirmQuit = true"
                 :style="{
-                  flex:1, border:'none', cursor:'pointer',
-                  background:'var(--grad-primary)',
-                  fontFamily:'var(--ff-label)', fontSize:'13px', fontWeight:900, letterSpacing:'.14em',
+                  flex:1, border:'none', borderRadius:0, cursor:'pointer',
+                  background:'linear-gradient(to left, var(--theme-accent) 0%, var(--theme-accent) 70%, transparent 100%)',
+                  fontFamily:'var(--ff-label)', fontSize:'14px', fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase',
                   color:'#fff',
                 }"
               >ABBANDONA</button>

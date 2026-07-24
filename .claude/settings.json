@@ -365,12 +365,38 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/_nuxt/builds/meta/dev.json)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3001/gioco)",
       "Bash(grep -n \"2px solid.*rar\\\\|border: \\\\`2px\\\\|rarColors\\\\[w.rarita\\\\]\" components/mappa/BattleModal.vue)",
-      "Bash(curl -s -o /dev/null -w \"dev: %{http_code}\\\\n\" http://localhost:3001/gioco)"
+      "Bash(curl -s -o /dev/null -w \"dev: %{http_code}\\\\n\" http://localhost:3001/gioco)",
+      "Bash(python3 -c \"import json; print\\('fish_label:', json.load\\(open\\('i18n/locales/it.json'\\)\\).get\\('pesca',{}\\).get\\('fish_label'\\)\\)\")",
+      "Bash(git check-ignore *)",
+      "Bash(awk '{print $NF}')",
+      "Bash(awk '{s+=$5; print $5, $NF}')",
+      "Bash(awk '$5 > 200000 {print $5, $NF}')",
+      "Bash(node -e \"try{require.resolve\\('sharp'\\);console.log\\('sharp: DISPONIBILE'\\)}catch\\(e\\){console.log\\('sharp: assente'\\)}\")",
+      "Bash(awk '$5>200000{print int\\($5/1024\\)\"KB\", $NF}')",
+      "Bash(awk '{print int\\($5/1048576\\)\"MB\", $NF}')",
+      "Bash(node -e \"console.log\\('three:', require\\('three/package.json'\\).version\\)\")",
+      "Bash(npx --no-install @gltf-transform/cli --version)",
+      "Bash(mkdir -p /tmp/glb_opt)",
+      "Bash(npx --yes @gltf-transform/cli optimize public/bustine/bustina_impero_stellare.glb /tmp/glb_opt/stellare.glb --compress meshopt --texture-compress webp)",
+      "Bash(cd /Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt; NUXT_BUILD_DIR=.nuxt-verify NUXT_IGNORE_LOCK=1 npx nuxi build > /tmp/build.log 2>&1; echo \"EXIT=$?\"; tail -8 /tmp/build.log)",
+      "Bash(grep -viE \"\\\\.glb$\")",
+      "Bash(awk '/\\\\.pack-stack-\\(container|scene|reflection-fake|label|hint\\)/{p=NR} p&&NR<=p+8' components/tabs/SbustaTab.vue)",
+      "Bash(awk '/\\\\.ht-hero-wrap|\\\\.ht-hero-badge--total|\\\\.ht-hero-badge--omaggio|\\\\.ht-hero \\\\{|\\\\.ht-hero-badge \\\\{/{print NR\": \"$0}' components/tabs/HomeTab.vue)",
+      "Bash(npx vue-tsc *)",
+      "Bash(echo \"TC_EXIT=$?  ERR=$\\(grep -c 'error TS' /tmp/tc.log\\)\")",
+      "Bash(echo \"TC_EXIT=$? ERR=$\\(grep -c 'error TS' /tmp/tc.log\\)\")",
+      "Bash(mv \"icons8-heart-64.png\" heart.png)",
+      "Bash(mv \"icons8-1-°-posto-nastro-64.png\" medal-1.png)",
+      "Bash(mv \"icons8-nastro-del-secondo-posto-64.png\" medal-2.png)",
+      "Bash(mv \"icons8-nastro-del-terzo-posto-64.png\" medal-3.png)",
+      "Bash(mv \"icons8-corona-64.png\" crown.png)",
+      "Bash(grep -E \"^\\(heart|medal-[123]|crown|trophy|star\\)\\\\.png$\")"
     ],
     "additionalDirectories": [
       "/private/tmp",
       "/Users/lazzari/Desktop",
-      "/tmp"
+      "/tmp",
+      "/private/tmp/glb_opt"
     ]
   }
 }

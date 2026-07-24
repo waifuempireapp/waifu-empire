@@ -11,6 +11,7 @@ import { Home, Archive, Map as MapIcon, Trophy, Settings, Target } from 'lucide-
 import { doc, getDoc } from 'firebase/firestore'
 import { useAuthStore } from '~/stores/auth'
 import { useGameStore } from '~/stores/game'
+import { useMissionsStore } from '~/stores/missions'
 import {
   getUserProfile, updateUserProfile, getCollezione,
   listWaifu, listMosse, listDropsAttivi,
@@ -34,6 +35,7 @@ definePageMeta({ middleware: 'auth' })
 
 const authStore = useAuthStore()
 const gameStore = useGameStore()
+const missionsStore = useMissionsStore()
 const router = useRouter()
 
 // ── Stato locale UI (non globale) ──────────────────────────────────────
@@ -221,6 +223,10 @@ async function caricaTutto(uid: string) {
 
   // Aggiorna store globale
   gameStore.setProfilo(updatedProfile as never)
+
+  // Missioni giornaliere: carica lo stato (progress/claimed) così il FAB può
+  // mostrare la notifica di missioni completate da riscattare già su Home/Mappa
+  missionsStore.load(uid).catch(() => { /* fallback localStorage interno */ })
 
   // Lingua: il profilo Firebase è la fonte di verità (legata all'account)
   const linguaProfilo = (updatedProfile as Record<string, unknown>).lingua as string | undefined
@@ -449,15 +455,16 @@ function handleSetTab(t: string) {
        può inizializzare Three.js in background mentre l'overlay è ancora visibile) -->
   <div v-if="caricato" class="game-container min-h-screen" style="padding-bottom:80px">
 
-    <!-- Notifica flottante (toast slide-down) -->
+    <!-- Notifica flottante (toast) — CENTRATA a schermo (h+v) per massima visibilità -->
     <Transition name="slide-down">
-      <div v-if="notif" class="fixed top-4 left-1/2 -translate-x-1/2 z-[200] px-6 py-2.5 rounded-xl
-               text-xs tracking-widest font-orbitron" :style="{
+      <div v-if="notif" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[10050]
+               px-7 py-4 rounded-2xl text-sm tracking-widest font-orbitron text-center" :style="{
                 background: 'var(--theme-surface)',
-                backdropFilter: 'blur(12px)',
-                border: `1px solid ${notif.colore}80`,
+                backdropFilter: 'blur(14px)',
+                border: `1.5px solid ${notif.colore}`,
                 color: notif.colore,
-                boxShadow: `0 0 24px ${notif.colore}40`,
+                boxShadow: `0 0 0 4px ${notif.colore}22, 0 12px 44px ${notif.colore}55, 0 8px 30px rgba(0,0,0,0.45)`,
+                maxWidth: 'min(86vw, 420px)',
               }">
         {{ notif.testo }}
       </div>
@@ -635,13 +642,16 @@ function handleSetTab(t: string) {
       </button>
     </nav>
 
-    <!-- FAB Missioni — cerchio card-style, visibile SOLO su Home e Mappa -->
+    <!-- FAB Missioni — cerchio card-style, visibile SOLO su Home e Mappa.
+         Se c'è una missione completata NON riscattata → colore attivo + pallino notifica -->
     <button
       v-if="tab === 'home' || tab === 'mappa'"
       class="missioni-fab-pocket"
+      :class="{ 'missioni-fab-pocket--alert': missionsStore.hasUnclaimedCompleted }"
       @click="() => { tabPrimaDiMissioni = tab; gameStore.setTab('missioni') }"
     >
       <Target :size="24" stroke-width="1.5" />
+      <span v-if="missionsStore.hasUnclaimedCompleted" class="missioni-fab-dot" />
     </button>
 
   </div><!-- fine .game-container -->
@@ -656,10 +666,11 @@ function handleSetTab(t: string) {
 .pesca-slide-enter-active, .pesca-slide-leave-active { transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); }
 .pesca-slide-enter-from, .pesca-slide-leave-to { transform: translateX(100%); }
 
-/* Animazione notifica flottante slide-down */
-.slide-down-enter-active, .slide-down-leave-active { transition: all 0.3s ease; }
-.slide-down-enter-from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
-.slide-down-leave-to   { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+/* Animazione notifica flottante — pop al centro schermo (resta translate -50%,-50%) */
+.slide-down-enter-active { transition: opacity 0.28s ease, transform 0.34s cubic-bezier(0.34,1.56,0.64,1); }
+.slide-down-leave-active { transition: opacity 0.24s ease, transform 0.24s ease; }
+.slide-down-enter-from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+.slide-down-leave-to   { opacity: 0; transform: translate(-50%, -50%) scale(0.92); }
 
 /* Animazione pannello impostazioni slide-up */
 .settings-up-enter-active, .settings-up-leave-active { transition: all 0.32s cubic-bezier(0.4,0,0.2,1); }
@@ -751,4 +762,27 @@ function handleSetTab(t: string) {
 }
 .missioni-fab-pocket:hover { transform: scale(1.08); }
 .missioni-fab-pocket:active { transform: scale(0.94); }
+
+/* Stato NOTIFICA: almeno una missione completata da riscattare → gradient viola
+   acceso + glow pulsante, così si nota subito che c'è qualcosa da fare */
+.missioni-fab-pocket--alert {
+  background: var(--grad-primary, linear-gradient(135deg, #8b5cf6, #6d28d9));
+  color: #fff;
+  box-shadow: var(--shadow-float), 0 0 0 3px rgba(167,139,250,0.28), 0 6px 22px rgba(139,92,246,0.55);
+  animation: missioniFabPulse 1.8s ease-in-out infinite;
+}
+@keyframes missioniFabPulse {
+  0%, 100% { box-shadow: var(--shadow-float), 0 0 0 3px rgba(167,139,250,0.22), 0 6px 20px rgba(139,92,246,0.5); }
+  50%      { box-shadow: var(--shadow-float), 0 0 0 6px rgba(167,139,250,0.10), 0 8px 26px rgba(139,92,246,0.65); }
+}
+/* Pallino viola di notifica in alto a destra */
+.missioni-fab-dot {
+  position: absolute;
+  top: 2px; right: 2px;
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: #a855f7;
+  border: 2px solid var(--theme-surface, #1a1428);
+  box-shadow: 0 0 8px rgba(168,85,247,0.9);
+}
 </style>

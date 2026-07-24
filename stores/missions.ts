@@ -61,6 +61,12 @@ export const useMissionsStore = defineStore('missions', {
 
     isClaimed: (state) => (id: MissionType): boolean =>
       state.claimed[id] === true,
+
+    // Almeno una missione completata ma NON ancora riscattata → mostra la notifica
+    hasUnclaimedCompleted: (state): boolean =>
+      MISSIONS_DEF.some(def =>
+        (state.progress[def.id] ?? 0) >= def.target && state.claimed[def.id] !== true,
+      ),
   },
 
   actions: {
