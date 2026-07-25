@@ -67,6 +67,8 @@ interface WaifuBattleStat extends WaifuDoc {
 
 /** Squadra di combattimento: minimo 1, massimo 8 (o quante ne ha il pool). */
 const MIN_TEAM = 1
+// Minimo effettivo: mai più delle waifu disponibili nel roster del giocatore
+const minTeamEff = computed(() => Math.max(1, Math.min(props.minTeam ?? MIN_TEAM, props.roster5P.length || 1)))
 const MAX_TEAM = 8
 
 /** Numero minimo di waifu nel roster per accedere alla pick phase. */
@@ -151,6 +153,9 @@ const props = withDefaults(defineProps<{
   isPvP?: boolean
   /** Indici di roster5E sempre inclusi nel team CPU (es. [0] per la Waifu Raid) */
   forcedEnemyIndices?: number[]
+  /** Numero MINIMO di waifu da schierare (default 1). Nel raid boss è >1 così
+      non si può partire con una sola waifu. */
+  minTeam?: number
   /** Contesto battaglia: { terrSel, nomeImperoAvversario } */
   battleCtx?: { terrSel?: { nome?: string }; nomeImperoAvversario?: string }
 }>(), {
@@ -159,6 +164,7 @@ const props = withDefaults(defineProps<{
   isCpu: true,
   isPvP: false,
   forcedEnemyIndices: () => [],
+  minTeam: 1,
   battleCtx: () => ({}),
 })
 
@@ -278,15 +284,18 @@ function buildTeam(roster: WaifuDoc[], picks: number[]): WaifuBattleStat[] {
 // HANDLER: conferma del giocatore
 // ─────────────────────────────────────────────────────────────────────────────
 function handleP1Confirm() {
-  if (p1Slots.value.length < MIN_TEAM) return
+  if (p1Slots.value.length < minTeamEff.value) return
   const playerTeam = buildTeam(props.roster5P, p1Slots.value)
 
   if (props.isPvP) {
     // PvP Online: il team avversario arriva via Firestore dal parent
     emit('confirm', { playerPick3: playerTeam, enemyPick3: [] })
   } else {
-    // Modalità CPU: team nemico scalato sulla dimensione della squadra del giocatore
-    const enemyCount = Math.max(1, Math.min(p1Slots.value.length, cpuPicks.value.length))
+    // Modalità CPU: la CPU schiera SEMPRE almeno 5 waifu (se disponibili nel
+    // roster), a prescindere da quante ne sceglie il giocatore — così scegliere
+    // 1 sola waifu non rende la partita banale. Se il giocatore ne sceglie di
+    // più, la CPU pareggia il numero.
+    const enemyCount = Math.min(cpuPicks.value.length, Math.max(5, p1Slots.value.length))
     const enemyTeam: WaifuBattleStat[] = cpuPicks.value.slice(0, enemyCount).map(w => {
       const cpuMoves = w._cpuMoves ?? null
       const waifu = initBattleWaifu(w as Record<string, unknown>, { livello: (w.livello as number) ?? 1 }) as unknown as WaifuBattleStat
@@ -308,7 +317,7 @@ function handleP1Confirm() {
 const activeRoster   = computed(() => props.roster5P)
 const activeSlots    = computed(() => p1Slots.value)
 const maxTeam        = computed(() => Math.min(MAX_TEAM, props.roster5P.length))
-const teamValido     = computed(() => activeSlots.value.length >= MIN_TEAM && activeSlots.value.length <= maxTeam.value)
+const teamValido     = computed(() => activeSlots.value.length >= minTeamEff.value && activeSlots.value.length <= maxTeam.value)
 const opponentRoster = computed(() => props.roster5E)
 const opponentLabel  = computed(() => props.battleCtx?.nomeImperoAvversario ?? 'CPU')
 const terrSel        = computed(() => props.battleCtx?.terrSel)
@@ -678,7 +687,7 @@ function hpBarData(hp: number, maxHp: number) {
       >
         {{ teamValido
           ? '⚔ Inizia battaglia →'
-          : 'Scegli almeno 1 waifu' }}
+          : `Scegli almeno ${minTeamEff} waifu` }}
       </button>
     </div>
   </div>

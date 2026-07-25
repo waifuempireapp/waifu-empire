@@ -178,7 +178,7 @@ const BATTLE_CSS = `
   .wba-move-btn{transition:transform .08s ease,filter .08s ease,opacity .18s ease;-webkit-tap-highlight-color:transparent;cursor:pointer}
   .wba-move-btn:active:not(:disabled){transform:scale(.94);filter:brightness(1.28)}
   .wba-move-btn:disabled{cursor:not-allowed}
-  .wba-bench-slot{transition:transform .1s ease;-webkit-tap-highlight-color:transparent}
+  .wba-bench-slot{transition:transform .1s ease;-webkit-tap-highlight-color:transparent;border-radius:10px!important}
   .wba-bench-slot:active:not(:disabled){transform:scale(.9)}
 
   /* ── Barra HP BOSS (raid) ── */
@@ -301,12 +301,18 @@ function moveLongPressStart(move: MoveInstance | null) {
   if (lpTimer) clearTimeout(lpTimer)
   lpTimer = setTimeout(() => {
     lpFired = true
-    // Scheda completa dal catalogo locale (match per nome), fallback minimale
+    // I nomi delle mosse in battaglia arrivano da Firestore (non dal catalogo
+    // statico moves-data), quindi il match per nome fallisce sempre: costruiamo
+    // il dettaglio DIRETTAMENTE dalla MoveInstance reale così si vede la mossa vera.
     const full = MOVES_DATA.find(m => m.name === move.name)
+    const eff = (move as unknown as { effect?: { label?: string } | null }).effect ?? null
     moveDetail.value = (full as unknown as Record<string, unknown>) ?? {
       id: '', name: move.name, type: String(move.type ?? 'arcana').toLowerCase(),
-      damage: move.power, additionalEffectLabel: '', effectDescription: '',
-      flavorText: '', isUltimate: false, imageFileName: '', imageUrl: '',
+      damage: move.power,
+      additionalEffectLabel: eff?.label ?? '',
+      effectDescription: eff?.label ?? (move.ability ?? '') ,
+      flavorText: '', isUltimate: (move.rarity === 'leggendario' || move.rarity === 'immersivo'),
+      imageFileName: '', imageUrl: '',
     }
   }, 420)
 }
@@ -427,8 +433,12 @@ interface RisultatoFinale {
 const risultatoFinale = ref<RisultatoFinale | null>(null)
 
 // HP precedenti per floating damage numbers
-let prevPHp: number | null = null
-let prevEHp: number | null = null
+// Inizializzati agli HP di partenza: senza questo il PRIMO colpo (prev=null)
+// non veniva mai mostrato → "al primo turno non vedo il danno".
+let prevPHp: number | null = player.value?.hp ?? null
+let prevEHp: number | null = enemy.value?.hp ?? null
+let lastFloatPActive = pActive.value
+let lastFloatEActive = eActive.value
 let dmgIdCounter = 0
 let lastCritFlag  = false
 
@@ -507,6 +517,8 @@ onMounted(() => {
 /** Traccia delta HP giocatore e mostra floating number */
 watch(() => player.value?.hp, (curr) => {
   if (curr === undefined) return
+  // Cambio waifu: sincronizza il riferimento senza mostrare un danno spurio
+  if (pActive.value !== lastFloatPActive) { lastFloatPActive = pActive.value; prevPHp = curr ?? null; return }
   if (prevPHp !== null && curr < prevPHp && prevPHp > 0) {
     const dmg    = prevPHp - curr
     const id     = ++dmgIdCounter
@@ -521,6 +533,7 @@ watch(() => player.value?.hp, (curr) => {
 /** Traccia delta HP nemico e mostra floating number */
 watch(() => enemy.value?.hp, (curr) => {
   if (curr === undefined) return
+  if (eActive.value !== lastFloatEActive) { lastFloatEActive = eActive.value; prevEHp = curr ?? null; return }
   if (prevEHp !== null && curr < prevEHp && prevEHp > 0) {
     const dmg    = prevEHp - curr
     const id     = ++dmgIdCounter
@@ -716,6 +729,7 @@ async function handleVoluntarySwap(newIdx: number, { isPPExhausted = false } = {
 
   // Fase 1: animazione entrata nuova waifu del giocatore
   pActive.value = newIdx
+  lastPMove.value = null   // nuova waifu = mosse diverse: azzera il cooldown per indice
   pAnim.value   = 'wba-sL'
   message.value = `${pTeam.value[newIdx]?.name} entra in campo!`
   await wait(ANIM_ENTER_MS)
@@ -888,6 +902,7 @@ async function resolveTurn(pMi: number, eMi: number, _externalResult: null = nul
   // ── Esegui swap (prima degli attacchi) ────────────────────────────────────
   if (isPlayerSwap) {
     pActive.value = playerSwapIdx; cPA = playerSwapIdx
+    lastPMove.value = null   // cooldown per-indice non valido sulla nuova waifu
     pAnim.value   = 'wba-sL'
     message.value = `${curP[playerSwapIdx]?.name} entra in campo!`
     await wait(ANIM_ENTER_MS)
@@ -897,6 +912,7 @@ async function resolveTurn(pMi: number, eMi: number, _externalResult: null = nul
 
   if (isEnemySwap) {
     eActive.value = enemySwapIdx; cEA = enemySwapIdx
+    lastEMove.value = null   // nuova waifu CPU: nessun cooldown ereditato
     eAnim.value   = 'wba-sR'
     message.value = `${curE[enemySwapIdx]?.name} entra in campo!`
     await wait(ANIM_ENTER_MS)
@@ -1100,6 +1116,11 @@ async function resolveTurn(pMi: number, eMi: number, _externalResult: null = nul
     else     { curE = curE.map((x, i) => i === idx ? nw : x); eTeam.value = [...curE] }
 
     if (tickKO) {
+      // KO da DoT/effetto: accredita il punto a CHI ha inflitto l'effetto
+      // (l'avversario della waifu che muore). Prima mancava → la CPU non
+      // prendeva punti se ti uccideva con un danno-nel-tempo.
+      if (isP) { statsE.value = { ko: statsE.value.ko + 1, dmg: statsE.value.dmg }; statsERef = { ...statsE.value } }
+      else     { statsP.value = { ko: statsP.value.ko + 1, dmg: statsP.value.dmg }; statsPRef = { ...statsP.value } }
       message.value = `${w.name} è fuori combattimento!`
       if (isP) pAnim.value = 'wba-ko'; else eAnim.value = 'wba-ko'
       await wait(ANIM_KO_MS)
@@ -1156,6 +1177,7 @@ async function resolveTurn(pMi: number, eMi: number, _externalResult: null = nul
 /** Gestisce il cambio forzato dopo un KO del giocatore */
 function handlePlayerSwap(newIdx: number) {
   pActive.value = newIdx
+  lastPMove.value = null   // nuova waifu: nessun cooldown ereditato
   pAnim.value   = 'wba-sL'
   setTimeout(() => { pAnim.value = '' }, 450)
   resolveActive  = false
@@ -1183,9 +1205,11 @@ const allPPOut        = computed(() => (player.value?.moves ?? []).every(m => (m
 // l'azione, poi si vede la griglia mosse o lo slideover di cambio.
 const actionMenu = ref<'menu' | 'moves'>('menu')
 watch(isChoose, (v) => { if (v) actionMenu.value = 'menu' })
+// WAIFU è disabilitato SOLO se non c'è un'altra waifu viva da mandare in campo
+// (o se non è il mio turno di scelta). NIENTE blocco al primo turno.
 const swapDisabled = computed(() =>
   !isChoose.value || isAnim.value || (props.isPvP && props.pvpWaiting)
-  || !pTeam.value.some((w, i) => i !== pActive.value && !w.isKO) || turn.value <= 1)
+  || !pTeam.value.some((w, i) => i !== pActive.value && !w.isKO))
 
 // ── Long-press su uno slot del cambio: dettaglio waifu (tipo + mosse) ──
 const swapDetail = ref<WaifuBattleStat | null>(null)
@@ -1857,11 +1881,11 @@ const mvp = computed(() => {
            alto (fase cambio) scrolla internamente (overflowY:auto). -->
       <div :style="{
         flexShrink:0,
-        height: isMobile ? 'clamp(225px, 31dvh, 270px)' : 'clamp(220px, 30dvh, 280px)',
+        height: isMobile ? 'clamp(158px, 22dvh, 196px)' : 'clamp(170px, 24dvh, 210px)',
         display:'flex', flexDirection:'column',
         background:'var(--theme-surface)',
         borderTop:'1px solid var(--theme-border)',
-        overflowY:'auto', WebkitOverflowScrolling:'touch',
+        overflow:'hidden',
       }">
 
         <!-- Timer progress bar — traccia SEMPRE renderizzata: se sparisse col
@@ -1879,51 +1903,57 @@ const mvp = computed(() => {
           <!-- Segmented control MOSSE | WAIFU | ABBANDONA — pill con bordo viola,
                riempie TUTTO lo spazio; ABBANDONA è il segmento "selezionato"
                (gradiente fisso, come il segmented della Classifica) -->
-          <div v-if="actionMenu === 'menu'" :style="{ flex:1, display:'flex', padding:'12px', minHeight:0 }">
+          <!-- NB: sono <div>, NON <button>: la regola globale button{border-radius:pill!important}
+               forzerebbe il radius sui singoli. Il SOLO elemento arrotondato è il
+               contenitore .wba-seg (overflow:hidden). ABBANDONA = segmento attivo viola. -->
+          <div v-if="actionMenu === 'menu'" :style="{ flex:1, display:'flex', padding:'10px 12px', minHeight:0 }">
             <div :style="{
               flex:1, display:'flex', alignItems:'stretch',
               border:'1.5px solid var(--theme-accent)',
-              borderRadius:'14px', overflow:'hidden',
+              borderRadius:'16px', overflow:'hidden',
               background:'var(--theme-surface-2)',
               boxShadow:'0 2px 12px var(--theme-shadow)',
             }">
-              <button
-                :disabled="!isChoose || isAnim || (isPvP && pvpWaiting)"
-                @click="actionMenu = 'moves'"
+              <div
+                role="button"
+                @click="() => { if (!(!isChoose || isAnim || (isPvP && pvpWaiting))) actionMenu = 'moves' }"
                 :style="{
-                  flex:1, background:'transparent', border:'none', borderRadius:0,
+                  flex:1, display:'flex', alignItems:'center', justifyContent:'center',
                   cursor: (!isChoose || isAnim || (isPvP && pvpWaiting)) ? 'not-allowed' : 'pointer',
                   fontFamily:'var(--ff-label)', fontSize:'14px', fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase',
                   color:'var(--theme-accent)', opacity: (!isChoose || isAnim || (isPvP && pvpWaiting)) ? .4 : 1,
+                  userSelect:'none',
                 }"
-              >MOSSE</button>
-              <div :style="{ width:'1.5px', background:'var(--theme-accent)', opacity:.55, flexShrink:0 }"/>
-              <button
-                :disabled="swapDisabled"
-                @click="startVoluntarySwap"
+              >MOSSE</div>
+              <div :style="{ width:'1.5px', background:'var(--theme-accent)', opacity:.45, flexShrink:0 }" />
+              <div
+                role="button"
+                @click="() => { if (!swapDisabled) startVoluntarySwap() }"
                 :style="{
-                  flex:1, background:'transparent', border:'none', borderRadius:0,
+                  flex:1, display:'flex', alignItems:'center', justifyContent:'center',
                   cursor: swapDisabled ? 'not-allowed' : 'pointer',
                   fontFamily:'var(--ff-label)', fontSize:'14px', fontWeight:800, letterSpacing:'.14em', textTransform:'uppercase',
                   color:'var(--theme-accent)', opacity: swapDisabled ? .4 : 1,
+                  userSelect:'none',
                 }"
-              >WAIFU</button>
-              <div :style="{ width:'1.5px', background:'var(--theme-accent)', opacity:.55, flexShrink:0 }"/>
-              <button
+              >WAIFU</div>
+              <div
+                role="button"
                 @click="confirmQuit = true"
                 :style="{
-                  flex:1, border:'none', borderRadius:0, cursor:'pointer',
-                  background:'linear-gradient(to left, var(--theme-accent) 0%, var(--theme-accent) 70%, transparent 100%)',
+                  flex:1, display:'flex', alignItems:'center', justifyContent:'center',
+                  cursor:'pointer', userSelect:'none',
+                  background:'linear-gradient(to left, var(--theme-accent) 0%, var(--theme-accent) 55%, transparent 100%)',
                   fontFamily:'var(--ff-label)', fontSize:'14px', fontWeight:900, letterSpacing:'.14em', textTransform:'uppercase',
                   color:'#fff',
                 }"
-              >ABBANDONA</button>
+              >ABBANDONA</div>
             </div>
           </div>
 
           <template v-else>
           <!-- Torna al menù azioni -->
-          <div :style="{ flexShrink:0, padding:'6px 12px 0' }">
+          <div :style="{ flexShrink:0, padding:'8px 14px 12px' }">
             <button @click="actionMenu = 'menu'" :style="{
               background:'none', border:'none', cursor:'pointer', padding:'4px 6px',
               fontFamily:'var(--ff-label)', fontSize:'12px', fontWeight:800, letterSpacing:'.1em',
@@ -1932,7 +1962,7 @@ const mvp = computed(() => {
           </div>
 
           <!-- Griglia mosse 2×2 -->
-          <div :style="{ flex:1,position:'relative',padding:'2px 10px 6px',display:'flex',flexDirection:'column',minHeight:0 }">
+          <div :style="{ flex:1,position:'relative',padding:'0 12px 12px',display:'flex',flexDirection:'column',minHeight:0 }">
             <!-- PvP waiting overlay -->
             <div v-if="isPvP && pvpWaiting" :style="{
               position:'absolute',inset:'2px 10px 6px',zIndex:5,
@@ -1946,8 +1976,8 @@ const mvp = computed(() => {
             </div>
 
             <div :style="{
-              flex:1, display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px',
-              minHeight: isMobile ? '112px' : '0',
+              flex:1, display:'grid', gridTemplateColumns:'1fr 1fr', gridTemplateRows:'1fr 1fr', gap:'8px',
+              minHeight: 0,
             }">
               <template v-for="(move, i) in (player?.moves ?? [null,null,null,null])" :key="i">
                 <!-- MoveBtn inline -->
@@ -1971,7 +2001,7 @@ const mvp = computed(() => {
                     const cd      = isMoveBlocked(lastPMove, i, move)
                     const c       = _TYPE_COLORS_UI[move.type] ?? { bg:'#111', text:'#eee', border:'#555' }
                     return {
-                      height:'100%', padding:'8px 11px', borderRadius:'12px', width:'100%',
+                      height:'100%', padding:'7px 11px', borderRadius:'14px', width:'100%',
                       background: isOutPp ? _DISABLED_MOVE_STYLE.bg : cd ? `${c.bg ?? 'rgba(255,255,255,0.12)'}99` : c.bg ?? 'rgba(255,255,255,0.12)',
                       border: isOutPp ? _DISABLED_MOVE_STYLE.border : cd ? `0.8px solid ${c.border}66` : `0.8px solid ${c.border}`,
                       backdropFilter: isOutPp ? 'none' : 'blur(8px)',
@@ -1981,7 +2011,7 @@ const mvp = computed(() => {
                       opacity: cd ? 0.65 : 1,
                       fontFamily: '\'DM Sans\', sans-serif',
                       cursor: dis ? 'not-allowed' : 'pointer',
-                      display:'flex', flexDirection:'column', gap:'5px', alignItems:'flex-start',
+                      display:'flex', flexDirection:'column', gap:'4px', alignItems:'flex-start',
                       position:'relative', overflow:'visible',
                     }
                   })()"
@@ -2011,36 +2041,43 @@ const mvp = computed(() => {
                       }">{{ move.name }}</span>
                       <Lock v-if="isMoveBlocked(lastPMove, i, move)" :size="11" stroke-width="1.5" style="flex-shrink:0;color:var(--theme-text-2);" />
                     </div>
-                    <!-- Riga PP (dots + conteggio) -->
-                    <div :style="{ display:'flex',gap:'3px',alignItems:'center',width:'100%' }">
-                      <template v-for="(_, di) in Array.from({ length: Math.min(move.maxPp ?? 8, 8) })" :key="di">
-                        <div :style="{
-                          width:'5px',height:'5px',borderRadius:'50%',flexShrink:0,
-                          background: (move.pp ?? 0) <= 0 ? _DISABLED_MOVE_STYLE.color : (_TYPE_COLORS_UI[move.type]?.border ?? '#555'),
-                          opacity: di < Math.max(0, Math.min(Math.min(move.maxPp ?? 8, 8), Math.round((move.pp ?? 0) * Math.min(move.maxPp ?? 8, 8) / (move.maxPp ?? 8)))) ? 1 : 0.22,
-                        }"/>
-                      </template>
-                      <span :style="{
-                        fontFamily:'var(--ff-label)', fontSize:'12px',
-                        color: (move.pp ?? 0) <= 0 ? _DISABLED_MOVE_STYLE.color : (_TYPE_COLORS_UI[move.type]?.border ?? '#555'),
-                        marginLeft:'3px',opacity:0.85,flexShrink:0,
-                      }">{{ move.pp ?? 0 }}/{{ move.maxPp ?? 8 }}</span>
-                    </div>
-                    <!-- Efficacia / cooldown — SOTTO ai PP, su riga propria -->
-                    <div :style="{ display:'flex',alignItems:'center',gap:'4px',width:'100%' }">
+                    <!-- Riga inferiore: PP a sinistra · chip EFFICACIA/stato a destra -->
+                    <div :style="{ display:'flex',alignItems:'flex-end',justifyContent:'space-between',width:'100%',gap:'6px',marginTop:'auto' }">
+                      <div :style="{ display:'flex',gap:'3px',alignItems:'center' }">
+                        <template v-for="(_, di) in Array.from({ length: Math.min(move.maxPp ?? 8, 8) })" :key="di">
+                          <div :style="{
+                            width:'5px',height:'5px',borderRadius:'50%',flexShrink:0,
+                            background: (move.pp ?? 0) <= 0 ? _DISABLED_MOVE_STYLE.color : (_TYPE_COLORS_UI[move.type]?.border ?? '#555'),
+                            opacity: di < Math.max(0, Math.min(Math.min(move.maxPp ?? 8, 8), Math.round((move.pp ?? 0) * Math.min(move.maxPp ?? 8, 8) / (move.maxPp ?? 8)))) ? 1 : 0.22,
+                          }"/>
+                        </template>
+                        <span :style="{
+                          fontFamily:'var(--ff-label)', fontSize:'11px',
+                          color: (move.pp ?? 0) <= 0 ? _DISABLED_MOVE_STYLE.color : (_TYPE_COLORS_UI[move.type]?.border ?? '#555'),
+                          marginLeft:'3px',opacity:0.85,flexShrink:0,
+                        }">{{ move.pp ?? 0 }}/{{ move.maxPp ?? 8 }}</span>
+                      </div>
+                      <!-- Chip efficacia / cooldown / PP0 in basso a destra -->
                       <span v-if="isMoveBlocked(lastPMove, i, move)" :style="{
-                        fontFamily:'var(--ff-label)',fontSize:'12px',
-                        color:`${(_TYPE_COLORS_UI[move.type]?.border ?? '#555')}88`,letterSpacing:'.5px',
-                      }"><Lock :size="7" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:2px;" />1 turno</span>
+                        flexShrink:0, borderRadius:'9999px', padding:'2px 8px', fontSize:'10px', fontWeight:700,
+                        fontFamily:'var(--ff-label)', whiteSpace:'nowrap',
+                        background:`${(_TYPE_COLORS_UI[move.type]?.border ?? '#555')}22`,
+                        color:`${(_TYPE_COLORS_UI[move.type]?.border ?? '#555')}cc`,
+                        border:`1px solid ${(_TYPE_COLORS_UI[move.type]?.border ?? '#555')}55`,
+                      }"><Lock :size="8" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:2px;" />1 turno</span>
                       <span v-else-if="(move.pp ?? 0) <= 0" :style="{
-                        fontFamily:'var(--ff-label)',fontSize:'12px',
-                        color:_DISABLED_MOVE_STYLE.color,textDecoration:'line-through',
+                        flexShrink:0, borderRadius:'9999px', padding:'2px 8px', fontSize:'10px', fontWeight:700,
+                        fontFamily:'var(--ff-label)', whiteSpace:'nowrap',
+                        background:`${_DISABLED_MOVE_STYLE.color}22`, color:_DISABLED_MOVE_STYLE.color,
+                        border:`1px solid ${_DISABLED_MOVE_STYLE.color}44`,
                       }">PP 0</span>
                       <span v-else :style="{
-                        fontFamily:'var(--ff-body)',fontSize:'12px',
-                        fontWeight: getEffDisplay(move.type, enemy?.type ?? 'Arcana', player?.type ?? 'Arcana').bold ? 700 : 500,
+                        flexShrink:0, borderRadius:'9999px', padding:'2px 8px', fontSize:'10px',
+                        fontWeight: getEffDisplay(move.type, enemy?.type ?? 'Arcana', player?.type ?? 'Arcana').bold ? 800 : 600,
+                        fontFamily:'var(--ff-label)', whiteSpace:'nowrap',
+                        background:`${getEffDisplay(move.type, enemy?.type ?? 'Arcana', player?.type ?? 'Arcana').col}22`,
                         color: getEffDisplay(move.type, enemy?.type ?? 'Arcana', player?.type ?? 'Arcana').col,
-                        letterSpacing:'.3px',whiteSpace:'nowrap',
+                        border:`1px solid ${getEffDisplay(move.type, enemy?.type ?? 'Arcana', player?.type ?? 'Arcana').col}55`,
                       }">{{ getEffDisplay(move.type, enemy?.type ?? 'Arcana', player?.type ?? 'Arcana').lbl }}</span>
                     </div>
                   </template>
@@ -2076,20 +2113,20 @@ const mvp = computed(() => {
       </div>
       <div :style="{ flex:1, overflowY:'auto', WebkitOverflowScrolling:'touch', touchAction:'pan-y', padding:'14px 16px calc(28px + env(safe-area-inset-bottom))' }">
         <div :style="{
-          display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))',
-          gap:'20px 16px', maxWidth:'860px', margin:'0 auto',
+          display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(92px, 1fr))',
+          gap:'16px 10px', maxWidth:'560px', margin:'0 auto',
         }">
           <template v-for="(w, i) in pTeam" :key="w.id">
             <div v-if="i !== pActive && !w.isKO" :style="{ display:'flex', flexDirection:'column', gap:'8px', position:'relative' }">
               <!-- Chip TIPO — rettangolare 8px, alto-destra dello slot -->
               <div v-if="w.type" :style="{
-                position:'absolute', top:'-9px', right:'-9px', zIndex:6,
+                position:'absolute', top:'-7px', right:'-7px', zIndex:6,
                 background:'var(--theme-surface)',
                 border:`1.5px solid ${(TYPE_COLORS[w.type]?.border ?? '#555')}`,
                 color:(TYPE_COLORS[w.type]?.border ?? '#999'),
-                borderRadius:'8px', padding:'3px 9px',
-                fontFamily:'var(--ff-label)', fontSize:'11px', fontWeight:800,
-                letterSpacing:'.06em', textTransform:'uppercase',
+                borderRadius:'7px', padding:'2px 6px',
+                fontFamily:'var(--ff-label)', fontSize:'9px', fontWeight:800,
+                letterSpacing:'.04em', textTransform:'uppercase',
                 boxShadow:'0 2px 8px rgba(0,0,0,0.4)', pointerEvents:'none',
               }">{{ w.type }}</div>
               <!-- Slot RETTANGOLARE (radius 8px) a tutta larghezza colonna -->
@@ -2101,9 +2138,9 @@ const mvp = computed(() => {
                 @contextmenu.prevent
                 @click="() => { if (consumeSwapLongPress()) return; isSwap ? handlePlayerSwap(i) : handleVoluntarySwap(i, { isPPExhausted: !isSwap && !isVolSwap }) }"
                 :style="{
-                  width:'100%', aspectRatio:'3/4', borderRadius:'8px', overflow:'hidden',
-                  border:'2.5px solid #00e676',
-                  boxShadow:'0 0 14px rgba(0,230,118,.32),0 0 0 1px rgba(0,230,118,.15)',
+                  width:'100%', aspectRatio:'3/4', borderRadius:'10px', overflow:'hidden',
+                  border:'2px solid #00e676',
+                  boxShadow:'0 0 10px rgba(0,230,118,.28),0 0 0 1px rgba(0,230,118,.15)',
                   background:'var(--theme-bg-secondary)', position:'relative',
                   cursor:'pointer', padding:0,
                   animation:'benchPop .22s ease-out',
@@ -2121,10 +2158,10 @@ const mvp = computed(() => {
                 </div>
               </button>
               <div :style="{ textAlign:'center' }">
-                <div :style="{ fontFamily:'var(--ff-label)',fontSize:'14px',fontWeight:700,color:'var(--theme-text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }">
+                <div :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',fontWeight:700,color:'var(--theme-text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }">
                   {{ w.name }}
                 </div>
-                <div :style="{ fontFamily:'var(--ff-label)',fontSize:'12px',color:'var(--theme-text-3)' }">
+                <div :style="{ fontFamily:'var(--ff-label)',fontSize:'10px',color:'var(--theme-text-3)' }">
                   {{ Math.max(0, w.hp) }}/{{ w.maxHp }} HP
                 </div>
               </div>

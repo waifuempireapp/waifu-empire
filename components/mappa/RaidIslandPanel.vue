@@ -146,6 +146,9 @@ onUnmounted(() => {
 })
 
 // ── Riscossione premi ─────────────────────────────────────────────────────────
+// Popup risultato reclamo (sostituisce l'alert nativo)
+const claimResult = ref<{ kisses: number; card: boolean; position: number } | null>(null)
+const claimErr = ref<string | null>(null)
 async function claimReward() {
   if (!raid.value || claiming.value) return
   claiming.value = true
@@ -158,14 +161,14 @@ async function claimReward() {
     })) as any
     if (data.success) {
       claimed.value = true
-      alert(`✅ +${data.kisses} Kisses! Posizione #${data.position}${data.isTop3 ? ' · Waifu Raid sbloccata! 🎴' : ''}`)
+      claimResult.value = { kisses: data.kisses ?? 0, card: !!data.waifuUnlocked, position: data.position ?? 0 }
     } else if (data.alreadyClaimed) {
       claimed.value = true
     } else {
-      alert(data.error)
+      claimErr.value = data.error || 'Errore nel reclamo'
     }
   } catch (e: any) {
-    alert(e.message)
+    claimErr.value = e?.data?.message || e?.message || 'Errore nel reclamo'
   } finally {
     claiming.value = false
   }
@@ -567,5 +570,82 @@ const MEDAL = ['🥇', '🥈', '🥉']
       </template>
 
     </div>
+
+    <!-- Popup RISULTATO RECLAMO — vero modale con backdrop -->
+    <div v-if="claimResult" class="raid-claim-overlay" @click.self="claimResult = null">
+      <div class="raid-claim-card">
+        <div class="raid-claim-emoji">🏆</div>
+        <div class="raid-claim-title">{{ $t('raid.reward_claimed') }}</div>
+        <div v-if="claimResult.card" class="raid-claim-card-row">
+          <img v-if="raid?.waifuImage" :src="ikUrl(raid.waifuImage, 'card') ?? ''" alt="" class="raid-claim-card-img" />
+          <div class="raid-claim-card-label">🎴 {{ raid?.waifuNome ?? 'Waifu Raid' }}</div>
+        </div>
+        <div class="raid-claim-kisses">+{{ claimResult.kisses.toLocaleString() }} <KissesIcon :size="18" /></div>
+        <div class="raid-claim-pos">{{ $t('raid.your_position') }} #{{ claimResult.position }}</div>
+        <button class="raid-claim-btn" @click="claimResult = null">OK</button>
+      </div>
+    </div>
+
+    <!-- Popup errore reclamo -->
+    <div v-if="claimErr" class="raid-claim-overlay" @click.self="claimErr = null">
+      <div class="raid-claim-card">
+        <div class="raid-claim-emoji">⚠️</div>
+        <div class="raid-claim-desc">{{ claimErr }}</div>
+        <button class="raid-claim-btn" @click="claimErr = null">OK</button>
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.raid-claim-overlay {
+  position: fixed; inset: 0; z-index: 100001;
+  background: var(--theme-overlay, rgba(4,2,14,0.74));
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.raid-claim-card {
+  width: 100%; max-width: 320px;
+  background: var(--theme-surface); border: 1px solid var(--theme-border);
+  border-radius: 20px; box-shadow: 0 16px 48px var(--theme-shadow, rgba(0,0,0,0.5));
+  padding: 26px 22px 22px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  animation: raidClaimPop 0.28s cubic-bezier(0.22,1,0.36,1);
+}
+@keyframes raidClaimPop { from { opacity:0; transform: translateY(14px) scale(0.94); } to { opacity:1; transform:none; } }
+.raid-claim-emoji { font-size: 42px; line-height: 1; }
+.raid-claim-title {
+  font-family: var(--ff-display, 'Fredoka', sans-serif);
+  font-size: 19px; font-weight: 800; color: #f5c560;
+}
+.raid-claim-desc {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 14px; color: var(--theme-text-2); line-height: 1.5;
+}
+.raid-claim-card-row { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.raid-claim-card-img {
+  width: 96px; aspect-ratio: 3/4; object-fit: cover; object-position: center top;
+  border-radius: 10px; border: 2px solid #f5c560;
+  box-shadow: 0 0 16px rgba(245,197,96,0.5);
+}
+.raid-claim-card-label {
+  font-family: var(--ff-label, 'Saira Condensed', sans-serif);
+  font-size: 13px; font-weight: 800; color: var(--theme-text); letter-spacing: 0.06em;
+}
+.raid-claim-kisses {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--ff-label, 'Saira Condensed', sans-serif);
+  font-size: 24px; font-weight: 800; color: #ff4d9e;
+}
+.raid-claim-pos {
+  font-family: var(--ff-body, 'Nunito', sans-serif);
+  font-size: 12px; color: var(--theme-text-3);
+}
+.raid-claim-btn {
+  margin-top: 6px; width: 100%; padding: 13px 0; border: none; cursor: pointer;
+  background: var(--grad-primary, linear-gradient(135deg,#ec4899,#a855f7)); color: #fff;
+  font-family: var(--ff-label, 'Saira Condensed', sans-serif);
+  font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+  box-shadow: 0 6px 18px rgba(168,85,247,0.4);
+}
+</style>

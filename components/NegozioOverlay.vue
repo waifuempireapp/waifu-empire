@@ -9,6 +9,7 @@
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
 import { Gift, Package, Zap, Flame, Repeat } from 'lucide-vue-next'
+import { getUserProfile } from '~/utils/firestoreService'
 import type { ProfiloUtente } from '~/types/game'
 
 const props = defineProps<{ profilo: ProfiloUtente | null }>()
@@ -34,6 +35,23 @@ const FF = {
 // Kisses locali: partono dal profilo, si aggiornano dopo ogni acquisto
 const kisses = ref<number>(Number(props.profilo?.kisses ?? 0))
 watch(() => props.profilo?.kisses, (k) => { if (typeof k === 'number') kisses.value = k })
+
+// All'apertura dello shop rileggiamo il saldo REALE dal server: se il profilo
+// passato era stantio, i beni costosi (pack x10) risultavano disabilitati pur
+// avendo abbastanza Kisses. Ora il saldo mostrato è sempre quello vero.
+onMounted(async () => {
+  const uid = authStore.user?.uid
+  if (!uid) return
+  try {
+    const p = await getUserProfile(uid)
+    const k = p?.kisses
+    if (typeof k === 'number') {
+      kisses.value = k
+      emit('kissesUpdate', k)
+      emit('profileUpdate', { kisses: k })
+    }
+  } catch { /* in caso di errore resta il saldo del profilo passato */ }
+})
 
 const hasHardPass  = computed(() => !!(props.profilo as any)?.hardPass)
 const hasTradePass = computed(() => !!(props.profilo as any)?.tradePass || !!props.profilo?.tradePassActive)
@@ -99,10 +117,13 @@ const BENE_ENDPOINT: Record<string, string> = {
 }
 async function acquistaBene(id: string) {
   if (busy.value) return
-  const costo = beni.value[id]?.kisses ?? 0
-  if (kisses.value < costo) { flash(t('shop.missing_kisses', { n: costo - kisses.value }), C.err); return }
   const endpoint = BENE_ENDPOINT[id]
   if (!endpoint) return
+  // NB: nessun blocco ottimistico sul saldo locale. Prima si controllava
+  // `kisses.value < costo` sul saldo del client, che poteva essere STANTIO:
+  // così il pack x10 (costo alto) veniva bloccato mentre il singolo passava,
+  // pur avendo abbastanza Kisses sul server. Ora decide il server (402 con
+  // messaggio chiaro) → il saldo reale è sempre l'autorità.
   busy.value = id
   try {
     const token = await authStore.user?.getIdToken()
@@ -110,7 +131,7 @@ async function acquistaBene(id: string) {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
     })) as { kissesCost: number; pacchettiAggiunti?: number }
-    kisses.value -= data.kissesCost
+    kisses.value = Math.max(0, kisses.value - data.kissesCost)
     emit('kissesUpdate', kisses.value)
     // Riflette localmente l'effetto del bene sul profilo
     const patch: Record<string, unknown> = { kisses: kisses.value }

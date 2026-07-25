@@ -342,6 +342,7 @@ const primaryBtn = computed(() => ({
     :roster5E="roster5E"
     :isCpu="true"
     :isPvP="false"
+    :minTeam="battle?.isRaid ? 5 : 1"
     :forcedEnemyIndices="battle?.isRaid ? [0] : (battle?.defenderUid === 'CPU' && !battle?.defenderTeam?.length ? [0, 1, 2] : [])"
     :battleCtx="({
       nomeImperoAvversario: battleName,

@@ -69,6 +69,11 @@ const myDefenseMap    = ref<Record<string, any[]>>({}) // defense_config dell'ut
 
 const pendingOffersCount = ref(0)
 const attackError        = ref<string | null>(null)
+// Territori sotto attacco: "x_y" → true se l'attacco è MIO (X verde), false se
+// di altri (X rossa, non attaccabile). Popolato da /api/mappa/active-attacks.
+const attackSet          = ref<Record<string, boolean>>({})
+// Popup "territorio già sotto attacco" (al tap sulla X rossa)
+const underAttackPopup   = ref(false)
 const showInfoModal      = ref(false)
 const conquestAnim       = ref<any>(null) // { pixelName, oldColor, newColor, empireName }
 // Popup PREMI VITTORIA: appare DOPO l'animazione di conquista
@@ -78,6 +83,8 @@ const showBattle         = ref(false)
 const raidAttackMode     = ref(false) // distingue BattleModal normale da raid
 const showRound          = ref(false)
 const showPurchase       = ref(false)
+// Kisses insufficienti per comprare un territorio → popup di ricarica (shop)
+const kissesShortMissing = ref<number | null>(null)
 const showOffers         = ref(false)
 const showLeaderboard    = ref(false)
 const showTutorial       = ref(false)
@@ -286,6 +293,20 @@ const invalidateAndReload = async () => {
   await loadChunks(true)
 }
 
+// ── Territori sotto attacco (lock < 20 min) → X su mappa ─────────────────────
+let attacksTimer: ReturnType<typeof setInterval> | null = null
+const loadActiveAttacks = async () => {
+  try {
+    const token = await authStore.user?.getIdToken()
+    const data = await ($fetch('/api/mappa/active-attacks', {
+      headers: { Authorization: `Bearer ${token}` },
+    })) as { attacks: { x: number; y: number; mine: boolean }[] }
+    const map: Record<string, boolean> = {}
+    for (const a of data.attacks) map[`${a.x}_${a.y}`] = a.mine
+    attackSet.value = map
+  } catch { /* rete assente: mantieni lo stato precedente */ }
+}
+
 // ------------------------------------------------------------------ Adiacenza client-side
 
 // Controlla se il pixel (tx, ty) è adiacente all'impero dell'utente via mare
@@ -364,13 +385,25 @@ const handleAttack = async (attackerTeam: any[]) => {
       }
       showBattle.value = false
       showRound.value  = true
+      loadActiveAttacks() // il mio lock ora è attivo → aggiorna le X sulla mappa
+    } else if (data.statusCode === 409 || /già sotto attacco/i.test(data.message ?? data.error ?? '')) {
+      // Race: nel frattempo l'ha bloccato un altro → popup dedicato, niente toast rosso
+      underAttackPopup.value = true
+      showBattle.value = false
+      loadActiveAttacks()
     } else {
       attackError.value = data.message || (typeof data.error === 'string' ? data.error : null) || t('map.attack_generic_error')
       showBattle.value  = false
     }
   } catch (e: any) {
-    attackError.value = e?.data?.message || (typeof e?.data?.error === 'string' ? e.data.error : null) || t('map.attack_generic_error')
-    showBattle.value  = false
+    if (e?.statusCode === 409 || e?.data?.statusCode === 409 || /già sotto attacco/i.test(e?.data?.message ?? '')) {
+      underAttackPopup.value = true
+      showBattle.value = false
+      loadActiveAttacks()
+    } else {
+      attackError.value = e?.data?.message || (typeof e?.data?.error === 'string' ? e.data.error : null) || t('map.attack_generic_error')
+      showBattle.value  = false
+    }
   }
 }
 
@@ -432,6 +465,7 @@ const handleRoundComplete = async (
     if (data.status === 'attacker_wins' || data.status === 'defender_wins') {
       showRound.value     = false
       selectedPixel.value = null
+      loadActiveAttacks() // battaglia conclusa → lock rilasciato, aggiorna le X
 
       if (activeBattle.value.isRaid) {
         const savedRaidEventId = activeBattle.value.raidEventId
@@ -559,7 +593,10 @@ onMounted(async () => {
     loadPendingOffers(),
     loadActiveMission(),
     loadRaidInfo(),
+    loadActiveAttacks(),
   ])
+  // Aggiorna periodicamente lo stato "sotto attacco" (i lock scadono a 20 min)
+  attacksTimer = setInterval(loadActiveAttacks, 30000)
   // Mostra il tutorial SOLO la prima volta (poi mai più; riapribile dal bottone)
   if (!props.profilo?.tutorialMapSeen) showTutorial.value = true
 })
@@ -568,6 +605,7 @@ onUnmounted(() => {
   if (raidCountdownTimer)         clearInterval(raidCountdownTimer)
   if (missionCountdownTimer)      clearInterval(missionCountdownTimer)
   if (missionDetailCountdownTimer) clearInterval(missionDetailCountdownTimer)
+  if (attacksTimer)               clearInterval(attacksTimer)
 })
 
 // ------------------------------------------------------------------ Mappa immagine: territori
@@ -659,6 +697,13 @@ function onPixelGridSelect(pixelKey: string, data: Record<string, any>) {
   const parts = pixelKey.split('_')
   const x = Number(parts[0])
   const y = Number(parts[1])
+  // Territorio sotto attacco da ALTRI (X rossa): non apre il dettaglio, mostra
+  // il popup "già sotto attacco". Se l'attacco è MIO (X verde) si procede
+  // normalmente, così posso completarlo.
+  if (attackSet.value[pixelKey] === false && (data.ownerId ?? 'CPU') !== authStore.user?.uid) {
+    underAttackPopup.value = true
+    return
+  }
   handlePixelSelect({
     x,
     y,
@@ -845,6 +890,7 @@ async function onTerritoryClick(territoryId: string) {
             :selected-pixel="selectedPixelKey"
             :mission-pixel-set="missionPixelSet"
             :focus-pixel="missionFocusPixel ?? '54_50'"
+            :attack-set="attackSet"
             @pixel-select="onPixelGridSelect"
           />
         </div>
@@ -875,8 +921,16 @@ async function onTerritoryClick(territoryId: string) {
         @chiudi="selectedPixel = null"
         @attacca="raidAttackMode = false; showBattle = true"
         @acquista="showPurchase = true"
+        @kisses-short="(p: number) => { kissesShortMissing = Math.max(1, p - ((profilo?.kisses as number) ?? 0)) }"
         @edit-difesa="showDefenseEditor = true"
         @offerte="showOffers = true"
+      />
+
+      <!-- Popup Kisses insufficienti per comprare il territorio → redirect allo shop -->
+      <KissesShortageDialog
+        v-if="kissesShortMissing != null"
+        :missing-kisses="kissesShortMissing"
+        @cancel="kissesShortMissing = null"
       />
 
       <!-- ── Errore attacco ──────────────────────────────────────────────── -->
@@ -903,6 +957,31 @@ async function onTerritoryClick(territoryId: string) {
             letterSpacing: '0.15em', textTransform: 'uppercase', padding: '7px 20px', cursor: 'pointer',
           }"
         >{{ $t('map.ok') }}</button>
+      </div>
+
+      <!-- ── Popup "territorio già sotto attacco" (tap sulla X rossa) ────── -->
+      <div v-if="underAttackPopup" @click.self="underAttackPopup = false" :style="{
+        position:'fixed', inset:0, zIndex:100000,
+        background:'var(--theme-overlay, rgba(4,2,14,0.72))', backdropFilter:'blur(8px)',
+        display:'flex', alignItems:'center', justifyContent:'center', padding:'24px',
+      }">
+        <div :style="{
+          width:'100%', maxWidth:'320px', background:'var(--theme-surface)',
+          border:'1px solid var(--theme-border)', borderRadius:'20px',
+          boxShadow:'0 16px 48px var(--theme-shadow, rgba(0,0,0,0.5))',
+          padding:'26px 22px 22px', textAlign:'center',
+          display:'flex', flexDirection:'column', alignItems:'center', gap:'12px',
+        }">
+          <div :style="{ fontSize:'40px', lineHeight:1 }">⚔️</div>
+          <div :style="{ fontFamily:FF.display, fontSize:'18px', fontWeight:800, color:'#ff5b6c' }">{{ $t('map.under_attack_title') }}</div>
+          <div :style="{ fontFamily:FF.body, fontSize:'13px', color:'var(--theme-text-2)', lineHeight:1.5 }">{{ $t('map.under_attack_desc') }}</div>
+          <button @click="underAttackPopup = false" :style="{
+            marginTop:'6px', width:'100%', padding:'13px 0', border:'none', cursor:'pointer',
+            background:'var(--grad-primary, linear-gradient(135deg,#ec4899,#a855f7))', color:'#fff',
+            fontFamily:FF.label, fontSize:'12px', fontWeight:800, letterSpacing:'0.14em', textTransform:'uppercase',
+            boxShadow:'0 6px 18px rgba(168,85,247,0.4)',
+          }">{{ $t('map.ok') }}</button>
+        </div>
       </div>
 
       <!-- ── Animazione conquista territorio ───────────────────────────── -->

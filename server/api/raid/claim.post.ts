@@ -65,6 +65,9 @@ export default defineEventHandler(async (event) => {
   }
 
   const isTop3: boolean = raidCompleted && myPos >= 1 && myPos <= 3;
+  // La CARTA raid va a CHIUNQUE ha vinto il raid (boss abbattuto) avendo
+  // inflitto danno — non più solo ai top-3. I top-3 restano premiati coi Kisses.
+  const cardEligible: boolean = raidCompleted && myDmg > 0;
 
   // Accredita premi
   const userRef = adminDb.doc(`users/${uid}`);
@@ -81,8 +84,8 @@ export default defineEventHandler(async (event) => {
     position: myPos,
   });
 
-  // Top 3: aggiungi waifu raid alla collezione
-  if (isTop3 && eventData.waifuId) {
+  // Carta raid: aggiungi la waifu raid alla collezione di chi ha vinto
+  if (cardEligible && eventData.waifuId) {
     const collRef = adminDb.doc(`users/${uid}/collezione/main`);
     const collSnap = await collRef.get();
     const collData = collSnap.exists ? collSnap.data() as any : {};
@@ -104,6 +107,7 @@ export default defineEventHandler(async (event) => {
     energia: participationEnergia,
     position: myPos,
     isTop3,
-    waifuUnlocked: isTop3 ? eventData.waifuId : null,
+    cardEligible,
+    waifuUnlocked: cardEligible ? eventData.waifuId : null,
   };
 });

@@ -84,8 +84,12 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, message: 'Questo pixel è già tuo' });
     }
 
-    // Controlla battle già in corso sullo stesso pixel (LIMIT 1 = 1 sola lettura)
-    const STALE_MS = 24 * 60 * 60 * 1000;
+    // ── LOCK di attacco ────────────────────────────────────────────────────
+    // Un territorio resta "sotto attacco" (battle in_progress) al massimo 20 min:
+    // dopo, il lock scade e chiunque può riattaccarlo. Inoltre ogni utente può
+    // tenere UN SOLO territorio sotto attacco: attaccandone un altro, il lock
+    // precedente viene rilasciato.
+    const STALE_MS = 20 * 60 * 1000; // 20 minuti
     let existingBattleSnap = null;
     try {
       const snap = await adminDb.collection('territory_battles')
@@ -97,8 +101,9 @@ export default defineEventHandler(async (event) => {
       if (!snap.empty) {
         const doc = snap.docs[0];
         const createdMs: number = doc.data().createdAt?.toMillis?.() ?? 0;
-        if (Date.now() - createdMs > STALE_MS) {
-          // Battle stale: risolvila in background (non-blocking) e permetti il nuovo attacco
+        const owner: string = doc.data().attackerUid;
+        if (Date.now() - createdMs > STALE_MS || owner === uid) {
+          // Lock scaduto OPPURE è il MIO stesso attacco → risolvilo e procedi
           doc.ref.update({ status: 'defender_wins', updatedAt: new Date() }).catch(() => {});
         } else {
           existingBattleSnap = doc;
@@ -109,6 +114,23 @@ export default defineEventHandler(async (event) => {
     if (existingBattleSnap) {
       throw createError({ statusCode: 409, message: 'Questo territorio è già sotto attacco. Completa la battaglia in corso o riprova tra qualche ora.' });
     }
+
+    // Un solo territorio sotto attacco per utente: rilascia eventuali altri
+    // miei lock in corso (su pixel diversi) prima di aprire questo.
+    try {
+      const mine = await adminDb.collection('territory_battles')
+        .where('attackerUid', '==', uid)
+        .where('status', '==', 'in_progress')
+        .get();
+      const batch = adminDb.batch();
+      mine.forEach(d => {
+        const dd = d.data();
+        if (dd.pixelX !== targetX || dd.pixelY !== targetY) {
+          batch.update(d.ref, { status: 'defender_wins', updatedAt: new Date() });
+        }
+      });
+      await batch.commit();
+    } catch { /* indice mancante: ignora, non bloccare l'attacco */ }
 
     // Recupera team difensore del proprietario
     let defenderTeam: string[] = [];

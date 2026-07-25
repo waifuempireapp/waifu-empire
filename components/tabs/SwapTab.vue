@@ -198,16 +198,23 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
   <!-- Caricamento iniziale -->
   <AppLoading v-if="loading" fullscreen />
 
-  <!-- Schermata limite voti giornalieri -->
-  <div v-else-if="isLimitReached" class="swap-state-screen swap-state-screen--limit">
-    <Ban :size="56" stroke-width="1.5" style="color:#ff5b6c;opacity:0.8;" />
-    <div class="swap-limit-title">{{ $t('swap.limit_reached') }}</div>
-    <div class="swap-limit-desc">{{ $t('swap.limit_explanation') }}</div>
-    <div class="swap-limit-timer">{{ countdown }}</div>
-    <button @click="$emit('setTab', 'negozio')" class="swap-btn-pass">
-      <KissesIcon :size="13" /> {{ $t('swap.buy_pass') }}
-    </button>
-    <button @click="$emit('setTab', 'home')" class="swap-btn-back">{{ $t('swap.back_to_home') }}</button>
+  <!-- Popup limite voti giornalieri (fine swipe) — vero modale: backdrop che
+       blocca i click dietro, solo i due bottoni sono cliccabili. -->
+  <div v-else-if="isLimitReached" class="swap-limit-overlay">
+    <div class="swap-limit-card">
+      <Ban :size="46" stroke-width="1.5" style="color:#ff5b6c;opacity:0.9;" />
+      <div class="swap-limit-title">{{ $t('swap.limit_reached') }}</div>
+      <div class="swap-limit-desc">{{ $t('swap.limit_explanation') }}</div>
+      <div class="swap-limit-timer">{{ countdown }}</div>
+      <div class="swap-limit-actions">
+        <button class="swap-limit-btn swap-limit-btn--ghost" @click="$emit('setTab', 'home')">
+          {{ $t('swap.back_to_home') }}
+        </button>
+        <button class="swap-limit-btn swap-limit-btn--primary" @click="$emit('setTab', 'negozio')">
+          <KissesIcon :size="13" /> {{ $t('swap.buy_pass') }}
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Card waifu centrata -->
@@ -262,44 +269,61 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
   box-shadow: 0 4px 14px var(--theme-shadow);
 }
 
-.swap-state-screen {
-  display: flex; flex-direction: column;
-  min-height: 70vh; align-items: center; justify-content: center;
-  padding: 24px; text-align: center; gap: 20px;
+/* ── Popup limite voti (vero modale con backdrop) ─────────────────────── */
+.swap-limit-overlay {
+  position: fixed; inset: 0; z-index: 100000;
+  background: var(--theme-overlay, rgba(4,2,14,0.72));
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
 }
-.swap-state-screen--limit { min-height: 80vh; }
-
+.swap-limit-card {
+  width: 100%; max-width: 340px;
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
+  border-radius: 20px;
+  box-shadow: 0 16px 48px var(--theme-shadow, rgba(0,0,0,0.5));
+  padding: 28px 22px 22px;
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  text-align: center;
+  animation: swapLimitPop 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes swapLimitPop {
+  from { opacity: 0; transform: translateY(14px) scale(0.94); }
+  to   { opacity: 1; transform: none; }
+}
 .swap-limit-title {
-  font-family: var(--ff-body, 'Nunito', sans-serif);
-  font-size: 20px; font-weight: 800;
+  font-family: var(--ff-display, 'Fredoka', sans-serif);
+  font-size: 19px; font-weight: 800;
   color: var(--theme-accent-pink);
 }
 .swap-limit-desc {
   font-family: var(--ff-body, 'Nunito', sans-serif);
-  font-size: 13px; color: var(--text-secondary);
-  line-height: 1.6; max-width: 320px;
+  font-size: 13px; color: var(--theme-text-2, var(--text-secondary));
+  line-height: 1.55; max-width: 300px;
 }
 .swap-limit-timer {
-  font-family: var(--ff-body, 'Nunito', sans-serif);
-  font-size: 28px; font-weight: 700;
-  color: var(--accent-gold);
+  font-family: var(--ff-mono, 'JetBrains Mono', monospace);
+  font-size: 26px; font-weight: 700;
+  color: var(--accent-gold, #f5c560);
   font-variant-numeric: tabular-nums;
+  margin-bottom: 2px;
 }
-.swap-btn-pass {
-  padding: 14px 28px;
-  background: linear-gradient(135deg, #ec4899, #a855f7);
-  border: none; border-radius: var(--radius-pill);
-  color: #fff;
-  font-family: var(--ff-body, 'Nunito', sans-serif);
-  font-size: 13px; font-weight: 800; cursor: pointer;
-  box-shadow: var(--shadow-float);
+.swap-limit-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 4px; }
+.swap-limit-btn {
+  width: 100%; padding: 13px 14px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  font-family: var(--ff-label, 'Saira Condensed', sans-serif);
+  font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
 }
-.swap-btn-back {
-  background: transparent; border: none;
-  color: var(--text-tertiary);
-  font-family: var(--ff-body, 'Nunito', sans-serif);
-  font-size: 11px; cursor: pointer;
-  padding: 0;
+.swap-limit-btn--ghost {
+  background: transparent; border: 1px solid var(--theme-border);
+  color: var(--theme-text-3, var(--text-tertiary));
+}
+.swap-limit-btn--primary {
+  border: none; color: #fff;
+  background: var(--grad-primary, linear-gradient(135deg, #ec4899, #a855f7));
+  box-shadow: 0 6px 18px rgba(168, 85, 247, 0.4);
 }
 
 .swap-arena {

@@ -29,24 +29,18 @@ async function getCatalogIds(): Promise<string[]> {
   if (_idsCache && Date.now() - _idsCacheAt < IDS_TTL) return _idsCache!;
 
   const adminDb = getAdminDb();
-  let ids: string[] | null = null;
-  try {
-    const indexSnap = await adminDb.collection('swap_config').doc('catalog_ids').get();
-    if (indexSnap.exists) {
-      const cached = (indexSnap.data() as any).ids ?? [];
-      // Indice vuoto (es. residuo migrazione) = trattalo come mancante e
-      // ricostruiscilo dal catalogo, altrimenti lo swap resta "esaurito".
-      if (cached.length > 0) ids = cached;
-    }
-  } catch { /* ignora */ }
+  // Legge gli ID DIRETTAMENTE dal catalogo (solo ID via .select() → lettura
+  // leggera). Prima si usava un doc-indice cache 'catalog_ids' che restava
+  // stantio: costruito con la sola prima espansione, non includeva mai le
+  // waifu delle espansioni aggiunte dopo → nello swipe se ne vedeva una sola.
+  // Ora la cache è solo in-memory (30 min), quindi ogni espansione entra subito.
+  const snap = await adminDb.collection('catalogo_waifu').select().get();
+  const ids = snap.docs.map(d => d.id);
 
-  if (!ids || ids.length === 0) {
-    const snap = await adminDb.collection('catalogo_waifu').get();
-    ids = snap.docs.map(d => d.id);
-    adminDb.collection('swap_config').doc('catalog_ids').set({
-      ids, updatedAt: new Date(),
-    }).catch(() => {});
-  }
+  // Aggiorna comunque il doc-indice per eventuali altri consumer.
+  adminDb.collection('swap_config').doc('catalog_ids').set({
+    ids, updatedAt: new Date(),
+  }).catch(() => {});
 
   _idsCache = ids;
   _idsCacheAt = Date.now();

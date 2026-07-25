@@ -28,6 +28,9 @@ const props = defineProps<{
   landSet?:        Set<string> | null
   missionPixelSet?: Set<string> | null
   focusPixel?:     string | null
+  /** Territori sotto attacco: chiave "x_y" → true se l'attacco è MIO (X verde),
+      false se di altri (X rossa, non attaccabile). */
+  attackSet?:      Record<string, boolean> | null
 }>()
 
 // ── Emits ─────────────────────────────────────────────────────────────────────
@@ -229,6 +232,23 @@ function drawCanvas(pulse = 0) {
         ctx.strokeStyle = '#ffe9a8'
         ctx.lineWidth = 2
         ctx.stroke()
+      }
+
+      // Territorio SOTTO ATTACCO: X (verde = mia · rossa = di altri)
+      if (props.attackSet && key in props.attackSet) {
+        const mine = props.attackSet[key]
+        const r = size * 0.48
+        ctx.save()
+        ctx.strokeStyle = mine ? '#00e676' : '#ff3b3b'
+        ctx.lineWidth = Math.max(2, ps * 0.13)
+        ctx.lineCap = 'round'
+        ctx.shadowColor = mine ? 'rgba(0,230,118,0.85)' : 'rgba(255,59,59,0.85)'
+        ctx.shadowBlur = 6
+        ctx.beginPath()
+        ctx.moveTo(cx - r, cy - r); ctx.lineTo(cx + r, cy + r)
+        ctx.moveTo(cx + r, cy - r); ctx.lineTo(cx - r, cy + r)
+        ctx.stroke()
+        ctx.restore()
       }
     }
   }

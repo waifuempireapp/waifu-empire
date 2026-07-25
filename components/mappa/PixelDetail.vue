@@ -44,6 +44,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   attacca:      []
   acquista:     [price: number]
+  /** Kisses insufficienti per l'acquisto → il parent apre il popup di ricarica */
+  kissesShort:  [missing: number]
   chiudi:       []
   editDifesa:   []
 }>()
@@ -82,11 +84,19 @@ const attackBlockReason = computed<string | null>(() => {
   return null
 })
 
+// Il pulsante COMPRA NON si blocca più per Kisses insufficienti: se mancano,
+// al click si apre il popup di ricarica (redirect allo shop). Blocco solo se
+// il territorio non è adiacente al proprio impero.
 const buyBlockReason = computed<string | null>(() => {
   if (!isAdj.value) return t('map.not_adjacent')
-  if (!canAfford.value) return t('map.insufficient_kisses', { n: price.value })
   return null
 })
+
+function onBuyClick() {
+  if (buyBlockReason.value) return
+  if (!canAfford.value) { emit('kissesShort', price.value); return }
+  emit('acquista', price.value)
+}
 
 // ── Team difensore ────────────────────────────────────────────────────────────
 const defenseWaifu = computed(() => {
@@ -432,7 +442,7 @@ onUnmounted(() => {
               <div :style="{ fontFamily: FF.label, fontSize: '18px', fontWeight: 800, color: '#ff85b6', marginBottom: '3px', letterSpacing: '0.08em' }">
                 {{ $t('map.attack') }}
               </div>
-              <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.4 }">
+              <div :style="{ fontFamily: FF.body, fontSize: '10px', color: 'var(--theme-text-2)', lineHeight: 1.35, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }">
                 {{ isCPU ? $t('map.attack_desc_cpu') : $t('map.attack_desc_player') }}
               </div>
               <div v-if="attackBlockReason" :style="{ fontFamily: FF.label, fontSize: '11px', color: 'rgba(255,91,108,0.8)', marginTop: '4px', letterSpacing: '0.06em' }">
@@ -443,32 +453,32 @@ onUnmounted(() => {
           </div>
         </button>
 
-        <!-- Card COMPRA / OFFRI -->
+        <!-- Card COMPRA / OFFRI — prezzo come CHIP in alto a destra -->
         <button
           :disabled="!!buyBlockReason"
-          @click="!buyBlockReason && emit('acquista', price)"
+          @click="onBuyClick"
           style="width: 100%; padding: 0; background: transparent; border: none; cursor: pointer; text-align: left;"
           :style="{ opacity: buyBlockReason ? 0.45 : 1, cursor: buyBlockReason ? 'not-allowed' : 'pointer' }"
         >
           <div :style="{
+            position: 'relative',
             display: 'flex', alignItems: 'center', gap: '14px',
             padding: '16px 22px', borderRadius: '999px',
             background: buyBlockReason ? 'var(--theme-shimmer)' : 'rgba(245,197,96,0.12)',
             border: `2px solid ${buyBlockReason ? 'var(--theme-border)' : 'rgba(245,197,96,0.65)'}`,
             boxShadow: buyBlockReason ? 'none' : '0 4px 18px rgba(245,197,96,0.15)',
           }">
+            <!-- Chip prezzo Kisses — in alto a destra che sborda -->
+            <div style="position:absolute; top:-10px; right:14px; z-index:2; display:flex; align-items:center; gap:4px; background:var(--theme-surface); border:1.5px solid rgba(245,197,96,0.7); border-radius:999px; padding:3px 12px; box-shadow:0 2px 8px rgba(0,0,0,0.25);">
+              <KissesIcon :size="13" />
+              <span :style="{ fontFamily: FF.label, fontSize: '14px', fontWeight: 800, color: '#d4a000' }">{{ price }}</span>
+            </div>
             <Heart :size="28" stroke-width="1.5" style="flex-shrink:0;color:#ff85b6;" />
             <div style="flex: 1; min-width: 0;">
-              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 3px;">
-                <div :style="{ fontFamily: FF.label, fontSize: '18px', fontWeight: 800, color: '#d4a000', letterSpacing: '0.08em' }">
-                  {{ isCPU ? $t('map.buy') : $t('map.offer') }}
-                </div>
-                <div style="display: flex; align-items: center; gap: 4px; background: rgba(245,197,96,0.18); border: 1.5px solid rgba(245,197,96,0.6); border-radius: 999px; padding: 3px 12px;">
-                  <KissesIcon :size="13" />
-                  <span :style="{ fontFamily: FF.label, fontSize: '14px', fontWeight: 800, color: '#d4a000' }">{{ price }}</span>
-                </div>
+              <div :style="{ fontFamily: FF.label, fontSize: '18px', fontWeight: 800, color: '#d4a000', letterSpacing: '0.08em', marginBottom: '3px' }">
+                {{ isCPU ? $t('map.buy') : $t('map.offer') }}
               </div>
-              <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.4 }">
+              <div :style="{ fontFamily: FF.body, fontSize: '10px', color: 'var(--theme-text-2)', lineHeight: 1.35, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }">
                 {{ isCPU ? $t('map.buy_desc_cpu') : $t('map.offer_desc_player') }}
               </div>
               <div v-if="buyBlockReason" :style="{ fontFamily: FF.label, fontSize: '11px', color: 'rgba(255,91,108,0.8)', marginTop: '4px', letterSpacing: '0.06em' }">
