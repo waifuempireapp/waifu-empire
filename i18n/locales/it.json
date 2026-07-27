@@ -487,6 +487,8 @@
     "item_hard_pass_desc": "Sblocca carte Hot",
     "item_trade_pass": "Trade Pass",
     "item_trade_pass_desc": "Scambi illimitati per sempre",
+    "item_swap_pass": "Swap Pass",
+    "item_swap_pass_desc": "Voti illimitati nello Swap Waifu",
     "item_challenge_pack_10": "Pack Sfida ×10",
     "item_challenge_pack_10_desc": "+10 pacchetti sfida"
   },

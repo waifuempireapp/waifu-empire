@@ -14,6 +14,7 @@ export default defineEventHandler(async () => {
         energia:       { kisses: p.beni.energia.kisses },
         pass_hard:     { kisses: p.pass_hard.kisses },
         trade_pass:    { kisses: p.pass_scambi.kisses },
+        swap_pass:     { kisses: p.pass_swap?.kisses ?? 300 },
       },
       tagli_kisses: [
         { id: 'xs', ...p.tagli_kisses.xs },

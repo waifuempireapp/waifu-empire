@@ -8,7 +8,7 @@
   ============================================================ -->
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
-import { Gift, Package, Zap, Flame, Repeat } from 'lucide-vue-next'
+import { Gift, Package, Zap, Flame, Repeat, Heart } from 'lucide-vue-next'
 import { getUserProfile } from '~/utils/firestoreService'
 import type { ProfiloUtente } from '~/types/game'
 
@@ -55,6 +55,16 @@ onMounted(async () => {
 
 const hasHardPass  = computed(() => !!(props.profilo as any)?.hardPass)
 const hasTradePass = computed(() => !!(props.profilo as any)?.tradePass || !!props.profilo?.tradePassActive)
+const hasSwapPass  = computed(() => {
+  const p = props.profilo as any
+  return !!p?.swap_pass && (!p?.swap_pass_expires_at || (new Date(p.swap_pass_expires_at?.seconds ? p.swap_pass_expires_at.seconds * 1000 : p.swap_pass_expires_at).getTime() > Date.now()))
+})
+// Pass posseduti: id → true (per mostrare lo stato "Acquistato")
+const passOwned = computed<Record<string, boolean>>(() => ({
+  pass_hard: hasHardPass.value,
+  trade_pass: hasTradePass.value,
+  swap_pass: hasSwapPass.value,
+}))
 
 interface Taglio { id: string; kisses: number; bonus?: number; price_eur: string; label?: string }
 const beni  = ref<Record<string, { kisses: number }>>({})
@@ -75,14 +85,15 @@ const BENI_META: Record<string, { icon: unknown; color: string; titleKey: string
   energia:       { icon: Zap,     color: '#f5c560', titleKey: 'shop.item_energy',            descKey: 'shop.item_energy_desc' },
   pass_hard:     { icon: Flame,   color: '#ff5b6c', titleKey: 'shop.item_hard_pass',         descKey: 'shop.item_hard_pass_desc' },
   trade_pass:    { icon: Repeat,  color: '#6cf0e0', titleKey: 'shop.item_trade_pass',        descKey: 'shop.item_trade_pass_desc' },
+  swap_pass:     { icon: Heart,   color: '#ff4d9e', titleKey: 'shop.item_swap_pass',         descKey: 'shop.item_swap_pass_desc' },
 }
-const beniOrder = ['pack_sfida', 'pack_sfida_10', 'energia', 'pass_hard', 'trade_pass']
+const beniOrder = ['pack_sfida', 'pack_sfida_10', 'energia', 'pass_hard', 'trade_pass', 'swap_pass']
+// I Pass posseduti NON vengono più nascosti: restano in lista con lo stato
+// "Acquistato" (disabilitati), così si vede chiaramente cosa si possiede.
 const beniList = computed(() =>
   beniOrder
     .filter(id => beni.value[id])
-    .map(id => ({ id, kisses: beni.value[id].kisses, ...BENI_META[id] }))
-    // Pass già posseduti: nascosti
-    .filter(b => !(b.id === 'pass_hard' && hasHardPass.value) && !(b.id === 'trade_pass' && hasTradePass.value)),
+    .map(id => ({ id, kisses: beni.value[id].kisses, owned: !!passOwned.value[id], ...BENI_META[id] })),
 )
 
 onMounted(async () => {
@@ -93,7 +104,7 @@ onMounted(async () => {
   } catch {
     beni.value = {
       pack_sfida: { kisses: 50 }, pack_sfida_10: { kisses: 450 }, energia: { kisses: 20 },
-      pass_hard: { kisses: 500 }, trade_pass: { kisses: 100 },
+      pass_hard: { kisses: 500 }, trade_pass: { kisses: 100 }, swap_pass: { kisses: 300 },
     }
     tagli.value = [
       { id: 'xs', kisses: 100, bonus: 0, price_eur: '0.99' },
@@ -114,9 +125,12 @@ const BENE_ENDPOINT: Record<string, string> = {
   energia:       '/api/kisses/buy-energia',
   pass_hard:     '/api/kisses/buy-passhard',
   trade_pass:    '/api/kisses/buy-tradepass',
+  swap_pass:     '/api/kisses/buy-swappass',
 }
 async function acquistaBene(id: string) {
   if (busy.value) return
+  // Pass già posseduto → non ri-acquistabile (idempotenza, vedi anche server 409)
+  if (passOwned.value[id]) return
   const endpoint = BENE_ENDPOINT[id]
   if (!endpoint) return
   // NB: nessun blocco ottimistico sul saldo locale. Prima si controllava
@@ -140,6 +154,7 @@ async function acquistaBene(id: string) {
     if (id === 'energia')       patch.energia = Math.min(100, (props.profilo?.energia ?? 0) + 10)
     if (id === 'pass_hard')     patch.hardPass = true
     if (id === 'trade_pass')    patch.tradePass = true
+    if (id === 'swap_pass')     patch.swap_pass = true
     emit('profileUpdate', patch)
     flash('✓ ' + t(BENI_META[id].titleKey))
   } catch (e: any) {
@@ -247,12 +262,13 @@ onUnmounted(() => { document.getElementById('paypal-sdk-shop')?.remove() })
             </div>
             <button
               class="neg-buy"
-              :disabled="kisses < b.kisses || busy === b.id"
-              :class="{ 'neg-buy--off': kisses < b.kisses }"
+              :disabled="b.owned || kisses < b.kisses || busy === b.id"
+              :class="{ 'neg-buy--off': !b.owned && kisses < b.kisses, 'neg-buy--owned': b.owned }"
               :style="{ fontFamily: FF.label }"
               @click="acquistaBene(b.id)"
             >
-              <template v-if="busy === b.id">…</template>
+              <template v-if="b.owned">✓ {{ $t('shop.owned') }}</template>
+              <template v-else-if="busy === b.id">…</template>
               <template v-else><KissesIcon :size="12" style="display:inline-block;vertical-align:-2px;" /> {{ b.kisses }}</template>
             </button>
           </div>
@@ -365,6 +381,7 @@ onUnmounted(() => { document.getElementById('paypal-sdk-shop')?.remove() })
 }
 .neg-buy:hover:not(:disabled) { transform: translateY(-1px); }
 .neg-buy--off { background: var(--theme-surface); color: var(--theme-text-3); cursor: not-allowed; border: 1px solid var(--theme-border); }
+.neg-buy--owned { background: rgba(88,224,163,0.14); color: #58e0a3; cursor: default; border: 1px solid rgba(88,224,163,0.45); }
 
 .neg-divider { height: 2px; background: var(--theme-border-2); opacity: 0.6; border-radius: 999px; margin: 22px 0 18px; }
 

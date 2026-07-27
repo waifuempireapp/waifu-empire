@@ -25,6 +25,7 @@ export interface Prezzi {
   }
   pass_hard:   { kisses: number; price_eur: string }
   pass_scambi: { kisses: number; price_eur: string }
+  pass_swap:   { kisses: number; price_eur: string }
   beni: {
     pack_sfida:    { kisses: number }
     pack_sfida_10: { kisses: number }
@@ -41,6 +42,7 @@ export const DEFAULT_PREZZI: Prezzi = {
   },
   pass_hard:   { kisses: 500, price_eur: '4.99' },
   pass_scambi: { kisses: 100, price_eur: '1.99' },
+  pass_swap:   { kisses: 300, price_eur: '2.99' },
   beni: {
     pack_sfida:    { kisses: 50  },
     pack_sfida_10: { kisses: 450 },
