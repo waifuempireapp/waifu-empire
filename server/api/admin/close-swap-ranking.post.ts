@@ -10,6 +10,9 @@ const RARITY_ORDER = ['comune', 'raro', 'epico', 'leggendario', 'immersivo'];
 const STAT_KEYS    = ['tette', 'eta', 'esperienza', 'colore_capelli', 'taglia_piedi'];
 const BATCH_SIZE   = 400;
 const GETALL_CHUNK = 300;
+// Kisses assegnati ai POSSESSORI di una waifu premiata, per posizione (1a..10a).
+// #34: prima mancavano del tutto — le prime 10 devono premiare i possessori.
+const OWNER_KISSES_BY_POS = [500, 300, 200, 150, 150, 100, 100, 100, 100, 100];
 
 async function getRarityConfig(): Promise<Record<string, any> | null> {
   const adminDb = getAdminDb();
@@ -82,26 +85,31 @@ export default defineEventHandler(async (event) => {
       collSnapsAll.push(...snaps);
     }
 
-    for (const entry of top5) {
+    let totalKissesAwarded = 0;
+    for (let posIdx = 0; posIdx < top5.length; posIdx++) {
+      const entry = top5[posIdx];
       const { id, waifu } = entry;
       const oldRarita: string = waifu.rarita ?? 'comune';
       const isHardCap = oldRarita === 'immersivo' && waifu.asset_video_hard;
-      if (isHardCap) { logEntries.push({ waifuId: id, nome: waifu.nome, oldRarita, newRarita: oldRarita, skipped: true }); continue; }
+      const newRarita = isHardCap ? null : upgradeRarity(oldRarita);
+      const willUpgrade = !!newRarita;
+      // Kisses ai possessori: SEMPRE per le prime 10 (anche se la rarità è al cap)
+      const ownerKisses: number = OWNER_KISSES_BY_POS[posIdx] ?? 100;
 
-      const newRarita = upgradeRarity(oldRarita);
-      if (!newRarita) { logEntries.push({ waifuId: id, nome: waifu.nome, oldRarita, newRarita: oldRarita, skipped: true }); continue; }
+      // Aggiorna la rarità nel catalogo solo se c'è un upgrade effettivo
+      if (willUpgrade) {
+        const { velocita, crit_chance } = computeAndSaveStats(waifu, newRarita!, {}, rarityConfig);
+        await adminDb.doc(`catalogo_waifu/${id}`).update({
+          rarita: newRarita,
+          velocita_base: velocita,
+          crit_chance_base: crit_chance,
+        });
+      }
 
-      // Aggiorna rarità nel catalogo
-      const { velocita, crit_chance } = computeAndSaveStats(waifu, newRarita, {}, rarityConfig);
-      await adminDb.doc(`catalogo_waifu/${id}`).update({
-        rarita: newRarita,
-        velocita_base: velocita,
-        crit_chance_base: crit_chance,
-      });
-
-      // Aggiorna tutte le copie utenti in batch
+      // Aggiorna copie utenti (stats se upgrade) + premia i possessori con Kisses
       let batch = adminDb.batch();
-      let cnt = 0;
+      let ops = 0;
+      let owners = 0;
 
       for (let i = 0; i < usersSnap.docs.length; i++) {
         const collSnap = collSnapsAll[i];
@@ -109,26 +117,34 @@ export default defineEventHandler(async (event) => {
         const userWaifu = (collSnap.data() as any)?.waifu?.[id];
         if (!userWaifu) continue;
 
-        const statBonus = userWaifu.stat_bonus ?? {};
-        const statPersonali: Record<string, number> = {};
-        for (const key of STAT_KEYS) {
-          const bonus = statBonus[key] || 0;
-          if (bonus !== 0) statPersonali[key] = (waifu[key] ?? 0) + bonus;
+        if (willUpgrade) {
+          const statBonus = userWaifu.stat_bonus ?? {};
+          const statPersonali: Record<string, number> = {};
+          for (const key of STAT_KEYS) {
+            const bonus = statBonus[key] || 0;
+            if (bonus !== 0) statPersonali[key] = (waifu[key] ?? 0) + bonus;
+          }
+          const { velocita: v, crit_chance: c, hp: h } = computeAndSaveStats(waifu, newRarita!, statPersonali, rarityConfig);
+          batch.update(collSnap.ref, {
+            [`waifu.${id}.velocita`]:    v,
+            [`waifu.${id}.crit_chance`]: c,
+            [`waifu.${id}.hp`]:          h,
+          });
+          ops++;
         }
-
-        const { velocita: v, crit_chance: c, hp: h } = computeAndSaveStats(waifu, newRarita, statPersonali, rarityConfig);
-        batch.update(collSnap.ref, {
-          [`waifu.${id}.velocita`]:    v,
-          [`waifu.${id}.crit_chance`]: c,
-          [`waifu.${id}.hp`]:          h,
+        // #34: premia il possessore con Kisses (update sul doc utente)
+        batch.update(adminDb.doc(`users/${usersSnap.docs[i].id}`), {
+          kisses: FieldValue.increment(ownerKisses),
         });
-        cnt++;
+        ops++;
+        owners++;
+        totalKissesAwarded += ownerKisses;
         totalUsersUpdated++;
-        if (cnt >= BATCH_SIZE) { await batch.commit(); batch = adminDb.batch(); cnt = 0; }
+        if (ops >= BATCH_SIZE) { await batch.commit(); batch = adminDb.batch(); ops = 0; }
       }
-      if (cnt > 0) await batch.commit();
+      if (ops > 0) await batch.commit();
 
-      logEntries.push({ waifuId: id, nome: waifu.nome, likes: entry.likes, oldRarita, newRarita, usersUpdated: cnt });
+      logEntries.push({ waifuId: id, nome: waifu.nome, likes: entry.likes, oldRarita, newRarita: newRarita ?? oldRarita, skipped: !willUpgrade, ownerKisses, owners });
     }
 
     // Reset classifica
@@ -150,9 +166,10 @@ export default defineEventHandler(async (event) => {
       timestamp: new Date(),
       top5: logEntries,
       totalUsersUpdated,
+      totalKissesAwarded,
     });
 
-    return { success: true, top5: logEntries, totalUsersUpdated };
+    return { success: true, top5: logEntries, totalUsersUpdated, totalKissesAwarded };
   } catch (e: any) {
     console.error('[close-swap-ranking]', e);
     if (e.statusCode) throw e;

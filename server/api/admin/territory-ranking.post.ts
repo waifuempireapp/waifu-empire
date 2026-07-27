@@ -58,6 +58,20 @@ export default defineEventHandler(async (event) => {
     }
 
     if (action === 'close') {
+      // Idempotenza (#33): una sola chiusura per periodo settimanale. Senza
+      // questo, ri-eseguire 'close' ri-assegnava i premi (il filtro include
+      // pixelCount>0 anche dopo l'azzeramento dei punti).
+      const now = new Date();
+      const y = now.getUTCFullYear();
+      const jan1 = Date.UTC(y, 0, 1);
+      const week = Math.ceil((((now.getTime() - jan1) / 86400000) + new Date(jan1).getUTCDay() + 1) / 7);
+      const periodKey = `${y}-W${String(week).padStart(2, '0')}`;
+      const closureRef = adminDb.doc(`admin_logs/territory_close_${periodKey}`);
+      const closureSnap = await closureRef.get();
+      if (closureSnap.exists) {
+        return { success: false, message: `Classifica già chiusa per il periodo ${periodKey}`, periodKey };
+      }
+
       const { utenti, premiConfig } = await getClassifica();
       const BATCH_SIZE = 450;
       let assegnati = 0;
@@ -78,7 +92,9 @@ export default defineEventHandler(async (event) => {
         }
         await batch.commit();
       }
-      return { success: true, assegnati, azzerati: utenti.length, timestamp: new Date().toISOString() };
+      // Registra la chiusura del periodo (marker idempotenza)
+      await closureRef.set({ tipo: 'territory_close', periodKey, assegnati, azzerati: utenti.length, at: new Date() });
+      return { success: true, assegnati, azzerati: utenti.length, periodKey, timestamp: new Date().toISOString() };
     }
 
     if (action === 'reset') {
