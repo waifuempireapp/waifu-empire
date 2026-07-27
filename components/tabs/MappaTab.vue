@@ -566,7 +566,18 @@ const handlePurchase = async ({ amount }: { amount?: number }) => {
       }
       selectedPixel.value = null
     }
-  } catch (e) { console.error(e) }
+  } catch (e: any) {
+    console.error(e)
+    showPurchase.value = false
+    const status = e?.statusCode ?? e?.data?.statusCode
+    if (status === 402) {
+      // Kisses insufficienti → popup di ricarica (shop)
+      const price = 200 + (((selectedPixel.value?.ownerLevel as number) ?? 1) * 50)
+      kissesShortMissing.value = Math.max(1, price - ((props.profilo?.kisses as number) ?? 0))
+    } else {
+      attackError.value = e?.data?.message || e?.message || t('map.attack_generic_error')
+    }
+  }
 }
 
 // ------------------------------------------------------------------ Tutorial
@@ -1086,7 +1097,7 @@ async function onTerritoryClick(territoryId: string) {
         v-if="showPurchase && selectedPixel"
         :pixel="selectedPixel"
         :profilo="profilo as any"
-        @confirm="() => { showPurchase = false; selectedPixel = null }"
+        @confirm="handlePurchase"
         @close="showPurchase = false"
       />
 
