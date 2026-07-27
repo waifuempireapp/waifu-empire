@@ -1,7 +1,7 @@
 <!-- Tab Swap: sistema di votazione waifu con guadagno Kisses e classifica settimanale -->
 <script setup lang="ts">
 import SwapCard from '~/components/swap/SwapCard.vue'
-import { Ban, Sparkles } from 'lucide-vue-next'
+import { Ban, Sparkles, Heart } from 'lucide-vue-next'
 import SwapRewardToast from '~/components/swap/SwapRewardToast.vue'
 import SwapMilestoneModal from '~/components/swap/SwapMilestoneModal.vue'
 import AdSlot from '~/components/swap/AdSlot.vue'
@@ -150,6 +150,15 @@ onMounted(async () => {
 const currentWaifu = computed(() => queue.value[currentIdx.value])
 const remaining = computed(() => queue.value.length - currentIdx.value)
 const isLimitReached = computed(() => swapStatus.value && !swapStatus.value.hasSwapPass && swapStatus.value.votesRemaining === 0)
+
+// ── Contatore voti giornalieri (label fissa in basso) ────────────────────────
+const hasSwapPass = computed(() => !!(swapStatus.value?.hasSwapPass) || !!props.profilo?.hardPass)
+const voteCount   = computed(() => swapStatus.value?.dailyVotes ?? (props.profilo?.daily_swap_votes as number) ?? 0)
+const voteLimit   = computed(() => {
+  const rem = swapStatus.value?.votesRemaining
+  if (typeof rem === 'number') return (swapStatus.value?.dailyVotes ?? 0) + rem
+  return swapConfig.value?.dailyLimit ?? 50
+})
 const ownershipBadge = computed(() => {
   const w = currentWaifu.value
   if (!w) return null
@@ -245,6 +254,12 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
     <!-- Caricamento batch -->
     <AppLoading v-else />
 
+    <!-- Contatore voti giornalieri — fisso in basso (∞ con Swap/Hard Pass) -->
+    <div class="swap-vote-counter">
+      <Heart :size="13" stroke-width="2" style="color:#ff4d9e;" />
+      <span><b>{{ voteCount }}</b> / <span v-if="hasSwapPass" class="swap-vote-inf">∞</span><span v-else>{{ voteLimit }}</span></span>
+    </div>
+
     <!-- Overlays -->
     <SwapRewardToast v-if="toast" v-bind="toast" @done="toast = null" />
     <SwapMilestoneModal v-if="milestone" v-bind="milestone" @close="milestone = null" />
@@ -333,6 +348,26 @@ onUnmounted(() => { if (countdownInterval) clearInterval(countdownInterval) })
   align-items: center; justify-content: center;
   padding: 0 16px;
 }
+
+/* Contatore voti giornalieri — fisso in basso al centro */
+.swap-vote-counter {
+  position: fixed;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  left: 50%; transform: translateX(-50%);
+  z-index: 20; pointer-events: none;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 16px; border-radius: 999px;
+  background: var(--theme-surface, rgba(20,16,34,0.9));
+  border: 1px solid var(--theme-border);
+  box-shadow: 0 6px 20px var(--theme-shadow, rgba(0,0,0,0.4));
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  font-family: var(--ff-label, 'Saira Condensed', sans-serif);
+  font-size: 14px; font-weight: 700; letter-spacing: 0.04em;
+  color: var(--theme-text-2, #cfc6e6);
+  font-variant-numeric: tabular-nums;
+}
+.swap-vote-counter b { color: var(--theme-text, #fff); font-weight: 900; }
+.swap-vote-inf { font-size: 17px; line-height: 1; color: #ff4d9e; font-weight: 900; }
 
 .swap-exhausted {
   display: flex; flex-direction: column;
