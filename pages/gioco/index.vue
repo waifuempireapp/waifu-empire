@@ -573,7 +573,7 @@ function handleSetTab(t: string) {
       <LazyMappaTab v-if="tab === 'mappa'" :profilo="gameStore.profilo" :collezione="gameStore.collezione as any"
         :waifu-cat="gameStore.catalogoWaifu" :mosse-cat="gameStore.catalogoMosse" :raid-battle-ctx="raidBattleCtx"
         @notif="(t: string, c: string) => mostraNotif(t, c)"
-        @update-profilo="(p: unknown) => gameStore.setProfilo(p as never)"
+        @update-profilo="(p: unknown) => gameStore.aggiornaProfilo(p as never)"
         @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)"
         @raid-battle="(ctx: unknown) => { raidBattleCtx = ctx }" @raid-battle-end="() => { raidBattleCtx = null }" />
 
