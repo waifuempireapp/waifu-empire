@@ -16,7 +16,7 @@ const props = defineProps<{
   waifuCat: any[]
 }>()
 
-const emit = defineEmits<{ close: []; assign: [waifuId: string] }>()
+const emit = defineEmits<{ close: []; assign: [waifuId: string]; unassign: [waifuId: string] }>()
 
 const FF = {
   display: "var(--ff-display, 'Fredoka', sans-serif)",
@@ -90,7 +90,10 @@ const ownedWaifu = computed<PickWaifu[]>(() => {
 })
 
 function pick(w: PickWaifu) {
-  if (!w.compatibile && !w.haQuestaMossa) return
+  // #18: se la waifu ha GIA' la mossa, il click la RIMUOVE (toggle). Così la
+  // rimozione è possibile anche dalla schermata di dettaglio della mossa.
+  if (w.haQuestaMossa) { emit('unassign', w.id); return }
+  if (!w.compatibile) return
   emit('assign', w.id)
 }
 </script>

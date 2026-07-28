@@ -460,6 +460,7 @@
     "stat_speed_abbr": "TMP",
     "stat_crit_abbr": "KRIT",
     "empty_slot": "— leer —",
+    "one_click_moves": "One-Click · 4 Moves",
     "no_moves_collection": "Keine Moves in der Sammlung",
     "rarity_incompatible": "Inkompatible Seltenheit (Move: {move}, Waifu: {waifu})"
   },

@@ -460,6 +460,7 @@
     "stat_speed_abbr": "速",
     "stat_crit_abbr": "クリ",
     "empty_slot": "— 空き —",
+    "one_click_moves": "ワンクリック · 4技ランダム",
     "no_moves_collection": "コレクションに技がありません",
     "rarity_incompatible": "レアリティ非対応（技: {move}、ワイフ: {waifu}）"
   },

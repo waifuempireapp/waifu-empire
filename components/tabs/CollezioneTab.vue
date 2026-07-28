@@ -221,6 +221,18 @@ async function rimuoviMossa(waifuId: string, slot: string) {
   emit('notif', t('collection.move_removed'), 'rgba(241,235,255,0.5)')
 }
 
+// #21: One-Click — assegna piu' mosse in un solo salvataggio
+async function assegnaMosseMultiple(waifuId: string, assignments: { slot: string; mossaId: string }[]) {
+  const nuova = JSON.parse(JSON.stringify(props.collezione))
+  const w = nuova.waifu[waifuId]
+  if (!w) return
+  w.mosse_slot = {} // One-Click sovrascrive i 4 slot
+  for (const { slot, mossaId } of assignments) w.mosse_slot[slot] = mossaId
+  emit('updateCollezione', nuova)
+  await saveCollezione(authStore.user!.uid, nuova)
+  emit('notif', t('collection.move_assigned'), '#a78bfa')
+}
+
 // ── Sub-tab config ────────────────────────────────────────────
 const subTabs = computed(() => [
   { k: 'waifu',  l: t('collection.waifu'),     icon: '♛', n: Object.keys(props.collezione.waifu || {}).length,  c: C.gold   },
@@ -1262,6 +1274,7 @@ function apriNegozio() {
       @chiudi="waifuDettaglioId = null"
       @toggle-preferita="togglePreferita(waifuDettaglioId!)"
       @assegna-mossa="(slot, mossaId) => assegnaMossa(waifuDettaglioId!, slot, mossaId)"
+      @assegna-mosse-multiple="(assignments) => assegnaMosseMultiple(waifuDettaglioId!, assignments)"
       @rimuovi-mossa="(slot) => rimuoviMossa(waifuDettaglioId!, slot)"
       @level-up="waifuSel = waifuDettaglioId"
     />

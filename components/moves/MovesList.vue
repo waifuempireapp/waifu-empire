@@ -99,6 +99,26 @@ async function onAssign(waifuId: string) {
   // Il popup RESTA aperto: si possono assegnare più waifu di fila.
   // Si chiude solo con la ✕ in alto a destra (@close).
 }
+
+// #18: rimuove la mossa corrente dalla waifu (toggle dal dettaglio mossa)
+async function onUnassign(waifuId: string) {
+  const move = detailMove.value
+  if (!move || !props.collezione) return
+  const nuova = JSON.parse(JSON.stringify(props.collezione))
+  const w = nuova.waifu?.[waifuId]
+  if (!w?.mosse_slot) return
+  const slot = ['1', '2', '3', '4'].find(s => w.mosse_slot[s] === move.id)
+  if (!slot) return
+  delete w.mosse_slot[slot]
+  emit('updateCollezione', nuova)
+  try {
+    if (authStore.user?.uid) await saveCollezione(authStore.user.uid, nuova)
+    emit('notif', `${move.name} rimossa`, 'rgba(241,235,255,0.6)')
+  } catch (e) {
+    console.error('[MovesList] rimozione fallita', e)
+    emit('notif', 'Errore rimozione', '#ff5b6c')
+  }
+}
 </script>
 
 <template>
@@ -166,6 +186,7 @@ async function onAssign(waifuId: string) {
       :waifu-cat="waifuCat ?? []"
       @close="detailMove = null"
       @assign="onAssign"
+      @unassign="onUnassign"
     />
   </section>
 </template>

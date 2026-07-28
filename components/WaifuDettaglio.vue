@@ -4,8 +4,9 @@
   battaglia+mosse collassabili con picker compatibilità.
   ============================================================ -->
 <script setup lang="ts">
-import { Heart, X, ChevronDown, ChevronUp, Swords, Plus, Trash2 } from 'lucide-vue-next'
+import { Heart, X, ChevronDown, ChevronUp, Swords, Plus, Trash2, Sparkles } from 'lucide-vue-next'
 import { canLearnMove, weakType } from '~/utils/moves'
+import MoveCard from '~/components/moves/MoveCard.vue'
 import { resolveWaifuStat, AESTHETIC_STAT_CAPS, type AestheticStatKey } from '~/utils/waifuStats'
 import { computeHp, computeSpeed, computeCritChance } from '~/utils/battleEngine'
 import { RARITY_MULTIPLIERS_DEFAULT } from '~/utils/constants'
@@ -30,6 +31,8 @@ const emit = defineEmits<{
   togglePreferita: []
   assegnaMossa: [slot: string, mossaId: string]
   rimuoviMossa: [slot: string]
+  /** #21: assegna in blocco piu' mosse (One-Click) con un solo salvataggio */
+  assegnaMosseMultiple: [assignments: { slot: string; mossaId: string }[]]
   levelUp: []
 }>()
 
@@ -152,6 +155,36 @@ function compat(mossaId: string, slot: string): { ok: boolean; motivo?: string }
 const nonCompatOpen = ref(false)
 // Reset stato collapsible quando si cambia slot
 watch(slotPicker, () => { nonCompatOpen.value = false })
+
+// #21: "One Click" — assegna automaticamente 4 mosse casuali COMPATIBILI
+// (rispetta il vincolo di tipo) prese tra quelle possedute, una per slot.
+function oneClickMosse() {
+  const compatibili = Object.keys(props.mosseCollezione).filter(id => {
+    const cat = props.mosseCat.find((m: any) => m.id === id)
+    return cat && canLearnMove(props.waifu.tipo as string, (cat.type ?? cat.tipologia) as string)
+  })
+  if (compatibili.length === 0) return
+  // Mescola e prendi fino a 4 mosse distinte
+  const shuffled = [...compatibili].sort(() => Math.random() - 0.5).slice(0, 4)
+  const assignments = shuffled.map((mossaId, i) => ({ slot: SLOTS[i], mossaId }))
+  emit('assegnaMosseMultiple', assignments)
+}
+
+// #20: mappa la mossa del catalogo Firestore nel formato atteso da MoveCard
+// (che usa name/type/damage/effectDescription) così si vede la CARTA COMPLETA.
+function toMoveCard(cat: any) {
+  return {
+    id: cat.id,
+    name: cat.nome ?? cat.name ?? '',
+    type: String(cat.tipologia ?? cat.tipo ?? 'arcana').toLowerCase(),
+    damage: cat.danno ?? 0,
+    rarita: cat.rarita,
+    isUltimate: cat.isUltimate === true,
+    effectDescription: cat.effect?.label ?? cat.abilita ?? '',
+    additionalEffectLabel: cat.effect?.label ?? '',
+    imageFileName: cat.imageFileName ?? '', imageUrl: cat.imageUrl ?? '',
+  }
+}
 
 const pickerMosse = computed(() => {
   if (!slotPicker.value) return []
@@ -403,6 +436,16 @@ onUnmounted(() => {
                     <div class="wd-stat__val wd-stat__val--crit" :style="{ fontFamily: FF.label }">{{ Math.round(crit * 100) }}%</div>
                   </div>
                 </div>
+                <!-- #21: One-Click — 4 mosse casuali compatibili -->
+                <button @click="oneClickMosse" :style="{
+                  width:'100%', marginBottom:'12px', padding:'11px', borderRadius:'11px', border:'none', cursor:'pointer',
+                  background:`linear-gradient(135deg,${C.violet},#6938e8)`, color:'#fff',
+                  fontFamily:FF.label, fontSize:'13px', fontWeight:800, letterSpacing:'0.14em', textTransform:'uppercase',
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:'8px',
+                  boxShadow:`0 4px 16px ${C.violet}44`,
+                }">
+                  <Sparkles :size="15" stroke-width="2" /> {{ $t('card.one_click_moves') }}
+                </button>
                 <!-- Slot mosse -->
                 <div style="display:flex;flex-direction:column;gap:8px;">
                   <div v-for="slot in SLOTS" :key="slot">
@@ -470,26 +513,17 @@ onUnmounted(() => {
             <div :style="{ fontFamily: FF.label, fontSize: '12px', color: C.ok, letterSpacing: '0.22em', textTransform: 'uppercase', marginBottom: '10px', fontWeight: 700 }">
               ✓ COMPATIBILI ({{ pickerMosse.filter(m => m.ok).length }})
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;">
-              <button
+            <!-- #20: carta mossa COMPLETA (effetti visibili) — click per assegnare -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+              <div
                 v-for="m in pickerMosse.filter(x => x.ok)"
                 :key="m.id"
                 @click="emit('assegnaMossa', slotPicker!, m.id); slotPicker = null"
-                :style="{
-                  padding: '12px 16px 12px 22px',
-                  background: `${tc(m.cat.tipologia ?? m.cat.tipo).bg}`,
-                  border: `1px solid ${tc(m.cat.tipologia ?? m.cat.tipo).border}`,
-                  borderRadius: '12px',
-                  cursor: 'pointer', textAlign: 'left', display: 'flex',
-                  flexDirection: 'column', gap: '4px', minWidth: 0,
-                }"
+                style="cursor:pointer;position:relative;"
               >
-                <div :style="{ fontFamily: FF.label, fontSize: '15px', color: 'var(--theme-text)', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ m.cat.nome }}</div>
-                <div :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-text-2)', lineHeight: 1.3 }">
-                  {{ typeLabel(m.cat.tipologia ?? m.cat.tipo) }} · {{ m.cat.rarita }}<br>PP:{{ m.cat.pp }} · ×{{ m.cat.danno }} · {{ m.cat.danno_critico }}%+
-                </div>
-                <span :style="{ fontFamily: FF.label, fontSize: '10px', color: tc(m.cat.tipologia ?? m.cat.tipo).txt, letterSpacing: '0.1em', fontWeight: 700, marginTop: '2px' }">+ Slot {{ slotPicker }}</span>
-              </button>
+                <MoveCard :move="toMoveCard(m.cat) as any" :owned="true" />
+                <div :style="{ position:'absolute', bottom:'4px', left:'50%', transform:'translateX(-50%)', background: tc(m.cat.tipologia ?? m.cat.tipo).border, color:'#fff', borderRadius:'999px', padding:'2px 10px', fontFamily: FF.label, fontSize:'9px', fontWeight:800, letterSpacing:'0.1em', pointerEvents:'none', boxShadow:'0 2px 8px rgba(0,0,0,0.4)' }">+ SLOT {{ slotPicker }}</div>
+              </div>
             </div>
           </template>
 

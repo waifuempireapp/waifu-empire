@@ -460,6 +460,7 @@
     "stat_speed_abbr": "VEL",
     "stat_crit_abbr": "CRÍT",
     "empty_slot": "— vacío —",
+    "one_click_moves": "One-Click · 4 movimientos",
     "no_moves_collection": "Sin movimientos en la colección",
     "rarity_incompatible": "Rareza incompatible (movimiento: {move}, waifu: {waifu})"
   },
