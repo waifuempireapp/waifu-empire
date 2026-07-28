@@ -392,7 +392,9 @@ onUnmounted(() => { document.getElementById('paypal-sdk-shop')?.remove() })
   display: flex; gap: 10px; margin-bottom: 16px;
   overflow-x: auto; overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: 4px; scroll-snap-type: x proximity;
+  /* #6: padding verticale così il taglio selezionato (translateY(-2px) + glow
+     rosa) non viene tagliato in alto da overflow-y:hidden */
+  padding-top: 10px; padding-bottom: 8px; scroll-snap-type: x proximity;
 }
 .neg-tagli::-webkit-scrollbar { height: 4px; }
 .neg-tagli::-webkit-scrollbar-thumb { background: var(--theme-border-2); border-radius: 999px; }
