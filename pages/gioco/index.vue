@@ -373,6 +373,14 @@ function mostraNotif(testo: string, colore = '#00e676') {
 // l'utente che ha sbloccato un nuovo avatar. Copre tutti i flussi perché
 // ascolta la collezione globale (sbusta, pesca, swap, ecc.).
 let knownAvatarWaifu: Set<string> | null = null
+// #36: notifiche di sblocco avatar in coda finché è in corso una reveal
+// (apertura pacchetto/pesca): vanno mostrate DOPO la reveal, non allo spoiler.
+const pendingAvatarNotifs: string[] = []
+function flushAvatarNotifs() {
+  if (pendingAvatarNotifs.length === 0) return
+  const names = pendingAvatarNotifs.splice(0).map(n => n.toUpperCase())
+  mostraNotif(t('avatar.unlocked', { name: names.join(', ') }), '#c77dff')
+}
 watch(() => Object.keys(gameStore.collezione?.waifu ?? {}), (ids) => {
   const withAvatar = ids.filter(id => AVATAR_BY_WAIFU[id] && !BASE_AVATAR_IDS.includes(id))
   // Primo caricamento: registra lo stato iniziale senza notificare
@@ -381,8 +389,14 @@ watch(() => Object.keys(gameStore.collezione?.waifu ?? {}), (ids) => {
   if (newly.length === 0) return
   newly.forEach(id => knownAvatarWaifu!.add(id))
   const names = newly.map(id => (AVATAR_BY_WAIFU[id]?.waifuId || id).toUpperCase())
-  mostraNotif(t('avatar.unlocked', { name: names.join(', ') }), '#c77dff')
+  if (gameStore.revealInProgress) {
+    pendingAvatarNotifs.push(...names) // differito: mostrato a reveal conclusa
+  } else {
+    mostraNotif(t('avatar.unlocked', { name: names.join(', ') }), '#c77dff')
+  }
 })
+// Quando la reveal finisce, mostra le notifiche avatar rimaste in coda
+watch(() => gameStore.revealInProgress, (active) => { if (!active) flushAvatarNotifs() })
 
 // ── 5 tab principali: Home | Collezione | Mappa | Classifica | Missioni ──
 // Mappa ripristinata — è una feature core e non va mai rimossa

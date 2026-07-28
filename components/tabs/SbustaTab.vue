@@ -15,6 +15,7 @@ import {
   createPackSnapshot,
 } from '~/utils/firestoreService'
 import { generaPacchetto, GOD_PACK_PROB_DEFAULT } from '~/utils/gameLogic'
+import { useGameStore } from '~/stores/game'
 import { TIMER } from '~/utils/constants'
 import { useAuthStore } from '~/stores/auth'
 import { useMissionsStore } from '~/stores/missions'
@@ -80,6 +81,11 @@ const { isPageReady, recheck: recheckPageReady } = usePageReady('canvas')
 
 // ── Stato principale ─────────────────────────────────────────
 const stato = ref<'idle' | 'reveal' | 'reveal_multi' | 'summary' | 'summary_multi'>('idle')
+// #36: segnala al gioco che è in corso una reveal → la notifica di sblocco
+// avatar viene differita a fine reveal (niente spoiler all'apertura del pack).
+const _gameStore = useGameStore()
+watch(stato, (s) => { _gameStore.setRevealInProgress(s !== 'idle') }, { immediate: true })
+onUnmounted(() => { _gameStore.setRevealInProgress(false) })
 
 // Entrando nello stato di apertura ("Tocca per aprire") viene montata una nuova
 // BustinaGLB: ri-mostra l'overlay anti-FOUC finché il nuovo canvas non è renderizzato.

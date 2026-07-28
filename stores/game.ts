@@ -35,6 +35,9 @@ interface GameState {
   tabAttiva: string
   // Overlay negozio aperto
   negozioAperto: boolean
+  // #36: reveal pacchetto/pesca in corso → le notifiche di sblocco avatar
+  // vengono differite (mostrate DOPO la reveal, non allo spoiler dell'apertura)
+  revealInProgress: boolean
   // Loading states
   loadingProfilo: boolean
   loadingCollezione: boolean
@@ -54,6 +57,7 @@ export const useGameStore = defineStore('game', {
     classificaSettimanale: [],
     tabAttiva:             'home',
     negozioAperto:         false,
+    revealInProgress:      false,
     loadingProfilo:        false,
     loadingCollezione:     false,
     loadingCatalogo:       false,
@@ -131,6 +135,9 @@ export const useGameStore = defineStore('game', {
     // Apre/chiude il negozio
     toggleNegozio(aperto: boolean) {
       this.negozioAperto = aperto
+    },
+    setRevealInProgress(v: boolean) {
+      this.revealInProgress = v
     },
 
     // Aggiorna i kisses nel profilo (dopo acquisto)
