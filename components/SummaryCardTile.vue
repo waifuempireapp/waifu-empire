@@ -18,6 +18,11 @@ const emit = defineEmits<{ zoom: [carta: any] }>()
 const isMossa = computed(() => props.carta?.tipo === 'mossa')
 const nome    = computed(() => props.carta?.data?.nome ?? '—')
 const rarita  = computed(() => props.carta?.data?.rarita)
+// #29: bordo colorato per rarità (riepilogo apertura + pesca misteriosa)
+const RARITY_BORDER: Record<string, string> = {
+  comune: '#9aa4b5', raro: '#4ac3ff', epico: '#b46bff', leggendario: '#f5c560', immersivo: '#ff5b9e',
+}
+const rarityBorder = computed(() => RARITY_BORDER[String(rarita.value ?? '').toLowerCase()] ?? 'rgba(255,255,255,0.18)')
 const imgFail = ref(false)
 const waifuImg = computed(() => {
   const d = props.carta?.data ?? {}
@@ -39,7 +44,7 @@ const waifuImg = computed(() => {
     <!-- WAIFU → immagine + chip rarità + nome -->
     <template v-else>
       <div @click="emit('zoom', carta)"
-        :style="{ borderRadius:'10px', overflow:'hidden', aspectRatio:'2/3', background:'var(--theme-bg-secondary)', position:'relative', cursor:'pointer', border: carta.isNuova ? '1.5px solid rgba(0,200,255,0.5)' : '1.5px solid rgba(255,255,255,0.08)' }">
+        :style="{ borderRadius:'10px', overflow:'hidden', aspectRatio:'2/3', background:'var(--theme-bg-secondary)', position:'relative', cursor:'pointer', border: `3px solid ${rarityBorder}`, boxShadow: `0 0 10px ${rarityBorder}55` }">
         <img v-if="waifuImg && !imgFail" :src="waifuImg" :alt="nome"
           style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" @error="imgFail = true" />
         <div v-else style="width:100%;height:100%;display:grid;place-items:center;">
