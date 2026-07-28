@@ -53,11 +53,16 @@ export default defineEventHandler(async (event) => {
     const currentHp: number = (freshEvent.data() as any)?.currentHp ?? 0;
     const newHp: number = Math.min((freshEvent.data() as any)?.totalHp ?? 5000, Math.max(0, currentHp + hpDelta));
 
+    const justCompleted = newHp <= 0;
     tx.update(eventRef, {
       currentHp: newHp,
       participantCount: FieldValue.increment(1),
-      ...(newHp <= 0 ? { status: 'completed' } : {}),
+      ...(justCompleted ? { status: 'completed', endedAt: FieldValue.serverTimestamp() } : {}),
     });
+    // #13B: boss sconfitto → marca la fine, così il raid successivo rispetta il cooldown
+    if (justCompleted) {
+      tx.set(adminDb.doc('config/raid_state'), { lastEndedAt: FieldValue.serverTimestamp() }, { merge: true });
+    }
 
     const existing = partSnap.exists ? partSnap.data() as any : null;
     // Genera nuova difficoltà CPU per il prossimo combattimento (60% M / 30% H / 10% E)

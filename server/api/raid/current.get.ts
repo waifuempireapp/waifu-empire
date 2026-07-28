@@ -89,11 +89,27 @@ export default defineEventHandler(async (event) => {
       const endsMs: number = new Date(raid.endsAt as string).getTime();
       if (endsMs < now.getTime()) {
         await adminDb.doc(`raid_events/${doc.id}`).update({ status: 'failed' });
-        raid = null; // raid scaduto, ne creiamo uno nuovo
+        // Marca la fine del raid → parte il cooldown per il successivo (#13B)
+        await adminDb.doc('config/raid_state').set({ lastEndedAt: now }, { merge: true });
+        raid = null; // raid scaduto
       }
     }
 
     if (!raid) {
+      // #13B: rispetta un cooldown (default 1h) tra un raid e il successivo.
+      // Prima si creava SUBITO un nuovo raid appena quello precedente finiva.
+      const COOLDOWN_MS = ((cfg.cooldownMinutes as number) ?? 60) * 60 * 1000;
+      const stateSnap = await adminDb.doc('config/raid_state').get();
+      const lastEndedAt: number = stateSnap.exists
+        ? ((stateSnap.data() as any)?.lastEndedAt?.toMillis?.() ?? 0)
+        : 0;
+      const nextAllowed = lastEndedAt + COOLDOWN_MS;
+
+      if (lastEndedAt > 0 && now.getTime() < nextAllowed) {
+        // Ancora in cooldown: nessun raid attivo, il client mostra il countdown
+        return { raid: null, nextRaidAt: new Date(nextAllowed).toISOString() };
+      }
+
       const newRaid = await createNewRaid(cfg);
       raid = { id: newRaid.eventId, ...newRaid };
       if (raid.endsAt instanceof Date) raid.endsAt = (raid.endsAt as Date).toISOString();
