@@ -471,9 +471,9 @@ const handleRoundComplete = async (
         const savedRaidEventId = activeBattle.value.raidEventId
         const won              = data.status === 'attacker_wins'
         activeBattle.value     = null
-        emit('raidBattleEnd', { won })
-        showRaidPanel.value = true
-        // Aggiorna HP raid in background dopo aver mostrato il pannello
+        // #11: aggiorna PRIMA gli HP del raid (join) e POI apri il pannello, così
+        // mostra subito gli HP corretti (prima partiva in background dopo l'apertura
+        // -> il pannello caricava HP stantii finché non si cambiava schermata).
         try {
           const raidToken = await authStore.user?.getIdToken()
           await $fetch('/api/raid/join', {
@@ -482,6 +482,8 @@ const handleRoundComplete = async (
             body: { eventId: savedRaidEventId, won },
           })
         } catch (e) { console.error('[raid/join]', e) }
+        emit('raidBattleEnd', { won })
+        showRaidPanel.value = true
         return
       }
 

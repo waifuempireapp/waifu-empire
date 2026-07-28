@@ -6,7 +6,7 @@ import { ikUrl } from '~/utils/imagekitUrl'
 
 const { t } = useI18n()
 import {
-  collection, query, where, orderBy, onSnapshot, doc,
+  collection, query, where, onSnapshot, doc,
 } from 'firebase/firestore'
 import { getDb } from '~/utils/firebase'
 
@@ -116,24 +116,25 @@ watch(() => raid.value?.id, (raidId) => {
   rankingError.value = null
   if (!raidId) return
   const db = getDb()
+  // #10: solo filtro per eventId (NIENTE orderBy) → non serve l'indice composito
+  // che mancava e faceva fallire la query (failed-precondition). L'ordinamento
+  // per danno inflitto avviene client-side.
   const q  = query(
     collection(db, 'raid_participants'),
     where('eventId', '==', raidId),
-    orderBy('damageDealt', 'desc'),
   )
   unsubRanking = onSnapshot(
     q,
     (snap) => {
       rankingError.value = null
-      ranking.value = snap.docs.map((d, i) => ({ ...d.data(), pos: i + 1 }))
+      ranking.value = snap.docs
+        .map(d => d.data() as any)
+        .sort((a, b) => (b.damageDealt ?? 0) - (a.damageDealt ?? 0))
+        .map((d, i) => ({ ...d, pos: i + 1 }))
     },
     (err: any) => {
-      if (err.code === 'failed-precondition') {
-        rankingError.value = 'building'
-      } else {
-        rankingError.value = 'error'
-        console.error('[RaidIslandPanel] ranking:', err)
-      }
+      rankingError.value = 'error'
+      console.error('[RaidIslandPanel] ranking:', err)
     },
   )
 })
