@@ -347,6 +347,10 @@ const waifuGridEntries = computed(() => {
       return sd === 'desc' ? vb - va : va - vb
     })
 
+  // #17: le Waifu PREFERITE sempre in cima (sort stabile: preserva l'ordine
+  // sottostante — espansione/alfabetico o quello esplicito — dentro i gruppi).
+  list.sort((a, b) => (b.dati?.preferita ? 1 : 0) - (a.dati?.preferita ? 1 : 0))
+
   return list
 })
 const waifuPossedute = computed(() => waifuGridEntries.value.filter(e => e.owned).length)

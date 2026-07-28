@@ -39,11 +39,25 @@ interface PickWaifu {
   slotsLiberi: number
   haQuestaMossa: boolean
   compatibile: boolean
+  preferita: boolean
   motivo?: string
 }
 
+const RARITY_COL: Record<string, string> = {
+  comune: '#9aa4b5', raro: '#4ac3ff', epico: '#b46bff', leggendario: '#f5c560', immersivo: '#ff5b9e',
+}
+
+// #22: una mossa è assegnabile a un numero di waifu pari alle COPIE possedute.
+const mossaCopie = computed(() => Math.max(1, Number(props.collezione?.mosse?.[props.move.id]?.copie ?? 0) || 1))
+// Quante waifu hanno GIA' questa mossa assegnata
+const assegnataCount = computed(() => {
+  const coll = props.collezione?.waifu ?? {}
+  return Object.values(coll).filter((d: any) => Object.values(d?.mosse_slot ?? {}).includes(props.move.id)).length
+})
+
 const ownedWaifu = computed<PickWaifu[]>(() => {
   const coll = props.collezione?.waifu ?? {}
+  const capReached = assegnataCount.value >= mossaCopie.value
   return Object.keys(coll).map((id) => {
     const cat = props.waifuCat.find((w: any) => w.id === id)
     const dati = coll[id] ?? {}
@@ -51,10 +65,12 @@ const ownedWaifu = computed<PickWaifu[]>(() => {
     const usati = ['1', '2', '3', '4'].filter(s => slot[s]).length
     const haQuestaMossa = Object.values(slot).includes(props.move.id)
     const rarita = cat?.rarita ?? 'comune'
-    // Vincolo UNICO: una waifu non può imparare mosse del tipo a cui è debole.
-    // (Le mosse non sono univoche: la stessa mossa può stare su più waifu.)
+    // Vincolo di tipo: una waifu non può imparare mosse del tipo a cui è debole.
     const learnOk = canLearnMove(cat?.tipo, props.move.type)
     const slotOk = usati < 4 || haQuestaMossa
+    // #22: cap sulle copie — se il numero di waifu con la mossa ha raggiunto le
+    // copie possedute, non se ne possono aggiungere altre (ma chi ce l'ha resta).
+    const capOk = haQuestaMossa || !capReached
     return {
       id,
       nome: cat?.nome ?? id,
@@ -62,10 +78,15 @@ const ownedWaifu = computed<PickWaifu[]>(() => {
       img: ikUrl(cat?.asset_statica ?? cat?.asset_immersiva ?? null, 'thumbnail'),
       slotsLiberi: 4 - usati,
       haQuestaMossa,
-      compatibile: learnOk && slotOk,
-      motivo: !learnOk ? `Debole a ${weakType(cat?.tipo)?.toUpperCase() ?? '?'}` : !slotOk ? 'Slot pieni' : undefined,
+      compatibile: learnOk && slotOk && capOk,
+      preferita: dati.preferita === true,
+      motivo: !learnOk ? `Debole a ${weakType(cat?.tipo)?.toUpperCase() ?? '?'}` : !slotOk ? 'Slot pieni' : !capOk ? 'Copie esaurite' : undefined,
     }
-  }).sort((a, b) => Number(b.compatibile) - Number(a.compatibile) || a.nome.localeCompare(b.nome))
+    // #19: preferite in cima, poi compatibili, poi alfabetico
+  }).sort((a, b) =>
+    Number(b.preferita) - Number(a.preferita) ||
+    Number(b.compatibile) - Number(a.compatibile) ||
+    a.nome.localeCompare(b.nome))
 })
 
 function pick(w: PickWaifu) {
@@ -119,7 +140,7 @@ function pick(w: PickWaifu) {
 
         <!-- Assegnazione a waifu -->
         <div class="md-assign">
-          <div class="md-assign-title" :style="{ fontFamily: FF.label }">Assegna a una waifu</div>
+          <div class="md-assign-title" :style="{ fontFamily: FF.label }">Assegna a una waifu · <span :style="{ color: assegnataCount >= mossaCopie ? '#ff7a90' : 'var(--theme-text-2)' }">{{ assegnataCount }}/{{ mossaCopie }} copie usate</span></div>
           <p v-if="ownedWaifu.length === 0" class="md-assign-empty">Non possiedi ancora waifu a cui assegnarla.</p>
           <div v-else class="md-waifu-grid">
             <button
@@ -133,6 +154,9 @@ function pick(w: PickWaifu) {
             >
               <img v-if="w.img" :src="w.img" :alt="w.nome" class="md-waifu-img" />
               <div v-else class="md-waifu-img md-waifu-img--ph">{{ w.nome.slice(0,2) }}</div>
+              <!-- #19: stella preferita + rarità (per riconoscere la waifu) -->
+              <span v-if="w.preferita" class="md-waifu-fav">★</span>
+              <span class="md-waifu-rarity" :style="{ color: RARITY_COL[w.rarita] ?? '#9aa4b5', borderColor: (RARITY_COL[w.rarita] ?? '#9aa4b5') + '66' }">{{ w.rarita }}</span>
               <span class="md-waifu-name">{{ w.nome }}</span>
               <span v-if="w.haQuestaMossa" class="md-waifu-check" :style="{ background: meta.accent }"><Check :size="10" stroke-width="3" /></span>
               <span v-else-if="w.motivo" class="md-waifu-motivo">{{ w.motivo }}</span>
@@ -213,5 +237,7 @@ function pick(w: PickWaifu) {
 .md-waifu-name { font-size: 11px; font-weight: 800; color: var(--theme-text); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .md-waifu-slots { font-size: 9px; color: var(--theme-text-3); }
 .md-waifu-motivo { font-size: 8.5px; color: #ff7a90; letter-spacing: 0.02em; }
+.md-waifu-fav { position: absolute; top: 5px; left: 6px; z-index: 2; font-size: 12px; color: #ff85b6; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+.md-waifu-rarity { font-size: 8px; font-weight: 800; letter-spacing: 0.04em; text-transform: capitalize; border: 1px solid; border-radius: 999px; padding: 1px 7px; line-height: 1.3; }
 .md-waifu-check { position: absolute; top: 5px; right: 5px; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; }
 </style>
