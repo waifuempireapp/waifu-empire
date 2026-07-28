@@ -68,6 +68,7 @@ watch(avatarUrl, (url) => {
 // Mappe colore/owner dei pixel (aggiornate da chunks)
 let pixelColors: Record<string, string> = {}
 let pixelOwners: Record<string, string> = {}
+let pixelNames: Record<string, string> = {}
 
 // Set dei pixel adiacenti all'impero del giocatore
 let adjacentSet = new Set<string>()
@@ -85,6 +86,7 @@ const basePS = isMobile() ? MOBILE_PIXEL_SIZE : BASE_PIXEL_SIZE
 function rebuildPixelMaps() {
   const colorMap: Record<string, string> = {}
   const ownerMap: Record<string, string> = {}
+  const nameMap: Record<string, string> = {}
   if (props.chunks) {
     for (const chunk of Object.values(props.chunks)) {
       if (!chunk.pixels) continue
@@ -94,11 +96,13 @@ function rebuildPixelMaps() {
           ? (PIXEL_COLORS[key] || CPU_COLOR)
           : (data.ownerColor || '#ff85b6')
         ownerMap[key] = data.ownerId
+        if (data.ownerId && data.ownerId !== 'CPU') nameMap[key] = data.ownerName || data.nomeImpero || ''
       }
     }
   }
   pixelColors = colorMap
   pixelOwners = ownerMap
+  pixelNames = nameMap
 }
 
 // ── Calcola set di pixel adiacenti (6 direzioni esagonali, via mare) ─────────
@@ -215,6 +219,22 @@ function drawCanvas(pulse = 0) {
         traceHex(ctx, cx, cy, corners)
         ctx.clip()
         ctx.drawImage(avatarImg, cx - ps / 2, cy - size, ps, 2 * size)
+        ctx.restore()
+      }
+
+      // #15: territori di ALTRI imperi (non CPU, non miei) → iniziale dell'impero
+      // ben visibile al centro, così un'isola conquistata non sembra neutrale.
+      if (!isOwn && owner && owner !== 'CPU' && ps >= 11) {
+        const initial = (pixelNames[key] || '?').trim().charAt(0).toUpperCase() || '?'
+        ctx.save()
+        ctx.font = `900 ${Math.round(ps * 0.62)}px var(--ff-display, sans-serif)`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.lineWidth = Math.max(1.5, ps * 0.09)
+        ctx.strokeStyle = 'rgba(0,0,0,0.55)'
+        ctx.strokeText(initial, cx, cy + 0.5)
+        ctx.fillStyle = 'rgba(255,255,255,0.95)'
+        ctx.fillText(initial, cx, cy + 0.5)
         ctx.restore()
       }
 
