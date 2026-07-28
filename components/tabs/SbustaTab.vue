@@ -6,7 +6,7 @@
   ============================================================ -->
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick, useTemplateRef } from 'vue'
-import { FastForward } from 'lucide-vue-next'
+import { FastForward, ShoppingBag } from 'lucide-vue-next'
 import type { ProfiloUtente, Collezione, WaifuCatalog, MossaCatalog } from '~/types/game'
 import {
   listDropsAttivi,
@@ -764,6 +764,11 @@ function chiudiVideoSbusto() {
   sbusCartaImmersiva.value = null
 }
 
+// #7: apre lo shop per comprare pacchetti quando non ne hai
+function apriNegozioAcquisto() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('impero:apri-negozio'))
+}
+
 async function acquistaSfidaConKisses(qty = 1) {
   sfidaConferma.value = false
   const token = await authStore.user?.getIdToken()
@@ -1421,7 +1426,20 @@ function cfTouchEnd(e: TouchEvent) {
               <span :style="{ fontFamily:FF.label, fontSize:'12px', letterSpacing:'0.16em', color:'var(--theme-text-3)', marginLeft:'8px', textTransform:'uppercase' }">{{ $t('sbusta.packs_available_label') }}</span>
             </template>
             <template v-else>
-              <span :style="{ fontFamily:FF.label, fontSize:'12px', letterSpacing:'0.16em', color:'var(--theme-text-3)', textTransform:'uppercase' }">{{ $t('sbusta.no_pack_available') }}</span>
+              <span :style="{ fontFamily:FF.label, fontSize:'12px', letterSpacing:'0.16em', color:'var(--theme-text-3)', textTransform:'uppercase', display:'block', marginBottom:'12px' }">{{ $t('sbusta.no_pack_available') }}</span>
+              <!-- #7: CTA diretta all'acquisto pacchetti nello shop -->
+              <button
+                @click="apriNegozioAcquisto"
+                :style="{
+                  display:'inline-flex', alignItems:'center', gap:'8px',
+                  padding:'12px 22px', borderRadius:'999px', border:'none', cursor:'pointer',
+                  background:`linear-gradient(135deg,${C.violet},#6938e8)`,
+                  boxShadow:`0 6px 24px ${C.violet}55`,
+                  fontFamily:FF.display, fontSize:'14px', fontWeight:800, color:'#fff',
+                  letterSpacing:'0.08em', textTransform:'uppercase',
+                }">
+                <ShoppingBag :size="16" stroke-width="2" /> {{ $t('sbusta.buy_packs_cta') }}
+              </button>
             </template>
           </div>
         </div>
