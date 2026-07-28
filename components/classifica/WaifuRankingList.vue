@@ -178,8 +178,8 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
               fontFamily: FF.mono, fontSize: '12px', color: 'var(--theme-text-2)', letterSpacing: '0.04em',
             }">⏳ {{ monthCountdown }}</span>
           </div>
-          <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)' }">
-            Top 50 del mese · le prime 10 ricevono Kisses bonus a fine mese
+          <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.5 }">
+            Le 50 Waifu più votate nello Swap Waifu del mese. Le prime 10 aumentano di rarità e premiano i loro possessori con Kisses.
           </div>
         </div>
 

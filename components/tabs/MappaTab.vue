@@ -5,7 +5,7 @@
   Componenti mappa principali delegati a ~/components/mappa/* (da migrare).
   ============================================================ -->
 <script setup lang="ts">
-import { Trophy, Mail, BookOpen } from 'lucide-vue-next'
+import { Trophy, Mail } from 'lucide-vue-next'
 import { PIXEL_NAMES, LAND_SET, GRID_SIZE } from '~/utils/worldMap'
 import { isHexAdjacentToEmpire } from '~/utils/hexGrid'
 import { ikUrl } from '~/utils/imagekitUrl'
@@ -866,9 +866,12 @@ async function onTerritoryClick(territoryId: string) {
 
       <!-- Mappa: sfondo mare sempre visibile + canvas interattivo sovrapposto -->
       <div style="margin: 20px 16px 16px; border-radius: 16px; position: relative; min-height: 520px;" :style="{ border: '1px solid var(--theme-border)' }">
-        <!-- Chip "?" — angolo in alto a destra, come sui chip delle carte -->
+        <!-- #24: UN SOLO accesso al tutorial — il chip "?" riapre il tutorial
+             (prima c'erano due bottoni: "?" per l'info-modal e il libro per il
+             tutorial). Ora è uno solo. -->
         <button
-          @click="showInfoModal = true"
+          @click="openTutorial"
+          :title="$t('tutorial.reopen')"
           :style="{
             position: 'absolute', top: '-15px', right: '-15px', zIndex: 40,
             width: '38px', height: '38px', borderRadius: '50%',
@@ -879,20 +882,6 @@ async function onTerritoryClick(territoryId: string) {
             boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
           }"
         >?</button>
-        <!-- Bottone tutorial dedicato — riapre il tutorial in qualsiasi momento -->
-        <button
-          @click="openTutorial"
-          :title="$t('tutorial.reopen')"
-          :style="{
-            position: 'absolute', top: '-15px', right: '31px', zIndex: 40,
-            width: '38px', height: '38px', borderRadius: '50%',
-            background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)',
-            border: '1.5px solid rgba(255,255,255,0.3)',
-            color: '#fff', fontSize: '17px',
-            cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0, lineHeight: 1,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-          }"
-        ><BookOpen :size="17" stroke-width="2" /></button>
         <!-- Sfondo mare sempre visibile come base (sotto al canvas) -->
         <div
           style="width:100%;height:520px;display:block;user-select:none;border-radius:16px;
