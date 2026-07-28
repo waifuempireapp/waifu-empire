@@ -321,7 +321,11 @@ const checkAdjacentToEmpire = (tx: number, ty: number): boolean => {
   }
   return isHexAdjacentToEmpire(
     tx, ty, GRID_SIZE,
-    (_key, col, row) => pixelAt(col, row) !== undefined,
+    // #16: "è terra" deve usare LAND_SET (come il server), NON l'esistenza del
+    // record pixel: le celle di terra non seminate non hanno record e venivano
+    // trattate come mare → il salto via mare le attraversava e trovava imperi
+    // lontani, rendendo adiacenti territori che non lo sono.
+    (key) => LAND_SET.has(key),
     (_key, col, row) => pixelAt(col, row)?.ownerId === authStore.user?.uid,
   )
 }
