@@ -88,7 +88,9 @@ const ANIM_ATTACK_MS           = 320
 /** Durata dello shake quando si riceve danno in ms */
 const ANIM_SHAKE_MS            = 120
 /** Pausa tra il primo e il secondo attacco nello stesso turno */
-const ANIM_BETWEEN_ATTACKS_MS  = 300
+const ANIM_BETWEEN_ATTACKS_MS  = 520
+// #26: durata di visualizzazione di ogni riga di log (effetti/efficacia/abilità)
+const LOG_MS                   = 650
 /** Durata dell'animazione KO (caduta waifu) in ms */
 const ANIM_KO_MS               = 600
 /** Durata della transizione di ingresso nuova waifu in ms */
@@ -319,6 +321,12 @@ function moveLongPressStart(move: MoveInstance | null) {
 function moveLongPressEnd() {
   if (lpTimer) { clearTimeout(lpTimer); lpTimer = null }
 }
+
+// #27: dettaglio della waifu attiva (propria o avversaria) al tap in battaglia.
+const waifuDetail = ref<{ w: WaifuBattleStat; side: 'player' | 'enemy' } | null>(null)
+function openWaifuDetail(w: WaifuBattleStat | undefined, side: 'player' | 'enemy') {
+  if (w) waifuDetail.value = { w, side }
+}
 /** true (una volta) se il long-press è appena scattato: annulla il click. */
 function consumeLongPress(): boolean {
   const fired = lpFired
@@ -330,11 +338,13 @@ function consumeLongPress(): boolean {
 // Se la waifu è vittima di un effetto CONTROL (immobilizzo/stordimento), a
 // inizio turno lancia una moneta: TESTA → l'effetto svanisce e attacca
 // normalmente; CROCE → l'effetto permane e salta il turno.
-const coinFlip = ref<{ who: string; result: 'testa' | 'croce'; done: boolean } | null>(null)
-function flipCoinFor(who: string): Promise<boolean> {
+// #12: `effect` = quale effetto di stato causa il lancio (es. Stordimento, Sonno,
+// Bruciatura) così è chiaro perché si lancia la moneta.
+const coinFlip = ref<{ who: string; effect: string; result: 'testa' | 'croce'; done: boolean } | null>(null)
+function flipCoinFor(who: string, effect = ''): Promise<boolean> {
   return new Promise(resolve => {
     const heads = Math.random() < 0.5
-    coinFlip.value = { who, result: heads ? 'testa' : 'croce', done: false }
+    coinFlip.value = { who, effect, result: heads ? 'testa' : 'croce', done: false }
     // 1.7s di rotazione + 0.9s per leggere il risultato
     setTimeout(() => { if (coinFlip.value) coinFlip.value.done = true }, 1700)
     setTimeout(() => { coinFlip.value = null; resolve(heads) }, 2600)
@@ -762,7 +772,7 @@ async function handleVoluntarySwap(newIdx: number, { isPPExhausted = false } = {
       let cpuFreed = true
       if (cpuCtrl && move) {
         message.value = `${cpuAttacker.name} è ${cpuCtrl.label}! Lancio della moneta…`
-        cpuFreed = await flipCoinFor(cpuAttacker.name)
+        cpuFreed = await flipCoinFor(cpuAttacker.name, cpuCtrl.label)
         if (cpuFreed) { clearControl('enemy'); message.value = `TESTA! ${cpuAttacker.name} si libera!`; await wait(500) }
         else { message.value = `CROCE… ${cpuAttacker.name} salta il turno!`; await wait(700) }
       }
@@ -957,7 +967,7 @@ async function resolveTurn(pMi: number, eMi: number, _externalResult: null = nul
     const ctrl = controlEffect(side)
     if (ctrl) {
       message.value = `${att.name} è ${ctrl.label}! Lancio della moneta…`
-      const heads = await flipCoinFor(att.name)
+      const heads = await flipCoinFor(att.name, ctrl.label)
       if (heads) {
         clearControl(side)
         message.value = `TESTA! ${att.name} si libera da ${ctrl.label}!`
@@ -1053,7 +1063,9 @@ async function resolveTurn(pMi: number, eMi: number, _externalResult: null = nul
     else if (effectiveness === 'Non efficace') msgs.push('Non ha effetto!')
     if (effMult < 1 && fieldEffects.value[side === 'player' ? 'enemy' : 'player'].some(e => e.kind === 'shield')) msgs.push('Lo scudo assorbe parte del danno!')
     if (move.effect && !newDef.isKO && move.effect.kind !== 'buff' && move.effect.kind !== 'shield') msgs.push(`${newDef.name} subisce: ${move.effect.label}!`)
-    for (const m of msgs) { await wait(250); message.value = m }
+    // #26: log piu' lenti e leggibili (prima 250ms → non si capivano effetti/abilita').
+    for (const m of msgs) { await wait(LOG_MS); message.value = m }
+    if (msgs.length) await wait(Math.round(LOG_MS * 0.7)) // pausa per leggere l'ultimo
 
     return newDef.isKO
   }
@@ -1699,12 +1711,12 @@ const mvp = computed(() => {
           <div :style="{ position:'absolute', right:'14px', bottom:0, zIndex:2 }">
             <!-- WaifuSprite inline nemico -->
             <template v-if="enemy">
-              <div :class="eAnim" :style="{
+              <div :class="eAnim" @click="openWaifuDetail(enemy, 'enemy')" :style="{
                 width:`${sEnemy}px`, aspectRatio:'2/3', borderRadius:'12px', overflow:'hidden',
                 background: getRarityCardBg(enemy.rarita),
                 border:`2px solid ${(TYPE_COLORS[enemy.type]?.border ?? '#444')}66`,
                 boxShadow:'0 8px 28px rgba(0,0,0,.65)',
-                position:'relative', flexShrink:0,
+                position:'relative', flexShrink:0, cursor:'pointer',
                 transform:'perspective(320px) rotateY(-4deg)',
               }">
                 <img v-if="enemy.image" :src="ikUrl(enemy.image, 'normal') ?? ''" :alt="enemy.name"
@@ -1787,12 +1799,12 @@ const mvp = computed(() => {
           <!-- Sprite giocatore: bottom-left con glow di turno -->
           <div :style="{ position:'absolute', left:'14px', bottom:0, zIndex:2 }">
             <template v-if="player">
-              <div :class="pAnim" :style="{
+              <div :class="pAnim" @click="openWaifuDetail(player, 'player')" :style="{
                 width:`${sPlayer}px`, aspectRatio:'2/3', borderRadius:'12px', overflow:'hidden',
                 background: getRarityCardBg(player.rarita),
                 border:`2px solid ${(TYPE_COLORS[player.type]?.border ?? '#444')}66`,
                 boxShadow: playerGlow,
-                position:'relative', flexShrink:0,
+                position:'relative', flexShrink:0, cursor:'pointer',
                 transform:'perspective(320px) rotateY(4deg)',
               }">
                 <img v-if="player.image" :src="ikUrl(player.image, 'normal') ?? ''" :alt="player.name"
@@ -2256,8 +2268,17 @@ const mvp = computed(() => {
     <!-- Overlay LANCIO MONETA (effetti bloccanti) -->
     <div v-if="coinFlip"
       style="position:fixed;inset:0;z-index:650;background:rgba(4,2,14,0.78);backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;">
-      <div :style="{ fontFamily:'var(--ff-label)', fontSize:'14px', letterSpacing:'0.22em', color:'var(--theme-text-2)', textTransform:'uppercase', fontWeight:700 }">
-        {{ coinFlip.who }} · lancio della moneta
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <div :style="{ fontFamily:'var(--ff-label)', fontSize:'14px', letterSpacing:'0.22em', color:'var(--theme-text-2)', textTransform:'uppercase', fontWeight:700 }">
+          {{ coinFlip.who }} · lancio della moneta
+        </div>
+        <!-- #12: mostra chiaramente PER QUALE effetto avviene il lancio -->
+        <div v-if="coinFlip.effect" :style="{ fontFamily:'var(--ff-label)', fontSize:'13px', fontWeight:800, letterSpacing:'0.06em', color:'#b46bff', background:'rgba(180,107,255,0.14)', border:'1px solid rgba(180,107,255,0.5)', borderRadius:'999px', padding:'4px 14px', textTransform:'uppercase' }">
+          {{ coinFlip.effect }}
+        </div>
+        <div :style="{ fontFamily:'var(--ff-body)', fontSize:'11px', color:'var(--theme-text-3)', textAlign:'center', maxWidth:'240px', lineHeight:1.4 }">
+          Testa → si libera e attacca · Croce → salta il turno
+        </div>
       </div>
       <!-- Moneta 3D: testa = retro carta, croce = stessa immagine in scala di grigi -->
       <div class="wba-coin-scene">
@@ -2276,6 +2297,46 @@ const mvp = computed(() => {
         textShadow: `0 0 24px ${coinFlip.result === 'testa' ? '#58e0a377' : '#ff5b6c77'}`,
         animation:'fadeMsg 0.25s ease-out',
       }">{{ coinFlip.result === 'testa' ? 'TESTA!' : 'CROCE…' }}</div>
+    </div>
+
+    <!-- #27: Popup dettaglio waifu attiva (tap sul ritratto in battaglia) -->
+    <div v-if="waifuDetail" @click="waifuDetail = null"
+      style="position:fixed;inset:0;z-index:610;background:rgba(4,2,14,0.85);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px;">
+      <div @click.stop style="width:100%;max-width:320px;background:var(--theme-surface);border:1px solid var(--theme-border);border-radius:20px;overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,0.6);animation:scaleIn 0.22s ease-out;">
+        <div style="position:relative;width:100%;aspect-ratio:16/10;overflow:hidden;">
+          <img v-if="waifuDetail.w.image" :src="ikUrl(waifuDetail.w.image, 'normal') ?? ''" :alt="waifuDetail.w.name" style="width:100%;height:100%;object-fit:cover;object-position:center 22%;" />
+          <div style="position:absolute;top:8px;left:8px;display:flex;gap:6px;">
+            <span :style="{ background:'#fff', color:'#1a1a2e', borderRadius:'999px', padding:'2px 10px', fontFamily:'var(--ff-label)', fontSize:'10px', fontWeight:800, textTransform:'capitalize', boxShadow:'0 1px 4px rgba(0,0,0,0.3)' }">{{ waifuDetail.w.rarita }}</span>
+            <span :style="{ background:(TYPE_COLORS[waifuDetail.w.type]?.border ?? '#555'), color:'#fff', borderRadius:'999px', padding:'2px 10px', fontFamily:'var(--ff-label)', fontSize:'10px', fontWeight:800 }">{{ waifuDetail.w.type }}</span>
+          </div>
+        </div>
+        <div style="padding:14px 16px 16px;">
+          <div style="font-family:var(--ff-display);font-size:18px;font-weight:800;color:var(--theme-text);margin-bottom:10px;">{{ waifuDetail.w.name }}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+            <div :style="{ background:'var(--theme-surface-2)', borderRadius:'10px', padding:'8px 10px' }">
+              <div style="font-family:var(--ff-label);font-size:10px;color:var(--theme-text-3);letter-spacing:0.1em;text-transform:uppercase;">HP</div>
+              <div style="font-family:var(--ff-label);font-size:15px;font-weight:800;color:var(--theme-text);">{{ Math.max(0, waifuDetail.w.hp) }}/{{ waifuDetail.w.maxHp }}</div>
+            </div>
+            <div :style="{ background:'var(--theme-surface-2)', borderRadius:'10px', padding:'8px 10px' }">
+              <div style="font-family:var(--ff-label);font-size:10px;color:var(--theme-text-3);letter-spacing:0.1em;text-transform:uppercase;">Velocità</div>
+              <div style="font-family:var(--ff-label);font-size:15px;font-weight:800;color:var(--theme-text);">{{ waifuDetail.w.speed }}</div>
+            </div>
+            <div :style="{ background:'var(--theme-surface-2)', borderRadius:'10px', padding:'8px 10px' }">
+              <div style="font-family:var(--ff-label);font-size:10px;color:var(--theme-text-3);letter-spacing:0.1em;text-transform:uppercase;">Critico</div>
+              <div style="font-family:var(--ff-label);font-size:15px;font-weight:800;color:var(--theme-text);">{{ waifuDetail.w.critChance }}%</div>
+            </div>
+            <div :style="{ background:'var(--theme-surface-2)', borderRadius:'10px', padding:'8px 10px' }">
+              <div style="font-family:var(--ff-label);font-size:10px;color:var(--theme-text-3);letter-spacing:0.1em;text-transform:uppercase;">Tipo</div>
+              <div style="font-family:var(--ff-label);font-size:15px;font-weight:800;color:var(--theme-text);">{{ waifuDetail.w.type }}</div>
+            </div>
+          </div>
+          <!-- Effetti attivi -->
+          <div v-if="fieldEffects[waifuDetail.side].length" style="display:flex;flex-wrap:wrap;gap:6px;">
+            <span v-for="(e, ei) in fieldEffects[waifuDetail.side]" :key="ei" :style="effectChipStyle(e)">{{ e.label }}</span>
+          </div>
+          <div v-else style="font-family:var(--ff-body);font-size:12px;color:var(--theme-text-3);">Nessun effetto attivo</div>
+        </div>
+      </div>
     </div>
 
     <!-- Popup dettaglio mossa (long-press): carta completa con la spiegazione -->
