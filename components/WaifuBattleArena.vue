@@ -1346,10 +1346,11 @@ const _HIGHLIGHT_COLORS: Record<string, string> = {
 function getEffDisplay(moveType: string, enemyType: string, playerType: string): EffDisplay {
   const { label } = getEffectiveness(moveType, playerType, enemyType)
   const col = (_TYPE_COLORS_UI[moveType] ?? TYPE_COLORS[moveType])?.border ?? '#9ca3af'
-  if (label === 'Super efficace!') return { col, lbl: 'Super efficace!', bold: true }
-  if (label === 'Efficace!')       return { col, lbl: 'Efficace',        bold: true }
-  if (label === 'Poco efficace…')  return { col, lbl: 'Poco efficace',   bold: true }
-  if (label === 'Non efficace')    return { col, lbl: 'Non efficace',    bold: true }
+  // #14: label compatte così la chip non sfora la card (2 super-efficaci in riga)
+  if (label === 'Super efficace!') return { col, lbl: 'Super eff.', bold: true }
+  if (label === 'Efficace!')       return { col, lbl: 'Efficace',   bold: true }
+  if (label === 'Poco efficace…')  return { col, lbl: 'Poco eff.',  bold: true }
+  if (label === 'Non efficace')    return { col, lbl: 'Non eff.',   bold: true }
   return { col, lbl: 'Normale', bold: false }
 }
 
@@ -2028,9 +2029,9 @@ const mvp = computed(() => {
                     }
                   })()"
                 >
-                  <!-- Chip tipo — full-round, in alto a destra che sborda (-10px,-10px) -->
+                  <!-- Chip tipo — full-round, in alto a destra (sbordo ridotto per #14) -->
                   <span v-if="move && (move.pp ?? 0) > 0 && !isMoveBlocked(lastPMove, i, move)" :style="{
-                    position:'absolute', top:'-10px', right:'-10px', zIndex:3,
+                    position:'absolute', top:'-8px', right:'-6px', zIndex:3,
                     background:`rgba(${hexToRgb((_TYPE_COLORS_UI[move.type] ?? { border:'#555' }).border)},.18)`,
                     color:(_TYPE_COLORS_UI[move.type] ?? { border:'#555' }).border,
                     border:`1.5px solid ${(_TYPE_COLORS_UI[move.type] ?? { border:'#555' }).border}`,
