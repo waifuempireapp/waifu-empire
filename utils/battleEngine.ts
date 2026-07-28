@@ -347,7 +347,9 @@ export function initBattleWaifu(waifuFirestore: Record<string, unknown>, collect
           name: m.nome, type: m.tipologia, rarity: m.rarita,
           power: danno, damage_crit: damageCrit,
           critPower: damageCrit, critPowerPerc: 0,
-          pp: Math.round((m.pp as number) ?? 5), maxPp: Math.round((m.pp as number) ?? 5),
+          // #23: mosse "definitive" (isUltimate) = 1 sola volta a partita → 1 PP
+          pp: m.isUltimate ? 1 : Math.round((m.pp as number) ?? 5),
+          maxPp: m.isUltimate ? 1 : Math.round((m.pp as number) ?? 5),
           ability: (m.abilita as string) ?? null,
           effectiveness: 'Normal',
           // Effetto: dal doc Firestore se presente, altrimenti dal catalogo locale
@@ -411,7 +413,9 @@ export function generateCPUMovesFromCatalog(waifuRarita: string, mosseCat: Recor
       id: (m.id as string) ?? undefined,
       name: (m.nome as string) ?? 'Mossa', type: (m.tipologia as string) ?? 'Arcana', rarity: (m.rarita as string) ?? 'comune',
       power: danno, damage_crit: damageCrit, critPower: damageCrit, critPowerPerc: 0,
-      pp: Math.round((m.pp as number) ?? 5), maxPp: Math.round((m.pp as number) ?? 5),
+      // #23: mosse definitive (isUltimate) = 1 PP (usabili una sola volta)
+      pp: m.isUltimate ? 1 : Math.round((m.pp as number) ?? 5),
+      maxPp: m.isUltimate ? 1 : Math.round((m.pp as number) ?? 5),
       ability: (m.abilita as string) ?? null,
       // Senza questo la CPU non applicava MAI gli effetti delle mosse
       effect: ((m.effect as MoveEffect | undefined) ?? _EFFECT_BY_MOVE_ID[(m.id as string) ?? '']) ?? null,
