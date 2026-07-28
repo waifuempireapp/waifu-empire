@@ -61,6 +61,19 @@ interface Pack {
 
 // ── Stato del feed ────────────────────────────────────────────
 const packs = ref<Pack[]>((props.initialPacks as Pack[]) ?? [])
+// #28: pacchetti pescati in questa sessione. Il server marca alreadyFished via
+// una cache in-memory che, subito dopo la pesca, è ancora stantia → il feed
+// ricaricato riproponeva il pacchetto come pescabile. Riapplichiamo il flag
+// localmente dopo ogni caricaFeed così resta DISABILITATO davvero.
+const fishedIdsLocal = ref<Set<string>>(new Set())
+function markFishedLocally(id: string) {
+  fishedIdsLocal.value.add(id)
+  packs.value = packs.value.map(p => p.id === id ? { ...p, alreadyFished: true } : p)
+}
+function applyLocalFished() {
+  if (fishedIdsLocal.value.size === 0) return
+  packs.value = packs.value.map(p => fishedIdsLocal.value.has(p.id) ? { ...p, alreadyFished: true } : p)
+}
 // Filtro per espansione: chip in alto quando i pack sono di più espansioni
 const filtroEspansione = ref<string | null>(null)   // null = tutte
 // v-model per DropdownSelect ('' = Tutte)
@@ -142,6 +155,7 @@ async function caricaFeed() {
       headers: { Authorization: `Bearer ${token}` },
     })) as { packs: Pack[] }
     packs.value = data.packs ?? []
+    applyLocalFished() // #28: mantieni disabilitati i pacchetti gia' pescati
     await preloadAllImages(packs.value)
   } catch (e: any) {
     error.value = e?.message ?? t('pesca.feed_error')
@@ -461,7 +475,7 @@ async function chiudiRiveal() {
   inPlaceFlipped.value    = new Set()
   inPlaceCards.value      = []
   if (fishedId) {
-    packs.value = packs.value.map(p => p.id === fishedId ? { ...p, alreadyFished: true } : p)
+    markFishedLocally(fishedId)
     lastFishedId.value = null
   }
   mostraNotif(t('pesca.card_added'), '#00e676')
@@ -487,9 +501,7 @@ async function onRivelazioneFine() {
   risultato.value = null
   const fishedId = lastFishedId.value
   if (fishedId) {
-    packs.value = packs.value.map(p =>
-      p.id === fishedId ? { ...p, alreadyFished: true } : p
-    )
+    markFishedLocally(fishedId)
     lastFishedId.value = null
   }
   mostraNotif(t('pesca.card_added'), '#00e676')
