@@ -30,8 +30,11 @@ export default defineEventHandler(async (event) => {
       if (defSnap.exists) {
         defenderTeam = (defSnap.data() as any)[`${x}_${y}`] || [];
       }
-      // Fallback al preset #1 se non configurato
-      if (defenderTeam.length !== 5) {
+      // Fallback al preset #1 SOLO se il team difensore salvato è invalido.
+      // #30: prima si richiedeva ESATTAMENTE 5 waifu, ma il team di conquista
+      // (= difesa di default) puo' averne 5-8: quelli con 6-8 venivano scartati
+      // e sostituiti dal preset (spesso vuoto) -> immagini difensore assenti.
+      if (!Array.isArray(defenderTeam) || defenderTeam.length < 1 || defenderTeam.length > 8) {
         const collSnap = await adminDb.collection('users').doc(pixel.ownerId)
           .collection('collezione').doc('main').get();
         if (collSnap.exists) {

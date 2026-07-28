@@ -111,7 +111,10 @@ const FF = {
 
 useScrollLock()
 
-const selectedIds  = ref<string[]>(props.currentTeam?.length === 5 ? [...props.currentTeam] : [])
+// #31: precarica il team difensore attuale anche se ha 6-8 waifu (team di
+// conquista): mostra le prime 5 così si modifica partendo da quello esistente
+// invece che da vuoto (la difesa standard resta di 5).
+const selectedIds  = ref<string[]>(props.currentTeam?.length ? props.currentTeam.slice(0, 5) : [])
 const applyToAll   = ref(false)
 const confirmBulk  = ref(false)
 const loading      = ref(false)
