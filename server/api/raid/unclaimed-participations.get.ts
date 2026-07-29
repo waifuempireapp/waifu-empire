@@ -30,12 +30,15 @@ export default defineEventHandler(async (event) => {
       // Mostra solo raid non più attivi (completati o scaduti)
       if (raidData.status === 'active') continue;
 
-      // Calcola posizione nella classifica
+      // Calcola posizione nella classifica (where eventId + sort in-memory:
+      // evita l'indice composito eventId+damageDealt che potrebbe mancare).
       const rankSnap = await adminDb.collection('raid_participants')
         .where('eventId', '==', part.eventId)
-        .orderBy('damageDealt', 'desc')
         .get();
-      const pos: number = rankSnap.docs.findIndex(r => r.data().uid === uid) + 1; // 1-based
+      const ranked = rankSnap.docs
+        .map(r => ({ uid: r.data().uid, dmg: (r.data().damageDealt as number) ?? 0 }))
+        .sort((a, b) => b.dmg - a.dmg);
+      const pos: number = ranked.findIndex(r => r.uid === uid) + 1; // 1-based
 
       const raidInfo: Record<string, any> = { id: raidSnap.id, ...raidData };
       // Converti timestamp Firestore → ISO string

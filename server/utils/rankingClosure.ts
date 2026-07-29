@@ -158,10 +158,17 @@ export async function ensureMonthlyClosure(): Promise<void> {
  */
 export async function reconcileUserUpgrades(uid: string): Promise<void> {
   const db = getAdminDb()
+  // NB: solo filtro per status (NIENTE orderBy) → non serve l'indice composito
+  // (status, monthKey) che mancava e faceva fallire con FAILED_PRECONDITION.
+  // Ordiniamo per monthKey desc in-memory (le chiusure sono poche, 1/mese).
   const closSnap = await db.collection('waifu_ranking_closures')
     .where('status', '==', 'done')
-    .orderBy('monthKey', 'desc').limit(6).get()
+    .get()
   if (closSnap.empty) return
+  const closDocs = closSnap.docs
+    .slice()
+    .sort((a, b) => String((b.data() as any).monthKey).localeCompare(String((a.data() as any).monthKey)))
+    .slice(0, 6)
 
   const userRef = db.doc(`users/${uid}`)
   const collRef = db.doc(`users/${uid}/collezione/main`)
@@ -173,7 +180,7 @@ export async function reconcileUserUpgrades(uid: string): Promise<void> {
   const rarityConfig = await getRarityConfig()
   const newlyDone: string[] = []
 
-  for (const c of closSnap.docs) {
+  for (const c of closDocs) {
     const cl = c.data() as any
     const mk: string = cl.monthKey
     if (done.includes(mk)) continue

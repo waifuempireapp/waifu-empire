@@ -36,13 +36,15 @@ export default defineEventHandler(async (event) => {
 
   const cfg = cfgSnap.exists ? cfgSnap.data() as any : {};
 
-  // Calcola posizione in classifica
+  // Calcola posizione in classifica (solo where eventId, ordinamento in-memory:
+  // evita l'indice composito eventId+damageDealt che potrebbe mancare).
   const allParticipants = await adminDb.collection('raid_participants')
     .where('eventId', '==', eventId)
-    .orderBy('damageDealt', 'desc')
     .get();
 
-  const ranking = allParticipants.docs.map(d => ({ uid: d.data().uid, dmg: d.data().damageDealt }));
+  const ranking = allParticipants.docs
+    .map(d => ({ uid: d.data().uid, dmg: (d.data().damageDealt as number) ?? 0 }))
+    .sort((a, b) => b.dmg - a.dmg);
   const myPos: number = ranking.findIndex(r => r.uid === uid) + 1; // 1-based
   const myDmg: number = part.damageDealt ?? 0;
 
