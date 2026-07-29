@@ -286,9 +286,18 @@ function animate(THREE: typeof import('three')) {
     mesh.scale.setScalar(1 - ease * 0.3)
     if (p >= 1) { ripDone = true; emit('done') }
   } else if (!ripDone) {
-    mesh.position.y = Math.sin(t * 0.7) * 0.03
-    mesh.rotation.y = Math.sin(t * 0.45) * 0.08 + currentTiltY
-    mesh.rotation.x = Math.sin(t * 0.3) * 0.03 + currentTiltX
+    // #25: in modalità PASSIVA (pacchetto decorativo della Home) il pacchetto
+    // resta FERMO — l'animazione vive solo sullo sfondo (glow/raggi dietro).
+    // Prima l'idle 3D (bob + rotazione) lo faceva sembrare "deformato".
+    if (props.passive) {
+      mesh.position.y = 0
+      mesh.rotation.y = 0
+      mesh.rotation.x = 0
+    } else {
+      mesh.position.y = Math.sin(t * 0.7) * 0.03
+      mesh.rotation.y = Math.sin(t * 0.45) * 0.08 + currentTiltY
+      mesh.rotation.x = Math.sin(t * 0.3) * 0.03 + currentTiltX
+    }
     mesh.scale.setScalar(1)
   }
   renderer.render(scene, camera)
