@@ -180,10 +180,22 @@ function renderPayPal() {
   paypal.Buttons({
     style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'pay', height: 42 },
     createOrder: async () => {
-      const res = await ($fetch('/api/paypal/create-order-kisses', {
-        method: 'POST', body: { taglioId: taglioScelto.value?.id },
-      })) as { orderID: string }
-      return res.orderID
+      // #5: gestione errori con feedback chiaro se la creazione ordine fallisce
+      // (es. credenziali PayPal mancanti / mismatch sandbox-live lato server).
+      try {
+        const res = await ($fetch('/api/paypal/create-order-kisses', {
+          method: 'POST', body: { taglioId: taglioScelto.value?.id },
+        })) as { orderID: string }
+        if (!res?.orderID) throw new Error('orderID mancante')
+        return res.orderID
+      } catch (e: any) {
+        const msg = e?.data?.message || e?.message || ''
+        ppErr.value = /credenziali|config/i.test(msg)
+          ? t('modal.paypal_config_missing')
+          : (t('modal.paypal_error') + (msg ? ` (${msg})` : ''))
+        ppState.value = 'error'
+        throw e // PayPal interrompe il flusso; l'utente vede il messaggio sopra
+      }
     },
     onApprove: async (data: any) => {
       ppState.value = 'loading'
