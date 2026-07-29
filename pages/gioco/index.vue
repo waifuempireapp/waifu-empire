@@ -368,6 +368,18 @@ function mostraNotif(testo: string, colore = '#00e676') {
   setTimeout(() => (notif.value = null), 2200)
 }
 
+// #35: icona coerente in base al contenuto della notifica
+const notifIcon = computed(() => {
+  const s = (notif.value?.testo ?? '').toLowerCase()
+  if (s.includes('kiss')) return '💋'
+  if (s.includes('pacchett') || s.includes('bustin') || s.includes('pack')) return '🎁'
+  if (s.includes('avatar')) return '🎭'
+  if (s.includes('energ')) return '⚡'
+  if (s.includes('territ') || s.includes('conquist')) return '🏰'
+  if (s.includes('errore') || s.includes('insuffic')) return '⚠️'
+  return '✨'
+})
+
 // ── Notifica sblocco avatar ─────────────────────────────────────────────
 // Quando si ottiene una NUOVA waifu con un'icona avatar (non base), avvisa
 // l'utente che ha sbloccato un nuovo avatar. Copre tutti i flussi perché
@@ -469,18 +481,35 @@ function handleSetTab(t: string) {
        può inizializzare Three.js in background mentre l'overlay è ancora visibile) -->
   <div v-if="caricato" class="game-container min-h-screen" style="padding-bottom:80px">
 
-    <!-- Notifica flottante (toast) — CENTRATA a schermo (h+v) per massima visibilità -->
+    <!-- #35: Notifica in-app — card premium coerente con lo stile dell'app,
+         centrata a schermo. Icona a badge + messaggio leggibile + accento colore. -->
     <Transition name="slide-down">
-      <div v-if="notif" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[10050]
-               px-7 py-4 rounded-2xl text-sm tracking-widest font-orbitron text-center" :style="{
+      <div v-if="notif" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[10050]" :style="{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px',
+                padding: '22px 26px 20px',
+                borderRadius: '22px',
                 background: 'var(--theme-surface)',
-                backdropFilter: 'blur(14px)',
-                border: `1.5px solid ${notif.colore}`,
-                color: notif.colore,
-                boxShadow: `0 0 0 4px ${notif.colore}22, 0 12px 44px ${notif.colore}55, 0 8px 30px rgba(0,0,0,0.45)`,
-                maxWidth: 'min(86vw, 420px)',
+                backdropFilter: 'blur(16px)',
+                border: '1px solid var(--theme-border)',
+                boxShadow: `0 0 0 3px ${notif.colore}26, 0 18px 50px ${notif.colore}44, 0 10px 34px rgba(0,0,0,0.5)`,
+                maxWidth: 'min(86vw, 380px)',
               }">
-        {{ notif.testo }}
+        <!-- Badge icona -->
+        <div :style="{
+          width: '52px', height: '52px', borderRadius: '50%',
+          display: 'grid', placeItems: 'center', fontSize: '26px',
+          background: `radial-gradient(circle at 50% 35%, ${notif.colore}33, ${notif.colore}14)`,
+          border: `2px solid ${notif.colore}`,
+          boxShadow: `0 0 22px ${notif.colore}66`,
+        }">{{ notifIcon }}</div>
+        <!-- Messaggio -->
+        <div :style="{
+          fontFamily: 'var(--ff-label, sans-serif)', fontSize: '14px', fontWeight: 800,
+          letterSpacing: '0.04em', textAlign: 'center', lineHeight: 1.4,
+          color: 'var(--theme-text)', maxWidth: '300px',
+        }">{{ notif.testo }}</div>
+        <!-- Accento colore -->
+        <div :style="{ width: '48px', height: '3px', borderRadius: '999px', background: notif.colore, boxShadow: `0 0 10px ${notif.colore}` }" />
       </div>
     </Transition>
 
