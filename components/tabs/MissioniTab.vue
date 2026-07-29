@@ -121,18 +121,55 @@ const nextCountdown = ref('')
 let mapTimer:  ReturnType<typeof setInterval> | null = null
 let nextTimer: ReturnType<typeof setInterval> | null = null
 
+// #8: vista missioni mappa — "In corso" / "Da riscuotere"
+const mapView = ref<'corso' | 'riscuotere'>('corso')
+const unclaimedMapMissions = ref<any[]>([])
+const claimingMapMission = ref<string | null>(null)
+
 async function loadMapMission() {
   mapLoading.value = true
   try {
     const token = await authStore.user?.getIdToken()
-    const data  = await ($fetch('/api/map-missions/current', {
-      headers: { Authorization: `Bearer ${token}` },
-    })) as { mission: any; nextMissionIn?: number | null }
+    const [data] = await Promise.all([
+      ($fetch('/api/map-missions/current', {
+        headers: { Authorization: `Bearer ${token}` },
+      })) as Promise<{ mission: any; nextMissionIn?: number | null }>,
+      loadUnclaimedMapMissions(),
+    ])
     activeMission.value = data.mission ?? null
     if (activeMission.value?.endsAt) startMapCountdown()
     else if (data.nextMissionIn) startNextCountdown(data.nextMissionIn)
   } catch { /* ignora */ }
   finally { mapLoading.value = false }
+}
+
+async function loadUnclaimedMapMissions() {
+  try {
+    const token = await authStore.user?.getIdToken()
+    const data = await ($fetch('/api/map-missions/unclaimed', {
+      headers: { Authorization: `Bearer ${token}` },
+    })) as { unclaimed: any[] }
+    unclaimedMapMissions.value = data.unclaimed ?? []
+  } catch { unclaimedMapMissions.value = [] }
+}
+
+async function claimMapMission(missionId: string) {
+  if (claimingMapMission.value) return
+  claimingMapMission.value = missionId
+  try {
+    const token = await authStore.user?.getIdToken()
+    const data = await ($fetch('/api/map-missions/claim', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: { missionId },
+    })) as { success?: boolean; kisses?: number }
+    const k = data.kisses ?? 0
+    if (k > 0) emit('updateProfilo', { kisses: Number(props.profilo?.kisses ?? 0) + k })
+    emit('notif', k > 0 ? `+${k} Kisses!` : 'Nessun territorio posseduto: 0 Kisses', k > 0 ? C.gold : 'var(--theme-text-3)')
+    unclaimedMapMissions.value = unclaimedMapMissions.value.filter(m => m.missionId !== missionId)
+  } catch (e: any) {
+    emit('notif', e?.data?.message ?? 'Errore riscossione', C.err)
+  } finally { claimingMapMission.value = null }
 }
 
 function startMapCountdown() {
@@ -392,7 +429,18 @@ onUnmounted(() => {
 
       <AppLoading v-if="mapLoading" />
 
-      <template v-else-if="activeMission">
+      <template v-else>
+      <!-- #8: switcher In corso / Da riscuotere -->
+      <div style="flex-shrink:0;display:flex;gap:8px;margin-bottom:14px;">
+        <button @click="mapView='corso'" :style="{ flex:1, padding:'9px 6px', borderRadius:'10px', border:'none', cursor:'pointer', fontFamily:FF.label, fontSize:'11px', fontWeight:800, letterSpacing:'0.08em', textTransform:'uppercase', background: mapView==='corso' ? `linear-gradient(135deg,${VIOLETTO},#6938e8)` : 'var(--theme-surface-2)', color: mapView==='corso' ? '#fff' : 'var(--theme-text-3)' }">In corso</button>
+        <button @click="mapView='riscuotere'" :style="{ flex:1, padding:'9px 6px', borderRadius:'10px', border:'none', cursor:'pointer', fontFamily:FF.label, fontSize:'11px', fontWeight:800, letterSpacing:'0.08em', textTransform:'uppercase', background: mapView==='riscuotere' ? `linear-gradient(135deg,${C.gold},#d4a000)` : 'var(--theme-surface-2)', color: mapView==='riscuotere' ? '#1a1a2e' : 'var(--theme-text-3)' }">
+          Da riscuotere<span v-if="unclaimedMapMissions.length" :style="{ marginLeft:'5px', background:'#ff4d9e', color:'#fff', borderRadius:'999px', padding:'0 6px', fontSize:'10px' }">{{ unclaimedMapMissions.length }}</span>
+        </button>
+      </div>
+
+      <!-- ── IN CORSO ── -->
+      <div v-if="mapView === 'corso'" style="flex:1;min-height:0;display:flex;flex-direction:column;">
+      <template v-if="activeMission">
 
         <!-- Countdown -->
         <div style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 18px;border-radius:16px;margin-bottom:12px;"
@@ -475,6 +523,34 @@ onUnmounted(() => {
           }"
         >{{ $t('missions.refresh') }}</button>
       </div>
+      </div><!-- /IN CORSO -->
+
+      <!-- ── DA RISCUOTERE ── -->
+      <div v-else style="flex:1;min-height:0;overflow-y:auto;">
+        <div v-if="unclaimedMapMissions.length === 0" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:40px 20px;">
+          <CheckCircle :size="40" stroke-width="1" :style="{ opacity:0.3, color:C.ok }" />
+          <div :style="{ fontFamily:FF.label, fontSize:'13px', color:'var(--theme-text-3)' }">Nessuna ricompensa da riscuotere.</div>
+        </div>
+        <div v-else style="display:flex;flex-direction:column;gap:10px;">
+          <div v-for="um in unclaimedMapMissions" :key="um.missionId"
+            style="padding:14px 16px;border-radius:14px;"
+            :style="{ background:'linear-gradient(135deg,rgba(245,197,96,0.10) 0%,var(--theme-surface) 65%)', border:'1px solid rgba(245,197,96,0.28)' }">
+            <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:800, color:C.gold, marginBottom:'5px' }">
+              Missione completata · {{ (um.mission.pixels || []).length }} territori
+            </div>
+            <div :style="{ fontFamily:FF.body, fontSize:'12px', color:'var(--theme-text-3)', marginBottom:'12px', lineHeight:1.4 }">
+              +{{ um.mission.rewardPerPixel ?? 100 }} Kisses per ogni territorio che possedevi alla scadenza
+            </div>
+            <button
+              @click="claimMapMission(um.missionId)"
+              :disabled="claimingMapMission === um.missionId"
+              :style="{ width:'100%', padding:'13px', border:'none', borderRadius:'999px', cursor: claimingMapMission === um.missionId ? 'wait' : 'pointer', background:`linear-gradient(135deg,${C.gold},#d4a000)`, color:'#1a1a2e', fontFamily:FF.label, fontSize:'14px', fontWeight:900, letterSpacing:'0.14em', textTransform:'uppercase' }"
+            >{{ claimingMapMission === um.missionId ? '…' : 'Riscuoti' }}</button>
+          </div>
+        </div>
+      </div>
+
+      </template><!-- /non-loading -->
 
     </div>
 
