@@ -72,6 +72,8 @@ const tagli = ref<Taglio[]>([])
 const caricato = ref(false)
 const busy     = ref<string | null>(null)
 const notif    = ref<{ testo: string; colore: string } | null>(null)
+// Popup "Kisses insufficienti": tiene i Kisses mancanti (o null se nascosto)
+const shortage = ref<number | null>(null)
 
 function flash(testo: string, colore = C.ok) {
   notif.value = { testo, colore }
@@ -158,7 +160,13 @@ async function acquistaBene(id: string) {
     emit('profileUpdate', patch)
     flash('✓ ' + t(BENI_META[id].titleKey))
   } catch (e: any) {
-    flash(e?.data?.message ?? t('shop.purchase_error'), C.err)
+    // Kisses insufficienti (402 dal server, unica autorità sul saldo) → popup dedicato
+    const status = e?.statusCode ?? e?.response?.status ?? e?.data?.statusCode
+    if (status === 402) {
+      shortage.value = Math.max(1, (beni.value[id]?.kisses ?? 0) - kisses.value)
+    } else {
+      flash(e?.data?.message ?? t('shop.purchase_error'), C.err)
+    }
   } finally {
     busy.value = null
   }
@@ -274,7 +282,7 @@ onUnmounted(() => { document.getElementById('paypal-sdk-shop')?.remove() })
             </div>
             <button
               class="neg-buy"
-              :disabled="b.owned || kisses < b.kisses || busy === b.id"
+              :disabled="b.owned || busy === b.id"
               :class="{ 'neg-buy--off': !b.owned && kisses < b.kisses, 'neg-buy--owned': b.owned }"
               :style="{ fontFamily: FF.label }"
               @click="acquistaBene(b.id)"
@@ -317,6 +325,16 @@ onUnmounted(() => { document.getElementById('paypal-sdk-shop')?.remove() })
         <p class="neg-secure" :style="{ fontFamily: FF.body }">{{ $t('shop.secure_payment') }}</p>
       </div>
     </div>
+
+    <!-- Popup: Kisses insufficienti per completare l'acquisto -->
+    <div v-if="shortage != null" class="neg-shortage-bg" @click.self="shortage = null">
+      <div class="neg-shortage-box">
+        <div style="font-size:34px;line-height:1">💔</div>
+        <div :style="{ fontFamily: FF.label, fontSize: '13px', letterSpacing: '2px', color: '#ff4d9e' }">{{ $t('modal.insufficient_kisses_title') }}</div>
+        <div :style="{ fontFamily: FF.body, fontSize: '13px', lineHeight: 1.5, color: 'var(--theme-text-2)' }">{{ $t('modal.insufficient_kisses_msg', { n: shortage }) }}</div>
+        <button class="neg-shortage-ok" :style="{ fontFamily: FF.label }" @click="shortage = null">OK</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -329,6 +347,24 @@ onUnmounted(() => { document.getElementById('paypal-sdk-shop')?.remove() })
   display: flex; align-items: flex-end; justify-content: center;
 }
 @media (min-width: 640px) { .neg-overlay { align-items: center; } }
+
+/* Popup Kisses insufficienti (sopra all'overlay negozio) */
+.neg-shortage-bg {
+  position: fixed; inset: 0; z-index: 100010;
+  background: var(--theme-overlay, rgba(0,0,0,0.6)); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.neg-shortage-box {
+  width: 100%; max-width: 320px; text-align: center;
+  background: var(--theme-surface, #161119); border: 1px solid var(--theme-border, rgba(255,77,158,0.3));
+  border-radius: 18px; box-shadow: 0 12px 40px var(--theme-shadow, rgba(0,0,0,0.5));
+  padding: 24px 22px; display: flex; flex-direction: column; gap: 14px; align-items: center;
+}
+.neg-shortage-ok {
+  width: 100%; background: #ff4d9e; border: none; border-radius: 12px; color: #fff;
+  font-size: 10px; font-weight: 700; padding: 12px 0; cursor: pointer; letter-spacing: 1px;
+  box-shadow: 0 6px 18px rgba(255,77,158,0.4);
+}
 .neg-panel {
   width: 100%; max-width: 440px; max-height: 92dvh;
   display: flex; flex-direction: column;

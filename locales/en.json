@@ -381,6 +381,7 @@
     "error_generic": "Login error: {code}"
   },
   "shop": {
+    "owned": "Owned",
     "title": "🛒 SHOP",
     "back": "← GAME",
     "buy_with_kisses": "BUY WITH KISSES",

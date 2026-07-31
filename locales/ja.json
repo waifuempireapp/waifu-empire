@@ -311,6 +311,7 @@
     "error_generic": "エラー: {code}"
   },
   "shop": {
+    "owned": "所有済み",
     "title": "🛒 ショップ",
     "back": "← ゲーム",
     "buy_with_kisses": "キスで購入",

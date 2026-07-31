@@ -381,6 +381,7 @@
     "error_generic": "Errore accesso: {code}"
   },
   "shop": {
+    "owned": "Posseduto",
     "title": "🛒 NEGOZIO",
     "back": "← GIOCO",
     "buy_with_kisses": "ACQUISTA CON KISSES",

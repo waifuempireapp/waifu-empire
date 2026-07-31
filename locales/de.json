@@ -311,6 +311,7 @@
     "error_generic": "Fehler: {code}"
   },
   "shop": {
+    "owned": "Im Besitz",
     "title": "🛒 SHOP",
     "back": "← SPIEL",
     "buy_with_kisses": "MIT KÜSSEN KAUFEN",

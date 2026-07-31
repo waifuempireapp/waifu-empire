@@ -311,6 +311,7 @@
     "error_generic": "Error: {code}"
   },
   "shop": {
+    "owned": "En posesión",
     "title": "🛒 TIENDA",
     "back": "← JUEGO",
     "buy_with_kisses": "COMPRAR CON BESOS",
