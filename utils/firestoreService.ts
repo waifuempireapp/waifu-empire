@@ -583,14 +583,14 @@ const PREZZI_DEFAULT = {
     xs: { kisses: 100,  bonus: 0,   price_eur: '0.99', label: '100 Kisses' },
     sm: { kisses: 300,  bonus: 30,  price_eur: '2.49', label: '300 Kisses' },
     md: { kisses: 600,  bonus: 80,  price_eur: '3.99', label: '600 Kisses' },
-    lg: { kisses: 1400, bonus: 200, price_eur: '7.99', label: '1400 Kisses' },
+    lg: { kisses: 1500, bonus: 200, price_eur: '7.99', label: '1500 Kisses' },
   },
-  pass_hard:   { kisses: 500, price_eur: '4.99' },
-  pass_scambi: { kisses: 100, price_eur: '1.99' },
+  pass_hard:   { kisses: 5000, price_eur: '14.99' },
+  pass_scambi: { kisses: 500,  price_eur: '3.99' },
   beni: {
-    pack_sfida:    { kisses: 50 },
-    pack_sfida_10: { kisses: 450 },
-    energia:       { kisses: 20 },
+    pack_sfida:    { kisses: 100 },
+    pack_sfida_10: { kisses: 850 },
+    energia:       { kisses: 50 },
   },
 }
 

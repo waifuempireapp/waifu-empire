@@ -105,14 +105,14 @@ onMounted(async () => {
     tagli.value = data.prezzi.tagli_kisses
   } catch {
     beni.value = {
-      pack_sfida: { kisses: 50 }, pack_sfida_10: { kisses: 450 }, energia: { kisses: 20 },
-      pass_hard: { kisses: 500 }, trade_pass: { kisses: 100 }, swap_pass: { kisses: 300 },
+      pack_sfida: { kisses: 100 }, pack_sfida_10: { kisses: 850 }, energia: { kisses: 50 },
+      pass_hard: { kisses: 5000 }, trade_pass: { kisses: 500 }, swap_pass: { kisses: 300 },
     }
     tagli.value = [
       { id: 'xs', kisses: 100, bonus: 0, price_eur: '0.99' },
       { id: 'sm', kisses: 300, bonus: 30, price_eur: '2.49' },
       { id: 'md', kisses: 600, bonus: 80, price_eur: '3.99' },
-      { id: 'lg', kisses: 1400, bonus: 200, price_eur: '7.99' },
+      { id: 'lg', kisses: 1500, bonus: 200, price_eur: '7.99' },
     ]
   } finally {
     caricato.value = true
