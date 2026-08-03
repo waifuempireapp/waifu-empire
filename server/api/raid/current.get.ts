@@ -66,8 +66,7 @@ export default defineEventHandler(async (event) => {
   try {
     const token = getHeader(event, 'Authorization')?.replace('Bearer ', '');
     if (!token) throw createError({ statusCode: 401, message: 'Non autorizzato' });
-    const decoded = await getAdminAuth().verifyIdToken(token);
-    const uid: string = decoded.uid;
+    await getAdminAuth().verifyIdToken(token);
 
     const adminDb = getAdminDb();
     const cfg = await getRaidConfig();
@@ -119,18 +118,10 @@ export default defineEventHandler(async (event) => {
       if (raid.startedAt instanceof Date) raid.startedAt = (raid.startedAt as Date).toISOString();
     }
 
-    // L'utente ha già "vinto" questo raid? (partecipazione con almeno un danno
-    // inflitto → ha battuto il boss almeno una volta). In tal caso il client
-    // mostra SOLO il countdown al prossimo raid, non il combattimento.
-    let userWon = false;
-    const eid: string = (raid.eventId as string) ?? (raid.id as string);
-    if (eid) {
-      const partSnap = await adminDb.doc(`raid_participants/${eid}_${uid}`).get();
-      userWon = partSnap.exists && ((partSnap.data() as any)?.damageDealt ?? 0) > 0;
-    }
-
-    // Quando l'utente ha vinto, "prossimo raid" = fine di quello corrente
-    return { raid, userWon, nextRaidAt: userWon ? (raid.endsAt as string) : null };
+    // Il raid COLLETTIVO è una gara di danni condivisa: l'utente può combatterlo
+    // ripetutamente finché il boss è vivo (più danni → chance di 2 copie). Nessun
+    // lock per-utente qui (quello vale solo per il raid privato).
+    return { raid, userWon: false, nextRaidAt: null };
   } catch (e: any) {
     console.error('[raid/current]', e);
     if (e.statusCode) throw e;

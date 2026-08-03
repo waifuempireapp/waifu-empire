@@ -237,7 +237,10 @@
     "raid_tap_hint": "Tap to attack the Raid",
     "raid_unavailable": "Raid unavailable",
     "raid_won": "Raid won",
-    "raid_next_in": "Next raid in"
+    "raid_next_in": "Next raid in",
+    "raid_collective": "Collective",
+    "raid_private": "Private",
+    "raid_private_card_won": "🏆 Private raid completed! Card obtained"
   },
   "collection": {
     "title": "Collection",

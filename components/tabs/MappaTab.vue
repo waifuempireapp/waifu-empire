@@ -94,6 +94,10 @@ const showRaidPanel      = ref(false)
 const raidInfo           = ref<any>(null)
 // True se l'utente ha già vinto il raid corrente → mostra solo il countdown al prossimo
 const raidWon            = ref(false)
+// ── Raid PRIVATO (boss personale, stessa waifu/ciclo) ──────────────────────
+const raidPrivateInfo    = ref<any>(null)   // { waifuNome, waifuImage, currentHp, totalHp, endsAt, status }
+const raidPrivateWon     = ref(false)       // boss privato abbattuto
+const raidPrivateMode    = ref(false)       // true mentre si combatte il raid privato
 const activeMission      = ref<any>(null)
 const showMissionDetail  = ref(false)
 const missionFocusPixel  = ref<any>(null)
@@ -146,6 +150,11 @@ const missionPixelSet = computed<Set<string>>(() => {
 const raidHpPct = computed<number>(() => {
   if (!raidInfo.value) return 0
   return Math.max(0, (raidInfo.value.currentHp / raidInfo.value.totalHp) * 100)
+})
+// Percentuale HP raid privato
+const raidPrivateHpPct = computed<number>(() => {
+  if (!raidPrivateInfo.value?.totalHp) return 0
+  return Math.max(0, (raidPrivateInfo.value.currentHp / raidPrivateInfo.value.totalHp) * 100)
 })
 
 // Colore barra HP raid in base alla percentuale
@@ -307,6 +316,21 @@ const loadRaidInfo = async () => {
   }
 }
 
+// Carica lo stato del raid PRIVATO dell'utente
+const loadRaidPrivateInfo = async () => {
+  try {
+    const token = await authStore.user?.getIdToken()
+    const data = await ($fetch('/api/raid/private/current', {
+      headers: { Authorization: `Bearer ${token}` },
+    })) as { raid: any; won?: boolean }
+    raidPrivateInfo.value = data.raid ?? null
+    raidPrivateWon.value  = !!data.won
+  } catch {
+    raidPrivateInfo.value = null
+    raidPrivateWon.value = false
+  }
+}
+
 // Invalida la cache della mappa e forza il ricaricamento
 const invalidateAndReload = async () => {
   sessionStorage.removeItem('pixel_map_chunks')
@@ -435,6 +459,14 @@ const handleAttack = async (attackerTeam: any[]) => {
 // ------------------------------------------------------------------ Attacco Raid
 
 // Avvia un attacco Raid con il team scelto dall'utente
+// Avvia il combattimento del raid PRIVATO: apre la selezione team in modalità privata
+const startPrivateRaid = () => {
+  if (raidPrivateWon.value || !raidPrivateInfo.value) return
+  raidPrivateMode.value = true
+  raidAttackMode.value  = true
+  showBattle.value      = true
+}
+
 const handleRaidAttack = async (attackerTeam: any[]) => {
   try {
     const token = await authStore.user?.getIdToken()
@@ -452,10 +484,12 @@ const handleRaidAttack = async (attackerTeam: any[]) => {
         attackerWins: 0,
         defenderWins: 0,
         isRaid: true,
+        raidPrivate: raidPrivateMode.value, // true → chip HP privati, non collettivi
         raidBossHpMult: data.raidBossHpMult ?? 10,
         raidEventId: data.raidEventId,
         name: data.waifuNome ?? 'Waifu Raid',
       }
+      raidPrivateMode.value = false
       showBattle.value = false
       showRound.value  = true
     } else {
@@ -491,6 +525,24 @@ const handleRoundComplete = async (
       showRound.value     = false
       selectedPixel.value = null
       loadActiveAttacks() // battaglia conclusa → lock rilasciato, aggiorna le X
+
+      // ── Raid PRIVATO: chip HP del boss personale, 1 carta a HP 0 ──
+      if (activeBattle.value.isRaid && activeBattle.value.raidPrivate) {
+        const won = data.status === 'attacker_wins'
+        activeBattle.value = null
+        try {
+          const raidToken = await authStore.user?.getIdToken()
+          const res = await ($fetch('/api/raid/private/attack', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${raidToken}`, 'Content-Type': 'application/json' },
+            body: { won },
+          })) as { justCompleted?: boolean }
+          if (res?.justCompleted) emit('notif', t('map.raid_private_card_won'), '#f5c560')
+        } catch (e) { console.error('[raid/private/attack]', e) }
+        await loadRaidPrivateInfo()
+        emit('raidBattleEnd', { won })
+        return
+      }
 
       if (activeBattle.value.isRaid) {
         const savedRaidEventId = activeBattle.value.raidEventId
@@ -634,6 +686,7 @@ onMounted(async () => {
     loadPendingOffers(),
     loadActiveMission(),
     loadRaidInfo(),
+    loadRaidPrivateInfo(),
     loadActiveAttacks(),
   ])
   // Aggiorna periodicamente lo stato "sotto attacco" (i lock scadono a 20 min)
@@ -827,83 +880,95 @@ async function onTerritoryClick(territoryId: string) {
         </div>
       </div>
 
-      <!-- ── Raid Widget (inline) — sopra la mappa ─────────────────────── -->
-      <div
-        @click="(raidError || raidWon) ? undefined : (showRaidPanel = true)"
-        :style="{
-          margin: '0 16px 10px', padding: '8px 10px',
-          background: raidError ? 'rgba(239,68,68,0.06)' : 'var(--theme-surface)',
-          border: raidError ? '1.5px solid rgba(239,68,68,0.3)' : '1.5px solid rgba(236,72,153,0.45)',
-          borderRadius: '16px',
-          cursor: (raidError || raidWon) ? 'default' : 'pointer',
-          display: 'flex', alignItems: 'center', gap: '10px',
-          boxShadow: '0 4px 16px var(--theme-shadow)',
-          opacity: raidError ? 0.85 : 1,
-        }"
-      >
-        <!-- Icona errore o thumbnail waifu -->
-        <div v-if="raidError" :style="{ fontSize: '32px', flexShrink: 0, lineHeight: 1 }">⚠️</div>
-        <!-- Raid già vinto: mostra un trofeo al posto della waifu -->
-        <div v-else-if="raidWon" :style="{ fontSize: '34px', flexShrink: 0, lineHeight: 1 }">🏆</div>
-        <img
-          v-else-if="raidInfo?.waifuImage"
-          :src="ikUrl(raidInfo.waifuImage, 'thumbnail') ?? undefined"
-          :alt="raidInfo.waifuNome"
-          :style="{ width: '58px', height: '80px', objectFit: 'cover', objectPosition: 'top', borderRadius: '10px', border: '2px solid rgba(236,72,153,0.5)', flexShrink: 0, boxShadow: '0 4px 16px rgba(236,72,153,0.3)' }"
-        />
-        <div v-else :style="{ fontSize: '36px', flexShrink: 0, lineHeight: 1 }">⚔</div>
+      <!-- ── Raid Widgets (inline) — due colonne: Collettivo (sx) / Privato (dx) ── -->
+      <div :style="{ display: 'flex', gap: '10px', margin: '0 16px 10px' }">
 
-        <div :style="{ flex: 1, minWidth: 0 }">
-          <!-- Stato di errore -->
+        <!-- ═══ RAID COLLETTIVO (condiviso con tutti) ═══ -->
+        <div
+          @click="(raidError || raidWon) ? undefined : (showRaidPanel = true)"
+          :style="{
+            flex: 1, minWidth: 0, padding: '10px', position: 'relative',
+            background: raidError ? 'rgba(239,68,68,0.06)' : 'var(--theme-surface)',
+            border: raidError ? '1.5px solid rgba(239,68,68,0.3)' : '1.5px solid rgba(236,72,153,0.45)',
+            borderRadius: '16px',
+            cursor: (raidError || raidWon) ? 'default' : 'pointer',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+            boxShadow: '0 4px 16px var(--theme-shadow)', opacity: raidError ? 0.85 : 1,
+          }"
+        >
+          <div :style="{ fontFamily: FF.label, fontSize: '10px', color: 'var(--theme-accent-pink)', letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 800 }">
+            ⚔ {{ $t('map.raid_collective') }}
+          </div>
+
           <template v-if="raidError">
-            <div :style="{ fontFamily: FF.label, fontSize: '11px', color: '#ef4444', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '4px' }">
-              ⚔ Raid Island
-            </div>
-            <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.4 }">
-              {{ $t('map.raid_unavailable') }}
-            </div>
+            <div :style="{ fontSize: '28px', lineHeight: 1 }">⚠️</div>
+            <div :style="{ fontFamily: FF.body, fontSize: '11px', color: 'var(--theme-text-2)', textAlign: 'center', lineHeight: 1.3 }">{{ $t('map.raid_unavailable') }}</div>
           </template>
 
-          <!-- Stato "raid già vinto": solo countdown al prossimo raid -->
           <template v-else-if="raidWon">
-            <div :style="{ fontFamily: FF.label, fontSize: '11px', color: '#f5c560', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '4px' }">
-              🏆 {{ $t('map.raid_won') }}
-            </div>
-            <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.4 }">
-              {{ $t('map.raid_next_in') }}
-              <span :style="{ fontFamily: FF.mono, fontWeight: 700, color: '#f5c560', fontVariantNumeric: 'tabular-nums' }">{{ raidCountdown || '—' }}</span>
-            </div>
+            <div :style="{ fontSize: '30px', lineHeight: 1 }">🏆</div>
+            <div :style="{ fontFamily: FF.label, fontSize: '10px', color: '#f5c560', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 800 }">{{ $t('map.raid_won') }}</div>
+            <div :style="{ fontFamily: FF.mono, fontSize: '12px', fontWeight: 700, color: '#f5c560', fontVariantNumeric: 'tabular-nums' }">⏱ {{ raidCountdown || '—' }}</div>
           </template>
 
-          <!-- Stato normale -->
+          <template v-else-if="raidInfo">
+            <img v-if="raidInfo.waifuImage" :src="ikUrl(raidInfo.waifuImage, 'thumbnail') ?? undefined" :alt="raidInfo.waifuNome"
+              :style="{ width: '48px', height: '66px', objectFit: 'cover', objectPosition: 'top', borderRadius: '9px', border: '2px solid rgba(236,72,153,0.5)' }" />
+            <div v-else :style="{ fontSize: '30px', lineHeight: 1 }">⚔</div>
+            <div :style="{ fontFamily: FF.display, fontSize: '13px', color: 'var(--theme-text)', fontWeight: 700, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ raidInfo.waifuNome ?? 'Raid' }}</div>
+            <div :style="{ width: '100%', height: '6px', background: 'var(--theme-border)', borderRadius: '3px', overflow: 'hidden' }">
+              <div :style="{ height: '100%', width: `${raidHpPct}%`, background: raidHpColor, borderRadius: '3px', transition: 'width 0.5s' }" />
+            </div>
+            <div :style="{ fontFamily: FF.mono, fontSize: '10.5px', color: 'var(--theme-text-2)', fontWeight: 600 }">{{ Math.max(0, raidInfo.currentHp).toLocaleString() }} / {{ raidInfo.totalHp.toLocaleString() }}</div>
+            <div v-if="raidCountdown" :style="{ fontFamily: FF.mono, fontSize: '11px', color: 'var(--theme-accent-pink)', fontVariantNumeric: 'tabular-nums', fontWeight: 700 }">⏱ {{ raidCountdown }}</div>
+          </template>
+
           <template v-else>
-            <div :style="{ fontFamily: FF.label, fontSize: '11px', color: 'var(--theme-accent-pink)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '3px' }">
-              ⚔ Raid Waifu
-            </div>
-            <div :style="{ fontFamily: FF.display, fontSize: '16px', color: 'var(--theme-text)', fontWeight: 700, marginBottom: '6px' }">
-              {{ raidInfo?.waifuNome ?? 'Raid Island' }}
-            </div>
-            <template v-if="raidInfo">
-              <div :style="{ height: '6px', background: 'var(--theme-border)', borderRadius: '3px', marginBottom: '5px', overflow: 'hidden' }">
-                <div :style="{ height: '100%', width: `${raidHpPct}%`, background: raidHpColor, borderRadius: '3px', transition: 'width 0.5s' }" />
-              </div>
-              <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }">
-                <div :style="{ fontFamily: FF.mono, fontSize: '12px', color: 'var(--theme-text-2)', fontWeight: 600 }">
-                  {{ Math.max(0, raidInfo.currentHp).toLocaleString() }} / {{ raidInfo.totalHp.toLocaleString() }} HP
-                </div>
-                <div v-if="raidCountdown" :style="{ fontFamily: FF.mono, fontSize: '12px', color: 'var(--theme-accent-pink)', fontVariantNumeric: 'tabular-nums', fontWeight: 700 }">
-                  ⏱ {{ raidCountdown }}
-                </div>
-              </div>
-            </template>
-            <template v-else>
-              <div :style="{ fontFamily: FF.label, fontSize: '12px', color: 'var(--theme-text-2)', letterSpacing: '0.1em' }">
-                {{ $t('map.raid_tap_hint') }}
-              </div>
-            </template>
+            <div :style="{ fontSize: '30px', lineHeight: 1 }">⚔</div>
+            <div :style="{ fontFamily: FF.body, fontSize: '11px', color: 'var(--theme-text-2)', textAlign: 'center', lineHeight: 1.3 }">{{ $t('map.raid_tap_hint') }}</div>
           </template>
         </div>
-        <div v-if="!raidError && !raidWon" :style="{ fontFamily: FF.display, fontSize: '18px', color: 'var(--theme-text-2)', flexShrink: 0 }">→</div>
+
+        <!-- ═══ RAID PRIVATO (personale) ═══ -->
+        <div
+          @click="raidPrivateWon ? undefined : startPrivateRaid()"
+          :style="{
+            flex: 1, minWidth: 0, padding: '10px', position: 'relative',
+            background: 'var(--theme-surface)',
+            border: '1.5px solid rgba(167,139,250,0.5)',
+            borderRadius: '16px',
+            cursor: (raidPrivateWon || !raidPrivateInfo) ? 'default' : 'pointer',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+            boxShadow: '0 4px 16px var(--theme-shadow)',
+          }"
+        >
+          <div :style="{ fontFamily: FF.label, fontSize: '10px', color: '#a78bfa', letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 800 }">
+            🛡 {{ $t('map.raid_private') }}
+          </div>
+
+          <template v-if="raidPrivateWon">
+            <div :style="{ fontSize: '30px', lineHeight: 1 }">🏆</div>
+            <div :style="{ fontFamily: FF.label, fontSize: '10px', color: '#f5c560', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 800 }">{{ $t('map.raid_won') }}</div>
+            <div :style="{ fontFamily: FF.mono, fontSize: '12px', fontWeight: 700, color: '#f5c560', fontVariantNumeric: 'tabular-nums' }">⏱ {{ raidCountdown || '—' }}</div>
+          </template>
+
+          <template v-else-if="raidPrivateInfo">
+            <img v-if="raidPrivateInfo.waifuImage" :src="ikUrl(raidPrivateInfo.waifuImage, 'thumbnail') ?? undefined" :alt="raidPrivateInfo.waifuNome"
+              :style="{ width: '48px', height: '66px', objectFit: 'cover', objectPosition: 'top', borderRadius: '9px', border: '2px solid rgba(167,139,250,0.55)' }" />
+            <div v-else :style="{ fontSize: '30px', lineHeight: 1 }">🛡</div>
+            <div :style="{ fontFamily: FF.display, fontSize: '13px', color: 'var(--theme-text)', fontWeight: 700, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ raidPrivateInfo.waifuNome ?? 'Raid' }}</div>
+            <div :style="{ width: '100%', height: '6px', background: 'var(--theme-border)', borderRadius: '3px', overflow: 'hidden' }">
+              <div :style="{ height: '100%', width: `${raidPrivateHpPct}%`, background: '#a78bfa', borderRadius: '3px', transition: 'width 0.5s' }" />
+            </div>
+            <div :style="{ fontFamily: FF.mono, fontSize: '10.5px', color: 'var(--theme-text-2)', fontWeight: 600 }">{{ Math.max(0, raidPrivateInfo.currentHp).toLocaleString() }} / {{ raidPrivateInfo.totalHp.toLocaleString() }}</div>
+            <div v-if="raidCountdown" :style="{ fontFamily: FF.mono, fontSize: '11px', color: '#a78bfa', fontVariantNumeric: 'tabular-nums', fontWeight: 700 }">⏱ {{ raidCountdown }}</div>
+          </template>
+
+          <template v-else>
+            <div :style="{ fontSize: '30px', lineHeight: 1 }">🛡</div>
+            <div :style="{ fontFamily: FF.body, fontSize: '11px', color: 'var(--theme-text-2)', textAlign: 'center', lineHeight: 1.3 }">{{ $t('map.raid_unavailable') }}</div>
+          </template>
+        </div>
       </div>
 
       <!-- Mappa: sfondo mare sempre visibile + canvas interattivo sovrapposto -->

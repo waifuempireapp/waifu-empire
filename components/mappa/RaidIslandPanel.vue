@@ -185,9 +185,6 @@ const showInfo = ref(false)
 const hpPct       = computed(() => raid.value ? Math.max(0, (raid.value.currentHp / raid.value.totalHp) * 100) : 0)
 const isActive    = computed(() => raid.value?.status === 'active')
 const isCompleted = computed(() => raid.value?.status === 'completed')
-// L'utente ha già vinto (inflitto danno) questo raid → non può ricombatterlo:
-// vede solo il countdown al prossimo.
-const alreadyWon  = computed(() => (myParticipation.value?.damageDealt ?? 0) > 0)
 const canClaim    = computed(() =>
   myParticipation.value && (myParticipation.value.damageDealt > 0) && !myParticipation.value.claimed && !isActive.value
 )
@@ -385,18 +382,8 @@ const MEDAL = ['🥇', '🥈', '🥉']
           </div>
         </div>
 
-        <!-- Raid già vinto dall'utente: niente combattimento, solo countdown -->
-        <template v-if="isActive && alreadyWon">
-          <div :style="{ display:'flex', flexDirection:'column', alignItems:'center', gap:'6px', padding:'14px', marginBottom:'12px', background:'rgba(245,197,96,0.1)', border:'1px solid rgba(245,197,96,0.35)', borderRadius:'14px' }">
-            <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:800, color:'#f5c560', letterSpacing:'0.14em', textTransform:'uppercase' }">🏆 {{ $t('map.raid_won') }}</div>
-            <div :style="{ fontFamily:FF.body, fontSize:'13px', color:'var(--theme-text-2)' }">
-              {{ $t('map.raid_next_in') }} <span :style="{ fontFamily:FF.mono, fontWeight:700, color:'#f5c560' }">{{ countdownHMS }}</span>
-            </div>
-          </div>
-        </template>
-
-        <!-- CTA Combatti (raid attivo, non ancora vinto) -->
-        <template v-else-if="isActive">
+        <!-- CTA Combatti (raid collettivo attivo — combattibile ripetutamente) -->
+        <template v-if="isActive">
           <div :style="{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'10px' }">
             <button
               @click="emit('battle', { ...raid, cpuDifficulty: myParticipation?.cpuDifficulty ?? 'medium' })"

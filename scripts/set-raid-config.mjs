@@ -23,7 +23,13 @@ const db = getFirestore()
 const before = (await db.doc('config/raid_config').get()).data() ?? {}
 console.log('Prima:', JSON.stringify(before))
 
-await db.doc('config/raid_config').set({ durationMinutes: 360, cooldownMinutes: 0 }, { merge: true })
+// durata 6h, cooldown 0 (sempre presente), HP collettivo 10000, HP privato 500
+await db.doc('config/raid_config').set({
+  durationMinutes: 360,
+  cooldownMinutes: 0,
+  totalHp: 10000,
+  privateTotalHp: 500,
+}, { merge: true })
 
 const after = (await db.doc('config/raid_config').get()).data() ?? {}
 console.log('✅ Dopo:', JSON.stringify(after))

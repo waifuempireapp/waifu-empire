@@ -86,7 +86,9 @@ export default defineEventHandler(async (event) => {
     position: myPos,
   });
 
-  // Carta raid: aggiungi la waifu raid alla collezione di chi ha vinto
+  // Carta raid COLLETTIVO: chi ha inflitto più danni (1° in classifica) riceve
+  // 2 copie, tutti gli altri partecipanti con danno ricevono 1 copia.
+  const copiesToAdd: number = myPos === 1 ? 2 : 1;
   if (cardEligible && eventData.waifuId) {
     const collRef = adminDb.doc(`users/${uid}/collezione/main`);
     const collSnap = await collRef.get();
@@ -95,8 +97,8 @@ export default defineEventHandler(async (event) => {
     batch.set(collRef, {
       waifu: {
         [eventData.waifuId]: existing
-          ? { ...existing, copie: (existing.copie ?? 0) + 1, trovata_il: Date.now() }
-          : { copie: 1, livello: 1, trovata_il: Date.now() },
+          ? { ...existing, copie: (existing.copie ?? 0) + copiesToAdd, trovata_il: Date.now() }
+          : { copie: copiesToAdd, livello: 1, trovata_il: Date.now() },
       },
     }, { merge: true });
   }
@@ -110,6 +112,7 @@ export default defineEventHandler(async (event) => {
     position: myPos,
     isTop3,
     cardEligible,
+    copies: cardEligible ? copiesToAdd : 0,
     waifuUnlocked: cardEligible ? eventData.waifuId : null,
   };
 });
