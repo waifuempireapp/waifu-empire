@@ -27,7 +27,8 @@ async function createNewRaid(cfg: Record<string, any>): Promise<Record<string, a
   deck = deck.concat(shuffled.map(d => d.id));
 
   const totalHp: number = cfg.totalHp ?? 500;
-  const durationMin: number = cfg.durationMinutes ?? 60;
+  // Durata raid: 6 ore di default (era 60 min). Il raid è sempre presente.
+  const durationMin: number = cfg.durationMinutes ?? 360;
   const now = new Date();
   const endsAt = new Date(now.getTime() + durationMin * 60 * 1000);
 
@@ -65,7 +66,8 @@ export default defineEventHandler(async (event) => {
   try {
     const token = getHeader(event, 'Authorization')?.replace('Bearer ', '');
     if (!token) throw createError({ statusCode: 401, message: 'Non autorizzato' });
-    await getAdminAuth().verifyIdToken(token);
+    const decoded = await getAdminAuth().verifyIdToken(token);
+    const uid: string = decoded.uid;
 
     const adminDb = getAdminDb();
     const cfg = await getRaidConfig();
@@ -96,18 +98,19 @@ export default defineEventHandler(async (event) => {
     }
 
     if (!raid) {
-      // #13B: rispetta un cooldown (default 1h) tra un raid e il successivo.
-      // Prima si creava SUBITO un nuovo raid appena quello precedente finiva.
-      const COOLDOWN_MS = ((cfg.cooldownMinutes as number) ?? 60) * 60 * 1000;
-      const stateSnap = await adminDb.doc('config/raid_state').get();
-      const lastEndedAt: number = stateSnap.exists
-        ? ((stateSnap.data() as any)?.lastEndedAt?.toMillis?.() ?? 0)
-        : 0;
-      const nextAllowed = lastEndedAt + COOLDOWN_MS;
-
-      if (lastEndedAt > 0 && now.getTime() < nextAllowed) {
-        // Ancora in cooldown: nessun raid attivo, il client mostra il countdown
-        return { raid: null, nextRaidAt: new Date(nextAllowed).toISOString() };
+      // Il raid è SEMPRE presente: cooldown 0 di default → appena uno finisce
+      // ne parte subito un altro. (Config può reintrodurre un cooldown.)
+      const COOLDOWN_MS = ((cfg.cooldownMinutes as number) ?? 0) * 60 * 1000;
+      if (COOLDOWN_MS > 0) {
+        const stateSnap = await adminDb.doc('config/raid_state').get();
+        const lastEndedAt: number = stateSnap.exists
+          ? ((stateSnap.data() as any)?.lastEndedAt?.toMillis?.() ?? 0)
+          : 0;
+        const nextAllowed = lastEndedAt + COOLDOWN_MS;
+        if (lastEndedAt > 0 && now.getTime() < nextAllowed) {
+          // Ancora in cooldown: nessun raid attivo, il client mostra il countdown
+          return { raid: null, userWon: false, nextRaidAt: new Date(nextAllowed).toISOString() };
+        }
       }
 
       const newRaid = await createNewRaid(cfg);
@@ -116,7 +119,18 @@ export default defineEventHandler(async (event) => {
       if (raid.startedAt instanceof Date) raid.startedAt = (raid.startedAt as Date).toISOString();
     }
 
-    return { raid };
+    // L'utente ha già "vinto" questo raid? (partecipazione con almeno un danno
+    // inflitto → ha battuto il boss almeno una volta). In tal caso il client
+    // mostra SOLO il countdown al prossimo raid, non il combattimento.
+    let userWon = false;
+    const eid: string = (raid.eventId as string) ?? (raid.id as string);
+    if (eid) {
+      const partSnap = await adminDb.doc(`raid_participants/${eid}_${uid}`).get();
+      userWon = partSnap.exists && ((partSnap.data() as any)?.damageDealt ?? 0) > 0;
+    }
+
+    // Quando l'utente ha vinto, "prossimo raid" = fine di quello corrente
+    return { raid, userWon, nextRaidAt: userWon ? (raid.endsAt as string) : null };
   } catch (e: any) {
     console.error('[raid/current]', e);
     if (e.statusCode) throw e;

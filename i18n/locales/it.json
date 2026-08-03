@@ -235,7 +235,9 @@
     "owner": "Proprietario: {name}",
     "victory_rewards_title": "Premi vittoria!",
     "raid_tap_hint": "Tocca per attaccare il Raid",
-    "raid_unavailable": "Raid non disponibile"
+    "raid_unavailable": "Raid non disponibile",
+    "raid_won": "Raid vinto",
+    "raid_next_in": "Prossimo raid tra"
   },
   "collection": {
     "title": "Collezione",

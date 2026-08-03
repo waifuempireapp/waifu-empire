@@ -92,6 +92,8 @@ const showDefenseEditor  = ref(false)
 const activeBattle       = ref<any>(null)
 const showRaidPanel      = ref(false)
 const raidInfo           = ref<any>(null)
+// True se l'utente ha già vinto il raid corrente → mostra solo il countdown al prossimo
+const raidWon            = ref(false)
 const activeMission      = ref<any>(null)
 const showMissionDetail  = ref(false)
 const missionFocusPixel  = ref<any>(null)
@@ -295,10 +297,12 @@ const loadRaidInfo = async () => {
     const token = await authStore.user?.getIdToken()
     const data = await ($fetch('/api/raid/current', {
       headers: { Authorization: `Bearer ${token}` },
-    })) as { raid: any }
+    })) as { raid: any; userWon?: boolean }
     raidInfo.value = data.raid ?? null
+    raidWon.value  = !!data.userWon
   } catch {
     raidInfo.value = null
+    raidWon.value = false
     raidError.value = true
   }
 }
@@ -503,6 +507,9 @@ const handleRoundComplete = async (
             body: { eventId: savedRaidEventId, won },
           })
         } catch (e) { console.error('[raid/join]', e) }
+        // Ricarica lo stato raid: se l'utente ha vinto, il widget mappa passa a
+        // "vinto → countdown" e il pannello nasconde il bottone Combatti.
+        loadRaidInfo()
         emit('raidBattleEnd', { won })
         showRaidPanel.value = true
         return
@@ -822,13 +829,13 @@ async function onTerritoryClick(territoryId: string) {
 
       <!-- ── Raid Widget (inline) — sopra la mappa ─────────────────────── -->
       <div
-        @click="raidError ? undefined : showRaidPanel = true"
+        @click="(raidError || raidWon) ? undefined : (showRaidPanel = true)"
         :style="{
           margin: '0 16px 10px', padding: '8px 10px',
           background: raidError ? 'rgba(239,68,68,0.06)' : 'var(--theme-surface)',
           border: raidError ? '1.5px solid rgba(239,68,68,0.3)' : '1.5px solid rgba(236,72,153,0.45)',
           borderRadius: '16px',
-          cursor: raidError ? 'default' : 'pointer',
+          cursor: (raidError || raidWon) ? 'default' : 'pointer',
           display: 'flex', alignItems: 'center', gap: '10px',
           boxShadow: '0 4px 16px var(--theme-shadow)',
           opacity: raidError ? 0.85 : 1,
@@ -836,6 +843,8 @@ async function onTerritoryClick(territoryId: string) {
       >
         <!-- Icona errore o thumbnail waifu -->
         <div v-if="raidError" :style="{ fontSize: '32px', flexShrink: 0, lineHeight: 1 }">⚠️</div>
+        <!-- Raid già vinto: mostra un trofeo al posto della waifu -->
+        <div v-else-if="raidWon" :style="{ fontSize: '34px', flexShrink: 0, lineHeight: 1 }">🏆</div>
         <img
           v-else-if="raidInfo?.waifuImage"
           :src="ikUrl(raidInfo.waifuImage, 'thumbnail') ?? undefined"
@@ -852,6 +861,17 @@ async function onTerritoryClick(territoryId: string) {
             </div>
             <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.4 }">
               {{ $t('map.raid_unavailable') }}
+            </div>
+          </template>
+
+          <!-- Stato "raid già vinto": solo countdown al prossimo raid -->
+          <template v-else-if="raidWon">
+            <div :style="{ fontFamily: FF.label, fontSize: '11px', color: '#f5c560', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '4px' }">
+              🏆 {{ $t('map.raid_won') }}
+            </div>
+            <div :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-2)', lineHeight: 1.4 }">
+              {{ $t('map.raid_next_in') }}
+              <span :style="{ fontFamily: FF.mono, fontWeight: 700, color: '#f5c560', fontVariantNumeric: 'tabular-nums' }">{{ raidCountdown || '—' }}</span>
             </div>
           </template>
 
@@ -883,7 +903,7 @@ async function onTerritoryClick(territoryId: string) {
             </template>
           </template>
         </div>
-        <div v-if="!raidError" :style="{ fontFamily: FF.display, fontSize: '18px', color: 'var(--theme-text-2)', flexShrink: 0 }">→</div>
+        <div v-if="!raidError && !raidWon" :style="{ fontFamily: FF.display, fontSize: '18px', color: 'var(--theme-text-2)', flexShrink: 0 }">→</div>
       </div>
 
       <!-- Mappa: sfondo mare sempre visibile + canvas interattivo sovrapposto -->
