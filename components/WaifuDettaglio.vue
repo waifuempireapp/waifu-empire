@@ -64,11 +64,11 @@ function tc(tipo?: string | null) {
 
 // Stat definizioni
 const STAT_DEFS = [
-  { key: 'tette',          label: 'Tette',        icon: '🍑', max: 7    },
-  { key: 'taglia_piedi',   label: 'Taglia Piedi', icon: '🦶', max: 45   },
-  { key: 'eta',            label: 'Età',          icon: '⏳', max: 5000 },
-  { key: 'colore_capelli', label: 'Capelli',      icon: '💇', max: 10   },
-  { key: 'esperienza',     label: 'Esperienza',   icon: '⭐', max: 5000 },
+  { key: 'tette',          label: 'Prosperosità', icon: '✨', max: 10 },
+  { key: 'colore_capelli', label: 'Acconciatura', icon: '💇', max: 10 },
+  { key: 'eta',            label: 'Maturità',     icon: '⌛', max: 10 },
+  { key: 'taglia_piedi',   label: 'Portamento',   icon: '👠', max: 10 },
+  { key: 'esperienza',     label: 'Esperienza',   icon: '⭐', max: 10 },
 ]
 
 // Accordion

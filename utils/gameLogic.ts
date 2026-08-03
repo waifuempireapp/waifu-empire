@@ -288,7 +288,7 @@ export function pronto_levelUp(datiWaifu: { copie: number } | null | undefined):
 }
 
 export const INCREMENTI_LEVELUP: Record<string, number> = {
-  tette: 1, taglia_piedi: 1, eta: 25, colore_capelli: 1, esperienza: 50,
+  tette: 1, taglia_piedi: 1, eta: 1, colore_capelli: 1, esperienza: 1,
 }
 
 /** Clampa una singola stat entro i range configurati. */
@@ -302,11 +302,11 @@ export function clampStat(key: string, value: number, ranges = STAT_RANGES_DEFAU
 export function clampWaifuStats(waifu: Record<string, unknown>, ranges = STAT_RANGES_DEFAULT): Record<string, unknown> {
   return {
     ...waifu,
-    tette:          clampStat('tette',          (waifu.tette          as number) ?? 3, ranges),
-    colore_capelli: clampStat('colore_capelli', (waifu.colore_capelli as number) ?? 1, ranges),
-    eta:            clampStat('eta',            (waifu.eta            as number) ?? 18, ranges),
-    taglia_piedi:   clampStat('taglia_piedi',   (waifu.taglia_piedi   as number) ?? 38, ranges),
-    esperienza:     clampStat('esperienza',     (waifu.esperienza     as number) ?? 0, ranges),
+    tette:          clampStat('tette',          (waifu.tette          as number) ?? 5, ranges),
+    colore_capelli: clampStat('colore_capelli', (waifu.colore_capelli as number) ?? 5, ranges),
+    eta:            clampStat('eta',            (waifu.eta            as number) ?? 5, ranges),
+    taglia_piedi:   clampStat('taglia_piedi',   (waifu.taglia_piedi   as number) ?? 5, ranges),
+    esperienza:     clampStat('esperienza',     (waifu.esperienza     as number) ?? 5, ranges),
   }
 }
 

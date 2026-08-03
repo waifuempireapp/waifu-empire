@@ -114,11 +114,11 @@ export const CATEGORIE_TETTE: Record<number, string> = {
 // ── RANGE STATISTICHE ─────────────────────────────────────────
 /** Range stat waifu di default (fallback se Firestore non disponibile). */
 export const STAT_RANGES_DEFAULT: Record<string, { min: number; max: number }> = {
-  tette:          { min: 1,  max: 7    },
-  colore_capelli: { min: 1,  max: 10   },
-  eta:            { min: 1,  max: 5000 },
-  taglia_piedi:   { min: 34, max: 45   },
-  esperienza:     { min: 0,  max: 5000 },
+  tette:          { min: 1,  max: 10 },
+  colore_capelli: { min: 1,  max: 10 },
+  eta:            { min: 1,  max: 10 },
+  taglia_piedi:   { min: 1,  max: 10 },
+  esperienza:     { min: 1,  max: 10 },
 }
 
 /** Incrementi di default per level-up stat (modificabili da admin via Firestore). */
@@ -126,8 +126,8 @@ export const UPGRADE_STEPS_DEFAULT: Record<string, number> = {
   tette:          1,
   colore_capelli: 1,
   taglia_piedi:   1,
-  eta:            25,
-  esperienza:     50,
+  eta:            1,
+  esperienza:     1,
 }
 
 // ── UI — OUTFIT & STAT ────────────────────────────────────────
@@ -139,11 +139,11 @@ export const SLOT_OUTFIT: Record<string, { nome: string; icon: string }> = {
 }
 
 export const STATS: Array<{ key: string; label: string; icon: string }> = [
-  { key: 'tette',          label: 'Tette',         icon: '✦' },
-  { key: 'taglia_piedi',   label: 'Taglia Piedi',  icon: '⚘' },
-  { key: 'eta',            label: 'Età',           icon: '⌛' },
-  { key: 'colore_capelli', label: 'Capelli',       icon: '✿' },
-  { key: 'esperienza',     label: 'Esperienza',    icon: '★' },
+  { key: 'tette',          label: 'Prosperosità',  icon: '✨' },
+  { key: 'colore_capelli', label: 'Acconciatura',  icon: '💇' },
+  { key: 'eta',            label: 'Maturità',      icon: '⌛' },
+  { key: 'taglia_piedi',   label: 'Portamento',    icon: '👠' },
+  { key: 'esperienza',     label: 'Esperienza',    icon: '⭐' },
 ]
 
 // ── TIMER & ENERGIA ──────────────────────────────────────────

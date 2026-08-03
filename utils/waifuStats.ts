@@ -13,10 +13,13 @@
 export const AESTHETIC_STAT_KEYS = ['tette', 'taglia_piedi', 'eta', 'colore_capelli', 'esperienza'] as const
 export type AestheticStatKey = typeof AESTHETIC_STAT_KEYS[number]
 
-/** Cap massimi coerenti con le barre della carta (statPct). */
+/** Cap massimi coerenti con le barre della carta (statPct). Tutte 1-10. */
 export const AESTHETIC_STAT_CAPS: Partial<Record<AestheticStatKey, number>> = {
-  tette: 7,
+  tette: 10,
+  taglia_piedi: 10,
+  eta: 10,
   colore_capelli: 10,
+  esperienza: 10,
 }
 
 // FNV-1a 32 bit: hash stabile e veloce, nessuna dipendenza
@@ -34,15 +37,6 @@ function detRange(id: string, salt: string, min: number, max: number): number {
   return min + (hash32(id + ':' + salt) % (max - min + 1))
 }
 
-// Esperienza scalata per rarità: waifu più rare = più "vissute"
-const EXP_RANGE_BY_RARITY: Record<string, [number, number]> = {
-  comune:      [50, 900],
-  raro:        [400, 1600],
-  epico:       [1000, 2600],
-  leggendario: [2000, 4200],
-  immersivo:   [3000, 5000],
-}
-
 // Strutturale e permissivo: accetta qualsiasi oggetto waifu (catalogo tipizzato o raw)
 type WaifuLike = { id?: unknown; nome?: unknown; rarita?: unknown } & object
 
@@ -57,21 +51,23 @@ export function resolveWaifuStat(waifu: WaifuLike, key: AestheticStatKey): numbe
   const id = String(waifu?.id ?? waifu?.nome ?? 'waifu')
   const rarita = String(waifu?.rarita ?? 'comune')
 
+  // Tutte le statistiche ora sono su scala 1-10 (Prosperosità/Acconciatura/
+  // Maturità/Portamento/Esperienza). Le rarità più alte tendono a valori più
+  // alti sull'esperienza.
   switch (key) {
     case 'tette':
-      return detRange(id, 'tette', 1, 7)
+      return detRange(id, 'tette', 1, 10)
     case 'taglia_piedi':
-      return detRange(id, 'piedi', 35, 42)
-    case 'eta': {
-      // Le rarità alte hanno una possibilità su 4 di essere esseri "antichi"
-      const antica = (rarita === 'leggendario' || rarita === 'immersivo') && detRange(id, 'antica', 0, 3) === 0
-      return antica ? detRange(id, 'eta-antica', 120, 3000) : detRange(id, 'eta', 18, 29)
-    }
+      return detRange(id, 'piedi', 1, 10)
+    case 'eta':
+      return detRange(id, 'eta', 1, 10)
     case 'colore_capelli':
       return detRange(id, 'capelli', 1, 10)
     case 'esperienza': {
-      const [lo, hi] = EXP_RANGE_BY_RARITY[rarita] ?? EXP_RANGE_BY_RARITY.comune
-      return detRange(id, 'exp', lo, hi)
+      // Esperienza scalata per rarità ma sempre in [1,10]
+      const floor: Record<string, number> = { comune: 1, raro: 3, epico: 5, leggendario: 7, immersivo: 8 }
+      const lo = floor[rarita] ?? 1
+      return detRange(id, 'exp', lo, 10)
     }
   }
 }

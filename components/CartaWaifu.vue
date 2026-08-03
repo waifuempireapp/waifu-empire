@@ -159,7 +159,7 @@ const evidenziato = computed(() => props.evidenziato ?? false)
 // presenti, altrimenti GENERATI deterministicamente dall'id (utils/waifuStats):
 // così ogni waifu ha valori propri, identici anche nel dettaglio carta.
 const statBonus  = computed(() => props.datiCollezione?.stat_bonus ?? {})
-const tetteEff   = computed(() => Math.min(7, resolveWaifuStat(props.waifu, 'tette') + (statBonus.value.tette ?? 0)))
+const tetteEff   = computed(() => Math.min(10, resolveWaifuStat(props.waifu, 'tette') + (statBonus.value.tette ?? 0)))
 const piediEff   = computed(() => resolveWaifuStat(props.waifu, 'taglia_piedi') + (statBonus.value.taglia_piedi ?? 0))
 const etaEff     = computed(() => resolveWaifuStat(props.waifu, 'eta') + (statBonus.value.eta ?? 0))
 const capelliEff = computed(() => Math.min(10, resolveWaifuStat(props.waifu, 'colore_capelli') + (statBonus.value.colore_capelli ?? 0)))
@@ -205,9 +205,9 @@ const angoli = computed(() => {
 })
 
 // ── Calcolo pct per StatCircle ────────────────────────────────
-function statPct(value: number, statKey: string): number {
-  const maxVal = statKey === 'piedi' ? 45 : statKey === 'eta' ? 5000 : statKey === 'exp' ? 5000 : statKey === 'capelli' ? 10 : 7
-  return Math.min(1, value / maxVal)
+function statPct(value: number, _statKey: string): number {
+  // Tutte le statistiche ora sono su scala 1-10
+  return Math.min(1, value / 10)
 }
 function statCirc(size: number): number { return 2 * Math.PI * ((size - 4) / 2) }
 
@@ -557,7 +557,7 @@ function onMouseLeave(e: MouseEvent) {
               textShadow: '0 0 6px #ff9ec6', letterSpacing: '-0.02em',
             }">{{ tetteEff }}</div>
           </div>
-          <div :style="{ fontSize: `${Math.max(8, statSize * 0.30)}px`, lineHeight: '1', color: '#ff9ec6', filter: 'drop-shadow(0 0 3px #ff9ec6)' }">🍑</div>
+          <div :style="{ fontSize: `${Math.max(8, statSize * 0.30)}px`, lineHeight: '1', color: '#ff9ec6', filter: 'drop-shadow(0 0 3px #ff9ec6)' }">✨</div>
         </div>
 
         <!-- Piedi -->
@@ -576,7 +576,7 @@ function onMouseLeave(e: MouseEvent) {
               textShadow: '0 0 6px #b573ff', letterSpacing: '-0.02em',
             }">{{ piediEff }}</div>
           </div>
-          <div :style="{ fontSize: `${Math.max(8, statSize * 0.30)}px`, lineHeight: '1', color: '#b573ff', filter: 'drop-shadow(0 0 3px #b573ff)' }">🦶</div>
+          <div :style="{ fontSize: `${Math.max(8, statSize * 0.30)}px`, lineHeight: '1', color: '#b573ff', filter: 'drop-shadow(0 0 3px #b573ff)' }">👠</div>
         </div>
 
         <!-- Età -->
@@ -595,7 +595,7 @@ function onMouseLeave(e: MouseEvent) {
               textShadow: '0 0 6px #6cf0e0', letterSpacing: '-0.02em',
             }">{{ etaEff }}</div>
           </div>
-          <div :style="{ fontSize: `${Math.max(8, statSize * 0.30)}px`, lineHeight: '1', color: '#6cf0e0', filter: 'drop-shadow(0 0 3px #6cf0e0)' }">⏳</div>
+          <div :style="{ fontSize: `${Math.max(8, statSize * 0.30)}px`, lineHeight: '1', color: '#6cf0e0', filter: 'drop-shadow(0 0 3px #6cf0e0)' }">⌛</div>
         </div>
 
         <!-- Capelli -->
