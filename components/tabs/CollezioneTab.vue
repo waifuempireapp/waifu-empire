@@ -7,7 +7,7 @@
   ============================================================ -->
 <script setup lang="ts">
 // Icone Lucide — Swords mosse/battaglie, Shield team difesa, Search cerca, X chiudi, Zap levelup, Check conferma
-import { Swords, Shield, Search, X, Zap, Check } from 'lucide-vue-next'
+import { Swords, Shield, Search, X, Zap, Check, Crown } from 'lucide-vue-next'
 import {
   listDropsAttivi,
   setCollezione as saveCollezione,
@@ -244,7 +244,7 @@ async function assegnaMosseMultiple(waifuId: string, assignments: { slot: string
 
 // ── Sub-tab config ────────────────────────────────────────────
 const subTabs = computed(() => [
-  { k: 'waifu',  l: t('collection.waifu'),     icon: '♛', n: Object.keys(props.collezione.waifu || {}).length,  c: C.gold   },
+  { k: 'waifu',  l: t('collection.waifu'),     icon: Crown, n: Object.keys(props.collezione.waifu || {}).length,  c: C.gold   },
   { k: 'mosse',  l: t('collection.tab_moves'), icon: Swords, n: Object.keys(props.collezione.mosse || {}).length,  c: C.violet },
   { k: 'team',   l: t('collection.tab_team'),  icon: Shield, n: Object.keys(teams.value).length,                   c: C.ok     },
 ])
