@@ -606,10 +606,23 @@ export async function getPrezziConfig(): Promise<typeof PREZZI_DEFAULT> {
   } as typeof PREZZI_DEFAULT
 }
 
+// Scrittura di un documento config via endpoint admin (Admin SDK, bypassa le
+// security rules): il client SDK dava "insufficient permission" agli admin.
+export async function saveConfigDoc(docId: string, data: Record<string, unknown>, merge = true): Promise<void> {
+  const { getFirebaseAuth } = await import('~/utils/firebase')
+  const user = getFirebaseAuth().currentUser
+  if (!user) throw new Error('Non autenticato')
+  const token = await user.getIdToken()
+  await $fetch('/api/admin/set-config', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: { docId, data, merge },
+  })
+}
+
 export async function setPrezziConfig(patch: Record<string, unknown>): Promise<void> {
-  const db  = getDb()
-  const ref = doc(db, 'config', 'prezzi')
-  await setDoc(ref, patch, { merge: true })
+  // Via endpoint admin (Admin SDK) invece del client SDK bloccato dalle rules
+  await saveConfigDoc('prezzi', patch, true)
 }
 
 // ── DROP STAGIONALE ───────────────────────────────────────────
@@ -840,8 +853,8 @@ export async function getPremiClassificaConfig(): Promise<Record<string, unknown
 }
 
 export async function setPremiClassificaConfig(config: Record<string, unknown>): Promise<void> {
-  const db = getDb()
-  await setDoc(doc(db, 'config', 'premiClassifica'), config)
+  // Via endpoint admin (Admin SDK) invece del client SDK bloccato dalle rules
+  await saveConfigDoc('premiClassifica', config, false)
 }
 
 export function fasciaPremiPerPosizione(pos: number, config?: Record<string, unknown>): Record<string, unknown> {

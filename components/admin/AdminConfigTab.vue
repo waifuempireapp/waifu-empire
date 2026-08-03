@@ -15,7 +15,7 @@
 -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { upsertWaifu } from '~/utils/firestoreService'
+import { upsertWaifu, saveConfigDoc } from '~/utils/firestoreService'
 import { STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT, RARITA } from '~/utils/constants'
 import { MOTORI_AI, suggerisciDiversificazione } from '~/utils/promptGenerator'
 import { getDb } from '~/utils/firebase'
@@ -67,11 +67,11 @@ const TABS: { id: SubTab; label: string }[] = [
 // ════════════════════════════════════════════════════════════════
 
 const STAT_KEYS = [
-  { key: 'tette',          label: 'Tette',        icon: '✦' },
-  { key: 'colore_capelli', label: 'Capelli',       icon: '✿' },
-  { key: 'eta',            label: 'Età',           icon: '⌛' },
-  { key: 'taglia_piedi',   label: 'Taglia Piedi',  icon: '⚘' },
-  { key: 'esperienza',     label: 'Esperienza',    icon: '★' },
+  { key: 'tette',          label: 'Prosperosità',  icon: '✨' },
+  { key: 'colore_capelli', label: 'Acconciatura',  icon: '💇' },
+  { key: 'eta',            label: 'Maturità',      icon: '⌛' },
+  { key: 'taglia_piedi',   label: 'Portamento',    icon: '👠' },
+  { key: 'esperienza',     label: 'Esperienza',    icon: '⭐' },
 ]
 
 type RangesMap = Record<string, { min: number; max: number }>
@@ -126,10 +126,10 @@ function setStep(key: string, val: string) {
 async function salvaConfig() {
   saving.value = true
   try {
-    const db = getDb()
-    await setDoc(doc(db, 'config', 'stat_ranges'), ranges.value)
-    await setDoc(doc(db, 'config', 'upgrade_steps'), steps.value)
-    await setDoc(doc(db, 'config', 'pack_config'), { god_pack_prob: Number(godPackProb.value) })
+    // Via endpoint admin (Admin SDK): il client SDK dava "insufficient permission"
+    await saveConfigDoc('stat_ranges', JSON.parse(JSON.stringify(ranges.value)), false)
+    await saveConfigDoc('upgrade_steps', JSON.parse(JSON.stringify(steps.value)), false)
+    await saveConfigDoc('pack_config', { god_pack_prob: Number(godPackProb.value) }, false)
     emit('flash', 'Configurazione salvata!', '#06d6a0')
   } catch (e: unknown) {
     emit('flash', 'Errore salvataggio: ' + (e instanceof Error ? e.message : String(e)), '#ef4444')
