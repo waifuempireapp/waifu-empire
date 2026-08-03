@@ -75,6 +75,20 @@ function chiudiPesca() {
 
 // Sub-tab iniziale della Collezione (per navigazione da altri punti, es. mosse)
 const collezioneSubTab = ref('waifu')
+// Drop pre-filtrato in Collezione (dai banner progresso nella schermata pacchetti)
+const collezioneDropId = ref('')
+
+// Dal banner progresso di SbustaTab: chiude lo sbusto e apre la Collezione
+// filtrata per quell'espansione.
+function apriCollezioneEspansione(dropId: string) {
+  collezioneDropId.value = dropId
+  collezioneSubTab.value = 'waifu'
+  sbustaAperta.value = false
+  gameStore.setTab('collezione')
+}
+// Uscendo dalla Collezione azzera il filtro-espansione: il prossimo ingresso
+// "normale" (bottom nav, mosse) parte senza filtro appiccicato dal banner.
+watch(() => gameStore.tabAttiva, (t) => { if (t !== 'collezione') collezioneDropId.value = '' })
 const notificheAperte = ref(false)
 const tipiInfoAperto = ref(false)
 function onNotificheLette() {
@@ -546,6 +560,7 @@ function handleSetTab(t: string) {
       @notif="(t: string, c: string) => mostraNotif(t, c)"
       @update-profilo="(p: unknown) => gameStore.aggiornaProfilo(p as never)"
       @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)"
+      @apri-collezione-espansione="apriCollezioneEspansione"
       @indietro="sbustaAperta = false"
     />
 
@@ -602,6 +617,7 @@ function handleSetTab(t: string) {
         <LazyCollezioneTab :profilo="gameStore.profilo" :collezione="gameStore.collezione as any"
           :waifu-cat="gameStore.catalogoWaifu" :mosse-cat="gameStore.catalogoMosse" :stat-config="statConfig"
           :initial-sub-tab="collezioneSubTab"
+          :initial-drop-id="collezioneDropId"
           @notif="(t: string, c: string) => mostraNotif(t, c)"
           @update-profilo="(p: unknown) => gameStore.setProfilo(p as never)"
           @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)" />

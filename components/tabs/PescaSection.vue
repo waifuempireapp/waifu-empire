@@ -411,6 +411,12 @@ async function confermaScelta() {
 
     // Prepara carte nell'ordine mostrato all'utente
     const shuffledCards = shuffledOrder.value.map(i => (selectedPack.value!.cards ?? [])[i])
+
+    // Missione "sblocca 1 leggendaria": la carta pescata (scelta dall'utente) è
+    // shuffledCards[selectedCardIndex]. Se è una waifu leggendaria → traccia.
+    const pescata: any = shuffledCards[selectedCardIndex.value!]
+    if (pescata?.tipo === 'waifu' && (pescata?.rarita === 'leggendario' || pescata?.rarita === 'immersivo'))
+      missionsStore.trackAction('legendary', 1)
     const isNewArr = shuffledCards.map((card: CartaPack) => {
       if (!props.collezione) return false
       if (card.tipo === 'waifu')  return !props.collezione.waifu?.[card.id]

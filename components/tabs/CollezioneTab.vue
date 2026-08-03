@@ -61,12 +61,14 @@ const props = withDefaults(defineProps<{
   poseCat?:         any[]
   profilo:          Record<string, any> | null
   initialSubTab?:   string
+  initialDropId?:   string
   statConfig?:      { ranges: Record<string, any>; steps: Record<string, any> }
 }>(), {
   mosseCat:       () => [],
   outfitCat:      () => [],
   poseCat:        () => [],
   initialSubTab:  'waifu',
+  initialDropId:  '',
   statConfig:     () => ({ ranges: STAT_RANGES_DEFAULT, steps: UPGRADE_STEPS_DEFAULT }),
 })
 
@@ -114,7 +116,14 @@ const filtroRaritaPose   = ref('tutte')
 
 // ── Drop attivi ───────────────────────────────────────────────
 const drops       = ref<any[]>([])
-const filtroDropId = ref<string[]>([])        // multi: vuoto = tutti
+const filtroDropId = ref<string[]>(props.initialDropId ? [props.initialDropId] : [])  // multi: vuoto = tutti
+
+// Apertura dalla schermata pacchetti (banner progresso): pre-filtra per espansione.
+// Watch così anche rientri successivi con lo stesso overlay applicano il filtro.
+watch(() => props.initialDropId, (id) => {
+  filtroDropId.value = id ? [id] : []
+  tabSub.value = 'waifu'
+})
 
 // ── Paginazione ───────────────────────────────────────────────
 // Waifu: NIENTE paginazione — tutte le carte sono renderizzate subito
