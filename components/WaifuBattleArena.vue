@@ -365,11 +365,25 @@ const EFFECT_CHIP_COLORS: Record<ActiveEffect['kind'], string> = {
 function effectChipStyle(e: ActiveEffect) {
   const col = EFFECT_CHIP_COLORS[e.kind] ?? '#9aa4b5'
   return {
-    fontFamily: 'var(--ff-label)', fontSize: '10px', fontWeight: 800, lineHeight: 1,
-    letterSpacing: '0.04em', textTransform: 'uppercase' as const,
-    color: col, background: `${col}1f`, border: `1px solid ${col}66`,
-    borderRadius: '999px', padding: '3px 7px', whiteSpace: 'nowrap' as const,
+    display: 'inline-flex' as const, alignItems: 'center', gap: '4px',
+    fontFamily: 'var(--ff-label)', fontSize: '11px', fontWeight: 800, lineHeight: 1.15,
+    letterSpacing: '0.03em', textTransform: 'uppercase' as const,
+    color: col, background: `${col}26`, border: `1px solid ${col}80`,
+    borderRadius: '999px', padding: '4px 9px',
+    // Wrap consentito: gli effetti spiegano cosa subisce la waifu senza troncare.
+    whiteSpace: 'normal' as const, maxWidth: '150px',
+    boxShadow: `0 0 10px ${col}40`,
   }
+}
+// Icona esplicita per tipo di effetto: chiarisce a colpo d'occhio cosa sta subendo
+// la waifu (🔥 brucia/danno nel tempo, 🛡️ scudo, 💫 stordita, 🔺 potenziata, 🔻 indebolita).
+const EFFECT_ICONS: Record<ActiveEffect['kind'], string> = {
+  dot: '🔥', control: '💫', debuff: '🔻', buff: '🔺', shield: '🛡️',
+}
+function effectIcon(e: ActiveEffect) {
+  // Danno-nel-tempo positivo (rigenerazione) usa 💚 invece di 🔥
+  if (e.kind === 'buff' && (e.dannoPerTurno ?? 0) > 0) return '💚'
+  return EFFECT_ICONS[e.kind] ?? '✨'
 }
 
 // Raid boss: nemico unico con HP potenziati (flag impostato da RoundViewer)
@@ -1687,7 +1701,8 @@ const mvp = computed(() => {
               <!-- Effetti di stato: SOPRA alla card, impilati uno sopra l'altro -->
               <div v-if="fieldEffects.enemy.length" :style="{ order:-1, display:'flex', flexDirection:'column', alignItems:'flex-start', gap:'4px', marginBottom:'6px' }">
                 <span v-for="e in fieldEffects.enemy" :key="e.status" :style="effectChipStyle(e)">
-                  {{ e.label }} · {{ e.turni }}t
+                  <span style="font-size:12px;line-height:1;">{{ effectIcon(e) }}</span>
+                  <span>{{ e.label }}<template v-if="(e.dannoPerTurno ?? 0) > 0"> −{{ e.dannoPerTurno }}/t</template> · {{ e.turni }}t</span>
                 </span>
               </div>
             </template>
@@ -1879,7 +1894,8 @@ const mvp = computed(() => {
               <!-- Effetti di stato: SOPRA alla card, impilati uno sopra l'altro -->
               <div v-if="fieldEffects.player.length" :style="{ order:-1, display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'4px', marginBottom:'6px' }">
                 <span v-for="e in fieldEffects.player" :key="e.status" :style="effectChipStyle(e)">
-                  {{ e.label }} · {{ e.turni }}t
+                  <span style="font-size:12px;line-height:1;">{{ effectIcon(e) }}</span>
+                  <span>{{ e.label }}<template v-if="(e.dannoPerTurno ?? 0) > 0"> −{{ e.dannoPerTurno }}/t</template> · {{ e.turni }}t</span>
                 </span>
               </div>
             </template>
@@ -1894,7 +1910,7 @@ const mvp = computed(() => {
            alto (fase cambio) scrolla internamente (overflowY:auto). -->
       <div :style="{
         flexShrink:0,
-        height: isMobile ? 'clamp(158px, 22dvh, 196px)' : 'clamp(170px, 24dvh, 210px)',
+        height: isMobile ? 'clamp(176px, 25dvh, 216px)' : 'clamp(188px, 27dvh, 230px)',
         display:'flex', flexDirection:'column',
         background:'var(--theme-surface)',
         borderTop:'1px solid var(--theme-border)',
@@ -2333,7 +2349,10 @@ const mvp = computed(() => {
           </div>
           <!-- Effetti attivi -->
           <div v-if="fieldEffects[waifuDetail.side].length" style="display:flex;flex-wrap:wrap;gap:6px;">
-            <span v-for="(e, ei) in fieldEffects[waifuDetail.side]" :key="ei" :style="effectChipStyle(e)">{{ e.label }}</span>
+            <span v-for="(e, ei) in fieldEffects[waifuDetail.side]" :key="ei" :style="effectChipStyle(e)">
+              <span style="font-size:12px;line-height:1;">{{ effectIcon(e) }}</span>
+              <span>{{ e.label }}<template v-if="(e.dannoPerTurno ?? 0) > 0"> −{{ e.dannoPerTurno }}/t</template></span>
+            </span>
           </div>
           <div v-else style="font-family:var(--ff-body);font-size:12px;color:var(--theme-text-3);">Nessun effetto attivo</div>
         </div>
