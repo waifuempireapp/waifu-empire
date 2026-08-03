@@ -85,17 +85,10 @@ const videoError = ref(false)
 const battleOpen = ref(false)
 const slotPicker = ref<string | null>(null)
 
-// Scroll: quando una sezione è espansa e si scrolla, rimpicciolisce la carta
-// per lasciare spazio alle mosse.
-const scrolled = ref(false)
-function onDetailScroll(e: Event) {
-  const st = (e.target as HTMLElement).scrollTop
-  // Isteresi: senza, il rimpicciolimento della carta cambiava il layout e lo
-  // scroll rimbalzava su/giù in loop. Entra nello shrink oltre 60px, esce sotto 8.
-  if (!scrolled.value && st > 60) scrolled.value = true
-  else if (scrolled.value && st < 8) scrolled.value = false
-}
-const cardShrink = computed(() => scrolled.value && (statsOpen.value || battleOpen.value))
+// La carta si rimpicciolisce quando UNA o ENTRAMBE le sezioni sotto (Statistiche
+// e Mosse) sono aperte, per lasciare loro spazio; con entrambe chiuse resta
+// grande. Nessun legame con lo scroll (comportamento rimosso su richiesta).
+const cardShrink = computed(() => statsOpen.value || battleOpen.value)
 const cardOuter = ref<HTMLElement | null>(null)
 const cardOuterH = ref(0)
 function measureCard() {
@@ -358,7 +351,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Sezioni: flex:1, touch-action:pan-y permette solo scroll verticale qui -->
-      <div style="flex:1;overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;" @scroll.passive="onDetailScroll">
+      <div style="flex:1;overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;">
         <div style="max-width:440px;margin:0 auto;padding:8px 16px calc(24px + env(safe-area-inset-bottom));">
 
           <!-- Bottone GUARDA IMMERSIVA (solo carte con video) -->
