@@ -1,6 +1,7 @@
 // GET /api/raid/current — restituisce il raid attivo o crea un nuovo raid (lazy)
 import { defineEventHandler, getHeader, createError } from 'h3';
 import { getAdminAuth, getAdminDb } from '../../utils/firebaseAdmin';
+import { getCurrentRaid } from '../../utils/raidCurrent';
 
 async function getRaidConfig(): Promise<Record<string, any>> {
   const adminDb = getAdminDb();
@@ -70,57 +71,35 @@ export default defineEventHandler(async (event) => {
 
     const adminDb = getAdminDb();
     const cfg = await getRaidConfig();
-    const now = new Date();
 
-    // Cerca raid attivo
-    const snap = await adminDb.collection('raid_events')
-      .where('status', '==', 'active')
-      .limit(1)
-      .get();
+    // Raid del ciclo corrente (attivo o completato entro la finestra 6h)
+    const cur = await getCurrentRaid(adminDb);
 
-    let raid: Record<string, any> | null = null;
-    if (!snap.empty) {
-      const doc = snap.docs[0];
-      raid = { id: doc.id, ...doc.data() };
-      // Converti Timestamp → ISO string per il client
+    // C'è un raid nel ciclo corrente e NON è scaduto → è quello da mostrare.
+    // Se è 'completed' (boss condiviso abbattuto) il client mostra il countdown
+    // al prossimo; se è 'active' resta combattibile.
+    if (cur && !cur.expired) {
+      const raid: Record<string, any> = { id: cur.id, ...cur.data };
       if ((raid.endsAt as any)?.toDate) raid.endsAt = (raid.endsAt as any).toDate().toISOString();
       if ((raid.startedAt as any)?.toDate) raid.startedAt = (raid.startedAt as any).toDate().toISOString();
-
-      // Controlla scadenza
-      const endsMs: number = new Date(raid.endsAt as string).getTime();
-      if (endsMs < now.getTime()) {
-        await adminDb.doc(`raid_events/${doc.id}`).update({ status: 'failed' });
-        // Marca la fine del raid → parte il cooldown per il successivo (#13B)
-        await adminDb.doc('config/raid_state').set({ lastEndedAt: now }, { merge: true });
-        raid = null; // raid scaduto
-      }
+      return {
+        raid,
+        // "vinto" collettivo = boss condiviso abbattuto (vale per tutti)
+        userWon: cur.completed,
+        nextRaidAt: cur.completed ? (raid.endsAt as string) : null,
+      };
     }
 
-    if (!raid) {
-      // Il raid è SEMPRE presente: cooldown 0 di default → appena uno finisce
-      // ne parte subito un altro. (Config può reintrodurre un cooldown.)
-      const COOLDOWN_MS = ((cfg.cooldownMinutes as number) ?? 0) * 60 * 1000;
-      if (COOLDOWN_MS > 0) {
-        const stateSnap = await adminDb.doc('config/raid_state').get();
-        const lastEndedAt: number = stateSnap.exists
-          ? ((stateSnap.data() as any)?.lastEndedAt?.toMillis?.() ?? 0)
-          : 0;
-        const nextAllowed = lastEndedAt + COOLDOWN_MS;
-        if (lastEndedAt > 0 && now.getTime() < nextAllowed) {
-          // Ancora in cooldown: nessun raid attivo, il client mostra il countdown
-          return { raid: null, userWon: false, nextRaidAt: new Date(nextAllowed).toISOString() };
-        }
-      }
-
-      const newRaid = await createNewRaid(cfg);
-      raid = { id: newRaid.eventId, ...newRaid };
-      if (raid.endsAt instanceof Date) raid.endsAt = (raid.endsAt as Date).toISOString();
-      if (raid.startedAt instanceof Date) raid.startedAt = (raid.startedAt as Date).toISOString();
+    // Ciclo scaduto (o nessun raid): chiudi l'eventuale raid attivo scaduto e crea
+    // il raid del nuovo ciclo → il raid è SEMPRE presente.
+    if (cur && cur.expired && cur.data.status === 'active') {
+      await adminDb.doc(`raid_events/${cur.id}`).update({ status: 'failed' });
     }
 
-    // Il raid COLLETTIVO è una gara di danni condivisa: l'utente può combatterlo
-    // ripetutamente finché il boss è vivo (più danni → chance di 2 copie). Nessun
-    // lock per-utente qui (quello vale solo per il raid privato).
+    const newRaid = await createNewRaid(cfg);
+    const raid: Record<string, any> = { id: newRaid.eventId, ...newRaid };
+    if (raid.endsAt instanceof Date) raid.endsAt = (raid.endsAt as Date).toISOString();
+    if (raid.startedAt instanceof Date) raid.startedAt = (raid.startedAt as Date).toISOString();
     return { raid, userWon: false, nextRaidAt: null };
   } catch (e: any) {
     console.error('[raid/current]', e);

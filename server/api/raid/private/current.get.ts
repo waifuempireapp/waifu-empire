@@ -4,6 +4,7 @@
 // Ritorna { raid, won } dove won = boss privato già abbattuto.
 import { defineEventHandler, getHeader, createError } from 'h3';
 import { getAdminAuth, getAdminDb } from '../../../utils/firebaseAdmin';
+import { getCurrentRaid } from '../../../utils/raidCurrent';
 
 export default defineEventHandler(async (event) => {
   try {
@@ -14,14 +15,13 @@ export default defineEventHandler(async (event) => {
 
     const adminDb = getAdminDb();
 
-    // Raid collettivo attivo → fonte di waifu, eventId e scadenza condivisi
-    const snap = await adminDb.collection('raid_events')
-      .where('status', '==', 'active').limit(1).get();
-    if (snap.empty) return { raid: null, won: false };
+    // Raid del ciclo corrente (attivo O completato entro la finestra) → il privato
+    // resta disponibile anche quando il boss collettivo è già stato abbattuto.
+    const cur = await getCurrentRaid(adminDb);
+    if (!cur || cur.expired) return { raid: null, won: false };
 
-    const collDoc = snap.docs[0];
-    const coll = collDoc.data() as any;
-    const eventId: string = collDoc.id;
+    const coll = cur.data;
+    const eventId: string = cur.id;
 
     const cfgSnap = await adminDb.doc('config/raid_config').get();
     const cfg = cfgSnap.exists ? cfgSnap.data() as any : {};

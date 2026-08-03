@@ -181,7 +181,15 @@ function formatCountdown(endsAt: string): string {
 function startRaidCountdown() {
   if (raidCountdownTimer) clearInterval(raidCountdownTimer)
   if (!raidInfo.value?.endsAt) { raidCountdown.value = ''; return }
-  const tick = () => { raidCountdown.value = formatCountdown(raidInfo.value.endsAt) }
+  let rolledOver = false
+  const tick = () => {
+    raidCountdown.value = formatCountdown(raidInfo.value.endsAt)
+    // Fine ciclo (6h): ricarica una volta → compare il nuovo raid (o si sblocca)
+    if (!rolledOver && new Date(raidInfo.value.endsAt).getTime() <= Date.now()) {
+      rolledOver = true
+      loadRaidInfo(); loadRaidPrivateInfo()
+    }
+  }
   tick()
   raidCountdownTimer = setInterval(tick, 1000)
 }
@@ -686,9 +694,12 @@ onMounted(async () => {
     loadPendingOffers(),
     loadActiveMission(),
     loadRaidInfo(),
-    loadRaidPrivateInfo(),
     loadActiveAttacks(),
   ])
+  // Il raid privato si aggancia al raid collettivo attivo: caricalo DOPO
+  // loadRaidInfo (che lo crea se manca), così non c'è race e il privato è
+  // sempre disponibile come il collettivo.
+  loadRaidPrivateInfo()
   // Aggiorna periodicamente lo stato "sotto attacco" (i lock scadono a 20 min)
   attacksTimer = setInterval(loadActiveAttacks, 30000)
   // Tick per il badge "claim disponibile" sul bottone Classifica (ogni 30s basta)
@@ -885,13 +896,13 @@ async function onTerritoryClick(territoryId: string) {
 
         <!-- ═══ RAID COLLETTIVO (condiviso con tutti) ═══ -->
         <div
-          @click="(raidError || raidWon) ? undefined : (showRaidPanel = true)"
+          @click="raidError ? undefined : (showRaidPanel = true)"
           :style="{
             flex: 1, minWidth: 0, padding: '10px', position: 'relative',
             background: raidError ? 'rgba(239,68,68,0.06)' : 'var(--theme-surface)',
             border: raidError ? '1.5px solid rgba(239,68,68,0.3)' : '1.5px solid rgba(236,72,153,0.45)',
             borderRadius: '16px',
-            cursor: (raidError || raidWon) ? 'default' : 'pointer',
+            cursor: raidError ? 'default' : 'pointer',
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
             boxShadow: '0 4px 16px var(--theme-shadow)', opacity: raidError ? 0.85 : 1,
           }"

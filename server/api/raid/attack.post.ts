@@ -4,6 +4,7 @@
 import { defineEventHandler, getHeader, readBody, createError } from 'h3';
 import { getAdminAuth, getAdminDb } from '../../utils/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getCurrentRaid } from '../../utils/raidCurrent';
 
 export default defineEventHandler(async (event) => {
   try {
@@ -18,14 +19,13 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, message: 'Team offensivo non valido (richiede da 5 a 8 waifu)' });
     }
 
-    // Carica raid attivo
-    const raidSnap = await adminDb.collection('raid_events')
-      .where('status', '==', 'active').limit(1).get();
-    if (raidSnap.empty) throw createError({ statusCode: 404, message: 'Nessun raid attivo' });
+    // Raid del ciclo corrente (attivo o completato entro la finestra): il boss
+    // deck serve sia al collettivo sia al privato (stessa waifu).
+    const cur = await getCurrentRaid(adminDb);
+    if (!cur || cur.expired) throw createError({ statusCode: 404, message: 'Nessun raid attivo' });
 
-    const raidDoc = raidSnap.docs[0];
-    const raid = raidDoc.data() as any;
-    const eventId: string = raidDoc.id;
+    const raid = cur.data;
+    const eventId: string = cur.id;
 
     // BOSS FIGHT: il difensore è UNA SOLA waifu boss (la protagonista del raid)
     // con HP potenziati ×10 (vedi raidBossHpMult, applicato lato client).

@@ -4,6 +4,7 @@
 // (idempotente via cardGranted).
 import { defineEventHandler, getHeader, readBody, createError } from 'h3';
 import { getAdminAuth, getAdminDb } from '../../../utils/firebaseAdmin';
+import { getCurrentRaid } from '../../../utils/raidCurrent';
 
 export default defineEventHandler(async (event) => {
   const token = getHeader(event, 'Authorization')?.replace('Bearer ', '');
@@ -20,14 +21,13 @@ export default defineEventHandler(async (event) => {
   const adminDb = getAdminDb();
   const { won } = await readBody(event);
 
-  // Raid collettivo attivo → eventId + waifu condivisi
-  const snap = await adminDb.collection('raid_events')
-    .where('status', '==', 'active').limit(1).get();
-  if (snap.empty) throw createError({ statusCode: 404, message: 'Nessun raid attivo' });
+  // Raid del ciclo corrente (attivo o completato entro la finestra): il privato
+  // ha i suoi HP, quindi resta combattibile anche se il collettivo è completato.
+  const cur = await getCurrentRaid(adminDb);
+  if (!cur || cur.expired) throw createError({ statusCode: 404, message: 'Nessun raid attivo' });
 
-  const collDoc = snap.docs[0];
-  const coll = collDoc.data() as any;
-  const eventId: string = collDoc.id;
+  const coll = cur.data;
+  const eventId: string = cur.id;
 
   const cfgSnap = await adminDb.doc('config/raid_config').get();
   const cfg = cfgSnap.exists ? cfgSnap.data() as any : {};
