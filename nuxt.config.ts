@@ -52,6 +52,8 @@ export default defineNuxtConfig({
       { code: 'ja', name: '日本語',    file: 'ja.json' },
     ],
     langDir: 'locales/',
+    // Config vue-i18n con fallbackLocale: 'en' (evita chiavi grezze su es/de/ja)
+    vueI18n: './i18n.config.ts',
     // Disabilita rilevamento automatico lingua browser (bloccava il redirect auth)
     detectBrowserLanguage: false,
   },

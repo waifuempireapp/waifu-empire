@@ -233,7 +233,9 @@
     "territory_conquered": "Territory Conquered!",
     "conquering": "Conquering…",
     "owner": "Owner: {name}",
-    "victory_rewards_title": "Victory rewards!"
+    "victory_rewards_title": "Victory rewards!",
+    "raid_tap_hint": "Tap to attack the Raid",
+    "raid_unavailable": "Raid unavailable"
   },
   "collection": {
     "title": "Collection",
@@ -491,7 +493,8 @@
     "item_swap_pass": "Swap Pass",
     "item_swap_pass_desc": "Unlimited votes in Waifu Swap",
     "item_challenge_pack_10": "Challenge Pack ×10",
-    "item_challenge_pack_10_desc": "+10 challenge packs"
+    "item_challenge_pack_10_desc": "+10 challenge packs",
+    "owned": "Owned"
   },
   "modal": {
     "insufficient_kisses_title": "INSUFFICIENT KISSES",
