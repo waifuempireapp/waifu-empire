@@ -4,6 +4,10 @@ import { getAdminAuth, getAdminDb } from '../../../utils/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 
 const MAX_CLAIM_HOURS = 24; // cap: massimo 24h accumulate
+// Payout ridotto: 1 Kiss ogni 4 territori posseduti per ora (prima era 1 ogni 2).
+// Il floor viene applicato SOLO alla fine così anche chi ha pochi territori
+// accumula col tempo (niente 0 fisso per pixelCount piccoli).
+const TERRITORIES_PER_KISS = 4;
 
 export default defineEventHandler(async (event) => {
   try {
@@ -27,9 +31,8 @@ export default defineEventHandler(async (event) => {
     const now = Date.now();
     const lastClaim: number = userData.lastKissesClaimAt?.toMillis?.() ?? (now - 3600000);
     const hoursElapsed: number = Math.min((now - lastClaim) / 3600000, MAX_CLAIM_HOURS);
-    // Rate: 1 Kisses ogni 2 territori per ora (floor division)
-    const effectiveRate: number = Math.floor(pixelCount / 2) * passiveRate;
-    const earned: number = Math.floor(effectiveRate * hoursElapsed);
+    // Rate: pixelCount/4 * passiveRate per ora, floor SOLO sul totale finale.
+    const earned: number = Math.floor((pixelCount / TERRITORIES_PER_KISS) * passiveRate * hoursElapsed);
 
     if (earned <= 0) return { earned: 0, message: 'Nulla da raccogliere' };
 

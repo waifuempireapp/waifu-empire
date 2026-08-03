@@ -112,6 +112,23 @@ let missionCountdownTimer: ReturnType<typeof setInterval> | null = null
 const missionDetailCountdown = ref('')
 let missionDetailCountdownTimer: ReturnType<typeof setInterval> | null = null
 
+// ------------------------------------------------------------------ Badge "claim disponibile" sul bottone Classifica
+// Mostra un indicatore se ci sono Kisses passivi da riscuotere. Stessa formula
+// del server (pixelCount/4 * rate/ora, cap 24h). localPassiveClaimAt viene
+// aggiornato quando l'utente riscuote dalla MiniLeaderboard (@claim-at), così il
+// badge sparisce subito senza aspettare un refresh del profilo.
+const passiveNow          = ref(Date.now())
+const localPassiveClaimAt = ref<number | null>(null)
+let   passiveTimer: ReturnType<typeof setInterval> | null = null
+const passiveClaimable = computed<number>(() => {
+  const pixels = (props.profilo?.pixelCount as number) ?? 0
+  if (pixels <= 0) return 0
+  const serverTs  = (props.profilo?.lastKissesClaimAt as any)?.toMillis?.() ?? (passiveNow.value - 3_600_000)
+  const lastClaim = Math.max(serverTs, localPassiveClaimAt.value ?? 0)
+  const capped    = Math.min((passiveNow.value - lastClaim) / 1000, 24 * 3600)
+  return Math.floor(capped * (pixels / 4) / 3600)
+})
+
 // ------------------------------------------------------------------ Computed
 
 // Set di chiavi x_y dei pixel della missione corrente (overlay fucsia)
@@ -614,6 +631,8 @@ onMounted(async () => {
   ])
   // Aggiorna periodicamente lo stato "sotto attacco" (i lock scadono a 20 min)
   attacksTimer = setInterval(loadActiveAttacks, 30000)
+  // Tick per il badge "claim disponibile" sul bottone Classifica (ogni 30s basta)
+  passiveTimer = setInterval(() => { passiveNow.value = Date.now() }, 30000)
   // Mostra il tutorial SOLO la prima volta (poi mai più; riapribile dal bottone)
   if (!props.profilo?.tutorialMapSeen) showTutorial.value = true
 })
@@ -623,6 +642,7 @@ onUnmounted(() => {
   if (missionCountdownTimer)      clearInterval(missionCountdownTimer)
   if (missionDetailCountdownTimer) clearInterval(missionDetailCountdownTimer)
   if (attacksTimer)               clearInterval(attacksTimer)
+  if (passiveTimer)               clearInterval(passiveTimer)
 })
 
 // ------------------------------------------------------------------ Mappa immagine: territori
@@ -770,7 +790,7 @@ async function onTerritoryClick(territoryId: string) {
           <button
             @click="showLeaderboard = true"
             :style="{
-              flexShrink: 0,
+              position: 'relative', flexShrink: 0,
               width: '38px', height: '38px',
               background: 'var(--theme-accent-pink)', border: 'none',
               borderRadius: '50%', fontSize: '20px', lineHeight: 1,
@@ -779,6 +799,8 @@ async function onTerritoryClick(territoryId: string) {
             }"
           >
             <Trophy :size="18" stroke-width="2" style="color:#fff;" />
+            <!-- Badge: Kisses passivi da riscuotere -->
+            <span v-if="passiveClaimable > 0" :style="{ position: 'absolute', top: '-5px', right: '-5px', background: '#f5c560', color: '#3a2a05', minWidth: '17px', height: '17px', padding: '0 4px', borderRadius: '9px', display: 'grid', placeItems: 'center', fontFamily: FF.mono, fontSize: '9px', fontWeight: 800, border: '1.5px solid var(--theme-surface)' }">{{ passiveClaimable > 999 ? '999+' : passiveClaimable }}</span>
           </button>
           <!-- Bottone offerte: rotondo, solo emoji 💌 -->
           <button
@@ -915,7 +937,7 @@ async function onTerritoryClick(territoryId: string) {
         :user-uid="authStore.user?.uid ?? ''"
         :profilo="profilo as any"
         @kisses-update="(k) => emit('updateProfilo', { kisses: (profilo?.kisses as number ?? 0) + k })"
-        @claim-at="() => {}"
+        @claim-at="(ts) => { localPassiveClaimAt = ts }"
         @close="showLeaderboard = false"
       />
 

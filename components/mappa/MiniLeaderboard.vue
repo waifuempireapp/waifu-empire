@@ -26,7 +26,7 @@
               <span v-if="lastEarned" :style="{ color:C.ok, fontSize:'13px' }"> ✓ +{{ lastEarned }} riscossi!</span>
             </div>
             <div :style="passiveSubStyle">
-              +{{ effectivePixels * rate }}/ora · prossima tra {{ formatTime(nextIn) }}
+              +{{ ratePerHour }}/ora · prossima tra {{ formatTime(nextIn) }}
             </div>
           </div>
         </div>
@@ -100,10 +100,20 @@ const FF = {
   body:    "var(--ff-body, 'DM Sans', sans-serif)",
 }
 
+// Formula IDENTICA al server (server/api/mappa/passive-kisses/claim.post.ts):
+// pixelCount/4 * rate per ora, cap 24h, floor solo sul totale → niente più
+// disparità tra il valore mostrato e quello realmente accreditato.
+const MAX_CLAIM_HOURS     = 24
+const TERRITORIES_PER_KISS = 4
 const pixelCount      = computed(() => props.profilo?.pixelCount ?? 0)
 const rate            = computed(() => props.passiveRate ?? 1)
-const effectivePixels = computed(() => Math.floor(pixelCount.value / 2))
-const ratePerSec      = computed(() => (effectivePixels.value * rate.value) / 3600)
+const ratePerSec      = computed(() => (pixelCount.value / TERRITORIES_PER_KISS) * rate.value / 3600)
+// Rate/ora per il testo informativo (1 decimale se < 10, così i piccoli holder
+// non vedono "0/ora" pur accumulando col tempo)
+const ratePerHour     = computed(() => {
+  const v = (pixelCount.value / TERRITORIES_PER_KISS) * rate.value
+  return v < 10 ? Math.round(v * 10) / 10 : Math.round(v)
+})
 
 const leaders = computed(() => {
   const counts: Record<string, number> = {}
@@ -147,9 +157,12 @@ const startTick = () => {
   const tick = () => {
     const serverTs  = props.profilo?.lastKissesClaimAt?.toMillis?.() ?? (Date.now() - 3_600_000)
     const lastClaim = localLastClaimAt.value ? Math.max(serverTs, localLastClaimAt.value) : serverTs
-    const elapsed   = (Date.now() - lastClaim) / 1000
-    accumulated.value = Math.floor(elapsed * ratePerSec.value)
-    nextIn.value = Math.max(0, Math.round(3600 - (elapsed % 3600)))
+    const rawElapsed    = (Date.now() - lastClaim) / 1000
+    // Cap identico al server: oltre 24h non si accumula più (era la causa del 3250 vs 135)
+    const cappedElapsed = Math.min(rawElapsed, MAX_CLAIM_HOURS * 3600)
+    accumulated.value = Math.floor(cappedElapsed * ratePerSec.value)
+    // Il countdown al prossimo Kiss resta sul tempo reale (non sul capped)
+    nextIn.value = Math.max(0, Math.round(3600 - (rawElapsed % 3600)))
   }
   tick()
   interval = setInterval(tick, 1000)
