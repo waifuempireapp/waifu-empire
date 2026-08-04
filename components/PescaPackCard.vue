@@ -205,26 +205,29 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
       </div>
     </div>
 
-    <!-- ── CARTE: 2 centrate sopra + 3 sotto ── -->
-    <div style="padding:16px 12px 20px;">
+    <!-- ── CARTE: 2 centrate sopra + 3 sotto (compatte: preview più piccola così
+         nel feed entrano più pescate) ── -->
+    <div style="padding:8px 12px 12px;">
+      <div style="max-width:230px; margin:0 auto;">
 
-      <!-- riga 1: 2 carte, ciascuna larga 1/3, centrate -->
-      <div style="display:flex; justify-content:center; gap:12px; margin-bottom:12px;">
-        <template v-for="carta in cards.slice(0,2)" :key="carta.id">
-          <!-- slot card: larghezza fissa = 1/3 container -->
-          <div style="width:calc((100% - 24px) / 3); flex-shrink:0;">
+        <!-- riga 1: 2 carte, ciascuna larga 1/3, centrate -->
+        <div style="display:flex; justify-content:center; gap:8px; margin-bottom:8px;">
+          <template v-for="carta in cards.slice(0,2)" :key="carta.id">
+            <!-- slot card: larghezza fissa = 1/3 container -->
+            <div style="width:calc((100% - 16px) / 3); flex-shrink:0;">
+              <PescaCardTile :carta="carta" :copie="getCopie(carta)" :is-new="isNew(carta)" />
+            </div>
+          </template>
+        </div>
+
+        <!-- riga 2: 3 carte grid, stessa larghezza 1fr -->
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;">
+          <template v-for="carta in cards.slice(2,5)" :key="carta.id">
             <PescaCardTile :carta="carta" :copie="getCopie(carta)" :is-new="isNew(carta)" />
-          </div>
-        </template>
-      </div>
+          </template>
+        </div>
 
-      <!-- riga 2: 3 carte grid, stessa larghezza 1fr -->
-      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;">
-        <template v-for="carta in cards.slice(2,5)" :key="carta.id">
-          <PescaCardTile :carta="carta" :copie="getCopie(carta)" :is-new="isNew(carta)" />
-        </template>
       </div>
-
     </div>
     <!-- Bottone Drop eliminato — il click sulla card avviene nel componente padre -->
 
