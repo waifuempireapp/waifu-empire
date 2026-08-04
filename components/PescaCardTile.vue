@@ -52,9 +52,6 @@ const src = computed(() => props.carta.immagine ? (ikUrl(props.carta.immagine, '
         <span style="font-family:var(--ff-display);font-size:30px;font-weight:700;color:var(--theme-text-3);opacity:.55;">?</span>
       </div>
 
-      <!-- Marcatore MOSSA (alto-sx) -->
-      <div v-if="isMossa" :style="{ position:'absolute', top:'4px', left:'4px', zIndex:4, background: typeMeta?.accent ?? '#8b6fd8', color:'#fff', borderRadius:'999px', padding:'1px 6px', fontFamily:`var(--ff-label,'Saira Condensed',sans-serif)`, fontSize:'8px', fontWeight:900, letterSpacing:'0.12em' }">⚔ MOSSA</div>
-
       <!-- MOSSA: pannello info nei 36% inferiori.
            BG scuro theme-independent IDENTICO a MoveCard/PescaMoveOverlay: il
            pannello descrizione deve avere lo stesso colore in TUTTE le viste. -->
