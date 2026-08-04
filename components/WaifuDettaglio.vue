@@ -6,6 +6,7 @@
 <script setup lang="ts">
 import { Heart, X, ChevronDown, ChevronUp, Swords, Plus, Trash2, Sparkles } from 'lucide-vue-next'
 import { canLearnMove, weakType } from '~/utils/moves'
+import { moves as MOVES_DATA } from '~/assets/moves/moves-data'
 import MoveCard from '~/components/moves/MoveCard.vue'
 import { resolveWaifuStat, AESTHETIC_STAT_CAPS, type AestheticStatKey } from '~/utils/waifuStats'
 import { computeHp, computeSpeed, computeCritChance } from '~/utils/battleEngine'
@@ -191,6 +192,81 @@ const pickerMosse = computed(() => {
     .filter(Boolean)
     .sort((a, b) => (b!.ok ? 1 : 0) - (a!.ok ? 1 : 0)) as { id: string; dati: any; cat: any; ok: boolean; motivo?: string }[]
 })
+
+// ── Filtri + ordinamento del picker mosse ────────────────────────────────────
+// Gli effetti strutturati (kind) vengono da moves-data mappati per id.
+const EFFECT_BY_ID: Record<string, any> = Object.fromEntries(
+  (MOVES_DATA as any[]).map(m => [m.id, m.effect]),
+)
+function moveEffKind(cat: any): string | null {
+  return (cat?.effect?.kind ?? EFFECT_BY_ID[cat?.id]?.kind) ?? null
+}
+// Attacco = effetti sul nemico (danno nel tempo/controllo/debuff); Difesa = su di sé (buff/scudo)
+const ATTACK_KINDS  = ['dot', 'control', 'debuff']
+const DEFENSE_KINDS = ['buff', 'shield']
+const hasSideEffect = (cat: any) => !!moveEffKind(cat)
+const isAttackEff   = (cat: any) => { const k = moveEffKind(cat); return !!k && ATTACK_KINDS.includes(k) }
+const isDefenseEff  = (cat: any) => { const k = moveEffKind(cat); return !!k && DEFENSE_KINDS.includes(k) }
+
+const pickerSort    = ref<'potenza_desc' | 'potenza_asc' | 'tipo' | 'nome'>('potenza_desc')
+const pickerFTipo   = ref<string>('')                                   // '' = tutti i tipi
+const pickerFEff    = ref<'tutti' | 'collaterali' | 'attacco' | 'difesa'>('tutti')
+// Reset dei filtri ogni volta che si (ri)apre il picker
+watch(slotPicker, () => { pickerFTipo.value = ''; pickerFEff.value = 'tutti'; pickerSort.value = 'potenza_desc' })
+
+const pickerTipi = computed<string[]>(() => {
+  const s = new Set<string>()
+  for (const m of pickerMosse.value) { const tp = m.cat.tipologia ?? m.cat.tipo; if (tp) s.add(String(tp)) }
+  return [...s].sort()
+})
+
+const pickerCompatibili = computed(() => {
+  let out = pickerMosse.value.filter(m => m.ok)
+  if (pickerFTipo.value) out = out.filter(m => String(m.cat.tipologia ?? m.cat.tipo) === pickerFTipo.value)
+  if (pickerFEff.value === 'collaterali') out = out.filter(m => hasSideEffect(m.cat))
+  else if (pickerFEff.value === 'attacco') out = out.filter(m => isAttackEff(m.cat))
+  else if (pickerFEff.value === 'difesa')  out = out.filter(m => isDefenseEff(m.cat))
+  const arr = [...out]
+  const nome = (m: any) => String(m.cat.nome ?? m.cat.name ?? '')
+  const tipo = (m: any) => String(m.cat.tipologia ?? m.cat.tipo ?? '')
+  if (pickerSort.value === 'potenza_desc') arr.sort((a, b) => (b.cat.danno ?? 0) - (a.cat.danno ?? 0))
+  else if (pickerSort.value === 'potenza_asc') arr.sort((a, b) => (a.cat.danno ?? 0) - (b.cat.danno ?? 0))
+  else if (pickerSort.value === 'tipo') arr.sort((a, b) => tipo(a).localeCompare(tipo(b)) || (b.cat.danno ?? 0) - (a.cat.danno ?? 0))
+  else if (pickerSort.value === 'nome') arr.sort((a, b) => nome(a).localeCompare(nome(b)))
+  return arr
+})
+
+// Stili chip filtri/ordinamento
+const chipBase: Record<string, string | number> = {
+  fontFamily: FF.label, fontSize: '11px', fontWeight: 800, letterSpacing: '0.05em',
+  textTransform: 'uppercase', padding: '6px 11px', borderRadius: '999px',
+  cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, border: '1px solid var(--theme-border)',
+}
+function chipStyle(active: boolean, color = C.violet): Record<string, string | number> {
+  return {
+    ...chipBase,
+    background: active ? color : 'var(--theme-surface-2)',
+    color: active ? '#fff' : 'var(--theme-text-2)',
+    borderColor: active ? color : 'var(--theme-border)',
+  }
+}
+const chipLabelStyle: Record<string, string> = {
+  fontFamily: FF.label, fontSize: '10px', fontWeight: '700', letterSpacing: '0.12em',
+  textTransform: 'uppercase', color: 'var(--theme-text-3)', alignSelf: 'center',
+  flexShrink: '0', paddingRight: '2px',
+}
+const SORT_OPTS = [
+  { k: 'potenza_desc', l: 'Potenza ↓' },
+  { k: 'potenza_asc',  l: 'Potenza ↑' },
+  { k: 'tipo',         l: 'Tipo' },
+  { k: 'nome',         l: 'Nome' },
+] as const
+const EFF_OPTS = [
+  { k: 'tutti',       l: 'Tutti' },
+  { k: 'collaterali', l: 'Con effetti' },
+  { k: 'attacco',     l: 'Attacco' },
+  { k: 'difesa',      l: 'Difesa' },
+] as const
 
 // Valore statistica: reale dal catalogo se presente, altrimenti GENERATO in modo
 // deterministico dall'id (identico a quello mostrato sulla carta — utils/waifuStats).
@@ -503,20 +579,43 @@ onUnmounted(() => {
 
           <!-- Compatibili -->
           <template v-if="pickerMosse.filter(m => m.ok).length">
-            <div :style="{ fontFamily: FF.label, fontSize: '12px', color: C.ok, letterSpacing: '0.22em', textTransform: 'uppercase', marginBottom: '10px', fontWeight: 700 }">
-              ✓ COMPATIBILI ({{ pickerMosse.filter(m => m.ok).length }})
+
+            <!-- Barra filtri + ordinamento -->
+            <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px;">
+              <div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;">
+                <span :style="chipLabelStyle">Ordina</span>
+                <button v-for="s in SORT_OPTS" :key="s.k" @click="pickerSort = s.k" :style="chipStyle(pickerSort === s.k)">{{ s.l }}</button>
+              </div>
+              <div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;">
+                <span :style="chipLabelStyle">Effetti</span>
+                <button v-for="e in EFF_OPTS" :key="e.k" @click="pickerFEff = e.k" :style="chipStyle(pickerFEff === e.k)">{{ e.l }}</button>
+              </div>
+              <div v-if="pickerTipi.length > 1" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;">
+                <span :style="chipLabelStyle">Tipo</span>
+                <button @click="pickerFTipo = ''" :style="chipStyle(pickerFTipo === '')">Tutti</button>
+                <button v-for="tp in pickerTipi" :key="tp" @click="pickerFTipo = pickerFTipo === tp ? '' : tp" :style="chipStyle(pickerFTipo === tp, tc(tp).border)">{{ typeLabel(tp) || tp }}</button>
+              </div>
             </div>
-            <!-- #20: carta mossa COMPLETA (effetti visibili) — click per assegnare -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+
+            <div :style="{ fontFamily: FF.label, fontSize: '12px', color: C.ok, letterSpacing: '0.22em', textTransform: 'uppercase', marginBottom: '10px', fontWeight: 700 }">
+              ✓ COMPATIBILI ({{ pickerCompatibili.length }})
+            </div>
+            <!-- #20: carta mossa COMPLETA (effetti visibili) — click per assegnare.
+                 3 colonne (card più piccole, più spazio) come la collezione. -->
+            <div v-if="pickerCompatibili.length" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 12px;margin-bottom:20px;">
               <div
-                v-for="m in pickerMosse.filter(x => x.ok)"
+                v-for="m in pickerCompatibili"
                 :key="m.id"
                 @click="emit('assegnaMossa', slotPicker!, m.id); slotPicker = null"
                 style="cursor:pointer;position:relative;"
               >
                 <MoveCard :move="toMoveCard(m.cat) as any" :owned="true" />
-                <div :style="{ position:'absolute', bottom:'4px', left:'50%', transform:'translateX(-50%)', background: tc(m.cat.tipologia ?? m.cat.tipo).border, color:'#fff', borderRadius:'999px', padding:'2px 10px', fontFamily: FF.label, fontSize:'9px', fontWeight:800, letterSpacing:'0.1em', pointerEvents:'none', boxShadow:'0 2px 8px rgba(0,0,0,0.4)' }">+ SLOT {{ slotPicker }}</div>
+                <div :style="{ position:'absolute', bottom:'4px', left:'50%', transform:'translateX(-50%)', background: tc(m.cat.tipologia ?? m.cat.tipo).border, color:'#fff', borderRadius:'999px', padding:'2px 8px', fontFamily: FF.label, fontSize:'8px', fontWeight:800, letterSpacing:'0.08em', pointerEvents:'none', boxShadow:'0 2px 8px rgba(0,0,0,0.4)' }">+ {{ slotPicker }}</div>
               </div>
+            </div>
+            <!-- Nessun risultato coi filtri correnti -->
+            <div v-else :style="{ fontFamily: FF.body, fontSize: '12px', color: 'var(--theme-text-3)', textAlign: 'center', padding: '18px 0 24px' }">
+              Nessuna mossa con questi filtri
             </div>
           </template>
 
