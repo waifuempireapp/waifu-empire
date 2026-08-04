@@ -434,12 +434,15 @@ const mostraLevelUp = computed(() =>
 )
 
 // ── LevelUp Panel state ───────────────────────────────────────
+// Tutte le statistiche sono su scala 1–10 (Prosperosità/Portamento/Maturità/
+// Acconciatura/Esperienza). Prima avevano range legacy (tette max 7, età 16-5000…)
+// che bloccavano il "+" ben prima del 10.
 const STAT_DEFS = [
-  { key: 'tette',          label: 'Tette',        min: 1,  max: 7    },
-  { key: 'taglia_piedi',   label: 'Taglia Piedi', min: 34, max: 45   },
-  { key: 'eta',            label: 'Età',          min: 16, max: 5000 },
-  { key: 'colore_capelli', label: 'Capelli',      min: 1,  max: 10   },
-  { key: 'esperienza',     label: 'Esperienza',   min: 0,  max: 5000 },
+  { key: 'tette',          label: 'Prosperosità', min: 1, max: 10 },
+  { key: 'taglia_piedi',   label: 'Portamento',   min: 1, max: 10 },
+  { key: 'eta',            label: 'Maturità',     min: 1, max: 10 },
+  { key: 'colore_capelli', label: 'Acconciatura', min: 1, max: 10 },
+  { key: 'esperienza',     label: 'Esperienza',   min: 1, max: 10 },
 ]
 
 const lvlPreview = ref<{ stat: string; delta: number } | null>(null)

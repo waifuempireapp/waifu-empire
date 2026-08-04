@@ -6,12 +6,14 @@ import { getAdminAuth, getAdminDb } from '../../../utils/firebaseAdmin';
 import { computeAndSaveStats } from '../../../utils/gameLogic';
 import { resolveWaifuStats } from '../../../../utils/waifuStats';
 
+// Tutte le statistiche sono su scala 1–10. (Prima avevano range legacy che
+// impedivano di salire: tette max 7, eta min 16, taglia_piedi min 34…)
 const STAT_RANGES: Record<string, { min: number; max: number }> = {
-  tette:          { min: 1,  max: 7    },
-  colore_capelli: { min: 1,  max: 10   },
-  eta:            { min: 16, max: 5000 },
-  taglia_piedi:   { min: 34, max: 45   },
-  esperienza:     { min: 0,  max: 5000 },
+  tette:          { min: 1, max: 10 },
+  colore_capelli: { min: 1, max: 10 },
+  eta:            { min: 1, max: 10 },
+  taglia_piedi:   { min: 1, max: 10 },
+  esperienza:     { min: 1, max: 10 },
 };
 const VALID_STATS = Object.keys(STAT_RANGES);
 
