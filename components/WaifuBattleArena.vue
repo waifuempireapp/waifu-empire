@@ -1273,8 +1273,8 @@ function cancelVoluntarySwap() {
   message.value = 'Scegli la tua mossa!'
 }
 
-const sEnemy  = computed(() => isMobile.value ? 145 : 185)
-const sPlayer = computed(() => isMobile.value ? 162 : 210)
+const sEnemy  = computed(() => isMobile.value ? 118 : 150)
+const sPlayer = computed(() => isMobile.value ? 130 : 168)
 
 const playerGlow = computed(() => isChoose.value && !isAnim.value
   ? '0 12px 40px rgba(0,0,0,.75), 0 0 0 2px #00C8FF, 0 0 22px rgba(0,200,255,.38)'
@@ -1844,34 +1844,34 @@ const mvp = computed(() => {
             </template>
           </div>
 
-          <!-- HUD giocatore: bottom-right -->
-          <div :style="{ position:'absolute', right:'12px', bottom:'10px', zIndex:3, display:'flex', flexDirection:'column', alignItems:'flex-end' }">
+          <!-- HUD giocatore: TOP-right (dentro la sezione utente), compatto -->
+          <div :style="{ position:'absolute', right:'12px', top:'12px', zIndex:3, display:'flex', flexDirection:'column', alignItems:'flex-end' }">
             <template v-if="player">
               <div :style="{
                 background:'var(--theme-surface)', backdropFilter:'blur(12px)',
-                border:'1.5px solid rgba(0,180,255,.5)', borderRadius:'14px',
-                padding:'10px 14px', maxWidth:'60%', minWidth:'165px',
+                border:'1.5px solid rgba(0,180,255,.5)', borderRadius:'12px',
+                padding:'7px 11px', maxWidth:'54%', minWidth:'128px',
                 boxShadow:'0 2px 12px var(--theme-shadow)', position:'relative',
               }">
                 <!-- Chip tipo — top-right assoluto, full-round -->
                 <div :style="{
-                  position:'absolute', top:'-12px', right:'-8px',
+                  position:'absolute', top:'-10px', right:'-6px',
                   background:'var(--theme-surface)',
                   color:(_TYPE_COLORS_UI[player.type] ?? { border:'#555' }).border,
                   border:`1.5px solid ${(_TYPE_COLORS_UI[player.type] ?? { border:'#555' }).border}`,
-                  borderRadius:'999px', padding:'3px 12px',
-                  fontSize:'13px', fontWeight:800,
+                  borderRadius:'999px', padding:'2px 9px',
+                  fontSize:'10px', fontWeight:800,
                   fontFamily:'var(--ff-label)',
                   backdropFilter:'blur(4px)',
                 }">{{ player.type }}</div>
 
-                <!-- Nome grande -->
-                <div :style="{ fontFamily:'var(--ff-display)',fontSize:'18px',fontWeight:900,color:'var(--theme-text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginBottom:'6px',paddingRight:'4px' }">
+                <!-- Nome -->
+                <div :style="{ fontFamily:'var(--ff-display)',fontSize:'13px',fontWeight:900,color:'var(--theme-text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginBottom:'5px',paddingRight:'4px' }">
                   {{ player.name }}
                 </div>
 
                 <!-- HpBar -->
-                <div :style="{ height:'8px',background:'var(--theme-border)',borderRadius:'8px',overflow:'hidden',marginBottom:'5px' }">
+                <div :style="{ height:'6px',background:'var(--theme-border)',borderRadius:'8px',overflow:'hidden',marginBottom:'4px' }">
                   <div
                     :class="player.maxHp > 0 && (player.hp / player.maxHp) * 100 <= 25 && player.hp > 0 ? 'wba-hp-crit' : ''"
                     :style="{
@@ -1883,16 +1883,16 @@ const mvp = computed(() => {
                   />
                 </div>
 
-                <!-- HP bottom-left, grande -->
+                <!-- HP -->
                 <div :style="{ display:'flex',alignItems:'baseline',gap:'2px' }">
-                  <span :style="{ fontFamily:'var(--ff-label)',fontSize:'20px',fontWeight:900,color:c.teal }">{{ Math.max(0, player.hp) }}</span>
-                  <span :style="{ fontFamily:'var(--ff-label)',fontSize:'13px',color:'var(--theme-text-3)' }">/{{ player.maxHp }}</span>
+                  <span :style="{ fontFamily:'var(--ff-label)',fontSize:'15px',fontWeight:900,color:c.teal }">{{ Math.max(0, player.hp) }}</span>
+                  <span :style="{ fontFamily:'var(--ff-label)',fontSize:'11px',color:'var(--theme-text-3)' }">/{{ player.maxHp }}</span>
                 </div>
 
               </div>
 
-              <!-- Effetti di stato: SOPRA alla card, impilati uno sopra l'altro -->
-              <div v-if="fieldEffects.player.length" :style="{ order:-1, display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'4px', marginBottom:'6px' }">
+              <!-- Effetti di stato: SOTTO all'HUD (che ora è in alto) -->
+              <div v-if="fieldEffects.player.length" :style="{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'4px', marginTop:'6px' }">
                 <span v-for="e in fieldEffects.player" :key="e.status" :style="effectChipStyle(e)">
                   <span style="font-size:12px;line-height:1;">{{ effectIcon(e) }}</span>
                   <span>{{ e.label }}<template v-if="(e.dannoPerTurno ?? 0) > 0"> −{{ e.dannoPerTurno }}/t</template> · {{ e.turni }}t</span>

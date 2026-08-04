@@ -167,6 +167,9 @@ function oneClickMosse() {
 // #20: mappa la mossa del catalogo Firestore nel formato atteso da MoveCard
 // (che usa name/type/damage/effectDescription) così si vede la CARTA COMPLETA.
 function toMoveCard(cat: any) {
+  // Descrizione effetto: preferisci il testo meccanico completo da moves-data
+  // (spesso il catalogo Firestore non ha né effect né abilita → card senza scritte)
+  const md = MDATA_BY_ID[cat.id]
   return {
     id: cat.id,
     name: cat.nome ?? cat.name ?? '',
@@ -174,8 +177,8 @@ function toMoveCard(cat: any) {
     damage: cat.danno ?? 0,
     rarita: cat.rarita,
     isUltimate: cat.isUltimate === true,
-    effectDescription: cat.effect?.label ?? cat.abilita ?? '',
-    additionalEffectLabel: cat.effect?.label ?? '',
+    effectDescription: cat.abilita || md?.effectDescription || cat.effect?.label || md?.effect?.label || '',
+    additionalEffectLabel: md?.additionalEffectLabel ?? cat.effect?.label ?? md?.effect?.label ?? '',
     imageFileName: cat.imageFileName ?? '', imageUrl: cat.imageUrl ?? '',
   }
 }
@@ -197,6 +200,10 @@ const pickerMosse = computed(() => {
 // Gli effetti strutturati (kind) vengono da moves-data mappati per id.
 const EFFECT_BY_ID: Record<string, any> = Object.fromEntries(
   (MOVES_DATA as any[]).map(m => [m.id, m.effect]),
+)
+// Mappa completa moves-data per id (per descrizioni/etichette effetto nel picker)
+const MDATA_BY_ID: Record<string, any> = Object.fromEntries(
+  (MOVES_DATA as any[]).map(m => [m.id, m]),
 )
 function moveEffKind(cat: any): string | null {
   return (cat?.effect?.kind ?? EFFECT_BY_ID[cat?.id]?.kind) ?? null

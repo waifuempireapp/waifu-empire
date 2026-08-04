@@ -167,10 +167,13 @@ async function salvaTeam() {
     .map(([, t]: [string, any]) => (t.nome as string).toLowerCase())
   let nome = teamNome.value.trim()
   if (!nome) {
+    // Nome di default incrementale e univoco: "Team Waifu 01", "Team Waifu 02"…
     let n = Object.keys(teams.value).length + 1
-    while (nomiEsistenti.includes(`team ${n}`.toLowerCase())) n++
-    nome = `Team ${n}`
+    const gen = (i: number) => `Team Waifu ${String(i).padStart(2, '0')}`
+    while (nomiEsistenti.includes(gen(n).toLowerCase())) n++
+    nome = gen(n)
   } else if (nomiEsistenti.includes(nome.toLowerCase())) {
+    // Nome inserito già esistente → popup di errore (chiedi di cambiarlo)
     emit('notif', t('collection.team_name_exists'), '#ff3d3d'); return
   }
   const nuova = JSON.parse(JSON.stringify(props.collezione))
@@ -1098,17 +1101,16 @@ function apriNegozio() {
               textTransform: 'uppercase', fontWeight: 700,
             }">Seleziona waifu (5–8) ({{ teamWaifu.length }}/8)</div>
 
-            <!-- Barra filtri team — stesso stile della collezione -->
+            <!-- Barra filtri team — IDENTICA alla collezione -->
             <div style="margin-bottom:14px;">
-              <!-- Search + contatore -->
-              <div :style="{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', borderRadius: '12px', padding: '9px 14px', marginBottom: '10px' }">
-                <Search :size="15" stroke-width="1.5" style="color:var(--theme-text-3);flex-shrink:0;" />
-                <input
-                  v-model="teamFiltroNome"
-                  :placeholder="$t('collection.search_placeholder')"
-                  :style="{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: 'var(--theme-text)', fontSize: '13px', fontFamily: FF.body, padding: 0 }"
-                />
-                <span :style="{ fontFamily: FF.mono, fontSize: '13px', color: 'var(--theme-text-3)', fontWeight: 700, flexShrink: 0 }">{{ teamListaFiltrata.length }}</span>
+              <!-- Ricerca (stessi override !important della collezione: senza, si vedeva il bordo/sfondo globale degli input) -->
+              <div :style="{ display:'flex', alignItems:'center', gap:'8px', padding:'10px 14px', background:'var(--theme-bg-secondary)', border:'1px solid var(--theme-border)', borderRadius:'12px', marginBottom:'10px', boxShadow:'0 2px 8px var(--theme-shadow)' }">
+                <Search :size="14" stroke-width="1.5" :style="{ color:'var(--theme-text-3)', flexShrink:0 }" />
+                <input v-model="teamFiltroNome" :placeholder="$t('collection.search_placeholder')"
+                  :style="{ flex:1, background:'transparent !important', border:'none !important', boxShadow:'none !important', outline:'none', color:'var(--theme-text)', fontSize:'14px', fontFamily:FF.body, padding:'6px 0' }" />
+                <button v-if="teamFiltroNome" @click="teamFiltroNome = ''"
+                  :style="{ background:'none', border:'none', cursor:'pointer', color:'var(--theme-text-3)', padding:0, display:'flex', alignItems:'center' }"><X :size="14" stroke-width="1.5" /></button>
+                <span :style="{ fontFamily:FF.mono, fontSize:'13px', color:'var(--theme-text-3)', fontWeight:700, flexShrink:0 }">{{ teamListaFiltrata.length }}</span>
               </div>
               <!-- FILTRA + ORDINA (stessi DropdownSelect della collezione) -->
               <div style="display:flex;gap:8px;align-items:flex-end;">
@@ -1123,14 +1125,14 @@ function apriNegozio() {
               </div>
             </div>
 
-            <!-- Griglia selezione waifu team — 3 colonne come la collezione -->
-            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 12px;padding-bottom:88px;">
+            <!-- Griglia selezione waifu team — stessa griglia della collezione (3 col + zoom cw-fit) -->
+            <div class="waifu-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 12px;padding-bottom:88px;">
               <div
                 v-for="w in teamListaFiltrata.slice(0, teamVisibili)"
                 :key="w.id"
                 @click="teamToggleWaifu(w.id)"
                 :style="{
-                  cursor: 'pointer',
+                  cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center',
                   opacity: teamWaifu.includes(w.id) ? 1 : w.mosse_ok === false ? 0.4 : 0.72,
                   transition: 'transform 0.15s, filter 0.15s, opacity 0.15s',
                   transform: teamWaifu.includes(w.id) ? 'scale(1.03)' : 'scale(1)',
@@ -1138,15 +1140,17 @@ function apriNegozio() {
                   position: 'relative',
                 }"
               >
-                <CartaWaifu :waifu="w" dimensione="piccola" :evidenziato="teamWaifu.includes(w.id)" />
-                <div
-                  v-if="w.mosse_ok === false && !teamWaifu.includes(w.id)"
-                  :style="{
-                    position: 'absolute', bottom: '4px', left: 0, right: 0, textAlign: 'center',
-                    background: 'rgba(0,0,0,0.8)', padding: '3px 4px',
-                    fontFamily: FF.label, fontSize: '7px', color: '#f5a623', letterSpacing: '0.1em',
-                  }"
-                >{{ $t('collection.moves_count', { n: 0 }) }}</div>
+                <div class="cw-fit" style="flex-shrink:0;position:relative;">
+                  <CartaWaifu :waifu="w" :minimal="true" dimensione="piccola" :evidenziato="teamWaifu.includes(w.id)" />
+                  <div
+                    v-if="w.mosse_ok === false && !teamWaifu.includes(w.id)"
+                    :style="{
+                      position: 'absolute', bottom: '6px', left: 0, right: 0, textAlign: 'center',
+                      background: 'rgba(0,0,0,0.8)', padding: '3px 4px',
+                      fontFamily: FF.label, fontSize: '9px', color: '#f5a623', letterSpacing: '0.1em',
+                    }"
+                  >{{ $t('collection.moves_count', { n: 0 }) }}</div>
+                </div>
               </div>
             </div>
 
@@ -1237,13 +1241,13 @@ function apriNegozio() {
                   <BtnDecorato variant="danger" size="sm" @click="eliminaTeam(id)"><X :size="12" stroke-width="1.5" /></BtnDecorato>
                 </div>
               </div>
-              <div :style="{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }">
+              <div class="waifu-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 12px;">
                 <template v-for="wId in (team as any).waifu" :key="wId">
-                  <CartaWaifu
-                    v-if="waifuCat.find(x => x.id === wId)"
-                    :waifu="waifuCat.find(x => x.id === wId)!"
-                    dimensione="piccola"
-                  />
+                  <div v-if="waifuCat.find(x => x.id === wId)" :style="{ display:'flex', justifyContent:'center' }">
+                    <div class="cw-fit" style="flex-shrink:0;">
+                      <CartaWaifu :waifu="waifuCat.find(x => x.id === wId)!" :minimal="true" dimensione="piccola" />
+                    </div>
+                  </div>
                 </template>
               </div>
             </PannelloOrnato>

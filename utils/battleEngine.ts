@@ -185,10 +185,10 @@ const _RARITY_CFG: Record<string, {
   ability: boolean | number
 }> = {
   comune:      { hp:[200,320], spd:[20,55],  power:[15,30],  crit:[25,45],  critP:[5,10],  pp:[7,8], ability:false },
-  raro:        { hp:[280,420], spd:[30,65],  power:[28,50],  crit:[40,65],  critP:[8,15],  pp:[5,7], ability:false },
-  epico:       { hp:[340,500], spd:[40,75],  power:[45,75],  crit:[60,90],  critP:[12,20], pp:[4,5], ability:0.3  },
-  leggendario: { hp:[420,580], spd:[50,88],  power:[70,100], crit:[85,120], critP:[18,28], pp:[2,3], ability:true },
-  immersivo:   { hp:[480,600], spd:[60,100], power:[95,130], crit:[110,160],critP:[25,35], pp:[2,2], ability:true },
+  raro:        { hp:[280,420], spd:[30,65],  power:[28,50],  crit:[40,65],  critP:[8,15],  pp:[6,8], ability:false },
+  epico:       { hp:[340,500], spd:[40,75],  power:[45,75],  crit:[60,90],  critP:[12,20], pp:[5,7], ability:0.3  },
+  leggendario: { hp:[420,580], spd:[50,88],  power:[70,100], crit:[85,120], critP:[18,28], pp:[5,6], ability:true },
+  immersivo:   { hp:[480,600], spd:[60,100], power:[95,130], crit:[110,160],critP:[25,35], pp:[5,6], ability:true },
 }
 
 function _rnd(min: number, max: number): number {
@@ -347,9 +347,10 @@ export function initBattleWaifu(waifuFirestore: Record<string, unknown>, collect
           name: m.nome, type: m.tipologia, rarity: m.rarita,
           power: danno, damage_crit: damageCrit,
           critPower: damageCrit, critPowerPerc: 0,
-          // #23: mosse "definitive" (isUltimate) = 1 sola volta a partita → 1 PP
-          pp: m.isUltimate ? 1 : Math.round((m.pp as number) ?? 5),
-          maxPp: m.isUltimate ? 1 : Math.round((m.pp as number) ?? 5),
+          // Minimo 5 PP per OGNI mossa (anche le definitive): sotto i 5 erano
+          // di fatto inutilizzabili.
+          pp: Math.max(5, Math.round((m.pp as number) ?? 5)),
+          maxPp: Math.max(5, Math.round((m.pp as number) ?? 5)),
           ability: (m.abilita as string) ?? null,
           effectiveness: 'Normal',
           // Effetto: dal doc Firestore se presente, altrimenti dal catalogo locale
@@ -385,7 +386,7 @@ export function initBattleWaifu(waifuFirestore: Record<string, unknown>, collect
       const damageCrit = ((m.damage_crit != null && m.damage_crit < 5)
         ? Math.round(danno * 1.25)
         : Math.round(m.damage_crit ?? m.critPower ?? danno * 1.25))
-      return { ...m, power: danno, damage_crit: damageCrit, pp: Math.round(m.maxPp ?? m.pp ?? 5), maxPp: Math.round(m.maxPp ?? m.pp ?? 5) }
+      return { ...m, power: danno, damage_crit: damageCrit, pp: Math.max(5, Math.round(m.maxPp ?? m.pp ?? 5)), maxPp: Math.max(5, Math.round(m.maxPp ?? m.pp ?? 5)) }
     }),
     isKO:   false,
     rarita,
@@ -413,9 +414,9 @@ export function generateCPUMovesFromCatalog(waifuRarita: string, mosseCat: Recor
       id: (m.id as string) ?? undefined,
       name: (m.nome as string) ?? 'Mossa', type: (m.tipologia as string) ?? 'Arcana', rarity: (m.rarita as string) ?? 'comune',
       power: danno, damage_crit: damageCrit, critPower: damageCrit, critPowerPerc: 0,
-      // #23: mosse definitive (isUltimate) = 1 PP (usabili una sola volta)
-      pp: m.isUltimate ? 1 : Math.round((m.pp as number) ?? 5),
-      maxPp: m.isUltimate ? 1 : Math.round((m.pp as number) ?? 5),
+      // Minimo 5 PP per ogni mossa (anche le definitive)
+      pp: Math.max(5, Math.round((m.pp as number) ?? 5)),
+      maxPp: Math.max(5, Math.round((m.pp as number) ?? 5)),
       ability: (m.abilita as string) ?? null,
       // Senza questo la CPU non applicava MAI gli effetti delle mosse
       effect: ((m.effect as MoveEffect | undefined) ?? _EFFECT_BY_MOVE_ID[(m.id as string) ?? '']) ?? null,

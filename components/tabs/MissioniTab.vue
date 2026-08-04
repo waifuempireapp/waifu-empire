@@ -165,7 +165,9 @@ async function claimMapMission(missionId: string) {
     })) as { success?: boolean; kisses?: number }
     const k = data.kisses ?? 0
     if (k > 0) emit('updateProfilo', { kisses: Number(props.profilo?.kisses ?? 0) + k })
-    emit('notif', k > 0 ? `+${k} Kisses!` : 'Nessun territorio posseduto: 0 Kisses', k > 0 ? C.gold : 'var(--theme-text-3)')
+    // Le missioni a 0 territori non vengono più mostrate (filtro server): qui
+    // mostriamo solo il messaggio positivo; niente più errore "0 Kisses".
+    if (k > 0) emit('notif', `+${k} Kisses!`, C.gold)
     unclaimedMapMissions.value = unclaimedMapMissions.value.filter(m => m.missionId !== missionId)
   } catch (e: any) {
     emit('notif', e?.data?.message ?? 'Errore riscossione', C.err)
@@ -536,10 +538,10 @@ onUnmounted(() => {
             style="padding:14px 16px;border-radius:14px;"
             :style="{ background:'linear-gradient(135deg,rgba(245,197,96,0.10) 0%,var(--theme-surface) 65%)', border:'1px solid rgba(245,197,96,0.28)' }">
             <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:800, color:C.gold, marginBottom:'5px' }">
-              Missione completata · {{ (um.mission.pixels || []).length }} territori
+              Missione completata · {{ um.pixelsOwned ?? 0 }}/{{ (um.mission.pixels || []).length }} territori tuoi
             </div>
             <div :style="{ fontFamily:FF.body, fontSize:'12px', color:'var(--theme-text-3)', marginBottom:'12px', lineHeight:1.4 }">
-              +{{ um.mission.rewardPerPixel ?? 100 }} Kisses per ogni territorio che possedevi alla scadenza
+              Ricompensa: <strong :style="{ color: C.gold }">+{{ um.reward ?? ((um.pixelsOwned ?? 0) * (um.mission.rewardPerPixel ?? 100)) }} Kisses</strong>
             </div>
             <button
               @click="claimMapMission(um.missionId)"
