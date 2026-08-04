@@ -45,6 +45,17 @@ const relazioni = TYPES.map((t, i) => ({
   poco:   TYPES[(i + 4) % 5],
   nulla:  TYPES[(i + 3) % 5],
 }))
+
+// Fasce di difficoltà delle battaglie sulla mappa (per prossimità alle isole
+// maggiori Aurelia · Inferna · Valerion): più ci si avvicina, più è difficile.
+const DIFFICOLTA = [
+  { k: 'Molto facile', c: '#58e0a3', d: 'Lontano dalle isole maggiori' },
+  { k: 'Facile',       c: '#8bd17c', d: '' },
+  { k: 'Normale',      c: '#f5c560', d: '' },
+  { k: 'Difficile',    c: '#f5a623', d: '' },
+  { k: 'Estremo',      c: '#ff7a5c', d: 'Vicino alle isole maggiori' },
+  { k: 'Esperto',      c: '#ff5b6c', d: 'Dentro Aurelia · Inferna · Valerion' },
+]
 </script>
 
 <template>
@@ -113,6 +124,19 @@ const relazioni = TYPES.map((t, i) => ({
             </div>
           </div>
         </div>
+
+        <!-- ── Difficoltà territori (per prossimità alle isole maggiori) ── -->
+        <div class="tipi-section-title" :style="{ fontFamily: FF.label }">Difficoltà territori</div>
+        <div :style="{ fontFamily: FF.body, fontSize: '11.5px', color: 'var(--theme-text-3)', lineHeight: 1.5, marginBottom: '10px' }">
+          Più ti avvicini alle 3 isole maggiori (Aurelia, Inferna, Valerion) più le battaglie diventano difficili. Lontano dalle coste sono molto facili.
+        </div>
+        <div class="tipi-diff">
+          <div v-for="d in DIFFICOLTA" :key="d.k" class="tipi-diff-row">
+            <span class="tipi-diff-dot" :style="{ background: d.c }" />
+            <span class="tipi-diff-k" :style="{ fontFamily: FF.label, color: d.c }">{{ d.k }}</span>
+            <span class="tipi-diff-d" :style="{ fontFamily: FF.body }">{{ d.d }}</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -169,6 +193,16 @@ const relazioni = TYPES.map((t, i) => ({
 .tipi-mult b { font-size: 15px; line-height: 1.1; }
 .tipi-mult em { font-style: normal; font-size: 10px; font-weight: 700; line-height: 1.2; }
 .tipi-mult span { color: var(--theme-text-3); font-size: 9.5px; font-weight: 500; }
+
+.tipi-diff { display: flex; flex-direction: column; gap: 6px; }
+.tipi-diff-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--theme-surface-2); border: 1px solid var(--theme-border);
+  border-radius: 10px; padding: 8px 12px;
+}
+.tipi-diff-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.tipi-diff-k { font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; flex-shrink: 0; min-width: 96px; }
+.tipi-diff-d { font-size: 11px; color: var(--theme-text-3); line-height: 1.3; }
 
 .tipi-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .tipi-card {
