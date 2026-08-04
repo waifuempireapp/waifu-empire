@@ -618,7 +618,7 @@ onUnmounted(() => {
           <div
             style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:0; padding:4px 14px; overflow:visible; position:relative; perspective:1200px;">
             <div
-              style="width:100%; max-width:360px; display:flex; flex-direction:column; gap:10px; transform-style:preserve-3d;">
+              style="width:100%; max-width:300px; display:flex; flex-direction:column; gap:10px; transform-style:preserve-3d;">
 
               <div style="display:flex; justify-content:center; gap:10px; transform-style:preserve-3d;">
                 <div
@@ -672,7 +672,7 @@ onUnmounted(() => {
               </div>
 
               <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; transform-style:preserve-3d;">
-                  <div :style="cardStyle(2)"
+                  <div :style="{ ...cardStyle(2), width: 'calc((100% - 20px) / 3)', flexShrink: '0' }"
                     @click="onPickCard(2)">
                   <template v-if="pickPhase === 'reveal'">
                     <img v-if="selectedPack.cards?.[2]?.immagine" @error="ikImgFallback" :src="ikUrl(selectedPack.cards[2].immagine, 'card') ?? ''" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
@@ -695,7 +695,7 @@ onUnmounted(() => {
                     </div>
                   </template>
                   </div>
-                  <div :style="cardStyle(3)"
+                  <div :style="{ ...cardStyle(3), width: 'calc((100% - 20px) / 3)', flexShrink: '0' }"
                     @click="onPickCard(3)">
                   <template v-if="pickPhase === 'reveal'">
                     <img v-if="selectedPack.cards?.[3]?.immagine" @error="ikImgFallback" :src="ikUrl(selectedPack.cards[3].immagine, 'card') ?? ''" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
@@ -718,7 +718,7 @@ onUnmounted(() => {
                     </div>
                   </template>
                   </div>
-                  <div :style="cardStyle(4)"
+                  <div :style="{ ...cardStyle(4), width: 'calc((100% - 20px) / 3)', flexShrink: '0' }"
                     @click="onPickCard(4)">
                   <template v-if="pickPhase === 'reveal'">
                     <img v-if="selectedPack.cards?.[4]?.immagine" @error="ikImgFallback" :src="ikUrl(selectedPack.cards[4].immagine, 'card') ?? ''" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;"/>
