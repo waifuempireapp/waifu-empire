@@ -27,20 +27,22 @@ const FF = {
 
 // ── Schema rarità per deck CPU basato sulla difficoltà ───────────────────────
 const CPU_DECK_PLAN: Record<string, { combat: string[]; filler: string[] }> = {
+  veryeasy:{ combat: ['comune','comune','comune'],              filler: ['comune','comune']     },
   easy:    { combat: ['comune','comune','raro'],                filler: ['raro','comune']       },
   medium:  { combat: ['raro','raro','raro'],                    filler: ['raro','comune']       },
   hard:    { combat: ['epico','epico','leggendario'],           filler: ['raro','epico']        },
-  extreme: { combat: ['leggendario','leggendario','immersivo'], filler: ['epico','leggendario'] },
-  expert:  { combat: ['leggendario','leggendario','immersivo'], filler: ['epico','leggendario'] },
+  extreme: { combat: ['leggendario','leggendario','immersivo'], filler: ['epico','leggendario']       },
+  expert:  { combat: ['immersivo','immersivo','immersivo'],     filler: ['leggendario','leggendario'] },
 }
 
 // ── Moltiplicatori stat CPU per difficoltà ───────────────────────────────────
 const DIFFICULTY_STAT_MULT: Record<string, { hp: number; speed: number; crit: number }> = {
+  veryeasy:{ hp: 0.8,  speed: 0.9,  crit: 0.95 },
   easy:    { hp: 1.0,  speed: 1.0,  crit: 1.0  },
   medium:  { hp: 1.25, speed: 1.15, crit: 1.05 },
   hard:    { hp: 1.65, speed: 1.40, crit: 1.10 },
   extreme: { hp: 2.0,  speed: 1.65, crit: 1.15 },
-  expert:  { hp: 2.0,  speed: 1.65, crit: 1.15 },
+  expert:  { hp: 2.4,  speed: 1.85, crit: 1.22 },
 }
 
 function applyDifficultyScaling(team: any[], mult: { hp: number; speed: number; crit: number }) {

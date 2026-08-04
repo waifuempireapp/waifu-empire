@@ -1724,8 +1724,8 @@ const mvp = computed(() => {
           </div>
 
 
-          <!-- Sprite nemico: centrato verticalmente, a destra -->
-          <div :style="{ position:'absolute', right:'14px', top:'50%', transform:'translateY(-50%)', zIndex:2 }">
+          <!-- Sprite nemico: centrato verticalmente, a destra. Durante l'attacco (zoom) sale sopra a tutto. -->
+          <div :style="{ position:'absolute', right:'14px', top:'50%', transform:'translateY(-50%)', zIndex: eAnim === 'wba-aL' ? 60 : 2 }">
             <!-- WaifuSprite inline nemico -->
             <template v-if="enemy">
               <div :class="eAnim" @click="openWaifuDetail(enemy, 'enemy')" :style="{
@@ -1813,8 +1813,8 @@ const mvp = computed(() => {
             pointerEvents:'none',zIndex:1,
           }"/>
 
-          <!-- Sprite giocatore: centrato verticalmente, a sinistra -->
-          <div :style="{ position:'absolute', left:'14px', top:'50%', transform:'translateY(-50%)', zIndex:2 }">
+          <!-- Sprite giocatore: centrato verticalmente, a sinistra. Durante l'attacco (zoom) sale sopra a tutto. -->
+          <div :style="{ position:'absolute', left:'14px', top:'50%', transform:'translateY(-50%)', zIndex: pAnim === 'wba-aR' ? 60 : 2 }">
             <template v-if="player">
               <div :class="pAnim" @click="openWaifuDetail(player, 'player')" :style="{
                 width:`${sPlayer}px`, aspectRatio:'2/3', borderRadius:'12px', overflow:'hidden',

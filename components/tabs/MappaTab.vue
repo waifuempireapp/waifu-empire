@@ -389,10 +389,8 @@ const checkAdjacentToEmpire = (tx: number, ty: number): boolean => {
 const handlePixelSelect = async (pixel: any) => {
   const isAdj      = checkAdjacentToEmpire(pixel.x, pixel.y)
   const price      = 200 + ((pixel.ownerLevel ?? 1) * 50)
-  const chunkCol   = Math.floor(pixel.x / 10)
-  const chunkRow   = Math.floor(pixel.y / 10)
-  const chunkId    = `chunk_${chunkCol}_${chunkRow}`
-  const chunkDiff  = chunks.value?.[chunkId]?.difficulty ?? 'easy'
+  // Difficoltà per PROSSIMITÀ alle isole maggiori (coincide con la battaglia reale)
+  const chunkDiff  = battleDifficulty(pixel.x, pixel.y)
   const pixelWithName = {
     ...pixel,
     name: PIXEL_NAMES[`${pixel.x}_${pixel.y}`] || null,

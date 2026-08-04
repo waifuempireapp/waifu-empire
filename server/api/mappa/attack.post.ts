@@ -4,16 +4,12 @@ import { getAdminAuth, getAdminDb } from '../../utils/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { LAND_SET, GRID_SIZE, PIXEL_COLORS, PIXEL_NAMES } from '../../utils/worldMap';
 import { isHexAdjacentToEmpire } from '../../../utils/hexGrid';
+import { battleDifficulty } from '../../../utils/mapDifficulty';
 
 const CHUNK_SIZE = 10;
 
-// Determina difficoltà CPU dal livello del proprietario
-function cpuDifficulty(ownerLevel = 1): string {
-  if (ownerLevel <= 10)  return 'easy';
-  if (ownerLevel <= 30)  return 'medium';
-  if (ownerLevel <= 50)  return 'hard';
-  return 'expert';
-}
+// Difficoltà CPU per PROSSIMITÀ alle isole maggiori — logica condivisa col client
+const cpuDifficulty = (tx: number, ty: number): string => battleDifficulty(tx, ty);
 
 // Controlla se (tx, ty) è adiacente a qualsiasi pixel dell'utente uid
 // Sea adjacency esagonale (6 direzioni): salta l'oceano finché trova terra.
@@ -166,7 +162,7 @@ export default defineEventHandler(async (event) => {
       pixelY: targetY,
       attackerTeam,
       defenderTeam,
-      cpuDifficulty: cpuDifficulty(defenderLevel),
+      cpuDifficulty: cpuDifficulty(targetX, targetY),
       rounds: [],
       attackerWins: 0,
       defenderWins: 0,
@@ -178,7 +174,7 @@ export default defineEventHandler(async (event) => {
     return {
       success: true,
       battleId: battleRef.id,
-      cpuDifficulty: cpuDifficulty(defenderLevel),
+      cpuDifficulty: cpuDifficulty(targetX, targetY),
       defenderTeam, // array di 5 waifuId del difensore
     };
   } catch (e: any) {
