@@ -205,26 +205,23 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
       </div>
     </div>
 
-    <!-- ── CARTE: 2 centrate sopra + 3 sotto (compatte: preview più piccola così
-         nel feed entrano più pescate) ── -->
-    <div style="padding:8px 12px 12px;">
-      <div style="max-width:230px; margin:0 auto;">
+    <!-- ── CARTE: 2 sopra + 3 sotto, TUTTE della stessa dimensione, con margine.
+         Entrambe le righe usano lo STESSO flex + flex-basis così non divergono. ── -->
+    <div style="padding:10px 14px 16px;">
+      <div style="max-width:250px; margin:0 auto; display:flex; flex-direction:column; gap:14px;">
 
-        <!-- riga 1: 2 carte, ciascuna larga 1/3, centrate -->
-        <div style="display:flex; justify-content:center; gap:8px; margin-bottom:8px;">
-          <template v-for="carta in cards.slice(0,2)" :key="carta.id">
-            <!-- slot card: larghezza fissa = 1/3 container -->
-            <div style="width:calc((100% - 16px) / 3); flex-shrink:0;">
-              <PescaCardTile :carta="carta" :copie="getCopie(carta)" :is-new="isNew(carta)" />
-            </div>
-          </template>
+        <!-- riga 1: 2 carte -->
+        <div style="display:flex; justify-content:center; gap:14px;">
+          <div v-for="carta in cards.slice(0,2)" :key="carta.id" style="flex:0 0 28%; max-width:28%;">
+            <PescaCardTile :carta="carta" :copie="getCopie(carta)" :is-new="isNew(carta)" />
+          </div>
         </div>
 
-        <!-- riga 2: 3 carte grid, stessa larghezza 1fr -->
-        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;">
-          <template v-for="carta in cards.slice(2,5)" :key="carta.id">
+        <!-- riga 2: 3 carte -->
+        <div style="display:flex; justify-content:center; gap:14px;">
+          <div v-for="carta in cards.slice(2,5)" :key="carta.id" style="flex:0 0 28%; max-width:28%;">
             <PescaCardTile :carta="carta" :copie="getCopie(carta)" :is-new="isNew(carta)" />
-          </template>
+          </div>
         </div>
 
       </div>
