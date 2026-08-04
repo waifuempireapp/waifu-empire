@@ -20,6 +20,7 @@ const props = defineProps<{
   waifuCat: any[]
   mosseCat: any[]
   raidBattleCtx?: any
+  focusTarget?: string | null   // pixel "x_y" su cui centrare/zoomare (da missione)
 }>()
 
 // ------------------------------------------------------------------ Emits
@@ -100,7 +101,7 @@ const raidPrivateWon     = ref(false)       // boss privato abbattuto
 const raidPrivateMode    = ref(false)       // true mentre si combatte il raid privato
 const activeMission      = ref<any>(null)
 const showMissionDetail  = ref(false)
-const missionFocusPixel  = ref<any>(null)
+const missionFocusPixel  = ref<string | null>(null)   // "x_y" per centrare/zoomare
 
 // ------------------------------------------------------------------ RaidWidget state (inline)
 // Countdown per il widget Raid Island (aggiornato da setInterval)
@@ -221,6 +222,9 @@ watch(() => props.raidBattleCtx, (val) => {
 
 // Rinnova il countdown raid ogni volta che cambia raidInfo
 watch(raidInfo, () => startRaidCountdown())
+
+// Focus mappa da una missione cliccata (parent → prop): centra e zooma sul pixel
+watch(() => props.focusTarget, (v) => { if (v) missionFocusPixel.value = v })
 
 // Quando la schermata di battaglia si chiude, ricarica SEMPRE la mappa (dati freschi
 // dopo conquista/sconfitta) — copre ogni percorso, anche quelli senza reload esplicito.
@@ -704,6 +708,9 @@ onMounted(async () => {
   passiveTimer = setInterval(() => { passiveNow.value = Date.now() }, 30000)
   // Mostra il tutorial SOLO la prima volta (poi mai più; riapribile dal bottone)
   if (!props.profilo?.tutorialMapSeen) showTutorial.value = true
+  // Se sono arrivato qui da una missione cliccata, centra/zooma sul suo pixel
+  // (dopo nextTick così il watcher di PixelGrid scatta e applica anche lo zoom).
+  if (props.focusTarget) { await nextTick(); missionFocusPixel.value = props.focusTarget }
 })
 
 onUnmounted(() => {
@@ -1278,7 +1285,7 @@ async function onTerritoryClick(territoryId: string) {
           <div
             v-for="(px, i) in (activeMission.pixels || [])"
             :key="i"
-            @click="missionFocusPixel = { x: px.x, y: px.y }; showMissionDetail = false"
+            @click="missionFocusPixel = `${px.x}_${px.y}`; showMissionDetail = false"
             :style="{
               display: 'flex', alignItems: 'center', gap: '12px',
               padding: '10px 14px',

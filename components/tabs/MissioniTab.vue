@@ -15,7 +15,7 @@ function nomeTerritorio(px: any): string {
   if (/^\d+_\d+$/.test(raw)) return PIXEL_NAMES[raw] ?? `Territorio (${raw.replace('_', ', ')})`
   return raw
 }
-import { Gift, Map as MapIcon, Target, Timer, CheckCircle, Clock, Heart, Fish } from 'lucide-vue-next'
+import { Gift, Map as MapIcon, MapPin, Target, Timer, CheckCircle, Clock, Heart, Fish } from 'lucide-vue-next'
 import { useAuthStore } from '~/stores/auth'
 import { useMissionsStore, type MissionType } from '~/stores/missions'
 
@@ -32,8 +32,31 @@ const emit = defineEmits<{
   setTab:        [tab: string]
   notif:         [testo: string, colore: string]
   updateProfilo: [p: unknown]
+  apriMappaFocus:[pixelKey: string]   // vai alla mappa e zooma su quel pixel
   indietro:      []
 }>()
+
+// Destinazione per ogni missione giornaliera: cliccando la card ci si va.
+const DAILY_DEST: Record<string, string> = {
+  open_pack: 'sbusta', legendary: 'sbusta',
+  mysterious_draw: 'pesca', swipe_waifu: 'swap', conquer: 'mappa',
+}
+function goToDaily(m: { id: string }) {
+  const dest = DAILY_DEST[m.id]
+  if (dest) emit('setTab', dest)
+}
+// Centroide dei pixel della missione mappa → chiave "x_y" per centrare/zoomare
+function missionCentroid(pixels: { x: number; y: number }[] | undefined): string | null {
+  if (!pixels?.length) return null
+  let sx = 0, sy = 0
+  for (const p of pixels) { sx += p.x; sy += p.y }
+  return `${Math.round(sx / pixels.length)}_${Math.round(sy / pixels.length)}`
+}
+function goToMapMission(mission: { pixels?: { x: number; y: number }[] }) {
+  const key = missionCentroid(mission?.pixels)
+  if (key) emit('apriMappaFocus', key)
+  else emit('setTab', 'mappa')
+}
 
 const { t } = useI18n()
 
@@ -329,10 +352,11 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- Card missione singola -->
+        <!-- Card missione singola — cliccabile: porta dove si completa -->
         <div
           v-for="m in visibleMissions"
           :key="m.id"
+          @click="goToDaily(m)"
           :style="{
             background: missionsStore.isClaimed(m.id as MissionType)
               ? 'linear-gradient(135deg, rgba(88,224,163,0.12) 0%, var(--theme-surface) 55%)'
@@ -342,6 +366,7 @@ onUnmounted(() => {
             border: 'none',
             borderRadius: '16px',
             padding: '16px',
+            cursor: DAILY_DEST[m.id] ? 'pointer' : 'default',
           }"
         >
 
@@ -404,7 +429,7 @@ onUnmounted(() => {
             <!-- CLAIM button -->
             <button
               v-if="m.completed && !missionsStore.isClaimed(m.id as MissionType)"
-              @click="claimMission(m)"
+              @click.stop="claimMission(m)"
               :style="{
                 padding:'8px 14px', borderRadius:'999px', border:'none', cursor:'pointer',
                 background:`linear-gradient(135deg,${C.ok},#2dd4aa)`,
@@ -473,13 +498,17 @@ onUnmounted(() => {
           <div
             v-for="(px, i) in (activeMission.pixels || [])"
             :key="i"
-            style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:12px;border:none;"
+            @click="emit('apriMappaFocus', `${px.x}_${px.y}`)"
+            style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:12px;border:none;cursor:pointer;"
             :style="{ background:'linear-gradient(135deg,rgba(168,85,247,0.10) 0%,var(--theme-surface) 65%)' }"
           >
-            <div :style="{ fontFamily:FF.label, fontSize:'14px', color:'var(--theme-text)', fontWeight:700 }">
-              {{ nomeTerritorio(px) }}
+            <div :style="{ display:'flex', alignItems:'center', gap:'8px', minWidth:0 }">
+              <MapPin :size="14" stroke-width="1.5" :style="{ color:C.violet, flexShrink:0 }" />
+              <span :style="{ fontFamily:FF.label, fontSize:'14px', color:'var(--theme-text)', fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }">
+                {{ nomeTerritorio(px) }}
+              </span>
             </div>
-            <div :style="{ fontFamily:FF.mono, fontSize:'13px', color:C.gold, fontWeight:800 }">
+            <div :style="{ fontFamily:FF.mono, fontSize:'13px', color:C.gold, fontWeight:800, flexShrink:0 }">
               +{{ activeMission.rewardPerPixel ?? 100 }}
             </div>
           </div>
@@ -487,7 +516,7 @@ onUnmounted(() => {
 
         <!-- CTA -->
         <button
-          @click="emit('setTab', 'mappa')"
+          @click="goToMapMission(activeMission)"
           :style="{
             flexShrink:0, width:'100%', marginTop:'14px', padding:'15px',
             border:'none', borderRadius:'999px', cursor:'pointer',
@@ -535,16 +564,17 @@ onUnmounted(() => {
         </div>
         <div v-else style="display:flex;flex-direction:column;gap:10px;">
           <div v-for="um in unclaimedMapMissions" :key="um.missionId"
-            style="padding:14px 16px;border-radius:14px;"
+            @click="goToMapMission(um.mission)"
+            style="padding:14px 16px;border-radius:14px;cursor:pointer;"
             :style="{ background:'linear-gradient(135deg,rgba(245,197,96,0.10) 0%,var(--theme-surface) 65%)', border:'1px solid rgba(245,197,96,0.28)' }">
-            <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:800, color:C.gold, marginBottom:'5px' }">
-              Missione completata · {{ um.pixelsOwned ?? 0 }}/{{ (um.mission.pixels || []).length }} territori tuoi
+            <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:800, color:C.gold, marginBottom:'5px', display:'flex', alignItems:'center', gap:'6px' }">
+              <MapPin :size="13" stroke-width="1.5" />Missione completata · {{ um.pixelsOwned ?? 0 }}/{{ (um.mission.pixels || []).length }} territori tuoi
             </div>
             <div :style="{ fontFamily:FF.body, fontSize:'12px', color:'var(--theme-text-3)', marginBottom:'12px', lineHeight:1.4 }">
               Ricompensa: <strong :style="{ color: C.gold }">+{{ um.reward ?? ((um.pixelsOwned ?? 0) * (um.mission.rewardPerPixel ?? 100)) }} Kisses</strong>
             </div>
             <button
-              @click="claimMapMission(um.missionId)"
+              @click.stop="claimMapMission(um.missionId)"
               :disabled="claimingMapMission === um.missionId"
               :style="{ width:'100%', padding:'13px', border:'none', borderRadius:'999px', cursor: claimingMapMission === um.missionId ? 'wait' : 'pointer', background:`linear-gradient(135deg,${C.gold},#d4a000)`, color:'#1a1a2e', fontFamily:FF.label, fontSize:'14px', fontWeight:900, letterSpacing:'0.14em', textTransform:'uppercase' }"
             >{{ claimingMapMission === um.missionId ? '…' : 'Riscuoti' }}</button>

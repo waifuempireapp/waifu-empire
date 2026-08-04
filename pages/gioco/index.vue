@@ -55,6 +55,8 @@ const caricato = ref(false)   // dati Firestore pronti
 const appReady = ref(false)   // pack 3D pronto → nasconde la loading screen
 // Contesto battaglia raid — passato a MappaTab come prop, poi reimpostato a null
 const raidBattleCtx = ref<unknown>(null)
+// Pixel "x_y" su cui centrare/zoomare la mappa (da una missione mappa cliccata)
+const mapFocus = ref<string | null>(null)
 // i18n — ripristino lingua al mount + notifiche
 const { setLocale, t } = useI18n()
 // Tema — ripristino dal profilo Firebase
@@ -88,7 +90,12 @@ function apriCollezioneEspansione(dropId: string) {
 }
 // Uscendo dalla Collezione azzera il filtro-espansione: il prossimo ingresso
 // "normale" (bottom nav, mosse) parte senza filtro appiccicato dal banner.
-watch(() => gameStore.tabAttiva, (t) => { if (t !== 'collezione') collezioneDropId.value = '' })
+watch(() => gameStore.tabAttiva, (t) => {
+  if (t !== 'collezione') collezioneDropId.value = ''
+  // Uscendo dalla mappa azzera il focus-missione: il prossimo ingresso "normale"
+  // non rizooma sulla vecchia missione.
+  if (t !== 'mappa') mapFocus.value = null
+})
 const notificheAperte = ref(false)
 const tipiInfoAperto = ref(false)
 function onNotificheLette() {
@@ -444,8 +451,9 @@ function handleSetTab(t: string) {
   switch (t) {
     case 'sbusta':
     case 'pacchetti':
-      // SbustaTab commentata — apre la Home dove avviene la selezione
+      // Apre la Home E l'overlay di sbusto (selezione espansione + apertura)
       gameStore.setTab('home')
+      sbustaAperta.value = true
       break
     case 'pesca':
       // Pesca accessibile dalla Home tramite card "Pesca Misteriosa"
@@ -631,6 +639,7 @@ function handleSetTab(t: string) {
       <!-- ═══ TAB: MAPPA ════════════════════════════════════════════════ -->
       <LazyMappaTab v-if="tab === 'mappa'" :profilo="gameStore.profilo" :collezione="gameStore.collezione as any"
         :waifu-cat="gameStore.catalogoWaifu" :mosse-cat="gameStore.catalogoMosse" :raid-battle-ctx="raidBattleCtx"
+        :focus-target="mapFocus"
         @notif="(t: string, c: string) => mostraNotif(t, c)"
         @update-profilo="(p: unknown) => gameStore.aggiornaProfilo(p as never)"
         @update-collezione="(c: unknown) => gameStore.setCollezione(c as never)"
@@ -647,6 +656,7 @@ function handleSetTab(t: string) {
         :prev-tab="tabPrimaDiMissioni"
         @indietro="gameStore.setTab(tabPrimaDiMissioni)"
         @set-tab="handleSetTab"
+        @apri-mappa-focus="(key: string) => { mapFocus = key; gameStore.setTab('mappa') }"
         @notif="(t: string, c: string) => mostraNotif(t, c)"
         @update-profilo="(p: unknown) => gameStore.aggiornaProfilo(p as never)"
       />

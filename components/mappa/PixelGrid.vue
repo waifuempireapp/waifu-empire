@@ -405,10 +405,13 @@ function centerPanOn(gx: number, gy: number) {
   state.panY = canvas.height / 2 - y
 }
 
-// ── Watcher: focusPixel → centra la mappa su quel pixel ──────────────────────
+// ── Watcher: focusPixel → ZOOMA e centra la mappa su quel pixel ──────────────
 watch(() => props.focusPixel, (fp) => {
   if (!fp) return
-  const [fx, fy] = fp.split('_').map(Number)
+  const [fx, fy] = String(fp).split('_').map(Number)
+  if (!isFinite(fx) || !isFinite(fy)) return
+  // Zoom-in sulla sezione (senza rimpicciolire se già più zoomato)
+  state.scale = Math.min(MAX_SCALE, Math.max(state.scale, 2.4))
   centerPanOn(fx, fy)
   drawCanvas(pulseVal)
 })
