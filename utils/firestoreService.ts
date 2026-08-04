@@ -585,12 +585,12 @@ const PREZZI_DEFAULT = {
     md: { kisses: 600,  bonus: 80,  price_eur: '3.99', label: '600 Kisses' },
     lg: { kisses: 1500, bonus: 200, price_eur: '7.99', label: '1500 Kisses' },
   },
-  pass_hard:   { kisses: 5000, price_eur: '14.99' },
-  pass_scambi: { kisses: 500,  price_eur: '3.99' },
+  pass_hard:   { kisses: 15000, price_eur: '14.99' },
+  pass_scambi: { kisses: 1500,  price_eur: '3.99' },
   beni: {
-    pack_sfida:    { kisses: 100 },
-    pack_sfida_10: { kisses: 850 },
-    energia:       { kisses: 50 },
+    pack_sfida:    { kisses: 300 },
+    pack_sfida_10: { kisses: 2550 },
+    energia:       { kisses: 150 },
   },
 }
 
@@ -644,10 +644,12 @@ export async function getDropStagionale(): Promise<Record<string, unknown> | nul
 // QUEST E MISSIONI
 // ══════════════════════════════════════════════════════════════
 
+// Ricompense giornaliere ridotte a ~1/3 (erano troppo alte): 50→17, 200→67.
+// Il premio "pack" resta 1 (1/3 di un pacchetto non è sensato).
 const QUEST_DEFS = [
-  { tipo: 'bustine',     nome: 'Apri una bustina',            target: 1, reward: { tipo: 'kisses', qty: 50  } },
+  { tipo: 'bustine',     nome: 'Apri una bustina',            target: 1, reward: { tipo: 'kisses', qty: 17  } },
   { tipo: 'territori',   nome: 'Conquista 3 territori',       target: 3, reward: { tipo: 'pack',   qty: 1   } },
-  { tipo: 'leggendarie', nome: 'Sblocca 1 carta leggendaria', target: 1, reward: { tipo: 'kisses', qty: 200, bonus: 'pose' } },
+  { tipo: 'leggendarie', nome: 'Sblocca 1 carta leggendaria', target: 1, reward: { tipo: 'kisses', qty: 67, bonus: 'pose' } },
 ]
 
 function _todayStr(): string {

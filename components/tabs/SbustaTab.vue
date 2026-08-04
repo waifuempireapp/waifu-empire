@@ -202,6 +202,12 @@ const dropProgress = computed(() => {
     .filter(Boolean) as Array<{ id: string; nome: string; owned: number; total: number; colore: string }>
 })
 
+// Solo il progresso dell'espansione ATTUALMENTE selezionata (carosello): il
+// banner in cima mostra una card alla volta, non tutte impilate.
+const dropProgressCorrente = computed(() =>
+  dropProgress.value.find(dp => dp.id === dropSelId.value) ?? dropProgress.value[0] ?? null
+)
+
 const SFIDA_COSTO_KISSES = 50
 const SFIDA_COSTO_10 = 450
 
@@ -637,6 +643,9 @@ function fastForwardAttivo(): boolean {
 }
 
 function avanzaVeloce() {
+  // Carta speciale in fase di rotazione → lo skip mostra la carta e si ferma lì
+  if (settleSpecialFlip()) { stopFastForward(); return }
+
   // bypassa transizioni/divisori lenti
   transizioneCarta.value = false
   multiPackDivider.value = false
@@ -699,6 +708,8 @@ function mostraRiepilogo() {
 
 // Tap nell'area reveal: instrada al flusso giusto (singolo vs multi)
 function onRevealTap() {
+  // Carta speciale in rotazione → il primo tap mostra la carta (non avanza)
+  if (settleSpecialFlip()) return
   if (stato.value === 'reveal_multi') { avanzaMultiCarta(); return }
   if (indiceRivelato.value < carteRivelate.value.length - 1) avanzaCartaManuale()
   else mostraRiepilogo()
@@ -889,6 +900,19 @@ function onFlipEnd(e: AnimationEvent) {
   if (e.target !== e.currentTarget) return
   flipPlaying.value = false
   flipPending.value = false           // torna al fronte (rotateY 0)
+}
+
+// Se la carta corrente è speciale (leggendaria/immersiva) e il flip 3D è ancora
+// in corso, lo "skip" NON deve saltare la carta: chiude subito l'animazione e
+// mostra la carta trovata (rimane su di essa). Ritorna true se ha assorbito lo skip.
+function settleSpecialFlip(): boolean {
+  const c = cartaCorrente.value as any
+  if (c?.tipo === 'waifu' && isSpecialRarity(c?.data?.rarita) && (flipPlaying.value || flipPending.value)) {
+    flipPlaying.value = false
+    flipPending.value = false         // snap al fronte → mostra la carta rivelata
+    return true
+  }
+  return false
 }
 
 const RARITY_COLORS: Record<string, string> = {
@@ -1367,11 +1391,11 @@ function cfTouchEnd(e: TouchEvent) {
         </div>
       </div>
 
-      <!-- Progresso collezione per espansione — cliccabile → collezione filtrata -->
-      <div v-if="dropProgress.length" :style="{ display:'flex', flexDirection:'column', gap:'8px', margin:'2px 0 8px', flexShrink:0, maxHeight:'34vh', overflowY:'auto' }">
-        <div v-for="dp in dropProgress" :key="dp.id"
+      <!-- Progresso collezione dell'espansione SELEZIONATA — una sola card, cliccabile → collezione filtrata -->
+      <div v-if="dropProgressCorrente" :style="{ margin:'2px 0 8px', flexShrink:0 }">
+        <div
           role="button" tabindex="0"
-          @click="emit('apriCollezioneEspansione', dp.id)"
+          @click="emit('apriCollezioneEspansione', dropProgressCorrente.id)"
           :style="{
             display:'flex', alignItems:'center', gap:'12px', cursor:'pointer',
             background:'var(--grad-primary-soft), var(--theme-surface)', border:'1px solid var(--theme-border)',
@@ -1382,17 +1406,17 @@ function cfTouchEnd(e: TouchEvent) {
               display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'6px',
               fontFamily:FF.body, fontSize:'12.5px', fontWeight:800, color:'var(--theme-text)',
             }">
-              <span :style="{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }">{{ dp.nome }}</span>
-              <span :style="{ fontFamily:FF.mono, fontSize:'12px', color: dp.owned >= dp.total ? '#58e0a3' : 'var(--theme-text-2)', flexShrink:0, marginLeft:'8px' }">
-                {{ dp.owned }}/{{ dp.total }}<template v-if="dp.owned >= dp.total"> ✓</template>
+              <span :style="{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }">{{ dropProgressCorrente.nome }}</span>
+              <span :style="{ fontFamily:FF.mono, fontSize:'12px', color: dropProgressCorrente.owned >= dropProgressCorrente.total ? '#58e0a3' : 'var(--theme-text-2)', flexShrink:0, marginLeft:'8px' }">
+                {{ dropProgressCorrente.owned }}/{{ dropProgressCorrente.total }}<template v-if="dropProgressCorrente.owned >= dropProgressCorrente.total"> ✓</template>
               </span>
             </div>
             <div :style="{ height:'7px', background:'var(--theme-surface-2)', borderRadius:'99px', overflow:'hidden', border:'1px solid var(--theme-border)' }">
               <div :style="{
-                width: Math.min(100, Math.round(dp.owned / dp.total * 100)) + '%', height:'100%', borderRadius:'99px',
-                background: dp.owned >= dp.total
+                width: Math.min(100, Math.round(dropProgressCorrente.owned / dropProgressCorrente.total * 100)) + '%', height:'100%', borderRadius:'99px',
+                background: dropProgressCorrente.owned >= dropProgressCorrente.total
                   ? 'linear-gradient(90deg,#58e0a3,#8ef0c4)'
-                  : `linear-gradient(90deg, ${dp.colore}, var(--theme-accent-pink))`,
+                  : `linear-gradient(90deg, ${dropProgressCorrente.colore}, var(--theme-accent-pink))`,
                 transition:'width .5s ease',
               }" />
             </div>

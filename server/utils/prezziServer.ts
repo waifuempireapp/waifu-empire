@@ -40,13 +40,15 @@ export const DEFAULT_PREZZI: Prezzi = {
     md: { kisses: 600,  bonus: 80,  price_eur: '3.99', label: '600 Kisses' },
     lg: { kisses: 1500, bonus: 200, price_eur: '7.99', label: '1500 Kisses' },
   },
-  pass_hard:   { kisses: 5000, price_eur: '14.99' },
-  pass_scambi: { kisses: 500,  price_eur: '3.99' },
-  pass_swap:   { kisses: 300,  price_eur: '2.99' },
+  // Costi in Kisses triplicati (erano troppo bassi). I tagli_kisses (acquisto
+  // con denaro reale via PayPal) restano invariati.
+  pass_hard:   { kisses: 15000, price_eur: '14.99' },
+  pass_scambi: { kisses: 1500,  price_eur: '3.99' },
+  pass_swap:   { kisses: 900,   price_eur: '2.99' },
   beni: {
-    pack_sfida:    { kisses: 100 },
-    pack_sfida_10: { kisses: 850 },
-    energia:       { kisses: 50  },
+    pack_sfida:    { kisses: 300 },
+    pack_sfida_10: { kisses: 2550 },
+    energia:       { kisses: 150 },
   },
 }
 

@@ -105,8 +105,8 @@ onMounted(async () => {
     tagli.value = data.prezzi.tagli_kisses
   } catch {
     beni.value = {
-      pack_sfida: { kisses: 100 }, pack_sfida_10: { kisses: 850 }, energia: { kisses: 50 },
-      pass_hard: { kisses: 5000 }, trade_pass: { kisses: 500 }, swap_pass: { kisses: 300 },
+      pack_sfida: { kisses: 300 }, pack_sfida_10: { kisses: 2550 }, energia: { kisses: 150 },
+      pass_hard: { kisses: 15000 }, trade_pass: { kisses: 1500 }, swap_pass: { kisses: 900 },
     }
     tagli.value = [
       { id: 'xs', kisses: 100, bonus: 0, price_eur: '0.99' },
