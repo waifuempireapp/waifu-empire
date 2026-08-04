@@ -55,8 +55,8 @@ const src = computed(() => props.carta.immagine ? (ikUrl(props.carta.immagine, '
       <!-- Marcatore MOSSA (alto-sx) -->
       <div v-if="isMossa" :style="{ position:'absolute', top:'4px', left:'4px', zIndex:4, background: typeMeta?.accent ?? '#8b6fd8', color:'#fff', borderRadius:'999px', padding:'1px 6px', fontFamily:`var(--ff-label,'Saira Condensed',sans-serif)`, fontSize:'8px', fontWeight:900, letterSpacing:'0.12em' }">⚔ MOSSA</div>
 
-      <!-- WAIFU: chip rarità (bg bianco) basso-sx -->
-      <div v-if="!isMossa" style="position:absolute;bottom:4px;left:4px;z-index:3;border-radius:999px;padding:2px 7px;font-size:10px;font-weight:800;text-transform:capitalize;background:#fff;"
+      <!-- WAIFU: chip rarità (bg bianco) basso-DX -->
+      <div v-if="!isMossa" style="position:absolute;bottom:4px;right:4px;z-index:3;border-radius:999px;padding:2px 7px;font-size:10px;font-weight:800;text-transform:capitalize;background:#fff;"
            :style="{ color: rarColor, boxShadow:'0 1px 4px rgba(0,0,0,0.25)' }">{{ carta.rarita || '?' }}</div>
 
       <!-- MOSSA: pannello info nei 36% inferiori.

@@ -207,19 +207,19 @@ onUnmounted(() => { if (timerInterval) clearInterval(timerInterval) })
 
     <!-- ── CARTE: 2 sopra + 3 sotto, TUTTE della stessa dimensione, con margine.
          Entrambe le righe usano lo STESSO flex + flex-basis così non divergono. ── -->
-    <div style="padding:10px 14px 16px;">
-      <div style="max-width:250px; margin:0 auto; display:flex; flex-direction:column; gap:14px;">
+    <div style="padding:12px 14px 18px;">
+      <div style="max-width:260px; margin:0 auto; display:flex; flex-direction:column; gap:22px;">
 
         <!-- riga 1: 2 carte -->
-        <div style="display:flex; justify-content:center; gap:14px;">
-          <div v-for="carta in cards.slice(0,2)" :key="carta.id" style="flex:0 0 28%; max-width:28%;">
+        <div style="display:flex; justify-content:center; gap:22px;">
+          <div v-for="carta in cards.slice(0,2)" :key="carta.id" style="flex:0 0 27%; max-width:27%;">
             <PescaCardTile :carta="carta" :copie="getCopie(carta)" :is-new="isNew(carta)" />
           </div>
         </div>
 
         <!-- riga 2: 3 carte -->
-        <div style="display:flex; justify-content:center; gap:14px;">
-          <div v-for="carta in cards.slice(2,5)" :key="carta.id" style="flex:0 0 28%; max-width:28%;">
+        <div style="display:flex; justify-content:center; gap:22px;">
+          <div v-for="carta in cards.slice(2,5)" :key="carta.id" style="flex:0 0 27%; max-width:27%;">
             <PescaCardTile :carta="carta" :copie="getCopie(carta)" :is-new="isNew(carta)" />
           </div>
         </div>
