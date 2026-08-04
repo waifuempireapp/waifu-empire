@@ -55,10 +55,6 @@ const src = computed(() => props.carta.immagine ? (ikUrl(props.carta.immagine, '
       <!-- Marcatore MOSSA (alto-sx) -->
       <div v-if="isMossa" :style="{ position:'absolute', top:'4px', left:'4px', zIndex:4, background: typeMeta?.accent ?? '#8b6fd8', color:'#fff', borderRadius:'999px', padding:'1px 6px', fontFamily:`var(--ff-label,'Saira Condensed',sans-serif)`, fontSize:'8px', fontWeight:900, letterSpacing:'0.12em' }">⚔ MOSSA</div>
 
-      <!-- WAIFU: chip rarità (bg bianco) basso-DX -->
-      <div v-if="!isMossa" style="position:absolute;bottom:4px;right:4px;z-index:3;border-radius:999px;padding:2px 7px;font-size:10px;font-weight:800;text-transform:capitalize;background:#fff;"
-           :style="{ color: rarColor, boxShadow:'0 1px 4px rgba(0,0,0,0.25)' }">{{ carta.rarita || '?' }}</div>
-
       <!-- MOSSA: pannello info nei 36% inferiori.
            BG scuro theme-independent IDENTICO a MoveCard/PescaMoveOverlay: il
            pannello descrizione deve avere lo stesso colore in TUTTE le viste. -->
@@ -70,10 +66,6 @@ const src = computed(() => props.carta.immagine ? (ikUrl(props.carta.immagine, '
         </div>
         <!-- Descrizione (1-2 righe) -->
         <div :style="{ fontFamily:`var(--ff-body,'Nunito',sans-serif)`, fontSize:'7.5px', lineHeight:1.2, color:'rgba(238,232,246,0.82)', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }">{{ carta.descrizione }}</div>
-        <!-- Chip tipo (basso-dx, bg bianco) -->
-        <div v-if="typeMeta" :style="{ position:'absolute', bottom:'3px', right:'4px', background:'#fff', color: typeMeta.accent, borderRadius:'999px', padding:'1px 6px', fontFamily:`var(--ff-label,'Saira Condensed',sans-serif)`, fontSize:'8px', fontWeight:900, letterSpacing:'0.06em', boxShadow:'0 1px 4px rgba(0,0,0,0.25)', display:'flex', alignItems:'center', gap:'2px' }">
-          <span>{{ typeMeta.icon }}</span>{{ typeMeta.label }}
-        </div>
       </div>
     </div>
 
