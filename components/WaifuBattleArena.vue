@@ -127,8 +127,9 @@ const _CPU_SKIP = -1000
 const BATTLE_CSS = `
   @keyframes slideInLeft  {from{transform:translateX(-115%) scaleX(.92);opacity:0}to{transform:translateX(0) scaleX(1);opacity:1}}
   @keyframes slideInRight {from{transform:translateX(115%) scaleX(.92);opacity:0}to{transform:translateX(0) scaleX(1);opacity:1}}
-  @keyframes atkRight {0%{transform:translateX(0) scale(1)}40%{transform:translateX(54px) scale(1.07)}80%{transform:translateX(62px) scale(1.09)}100%{transform:translateX(0) scale(1)}}
-  @keyframes atkLeft  {0%{transform:translateX(0) scale(1)}40%{transform:translateX(-54px) scale(1.07)}80%{transform:translateX(-62px) scale(1.09)}100%{transform:translateX(0) scale(1)}}
+  /* Attacco = zoom smooth della carta (con leggero affondo in avanti) */
+  @keyframes atkRight {0%{transform:translateX(0) scale(1)}50%{transform:translateX(26px) scale(1.26)}100%{transform:translateX(0) scale(1)}}
+  @keyframes atkLeft  {0%{transform:translateX(0) scale(1)}50%{transform:translateX(-26px) scale(1.26)}100%{transform:translateX(0) scale(1)}}
   @keyframes shake {0%,100%{transform:translateX(0)}18%{transform:translateX(-11px)}36%{transform:translateX(11px)}54%{transform:translateX(-8px)}72%{transform:translateX(8px)}88%{transform:translateX(-4px)}}
   @keyframes flash {0%{opacity:0}25%{opacity:.82}100%{opacity:0}}
   @keyframes koFx  {0%{transform:scale(1);opacity:1}60%{transform:scale(.82) translateY(10px);opacity:.4}100%{transform:scale(.38) translateY(32px);opacity:0}}
@@ -172,8 +173,8 @@ const BATTLE_CSS = `
   .wba-score-pop { animation: scorePop .48s cubic-bezier(.36,.07,.19,.97) both; }
   .wba-sL{animation:slideInLeft  .38s ease-out}
   .wba-sR{animation:slideInRight .38s ease-out}
-  .wba-aR{animation:atkRight .44s ease-in-out}
-  .wba-aL{animation:atkLeft  .44s ease-in-out}
+  .wba-aR{animation:atkRight .58s ease-in-out}
+  .wba-aL{animation:atkLeft  .58s ease-in-out}
   .wba-sh{animation:shake .36s ease-in-out}
   .wba-ko{animation:koFx .55s ease-in forwards}
   .wba-fm{animation:fadeMsg .2s ease-out}
@@ -1723,8 +1724,8 @@ const mvp = computed(() => {
           </div>
 
 
-          <!-- Sprite nemico: bottom-right -->
-          <div :style="{ position:'absolute', right:'14px', bottom:0, zIndex:2 }">
+          <!-- Sprite nemico: centrato verticalmente, a destra -->
+          <div :style="{ position:'absolute', right:'14px', top:'50%', transform:'translateY(-50%)', zIndex:2 }">
             <!-- WaifuSprite inline nemico -->
             <template v-if="enemy">
               <div :class="eAnim" @click="openWaifuDetail(enemy, 'enemy')" :style="{
@@ -1812,8 +1813,8 @@ const mvp = computed(() => {
             pointerEvents:'none',zIndex:1,
           }"/>
 
-          <!-- Sprite giocatore: bottom-left con glow di turno -->
-          <div :style="{ position:'absolute', left:'14px', bottom:0, zIndex:2 }">
+          <!-- Sprite giocatore: centrato verticalmente, a sinistra -->
+          <div :style="{ position:'absolute', left:'14px', top:'50%', transform:'translateY(-50%)', zIndex:2 }">
             <template v-if="player">
               <div :class="pAnim" @click="openWaifuDetail(player, 'player')" :style="{
                 width:`${sPlayer}px`, aspectRatio:'2/3', borderRadius:'12px', overflow:'hidden',

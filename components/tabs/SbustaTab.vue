@@ -217,6 +217,9 @@ const nSfid = computed(() => Number(props.profilo?.pacchettiSfida ?? 0))
 
 // Totale pacchetti disponibili (somma di tutti i tipi — usato nella nuova idle page)
 const totalePacchetti = computed(() => nOmag.value + nBenv.value + nSfid.value)
+// Pacchetti EXTRA = non-omaggio (benvenuto + sfida): gli omaggio sono già
+// segnalati dal timer; questi vanno mostrati in un chip dedicato.
+const nExtra = computed(() => nBenv.value + nSfid.value)
 
 // Tipo da aprire: priorità omaggio → benvenuto → sfida
 const tipoDaAprire = computed<string>(() => {
@@ -1367,11 +1370,18 @@ function cfTouchEnd(e: TouchEvent) {
     <!-- Contenuto principale centrato verticalmente come gruppo -->
     <div style="position:relative;z-index:2;display:flex;flex-direction:column;height:100%;padding:0 16px;">
 
-      <!-- Header: ← a sinistra, titolo centrato, spacer a destra -->
-      <div style="display:flex;align-items:center;padding:14px 0 10px;flex-shrink:0;">
+      <!-- Header: ← + chip pacchetti EXTRA a sinistra, titolo centrato -->
+      <div style="display:flex;align-items:center;gap:8px;padding:14px 0 10px;flex-shrink:0;">
         <button @click="emit('indietro')"
           style="background:transparent;border:1.5px solid #a78bfa;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:#a78bfa;flex-shrink:0;line-height:1;">←</button>
-        <div :style="{ flex:1, textAlign:'center', fontFamily:FF.label, fontSize:'16px', letterSpacing:'0.24em', color:C.violet, textTransform:'uppercase', fontWeight:800 }">
+        <!-- Chip pacchetti EXTRA (benvenuto + sfida), inclusi nel totale -->
+        <div v-if="nExtra > 0" :title="`${nBenv} benvenuto + ${nSfid} sfida`" :style="{
+          display:'inline-flex', alignItems:'center', gap:'5px', flexShrink:0,
+          background:`${C.gold}22`, border:`1px solid ${C.gold}66`, borderRadius:'999px',
+          padding:'6px 11px', fontFamily:FF.label, fontSize:'12px', fontWeight:800,
+          letterSpacing:'0.06em', color:C.gold,
+        }">🎁 {{ nExtra }} extra</div>
+        <div :style="{ flex:1, textAlign:'center', fontFamily:FF.label, fontSize:'15px', letterSpacing:'0.2em', color:C.violet, textTransform:'uppercase', fontWeight:800 }">
           ◆ Scegli l'Espansione
         </div>
         <div style="width:38px;flex-shrink:0;"></div>
