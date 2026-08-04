@@ -159,11 +159,13 @@ const evidenziato = computed(() => props.evidenziato ?? false)
 // presenti, altrimenti GENERATI deterministicamente dall'id (utils/waifuStats):
 // così ogni waifu ha valori propri, identici anche nel dettaglio carta.
 const statBonus  = computed(() => props.datiCollezione?.stat_bonus ?? {})
-const tetteEff   = computed(() => Math.min(10, resolveWaifuStat(props.waifu, 'tette') + (statBonus.value.tette ?? 0)))
-const piediEff   = computed(() => resolveWaifuStat(props.waifu, 'taglia_piedi') + (statBonus.value.taglia_piedi ?? 0))
-const etaEff     = computed(() => resolveWaifuStat(props.waifu, 'eta') + (statBonus.value.eta ?? 0))
-const capelliEff = computed(() => Math.min(10, resolveWaifuStat(props.waifu, 'colore_capelli') + (statBonus.value.colore_capelli ?? 0)))
-const expEff     = computed(() => resolveWaifuStat(props.waifu, 'esperienza') + (statBonus.value.esperienza ?? 0))
+// Tutte le stat mostrate sono clampate in [1,10]
+const clamp10 = (v: number) => Math.max(1, Math.min(10, v))
+const tetteEff   = computed(() => clamp10(resolveWaifuStat(props.waifu, 'tette') + (statBonus.value.tette ?? 0)))
+const piediEff   = computed(() => clamp10(resolveWaifuStat(props.waifu, 'taglia_piedi') + (statBonus.value.taglia_piedi ?? 0)))
+const etaEff     = computed(() => clamp10(resolveWaifuStat(props.waifu, 'eta') + (statBonus.value.eta ?? 0)))
+const capelliEff = computed(() => clamp10(resolveWaifuStat(props.waifu, 'colore_capelli') + (statBonus.value.colore_capelli ?? 0)))
+const expEff     = computed(() => clamp10(resolveWaifuStat(props.waifu, 'esperienza') + (statBonus.value.esperienza ?? 0)))
 
 // HP / Velocità / Crit per riga superiore stats.
 // L'HP è un valore DERIVATo: se non memorizzato, lo si ricava da battleStats.maxHp

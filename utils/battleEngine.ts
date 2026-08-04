@@ -237,19 +237,22 @@ function _generateMovesForRarity(rarita: string): MoveInstance[] {
  * Calcola velocità runtime (1–1000) dai 5 stat fisici.
  * Il campo battleStats.speed in Firestore è IGNORATO.
  */
+// Normalizza una statistica 1-10 in [0,1]. Prima le formule usavano range legacy
+// (tette/6, eta/4982, piedi/11…) che con la scala 1-10 davano valori negativi o
+// ≈0 → velocità/crit/HP completamente sballati.
+const _n10 = (v: unknown, def = 5): number => {
+  const x = typeof v === 'number' && isFinite(v) ? v : def
+  return (Math.max(1, Math.min(10, x)) - 1) / 9
+}
+
 export function calculateSpeed(waifu: Record<string, unknown>, rarityMultiplier = 1.0, rarityRange: { vel_min: number; vel_max: number } | null = null): number {
-  const tette        = (waifu?.tette        as number) ?? 4
-  const eta          = (waifu?.eta          as number) ?? 20
-  const esperienza   = (waifu?.esperienza   as number) ?? 0
-  const capelli      = (waifu?.capelli      as number) ?? (waifu?.colore_capelli as number) ?? 5
-  const taglia_piedi = (waifu?.taglia_piedi as number) ?? 39
+  const t  = _n10(waifu?.tette)
+  const e  = _n10(waifu?.eta)
+  const es = _n10(waifu?.esperienza)
+  const c  = _n10((waifu?.capelli as number) ?? waifu?.colore_capelli)
+  const p  = _n10(waifu?.taglia_piedi)
 
-  const t  = (tette - 1) / 6
-  const e  = (eta - 18) / 4982
-  const es = esperienza / 5000
-  const c  = (capelli - 1) / 8
-  const p  = (taglia_piedi - 34) / 11
-
+  // Più esperienza = più veloce; tette/eta/capelli/piedi alti = più lenta.
   const speed_raw = (1 - t) * 0.20 + (1 - e) * 0.20 + es * 0.25 + (1 - c) * 0.15 + (1 - p) * 0.20
   const base = Math.round(speed_raw * 999) + 1
   if (rarityMultiplier === 1.0 && !rarityRange) return base
@@ -265,11 +268,11 @@ export function computeSpeed(w: Record<string, unknown>): number {
 
 /** Calcola probabilità critico (0.05–0.60) dai 5 stat fisici. */
 export function computeCritChance(w: Record<string, unknown>, rarityMultiplier = 1.0, rarityRange: { crit_min: number; crit_max: number } | null = null): number {
-  const t  = (((w.tette          as number) ?? 4)  - 1)  / 6
-  const e  = (((w.eta            as number) ?? 25) - 18) / 4982
-  const es = ((w.esperienza      as number) ?? 0)        / 5000
-  const c  = (((w.colore_capelli as number) ?? 5)  - 1)  / 8
-  const p  = (((w.taglia_piedi   as number) ?? 39) - 34) / 11
+  const t  = _n10(w.tette)
+  const e  = _n10(w.eta)
+  const es = _n10(w.esperienza)
+  const c  = _n10(w.colore_capelli)
+  const p  = _n10(w.taglia_piedi)
   const raw = t*0.20 + e*0.20 + (1-es)*0.25 + c*0.15 + p*0.20
   const base = parseFloat(Math.min(0.60, Math.max(0.05, raw)).toFixed(2))
   if (rarityMultiplier === 1.0 && !rarityRange) return base
@@ -280,11 +283,11 @@ export function computeCritChance(w: Record<string, unknown>, rarityMultiplier =
 
 /** Calcola HP base dai 5 stat fisici + moltiplicatore rarità. */
 export function computeHp(w: Record<string, unknown>, rarityMultiplier = 1.0): number {
-  const t  = (((w.tette          as number) ?? 4)  - 1)  / 6
-  const e  = (((w.eta            as number) ?? 25) - 18) / 4982
-  const es = ((w.esperienza      as number) ?? 0)        / 5000
-  const c  = (((w.colore_capelli as number) ?? 5)  - 1)  / 8
-  const p  = (((w.taglia_piedi   as number) ?? 39) - 34) / 11
+  const t  = _n10(w.tette)
+  const e  = _n10(w.eta)
+  const es = _n10(w.esperienza)
+  const c  = _n10(w.colore_capelli)
+  const p  = _n10(w.taglia_piedi)
   const raw = t * 0.30 + es * 0.30 + p * 0.20 + e * 0.10 + c * 0.10
   const base = Math.round(raw * 400) + 100
   return Math.max(50, Math.round(base * rarityMultiplier))

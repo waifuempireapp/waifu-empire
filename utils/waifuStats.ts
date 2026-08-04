@@ -46,7 +46,10 @@ type WaifuLike = { id?: unknown; nome?: unknown; rarita?: unknown } & object
  */
 export function resolveWaifuStat(waifu: WaifuLike, key: AestheticStatKey): number {
   const raw = (waifu as Record<string, unknown>)?.[key]
-  if (typeof raw === 'number' && raw > 0) return raw
+  // Accetta il valore del catalogo SOLO se è già nella scala 1-10. I valori
+  // legacy (es. eta 2500, taglia_piedi 40, tette 12) vengono IGNORATI e
+  // rigenerati in 1-10 → tutte le waifu rispettano min 1 / max 10.
+  if (typeof raw === 'number' && raw >= 1 && raw <= 10) return Math.round(raw)
 
   const id = String(waifu?.id ?? waifu?.nome ?? 'waifu')
   const rarita = String(waifu?.rarita ?? 'comune')
