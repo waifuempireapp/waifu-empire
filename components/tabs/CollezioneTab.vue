@@ -159,16 +159,24 @@ const dropPoseIds     = computed(() => _unionIds('poseIds'))
 const teams = computed(() => props.collezione.teams || {})
 
 async function salvaTeam() {
-  if (!teamNome.value.trim()) { emit('notif', t('collection.enter_team_name'), '#ff3d3d'); return }
+  // La sola condizione vincolante è 5–8 waifu. Il nome è OPZIONALE: se vuoto
+  // ne generiamo uno automatico (prima il bottone SALVA restava bloccato).
   if (teamWaifu.value.length < 5 || teamWaifu.value.length > 8) { emit('notif', t('collection.select_5_waifu'), '#ff3d3d'); return }
   const nomiEsistenti = Object.entries(teams.value)
     .filter(([id]) => id !== teamInEdit.value)
     .map(([, t]: [string, any]) => (t.nome as string).toLowerCase())
-  if (nomiEsistenti.includes(teamNome.value.trim().toLowerCase())) { emit('notif', t('collection.team_name_exists'), '#ff3d3d'); return }
+  let nome = teamNome.value.trim()
+  if (!nome) {
+    let n = Object.keys(teams.value).length + 1
+    while (nomiEsistenti.includes(`team ${n}`.toLowerCase())) n++
+    nome = `Team ${n}`
+  } else if (nomiEsistenti.includes(nome.toLowerCase())) {
+    emit('notif', t('collection.team_name_exists'), '#ff3d3d'); return
+  }
   const nuova = JSON.parse(JSON.stringify(props.collezione))
   if (!nuova.teams) nuova.teams = {}
   const teamId = teamInEdit.value === 'new' ? `team_${Date.now()}` : teamInEdit.value!
-  nuova.teams[teamId] = { nome: teamNome.value.trim(), waifu: teamWaifu.value }
+  nuova.teams[teamId] = { nome, waifu: teamWaifu.value }
   emit('updateCollezione', nuova)
   await saveCollezione(authStore.user!.uid, nuova)
   emit('notif', t('collection.team_saved'), '#00e676')
@@ -724,6 +732,48 @@ const sortOptions = computed(() => [
   { value: 'esperienza:desc',   label: t('collection.sort_exp_desc') },
 ])
 
+// ── Team: filtro/ordinamento allineati alla collezione (stessi DropdownSelect) ──
+const teamSortCombo = computed<string>({
+  get: () => teamSortKey.value ? `${teamSortKey.value}:${teamSortDir.value}` : '',
+  set: (v: string) => {
+    if (!v) { teamSortKey.value = ''; return }
+    const [k, d] = v.split(':')
+    teamSortKey.value = k
+    teamSortDir.value = (d as 'asc' | 'desc') || 'desc'
+  },
+})
+const teamFiltroOptions = computed(() => [
+  { value: '', label: t('collection.filter_all') },
+  { header: t('collection.filter_rarity_group') },
+  { value: 'rarita:comune',      label: t('collection.filter_common') },
+  { value: 'rarita:raro',        label: t('collection.filter_rare') },
+  { value: 'rarita:epico',       label: t('collection.filter_epic') },
+  { value: 'rarita:leggendario', label: t('collection.filter_legendary') },
+  { value: 'rarita:immersivo',   label: t('collection.filter_immersive') },
+  ...(drops.value.length > 0 ? [
+    { header: t('collection.filter_drop_group') },
+    ...drops.value.map((d: any) => ({ value: `drop:${d.id}`, label: d.nome || d.id })),
+  ] : []),
+  { header: t('collection.filter_special_group') },
+  { value: 'scambiabili', label: t('collection.filter_tradeable') },
+])
+const teamFiltroCombo = computed<string[]>({
+  get(): string[] {
+    const out: string[] = []
+    if (teamFiltroRar.value !== 'tutte') out.push(`rarita:${teamFiltroRar.value}`)
+    if (teamFiltroDropId.value !== 'tutti') out.push(`drop:${teamFiltroDropId.value}`)
+    if (teamFiltroScambiabile.value) out.push('scambiabili')
+    return out
+  },
+  set(arr: string[]) {
+    const rar = arr.filter(v => v.startsWith('rarita:')).map(v => v.slice(7))
+    teamFiltroRar.value = rar.length ? rar[rar.length - 1] : 'tutte'
+    const dr = arr.filter(v => v.startsWith('drop:')).map(v => v.slice(5))
+    teamFiltroDropId.value = dr.length ? dr[dr.length - 1] : 'tutti'
+    teamFiltroScambiabile.value = arr.includes('scambiabili')
+  },
+})
+
 // Toggle: nasconde i placeholder '?' e mostra solo le waifu possedute
 const soloPossedute = ref(false)
 
@@ -1048,113 +1098,42 @@ function apriNegozio() {
               textTransform: 'uppercase', fontWeight: 700,
             }">Seleziona waifu (5–8) ({{ teamWaifu.length }}/8)</div>
 
-            <!-- Barra filtri team -->
-            <div :style="{
-              background: 'var(--grad-primary-soft), var(--theme-surface)',
-              border: '1px solid var(--theme-border)',
-              borderRadius: '14px', padding: '12px 14px', marginBottom: '14px',
-              backdropFilter: 'blur(8px)',
-            }">
-              <!-- Search -->
-              <div :style="{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px' }">
-                <div :style="{
-                  flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
-                  padding: '8px 14px',
-                  background: 'var(--theme-bg-secondary)',
-                  border: '1px solid var(--theme-border)',
-                  borderRadius: '999px',
-                }">
-                  <Search :size="13" stroke-width="1.5" style="color:var(--theme-text-3);flex-shrink:0;" />
-                  <input
-                    v-model="teamFiltroNome"
-                    :placeholder="$t('collection.search_placeholder')"
-                    :style="{
-                      flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                      color: 'var(--theme-text)', fontSize: '12px', fontFamily: FF.body, padding: 0,
-                    }"
-                  />
+            <!-- Barra filtri team — stesso stile della collezione -->
+            <div style="margin-bottom:14px;">
+              <!-- Search + contatore -->
+              <div :style="{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)', borderRadius: '12px', padding: '9px 14px', marginBottom: '10px' }">
+                <Search :size="15" stroke-width="1.5" style="color:var(--theme-text-3);flex-shrink:0;" />
+                <input
+                  v-model="teamFiltroNome"
+                  :placeholder="$t('collection.search_placeholder')"
+                  :style="{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: 'var(--theme-text)', fontSize: '13px', fontFamily: FF.body, padding: 0 }"
+                />
+                <span :style="{ fontFamily: FF.mono, fontSize: '13px', color: 'var(--theme-text-3)', fontWeight: 700, flexShrink: 0 }">{{ teamListaFiltrata.length }}</span>
+              </div>
+              <!-- FILTRA + ORDINA (stessi DropdownSelect della collezione) -->
+              <div style="display:flex;gap:8px;align-items:flex-end;">
+                <div style="flex:1;display:flex;flex-direction:column;gap:4px;min-width:0;">
+                  <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--theme-text-2)' }">{{ $t('collection.filter_label') }}</div>
+                  <DropdownSelect v-model="teamFiltroCombo" :options="teamFiltroOptions" :multi="true" :label="$t('collection.filter_label')" :placeholder="$t('collection.filter_all')" />
                 </div>
-                <span :style="{
-                  fontFamily: FF.label, fontSize: '14px', color: 'var(--theme-text-3)',
-                  fontWeight: 700, padding: '0 6px',
-                }">{{ teamListaFiltrata.length }}</span>
-              </div>
-              <!-- Rarità + drop -->
-              <div :style="{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }">
-                <select
-                  v-model="teamFiltroRar"
-                  :style="{
-                    background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)',
-                    color: 'var(--theme-text)', borderRadius: '9px', padding: '6px 10px', fontSize: '10px',
-                    fontFamily: FF.label, cursor: 'pointer', letterSpacing: '0.08em', fontWeight: 600,
-                  }"
-                >
-                  <option value="tutte">{{ $t("collection.filter_all_rarities") }}</option>
-                  <option v-for="r in ['comune','raro','epico','leggendario','immersivo']" :key="r" :value="r">
-                    {{ r.charAt(0).toUpperCase() + r.slice(1) }}
-                  </option>
-                </select>
-                <select
-                  v-if="drops.length > 0"
-                  v-model="teamFiltroDropId"
-                  :style="{
-                    background: 'var(--theme-input-bg)', border: '1px solid var(--theme-border)',
-                    color: 'var(--theme-text)', borderRadius: '9px', padding: '6px 10px', fontSize: '10px',
-                    fontFamily: FF.label, cursor: 'pointer', letterSpacing: '0.08em', fontWeight: 600,
-                  }"
-                >
-                  <option value="tutti">{{ $t("collection.filter_all_drops") }}</option>
-                  <option v-for="d in drops" :key="d.id" :value="d.id">{{ d.nome || d.id }}</option>
-                </select>
-              </div>
-              <!-- Sort -->
-              <div :style="{
-                display: 'flex', gap: '5px', flexWrap: 'wrap', alignItems: 'center',
-                paddingTop: '10px', borderTop: '1px solid var(--theme-border)',
-              }">
-                <span :style="{
-                  fontFamily: FF.label, fontSize: '13px',
-                  color: 'var(--theme-text-3)',
-                  letterSpacing: '0.24em', textTransform: 'uppercase', fontWeight: 700,
-                }">{{ $t("collection.sort_label") }}</span>
-                <button
-                  v-for="s in [
-                    { k: 'rarita', l: $t('collection.sort_opt_rarity') },
-                    { k: 'livello', l: $t('collection.sort_opt_level') },
-                    { k: 'copie', l: $t('collection.sort_opt_copies') },
-                  ]"
-                  :key="s.k"
-                  @click="teamToggleSort(s.k)"
-                  :style="{
-                    padding: '4px 10px', borderRadius: '999px', cursor: 'pointer',
-                    background: teamSortKey === s.k ? 'var(--theme-tab-active)' : 'var(--theme-shimmer)',
-                    border: `1px solid ${teamSortKey === s.k ? 'var(--theme-accent)' : 'var(--theme-border)'}`,
-                    color: teamSortKey === s.k ? 'var(--theme-accent)' : 'var(--theme-text-2)',
-                    fontFamily: FF.label, fontSize: '13px', fontWeight: 700,
-                    letterSpacing: '0.16em', textTransform: 'uppercase',
-                    display: 'inline-flex', alignItems: 'center', gap: '4px',
-                  }"
-                >
-                  {{ s.l }}
-                  <span v-if="teamSortKey === s.k" :style="{ fontSize: '9px' }">{{ teamSortDir === 'desc' ? '↓' : '↑' }}</span>
-                </button>
+                <div style="flex:1;display:flex;flex-direction:column;gap:4px;min-width:0;">
+                  <div :style="{ fontFamily:FF.label, fontSize:'13px', fontWeight:700, letterSpacing:'0.2em', textTransform:'uppercase', color:'var(--theme-text-2)' }">{{ $t('collection.sort_label') }}</div>
+                  <DropdownSelect v-model="teamSortCombo" :options="sortOptions" :label="$t('collection.sort_label')" :placeholder="$t('collection.sort_default')" />
+                </div>
               </div>
             </div>
 
-            <!-- Griglia selezione waifu team -->
-            <div :style="{
-              display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center',
-              paddingBottom: '96px',
-            }">
+            <!-- Griglia selezione waifu team — 3 colonne come la collezione -->
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 12px;padding-bottom:88px;">
               <div
                 v-for="w in teamListaFiltrata.slice(0, teamVisibili)"
                 :key="w.id"
                 @click="teamToggleWaifu(w.id)"
                 :style="{
                   cursor: 'pointer',
-                  opacity: teamWaifu.includes(w.id) ? 1 : w.mosse_ok === false ? 0.4 : 0.6,
-                  transition: 'all 0.15s',
-                  transform: teamWaifu.includes(w.id) ? 'scale(1.02)' : 'scale(1)',
+                  opacity: teamWaifu.includes(w.id) ? 1 : w.mosse_ok === false ? 0.4 : 0.72,
+                  transition: 'transform 0.15s, filter 0.15s, opacity 0.15s',
+                  transform: teamWaifu.includes(w.id) ? 'scale(1.03)' : 'scale(1)',
                   filter: teamWaifu.includes(w.id) ? `drop-shadow(0 0 12px ${C.ok})` : 'none',
                   position: 'relative',
                 }"
@@ -1169,35 +1148,38 @@ function apriNegozio() {
                   }"
                 >{{ $t('collection.moves_count', { n: 0 }) }}</div>
               </div>
-              <!-- Empty state team picker -->
-              <PannelloOrnato
-                v-if="teamListaFiltrata.length === 0"
-                :glow="C.ok"
-                :style="{ width: '100%', textAlign: 'center', padding: '40px' }"
-              >
-                <Search :size="36" stroke-width="1" :style="{ marginBottom: '8px', color: C.ok }" />
-                <div :style="{
-                  fontFamily: FF.label, fontSize: '14px', color: C.ok,
-                  letterSpacing: '0.28em', marginBottom: '6px',
-                  textTransform: 'uppercase', fontWeight: 700,
-                }">{{ $t("collection.no_waifu_short") }}</div>
-                <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">{{ $t("collection.change_filters") }}</div>
-              </PannelloOrnato>
             </div>
 
-            <!-- Carica altre team -->
-            <div v-if="teamVisibili < teamListaFiltrata.length" :style="{ textAlign: 'center', marginTop: '12px' }">
+            <!-- Empty state team picker -->
+            <PannelloOrnato
+              v-if="teamListaFiltrata.length === 0"
+              :glow="C.ok"
+              :style="{ width: '100%', textAlign: 'center', padding: '40px', marginBottom: '14px' }"
+            >
+              <Search :size="36" stroke-width="1" :style="{ marginBottom: '8px', color: C.ok }" />
+              <div :style="{
+                fontFamily: FF.label, fontSize: '14px', color: C.ok,
+                letterSpacing: '0.28em', marginBottom: '6px',
+                textTransform: 'uppercase', fontWeight: 700,
+              }">{{ $t("collection.no_waifu_short") }}</div>
+              <div :style="{ opacity: 0.55, fontSize: '11px', lineHeight: 1.6, fontFamily: FF.body }">{{ $t("collection.change_filters") }}</div>
+            </PannelloOrnato>
+
+            <!-- Carica altre — sopra la barra azioni, ben distanziato e cliccabile -->
+            <div v-if="teamVisibili < teamListaFiltrata.length" :style="{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }">
               <BtnDecorato variant="secondary" size="sm" @click="teamVisibili += TEAM_PAGE_SIZE">
-                Carica altre ({{ teamListaFiltrata.length - teamVisibili }})
+                {{ $t('collection.load_more', { n: teamListaFiltrata.length - teamVisibili }) }}
               </BtnDecorato>
             </div>
 
-            <!-- Footer sticky azioni team -->
+            <!-- Barra azioni sticky — sfondo SOLIDO, non si sovrappone al contenuto -->
             <div :style="{
-              position: 'sticky', bottom: 0,
-              background: 'linear-gradient(180deg, transparent, var(--theme-surface) 35%)',
-              padding: '20px 0 8px', marginTop: '-40px',
-              display: 'flex', gap: '10px', justifyContent: 'center', zIndex: 5,
+              position: 'sticky', bottom: 0, zIndex: 5,
+              display: 'flex', gap: '10px', justifyContent: 'center',
+              padding: '12px 0 calc(8px + env(safe-area-inset-bottom))',
+              background: 'var(--theme-surface)',
+              borderTop: '1px solid var(--theme-border)',
+              boxShadow: '0 -6px 18px var(--theme-shadow)',
             }">
               <BtnDecorato
                 variant="secondary" size="md"
@@ -1206,7 +1188,7 @@ function apriNegozio() {
               <BtnDecorato
                 variant="primary" size="md"
                 @click="salvaTeam"
-                :disabled="teamWaifu.length < 5 || teamWaifu.length > 8 || !teamNome.trim()"
+                :disabled="teamWaifu.length < 5 || teamWaifu.length > 8"
               >SALVA ({{ teamWaifu.length }}/8)</BtnDecorato>
             </div>
           </div>
