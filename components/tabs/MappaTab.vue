@@ -58,6 +58,11 @@ const FF = {
 
 // ------------------------------------------------------------------ Store
 const authStore     = useAuthStore()
+// Avatar del giocatore (per il popup di acquisto)
+const { avatarUrl, setAvatar } = useAvatar()
+const avIsColor = computed(() => !!avatarUrl.value && avatarUrl.value.startsWith('#'))
+const avIsImage = computed(() => !!avatarUrl.value && (avatarUrl.value.startsWith('http') || avatarUrl.value.startsWith('/')))
+const avInitials = computed(() => String((props.profilo?.nomeImpero as string) || authStore.user?.displayName || 'W').trim().slice(0, 2).toUpperCase())
 const missionsStore = useMissionsStore()
 const { t } = useI18n()
 
@@ -81,7 +86,25 @@ const conquestAnim       = ref<any>(null) // { pixelName, oldColor, newColor, em
 const PREMIO_VITTORIA_KISSES = 17   // 1/3 del costo di una bustina (50)
 const victoryReward      = ref<{ kisses: number } | null>(null)
 // Popup di conferma acquisto territorio (acquisto diretto da CPU)
-const purchaseSuccess    = ref<{ name: string; price: number } | null>(null)
+const purchaseSuccess    = ref<{ name: string; price: number; kissesBefore: number } | null>(null)
+// Valore Kisses animato (scende dal totale precedente al nuovo dopo l'acquisto)
+const kissesAnim         = ref(0)
+let   kissesAnimRaf: ReturnType<typeof requestAnimationFrame> | null = null
+watch(purchaseSuccess, (v) => {
+  if (kissesAnimRaf) cancelAnimationFrame(kissesAnimRaf)
+  if (!v) return
+  const from = v.kissesBefore
+  const to   = Math.max(0, v.kissesBefore - v.price)
+  const start = performance.now(), dur = 900
+  const step = (now: number) => {
+    const p = Math.min(1, (now - start) / dur)
+    const eased = 1 - Math.pow(1 - p, 3)   // easeOutCubic
+    kissesAnim.value = Math.round(from + (to - from) * eased)
+    if (p < 1) kissesAnimRaf = requestAnimationFrame(step)
+  }
+  kissesAnim.value = from
+  kissesAnimRaf = requestAnimationFrame(step)
+})
 const showBattle         = ref(false)
 const raidAttackMode     = ref(false) // distingue BattleModal normale da raid
 const showRound          = ref(false)
@@ -635,23 +658,24 @@ const handleRoundComplete = async (
 
 // Gestisce l'acquisto/offerta di un pixel (acquisto CPU diretto o offerta a giocatore)
 const handlePurchase = async ({ amount }: { amount?: number }) => {
+  // Cattura i dati del territorio e CHIUDI SUBITO modale + dettaglio: così il
+  // popup di acquisto non riappare durante la richiesta né dopo.
+  const isCPU      = selectedPixel.value?.ownerId === 'CPU'
+  const targetX    = selectedPixel.value?.x
+  const targetY    = selectedPixel.value?.y
+  const nomeTerr   = selectedPixel.value?.name || `(${targetX}, ${targetY})`
+  const fallbackPrezzo = selectedPixel.value?.buyPrice ?? 0
+  const ownerLevel = (selectedPixel.value?.ownerLevel as number) ?? 1
+  showPurchase.value  = false
+  selectedPixel.value = null
   try {
     const token  = await authStore.user?.getIdToken()
-    const isCPU  = selectedPixel.value?.ownerId === 'CPU'
     const data = await ($fetch('/api/mappa/purchase', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: {
-        targetX:     selectedPixel.value.x,
-        targetY:     selectedPixel.value.y,
-        offerAmount: isCPU ? undefined : amount,
-      },
+      body: { targetX, targetY, offerAmount: isCPU ? undefined : amount },
     })) as { success: boolean; type?: string; price?: number }
     if (data.success) {
-      showPurchase.value  = false
-      // Nome/prezzo del territorio PRIMA di azzerare la selezione (per il popup)
-      const nomeTerr = selectedPixel.value?.name || `(${selectedPixel.value?.x}, ${selectedPixel.value?.y})`
-      const prezzoTerr = data.price ?? selectedPixel.value?.buyPrice ?? 0
       await invalidateAndReload()
       if (data.type === 'cpu_purchase') {
         emit('updateProfilo', {
@@ -660,10 +684,10 @@ const handlePurchase = async ({ amount }: { amount?: number }) => {
           pixelCount: ((props.profilo?.pixelCount as number) ?? 0) + 1,
         })
         showTutorial.value = false
-        // Conferma acquisto avvenuto
-        purchaseSuccess.value = { name: nomeTerr, price: prezzoTerr }
+        // Conferma acquisto avvenuto (con Kisses PRIMA della spesa per l'animazione)
+        const speso = data.price ?? fallbackPrezzo
+        purchaseSuccess.value = { name: nomeTerr, price: speso, kissesBefore: (props.profilo?.kisses as number) ?? speso }
       }
-      selectedPixel.value = null
     }
   } catch (e: any) {
     console.error(e)
@@ -671,7 +695,7 @@ const handlePurchase = async ({ amount }: { amount?: number }) => {
     const status = e?.statusCode ?? e?.data?.statusCode
     if (status === 402) {
       // Kisses insufficienti → popup di ricarica (shop)
-      const price = 200 + (((selectedPixel.value?.ownerLevel as number) ?? 1) * 50)
+      const price = 200 + (ownerLevel * 50)
       kissesShortMissing.value = Math.max(1, price - ((props.profilo?.kisses as number) ?? 0))
     } else {
       attackError.value = e?.data?.message || e?.message || t('map.attack_generic_error')
@@ -1162,7 +1186,7 @@ async function onTerritoryClick(territoryId: string) {
         </div>
       </div>
 
-      <!-- ── Popup CONFERMA ACQUISTO territorio ─────────────────────────── -->
+      <!-- ── Popup CONFERMA ACQUISTO territorio — avatar rotante + Kisses animati ── -->
       <div v-if="purchaseSuccess"
         style="position:fixed;inset:0;z-index:640;background:rgba(4,2,14,0.72);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px;"
         @click.self="purchaseSuccess = null">
@@ -1172,14 +1196,33 @@ async function onTerritoryClick(territoryId: string) {
           borderRadius:'20px', padding:'26px 22px',
           boxShadow:'0 12px 40px var(--theme-shadow)',
         }">
-          <div :style="{ fontSize:'42px', lineHeight:1, marginBottom:'10px' }">🏰</div>
-          <div :style="{ fontFamily:'var(--ff-display)', fontSize:'17px', fontWeight:800, color:'#58e0a3', letterSpacing:'.03em', marginBottom:'8px' }">
+          <!-- Avatar del giocatore che ruota -->
+          <div class="tg-spin" :style="{
+            width:'72px', height:'72px', borderRadius:'50%', margin:'0 auto 14px',
+            overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center',
+            border:`2.5px solid var(--theme-accent)`, boxShadow:'0 0 22px var(--theme-shadow)',
+            background: avIsColor ? avatarUrl! : avIsImage ? 'transparent' : 'var(--theme-accent)',
+          }">
+            <img v-if="avIsImage" :src="avatarUrl!" alt="" @error="setAvatar(null)" style="width:100%;height:100%;object-fit:cover;display:block;" />
+            <span v-else-if="!avIsColor" :style="{ fontFamily:'var(--ff-display)', fontSize:'26px', fontWeight:900, color:'#fff' }">{{ avInitials }}</span>
+          </div>
+
+          <div :style="{ fontFamily:'var(--ff-display)', fontSize:'17px', fontWeight:800, color:'#58e0a3', letterSpacing:'.04em', marginBottom:'4px' }">
             Territorio acquistato!
           </div>
-          <div :style="{ fontFamily:'var(--ff-body)', fontSize:'13px', color:'var(--theme-text-2)', lineHeight:1.5, marginBottom:'18px' }">
-            <strong :style="{ color:'var(--theme-text)' }">{{ purchaseSuccess.name }}</strong> è ora tuo
-            <template v-if="purchaseSuccess.price > 0"><br/>−{{ purchaseSuccess.price }} Kisses</template>
+          <div :style="{ fontFamily:'var(--ff-body)', fontSize:'12px', color:'var(--theme-text-3)', marginBottom:'14px' }">{{ purchaseSuccess.name }}</div>
+
+          <!-- Saldo Kisses animato: dal totale precedente scende del prezzo speso -->
+          <div v-if="purchaseSuccess.price > 0" :style="{
+            display:'flex', flexDirection:'column', alignItems:'center', gap:'4px', marginBottom:'18px',
+          }">
+            <div :style="{ display:'inline-flex', alignItems:'center', gap:'8px', background:'var(--theme-surface-2)', border:'1px solid var(--theme-border-2)', borderRadius:'999px', padding:'10px 20px' }">
+              <KissesIcon :size="18" />
+              <span :style="{ fontFamily:'var(--ff-display)', fontSize:'22px', fontWeight:800, color:'var(--theme-text)', fontVariantNumeric:'tabular-nums' }">{{ kissesAnim }}</span>
+            </div>
+            <div :style="{ fontFamily:'var(--ff-label)', fontSize:'12px', fontWeight:800, color:'var(--theme-accent-pink)', letterSpacing:'0.06em' }">− {{ purchaseSuccess.price }} Kisses spesi</div>
           </div>
+
           <button @click="purchaseSuccess = null" :style="{
             width:'100%', padding:'12px 0', border:'none', borderRadius:'12px', cursor:'pointer',
             background:'var(--theme-accent)', color:'#fff',
@@ -1345,3 +1388,9 @@ async function onTerritoryClick(territoryId: string) {
 
   </div>
 </template>
+
+<style scoped>
+/* Avatar del giocatore che ruota nel popup di acquisto (stile medaglione) */
+.tg-spin { animation: tgSpin 1.7s linear infinite; }
+@keyframes tgSpin { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+</style>

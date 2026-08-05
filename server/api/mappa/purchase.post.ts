@@ -107,6 +107,16 @@ export default defineEventHandler(async (event) => {
     if (typeof offerAmount !== 'number' || offerAmount <= 0) {
       throw createError({ statusCode: 400, message: 'offerAmount richiesto per acquisto da giocatore' });
     }
+    // Un utente non può fare una SECONDA offerta sullo stesso territorio se ne ha
+    // già una in sospeso (un solo filtro di uguaglianza → niente indice composito).
+    const mine = await adminDb.collection('pixel_offers').where('fromUid', '==', uid).get();
+    const giaOfferto = mine.docs.some(d => {
+      const o = d.data() as any;
+      return o.pixelX === targetX && o.pixelY === targetY && o.status === 'pending';
+    });
+    if (giaOfferto) {
+      throw createError({ statusCode: 409, message: 'Hai già un\'offerta in corso per questo territorio' });
+    }
     const offerRef = adminDb.collection('pixel_offers').doc();
     await offerRef.set({
       fromUid: uid,

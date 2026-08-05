@@ -19,9 +19,15 @@ async function cancelPendingOffers(x: number, y: number): Promise<void> {
     });
     if (!toDelete.length) return;
     const batch = adminDb.batch();
-    toDelete.forEach(d => batch.delete(d.ref));
+    const uids = new Set<string>();
+    toDelete.forEach(d => {
+      const o = d.data() as any;
+      if (o.fromUid) uids.add(o.fromUid);
+      if (o.toUid) uids.add(o.toUid);
+      batch.delete(d.ref);
+    });
     await batch.commit();
-    invalidateOffersCache();
+    uids.forEach(u => invalidateOffersCache(u));
   } catch { /* non bloccare la conquista */ }
 }
 
