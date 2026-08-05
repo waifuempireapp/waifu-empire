@@ -120,6 +120,9 @@ const showRaidPanel      = ref(false)
 const raidInfo           = ref<any>(null)
 // True se l'utente ha già vinto il raid corrente → mostra solo il countdown al prossimo
 const raidWon            = ref(false)
+// Loading dei due widget raid → placeholder a dimensione fissa (niente layout shift)
+const raidLoading        = ref(true)
+const raidPrivateLoading = ref(true)
 // ── Raid PRIVATO (boss personale, stessa waifu/ciclo) ──────────────────────
 const raidPrivateInfo    = ref<any>(null)   // { waifuNome, waifuImage, currentHp, totalHp, endsAt, status }
 const raidPrivateWon     = ref(false)       // boss privato abbattuto
@@ -350,6 +353,8 @@ const loadRaidInfo = async () => {
     raidInfo.value = null
     raidWon.value = false
     raidError.value = true
+  } finally {
+    raidLoading.value = false
   }
 }
 
@@ -365,6 +370,8 @@ const loadRaidPrivateInfo = async () => {
   } catch {
     raidPrivateInfo.value = null
     raidPrivateWon.value = false
+  } finally {
+    raidPrivateLoading.value = false
   }
 }
 
@@ -947,7 +954,16 @@ async function onTerritoryClick(territoryId: string) {
             ⚔ {{ $t('map.raid_collective') }}
           </div>
 
-          <template v-if="raidError">
+          <!-- Placeholder durante il caricamento (stesse dimensioni del risultato) -->
+          <template v-if="raidLoading">
+            <div class="tg-sk" style="width:48px;height:66px;border-radius:9px;" />
+            <div class="tg-sk" style="width:70%;height:13px;border-radius:5px;" />
+            <div class="tg-sk" style="width:100%;height:6px;border-radius:3px;" />
+            <div class="tg-sk" style="width:55%;height:10px;border-radius:4px;" />
+            <div class="tg-sk" style="width:45%;height:10px;border-radius:4px;" />
+          </template>
+
+          <template v-else-if="raidError">
             <div :style="{ fontSize: '28px', lineHeight: 1 }">⚠️</div>
             <div :style="{ fontFamily: FF.body, fontSize: '11px', color: 'var(--theme-text-2)', textAlign: 'center', lineHeight: 1.3 }">{{ $t('map.raid_unavailable') }}</div>
           </template>
@@ -993,7 +1009,16 @@ async function onTerritoryClick(territoryId: string) {
             🛡 {{ $t('map.raid_private') }}
           </div>
 
-          <template v-if="raidPrivateWon">
+          <!-- Placeholder durante il caricamento (stesse dimensioni del risultato) -->
+          <template v-if="raidPrivateLoading">
+            <div class="tg-sk" style="width:48px;height:66px;border-radius:9px;" />
+            <div class="tg-sk" style="width:70%;height:13px;border-radius:5px;" />
+            <div class="tg-sk" style="width:100%;height:6px;border-radius:3px;" />
+            <div class="tg-sk" style="width:55%;height:10px;border-radius:4px;" />
+            <div class="tg-sk" style="width:45%;height:10px;border-radius:4px;" />
+          </template>
+
+          <template v-else-if="raidPrivateWon">
             <div :style="{ fontSize: '30px', lineHeight: 1 }">🏆</div>
             <div :style="{ fontFamily: FF.label, fontSize: '10px', color: '#f5c560', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 800 }">{{ $t('map.raid_won') }}</div>
             <div :style="{ fontFamily: FF.mono, fontSize: '12px', fontWeight: 700, color: '#f5c560', fontVariantNumeric: 'tabular-nums' }">⏱ {{ raidCountdown || '—' }}</div>
@@ -1393,4 +1418,13 @@ async function onTerritoryClick(territoryId: string) {
 /* Avatar del giocatore che ruota nel popup di acquisto (stile medaglione) */
 .tg-spin { animation: tgSpin 1.7s linear infinite; }
 @keyframes tgSpin { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+
+/* Skeleton dei widget raid durante il caricamento */
+.tg-sk {
+  background: linear-gradient(90deg, var(--theme-surface-2) 25%, var(--theme-border) 37%, var(--theme-surface-2) 63%);
+  background-size: 400% 100%;
+  animation: tgShimmer 1.3s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes tgShimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
 </style>
