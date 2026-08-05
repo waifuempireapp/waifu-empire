@@ -116,6 +116,18 @@ export default defineEventHandler(async (event) => {
         paused.push({ waifuId, pausedUntilMs: ms });
       }
     }
+    // Arricchisci con nome + immagine dal catalogo (come per la top5), così la
+    // lista "Fuori gara" mostra la carta della waifu e non solo l'id.
+    if (paused.length > 0) {
+      const pausedSnaps = await adminDb.getAll(...paused.map(p => adminDb.doc(`catalogo_waifu/${p.waifuId}`)));
+      const pausedCat: Record<string, any> = {};
+      pausedSnaps.forEach(s => { if (s.exists) pausedCat[s.id] = s.data(); });
+      for (const p of paused) {
+        const c = pausedCat[p.waifuId] ?? {};
+        p.nome  = c.nome ?? p.waifuId;
+        p.image = c.asset_statica ?? c.asset_immersiva ?? null;
+      }
+    }
 
     return { ranking: enrichedRanking, paused, weekId, monthKey: currentMonth, votingEndsAt: nextMonthStartRome(), hasHardPass, isLive: !!(rankingData?.isLive) };
   } catch (e: any) {

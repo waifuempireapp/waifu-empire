@@ -373,14 +373,25 @@ const canNext          = computed(() => (page.value + 1) * PAGE_SIZE < topList.v
         background: 'var(--theme-shimmer)', border: '1px solid var(--theme-border)',
         borderRadius: '14px', padding: '14px 16px',
       }">
-        <div>
-          <div :style="{
-            fontFamily: FF.label, fontSize: '12px', fontWeight: 700,
-            color: C.violet, letterSpacing: '0.15em',
-            textTransform: 'uppercase', marginBottom: '4px',
-          }">{{ $t("leaderboard.anti_monopoly") }}</div>
-          <div :style="{ fontFamily: FF.label, fontSize: '15px', fontWeight: 700, color: 'var(--theme-text)' }">
-            {{ p.waifuId }}
+        <div :style="{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }">
+          <!-- Immagine waifu (come nella classifica normale) -->
+          <div v-if="p.image" :style="{
+            width: '44px', height: '60px', borderRadius: '8px',
+            overflow: 'hidden', flexShrink: 0, border: `1px solid ${C.violet}40`,
+          }">
+            <img :src="ikUrl(p.image, 'thumbnail') ?? p.image" :alt="p.nome ?? p.waifuId"
+              @error="ikImgFallback"
+              :style="{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 10%' }" />
+          </div>
+          <div :style="{ minWidth: 0 }">
+            <div :style="{
+              fontFamily: FF.label, fontSize: '12px', fontWeight: 700,
+              color: C.violet, letterSpacing: '0.15em',
+              textTransform: 'uppercase', marginBottom: '4px',
+            }">{{ $t("leaderboard.anti_monopoly") }}</div>
+            <div :style="{ fontFamily: FF.label, fontSize: '15px', fontWeight: 700, color: 'var(--theme-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">
+              {{ p.nome ?? p.waifuId }}
+            </div>
           </div>
         </div>
         <div :style="{ textAlign: 'right' }">
