@@ -37,6 +37,15 @@ const emit = defineEmits<{
   levelUp: []
 }>()
 
+// Tipo elementale della waifu risolto come in battaglia (tipo → tipologia →
+// _battleStats.type): prima il picker leggeva SOLO waifu.tipo, spesso assente,
+// quindi il vincolo di debolezza non veniva mai applicato.
+const waifuTipo = computed<string | undefined>(() => {
+  const w = props.waifu as any
+  const d = props.dati as any
+  return (w?.tipo ?? w?.tipologia ?? d?.tipo ?? d?.type ?? d?._battleStats?.type ?? d?.battleStats?.type) as string | undefined
+})
+
 const FF = {
   display: "var(--ff-display,'Fredoka',sans-serif)",
   label:   "var(--ff-label,'Saira Condensed',sans-serif)",
@@ -136,8 +145,8 @@ function compat(mossaId: string, slot: string): { ok: boolean; motivo?: string }
   if (!m) return { ok: false, motivo: t('card.not_in_catalog') }
 
   // La waifu non può imparare la mossa del tipo a cui è debole
-  if (!canLearnMove(props.waifu.tipo as string, (m.type ?? m.tipologia) as string))
-    return { ok: false, motivo: `Debole a ${weakType(props.waifu.tipo as string)?.toUpperCase() ?? '?'}` }
+  if (!canLearnMove(waifuTipo.value, (m.type ?? m.tipologia) as string))
+    return { ok: false, motivo: `Debole a ${weakType(waifuTipo.value)?.toUpperCase() ?? '?'}` }
 
   // Stessa mossa già in un altro slot di QUESTA waifu
   if (SLOTS.filter(s => s !== slot).some(s => mosseSlot.value[s] === mossaId))
@@ -155,7 +164,7 @@ watch(slotPicker, () => { nonCompatOpen.value = false })
 function oneClickMosse() {
   const compatibili = Object.keys(props.mosseCollezione).filter(id => {
     const cat = props.mosseCat.find((m: any) => m.id === id)
-    return cat && canLearnMove(props.waifu.tipo as string, (cat.type ?? cat.tipologia) as string)
+    return cat && canLearnMove(waifuTipo.value, (cat.type ?? cat.tipologia) as string)
   })
   if (compatibili.length === 0) return
   // Mescola e prendi fino a 4 mosse distinte
@@ -400,15 +409,15 @@ onUnmounted(() => {
             :censurata="false"
           />
           <!-- Chip TIPO — top-right angolo, bg pieno come i chip LV/copie -->
-          <div v-if="waifu.tipo" :style="{
+          <div v-if="waifuTipo" :style="{
             position: 'absolute', top: '-20px', right: '-30px', zIndex: 20,
-            background: 'var(--theme-surface)', border: `2px solid ${tc(waifu.tipo).border}`,
+            background: 'var(--theme-surface)', border: `2px solid ${tc(waifuTipo).border}`,
             borderRadius: '999px', padding: '8px 20px',
             fontFamily: FF.label, fontSize: '17px', fontWeight: 900,
-            color: tc(waifu.tipo).txt, letterSpacing: '0.12em', textTransform: 'uppercase',
+            color: tc(waifuTipo).txt, letterSpacing: '0.12em', textTransform: 'uppercase',
             boxShadow: '0 2px 10px rgba(0,0,0,0.6)',
             whiteSpace: 'nowrap', pointerEvents: 'none',
-          }">⚡ {{ typeLabel(waifu.tipo) }}</div>
+          }">⚡ {{ typeLabel(waifuTipo) }}</div>
           <!-- Chip LV — bottom-left angolo -->
           <div :style="{
             position: 'absolute', bottom: '-20px', left: '-30px', zIndex: 20,
