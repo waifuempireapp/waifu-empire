@@ -53,6 +53,12 @@ const emit = defineEmits<{
 // ── Auth store: utente corrente ───────────────────────────────────────────────
 const authStore = useAuthStore()
 
+// ── Avatar dell'utente (per il proprio territorio) ────────────────────────────
+const { avatarUrl, setAvatar } = useAvatar()
+const avIsColor  = computed(() => !!avatarUrl.value && avatarUrl.value.startsWith('#'))
+const avIsImage  = computed(() => !!avatarUrl.value && (avatarUrl.value.startsWith('http') || avatarUrl.value.startsWith('/')))
+const avInitials = computed(() => String(props.pixel?.ownerName || authStore.user?.displayName || 'W').trim().slice(0, 2).toUpperCase())
+
 // ── Blocca scroll del body mentre il modal è aperto ──────────────────────────
 useScrollLock(true)
 
@@ -222,8 +228,18 @@ onUnmounted(() => {
 
       <!-- Sezione proprietario (centrata quando è un territorio mio) -->
       <div :style="{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '18px', ...(isOwn ? { flexDirection: 'column' } : {}) }">
-        <!-- Icona colore empire — grande con glow -->
-        <div :style="{
+        <!-- Il MIO territorio → il mio avatar reale; altrimenti colore impero -->
+        <div v-if="isOwn" :style="{
+          width: '66px', height: '66px', borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: avIsColor ? avatarUrl! : avIsImage ? 'transparent' : 'var(--theme-accent)',
+          border: `2.5px solid ${(pixel.ownerColor || '#a78bfa')}88`,
+          boxShadow: `0 0 22px ${(pixel.ownerColor || '#a78bfa')}55`,
+        }">
+          <img v-if="avIsImage" :src="avatarUrl!" alt="" @error="setAvatar(null)" style="width:100%;height:100%;object-fit:cover;display:block;" />
+          <span v-else-if="!avIsColor" :style="{ fontFamily: FF.display, fontSize: '26px', fontWeight: 900, color: '#fff' }">{{ avInitials }}</span>
+        </div>
+        <div v-else :style="{
           width: '60px', height: '60px', borderRadius: '50%', flexShrink: 0,
           background: pixel.ownerColor || '#888888',
           border: `2.5px solid ${pixel.ownerColor || '#888'}88`,
@@ -231,13 +247,21 @@ onUnmounted(() => {
         }" />
 
         <div :style="{ flex: isOwn ? 'none' : 1, minWidth: 0, ...(isOwn ? { width: '100%', textAlign: 'center' } : {}) }">
-          <!-- Nome proprietario — grande e prominente -->
+          <!-- Nome proprietario -->
           <div :style="{
-            fontFamily: FF.display, fontSize: '20px', letterSpacing: '0.04em',
-            color: 'var(--theme-text)', fontWeight: 900, lineHeight: 1.1, marginBottom: '8px',
+            display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap',
+            marginBottom: '9px', ...(isOwn ? { justifyContent: 'center' } : {}),
           }">
-            {{ maskOffensiveName(pixel.ownerName || 'CPU') }}
-            <span v-if="isOwn" :style="{ color: C.aqua, fontSize: '13px', fontWeight: 600 }"> {{ $t('map.yours_suffix') }}</span>
+            <span :style="{
+              fontFamily: FF.display, fontSize: '17px', letterSpacing: '0.005em',
+              color: 'var(--theme-text)', fontWeight: 800, lineHeight: 1.15,
+            }">{{ maskOffensiveName(pixel.ownerName || 'CPU') }}</span>
+            <span v-if="isOwn" :style="{
+              fontFamily: FF.label, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em',
+              textTransform: 'uppercase', color: C.aqua,
+              background: 'rgba(108,240,224,0.12)', border: `1px solid ${C.aqua}44`,
+              borderRadius: '999px', padding: '2px 9px',
+            }">{{ $t('map.yours_suffix') }}</span>
           </div>
 
           <!-- Badge difficoltà — grande, full-rounded -->
@@ -277,8 +301,8 @@ onUnmounted(() => {
       <!-- Team difensore — layout 3+2 card -->
       <div style="margin-bottom: 16px;">
         <div :style="{
-          fontFamily: FF.label, fontSize: '12px', letterSpacing: '0.22em',
-          color: 'var(--theme-text-2)', textTransform: 'uppercase', marginBottom: '10px', fontWeight: 700,
+          fontFamily: FF.label, fontSize: '10.5px', letterSpacing: '0.2em',
+          color: 'var(--theme-text-3)', textTransform: 'uppercase', marginBottom: '10px', fontWeight: 700,
           ...(isOwn ? { textAlign: 'center' } : {}),
         }">
           {{ isCPU ? $t('map.defender_team_cpu') : isOwn ? $t('map.defender_team_yours') : $t('map.defender_team') }}
@@ -411,7 +435,7 @@ onUnmounted(() => {
         </template>
 
         <!-- Nessun team impostato / caricamento -->
-        <div v-else :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-3)', paddingTop: '4px', ...(isOwn ? { textAlign: 'center' } : {}) }">
+        <div v-else :style="{ fontFamily: FF.body, fontSize: '12px', color: 'var(--theme-text-3)', paddingTop: '2px', paddingBottom: '4px', ...(isOwn ? { textAlign: 'center' } : {}) }">
           {{ isOwn ? $t('map.no_defender_team') : $t('map.loading_team') }}
         </div>
       </div>
