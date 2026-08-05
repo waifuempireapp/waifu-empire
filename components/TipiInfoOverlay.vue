@@ -216,10 +216,11 @@ const DIFFICOLTA = [
 }
 .tipi-card-name { font-size: 13px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
 .tipi-rows { display: flex; flex-direction: column; gap: 5px; }
-.tipi-row { display: flex; align-items: center; gap: 8px; }
-.tr-k { font-size: 11px; font-weight: 800; min-width: 30px; }
+/* × a sinistra, chip TIPO allineato tutto a destra */
+.tipi-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tr-k { font-size: 11px; font-weight: 800; min-width: 30px; flex-shrink: 0; }
 .tr-chip {
   font-size: 10px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
-  border: 1.5px solid; border-radius: 8px; padding: 2px 8px;
+  border: 1.5px solid; border-radius: 8px; padding: 2px 8px; flex-shrink: 0;
 }
 </style>
