@@ -171,6 +171,7 @@ const _MOVE_NAMES: Record<string, string[]> = {
   Abisso: ["Lama d'Ombra",'Veleno Notturno','Eclissi Tagliente','Danza Mortale','Morso Oscuro','Tentacolo Umbra','Silenzio Eterno','Patto Oscuro'],
   Ferro:  ["Pugno d'Acciaio",'Scudo Spezzato','Contraccolpo','Fortezza Assoluta','Riflesso Metallico','Armatura Temprata','Freccia di Ferro','Colpo di Titanio'],
   Fuoco:  ['Fiamma Travolgente','Calore Torrido','Esplosione Infuocata','Danza delle Braci','Cenere Bruciante','Vulcano Miniatura','Serpente di Fuoco','Inferno Rosso'],
+  Chrono: ['Distorsione Temporale','Eco del Passato','Salto Quantico','Frattura Oraria','Anello del Tempo','Paradosso','Sabbie del Destino','Reversione'],
 }
 
 const _ABILITIES_POOL = [
