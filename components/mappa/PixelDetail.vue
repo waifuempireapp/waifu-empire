@@ -2,7 +2,7 @@
 <!-- Porta PixelDetail.jsx (React/Next.js) → Vue 3 Composition API. -->
 <script setup lang="ts">
 // Icone Lucide — X chiudi, Target difficoltà, Flame HOT, Swords attacca, Heart kisses
-import { X, Target, Flame, Swords, Heart } from 'lucide-vue-next'
+import { X, Target, Flame, Swords, Heart, Shield } from 'lucide-vue-next'
 
 const { t } = useI18n()
 
@@ -220,8 +220,8 @@ onUnmounted(() => {
         @click="emit('chiudi')"
       ><X :size="20" stroke-width="1.5" /></button>
 
-      <!-- Sezione proprietario -->
-      <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 18px;">
+      <!-- Sezione proprietario (centrata quando è un territorio mio) -->
+      <div :style="{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '18px', ...(isOwn ? { flexDirection: 'column' } : {}) }">
         <!-- Icona colore empire — grande con glow -->
         <div :style="{
           width: '60px', height: '60px', borderRadius: '50%', flexShrink: 0,
@@ -230,7 +230,7 @@ onUnmounted(() => {
           boxShadow: `0 0 22px ${pixel.ownerColor || '#888'}55`,
         }" />
 
-        <div style="flex: 1; min-width: 0;">
+        <div :style="{ flex: isOwn ? 'none' : 1, minWidth: 0, ...(isOwn ? { width: '100%', textAlign: 'center' } : {}) }">
           <!-- Nome proprietario — grande e prominente -->
           <div :style="{
             fontFamily: FF.display, fontSize: '20px', letterSpacing: '0.04em',
@@ -279,6 +279,7 @@ onUnmounted(() => {
         <div :style="{
           fontFamily: FF.label, fontSize: '12px', letterSpacing: '0.22em',
           color: 'var(--theme-text-2)', textTransform: 'uppercase', marginBottom: '10px', fontWeight: 700,
+          ...(isOwn ? { textAlign: 'center' } : {}),
         }">
           {{ isCPU ? $t('map.defender_team_cpu') : isOwn ? $t('map.defender_team_yours') : $t('map.defender_team') }}
         </div>
@@ -410,15 +411,34 @@ onUnmounted(() => {
         </template>
 
         <!-- Nessun team impostato / caricamento -->
-        <div v-else :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-3)', paddingTop: '4px' }">
+        <div v-else :style="{ fontFamily: FF.body, fontSize: '13px', color: 'var(--theme-text-3)', paddingTop: '4px', ...(isOwn ? { textAlign: 'center' } : {}) }">
           {{ isOwn ? $t('map.no_defender_team') : $t('map.loading_team') }}
         </div>
       </div>
 
-      <!-- Pulsante modifica difesa (solo pixel proprio) -->
+      <!-- Pulsante modifica difesa (solo pixel proprio) — pill viola chiaro, centrata -->
       <div v-if="isOwn">
-        <button :style="actionBtn(C.violet, 'rgba(167,139,250,0.12)', false)" @click="emit('editDifesa')">
-          <Swords :size="16" stroke-width="1.5" style="display:inline-block;vertical-align:middle;margin-right:6px;" />Modifica Difesa
+        <button
+          @click="emit('editDifesa')"
+          style="width: 100%; padding: 0; background: transparent; border: none; cursor: pointer;"
+        >
+          <div :style="{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px',
+            padding: '16px 22px', borderRadius: '999px',
+            background: 'rgba(167,139,250,0.14)',
+            border: '2px solid rgba(167,139,250,0.6)',
+            boxShadow: '0 4px 18px rgba(167,139,250,0.18)',
+          }">
+            <Shield :size="26" stroke-width="1.5" style="flex-shrink:0;color:#a78bfa;" />
+            <div style="text-align: center;">
+              <div :style="{ fontFamily: FF.label, fontSize: '18px', fontWeight: 800, color: '#a78bfa', letterSpacing: '0.08em' }">
+                {{ $t('map.edit_defense') }}
+              </div>
+              <div :style="{ fontFamily: FF.body, fontSize: '10px', color: 'var(--theme-text-2)', lineHeight: 1.35, marginTop: '2px' }">
+                {{ $t('map.edit_defense_desc') }}
+              </div>
+            </div>
+          </div>
         </button>
       </div>
 

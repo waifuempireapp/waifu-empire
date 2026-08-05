@@ -207,7 +207,9 @@
     "territory_conquered": "領地を征服！",
     "conquering": "征服中…",
     "owner": "オーナー：{name}",
-    "victory_rewards_title": "勝利報酬！"
+    "victory_rewards_title": "勝利報酬！",
+    "edit_defense": "防衛を編集",
+    "edit_defense_desc": "この領地を守るためにワイフを配置"
   },
   "collection": {
     "title": "コレクション",

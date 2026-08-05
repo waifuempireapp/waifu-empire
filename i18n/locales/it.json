@@ -248,7 +248,9 @@
     "raid_next_in": "Prossimo raid tra",
     "raid_collective": "Collettivo",
     "raid_private": "Privato",
-    "raid_private_card_won": "🏆 Raid privato completato! Carta ottenuta"
+    "raid_private_card_won": "🏆 Raid privato completato! Carta ottenuta",
+    "edit_defense": "Modifica difesa",
+    "edit_defense_desc": "Schiera le tue waifu a difesa del territorio"
   },
   "collection": {
     "title": "Collezione",

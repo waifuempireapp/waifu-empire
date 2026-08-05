@@ -207,7 +207,9 @@
     "territory_conquered": "¡Territorio conquistado!",
     "conquering": "Conquistando…",
     "owner": "Propietario: {name}",
-    "victory_rewards_title": "¡Recompensas de victoria!"
+    "victory_rewards_title": "¡Recompensas de victoria!",
+    "edit_defense": "Editar defensa",
+    "edit_defense_desc": "Despliega tus waifu para defender este territorio"
   },
   "collection": {
     "title": "Colección",

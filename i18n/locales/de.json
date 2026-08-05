@@ -207,7 +207,9 @@
     "territory_conquered": "Gebiet erobert!",
     "conquering": "Eroberung…",
     "owner": "Besitzer: {name}",
-    "victory_rewards_title": "Siegesbelohnungen!"
+    "victory_rewards_title": "Siegesbelohnungen!",
+    "edit_defense": "Verteidigung bearbeiten",
+    "edit_defense_desc": "Setze deine Waifu zur Verteidigung ein"
   },
   "collection": {
     "title": "Sammlung",
