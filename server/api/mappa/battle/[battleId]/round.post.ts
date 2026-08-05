@@ -2,8 +2,28 @@
 import { defineEventHandler, getHeader, getRouterParam, readBody, createError } from 'h3';
 import { getAdminAuth, getAdminDb } from '../../../../utils/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { invalidateOffersCache } from '../../../../utils/offersCache';
 
 const CHUNK_SIZE = 10;
+
+// Elimina tutte le offerte pendenti su un pixel (il territorio ha cambiato
+// proprietario → le offerte in sospeso non hanno più senso).
+async function cancelPendingOffers(x: number, y: number): Promise<void> {
+  const adminDb = getAdminDb();
+  try {
+    // Un solo filtro di uguaglianza (niente indice composito): il resto in-memory
+    const snap = await adminDb.collection('pixel_offers').where('pixelX', '==', x).get();
+    const toDelete = snap.docs.filter(d => {
+      const o = d.data() as any;
+      return o.pixelY === y && o.status === 'pending';
+    });
+    if (!toDelete.length) return;
+    const batch = adminDb.batch();
+    toDelete.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    invalidateOffersCache();
+  } catch { /* non bloccare la conquista */ }
+}
 
 // Aggiorna la proprietà del pixel nel chunk
 async function transferPixel(x: number, y: number, newOwnerId: string, newOwnerColor: string, newOwnerName: string): Promise<void> {
@@ -17,6 +37,8 @@ async function transferPixel(x: number, y: number, newOwnerId: string, newOwnerC
     chunkCol, chunkRow,
     pixels: { [`${x}_${y}`]: { ownerId: newOwnerId, ownerColor: newOwnerColor, ownerName: newOwnerName } },
   }, { merge: true });
+  // Territorio conquistato → elimina le offerte pendenti su questo pixel
+  await cancelPendingOffers(x, y);
 }
 
 export default defineEventHandler(async (event) => {
