@@ -151,10 +151,12 @@ function actionBtn(color: string, bg: string, disabled = false): Record<string, 
 
 // ── Stile badge difficoltà ─────────────────────────────────────────────────────
 const DIFF_STYLE: Record<string, [string, string]> = {
-  easy:    ['#06d6a0', 'Easy'],
-  medium:  ['#f59e0b', 'Medium'],
-  hard:    ['#ef4444', 'Hard'],
-  extreme: ['#a855f7', 'Extreme'],
+  veryeasy: ['#58e0a3', 'Very easy'],
+  easy:     ['#8bd17c', 'Easy'],
+  medium:   ['#f5c560', 'Normal'],
+  hard:     ['#f59e0b', 'Hard'],
+  extreme:  ['#ef4444', 'Extreme'],
+  expert:   ['#b91c1c', 'Expert'],
 }
 
 // ── Countdown missione mappa ───────────────────────────────────────────────────

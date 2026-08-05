@@ -80,6 +80,8 @@ const conquestAnim       = ref<any>(null) // { pixelName, oldColor, newColor, em
 // Popup PREMI VITTORIA: appare DOPO l'animazione di conquista
 const PREMIO_VITTORIA_KISSES = 17   // 1/3 del costo di una bustina (50)
 const victoryReward      = ref<{ kisses: number } | null>(null)
+// Popup di conferma acquisto territorio (acquisto diretto da CPU)
+const purchaseSuccess    = ref<{ name: string; price: number } | null>(null)
 const showBattle         = ref(false)
 const raidAttackMode     = ref(false) // distingue BattleModal normale da raid
 const showRound          = ref(false)
@@ -647,6 +649,9 @@ const handlePurchase = async ({ amount }: { amount?: number }) => {
     })) as { success: boolean; type?: string; price?: number }
     if (data.success) {
       showPurchase.value  = false
+      // Nome/prezzo del territorio PRIMA di azzerare la selezione (per il popup)
+      const nomeTerr = selectedPixel.value?.name || `(${selectedPixel.value?.x}, ${selectedPixel.value?.y})`
+      const prezzoTerr = data.price ?? selectedPixel.value?.buyPrice ?? 0
       await invalidateAndReload()
       if (data.type === 'cpu_purchase') {
         emit('updateProfilo', {
@@ -655,6 +660,8 @@ const handlePurchase = async ({ amount }: { amount?: number }) => {
           pixelCount: ((props.profilo?.pixelCount as number) ?? 0) + 1,
         })
         showTutorial.value = false
+        // Conferma acquisto avvenuto
+        purchaseSuccess.value = { name: nomeTerr, price: prezzoTerr }
       }
       selectedPixel.value = null
     }
@@ -1152,6 +1159,32 @@ async function onTerritoryClick(territoryId: string) {
               fontFamily:'var(--ff-display)', fontSize:'13px', fontWeight:700, letterSpacing:'.05em',
             }">OK</button>
           </div>
+        </div>
+      </div>
+
+      <!-- ── Popup CONFERMA ACQUISTO territorio ─────────────────────────── -->
+      <div v-if="purchaseSuccess"
+        style="position:fixed;inset:0;z-index:640;background:rgba(4,2,14,0.72);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px;"
+        @click.self="purchaseSuccess = null">
+        <div :style="{
+          width:'100%', maxWidth:'300px', textAlign:'center',
+          background:'var(--grad-primary-soft), var(--theme-surface)', border:'1px solid var(--theme-border)',
+          borderRadius:'20px', padding:'26px 22px',
+          boxShadow:'0 12px 40px var(--theme-shadow)',
+        }">
+          <div :style="{ fontSize:'42px', lineHeight:1, marginBottom:'10px' }">🏰</div>
+          <div :style="{ fontFamily:'var(--ff-display)', fontSize:'17px', fontWeight:800, color:'#58e0a3', letterSpacing:'.03em', marginBottom:'8px' }">
+            Territorio acquistato!
+          </div>
+          <div :style="{ fontFamily:'var(--ff-body)', fontSize:'13px', color:'var(--theme-text-2)', lineHeight:1.5, marginBottom:'18px' }">
+            <strong :style="{ color:'var(--theme-text)' }">{{ purchaseSuccess.name }}</strong> è ora tuo
+            <template v-if="purchaseSuccess.price > 0"><br/>−{{ purchaseSuccess.price }} Kisses</template>
+          </div>
+          <button @click="purchaseSuccess = null" :style="{
+            width:'100%', padding:'12px 0', border:'none', borderRadius:'12px', cursor:'pointer',
+            background:'var(--theme-accent)', color:'#fff',
+            fontFamily:'var(--ff-display)', fontSize:'13px', fontWeight:700, letterSpacing:'.05em',
+          }">OK</button>
         </div>
       </div>
 
