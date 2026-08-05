@@ -239,20 +239,12 @@ watch(selectedPack, (val) => {
     pulisciTimeoutShuffle()
     shuffleStep.value = 0
   }
-  // Blocca scroll body quando il blind pick è aperto
-  if (typeof document !== 'undefined') {
-    document.body.style.overflow = val ? 'hidden' : ''
-    document.body.style.touchAction = val ? 'none' : ''
-  }
 })
 
-watch(() => risultato.value, (val) => {
-  // Blocca scroll body anche durante la reveal animation
-  if (typeof document !== 'undefined') {
-    document.body.style.overflow = val ? 'hidden' : ''
-    document.body.style.touchAction = val ? 'none' : ''
-  }
-})
+// Blocca lo scroll del body durante blind pick / reveal tramite il composable
+// condiviso token-based: si rilascia SEMPRE all'unmount → niente leak (prima
+// due watcher scoordinati + touch-action:none potevano bloccare tutto l'app).
+useScrollLock(computed(() => !!selectedPack.value || !!risultato.value))
 
 // ── Apre il modale selezione alla cieca con coreografia TCG ───────────────────────
 function aprePack(pack: Pack) {
@@ -527,11 +519,7 @@ function onClickPesca(pack: Pack) {
 onUnmounted(() => {
   if (notifTimer) clearTimeout(notifTimer)
   pulisciTimeoutShuffle()
-  // Ripristina scroll body
-  if (typeof document !== 'undefined') {
-    document.body.style.overflow = ''
-    document.body.style.touchAction = ''
-  }
+  // Lo scroll-lock è rilasciato automaticamente dal composable all'unmount.
 })
 </script>
 

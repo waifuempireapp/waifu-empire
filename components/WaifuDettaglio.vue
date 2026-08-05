@@ -337,30 +337,11 @@ function loopTilt() {
   tiltId = requestAnimationFrame(loopTilt)
 }
 
-// Blocca completamente lo scroll della pagina sottostante (incluso iOS)
-const savedScrollY = ref(0)
-onMounted(() => {
-  if (typeof window !== 'undefined') {
-    savedScrollY.value = window.scrollY
-    document.documentElement.style.overflow = 'hidden'
-    document.body.style.overflow = 'hidden'
-    document.body.style.position = 'fixed'
-    document.body.style.top = `-${savedScrollY.value}px`
-    document.body.style.width = '100%'
-  }
-  loopTilt()
-})
-onUnmounted(() => {
-  if (tiltId !== null) cancelAnimationFrame(tiltId)
-  if (typeof window !== 'undefined') {
-    document.documentElement.style.overflow = ''
-    document.body.style.overflow = ''
-    document.body.style.position = ''
-    document.body.style.top = ''
-    document.body.style.width = ''
-    window.scrollTo(0, savedScrollY.value)
-  }
-})
+// Blocca lo scroll della pagina sottostante (incluso iOS) tramite il composable
+// condiviso, token-based: coordinato con tutti gli altri modali → niente leak.
+useScrollLock(true)
+onMounted(() => { loopTilt() })
+onUnmounted(() => { if (tiltId !== null) cancelAnimationFrame(tiltId) })
 </script>
 
 <template>

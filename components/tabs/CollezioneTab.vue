@@ -627,15 +627,9 @@ onMounted(() => {
 })
 onUnmounted(() => {
   if (tradeCountdownIv) clearInterval(tradeCountdownIv)
-  // Safety: se WaifuDettaglio era aperto e non si è chiuso correttamente,
-  // ripristina lo scroll del body al dismount del tab
-  if (typeof document !== 'undefined') {
-    document.documentElement.style.overflow = ''
-    document.body.style.overflow = ''
-    document.body.style.position = ''
-    document.body.style.top = ''
-    document.body.style.width = ''
-  }
+  // Safety: rilascia eventuali lock scroll rimasti appesi (coordinato col
+  // composable token-based, così non desincronizza il suo stato interno).
+  releaseAllScrollLocks()
 })
 
 // ── Progresso collezione per drop (set completion, stile dex) ───────────────

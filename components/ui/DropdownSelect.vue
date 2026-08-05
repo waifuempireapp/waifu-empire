@@ -62,11 +62,10 @@ function pick(v: string) {
   open.value = false
 }
 
-// Blocca lo scroll del body quando lo sheet è aperto
-watch(open, (v) => {
-  if (typeof document !== 'undefined') document.body.style.overflow = v ? 'hidden' : ''
-})
-onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.overflow = '' })
+// Blocca lo scroll del body quando lo sheet è aperto, tramite il composable
+// condiviso token-based: coordinato con eventuali modali sottostanti (lo sheet
+// può aprirsi dentro Impostazioni/Editor difesa) e sempre rilasciato all'unmount.
+useScrollLock(open)
 </script>
 
 <template>
