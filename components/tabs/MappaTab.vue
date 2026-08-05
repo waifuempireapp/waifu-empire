@@ -155,6 +155,7 @@ let missionDetailCountdownTimer: ReturnType<typeof setInterval> | null = null
 const passiveNow          = ref(Date.now())
 const localPassiveClaimAt = ref<number | null>(null)
 let   passiveTimer: ReturnType<typeof setInterval> | null = null
+let   offersTimer:  ReturnType<typeof setInterval> | null = null
 const passiveClaimable = computed<number>(() => {
   const pixels = (props.profilo?.pixelCount as number) ?? 0
   if (pixels <= 0) return 0
@@ -317,14 +318,42 @@ const loadMyDefenseConfig = async () => {
   } catch { /* ignora */ }
 }
 
-// Carica il conteggio delle offerte in entrata in sospeso
+// Carica offerte: conteggio "in entrata" pendenti + rileva le MIE offerte in
+// uscita appena accettate. Così anche il PROPONENTE vede il territorio conquistato
+// (mappa + kisses/pixelCount) senza ricaricare a mano. La prima chiamata fa da
+// baseline; reagiamo solo alle accettazioni successive.
+const seenAcceptedOffers = new Set<string>()
+let offersBaselineDone = false
 const loadPendingOffers = async () => {
   try {
     const token = await authStore.user?.getIdToken()
     const data = await ($fetch('/api/mappa/offers', {
       headers: { Authorization: `Bearer ${token}` },
-    })) as { incoming: any[] }
+    })) as { incoming: any[]; outgoing: any[] }
     pendingOffersCount.value = (data.incoming || []).filter((o: any) => o.status === 'pending').length
+
+    const acceptedOut = (data.outgoing || []).filter((o: any) => o.status === 'accepted')
+    if (!offersBaselineDone) {
+      // Primo giro: marca lo stato già riflesso nel profilo, senza reagire
+      offersBaselineDone = true
+      acceptedOut.forEach((o: any) => seenAcceptedOffers.add(o.id))
+      return
+    }
+    let deltaKisses = 0
+    let deltaPixels = 0
+    for (const o of acceptedOut) {
+      if (seenAcceptedOffers.has(o.id)) continue
+      seenAcceptedOffers.add(o.id)
+      deltaKisses -= (o.amount ?? 0) // ho pagato
+      deltaPixels += 1               // ho ottenuto il territorio
+    }
+    if (deltaKisses !== 0 || deltaPixels !== 0) {
+      emit('updateProfilo', {
+        kisses:     (props.profilo?.kisses as number ?? 0) + deltaKisses,
+        pixelCount: (props.profilo?.pixelCount as number ?? 0) + deltaPixels,
+      })
+      await invalidateAndReload()
+    }
   } catch { /* ignora */ }
 }
 
@@ -382,6 +411,13 @@ const invalidateAndReload = async () => {
   await loadChunks(true)
 }
 
+// Ho accettato un'offerta in entrata: ho venduto il territorio (pixelCount -1),
+// i kisses li gestisce @kisses-update. Ricarico la mappa per mostrare il cambio.
+const onOfferAccepted = async () => {
+  emit('updateProfilo', { pixelCount: (props.profilo?.pixelCount as number ?? 0) - 1 })
+  await invalidateAndReload()
+}
+
 // ── Territori sotto attacco (lock < 20 min) → X su mappa ─────────────────────
 let attacksTimer: ReturnType<typeof setInterval> | null = null
 const loadActiveAttacks = async () => {
@@ -401,13 +437,17 @@ const loadActiveAttacks = async () => {
 // Controlla se il pixel (tx, ty) è adiacente all'impero dell'utente via mare
 // (6 direzioni esagonali). Geometria condivisa con server e PixelGrid.
 const checkAdjacentToEmpire = (tx: number, ty: number): boolean => {
-  const userPixelCount = (props.profilo?.pixelCount as number) ?? 0
-  if (userPixelCount === 0) return true // primo pixel → sempre adiacente
   if (!chunks.value) return false
+  const uid = authStore.user?.uid
   const pixelAt = (col: number, row: number) => {
     const cid = `chunk_${Math.floor(col / 10)}_${Math.floor(row / 10)}`
     return chunks.value![cid]?.pixels?.[`${col}_${row}`]
   }
+  // Se non possiedo NESSUN territorio reale (mai avuto o persi tutti) posso
+  // ripartire da qualsiasi pixel — non mi affido a pixelCount (può restare sporco).
+  const ownsAny = Object.values(chunks.value).some((ch: any) =>
+    Object.values(ch?.pixels ?? {}).some((p: any) => p?.ownerId === uid))
+  if (!ownsAny) return true
   return isHexAdjacentToEmpire(
     tx, ty, GRID_SIZE,
     // #16: "è terra" deve usare LAND_SET (come il server), NON l'esistenza del
@@ -749,6 +789,8 @@ onMounted(async () => {
   // Se sono arrivato qui da una missione cliccata, centra/zooma sul suo pixel
   // (dopo nextTick così il watcher di PixelGrid scatta e applica anche lo zoom).
   if (props.focusTarget) { await nextTick(); missionFocusPixel.value = props.focusTarget }
+  // Poll offerte: rileva le mie offerte in uscita accettate → aggiorna mappa+kisses
+  offersTimer = setInterval(loadPendingOffers, 30000)
 })
 
 onUnmounted(() => {
@@ -757,6 +799,7 @@ onUnmounted(() => {
   if (missionDetailCountdownTimer) clearInterval(missionDetailCountdownTimer)
   if (attacksTimer)               clearInterval(attacksTimer)
   if (passiveTimer)               clearInterval(passiveTimer)
+  if (offersTimer)                clearInterval(offersTimer)
 })
 
 // ------------------------------------------------------------------ Mappa immagine: territori
@@ -1324,8 +1367,8 @@ async function onTerritoryClick(territoryId: string) {
       <OffersPanel
         v-if="showOffers"
         @close="showOffers = false"
-        @kisses-update="(k) => emit('updateProfilo', { kisses: k })"
-        @map-update="() => {}"
+        @kisses-update="(k) => emit('updateProfilo', { kisses: (profilo?.kisses as number ?? 0) + k })"
+        @map-update="onOfferAccepted"
       />
 
       <!-- ── Editor team difensore ──────────────────────────────────────── -->

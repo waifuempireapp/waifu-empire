@@ -11,25 +11,37 @@ const CHUNK_SIZE = 10;
 // Difficoltà CPU per PROSSIMITÀ alle isole maggiori — logica condivisa col client
 const cpuDifficulty = (tx: number, ty: number): string => battleDifficulty(tx, ty);
 
-// Controlla se (tx, ty) è adiacente a qualsiasi pixel dell'utente uid
-// Sea adjacency esagonale (6 direzioni): salta l'oceano finché trova terra.
-// Geometria condivisa con il client via isHexAdjacentToEmpire.
-async function isAdjacentToEmpire(uid: string, tx: number, ty: number): Promise<boolean> {
+// Verifica lo stato dell'impero rispetto al target: se l'utente NON possiede
+// alcun pixel (ownsAny=false) può ripartire da qualsiasi territorio; altrimenti
+// il target deve essere adiacente (adiacenza esagonale via mare). Basato sui
+// pixel REALMENTE posseduti sulla mappa, non su pixelCount (che può restare
+// sporco dopo furti/cessioni).
+async function empireAdjacency(uid: string, tx: number, ty: number): Promise<{ ownsAny: boolean; adjacent: boolean }> {
   const adminDb = getAdminDb();
   // Leggi tutti i 25 chunk per avere la mappa completa
   const allChunks = await adminDb.collection('map_chunks').get();
   const chunkData: Record<string, any> = {};
   allChunks.forEach(doc => { chunkData[doc.id] = doc.data(); });
 
+  let ownsAny = false;
+  for (const cid of Object.keys(chunkData)) {
+    const pixels = chunkData[cid]?.pixels ?? {};
+    for (const k of Object.keys(pixels)) {
+      if (pixels[k]?.ownerId === uid) { ownsAny = true; break; }
+    }
+    if (ownsAny) break;
+  }
+
   const ownerOf = (col: number, row: number): string | undefined => {
     const cid = `chunk_${Math.floor(col / CHUNK_SIZE)}_${Math.floor(row / CHUNK_SIZE)}`;
     return chunkData[cid]?.pixels?.[`${col}_${row}`]?.ownerId;
   };
-  return isHexAdjacentToEmpire(
+  const adjacent = isHexAdjacentToEmpire(
     tx, ty, GRID_SIZE,
     (key) => LAND_SET.has(key),
     (_key, col, row) => ownerOf(col, row) === uid,
   );
+  return { ownsAny, adjacent };
 }
 
 export default defineEventHandler(async (event) => {
@@ -51,15 +63,11 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, message: 'Team offensivo non valido (richiede da 5 a 8 waifu)' });
     }
 
-    // Verifica server-side se è il primo pixel (non ci fidiamo del flag client)
-    const userSnap = await adminDb.collection('users').doc(uid).get();
-    const serverPixelCount: number = userSnap.exists ? ((userSnap.data() as any).pixelCount ?? 0) : 0;
-    const isFirstPixel: boolean = serverPixelCount === 0;
-
-    // Validazione adiacenza: si bypassa SOLO se il giocatore non ha ancora nessun pixel
-    if (!isFirstPixel) {
-      const adjacent = await isAdjacentToEmpire(uid, targetX, targetY);
-      if (!adjacent) throw createError({ statusCode: 400, message: 'Il pixel non è adiacente al tuo impero' });
+    // Validazione adiacenza basata sui pixel REALMENTE posseduti: se non possiedi
+    // alcun territorio (mai avuto, o perso tutto) puoi ripartire da dove vuoi.
+    const { ownsAny, adjacent } = await empireAdjacency(uid, targetX, targetY);
+    if (ownsAny && !adjacent) {
+      throw createError({ statusCode: 400, message: 'Il pixel non è adiacente al tuo impero' });
     }
 
     // Leggi pixel target

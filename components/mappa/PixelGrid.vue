@@ -112,12 +112,15 @@ function rebuildAdjacentSet() {
   const ls = effectiveLandSet.value
   const isLand = (k: string) => ls.has(k)
   const isMine = (k: string) => pixelOwners[k] === props.userUid
+  // Se non possiedo NESSUN territorio (mai avuto o persi tutti) posso ripartire
+  // da dove voglio: ogni cella di terra non mia diventa "adiacente" (disponibile).
+  const ownsAny = Object.values(pixelOwners).some(o => o === props.userUid)
   for (let y = 0; y < GRID_SIZE; y++) {
     for (let x = 0; x < GRID_SIZE; x++) {
       const key = `${x}_${y}`
       if (!ls.has(key)) continue
       if (pixelOwners[key] === props.userUid) continue
-      if (isHexAdjacentToEmpire(x, y, GRID_SIZE, isLand, isMine)) adj.add(key)
+      if (!ownsAny || isHexAdjacentToEmpire(x, y, GRID_SIZE, isLand, isMine)) adj.add(key)
     }
   }
   adjacentSet = adj

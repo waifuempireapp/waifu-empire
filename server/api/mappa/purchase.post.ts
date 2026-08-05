@@ -15,22 +15,34 @@ function pixelPrice(ownerLevel = 1): number {
   return BASE_PRICE + (ownerLevel * LEVEL_MULTIPLIER);
 }
 
-// Sea adjacency esagonale (6 direzioni) — geometria condivisa con il client.
-async function isAdjacentToEmpire(uid: string, tx: number, ty: number): Promise<boolean> {
+// Stato impero rispetto al target: ownsAny=false → può ripartire da qualsiasi
+// pixel (mai avuto territori o persi tutti). Basato sui pixel REALMENTE posseduti
+// sulla mappa, non su pixelCount (che può restare sporco dopo furti/cessioni).
+async function empireAdjacency(uid: string, tx: number, ty: number): Promise<{ ownsAny: boolean; adjacent: boolean }> {
   const adminDb = getAdminDb();
   const allChunks = await adminDb.collection('map_chunks').get();
   const chunkData: Record<string, any> = {};
   allChunks.forEach(doc => { chunkData[doc.id] = doc.data(); });
 
+  let ownsAny = false;
+  for (const cid of Object.keys(chunkData)) {
+    const pixels = chunkData[cid]?.pixels ?? {};
+    for (const k of Object.keys(pixels)) {
+      if (pixels[k]?.ownerId === uid) { ownsAny = true; break; }
+    }
+    if (ownsAny) break;
+  }
+
   const ownerOf = (col: number, row: number): string | undefined => {
     const cid = `chunk_${Math.floor(col / CHUNK_SIZE)}_${Math.floor(row / CHUNK_SIZE)}`;
     return chunkData[cid]?.pixels?.[`${col}_${row}`]?.ownerId;
   };
-  return isHexAdjacentToEmpire(
+  const adjacent = isHexAdjacentToEmpire(
     tx, ty, GRID_SIZE,
     (key) => LAND_SET.has(key),
     (_key, col, row) => ownerOf(col, row) === uid,
   );
+  return { ownsAny, adjacent };
 }
 
 export default defineEventHandler(async (event) => {
@@ -48,8 +60,8 @@ export default defineEventHandler(async (event) => {
       targetX < 0 || targetX >= GRID_SIZE || targetY < 0 || targetY >= GRID_SIZE
     ) throw createError({ statusCode: 400, message: 'Coordinate non valide' });
 
-    const adjacent = await isAdjacentToEmpire(uid, targetX, targetY);
-    if (!adjacent) throw createError({ statusCode: 400, message: 'Pixel non adiacente al tuo impero' });
+    const { ownsAny, adjacent } = await empireAdjacency(uid, targetX, targetY);
+    if (ownsAny && !adjacent) throw createError({ statusCode: 400, message: 'Pixel non adiacente al tuo impero' });
 
     const key = `${targetX}_${targetY}`;
     const chunkCol = Math.floor(targetX / CHUNK_SIZE);

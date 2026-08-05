@@ -423,7 +423,18 @@
       "Bash(node scripts/check-packs.mjs)",
       "Bash(node scripts/fix-waifu-stats.mjs --dry)",
       "Bash(node scripts/fix-waifu-stats.mjs)",
-      "Bash(grep -n \"justify-content:center; gap:10px\\\\|justify-content: center\\\\|width: 'calc\\(\\(100% - 20px\\) / 3\\)'\\\\|:style=\\\\\"cardStyle\\\\|:style=\\\\\"{ ...cardStyle\" components/tabs/PescaSection.vue)"
+      "Bash(grep -n \"justify-content:center; gap:10px\\\\|justify-content: center\\\\|width: 'calc\\(\\(100% - 20px\\) / 3\\)'\\\\|:style=\\\\\"cardStyle\\\\|:style=\\\\\"{ ...cardStyle\" components/tabs/PescaSection.vue)",
+      "Bash(node scripts/chrono-inspect.mjs)",
+      "Bash(node scripts/chrono-assign.mjs)",
+      "Bash(pkill -f \"nuxi dev\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/_nuxt/builds/latest.json)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:3000/_nuxt/Users/lazzari/Documents/Anime_Waifu/waifu-empire-nuxt/node_modules/nuxt/dist/app/entry.js\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:3000/_nuxt/utils/audioEngine.ts\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:3000/_nuxt/composables/useAudio.ts\")",
+      "Bash(lsof -ti:3000)",
+      "Bash(file assets/musics/*)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(echo \"TSC_EXIT: $?\")"
     ],
     "additionalDirectories": [
       "/private/tmp",
