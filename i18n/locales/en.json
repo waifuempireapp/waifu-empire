@@ -718,6 +718,7 @@
   "types": {
     "arcana": "Arcane",
     "natura": "Nature",
+    "chrono": "Chrono",
     "abisso": "Abyss",
     "ferro": "Iron",
     "fuoco": "Fire"

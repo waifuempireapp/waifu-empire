@@ -18,40 +18,32 @@ export interface TypeMeta {
 export const TYPE_META: Record<MoveType, TypeMeta> = {
   arcana: { label: 'Arcana', accent: '#9b7dff', bg: 'rgba(155,125,255,0.18)', icon: '✦' },
   natura: { label: 'Natura', accent: '#6cf090', bg: 'rgba(108,240,144,0.18)', icon: '❋' },
+  chrono: { label: 'Chrono', accent: '#3fd0c8', bg: 'rgba(63,208,200,0.18)',  icon: '⧗' },
   abisso: { label: 'Abisso', accent: '#60a4ff', bg: 'rgba(96,164,255,0.18)',  icon: '◉' },
   ferro:  { label: 'Ferro',  accent: '#c0c8d4', bg: 'rgba(192,200,212,0.18)', icon: '⬡' },
   fuoco:  { label: 'Fuoco',  accent: '#ff8c5a', bg: 'rgba(255,140,90,0.18)',  icon: '◈' },
 }
 
-export const ALL_TYPES: MoveType[] = ['arcana', 'natura', 'ferro', 'abisso', 'fuoco']
+// ── Ciclo TEMATICO a 6 tipi (stesso ordine di battleEngine.TYPE_NAMES) ──────
+// Fuoco → Natura → Chrono → Ferro → Arcana → Abisso → Fuoco.
+// L'ordine determina l'efficacia: ogni tipo è forte sui 3 successivi (Iper/
+// Super/Efficace) e debole sui 2 precedenti (Poco/Poco).
+export const ALL_TYPES: MoveType[] = ['fuoco', 'natura', 'chrono', 'ferro', 'arcana', 'abisso']
+const IDX: Record<MoveType, number> = Object.fromEntries(ALL_TYPES.map((t, i) => [t, i])) as Record<MoveType, number>
 
-// ── Efficacia di tipo (catena pentagonale TEMATICA) ─────────────────────────
-// Fuoco→Natura→Ferro→Arcana→Abisso→Fuoco (stesso ciclo di battleEngine).
-const BATTE: Record<MoveType, MoveType> = {
-  fuoco:  'natura',
-  natura: 'ferro',
-  ferro:  'arcana',
-  arcana: 'abisso',
-  abisso: 'fuoco',
-}
-
-export const SUPER_EFFICACE = 1.5
-export const POCO_EFFICACE = 0.5
-export const NEUTRO = 1
+// Moltiplicatori per distanza in avanti nel ciclo (mod 6)
+export const IPER_EFFICACE  = 2.5   // +1
+export const SUPER_EFFICACE = 2.0   // +2
+export const EFFICACE       = 1.5   // +3
+export const NEUTRO         = 1.0   // 0
+export const POCO_EFFICACE  = 0.5   // -1 / -2
+const MULT_BY_DELTA = [NEUTRO, IPER_EFFICACE, SUPER_EFFICACE, EFFICACE, 0.75, POCO_EFFICACE]
 
 /** Moltiplicatore di efficacia attaccante → difensore. */
 export function typeEffectiveness(attacker: MoveType, defender: MoveType): number {
-  if (BATTE[attacker] === defender) return SUPER_EFFICACE   // super efficace
-  if (BATTE[defender] === attacker) return POCO_EFFICACE    // il difensore batte l'attaccante
-  return NEUTRO
+  const d = ((IDX[defender] - IDX[attacker]) % 6 + 6) % 6
+  return MULT_BY_DELTA[d]
 }
-
-// Debolezza: il tipo T è debole al tipo che lo "batte" (inverso di BATTE).
-const WEAK: Record<MoveType, MoveType> = (() => {
-  const w = {} as Record<MoveType, MoveType>
-  for (const atk of ALL_TYPES) w[BATTE[atk]] = atk
-  return w
-})()
 
 /** Normalizza un tipo (anche capitalizzato) a MoveType, o null se sconosciuto. */
 export function normalizeType(t?: string | null): MoveType | null {
@@ -60,21 +52,29 @@ export function normalizeType(t?: string | null): MoveType | null {
   return (ALL_TYPES as string[]).includes(l) ? (l as MoveType) : null
 }
 
-/** Tipo a cui una waifu (del tipo dato) è debole. */
-export function weakType(waifuType?: string | null): MoveType | null {
+/** Tipi a cui una waifu è debole = quelli Iper/Super efficaci contro di lei
+ *  (i 2 tipi che la precedono nel ciclo). */
+export function weakTypes(waifuType?: string | null): MoveType[] {
   const t = normalizeType(waifuType)
-  return t ? WEAK[t] : null
+  if (!t) return []
+  const i = IDX[t]
+  return [ALL_TYPES[(i - 1 + 6) % 6], ALL_TYPES[(i - 2 + 6) % 6]]
+}
+
+/** Primo tipo di debolezza (Iper) — per etichette brevi. */
+export function weakType(waifuType?: string | null): MoveType | null {
+  return weakTypes(waifuType)[0] ?? null
 }
 
 /**
- * Una waifu può imparare una mossa se NON è del tipo a cui è debole.
- * (Le mosse non sono univoche: una mossa può essere insegnata a più waifu.)
+ * Una waifu NON può imparare mosse dei tipi a cui è debole (Iper/Super contro
+ * di lei). Tiene sempre conto delle debolezze.
  */
 export function canLearnMove(waifuType?: string | null, moveType?: string | null): boolean {
   const wt = normalizeType(waifuType)
   const mt = normalizeType(moveType)
   if (!wt || !mt) return true   // tipo sconosciuto → nessun vincolo
-  return mt !== WEAK[wt]
+  return !weakTypes(wt).includes(mt)
 }
 
 export type EffectivenessLabel = 'super' | 'poco' | 'neutro'

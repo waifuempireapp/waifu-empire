@@ -19,10 +19,12 @@ const FF = {
 const TYPES = [...TYPE_NAMES]
 const colOf = (t: string) => TYPE_COLORS[t]?.border ?? '#888'
 
-// Geometria pentagono (SVG viewBox 240x240)
-const CX = 120, CY = 122, R = 88
+const N = TYPES.length   // 6 tipi
+
+// Geometria esagono (SVG viewBox 240x240)
+const CX = 120, CY = 122, R = 90
 function nodePos(i: number) {
-  const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5
+  const a = -Math.PI / 2 + (i * 2 * Math.PI) / N
   return { x: CX + Math.cos(a) * R, y: CY + Math.sin(a) * R }
 }
 /** Punto lungo la corda i→j, accorciata per non entrare nei nodi. */
@@ -30,20 +32,22 @@ function arrow(i: number, j: number) {
   const a = nodePos(i), b = nodePos(j)
   const dx = b.x - a.x, dy = b.y - a.y
   const len = Math.hypot(dx, dy)
-  const PAD = 28
+  const PAD = 26
   return {
     x1: a.x + (dx / len) * PAD, y1: a.y + (dy / len) * PAD,
     x2: b.x - (dx / len) * PAD, y2: b.y - (dy / len) * PAD,
   }
 }
 
-// Relazioni per tipo (attaccante): delta1 ×2, delta2 ×1.5, delta4 ×0.5, delta3 ×0
+// Relazioni per tipo (attaccante) nel ciclo a 6:
+//  +1 Iper ×2.5 · +2 Super ×2.0 · +3 Efficace ×1.5 · +4 Poco ×0.75 · +5 Poco ×0.5
 const relazioni = TYPES.map((t, i) => ({
-  tipo: t,
-  super_: TYPES[(i + 1) % 5],
-  eff:    TYPES[(i + 2) % 5],
-  poco:   TYPES[(i + 4) % 5],
-  nulla:  TYPES[(i + 3) % 5],
+  tipo:  t,
+  iper:  TYPES[(i + 1) % N],
+  super_: TYPES[(i + 2) % N],
+  eff:   TYPES[(i + 3) % N],
+  poco1: TYPES[(i + 4) % N],
+  poco2: TYPES[(i + 5) % N],
 }))
 
 // Fasce di difficoltà delle battaglie sulla mappa (per prossimità alle isole
@@ -76,39 +80,39 @@ const DIFFICOLTA = [
                 <path d="M0,0 L8,4 L0,8 z" :fill="colOf(t)" />
               </marker>
             </defs>
-            <!-- Frecce ×2 (piene) e ×1.5 (tratteggiate) -->
+            <!-- Frecce ×2.5 Iper (piene) e ×2 Super (tratteggiate) -->
             <template v-for="(t, i) in TYPES" :key="'l'+t">
-              <line v-bind="arrow(i, (i + 1) % 5)"
+              <line v-bind="arrow(i, (i + 1) % N)"
                 :stroke="colOf(t)" stroke-width="2.6" :marker-end="'url(#arr-' + t + ')'" opacity="0.95" />
-              <line v-bind="arrow(i, (i + 2) % 5)"
-                :stroke="colOf(t)" stroke-width="1.7" stroke-dasharray="4 4"
-                :marker-end="'url(#arr-' + t + ')'" opacity="0.55" />
+              <line v-bind="arrow(i, (i + 2) % N)"
+                :stroke="colOf(t)" stroke-width="1.6" stroke-dasharray="4 4"
+                :marker-end="'url(#arr-' + t + ')'" opacity="0.5" />
             </template>
             <!-- Nodi -->
             <template v-for="(t, i) in TYPES" :key="'n'+t">
-              <circle :cx="nodePos(i).x" :cy="nodePos(i).y" r="24"
+              <circle :cx="nodePos(i).x" :cy="nodePos(i).y" r="23"
                 :fill="'var(--theme-surface)'" :stroke="colOf(t)" stroke-width="2.5" />
               <text :x="nodePos(i).x" :y="nodePos(i).y + 3" text-anchor="middle"
-                :fill="colOf(t)" :style="{ fontFamily: FF.label, fontSize: '8.5px', fontWeight: 800, letterSpacing: '0.03em', textTransform: 'uppercase' }">
+                :fill="colOf(t)" :style="{ fontFamily: FF.label, fontSize: '8px', fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }">
                 {{ t }}
               </text>
             </template>
           </svg>
           <div class="tipi-legend" :style="{ fontFamily: FF.body }">
-            <span><i class="tl-line" /> ×2 Super efficace</span>
-            <span><i class="tl-line tl-line--dash" /> ×1.5 Efficace</span>
+            <span><i class="tl-line" /> ×2.5 Iper</span>
+            <span><i class="tl-line tl-line--dash" /> ×2 Super</span>
           </div>
         </div>
 
         <!-- ── Moltiplicatori di danno ── -->
         <div class="tipi-section-title" :style="{ fontFamily: FF.label }">Moltiplicatori di danno</div>
         <div class="tipi-mults" :style="{ fontFamily: FF.body }">
-          <div class="tipi-mult"><b style="color:#58e0a3">×2</b><em>Super efficace</em><span>+100%</span></div>
+          <div class="tipi-mult"><b style="color:#38e0c0">×2.5</b><em>Iperefficace</em><span>+150%</span></div>
+          <div class="tipi-mult"><b style="color:#58e0a3">×2</b><em>Superefficace</em><span>+100%</span></div>
           <div class="tipi-mult"><b style="color:#8bd17c">×1.5</b><em>Efficace</em><span>+50%</span></div>
           <div class="tipi-mult"><b style="color:var(--theme-text-2)">×1</b><em>Normale</em><span>pieno</span></div>
-          <div class="tipi-mult"><b style="color:#f5a623">×0.5</b><em>Poco efficace</em><span>−50%</span></div>
-          <div class="tipi-mult"><b style="color:#ff5b6c">×0</b><em>Non efficace</em><span>nessuno</span></div>
-          <div class="tipi-mult"><b style="color:#f5c560">×1.75</b><em>Critico</em><span>sul totale</span></div>
+          <div class="tipi-mult"><b style="color:#f5a623">×0.75</b><em>Poco efficace</em><span>−25%</span></div>
+          <div class="tipi-mult"><b style="color:#ff5b6c">×0.5</b><em>Poco efficace</em><span>−50%</span></div>
         </div>
 
         <!-- ── Schede per tipo ── -->
@@ -117,10 +121,11 @@ const DIFFICOLTA = [
           <div v-for="r in relazioni" :key="r.tipo" class="tipi-card" :style="{ borderColor: colOf(r.tipo) + '66' }">
             <div class="tipi-card-name" :style="{ fontFamily: FF.label, color: colOf(r.tipo) }">{{ r.tipo }}</div>
             <div class="tipi-rows" :style="{ fontFamily: FF.body }">
+              <div class="tipi-row"><span class="tr-k" style="color:#38e0c0">×2.5</span><span class="tr-chip" :style="{ borderColor: colOf(r.iper), color: colOf(r.iper) }">{{ r.iper }}</span></div>
               <div class="tipi-row"><span class="tr-k" style="color:#58e0a3">×2</span><span class="tr-chip" :style="{ borderColor: colOf(r.super_), color: colOf(r.super_) }">{{ r.super_ }}</span></div>
               <div class="tipi-row"><span class="tr-k" style="color:#8bd17c">×1.5</span><span class="tr-chip" :style="{ borderColor: colOf(r.eff), color: colOf(r.eff) }">{{ r.eff }}</span></div>
-              <div class="tipi-row"><span class="tr-k" style="color:#f5a623">×0.5</span><span class="tr-chip" :style="{ borderColor: colOf(r.poco), color: colOf(r.poco) }">{{ r.poco }}</span></div>
-              <div class="tipi-row"><span class="tr-k" style="color:#ff5b6c">×0</span><span class="tr-chip" :style="{ borderColor: colOf(r.nulla), color: colOf(r.nulla) }">{{ r.nulla }}</span></div>
+              <div class="tipi-row"><span class="tr-k" style="color:#f5a623">×0.75</span><span class="tr-chip" :style="{ borderColor: colOf(r.poco1), color: colOf(r.poco1) }">{{ r.poco1 }}</span></div>
+              <div class="tipi-row"><span class="tr-k" style="color:#ff5b6c">×0.5</span><span class="tr-chip" :style="{ borderColor: colOf(r.poco2), color: colOf(r.poco2) }">{{ r.poco2 }}</span></div>
             </div>
           </div>
         </div>

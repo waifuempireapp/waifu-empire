@@ -66,33 +66,37 @@ export interface BattleTracker {
  *  Ferro, il Ferro (freddo) spezza l'Arcana, l'Arcana esorcizza l'Abisso,
  *  l'Abisso (le profondità) spegne il Fuoco. L'ordine determina la typeChart:
  *  i → i+1 = ×2 (super efficace), i → i+2 = ×1.5 (efficace). */
-export const TYPE_NAMES = ['Fuoco', 'Natura', 'Ferro', 'Arcana', 'Abisso'] as const
+// Ciclo TEMATICO a 6 tipi (Chrono/Tempo inserito tra Natura e Ferro):
+// Fuoco → Natura → Chrono → Ferro → Arcana → Abisso → Fuoco.
+export const TYPE_NAMES = ['Fuoco', 'Natura', 'Chrono', 'Ferro', 'Arcana', 'Abisso'] as const
 export type TypeName = typeof TYPE_NAMES[number]
 
 /** Colori UI per tipo (bg, text, border). */
 export const TYPE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   Arcana: { bg: '#EEEDFE', text: '#3C3489', border: '#7F77DD' },
   Natura: { bg: '#EAF3DE', text: '#3B6D11', border: '#639922' },
+  Chrono: { bg: '#E1F7F4', text: '#0E5A54', border: '#2BB3A8' },
   Abisso: { bg: '#FBEAF0', text: '#72243E', border: '#D4537E' },
   Ferro:  { bg: '#F1EFE8', text: '#2C2C2A', border: '#5F5E5A' },
   Fuoco:  { bg: '#FAECE7', text: '#712B13', border: '#D85A30' },
 }
 
 /**
- * Type chart generata a runtime dal ciclo pentagonale — 5 livelli:
- *   battuto diretto   (di = ai+1) → ×2.0  Super efficace
- *   battuto indiretto (di = ai+2) → ×1.5  Efficace
- *   stesso tipo       (di = ai)   → ×1.0  Normale
- *   contro-indiretto  (di = ai+3) → ×0.0  Non efficace (immune)
- *   contro-diretto    (di = ai+4) → ×0.5  Poco efficace
+ * Type chart generata a runtime dal ciclo esagonale — 6 livelli:
+ *   +1 → ×2.5  Iperefficace
+ *   +2 → ×2.0  Superefficace
+ *   +3 → ×1.5  Efficace
+ *    0 → ×1.0  Normale
+ *   +4 (−2) → ×0.75 Poco efficace
+ *   +5 (−1) → ×0.5  Poco efficace
  */
 export const typeChart: Record<string, Record<string, number>> = (() => {
-  const MULT_BY_DELTA = [1.0, 2.0, 1.5, 0.0, 0.5]
+  const MULT_BY_DELTA = [1.0, 2.5, 2.0, 1.5, 0.75, 0.5]
   const chart: Record<string, Record<string, number>> = {}
   TYPE_NAMES.forEach((attacker, ai) => {
     chart[attacker] = {}
     TYPE_NAMES.forEach((defender, di) => {
-      chart[attacker][defender] = MULT_BY_DELTA[(di - ai + 5) % 5]
+      chart[attacker][defender] = MULT_BY_DELTA[(di - ai + 6) % 6]
     })
   })
   return chart
@@ -105,10 +109,11 @@ export const typeChart: Record<string, Record<string, number>> = (() => {
 export function getEffectiveness(moveType: string, _attackerType: string, defenderType: string): { multiplier: number; label: string } {
   const multiplier = typeChart[moveType]?.[defenderType] ?? 1.0
   let label = 'Normale'
-  if (multiplier >= 2)        label = 'Super efficace!'
+  if (multiplier >= 2.5)      label = 'Iper efficace!'
+  else if (multiplier >= 2)   label = 'Super efficace!'
   else if (multiplier >= 1.5) label = 'Efficace!'
   else if (multiplier === 0)  label = 'Non efficace'
-  else if (multiplier <= 0.5) label = 'Poco efficace…'
+  else if (multiplier <= 0.75) label = 'Poco efficace…'
   return { multiplier, label }
 }
 

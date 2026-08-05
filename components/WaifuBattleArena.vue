@@ -817,7 +817,8 @@ async function handleVoluntarySwap(newIdx: number, { isPPExhausted = false } = {
         lastEMove.value = eMi
 
         if (isCrit) { message.value = 'Colpo critico! 💥'; await wait(350) }
-        if (effectiveness === 'Super efficace!') { message.value = 'Super efficace!'; await wait(350) }
+        if (effectiveness === 'Iper efficace!') { message.value = 'Iper efficace!'; await wait(350) }
+        else if (effectiveness === 'Super efficace!') { message.value = 'Super efficace!'; await wait(350) }
         else if (effectiveness === 'Efficace!') { message.value = 'Efficace!'; await wait(350) }
         else if (effectiveness === 'Poco efficace…') { message.value = 'Poco efficace…'; await wait(350) }
         else if (effectiveness === 'Non efficace') { message.value = 'Non ha effetto!'; await wait(350) }
@@ -1072,7 +1073,8 @@ async function resolveTurn(pMi: number, eMi: number, _externalResult: null = nul
     // Messaggi efficacia
     const msgs: string[] = []
     if (isCrit) msgs.push('Colpo critico! 💥')
-    if (effectiveness === 'Super efficace!') msgs.push('Super efficace!')
+    if (effectiveness === 'Iper efficace!') msgs.push('Iper efficace!')
+    else if (effectiveness === 'Super efficace!') msgs.push('Super efficace!')
     else if (effectiveness === 'Efficace!') msgs.push('Efficace!')
     else if (effectiveness === 'Poco efficace…') msgs.push('Poco efficace…')
     else if (effectiveness === 'Non efficace') msgs.push('Non ha effetto!')
@@ -1355,13 +1357,14 @@ function hpNumCol(pct: number, side: 'player' | 'enemy' | 'neutral'): string {
 
 interface EffDisplay { col: string; lbl: string; bold: boolean }
 const _HIGHLIGHT_COLORS: Record<string, string> = {
-  Arcana: '#C5BFFF', Natura: '#A8E84A', Abisso: '#FF80AA', Ferro: '#64748b', Fuoco: '#FF8C50',
+  Arcana: '#C5BFFF', Natura: '#A8E84A', Chrono: '#3fd0c8', Abisso: '#FF80AA', Ferro: '#64748b', Fuoco: '#FF8C50',
 }
 
 function getEffDisplay(moveType: string, enemyType: string, playerType: string): EffDisplay {
   const { label } = getEffectiveness(moveType, playerType, enemyType)
   const col = (_TYPE_COLORS_UI[moveType] ?? TYPE_COLORS[moveType])?.border ?? '#9ca3af'
   // #14: label compatte così la chip non sfora la card (2 super-efficaci in riga)
+  if (label === 'Iper efficace!')  return { col, lbl: 'Iper eff.',  bold: true }
   if (label === 'Super efficace!') return { col, lbl: 'Super eff.', bold: true }
   if (label === 'Efficace!')       return { col, lbl: 'Efficace',   bold: true }
   if (label === 'Poco efficace…')  return { col, lbl: 'Poco eff.',  bold: true }

@@ -4,7 +4,7 @@
 // (components/moves/MoveCard.vue, MovesList.vue).
 // ============================================================
 
-export type MoveType = 'arcana' | 'natura' | 'ferro' | 'abisso' | 'fuoco'
+export type MoveType = 'arcana' | 'natura' | 'ferro' | 'abisso' | 'fuoco' | 'chrono'
 
 export interface MultiHit {
   hits: number

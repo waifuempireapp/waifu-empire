@@ -62,6 +62,7 @@ const TIPO_C: Record<string, { bg: string; border: string; txt: string }> = {
   fuoco:   { bg: 'rgba(239,68,68,0.18)',   border: '#ef444499', txt: '#fca5a5' },
   acqua:   { bg: 'rgba(59,130,246,0.18)',  border: '#3b82f699', txt: '#93c5fd' },
   natura:  { bg: 'rgba(34,197,94,0.18)',   border: '#22c55e99', txt: '#86efac' },
+  chrono:  { bg: 'rgba(63,208,200,0.18)',  border: '#2bb3a899', txt: '#7fe6de' },
   arcana:  { bg: 'rgba(168,85,247,0.18)',  border: '#a855f799', txt: '#d8b4fe' },
   abisso:  { bg: 'rgba(99,102,241,0.18)',  border: '#6366f199', txt: '#c7d2fe' },
   ferro:   { bg: 'rgba(156,163,175,0.18)', border: '#9ca3af99', txt: '#e5e7eb' },

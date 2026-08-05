@@ -88,13 +88,16 @@ export function isMoveCompatible(mossa: Record<string, unknown>, waifu: Record<s
   if (mossa.rarita === 'immersivo' && mossa.nome_waifu && mossa.nome_waifu !== waifu.nome) {
     return { compatibile: false, motivo: `Questa mossa è esclusiva di ${mossa.nome_waifu}` }
   }
-  // Stesso ordine ciclico di TYPE_NAMES (battleEngine): Fuoco→Natura→Ferro→Arcana→Abisso
-  const TYPES = ['Fuoco', 'Natura', 'Ferro', 'Arcana', 'Abisso']
+  // Ciclo a 6 (battleEngine): Fuoco→Natura→Chrono→Ferro→Arcana→Abisso. Una waifu è
+  // DEBOLE ai 2 tipi Iper/Super contro di lei (i 2 che la precedono nel ciclo) e
+  // non può imparare mosse di quei tipi.
+  const TYPES = ['Fuoco', 'Natura', 'Chrono', 'Ferro', 'Arcana', 'Abisso']
   const moveIdx  = TYPES.indexOf(mossa.tipologia as string)
   const waifuIdx = TYPES.indexOf((waifu.tipo ?? waifu.tipologia) as string)
   if (moveIdx !== -1 && waifuIdx !== -1) {
-    if ((moveIdx + 1) % 5 === waifuIdx) {
-      return { compatibile: false, motivo: `Tipo incompatibile: ${mossa.tipologia} batte ${waifu.tipo ?? waifu.tipologia}` }
+    const d = ((waifuIdx - moveIdx) % 6 + 6) % 6   // distanza mossa→waifu
+    if (d === 1 || d === 2) {
+      return { compatibile: false, motivo: `Tipo incompatibile: ${waifu.tipo ?? waifu.tipologia} è debole a ${mossa.tipologia}` }
     }
   }
   return { compatibile: true }
