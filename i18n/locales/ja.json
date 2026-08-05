@@ -40,6 +40,12 @@
       "title": "言語",
       "subtitle": "言語を選んでください"
     },
+    "audio": {
+      "title": "オーディオ",
+      "music": "音楽",
+      "sfx": "ボタン音",
+      "volume": "音量"
+    },
     "theme_dark": "ダークテーマ",
     "theme_light": "ライトテーマ",
     "remove_image": "画像を削除"

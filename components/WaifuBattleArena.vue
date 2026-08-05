@@ -33,6 +33,8 @@ import {
 import { ikUrl } from '~/utils/imagekitUrl'
 import backCardImg from '~/assets/images/back_card.png'
 import { moves as MOVES_DATA } from '~/assets/moves/moves-data'
+import { audio as audioEngine, tabToMood } from '~/utils/audioEngine'
+import { useGameStore } from '~/stores/game'
 
 // ─── PROPS ────────────────────────────────────────────────────────────────────
 
@@ -502,6 +504,11 @@ onMounted(() => {
 const { isDark } = useTheme()
 
 // ─── LIFECYCLE ────────────────────────────────────────────────────────────────
+
+// Musica di battaglia mentre l'arena è montata; ripristina il mood della tab all'uscita
+const _gameStore = useGameStore()
+onMounted(() => { audioEngine.setMood('battle') })
+onUnmounted(() => { audioEngine.setMood(tabToMood(_gameStore.tabAttiva)) })
 
 onMounted(() => {
   // Inietta CSS animazioni una volta sola

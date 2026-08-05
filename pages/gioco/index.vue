@@ -29,6 +29,7 @@ import { AVATAR_BY_WAIFU, BASE_AVATAR_IDS, AVATAR_PRESETS } from '~/composables/
 import { preloadBustina } from '~/components/BustinaGLB.vue'
 import { releaseAllScrollLocks } from '~/composables/useScrollLock'
 import { bustinaGlbUrl } from '~/utils/bustina'
+import { audio as audioEngine, tabToMood } from '~/utils/audioEngine'
 // ikUrl rimosso — non più usato nel template (carte acquisite rimosse dalla nav)
 
 definePageMeta({ middleware: 'auth' })
@@ -95,11 +96,29 @@ watch(() => gameStore.tabAttiva, (t) => {
   // Uscendo dalla mappa azzera il focus-missione: il prossimo ingresso "normale"
   // non rizooma sulla vecchia missione.
   if (t !== 'mappa') mapFocus.value = null
+  // Musica di sottofondo: crossfade al mood della tab attiva
+  audioEngine.setMood(tabToMood(t))
 })
 const notificheAperte = ref(false)
 const tipiInfoAperto = ref(false)
 function onNotificheLette() {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('impero:notifiche-lette'))
+}
+
+// Classifica il timbro del click: 'yes' (conferma), 'no' (annulla/chiudi), 'default'.
+// Priorità: attributo data-sfx esplicito → classi CSS → testo/aria-label (5 lingue).
+const YES_TXT = /\b(si|sì|yes|ja|conferma|confirm|bestätigen|confirmar|accetta|accept|akzeptieren|aceptar|salva|save|speichern|guardar|acquista|compra|buy|kaufen|comprar|paga|pay|ok|continua|continue|weiter|continuar|inizia|start|iniciar|gioca|play|jugar|combatti|fight|conquista|riscatta|claim|reclamar)\b|[✓✔]/i
+const NO_TXT  = /\b(no|nein|annulla|cancel|abbrechen|cancelar|rifiuta|reject|ablehnen|rechazar|chiudi|close|schließen|cerrar|indietro|back|zurück|atrás|esci|exit|elimina|delete|löschen|eliminar)\b|[✕✖×]/
+function clickSfxKind(el: HTMLElement): 'yes' | 'no' | 'default' {
+  const explicit = el.closest('[data-sfx]')?.getAttribute('data-sfx')
+  if (explicit === 'yes' || explicit === 'no' || explicit === 'default') return explicit
+  const cls = (typeof el.className === 'string' ? el.className : '').toLowerCase()
+  if (/(confirm|accept|success|btn-ok|-yes\b)/.test(cls)) return 'yes'
+  if (/(cancel|reject|danger|dismiss|btn-close|-no\b)/.test(cls)) return 'no'
+  const txt = (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 40)
+  if (YES_TXT.test(txt)) return 'yes'
+  if (NO_TXT.test(txt)) return 'no'
+  return 'default'
 }
 
 // ── Listener eventi globali (window.addEventListener) ─────────────────
@@ -119,7 +138,20 @@ onMounted(() => {
   const savedLocale = localStorage.getItem('waifu_locale')
   if (savedLocale) setLocale(savedLocale as 'en' | 'it' | 'de' | 'es' | 'ja')
 
+  // ── Audio: inizializza preferenze e avvia al primo gesto utente ──────
+  useAudio()
+  audioEngine.setMood(tabToMood(gameStore.tabAttiva))
+  const startAudio = () => audioEngine.start()
+  window.addEventListener('pointerdown', startAudio, { once: true })
+  // SFX click su qualunque elemento interattivo, con timbro diverso per sì/no/altro
+  audioClickHandler = (e: Event) => {
+    const t = e.target as HTMLElement | null
+    const btn = t?.closest('button, [role="button"], a, .hdr-btn, input[type="checkbox"]') as HTMLElement | null
+    if (btn) audioEngine.playClick(clickSfxKind(btn))
+  }
+  window.addEventListener('pointerdown', audioClickHandler, true)
 })
+let audioClickHandler: ((e: Event) => void) | null = null
 onUnmounted(() => {
   window.removeEventListener('impero:apri-negozio', () => gameStore.toggleNegozio(true))
   window.removeEventListener('impero:apri-pesca', () => {
@@ -127,6 +159,8 @@ onUnmounted(() => {
     subTabPacchetti.value = 'pesca'
     pescaAperta.value = true
   })
+  if (audioClickHandler) window.removeEventListener('pointerdown', audioClickHandler, true)
+  audioEngine.suspend()
 })
 
 // ── Carica tutto al mount, quando l'utente è disponibile ──────────────

@@ -40,6 +40,12 @@
       "title": "Lingua",
       "subtitle": "Scegli la tua lingua"
     },
+    "audio": {
+      "title": "Audio",
+      "music": "Musica",
+      "sfx": "Suoni dei tasti",
+      "volume": "Volume"
+    },
     "theme_dark": "Tema scuro",
     "theme_light": "Tema chiaro",
     "remove_image": "Rimuovi immagine"

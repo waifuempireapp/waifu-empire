@@ -81,6 +81,9 @@ async function onToggleTheme() {
   }
 }
 
+// Audio: musica di sottofondo + effetti click + volume
+const { musicOn, sfxOn, volume, setMusic, setSfx, setVol } = useAudio()
+
 // Dropdown lingua (DropdownSelect stile iOS — bottom sheet su body, sempre cliccabile)
 const langModel = computed({
   get: () => String(currentLocale.value),
@@ -232,6 +235,52 @@ async function switchLocale(code: string) {
       </div>
       <!-- DropdownSelect (bottom-sheet su body): niente più voci sotto la navbar -->
       <DropdownSelect v-model="langModel" :options="langOptions" :label="$t('settings.language.title')" :placeholder="currentLocaleName" />
+    </div>
+
+    <!-- Audio: musica di sottofondo, effetti click, volume -->
+    <div style="flex-shrink:0;padding-bottom:14px;border-bottom:1px solid var(--theme-border);display:flex;flex-direction:column;gap:14px;">
+      <div style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;font-weight:700;display:flex;align-items:center;gap:6px;color:var(--theme-text-2);">
+        🎵 {{ $t('settings.audio.title') }}
+      </div>
+
+      <!-- Musica -->
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-family:var(--ff-body,'DM Sans',sans-serif);font-size:14px;font-weight:600;color:var(--theme-text-1);">
+          {{ $t('settings.audio.music') }}
+        </div>
+        <div
+          :class="['theme-toggle-track', musicOn ? 'theme-toggle-track--on' : 'theme-toggle-track--off']"
+          @click="setMusic(!musicOn)"
+        >
+          <div :class="['theme-toggle-thumb', musicOn ? 'theme-toggle-thumb--on' : 'theme-toggle-thumb--off']" />
+        </div>
+      </div>
+
+      <!-- Effetti (click) -->
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-family:var(--ff-body,'DM Sans',sans-serif);font-size:14px;font-weight:600;color:var(--theme-text-1);">
+          {{ $t('settings.audio.sfx') }}
+        </div>
+        <div
+          :class="['theme-toggle-track', sfxOn ? 'theme-toggle-track--on' : 'theme-toggle-track--off']"
+          @click="setSfx(!sfxOn)"
+        >
+          <div :class="['theme-toggle-thumb', sfxOn ? 'theme-toggle-thumb--on' : 'theme-toggle-thumb--off']" />
+        </div>
+      </div>
+
+      <!-- Volume -->
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-family:var(--ff-body,'DM Sans',sans-serif);font-size:14px;font-weight:600;color:var(--theme-text-1);white-space:nowrap;">
+          {{ $t('settings.audio.volume') }}
+        </div>
+        <input
+          type="range" min="0" max="1" step="0.05"
+          :value="volume"
+          @input="setVol(parseFloat(($event.target as HTMLInputElement).value))"
+          style="flex:1;accent-color:var(--theme-accent);cursor:pointer;"
+        />
+      </div>
     </div>
 
     <!-- Voci menu — stile full-page, non dentro una card -->

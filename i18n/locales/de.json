@@ -40,6 +40,12 @@
       "title": "Sprache",
       "subtitle": "Wähle deine Sprache"
     },
+    "audio": {
+      "title": "Audio",
+      "music": "Musik",
+      "sfx": "Tastentöne",
+      "volume": "Lautstärke"
+    },
     "theme_dark": "Dunkles Design",
     "theme_light": "Helles Design",
     "remove_image": "Bild entfernen"
