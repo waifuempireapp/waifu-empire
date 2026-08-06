@@ -408,7 +408,7 @@ onUnmounted(() => {
                 border: `1px solid ${m.reward.type === 'kisses' ? 'rgba(255,133,182,0.3)' : 'rgba(245,197,96,0.3)'}`,
                 borderRadius:'999px', padding:'2px 10px', marginBottom:'10px',
               }">
-                +{{ m.reward.amount }} {{ m.reward.type === 'kisses' ? 'Kisses' : 'Pack' }}
+                +{{ m.reward.amount }} {{ m.reward.type === 'kisses' ? 'Kisses' : $t('missions.reward_pack') }}
               </div>
 
               <!-- Progress bar -->

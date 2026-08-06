@@ -551,7 +551,12 @@
     "task_conquer_label": "Erobere 3 Gebiete",
     "task_conquer_desc": "Erobere 3 Gebiete auf der Karte",
     "task_legendary_label": "Schalte 1 legendäre Karte frei",
-    "task_legendary_desc": "Erhalte eine legendäre Karte"
+    "task_legendary_desc": "Erhalte eine legendäre Karte",
+    "task_swipe_waifu_label": "30 Mal swipen",
+    "task_swipe_waifu_desc": "Gib 30 Stimmen im Waifu Swipe ab",
+    "task_mysterious_draw_label": "Mysteriöser Zug",
+    "task_mysterious_draw_desc": "Ziehe eine Überraschungskarte",
+    "reward_pack": "Pack"
   },
   "defense": {
     "title": "⚔ Gebietsverteidigung",

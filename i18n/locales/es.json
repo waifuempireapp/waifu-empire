@@ -551,7 +551,12 @@
     "task_conquer_label": "Conquista 3 territorios",
     "task_conquer_desc": "Conquista 3 territorios en el mapa",
     "task_legendary_label": "Desbloquea 1 carta legendaria",
-    "task_legendary_desc": "Consigue una carta legendaria"
+    "task_legendary_desc": "Consigue una carta legendaria",
+    "task_swipe_waifu_label": "Desliza 30 veces",
+    "task_swipe_waifu_desc": "Emite 30 votos en Waifu Swipe",
+    "task_mysterious_draw_label": "Haz una pesca misteriosa",
+    "task_mysterious_draw_desc": "Roba una carta sorpresa",
+    "reward_pack": "Sobre"
   },
   "defense": {
     "title": "⚔ Defensa del Territorio",

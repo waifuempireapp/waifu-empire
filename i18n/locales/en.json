@@ -660,7 +660,12 @@
     "task_conquer_label": "Conquer 3 territories",
     "task_conquer_desc": "Conquer 3 territories on the map",
     "task_legendary_label": "Unlock 1 legendary card",
-    "task_legendary_desc": "Get a legendary card"
+    "task_legendary_desc": "Get a legendary card",
+    "task_swipe_waifu_label": "Swipe 30 times",
+    "task_swipe_waifu_desc": "Cast 30 votes in Waifu Swipe",
+    "task_mysterious_draw_label": "Make a mysterious draw",
+    "task_mysterious_draw_desc": "Draw a surprise card",
+    "reward_pack": "Pack"
   },
   "defense": {
     "title": "⚔ Territory Defense",

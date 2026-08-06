@@ -551,7 +551,12 @@
     "task_conquer_label": "領地を3つ征服",
     "task_conquer_desc": "マップで領地を3つ征服",
     "task_legendary_label": "レジェンダリーカードを1枚入手",
-    "task_legendary_desc": "レジェンダリーカードを獲得"
+    "task_legendary_desc": "レジェンダリーカードを獲得",
+    "task_swipe_waifu_label": "30回スワイプ",
+    "task_swipe_waifu_desc": "ワイフスワイプで30票投じる",
+    "task_mysterious_draw_label": "ミステリー抽選を1回",
+    "task_mysterious_draw_desc": "サプライズカードを1枚引く",
+    "reward_pack": "パック"
   },
   "defense": {
     "title": "⚔ 領地防衛",
