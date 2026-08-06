@@ -17,17 +17,34 @@ const RARITY_MULTIPLIERS_DEFAULT: Record<string, RarityRange> = {
   immersivo:   { multiplier: 1.50, vel_min: 650,  vel_max: 1000, crit_min: 0.25, crit_max: 0.60 },
 }
 
+// ── Risoluzione deterministica delle stat estetiche ──────────────────────────
+// Identica a utils/waifuStats.ts: stat mancante → generata dall'id (gli STESSI
+// orb mostrati sulla carta) su scala 1-10. Prima il server usava formule legacy
+// (÷6, ÷4982…) con default fissi → level-up salvava stat sballate e diverse da
+// carta/dettaglio/combattimento.
+function hash32(s: string): number { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) } return h >>> 0 }
+function detRange(id: string, salt: string, min: number, max: number): number { return min + (hash32(id + ':' + salt) % (max - min + 1)) }
+function resolveStat(w: Record<string, any>, key: string): number {
+  const raw = w?.[key]
+  if (typeof raw === 'number' && raw >= 1 && raw <= 10) return Math.round(raw)
+  const id  = String(w?.id ?? w?.nome ?? 'waifu')
+  const rar = String(w?.rarita ?? 'comune')
+  if (key === 'tette')          return detRange(id, 'tette',   1, 10)
+  if (key === 'taglia_piedi')   return detRange(id, 'piedi',   1, 10)
+  if (key === 'eta')            return detRange(id, 'eta',     1, 10)
+  if (key === 'colore_capelli') return detRange(id, 'capelli', 1, 10)
+  const floor: Record<string, number> = { comune: 1, raro: 3, epico: 5, leggendario: 7, immersivo: 8 }
+  return detRange(id, 'exp', floor[rar] ?? 1, 10)
+}
+// Normalizza una stat 1-10 in [0,1] (scala corretta, come il client)
+const n10 = (v: number): number => (Math.max(1, Math.min(10, v)) - 1) / 9
+
 function calculateSpeed(waifu: Record<string, any>, rarityMultiplier = 1.0, rarityRange: RarityRange | null = null): number {
-  const tette        = waifu?.tette        ?? 4
-  const eta          = waifu?.eta          ?? 20
-  const esperienza   = waifu?.esperienza   ?? 0
-  const capelli      = waifu?.capelli      ?? 5
-  const taglia_piedi = waifu?.taglia_piedi ?? 39
-  const t  = (tette - 1) / 6
-  const e  = (eta - 18) / 4982
-  const es = esperienza / 5000
-  const c  = (capelli - 1) / 8
-  const p  = (taglia_piedi - 34) / 11
+  const t  = n10(resolveStat(waifu, 'tette'))
+  const e  = n10(resolveStat(waifu, 'eta'))
+  const es = n10(resolveStat(waifu, 'esperienza'))
+  const c  = n10(resolveStat(waifu, 'colore_capelli'))
+  const p  = n10(resolveStat(waifu, 'taglia_piedi'))
   const speed_raw = (1 - t) * 0.20 + (1 - e) * 0.20 + es * 0.25 + (1 - c) * 0.15 + (1 - p) * 0.20
   const base = Math.round(speed_raw * 999) + 1
   if (rarityMultiplier === 1.0 && !rarityRange) return base
@@ -37,11 +54,11 @@ function calculateSpeed(waifu: Record<string, any>, rarityMultiplier = 1.0, rari
 }
 
 function computeCritChance(w: Record<string, any>, rarityMultiplier = 1.0, rarityRange: RarityRange | null = null): number {
-  const t  = ((w.tette          ?? 4)  - 1)  / 6
-  const e  = ((w.eta            ?? 25) - 18) / 4982
-  const es = (w.esperienza      ?? 0)        / 5000
-  const c  = ((w.colore_capelli ?? 5)  - 1)  / 8
-  const p  = ((w.taglia_piedi   ?? 39) - 34) / 11
+  const t  = n10(resolveStat(w, 'tette'))
+  const e  = n10(resolveStat(w, 'eta'))
+  const es = n10(resolveStat(w, 'esperienza'))
+  const c  = n10(resolveStat(w, 'colore_capelli'))
+  const p  = n10(resolveStat(w, 'taglia_piedi'))
   const raw = t*0.20 + e*0.20 + (1-es)*0.25 + c*0.15 + p*0.20
   const base = parseFloat(Math.min(0.60, Math.max(0.05, raw)).toFixed(2))
   if (rarityMultiplier === 1.0 && !rarityRange) return base
@@ -51,11 +68,11 @@ function computeCritChance(w: Record<string, any>, rarityMultiplier = 1.0, rarit
 }
 
 function computeHp(w: Record<string, any>, rarityMultiplier = 1.0): number {
-  const t  = ((w.tette          ?? 4)  - 1)  / 6
-  const e  = ((w.eta            ?? 25) - 18) / 4982
-  const es = (w.esperienza      ?? 0)        / 5000
-  const c  = ((w.colore_capelli ?? 5)  - 1)  / 8
-  const p  = ((w.taglia_piedi   ?? 39) - 34) / 11
+  const t  = n10(resolveStat(w, 'tette'))
+  const e  = n10(resolveStat(w, 'eta'))
+  const es = n10(resolveStat(w, 'esperienza'))
+  const c  = n10(resolveStat(w, 'colore_capelli'))
+  const p  = n10(resolveStat(w, 'taglia_piedi'))
   const raw = t * 0.30 + es * 0.30 + p * 0.20 + e * 0.10 + c * 0.10
   const base = Math.round(raw * 400) + 100
   return Math.max(50, Math.round(base * rarityMultiplier))

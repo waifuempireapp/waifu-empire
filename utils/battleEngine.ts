@@ -11,6 +11,7 @@
 
 import { RARITY_MULTIPLIERS_DEFAULT } from '~/utils/constants'
 import { moves as MOVES_CATALOG, type MoveEffect } from '~/assets/moves/moves-data'
+import { resolveWaifuStat, type AestheticStatKey } from '~/utils/waifuStats'
 
 // ── TIPI ─────────────────────────────────────────────────────
 
@@ -251,12 +252,20 @@ const _n10 = (v: unknown, def = 5): number => {
   return (Math.max(1, Math.min(10, x)) - 1) / 9
 }
 
+// Legge una stat estetica come [0,1] RISOLVENDO il valore deterministico (lo
+// stesso mostrato negli orb della carta) quando il campo grezzo manca. Prima le
+// formule leggevano waifu.tette grezzo → assente → default 5 per tutti, così
+// HP/VEL/CRIT NON riflettevano gli orb (tutte le immersive uguali). Ora carta,
+// dettaglio e combattimento usano le stesse identiche statistiche.
+const _stat = (w: Record<string, unknown>, key: AestheticStatKey): number =>
+  _n10(resolveWaifuStat(w as never, key))
+
 export function calculateSpeed(waifu: Record<string, unknown>, rarityMultiplier = 1.0, rarityRange: { vel_min: number; vel_max: number } | null = null): number {
-  const t  = _n10(waifu?.tette)
-  const e  = _n10(waifu?.eta)
-  const es = _n10(waifu?.esperienza)
-  const c  = _n10((waifu?.capelli as number) ?? waifu?.colore_capelli)
-  const p  = _n10(waifu?.taglia_piedi)
+  const t  = _stat(waifu, 'tette')
+  const e  = _stat(waifu, 'eta')
+  const es = _stat(waifu, 'esperienza')
+  const c  = _stat(waifu, 'colore_capelli')
+  const p  = _stat(waifu, 'taglia_piedi')
 
   // Più esperienza = più veloce; tette/eta/capelli/piedi alti = più lenta.
   const speed_raw = (1 - t) * 0.20 + (1 - e) * 0.20 + es * 0.25 + (1 - c) * 0.15 + (1 - p) * 0.20
@@ -274,11 +283,11 @@ export function computeSpeed(w: Record<string, unknown>): number {
 
 /** Calcola probabilità critico (0.05–0.60) dai 5 stat fisici. */
 export function computeCritChance(w: Record<string, unknown>, rarityMultiplier = 1.0, rarityRange: { crit_min: number; crit_max: number } | null = null): number {
-  const t  = _n10(w.tette)
-  const e  = _n10(w.eta)
-  const es = _n10(w.esperienza)
-  const c  = _n10(w.colore_capelli)
-  const p  = _n10(w.taglia_piedi)
+  const t  = _stat(w, 'tette')
+  const e  = _stat(w, 'eta')
+  const es = _stat(w, 'esperienza')
+  const c  = _stat(w, 'colore_capelli')
+  const p  = _stat(w, 'taglia_piedi')
   const raw = t*0.20 + e*0.20 + (1-es)*0.25 + c*0.15 + p*0.20
   const base = parseFloat(Math.min(0.60, Math.max(0.05, raw)).toFixed(2))
   if (rarityMultiplier === 1.0 && !rarityRange) return base
@@ -289,11 +298,11 @@ export function computeCritChance(w: Record<string, unknown>, rarityMultiplier =
 
 /** Calcola HP base dai 5 stat fisici + moltiplicatore rarità. */
 export function computeHp(w: Record<string, unknown>, rarityMultiplier = 1.0): number {
-  const t  = _n10(w.tette)
-  const e  = _n10(w.eta)
-  const es = _n10(w.esperienza)
-  const c  = _n10(w.colore_capelli)
-  const p  = _n10(w.taglia_piedi)
+  const t  = _stat(w, 'tette')
+  const e  = _stat(w, 'eta')
+  const es = _stat(w, 'esperienza')
+  const c  = _stat(w, 'colore_capelli')
+  const p  = _stat(w, 'taglia_piedi')
   const raw = t * 0.30 + es * 0.30 + p * 0.20 + e * 0.10 + c * 0.10
   const base = Math.round(raw * 400) + 100
   return Math.max(50, Math.round(base * rarityMultiplier))

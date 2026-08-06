@@ -9,7 +9,7 @@ import { canLearnMove, weakType } from '~/utils/moves'
 import { moves as MOVES_DATA } from '~/assets/moves/moves-data'
 import MoveCard from '~/components/moves/MoveCard.vue'
 import { resolveWaifuStat, AESTHETIC_STAT_CAPS, type AestheticStatKey } from '~/utils/waifuStats'
-import { computeHp, computeSpeed, computeCritChance } from '~/utils/battleEngine'
+import { computeHp, calculateSpeed, computeCritChance } from '~/utils/battleEngine'
 import { RARITY_MULTIPLIERS_DEFAULT } from '~/utils/constants'
 
 const { t } = useI18n()
@@ -298,14 +298,17 @@ function statPct(key: string, max: number) {
 
 // HP/Vel/Crit: stessi fallback derivati usati da CartaWaifu, così il dettaglio
 // non mostra mai 0 quando la carta mostra un valore calcolato.
-const _rarMult = computed(() =>
-  (RARITY_MULTIPLIERS_DEFAULT as Record<string, { multiplier: number }>)[props.waifu.rarita]?.multiplier ?? 1)
+const _rarCfg  = computed<any>(() =>
+  (RARITY_MULTIPLIERS_DEFAULT as any)[props.waifu.rarita] ?? (RARITY_MULTIPLIERS_DEFAULT as any).comune)
+const _rarMult = computed(() => _rarCfg.value?.multiplier ?? 1)
+// hp/vel/crit: identici a carta e combattimento (formule scalate su orb risolti,
+// niente più campi *_base legacy fuori scala).
 const hp    = computed(() =>
-  props.dati.hp ?? props.waifu.hp ?? props.waifu.battleStats?.maxHp ?? computeHp(props.waifu, _rarMult.value))
+  props.dati.hp ?? computeHp(props.waifu, _rarMult.value))
 const vel   = computed(() =>
-  props.dati.velocita ?? props.waifu.velocita_base ?? props.waifu.battleStats?.speed ?? Math.round(computeSpeed(props.waifu)))
+  props.dati.velocita ?? Math.round(calculateSpeed(props.waifu, _rarMult.value, _rarCfg.value)))
 const crit  = computed(() =>
-  props.dati.crit_chance ?? props.waifu.crit_chance_base ?? computeCritChance(props.waifu, _rarMult.value))
+  props.dati.crit_chance ?? computeCritChance(props.waifu, _rarMult.value, _rarCfg.value))
 const lv    = computed(() => props.dati.livello ?? 1)
 const copie = computed(() => props.dati.copie ?? 0)
 const pref  = computed(() => !!props.dati.preferita)

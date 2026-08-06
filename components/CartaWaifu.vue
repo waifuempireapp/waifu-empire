@@ -12,7 +12,7 @@ import {
 } from 'lucide-vue-next'
 
 import { RARITA, type RaritaKey, RARITY_MULTIPLIERS_DEFAULT } from '~/utils/constants'
-import { computeHp, computeSpeed, computeCritChance } from '~/utils/battleEngine'
+import { computeHp, calculateSpeed, computeCritChance } from '~/utils/battleEngine'
 import { resolveWaifuStat } from '~/utils/waifuStats'
 import { ARCHETIPI } from '~/utils/promptGenerator'
 import { ikUrl, ikImgFallback } from '~/utils/imagekitUrl'
@@ -180,12 +180,15 @@ const hp   = computed(() =>
 // Vel e Crit: come l'HP, se non memorizzati vengono CALCOLATI al volo — così
 // il valore compare in TUTTE le viste della carta (sbusto, pick, zoom, ecc.),
 // non solo in collezione dove datiCollezione li ha salvati.
-const _rarMult = computed(() =>
-  (RARITY_MULTIPLIERS_DEFAULT as Record<string, { multiplier: number }>)[props.waifu.rarita]?.multiplier ?? 1)
+const _rarCfg  = computed<any>(() =>
+  (RARITY_MULTIPLIERS_DEFAULT as any)[props.waifu.rarita] ?? (RARITY_MULTIPLIERS_DEFAULT as any).comune)
+const _rarMult = computed(() => _rarCfg.value?.multiplier ?? 1)
+// Vel/Crit: stessa formula SCALATA usata in battaglia (calculateSpeed/computeCritChance
+// con moltiplicatore+range di rarità). Niente più campi *_base legacy fuori scala.
 const vel  = computed(() =>
-  props.datiCollezione?.velocita ?? props.waifu.velocita_base ?? Math.round(computeSpeed(props.waifu as any)))
+  props.datiCollezione?.velocita ?? Math.round(calculateSpeed(props.waifu as any, _rarMult.value, _rarCfg.value)))
 const crit = computed(() =>
-  props.datiCollezione?.crit_chance ?? props.waifu.crit_chance_base ?? computeCritChance(props.waifu as any, _rarMult.value))
+  props.datiCollezione?.crit_chance ?? computeCritChance(props.waifu as any, _rarMult.value, _rarCfg.value))
 const hasCombatStats = computed(() => hp.value != null || vel.value != null || crit.value != null)
 
 // Simbolo archetipo corrente
