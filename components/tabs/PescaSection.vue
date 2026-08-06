@@ -659,7 +659,7 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; transform-style:preserve-3d;">
+              <div style="display:flex; justify-content:center; gap:10px; transform-style:preserve-3d;">
                   <div :style="{ ...cardStyle(2), width: 'calc((100% - 20px) / 3)', flexShrink: '0' }"
                     @click="onPickCard(2)">
                   <template v-if="pickPhase === 'reveal'">
