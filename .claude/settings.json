@@ -434,7 +434,19 @@
       "Bash(lsof -ti:3000)",
       "Bash(file assets/musics/*)",
       "Bash(echo \"EXIT: $?\")",
-      "Bash(echo \"TSC_EXIT: $?\")"
+      "Bash(echo \"TSC_EXIT: $?\")",
+      "Bash(git rev-list *)",
+      "Bash(echo \"TSC: $?\")",
+      "Bash(node -e \"for\\(const f of ['de','en','es','it','ja']\\){JSON.parse\\(require\\('fs'\\).readFileSync\\('i18n/locales/'+f+'.json','utf8'\\)\\);} console.log\\('JSON ok'\\)\")",
+      "Bash(node -e \"for\\(const f of ['de','en','es','it','ja']\\)JSON.parse\\(require\\('fs'\\).readFileSync\\('i18n/locales/'+f+'.json','utf8'\\)\\);console.log\\('JSON ok'\\)\")",
+      "Bash(python3 -c \"import json;d=json.load\\(open\\('i18n/locales/it.json'\\)\\);print\\([k for k in d.get\\('missions',{}\\) if k.startswith\\('task_'\\)]\\)\")",
+      "Bash(grep -n 'missions.task_\\\\|task_\\\\|\\\\.tipo\\\\|descrizione\\\\|titolo\\\\|$t\\(' components/tabs/MissioniTab.vue)",
+      "Bash(grep -nE \">[A-Za-z][A-Za-z '/!?.]{2,}<|'[A-Z][a-z]+ [a-z]\" components/tabs/MissioniTab.vue)",
+      "Bash(grep -vE '\\\\$t\\\\\\(|FF\\\\.|C\\\\.|var\\\\\\(|rgba|linear-gradient|MissionType|import|//|theme-|font-|px|calc\\\\\\(')",
+      "Bash(node scripts/list-arti-imagekit.mjs)",
+      "Bash(node scripts/inspect-waifu-doc.mjs)",
+      "Bash(node scripts/seed-espansione-arti.mjs)",
+      "Bash(node scripts/seed-espansione-arti.mjs --commit --attiva)"
     ],
     "additionalDirectories": [
       "/private/tmp",
