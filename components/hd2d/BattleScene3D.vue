@@ -23,6 +23,8 @@ const props = withDefaults(defineProps<{
   playerRarity?: string
   enemyRarity?: string
   background?: string
+  /** URL di uno sfondo-paesaggio: se presente sostituisce cielo/monoliti procedurali */
+  backgroundImage?: string
   /** true = solo VFX/reazioni; HP e numeri di danno li gestisce l'arena esterna */
   visualOnly?: boolean
   /** mostra le barre HP interne (demo). Nell'arena reale off: c'è già l'HUD */
@@ -81,7 +83,19 @@ let timer: import('three').Timer | null = null
 let animId: number | null = null
 let ro: ResizeObserver | null = null
 let softDot: import('three').Texture | null = null
+let bgTex: import('three').Texture | null = null
 let ctxAttached = false
+
+// Adatta lo sfondo-immagine al viewport in modalità "cover" (nessuna deformazione)
+function applyBgCover() {
+  if (!bgTex || !(bgTex as any).image) return
+  const { w, h } = sizeOf()
+  const ia = (bgTex as any).image.width / (bgTex as any).image.height, ca = w / h
+  const a = ia / ca
+  bgTex.offset.set(a > 1 ? (1 - 1 / a) / 2 : 0, a > 1 ? 0 : (1 - a) / 2)
+  bgTex.repeat.set(a > 1 ? 1 / a : 1, a > 1 ? 1 : a)
+  bgTex.needsUpdate = true
+}
 let player: Fighter | null = null
 let enemy: Fighter | null = null
 
@@ -216,44 +230,52 @@ async function init() {
       canvasRef.value.addEventListener('webglcontextrestored', () => { failed.value = false; glReady.value = false; init() })
     }
     scene = new THREE.Scene()
-    scene.fog = new THREE.Fog(new THREE.Color(props.background).getHex(), 8, 18)
-    // Cielo sfumato con bagliore all'orizzonte (paesaggio procedurale, niente asset)
-    { const sc = document.createElement('canvas'); sc.width = 8; sc.height = 256; const sx = sc.getContext('2d')!
-      const sg = sx.createLinearGradient(0, 0, 0, 256)
-      sg.addColorStop(0, '#0a0820'); sg.addColorStop(0.5, '#180f38'); sg.addColorStop(0.68, '#3d2168')
-      sg.addColorStop(0.76, '#5a2f6e'); sg.addColorStop(0.82, '#241d45'); sg.addColorStop(1, '#100c22')
-      sx.fillStyle = sg; sx.fillRect(0, 0, 8, 256)
-      const skyTex = new THREE.CanvasTexture(sc); skyTex.colorSpace = THREE.SRGBColorSpace; scene.background = skyTex }
+    scene.fog = new THREE.Fog(new THREE.Color(props.background).getHex(), 9, 24)
     camera = new THREE.PerspectiveCamera(46, w / h, 0.1, 100)
     camera.position.set(0, 2.0, 6.4)
     timer = new THREE.Timer()
     softDot = radialTex([[0, 'rgba(255,255,255,1)'], [0.4, 'rgba(255,255,255,0.7)'], [1, 'rgba(255,255,255,0)']])
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.7))
-    const keyL = new THREE.DirectionalLight(0xfff2e0, 1.2); keyL.position.set(3, 6, 4); scene.add(keyL)
-    const rimL = new THREE.DirectionalLight(0x8b6fe8, 0.7); rimL.position.set(-4, 2, -3); scene.add(rimL)
+    // Luci (per entrambe le modalità)
+    scene.add(new THREE.AmbientLight(0xffffff, 0.72))
+    const keyL = new THREE.DirectionalLight(0xfff2e0, 1.15); keyL.position.set(3, 6, 4); scene.add(keyL)
+    const rimL = new THREE.DirectionalLight(0x8b6fe8, 0.65); rimL.position.set(-4, 2, -3); scene.add(rimL)
 
-    const ground = new THREE.Mesh(new THREE.CircleGeometry(10, 56), new THREE.MeshStandardMaterial({ color: 0x241d45, roughness: 0.95 }))
-    ground.rotation.x = -Math.PI / 2; scene.add(ground)
-    const grid = new THREE.GridHelper(16, 22, 0x5a4a9a, 0x342a5e)
-    ;(grid.material as any).opacity = 0.25; (grid.material as any).transparent = true; grid.position.y = 0.011; scene.add(grid)
+    if (props.backgroundImage) {
+      // ── Sfondo PAESAGGIO (immagine della zona), "cover" senza deformare ──
+      try {
+        bgTex = await new THREE.TextureLoader().loadAsync(props.backgroundImage)
+        bgTex.colorSpace = THREE.SRGBColorSpace
+        scene.background = bgTex
+        applyBgCover()
+      } catch { /* fallback: resta il clearColor di sfondo */ }
+      // niente terreno/griglia/monoliti/stelle: l'ambiente lo dà l'immagine
+    } else {
+      // ── Ambiente procedurale (fallback): cielo + terreno + monoliti + stelle ──
+      const sc = document.createElement('canvas'); sc.width = 8; sc.height = 256; const sx = sc.getContext('2d')!
+      const sg = sx.createLinearGradient(0, 0, 0, 256)
+      sg.addColorStop(0, '#0a0820'); sg.addColorStop(0.5, '#180f38'); sg.addColorStop(0.68, '#3d2168')
+      sg.addColorStop(0.76, '#5a2f6e'); sg.addColorStop(0.82, '#241d45'); sg.addColorStop(1, '#100c22')
+      sx.fillStyle = sg; sx.fillRect(0, 0, 8, 256)
+      const skyTex = new THREE.CanvasTexture(sc); skyTex.colorSpace = THREE.SRGBColorSpace; scene.background = skyTex
 
-    // ── Sfondo 3D: monoliti in lontananza (silhouette nella nebbia) + stelle ──
-    const pillarMat = new THREE.MeshStandardMaterial({ color: 0x1a1436, roughness: 1, metalness: 0, emissive: new THREE.Color(0x2a1f52), emissiveIntensity: 0.4 })
-    for (let i = 0; i < 10; i++) {
-      const a = (i / 10) * Math.PI * 2 + 0.3
-      const rad = 9 + Math.random() * 4
-      const hgt = 4 + Math.random() * 5
-      const p = new THREE.Mesh(new THREE.BoxGeometry(0.9 + Math.random(), hgt, 0.9 + Math.random()), pillarMat)
-      p.position.set(Math.sin(a) * rad, hgt / 2 - 0.5, Math.cos(a) * rad - 4)
-      p.rotation.y = Math.random() * 0.5
-      scene.add(p)
+      const ground = new THREE.Mesh(new THREE.CircleGeometry(10, 56), new THREE.MeshStandardMaterial({ color: 0x241d45, roughness: 0.95 }))
+      ground.rotation.x = -Math.PI / 2; scene.add(ground)
+      const grid = new THREE.GridHelper(16, 22, 0x5a4a9a, 0x342a5e)
+      ;(grid.material as any).opacity = 0.25; (grid.material as any).transparent = true; grid.position.y = 0.011; scene.add(grid)
+
+      const pillarMat = new THREE.MeshStandardMaterial({ color: 0x1a1436, roughness: 1, metalness: 0, emissive: new THREE.Color(0x2a1f52), emissiveIntensity: 0.4 })
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2 + 0.3
+        const rad = 9 + Math.random() * 4, hgt = 4 + Math.random() * 5
+        const p = new THREE.Mesh(new THREE.BoxGeometry(0.9 + Math.random(), hgt, 0.9 + Math.random()), pillarMat)
+        p.position.set(Math.sin(a) * rad, hgt / 2 - 0.5, Math.cos(a) * rad - 4); p.rotation.y = Math.random() * 0.5; scene.add(p)
+      }
+      const starN = 90, sp = new Float32Array(starN * 3)
+      for (let i = 0; i < starN; i++) { sp[i * 3] = (Math.random() - 0.5) * 30; sp[i * 3 + 1] = 2 + Math.random() * 9; sp[i * 3 + 2] = -6 - Math.random() * 12 }
+      const starGeo = new THREE.BufferGeometry(); starGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3))
+      scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x9d8bff, size: 0.09, transparent: true, opacity: 0.7, depthWrite: false })))
     }
-    // Stelle/particelle sospese sullo sfondo
-    const starN = 90, sp = new Float32Array(starN * 3)
-    for (let i = 0; i < starN; i++) { sp[i * 3] = (Math.random() - 0.5) * 30; sp[i * 3 + 1] = 2 + Math.random() * 9; sp[i * 3 + 2] = -6 - Math.random() * 12 }
-    const starGeo = new THREE.BufferGeometry(); starGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3))
-    scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x9d8bff, size: 0.09, transparent: true, opacity: 0.7, depthWrite: false })))
 
     player = await makeFighter(props.playerImage, new THREE.Vector3(-2.1, 0, 1.25), 1.15, props.playerRarity)
     enemy  = await makeFighter(props.enemyImage,  new THREE.Vector3(2.35, 0, -1.05), 0.8, props.enemyRarity)
@@ -471,7 +493,19 @@ function reset() { if (player) { player.hp = 1; player.ko = false } if (enemy) {
 function setKO(side: Side, val: boolean) { const f = side === 'player' ? player : enemy; if (f) f.ko = val }
 defineExpose({ attack, reset, setKO })
 
-function startRO() { if (ro || !wrapperRef.value) return; ro = new ResizeObserver(() => { if (!renderer || !camera) return; const { w, h } = sizeOf(); renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); if ((h > w) !== curPortrait) applyLayout(h > w) }); ro.observe(wrapperRef.value) }
+function startRO() { if (ro || !wrapperRef.value) return; ro = new ResizeObserver(() => { if (!renderer || !camera) return; const { w, h } = sizeOf(); renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); applyBgCover(); if ((h > w) !== curPortrait) applyLayout(h > w) }); ro.observe(wrapperRef.value) }
+// Cambio sfondo-paesaggio in-place (niente re-init)
+watch(() => props.backgroundImage, async (url) => {
+  if (!glReady.value || !scene || !renderer || !url) return
+  const old = bgTex
+  try {
+    bgTex = await new THREE.TextureLoader().loadAsync(url)
+    bgTex.colorSpace = THREE.SRGBColorSpace
+    scene.background = bgTex; applyBgCover()
+    old?.dispose()
+  } catch { bgTex = old }
+})
+
 watch(() => [props.playerImage, props.enemyImage, props.playerRarity, props.enemyRarity], (n, o) => {
   // Scena già viva → swap morbido SOLO del fighter cambiato (niente re-init =
   // niente crash/immagine piatta); altrimenti prima inizializzazione.
@@ -489,6 +523,7 @@ onBeforeUnmount(() => {
   ro?.disconnect(); ro = null
   if (scene) { scene.traverse((o: any) => { if (o.isMesh || o.isPoints) { o.geometry?.dispose?.(); const m = o.material; if (Array.isArray(m)) m.forEach((x: any) => { x.map?.dispose?.(); x.alphaMap?.dispose?.(); x.dispose?.() }); else { m?.map?.dispose?.(); m?.alphaMap?.dispose?.(); m?.dispose?.() } } }); scene.clear(); scene = null }
   softDot?.dispose?.(); softDot = null
+  bgTex?.dispose?.(); bgTex = null
   player = null; enemy = null; camera = null; timer = null; projectiles = []; bursts = []; rings = []
   if (renderer) { renderer.dispose(); renderer.forceContextLoss(); renderer = null }
 })

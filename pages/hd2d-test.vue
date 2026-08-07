@@ -8,6 +8,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { ikUrl } from '~/utils/imagekitUrl'
+import { scenarioForName } from '~/utils/worldScenario'
 
 const P = { img: '/Impero_Delle_Arti/CARMEN _ La ballerina di flamenco.png', type: 'Fuoco', rarita: 'immersivo' }
 const E = { img: '/Impero_Delle_Arti/FIORA _ La guardaboschi.png',          type: 'Natura', rarita: 'leggendario' }
@@ -16,6 +17,10 @@ const enemyImage  = computed(() => ikUrl(E.img, 'full') ?? '')
 
 const scene = ref<any>(null)
 const side = ref<'player' | 'enemy'>('player')
+// Sfondo paesaggio: prova le zone
+const SCENARI = ['Aurelia', 'Valerion', 'Infernia', 'Fuoco', 'Natura', 'Abisso']
+const scenIdx = ref(0)
+const bgImage = computed(() => scenarioForName(SCENARI[scenIdx.value]))
 const portrait = ref(false)
 const frameStyle = computed(() => portrait.value
   ? 'width:min(90vw,340px);height:min(80vh,680px);aspect-ratio:9/16;'
@@ -31,6 +36,14 @@ function go(elem: string) { scene.value?.attack(elem, side.value) }
   <div style="min-height:100vh;background:#0b0818;color:#e8e2f5;display:flex;flex-direction:column;align-items:center;gap:12px;padding:14px;">
     <h1 style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:19px;margin:0;">Prototipo HD-2D · Arena</h1>
 
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">
+      <button
+        v-for="(s, i) in SCENARI" :key="s" @click="scenIdx = i"
+        :style="{ padding:'5px 11px',borderRadius:'999px',cursor:'pointer',fontSize:'11px',color:'#e8e2f5',fontFamily:'inherit',
+          border:'1px solid '+(scenIdx===i?'#a78bfa':'rgba(167,139,250,0.3)'), background: scenIdx===i?'rgba(167,139,250,0.18)':'transparent' }"
+      >{{ s }}</button>
+    </div>
+
     <button
       @click="portrait = !portrait"
       style="padding:6px 14px;border-radius:999px;cursor:pointer;font-size:12px;color:#e8e2f5;background:transparent;border:1px solid rgba(167,139,250,0.3);"
@@ -43,6 +56,7 @@ function go(elem: string) { scene.value?.attack(elem, side.value) }
           :player-image="playerImage" :enemy-image="enemyImage"
           :player-type="P.type" :enemy-type="E.type"
           :player-rarity="P.rarita" :enemy-rarity="E.rarita"
+          :background-image="bgImage"
         />
       </ClientOnly>
     </div>

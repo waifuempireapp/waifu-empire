@@ -1666,6 +1666,7 @@ const mvp = computed(() => {
             :enemy-image="ikUrl(enemy.image, 'full') ?? ''"
             :player-type="player.type" :enemy-type="enemy.type"
             :player-rarity="player.rarita" :enemy-rarity="enemy.rarita"
+            :background-image="(battleCtx?.backgroundImage as string) || undefined"
             visual-only :show-hud="false"
             style="position:absolute; inset:0;"
           />

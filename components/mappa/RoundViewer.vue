@@ -9,6 +9,7 @@ import {
 
 const { t } = useI18n()
 import { useAuthStore } from '~/stores/auth'
+import { scenarioForPixel, scenarioForName } from '~/utils/worldScenario'
 
 // ── Costanti locali (da _shared.jsx) ─────────────────────────────────────────
 const C = {
@@ -369,6 +370,7 @@ const primaryBtn = computed(() => ({
         territoryName: battle?.name || `(${battle?.pixelX ?? ''}, ${battle?.pixelY ?? ''})`,
         hasHardPass: hasHardPass === true,
         isRaid: battle?.isRaid ?? false,
+        backgroundImage: battle?.isRaid ? scenarioForName(battle?.name) : scenarioForPixel(battle?.pixelX, battle?.pixelY),
         bo3: {
           attackerWins: battle?.attackerWins ?? 0,
           defenderWins: battle?.defenderWins ?? 0,
