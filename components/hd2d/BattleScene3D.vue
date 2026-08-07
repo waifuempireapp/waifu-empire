@@ -20,8 +20,19 @@ const props = withDefaults(defineProps<{
   enemyImage: string
   playerType?: string
   enemyType?: string
+  playerRarity?: string
+  enemyRarity?: string
   background?: string
-}>(), { playerType: 'Fuoco', enemyType: 'Natura', background: '#120e24' })
+  /** true = solo VFX/reazioni; HP e numeri di danno li gestisce l'arena esterna */
+  visualOnly?: boolean
+  /** mostra le barre HP interne (demo). Nell'arena reale off: c'è già l'HUD */
+  showHud?: boolean
+}>(), { playerType: 'Fuoco', enemyType: 'Natura', playerRarity: 'comune', enemyRarity: 'comune', background: '#120e24', visualOnly: false, showHud: true })
+
+// Bordo carta per rarità (standard del gioco: PickPhase/CartaWaifu)
+const RARITY_COLOR: Record<string, string> = {
+  comune: '#b4bcc8', raro: '#5aa9ff', epico: '#b573ff', leggendario: '#ffc861', immersivo: '#ff7eb6',
+}
 
 const emit = defineEmits<{ hit: [{ side: 'player' | 'enemy'; damage: number; label: string }] }>()
 
@@ -60,7 +71,7 @@ const glReady = ref(false)
 const failed  = ref(false)
 
 type Side = 'player' | 'enemy'
-interface Fighter { mesh: import('three').Mesh; home: import('three').Vector3; baseY: number; halfH: number; hp: number; shakeUntil: number; flashUntil: number; lungeT0: number; lungeDir: import('three').Vector3 }
+interface Fighter { mesh: import('three').Mesh; blob: import('three').Mesh; home: import('three').Vector3; baseY: number; halfH: number; hp: number; ko: boolean; shakeUntil: number; flashUntil: number; lungeT0: number; lungeDir: import('three').Vector3 }
 
 let THREE: typeof import('three')
 let renderer: import('three').WebGLRenderer | null = null
@@ -73,6 +84,32 @@ let softDot: import('three').Texture | null = null
 let ctxAttached = false
 let player: Fighter | null = null
 let enemy: Fighter | null = null
+
+// Layout adattivo: verticale (mobile 9:16) vs orizzontale (PC/tablet 16:9)
+let curPortrait: boolean | null = null
+let camBase = { x: 0, y: 2.0, z: 6.4 }
+let lookTarget = { x: 0, y: 0.95, z: 0 }
+function applyLayout(portrait: boolean) {
+  if (!player || !enemy) return
+  curPortrait = portrait
+  if (portrait) {
+    // Mobile — avversaria in ALTO ma GRANDE/visibile: sollevata (home.y) e
+    // vicina, non lontana. La mia più in basso e un po' più LONTANA (più piccola).
+    enemy.home.set(1.25, 2.3, -3.1); player.home.set(-0.45, 0, 1.7)
+    camBase = { x: 0, y: 2.1, z: 6.5 }; lookTarget = { x: 0, y: 1.15, z: -0.9 }
+  } else {
+    // Desktop 16:9 — diagonale in profondità: la mia VICINA e in BASSO,
+    // l'avversaria più IN ALTO ma ben visibile (leggermente sollevata).
+    enemy.home.set(2.1, 0.8, -2.2); player.home.set(-2.05, 0, 2.55)
+    camBase = { x: 0, y: 2.15, z: 6.7 }; lookTarget = { x: 0, y: 0.95, z: 0.15 }
+  }
+  for (const f of [player, enemy]) {
+    f.baseY = f.halfH + f.home.y                         // include il sollevamento
+    f.mesh.position.set(f.home.x, f.baseY, f.home.z)
+    f.blob.position.set(f.home.x, 0.02, f.home.z)
+    f.blob.visible = f.home.y < 0.3                      // niente ombra a terra se sollevata
+  }
+}
 
 interface ProjPiece { m: import('three').Mesh; lat: number; ph: number }
 interface Projectile { pieces: ProjPiece[]; light: import('three').PointLight; from: import('three').Vector3; to: import('three').Vector3; perp: import('three').Vector3; t0: number; elem: string; kit: Kit; onImpact: () => void; lastTrail: number }
@@ -92,19 +129,75 @@ function radialTex(stops: [number, string][]): import('three').Texture {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t
 }
 
-async function makeFighter(url: string, home: import('three').Vector3, faceScale: number): Promise<Fighter> {
+function roundRectPath(x: CanvasRenderingContext2D, X: number, Y: number, W: number, H: number, r: number) {
+  x.beginPath(); x.moveTo(X + r, Y); x.arcTo(X + W, Y, X + W, Y + H, r); x.arcTo(X + W, Y + H, X, Y + H, r)
+  x.arcTo(X, Y + H, X, Y, r); x.arcTo(X, Y, X + W, Y, r); x.closePath()
+}
+// Maschera angoli arrotondati (bianco dentro il roundRect) — canvas LOCALE, no taint.
+function roundedMaskTex(aspect: number): import('three').Texture {
+  const base = 512, w = Math.round(base * aspect), h = base
+  const c = document.createElement('canvas'); c.width = w; c.height = h
+  const x = c.getContext('2d')!
+  x.fillStyle = '#fff'; roundRectPath(x, 0, 0, w, h, Math.min(w, h) * 0.07); x.fill()
+  return new THREE.CanvasTexture(c)
+}
+// Bordo rarità (solo stroke sul roundRect) — canvas LOCALE, no taint.
+function borderTex(aspect: number, color: string): import('three').Texture {
+  const base = 512, w = Math.round(base * aspect), h = base
+  const c = document.createElement('canvas'); c.width = w; c.height = h
+  const x = c.getContext('2d')!
+  const r = Math.min(w, h) * 0.07, bw = Math.max(6, Math.round(Math.min(w, h) * 0.03))
+  roundRectPath(x, bw / 2, bw / 2, w - bw, h - bw, Math.max(0, r - bw / 2))
+  x.lineWidth = bw; x.strokeStyle = color; x.stroke()
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t
+}
+
+async function makeFighter(url: string, home: import('three').Vector3, faceScale: number, rarity: string): Promise<Fighter> {
+  // Immagine ImageKit usata DIRETTAMENTE come texture: le texture cross-origin
+  // NON richiedono CORS (solo la lettura pixel via canvas lo richiede → era quello
+  // a "sporcare" il canvas e far crashare il 3D). Angoli/bordo con canvas locali.
   const tex = await new THREE.TextureLoader().loadAsync(url)
   tex.colorSpace = THREE.SRGBColorSpace
   tex.anisotropy = Math.min(4, renderer!.capabilities.getMaxAnisotropy())
   const aspect = (tex.image?.width && tex.image?.height) ? tex.image.width / tex.image.height : 0.7
-  const H = 1.95 * faceScale, W = H * aspect          // sprite un po' più piccoli
-  const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: 0.02, roughness: 1, metalness: 0, side: THREE.DoubleSide })
+  const H = 1.95 * faceScale, W = H * aspect
+  const mat = new THREE.MeshStandardMaterial({
+    map: tex, alphaMap: roundedMaskTex(aspect), transparent: true, alphaTest: 0.5,
+    roughness: 1, metalness: 0, side: THREE.DoubleSide,
+  })
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(W, H), mat)
+  // Cornice bordo-rarità come figlio (billboarda insieme allo sprite)
+  const frame = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshBasicMaterial({ map: borderTex(aspect, RARITY_COLOR[rarity] ?? RARITY_COLOR.comune), transparent: true, depthWrite: false, side: THREE.DoubleSide }))
+  frame.position.z = 0.01; mesh.add(frame)
   const baseY = H / 2 + home.y
   mesh.position.set(home.x, baseY, home.z); scene!.add(mesh); renderer!.initTexture(tex)
   const blob = new THREE.Mesh(new THREE.PlaneGeometry(W * 1.2, W * 1.2), new THREE.MeshBasicMaterial({ map: radialTex([[0, 'rgba(0,0,0,0.6)'], [0.6, 'rgba(0,0,0,0.28)'], [1, 'rgba(0,0,0,0)']]), transparent: true, depthWrite: false }))
   blob.rotation.x = -Math.PI / 2; blob.position.set(home.x, home.y + 0.02, home.z); scene!.add(blob)
-  return { mesh, home: home.clone(), baseY, halfH: H / 2, hp: 1, shakeUntil: -1, flashUntil: -1, lungeT0: -1, lungeDir: new THREE.Vector3() }
+  return { mesh, blob, home: home.clone(), baseY, halfH: H / 2, hp: 1, ko: false, shakeUntil: -1, flashUntil: -1, lungeT0: -1, lungeDir: new THREE.Vector3() }
+}
+
+// Swap "morbido": aggiorna la texture/bordo di un fighter SENZA re-init del
+// renderer (il re-init sullo stesso canvas dopo forceContextLoss faceva crashare
+// il 3D → immagine piatta gigante). Resetta anche lo stato KO per la nuova waifu.
+async function swapFighterTexture(f: Fighter, url: string, rarity: string) {
+  if (!renderer) return
+  const tex = await new THREE.TextureLoader().loadAsync(url)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy())
+  const aspect = (tex.image?.width && tex.image?.height) ? tex.image.width / tex.image.height : 0.7
+  const H = f.halfH * 2, W = H * aspect
+  const mat = f.mesh.material as import('three').MeshStandardMaterial
+  mat.map?.dispose(); mat.alphaMap?.dispose()
+  mat.map = tex; mat.alphaMap = roundedMaskTex(aspect); mat.opacity = 1; mat.needsUpdate = true
+  f.mesh.geometry.dispose(); f.mesh.geometry = new THREE.PlaneGeometry(W, H)
+  const fr = f.mesh.children[0] as import('three').Mesh | undefined
+  if (fr) {
+    fr.geometry.dispose(); fr.geometry = new THREE.PlaneGeometry(W, H)
+    const fm = fr.material as import('three').MeshBasicMaterial
+    fm.map?.dispose(); fm.map = borderTex(aspect, RARITY_COLOR[rarity] ?? RARITY_COLOR.comune); fm.opacity = 1; fm.needsUpdate = true
+  }
+  f.ko = false; f.flashUntil = -1; f.shakeUntil = -1
+  renderer.initTexture(tex)
 }
 
 async function init() {
@@ -124,6 +217,13 @@ async function init() {
     }
     scene = new THREE.Scene()
     scene.fog = new THREE.Fog(new THREE.Color(props.background).getHex(), 8, 18)
+    // Cielo sfumato con bagliore all'orizzonte (paesaggio procedurale, niente asset)
+    { const sc = document.createElement('canvas'); sc.width = 8; sc.height = 256; const sx = sc.getContext('2d')!
+      const sg = sx.createLinearGradient(0, 0, 0, 256)
+      sg.addColorStop(0, '#0a0820'); sg.addColorStop(0.5, '#180f38'); sg.addColorStop(0.68, '#3d2168')
+      sg.addColorStop(0.76, '#5a2f6e'); sg.addColorStop(0.82, '#241d45'); sg.addColorStop(1, '#100c22')
+      sx.fillStyle = sg; sx.fillRect(0, 0, 8, 256)
+      const skyTex = new THREE.CanvasTexture(sc); skyTex.colorSpace = THREE.SRGBColorSpace; scene.background = skyTex }
     camera = new THREE.PerspectiveCamera(46, w / h, 0.1, 100)
     camera.position.set(0, 2.0, 6.4)
     timer = new THREE.Timer()
@@ -138,9 +238,26 @@ async function init() {
     const grid = new THREE.GridHelper(16, 22, 0x5a4a9a, 0x342a5e)
     ;(grid.material as any).opacity = 0.25; (grid.material as any).transparent = true; grid.position.y = 0.011; scene.add(grid)
 
-    // Combattenti: più larghi ai lati per una vista panoramica
-    player = await makeFighter(props.playerImage, new THREE.Vector3(-2.1, 0, 1.25), 1.0)
-    enemy  = await makeFighter(props.enemyImage,  new THREE.Vector3(2.35, 0, -1.05), 0.92)
+    // ── Sfondo 3D: monoliti in lontananza (silhouette nella nebbia) + stelle ──
+    const pillarMat = new THREE.MeshStandardMaterial({ color: 0x1a1436, roughness: 1, metalness: 0, emissive: new THREE.Color(0x2a1f52), emissiveIntensity: 0.4 })
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2 + 0.3
+      const rad = 9 + Math.random() * 4
+      const hgt = 4 + Math.random() * 5
+      const p = new THREE.Mesh(new THREE.BoxGeometry(0.9 + Math.random(), hgt, 0.9 + Math.random()), pillarMat)
+      p.position.set(Math.sin(a) * rad, hgt / 2 - 0.5, Math.cos(a) * rad - 4)
+      p.rotation.y = Math.random() * 0.5
+      scene.add(p)
+    }
+    // Stelle/particelle sospese sullo sfondo
+    const starN = 90, sp = new Float32Array(starN * 3)
+    for (let i = 0; i < starN; i++) { sp[i * 3] = (Math.random() - 0.5) * 30; sp[i * 3 + 1] = 2 + Math.random() * 9; sp[i * 3 + 2] = -6 - Math.random() * 12 }
+    const starGeo = new THREE.BufferGeometry(); starGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3))
+    scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x9d8bff, size: 0.09, transparent: true, opacity: 0.7, depthWrite: false })))
+
+    player = await makeFighter(props.playerImage, new THREE.Vector3(-2.1, 0, 1.25), 1.15, props.playerRarity)
+    enemy  = await makeFighter(props.enemyImage,  new THREE.Vector3(2.35, 0, -1.05), 0.8, props.enemyRarity)
+    applyLayout(h > w)   // verticale su schermo alto (mobile), orizzontale altrove
 
     glReady.value = true; failed.value = false; startRO(); animate()
   } catch (e) { console.warn('[BattleScene3D] WebGL fallback', e); glReady.value = false; failed.value = true }
@@ -155,6 +272,14 @@ function updateFighter(f: Fighter, t: number) {
   f.mesh.position.set(px, f.baseY + Math.sin(t * 1.8 + f.home.x) * 0.04, pz)
   billboardY(f.mesh)
   const mat = f.mesh.material as import('three').MeshStandardMaterial
+  // KO: lo sprite svanisce e si affloscia leggermente
+  const targetOp = f.ko ? 0 : 1
+  mat.opacity += (targetOp - mat.opacity) * Math.min(1, 6 * (1 / 60))
+  // La cornice bordo (figlio) segue l'opacità dello sprite → niente placeholder al KO
+  const fr = f.mesh.children[0] as any
+  if (fr?.material) fr.material.opacity = mat.opacity
+  f.blob.visible = mat.opacity > 0.5 && f.home.y < 0.3   // no ombra a terra se sollevata
+  if (f.ko) { mat.emissive.setRGB(0, 0, 0); mat.color.setRGB(0.5, 0.5, 0.6); f.mesh.position.y = f.baseY - (1 - mat.opacity) * 0.25; return }
   if (f.flashUntil > t) { const k = (f.flashUntil - t) / 0.32; mat.emissive.setRGB(k * 0.9, 0, 0); mat.color.setRGB(1, 1 - k * 0.55, 1 - k * 0.55) }
   else { mat.emissive.setRGB(0, 0, 0); mat.color.setRGB(1, 1, 1) }
 }
@@ -309,7 +434,9 @@ function animate() {
   if (!renderer || !scene || !camera || !timer || !player || !enemy) return
   animId = requestAnimationFrame(animate)
   timer.update(); const t = timer.getElapsed(), dt = Math.min(0.05, timer.getDelta())
-  camera.position.x = Math.sin(t * 0.25) * 0.4; camera.position.y = 2.0 + Math.sin(t * 0.4) * 0.06; camera.lookAt(0, 0.95, 0)
+  const swayX = curPortrait ? 0.2 : 0.4
+  camera.position.set(camBase.x + Math.sin(t * 0.25) * swayX, camBase.y + Math.sin(t * 0.4) * 0.06, camBase.z)
+  camera.lookAt(lookTarget.x, lookTarget.y, lookTarget.z)
   updateFighter(player, t); updateFighter(enemy, t); updateVFX(t, dt); updateHUD()
   renderer.render(scene, camera)
 }
@@ -329,19 +456,30 @@ function attack(elem: string, side: Side = 'player') {
   setTimeout(() => {
     spawnProjectile(fromV, toV, elem, kit, () => {
       const tt = timer!.getElapsed(); def.shakeUntil = tt + 0.35; def.flashUntil = tt + 0.32
-      def.hp = Math.max(0, def.hp - dmg / 300)
-      popDamage(toV.clone().setY(def.baseY + 0.5), `-${dmg}`, '#ffffff')
-      if (eff.multiplier >= 2) popDamage(toV.clone().setY(def.baseY + 1.1), eff.label, '#ffd24a')
-      else if (eff.multiplier < 1) popDamage(toV.clone().setY(def.baseY + 1.1), eff.label, '#9aa2b4')
+      // In visualOnly l'HP e i numeri di danno li gestisce l'arena esterna
+      if (!props.visualOnly) {
+        def.hp = Math.max(0, def.hp - dmg / 300)
+        popDamage(toV.clone().setY(def.baseY + 0.5), `-${dmg}`, '#ffffff')
+        if (eff.multiplier >= 2) popDamage(toV.clone().setY(def.baseY + 1.1), eff.label, '#ffd24a')
+        else if (eff.multiplier < 1) popDamage(toV.clone().setY(def.baseY + 1.1), eff.label, '#9aa2b4')
+      }
       emit('hit', { side: side === 'player' ? 'enemy' : 'player', damage: dmg, label: eff.label })
     })
   }, 180)
 }
-function reset() { if (player) player.hp = 1; if (enemy) enemy.hp = 1 }
-defineExpose({ attack, reset })
+function reset() { if (player) { player.hp = 1; player.ko = false } if (enemy) { enemy.hp = 1; enemy.ko = false } }
+function setKO(side: Side, val: boolean) { const f = side === 'player' ? player : enemy; if (f) f.ko = val }
+defineExpose({ attack, reset, setKO })
 
-function startRO() { if (ro || !wrapperRef.value) return; ro = new ResizeObserver(() => { if (!renderer || !camera) return; const { w, h } = sizeOf(); renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix() }); ro.observe(wrapperRef.value) }
-watch(() => [props.playerImage, props.enemyImage], () => { glReady.value = false; init() })
+function startRO() { if (ro || !wrapperRef.value) return; ro = new ResizeObserver(() => { if (!renderer || !camera) return; const { w, h } = sizeOf(); renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); if ((h > w) !== curPortrait) applyLayout(h > w) }); ro.observe(wrapperRef.value) }
+watch(() => [props.playerImage, props.enemyImage, props.playerRarity, props.enemyRarity], (n, o) => {
+  // Scena già viva → swap morbido SOLO del fighter cambiato (niente re-init =
+  // niente crash/immagine piatta); altrimenti prima inizializzazione.
+  if (glReady.value && player && enemy && renderer) {
+    if (n[0] !== o?.[0] || n[2] !== o?.[2]) swapFighterTexture(player, props.playerImage, props.playerRarity)
+    if (n[1] !== o?.[1] || n[3] !== o?.[3]) swapFighterTexture(enemy, props.enemyImage, props.enemyRarity)
+  } else { glReady.value = false; init() }
+})
 onMounted(() => init())
 function onVis() { if (document.visibilityState === 'visible' && (failed.value || !glReady.value)) { failed.value = false; init() } }
 onMounted(() => document.addEventListener('visibilitychange', onVis))
@@ -349,7 +487,7 @@ onBeforeUnmount(() => document.removeEventListener('visibilitychange', onVis))
 onBeforeUnmount(() => {
   if (animId !== null) { cancelAnimationFrame(animId); animId = null }
   ro?.disconnect(); ro = null
-  if (scene) { scene.traverse((o: any) => { if (o.isMesh || o.isPoints) { o.geometry?.dispose?.(); const m = o.material; if (Array.isArray(m)) m.forEach((x: any) => { x.map?.dispose?.(); x.dispose?.() }); else { m?.map?.dispose?.(); m?.dispose?.() } } }); scene.clear(); scene = null }
+  if (scene) { scene.traverse((o: any) => { if (o.isMesh || o.isPoints) { o.geometry?.dispose?.(); const m = o.material; if (Array.isArray(m)) m.forEach((x: any) => { x.map?.dispose?.(); x.alphaMap?.dispose?.(); x.dispose?.() }); else { m?.map?.dispose?.(); m?.alphaMap?.dispose?.(); m?.dispose?.() } } }); scene.clear(); scene = null }
   softDot?.dispose?.(); softDot = null
   player = null; enemy = null; camera = null; timer = null; projectiles = []; bursts = []; rings = []
   if (renderer) { renderer.dispose(); renderer.forceContextLoss(); renderer = null }
@@ -361,12 +499,14 @@ onBeforeUnmount(() => {
     <img v-if="failed" :src="playerImage" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0.5;" />
     <canvas ref="canvasRef" style="position:absolute;inset:0;width:100%;height:100%;display:block;" :style="{ opacity: glReady && !failed ? 1 : 0, transition:'opacity .35s ease' }" />
     <div ref="overlayRef" style="position:absolute;inset:0;pointer-events:none;overflow:hidden;">
+      <template v-if="showHud">
       <div ref="pBarWrap" style="position:absolute;left:0;top:0;width:104px;">
         <div style="height:9px;border-radius:6px;background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.25);overflow:hidden;"><div ref="pBarFill" style="height:100%;width:100%;border-radius:6px;transition:width .3s ease;"></div></div>
       </div>
       <div ref="eBarWrap" style="position:absolute;left:0;top:0;width:104px;">
         <div style="height:9px;border-radius:6px;background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.25);overflow:hidden;"><div ref="eBarFill" style="height:100%;width:100%;border-radius:6px;transition:width .3s ease;"></div></div>
       </div>
+      </template>
     </div>
   </div>
 </template>

@@ -407,6 +407,11 @@ interface DmgFloat { id: number; dmg: number; side: 'player' | 'enemy'; isCrit: 
 const dmgFloats = ref<DmgFloat[]>([])
 const screenShake = ref(false)   // shake dell'arena sul colpo critico
 
+// ── Palco 3D HD-2D: sostituisce le due card-sprite nel field (desktop+mobile).
+// HUD, comandi e logica restano invariati; la scena fa solo VFX/reazioni.
+const use3D = true
+const battleScene = ref<{ attack: (t: string, s: 'player' | 'enemy') => void; setKO: (s: 'player' | 'enemy', v: boolean) => void } | null>(null)
+
 // Fasi di battaglia e turno
 type Phase = 'entering' | 'playerChoose' | 'resolving' | 'playerSwap' | 'voluntarySwap' | 'victory' | 'defeat' | 'result' | 'pvpWaitingKoReplacement'
 const phase   = ref<Phase>('entering')
@@ -1011,6 +1016,8 @@ async function resolveTurn(pMi: number, eMi: number, _externalResult: null = nul
     lastCritFlag = isCrit
 
     if (side === 'player') { pAnim.value = 'wba-aR' } else { eAnim.value = 'wba-aL' }
+    // VFX 3D: lancia la mossa dell'elemento giusto contro il bersaglio
+    if (use3D) { try { battleScene.value?.attack(move.type, side) } catch { /* palco non pronto */ } }
     message.value = `${att.name} usa ${move.name}!`
     await wait(ANIM_ATTACK_MS)
     if (side === 'player') { pAnim.value = '' } else { eAnim.value = '' }
@@ -1036,6 +1043,8 @@ async function resolveTurn(pMi: number, eMi: number, _externalResult: null = nul
       curE = curE.map((w, i) => i === cEA ? newAtt : w)
     }
     pTeam.value = [...curP]; eTeam.value = [...curE]
+    // KO visivo sul palco 3D (lo sprite colpito svanisce)
+    if (use3D && newDef.isKO) { try { battleScene.value?.setKO(side === 'player' ? 'enemy' : 'player', true) } catch { /* noop */ } }
     dmgAcc += damage
 
     // Aggiorna statistiche per lato
@@ -1648,6 +1657,20 @@ const mvp = computed(() => {
       <!-- ── ZONE 2+3+4: Arene di battaglia ── -->
       <div :class="{ 'wba-screenshake': screenShake }" :style="{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative', minHeight:0 }">
 
+        <!-- Palco 3D HD-2D: riempie il field DIETRO l'HUD (z auto < z HUD). Sostituisce
+             le due card-sprite. Responsive 9:16 (mobile) / 16:9 (desktop/tablet). -->
+        <ClientOnly v-if="use3D && player && enemy && player.image && enemy.image">
+          <BattleScene3D
+            ref="battleScene"
+            :player-image="ikUrl(player.image, 'full') ?? ''"
+            :enemy-image="ikUrl(enemy.image, 'full') ?? ''"
+            :player-type="player.type" :enemy-type="enemy.type"
+            :player-rarity="player.rarita" :enemy-rarity="enemy.rarita"
+            visual-only :show-hud="false"
+            style="position:absolute; inset:0;"
+          />
+        </ClientOnly>
+
         <!-- Enemy Zone (top ~47% mobile, 52% desktop) -->
         <div :style="{ flex: isMobile ? '0 0 47%' : '0 0 52%', position:'relative', overflow:'hidden' }">
           <!-- HUD nemico: top-left (nascosto nei raid: la barra HP boss in alto lo sostituisce) -->
@@ -1734,8 +1757,8 @@ const mvp = computed(() => {
           </div>
 
 
-          <!-- Sprite nemico: centrato verticalmente, a destra. Durante l'attacco (zoom) sale sopra a tutto. -->
-          <div :style="{ position:'absolute', right:'14px', top:'50%', transform:'translateY(-50%)', zIndex: eAnim === 'wba-aL' ? 60 : 2 }">
+          <!-- Sprite nemico (card 2D): nascosto quando è attivo il palco 3D -->
+          <div v-if="!use3D" :style="{ position:'absolute', right:'14px', top:'50%', transform:'translateY(-50%)', zIndex: eAnim === 'wba-aL' ? 60 : 2 }">
             <!-- WaifuSprite inline nemico -->
             <template v-if="enemy">
               <div :class="eAnim" @click="openWaifuDetail(enemy, 'enemy')" :style="{
@@ -1787,20 +1810,6 @@ const mvp = computed(() => {
           }"/>
         </div>
 
-        <!-- Message Bar -->
-        <div :style="{
-          flexShrink:0, minHeight: isMobile ? '28px' : '40px', maxHeight:'40px',
-          display:'flex', alignItems:'center', padding:'0 12px',
-          background:'var(--theme-surface)',
-          borderTop:'1px solid var(--theme-border)',
-          borderBottom:'1px solid var(--theme-border)',
-        }">
-          <p :key="message" class="wba-fm" :style="{
-            fontFamily:'var(--ff-body)', fontSize: isMobile ? '14px' : '15px', color:'var(--theme-text)',
-            margin:0, lineHeight:1.3, overflow:'hidden',
-            display:'-webkit-box', WebkitLineClamp:'1', WebkitBoxOrient:'vertical',
-          }">{{ message }}</p>
-        </div>
 
         <!-- Banner Hot waifu nemica -->
         <div v-if="enemy?._hotBlurred" :style="{
@@ -1823,8 +1832,8 @@ const mvp = computed(() => {
             pointerEvents:'none',zIndex:1,
           }"/>
 
-          <!-- Sprite giocatore: centrato verticalmente, a sinistra. Durante l'attacco (zoom) sale sopra a tutto. -->
-          <div :style="{ position:'absolute', left:'14px', top:'50%', transform:'translateY(-50%)', zIndex: pAnim === 'wba-aR' ? 60 : 2 }">
+          <!-- Sprite giocatore (card 2D): nascosto quando è attivo il palco 3D -->
+          <div v-if="!use3D" :style="{ position:'absolute', left:'14px', top:'50%', transform:'translateY(-50%)', zIndex: pAnim === 'wba-aR' ? 60 : 2 }">
             <template v-if="player">
               <div :class="pAnim" @click="openWaifuDetail(player, 'player')" :style="{
                 width:`${sPlayer}px`, aspectRatio:'2/3', borderRadius:'12px', overflow:'hidden',
@@ -1855,8 +1864,8 @@ const mvp = computed(() => {
             </template>
           </div>
 
-          <!-- HUD giocatore: TOP-right (dentro la sezione utente), compatto -->
-          <div :style="{ position:'absolute', right:'12px', top:'12px', zIndex:3, display:'flex', flexDirection:'column', alignItems:'flex-end' }">
+          <!-- HUD giocatore: BOTTOM-right (vicino al banner mosse), compatto -->
+          <div :style="{ position:'absolute', right:'12px', bottom:'10px', zIndex:3, display:'flex', flexDirection:'column', alignItems:'flex-end' }">
             <template v-if="player">
               <div :style="{
                 background:'var(--theme-surface)', backdropFilter:'blur(12px)',
@@ -1936,6 +1945,20 @@ const mvp = computed(() => {
             width: isChoose ? `${(timer/30)*100}%` : '0%',
             transition:'width 1s linear,background .5s',
           }"/>
+        </div>
+
+        <!-- Message Bar — SOTTO la barra loading e SOPRA il blocco mosse
+             (prima era in mezzo al campo e attraversava la waifu). -->
+        <div :style="{
+          flexShrink:0, minHeight: isMobile ? '30px' : '36px',
+          display:'flex', alignItems:'center', justifyContent:'center', padding:'8px 14px',
+          borderBottom:'1px solid var(--theme-border)',
+        }">
+          <p :key="message" class="wba-fm" :style="{
+            fontFamily:'var(--ff-body)', fontSize: isMobile ? '13px' : '15px', fontWeight:800, color:'var(--theme-text)',
+            margin:0, lineHeight:1.3, overflow:'hidden', textAlign:'center',
+            display:'-webkit-box', WebkitLineClamp:'1', WebkitBoxOrient:'vertical',
+          }">{{ message }}</p>
         </div>
 
         <!-- ── Menù azioni → griglia mosse (il cambio waifu è un popup a parte) ── -->
