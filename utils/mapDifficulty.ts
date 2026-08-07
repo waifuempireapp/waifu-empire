@@ -17,16 +17,42 @@ function hexDist(c1: number, r1: number, c2: number, r2: number): number {
 
 export type MapDifficulty = 'veryeasy' | 'easy' | 'medium' | 'hard' | 'extreme' | 'expert'
 
-// Distanza dal bordo dell'isola maggiore più vicina → 6 fasce (dalla più vicina
-// e difficile alla più lontana e facile): expert · extreme · hard · normale ·
-// facile · molto facile.
+// Distanza (in celle esagonali) dal CENTRO dell'isola maggiore più vicina.
+function centerDist(x: number, y: number): number {
+  let d = Infinity
+  for (const isl of BIG_ISLANDS) d = Math.min(d, hexDist(x, y, isl.col, isl.row))
+  return d
+}
+
+// Oltre questa distanza dal centro la difficoltà è ~0% (territorio banale).
+const MAX_DIST = 45
+
+/**
+ * Difficoltà in PERCENTUALE: 100% sul centro dell'isola, poi scala scemando
+ * con la distanza fino a 0% a MAX_DIST celle. Le ~10 celle attorno al centro
+ * restano vicine al 100% (fascia estrema).
+ */
+export function battleDifficultyPct(x: number, y: number): number {
+  const d = centerDist(x, y)
+  return Math.max(0, Math.min(100, Math.round(100 * (1 - d / MAX_DIST))))
+}
+
+/**
+ * Prezzo d'acquisto in Kisses PROPORZIONALE alla difficoltà: calibrato su
+ * 250 Kisses al 25% → costo = difficoltà% × 10 (100%→1000, 27%→270), con un
+ * minimo per i territori banali.
+ */
+export function pixelBuyPrice(x: number, y: number): number {
+  return Math.max(100, Math.round(battleDifficultyPct(x, y) * 10))
+}
+
+// Fascia dalla percentuale (centro = più difficile). ~10 celle dal centro ⇒ estremo.
 export function battleDifficulty(x: number, y: number): MapDifficulty {
-  let edge = Infinity
-  for (const isl of BIG_ISLANDS) edge = Math.min(edge, hexDist(x, y, isl.col, isl.row) - isl.r)
-  if (edge <= 0)  return 'expert'    // dentro/sul bordo dell'isola → il più difficile
-  if (edge <= 4)  return 'extreme'
-  if (edge <= 10) return 'hard'
-  if (edge <= 18) return 'medium'    // normale
-  if (edge <= 28) return 'easy'
-  return 'veryeasy'                  // molto facile
+  const p = battleDifficultyPct(x, y)
+  if (p >= 88) return 'expert'    // cuore dell'isola
+  if (p >= 72) return 'extreme'   // ~10 celle dal centro
+  if (p >= 52) return 'hard'
+  if (p >= 32) return 'medium'
+  if (p >= 14) return 'easy'
+  return 'veryeasy'
 }

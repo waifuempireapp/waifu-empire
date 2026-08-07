@@ -156,13 +156,30 @@ const passiveNow          = ref(Date.now())
 const localPassiveClaimAt = ref<number | null>(null)
 let   passiveTimer: ReturnType<typeof setInterval> | null = null
 let   offersTimer:  ReturnType<typeof setInterval> | null = null
+// Punteggio territori PESATO sulla difficoltà (coerente col server): ogni pixel
+// vale (difficoltà%/100). Calcolato dai chunk caricati.
+const myTerritoryScore = computed<number>(() => {
+  const uid = authStore.user?.uid
+  const ch = chunks.value
+  if (!uid || !ch) return 0
+  let s = 0
+  for (const c of Object.values(ch) as any[]) {
+    const px = c?.pixels ?? {}
+    for (const k in px) {
+      if (px[k]?.ownerId !== uid) continue
+      const [x, y] = k.split('_').map(Number)
+      s += battleDifficultyPct(x, y) / 100
+    }
+  }
+  return s
+})
 const passiveClaimable = computed<number>(() => {
-  const pixels = (props.profilo?.pixelCount as number) ?? 0
-  if (pixels <= 0) return 0
+  const score = myTerritoryScore.value
+  if (score <= 0) return 0
   const serverTs  = (props.profilo?.lastKissesClaimAt as any)?.toMillis?.() ?? (passiveNow.value - 3_600_000)
   const lastClaim = Math.max(serverTs, localPassiveClaimAt.value ?? 0)
   const capped    = Math.min((passiveNow.value - lastClaim) / 1000, 24 * 3600)
-  return Math.floor(capped * (pixels / 4) / 3600)
+  return Math.floor(capped * (score / 4) / 3600)
 })
 
 // ------------------------------------------------------------------ Computed
@@ -464,7 +481,7 @@ const checkAdjacentToEmpire = (tx: number, ty: number): boolean => {
 // Gestisce la selezione di un pixel sulla mappa, arricchendolo con metadati
 const handlePixelSelect = async (pixel: any) => {
   const isAdj      = checkAdjacentToEmpire(pixel.x, pixel.y)
-  const price      = 200 + ((pixel.ownerLevel ?? 1) * 50)
+  const price      = pixelBuyPrice(pixel.x, pixel.y)   // costo proporzionale alla difficoltà
   // Difficoltà per PROSSIMITÀ alle isole maggiori (coincide con la battaglia reale)
   const chunkDiff  = battleDifficulty(pixel.x, pixel.y)
   const pixelWithName = {
@@ -474,6 +491,7 @@ const handlePixelSelect = async (pixel: any) => {
     canAffordBuy: ((props.profilo?.kisses as number) ?? 0) >= price,
     buyPrice: price,
     difficulty: chunkDiff,
+    difficultyPct: battleDifficultyPct(pixel.x, pixel.y),
   }
   selectedPixel.value = pixelWithName
   if (pixel.ownerId !== 'CPU' && pixel.ownerId !== authStore.user?.uid) {
@@ -712,7 +730,6 @@ const handlePurchase = async ({ amount }: { amount?: number }) => {
   const targetY    = selectedPixel.value?.y
   const nomeTerr   = selectedPixel.value?.name || `(${targetX}, ${targetY})`
   const fallbackPrezzo = selectedPixel.value?.buyPrice ?? 0
-  const ownerLevel = (selectedPixel.value?.ownerLevel as number) ?? 1
   showPurchase.value  = false
   selectedPixel.value = null
   try {
@@ -742,7 +759,7 @@ const handlePurchase = async ({ amount }: { amount?: number }) => {
     const status = e?.statusCode ?? e?.data?.statusCode
     if (status === 402) {
       // Kisses insufficienti → popup di ricarica (shop)
-      const price = 200 + (ownerLevel * 50)
+      const price = (typeof targetX === 'number' && typeof targetY === 'number') ? pixelBuyPrice(targetX, targetY) : fallbackPrezzo
       kissesShortMissing.value = Math.max(1, price - ((props.profilo?.kisses as number) ?? 0))
     } else {
       attackError.value = e?.data?.message || e?.message || t('map.attack_generic_error')
@@ -1136,6 +1153,7 @@ async function onTerritoryClick(territoryId: string) {
         :chunks="chunks"
         :user-uid="authStore.user?.uid ?? ''"
         :profilo="profilo as any"
+        :territory-score="myTerritoryScore"
         @kisses-update="(k) => emit('updateProfilo', { kisses: (profilo?.kisses as number ?? 0) + k })"
         @claim-at="(ts) => { localPassiveClaimAt = ts }"
         @close="showLeaderboard = false"

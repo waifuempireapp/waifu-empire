@@ -63,6 +63,8 @@ interface Pixel {
   ownerId: string
   ownerName?: string
   ownerLevel?: number
+  buyPrice?: number
+  difficultyPct?: number
 }
 
 interface Profilo {
@@ -93,7 +95,8 @@ const FF = {
 }
 
 const isCPU     = computed(() => props.pixel?.ownerId === 'CPU')
-const basePrice = computed(() => 200 + ((props.pixel?.ownerLevel ?? 1) * 50))
+// Prezzo proporzionale alla difficoltà (buyPrice calcolato dalla mappa)
+const basePrice = computed(() => props.pixel?.buyPrice ?? Math.max(100, Math.round((props.pixel?.difficultyPct ?? 25) * 10)))
 const pixelLabel = computed(() => PIXEL_NAMES[`${props.pixel?.x}_${props.pixel?.y}`] ?? `(${props.pixel?.x}, ${props.pixel?.y})`)
 
 const offerAmount = ref(String(basePrice.value))

@@ -65,8 +65,9 @@ const defInitials = computed(() => String(props.pixel?.ownerName || 'CPU').trim(
 useScrollLock(true)
 
 // ── Helper: prezzo acquisto pixel ─────────────────────────────────────────────
-function pixelPrice(ownerLevel = 1): number {
-  return 200 + ownerLevel * 50
+// Prezzo proporzionale alla difficoltà (fallback se buyPrice non passato)
+function pixelPrice(pct = 25): number {
+  return Math.max(100, Math.round(pct * 10))
 }
 
 // ── Computed: dati derivati dal pixel corrente ────────────────────────────────
@@ -79,7 +80,7 @@ const isCPU = computed(() =>
 )
 
 const price = computed(() =>
-  props.pixel?.buyPrice ?? pixelPrice(props.pixel?.ownerLevel ?? 1),
+  props.pixel?.buyPrice ?? pixelPrice(props.pixel?.difficultyPct ?? 25),
 )
 
 
@@ -279,9 +280,10 @@ onUnmounted(() => {
               border: `1.5px solid ${DIFF_STYLE[pixel.difficulty][0]}77`,
               borderRadius: '999px', padding: '4px 14px',
               fontFamily: FF.label, fontSize: '13px', letterSpacing: '0.14em',
-              color: DIFF_STYLE[pixel.difficulty][0], fontWeight: 800,
+              color: DIFF_STYLE[pixel.difficulty][0], fontWeight: 800, gap: '6px',
             }">
               {{ $t('map.diff_' + pixel.difficulty) }}
+              <span v-if="typeof pixel.difficultyPct === 'number'" :style="{ fontWeight: 900, opacity: 0.85 }">· {{ pixel.difficultyPct }}%</span>
             </div>
           </template>
         </div>

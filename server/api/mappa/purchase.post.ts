@@ -4,16 +4,11 @@ import { getAdminAuth, getAdminDb } from '../../utils/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 
 const CHUNK_SIZE = 10;
-const BASE_PRICE = 200;
-const LEVEL_MULTIPLIER = 50;
 
 // Importa dal modulo condiviso
 import { LAND_SET, GRID_SIZE, PIXEL_COLORS, PIXEL_NAMES } from '../../utils/worldMap';
 import { isHexAdjacentToEmpire } from '../../../utils/hexGrid';
-
-function pixelPrice(ownerLevel = 1): number {
-  return BASE_PRICE + (ownerLevel * LEVEL_MULTIPLIER);
-}
+import { pixelBuyPrice } from '../../../utils/mapDifficulty';
 
 // Stato impero rispetto al target: ownsAny=false → può ripartire da qualsiasi
 // pixel (mai avuto territori o persi tutti). Basato sui pixel REALMENTE posseduti
@@ -77,9 +72,9 @@ export default defineEventHandler(async (event) => {
     }
     if (pixel.ownerId === uid) throw createError({ statusCode: 400, message: 'Questo pixel è già tuo' });
 
-    // Acquisto CPU — sempre accettato al prezzo formula
+    // Acquisto CPU — prezzo proporzionale alla difficoltà del territorio
     if (pixel.ownerId === 'CPU') {
-      const price = pixelPrice(1);
+      const price = pixelBuyPrice(targetX, targetY);
       const userSnap = await adminDb.collection('users').doc(uid).get();
       const kisses: number = (userSnap.data() as any)?.kisses ?? 0;
       if (kisses < price) throw createError({ statusCode: 402, message: `Kisses insufficienti (servono ${price})` });

@@ -85,6 +85,8 @@ const props = defineProps<{
   userUid:      string
   profilo:      Profilo | null
   passiveRate?: number
+  /** Punteggio territori PESATO sulla difficoltà (ogni pixel = pct/100). */
+  territoryScore?: number
 }>()
 
 const emit = defineEmits<{
@@ -106,12 +108,14 @@ const FF = {
 const MAX_CLAIM_HOURS     = 24
 const TERRITORIES_PER_KISS = 4
 const pixelCount      = computed(() => props.profilo?.pixelCount ?? 0)
+// Punteggio PESATO sulla difficoltà (fallback a pixelCount se non passato)
+const territoryVal    = computed(() => props.territoryScore ?? pixelCount.value)
 const rate            = computed(() => props.passiveRate ?? 1)
-const ratePerSec      = computed(() => (pixelCount.value / TERRITORIES_PER_KISS) * rate.value / 3600)
+const ratePerSec      = computed(() => (territoryVal.value / TERRITORIES_PER_KISS) * rate.value / 3600)
 // Rate/ora per il testo informativo (1 decimale se < 10, così i piccoli holder
 // non vedono "0/ora" pur accumulando col tempo)
 const ratePerHour     = computed(() => {
-  const v = (pixelCount.value / TERRITORIES_PER_KISS) * rate.value
+  const v = (territoryVal.value / TERRITORIES_PER_KISS) * rate.value
   return v < 10 ? Math.round(v * 10) / 10 : Math.round(v)
 })
 

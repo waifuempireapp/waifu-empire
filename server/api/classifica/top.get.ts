@@ -5,6 +5,7 @@
 import { defineEventHandler, getHeader, getQuery, createError } from 'h3'
 import { getAdminAuth, getAdminDb } from '../../utils/firebaseAdmin'
 import { maskOffensiveName } from '../../../utils/profanity'
+import { weightedTerritoryByOwner } from '../../utils/territoryScore'
 
 export default defineEventHandler(async (event) => {
   const token = getHeader(event, 'Authorization')?.replace('Bearer ', '')
@@ -20,6 +21,9 @@ export default defineEventHandler(async (event) => {
 
   const db = getAdminDb()
   const snap = await db.collection('users').limit(500).get()
+  // Punteggio territori PESATO sulla difficoltà (ogni pixel = pct/100): la
+  // classifica globale premia i territori difficili, non la sola quantità.
+  const weighted = await weightedTerritoryByOwner()
 
   const utenti = snap.docs.map(d => {
     const u = d.data() as Record<string, any>
@@ -33,6 +37,8 @@ export default defineEventHandler(async (event) => {
       livelloMappa: u.livelloMappa ?? 1,
       _nomeDisplay: maskOffensiveName(u.nomeImpero || u.nome || (typeof u.email === 'string' ? u.email.split('@')[0] : null) || 'Giocatore'),
       _pixelCount:  (u.pixelCount as number) ?? 0,
+      // Punteggio pesato (0.1) — chiave di ranking territori
+      _score:       Math.round((weighted[d.id] ?? 0) * 10) / 10,
       _territori:   mode === 'settimanale'
         ? Object.values((u.territoriUtente as Record<string, any>) || {}).filter((t: any) => t?.conquistato).length
         : ((u.pixelCount as number) ?? 0),
@@ -50,6 +56,7 @@ export default defineEventHandler(async (event) => {
     })
   } else {
     utenti.sort((a, b) => {
+      if (b._score !== a._score) return b._score - a._score        // territori pesati per difficoltà
       if (b._pixelCount !== a._pixelCount) return b._pixelCount - a._pixelCount
       if (b._hasHardPass !== a._hasHardPass) return b._hasHardPass - a._hasHardPass
       return a._creatoTs - b._creatoTs
