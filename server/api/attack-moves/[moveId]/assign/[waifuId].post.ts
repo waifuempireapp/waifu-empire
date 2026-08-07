@@ -46,10 +46,23 @@ export default defineEventHandler(async (event) => {
   if (!mossa) throw createError({ statusCode: 404, message: 'Mossa non trovata nel catalogo' });
   if (!waifu) throw createError({ statusCode: 404, message: 'Waifu non trovata nel catalogo' });
   if (!(coll as any)?.waifu?.[waifuId]) throw createError({ statusCode: 404, message: 'Waifu non in collezione' });
-  if (!(coll as any)?.mosse?.[moveId]?.copie) throw createError({ statusCode: 404, message: 'Mossa non in collezione' });
+  const copie = Number((coll as any)?.mosse?.[moveId]?.copie ?? 0);
+  if (!copie) throw createError({ statusCode: 404, message: 'Mossa non in collezione' });
 
   const { compatibile, motivo } = isMoveCompatible(mossa, waifu);
   if (!compatibile) throw createError({ statusCode: 422, message: motivo });
+
+  // Limite copie: una mossa può stare su al massimo `copie` waifu DISTINTE.
+  // Riassegnarla su una waifu che la usa già (cambio slot) è sempre consentito.
+  const allWaifu = (coll as any)?.waifu ?? {};
+  const usedBy = new Set<string>();
+  for (const [wid, w] of Object.entries(allWaifu)) {
+    const slots = (w as any)?.mosse_slot ?? {};
+    if (Object.values(slots).includes(moveId)) usedBy.add(wid);
+  }
+  if (!usedBy.has(waifuId) && usedBy.size >= copie) {
+    throw createError({ statusCode: 409, message: `Hai ${copie} ${copie === 1 ? 'copia' : 'copie'} di questa mossa: già assegnata a ${usedBy.size} waifu. Ottieni altre copie per assegnarla ad altre.` });
+  }
 
   const adminDb = getAdminDb();
   await adminDb.doc(`users/${uid}/collezione/main`).update({

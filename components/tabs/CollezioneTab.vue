@@ -223,8 +223,30 @@ async function togglePreferita(id: string) {
   emit('notif', nuova.waifu[id].preferita ? t('collection.fav_added') : t('collection.fav_removed'), nuova.waifu[id].preferita ? '#ff85b6' : 'rgba(241,235,255,0.5)')
 }
 
+// ── Limite copie mossa: una mossa sta su max `copie` waifu distinte ───────────
+function _moveCopies(mossaId: string): number {
+  return Number((props.collezione as any)?.mosse?.[mossaId]?.copie ?? 0)
+}
+/** Waifu (diverse da exceptId) che usano già la mossa in un qualsiasi slot. */
+function _waifuUsingMove(mossaId: string, exceptId?: string): Set<string> {
+  const s = new Set<string>()
+  for (const [wid, w] of Object.entries((props.collezione as any)?.waifu ?? {})) {
+    if (wid === exceptId) continue
+    const slots = (w as any)?.mosse_slot ?? {}
+    if (Object.values(slots).includes(mossaId)) s.add(wid)
+  }
+  return s
+}
+
 // ── Assegna / rimuovi mossa slot ──────────────────────────────
 async function assegnaMossa(waifuId: string, slot: string, mossaId: string) {
+  // Limite: la mossa può stare su al massimo `copie` waifu distinte
+  const copie = _moveCopies(mossaId)
+  const altre = _waifuUsingMove(mossaId, waifuId)
+  if (altre.size >= copie) {
+    emit('notif', `Hai ${copie} ${copie === 1 ? 'copia' : 'copie'} di questa mossa: già su ${altre.size} waifu`, '#ff5b6c')
+    return
+  }
   const nuova = JSON.parse(JSON.stringify(props.collezione))
   if (!nuova.waifu[waifuId].mosse_slot) nuova.waifu[waifuId].mosse_slot = {}
   nuova.waifu[waifuId].mosse_slot[slot] = mossaId
@@ -246,11 +268,17 @@ async function assegnaMosseMultiple(waifuId: string, assignments: { slot: string
   const nuova = JSON.parse(JSON.stringify(props.collezione))
   const w = nuova.waifu[waifuId]
   if (!w) return
+  // Filtra le assegnazioni che sforano il limite copie (contando le ALTRE waifu)
+  let skipped = 0
+  const ok = assignments.filter(({ mossaId }) => {
+    if (_waifuUsingMove(mossaId, waifuId).size < _moveCopies(mossaId)) return true
+    skipped++; return false
+  })
   w.mosse_slot = {} // One-Click sovrascrive i 4 slot
-  for (const { slot, mossaId } of assignments) w.mosse_slot[slot] = mossaId
+  for (const { slot, mossaId } of ok) w.mosse_slot[slot] = mossaId
   emit('updateCollezione', nuova)
   await saveCollezione(authStore.user!.uid, nuova)
-  emit('notif', t('collection.move_assigned'), '#a78bfa')
+  emit('notif', skipped > 0 ? `Assegnate ${ok.length} mosse (${skipped} saltate: copie esaurite)` : t('collection.move_assigned'), skipped > 0 ? '#f5c560' : '#a78bfa')
 }
 
 // ── Sub-tab config ────────────────────────────────────────────
