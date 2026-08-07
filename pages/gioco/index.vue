@@ -626,7 +626,9 @@ function handleSetTab(t: string) {
     <LazyGiocoHeader v-if="tab !== 'swap'" :profilo="gameStore.profilo" :is-admin="isAdmin" @logout="authStore.logout()" />
 
     <!-- ── Area contenuto tab ────────────────────────────────────────── -->
-    <div :class="['max-w-[1400px] mx-auto', tab === 'collezione' ? 'px-4' : 'px-4']"
+    <!-- La HOME occupa tutta la larghezza su desktop (i 3 elementi riempiono lo
+         schermo); gli altri tab restano centrati e cappati a 1400px. -->
+    <div :class="[tab === 'home' ? 'w-full' : 'max-w-[1400px] mx-auto', 'px-4']"
          :style="{ paddingTop: '20px' }">
 
       <!-- ═══ TAB: HOME ════════════════════════════════════════════════ -->

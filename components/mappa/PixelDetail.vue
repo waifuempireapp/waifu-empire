@@ -58,6 +58,8 @@ const { avatarUrl, setAvatar } = useAvatar()
 const avIsColor  = computed(() => !!avatarUrl.value && avatarUrl.value.startsWith('#'))
 const avIsImage  = computed(() => !!avatarUrl.value && (avatarUrl.value.startsWith('http') || avatarUrl.value.startsWith('/')))
 const avInitials = computed(() => String(props.pixel?.ownerName || authStore.user?.displayName || 'W').trim().slice(0, 2).toUpperCase())
+// Iniziali del difensore (giocatore avversario) per il cerchio-avatar
+const defInitials = computed(() => String(props.pixel?.ownerName || 'CPU').trim().slice(0, 2).toUpperCase())
 
 // ── Blocca scroll del body mentre il modal è aperto ──────────────────────────
 useScrollLock(true)
@@ -244,7 +246,12 @@ onUnmounted(() => {
           background: pixel.ownerColor || '#888888',
           border: `2.5px solid ${pixel.ownerColor || '#888'}88`,
           boxShadow: `0 0 22px ${pixel.ownerColor || '#888'}55`,
-        }" />
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }">
+          <!-- Difensore: icona per la CPU, iniziali per un giocatore (non più vuoto) -->
+          <Swords v-if="isCPU" :size="26" stroke-width="1.5" style="color:#fff;opacity:0.92;" />
+          <span v-else :style="{ fontFamily: FF.display, fontSize: '23px', fontWeight: 900, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.4)' }">{{ defInitials }}</span>
+        </div>
 
         <div :style="{ flex: isOwn ? 'none' : 1, minWidth: 0, ...(isOwn ? { width: '100%', textAlign: 'center' } : {}) }">
           <!-- Nome proprietario -->
