@@ -87,6 +87,8 @@ const collezione = computed(() => props.collezione ?? {})
 const omaggioCount = computed(() => Number(profilo.value.pacchettiOmaggio ?? 0))
 const OMAGGIO_MAX = 3
 
+// Immagine 2D della bustina dell'espansione attiva (Home leggera, niente 3D)
+const bustinaImg = computed(() => bustinaImageUrl(props.drop as any))
 const totalPack = computed(() =>
   ((profilo.value.pacchettiOmaggio as number) ?? 0) +
   ((profilo.value.pacchettiBenvenuto as number) ?? 0) +
@@ -301,15 +303,20 @@ function quickLeave(e: MouseEvent, color: string, highlight: boolean) {
       <!-- Contenuto pack centrato -->
       <div class="ht-hero-content">
 
-        <!-- Bustina 3D: passive=true → canvas non intercetta click → il panel/button restano cliccabili -->
+        <!-- Bustina 2D (immagine leggera): niente 3D in Home → caricamento rapido
+             e affidabile anche con rete instabile. Il 3D resta nella sezione Sbusto. -->
         <div class="hero-glow">
-        <BustinaGLB
-          :color="totalPack > 0 ? ((drop?.colore as string) || '#6b1a3a') : '#5a3e0a'"
-          :texture-url="null"
-          :model-url="bustinaGlbUrl(drop as any)"
-          :width="115" :height="185"
-          :passive="true"
-        />
+          <img
+            v-if="bustinaImg"
+            :src="bustinaImg" alt=""
+            style="width:115px;height:185px;object-fit:contain;display:block;filter:drop-shadow(0 12px 26px rgba(0,0,0,0.55));"
+            @error="(e) => { (e.target as HTMLImageElement).style.display = 'none' }"
+          />
+          <div v-else :style="{
+            width:'115px', height:'185px', borderRadius:'12px',
+            background: `linear-gradient(160deg, ${(totalPack > 0 ? ((drop?.colore as string) || '#6b1a3a') : '#5a3e0a')}ee, rgba(10,6,24,0.95))`,
+            boxShadow:'0 12px 26px rgba(0,0,0,0.55)',
+          }" />
         </div>
 
         <!-- Testo stato pack -->

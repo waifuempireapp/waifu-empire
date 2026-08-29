@@ -1925,17 +1925,17 @@ const mvp = computed(() => {
       </div>
 
       <!-- ── ZONA 5+6: Action Panel ── -->
-      <!-- Altezza FISSA (non min/max variabile): così l'arena sopra non si ridimensiona
-           tra le fasi e le carte non si alzano/abbassano. Ma COMPATTA: con 50dvh i
-           bottoni mossa (flex:1) si stiravano diventando giganti. Il contenuto più
-           alto (fase cambio) scrolla internamente (overflowY:auto). -->
+      <!-- SEMPRE interamente visibile su qualsiasi schermo/rapporto: altezza MINIMA
+           che contiene le 4 mosse (niente tetto fisso che tagliava il contenuto).
+           È flexShrink:0 → resta ancorato in basso e il campo 3D sopra (flex:1) si
+           adatta; overflowY:auto solo come sicurezza per la fase cambio (più alta). -->
       <div :style="{
         flexShrink:0,
-        height: isMobile ? 'clamp(176px, 25dvh, 216px)' : 'clamp(188px, 27dvh, 230px)',
+        minHeight: isMobile ? '212px' : '232px',
         display:'flex', flexDirection:'column',
         background:'var(--theme-surface)',
         borderTop:'1px solid var(--theme-border)',
-        overflow:'hidden',
+        overflowY:'auto',
       }">
 
         <!-- Timer progress bar — traccia SEMPRE renderizzata: se sparisse col

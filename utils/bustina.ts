@@ -15,6 +15,27 @@
 
 export const DEFAULT_BUSTINA_GLB = '/bustine/bustina_asset.glb'
 
+// Immagini 2D delle bustine (leggere): usate dove non serve il 3D (es. Home)
+// per non caricare i .glb pesanti. Nome file = slug espansione senza "bustina_".
+import imgArti       from '~/assets/bustine/impero_delle_arti.png'
+import imgStellare   from '~/assets/bustine/impero_stellare.png'
+import imgElementale from '~/assets/bustine/Impero_elementale.png'
+import imgFantasy    from '~/assets/bustine/impero_fantasy.png'
+const BUSTINA_IMG: Record<string, string> = {
+  impero_delle_arti: imgArti,
+  impero_stellare:   imgStellare,
+  impero_elementale: imgElementale,
+  impero_fantasy:    imgFantasy,
+}
+
+/** URL dell'immagine 2D della bustina per un drop (null se non disponibile). */
+export function bustinaImageUrl(drop?: { nome?: string | null; asset_bustina?: string | null } | null): string | null {
+  if (!drop) return null
+  if (drop.asset_bustina) return drop.asset_bustina  // override esplicito da Firestore
+  const slug = bustinaSlug((drop.nome ?? '').trim())
+  return BUSTINA_IMG[slug] ?? null
+}
+
 /** Slug dal nome espansione: minuscole, niente accenti, spazi/simboli → _ */
 export function bustinaSlug(nome: string): string {
   return nome

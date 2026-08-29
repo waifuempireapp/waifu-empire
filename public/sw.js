@@ -1,19 +1,24 @@
 // public/sw.js
-// Cache-first per tutti gli asset Cloudinary — azzera i repeat load dal piano free
-const CACHE_NAME = 'impero-waifu-assets-v2';
+// Cache-first per gli asset pesanti: immagini/video CDN (ImageKit/Cloudinary) E
+// asset locali pesanti (bustine .glb, immagini di sfondo/scenario, musiche) →
+// niente ri-download ad ogni sessione e resilienza su reti instabili.
+const CACHE_NAME = 'impero-waifu-assets-v3';
 
 // Installa subito senza aspettare che le vecchie tab si chiudano
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
 self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
 
-  // Intercetta le immagini/video dei CDN usati (ImageKit attuale + Cloudinary legacy)
-  if (!url.hostname.includes('ik.imagekit.io') && !url.hostname.includes('res.cloudinary.com')) return;
+  const isCdnMedia   = url.hostname.includes('ik.imagekit.io') || url.hostname.includes('res.cloudinary.com');
+  // Asset locali pesanti (hashed/immutabili): bustine 3D, immagini, musiche
+  const isLocalHeavy = url.origin === self.location.origin && /\.(glb|png|jpe?g|webp|mp3)$/i.test(url.pathname);
+  if (!isCdnMedia && !isLocalHeavy) return;
 
   // Strategia cache-first: usa la copia locale se esiste,
-  // altrimenti scarica da Cloudinary e metti in cache
+  // altrimenti scarica e mette in cache
   event.respondWith(
     caches.open(CACHE_NAME).then(async (cache) => {
       const cached = await cache.match(event.request);

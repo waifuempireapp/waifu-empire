@@ -86,6 +86,33 @@ let softDot: import('three').Texture | null = null
 let bgTex: import('three').Texture | null = null
 let ctxAttached = false
 
+// Carica lo sfondo-paesaggio facendo un DOWNSCALE deciso su mobile: l'immagine
+// full-res (pesante) su device datati causa sfarfallio/pressione su RAM-GPU.
+// Sono asset LOCALI (same-origin) → il canvas non si "sporca". minFilter lineare
+// + niente mipmap: sfondo pulito e leggero.
+async function loadBgTexture(url: string): Promise<import('three').Texture> {
+  const img = await new Promise<HTMLImageElement>((res, rej) => {
+    const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url
+  })
+  const small = Math.min(window.innerWidth, window.innerHeight) < 720
+  const maxDim = small ? 640 : 1100          // mobile: HD ridotto; desktop: quasi nativo
+  const iw = img.naturalWidth || 1024, ih = img.naturalHeight || 1024
+  const scale = Math.min(1, maxDim / Math.max(iw, ih))
+  let tex: import('three').Texture
+  if (scale >= 1) {
+    tex = new THREE.Texture(img); tex.needsUpdate = true
+  } else {
+    const w = Math.max(2, Math.round(iw * scale)), h = Math.max(2, Math.round(ih * scale))
+    const c = document.createElement('canvas'); c.width = w; c.height = h
+    c.getContext('2d')!.drawImage(img, 0, 0, w, h)
+    tex = new THREE.CanvasTexture(c)
+  }
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.generateMipmaps = false
+  tex.minFilter = THREE.LinearFilter
+  return tex
+}
+
 // Adatta lo sfondo-immagine al viewport in modalità "cover" (nessuna deformazione)
 function applyBgCover() {
   if (!bgTex || !(bgTex as any).image) return
@@ -244,8 +271,7 @@ async function init() {
     if (props.backgroundImage) {
       // ── Sfondo PAESAGGIO (immagine della zona), "cover" senza deformare ──
       try {
-        bgTex = await new THREE.TextureLoader().loadAsync(props.backgroundImage)
-        bgTex.colorSpace = THREE.SRGBColorSpace
+        bgTex = await loadBgTexture(props.backgroundImage)
         scene.background = bgTex
         applyBgCover()
       } catch { /* fallback: resta il clearColor di sfondo */ }
@@ -499,8 +525,7 @@ watch(() => props.backgroundImage, async (url) => {
   if (!glReady.value || !scene || !renderer || !url) return
   const old = bgTex
   try {
-    bgTex = await new THREE.TextureLoader().loadAsync(url)
-    bgTex.colorSpace = THREE.SRGBColorSpace
+    bgTex = await loadBgTexture(url)
     scene.background = bgTex; applyBgCover()
     old?.dispose()
   } catch { bgTex = old }
