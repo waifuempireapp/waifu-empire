@@ -586,21 +586,25 @@ function hpBarData(hp: number, maxHp: number) {
                 <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:11px;font-weight:900;color:var(--theme-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
                   {{ w.nome ?? w.name ?? '—' }}
                 </div>
-                <!-- Stats: ⚡ VEL  💚 HP(grande)  💥 CRIT -->
-                <div style="display:flex;align-items:center;justify-content:space-between;">
-                  <div style="display:flex;align-items:center;gap:1px;">
-                    <span style="font-size:11px;line-height:1">⚡</span>
-                    <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;font-weight:900;color:#0891b2;line-height:1;">
-                      {{ Math.round((w.speed ?? w.velocita ?? w.velocita_base ?? computeSpeed(w as Record<string,unknown>)) as number) }}
-                    </span>
-                  </div>
-                  <div style="display:flex;align-items:center;gap:1px;">
+                <!-- Stats SFALSATE (spazio su card strette): 💚 HP in alto-centro,
+                     ⚡ VEL basso-sx, 💥 CRIT basso-dx → tutte e 3 ben leggibili -->
+                <div style="position:relative;height:34px;">
+                  <!-- 💚 HP: centrato, un po' più in alto -->
+                  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:1px;">
                     <span style="font-size:14px;line-height:1">💚</span>
                     <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;font-weight:900;color:#06d6a0;line-height:1;">
                       {{ (getBattleStats(w).maxHp as number) ?? 300 }}
                     </span>
                   </div>
-                  <div style="display:flex;align-items:center;gap:1px;">
+                  <!-- ⚡ VEL: basso-sx -->
+                  <div style="position:absolute;bottom:0;left:0;display:flex;align-items:center;gap:1px;">
+                    <span style="font-size:11px;line-height:1">⚡</span>
+                    <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;font-weight:900;color:#0891b2;line-height:1;">
+                      {{ Math.round((w.speed ?? w.velocita ?? w.velocita_base ?? computeSpeed(w as Record<string,unknown>)) as number) }}
+                    </span>
+                  </div>
+                  <!-- 💥 CRIT: basso-dx -->
+                  <div style="position:absolute;bottom:0;right:0;display:flex;align-items:center;gap:1px;">
                     <span style="font-size:11px;line-height:1">💥</span>
                     <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;font-weight:900;color:var(--theme-accent);line-height:1;">
                       {{ Math.round(((w.critChance ?? w.crit_chance ?? w.crit_chance_base ?? computeCritChance(w as Record<string,unknown>)) as number) * 100) }}%

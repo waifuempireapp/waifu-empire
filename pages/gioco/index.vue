@@ -26,9 +26,7 @@ import { STAT_RANGES_DEFAULT, UPGRADE_STEPS_DEFAULT } from '~/utils/constants'
 import { getDb } from '~/utils/firebase'
 import { ikUrl } from '~/utils/imagekitUrl'
 import { AVATAR_BY_WAIFU, BASE_AVATAR_IDS, AVATAR_PRESETS } from '~/composables/useAvatar'
-import { preloadBustina } from '~/components/BustinaGLB.vue'
 import { releaseAllScrollLocks } from '~/composables/useScrollLock'
-import { bustinaGlbUrl } from '~/utils/bustina'
 import { audio as audioEngine, tabToMood } from '~/utils/audioEngine'
 // ikUrl rimosso — non più usato nel template (carte acquisite rimosse dalla nav)
 
@@ -208,9 +206,10 @@ watch(tab, () => {
 })
 
 async function caricaTutto(uid: string) {
-  // Preload del pack 3D DURANTE la loading screen: three.js + GLB standard subito,
-  // così la Home mostra direttamente il canvas 3D senza placeholder 2D.
-  preloadBustina()
+  // NB: niente preload di three.js/GLB qui — la Home ora usa l'immagine 2D della
+  // bustina, quindi scaldare three (857KB) + scaricare i GLB (fino a 6MB) durante
+  // la loading screen rallentava molto l'avvio. Lo Sbusto precarica il suo 3D al
+  // proprio mount, solo quando serve davvero.
 
   // Catalogo: il check versione (1 read) va fatto PRIMA di leggere la cache
   // localStorage, ma è incatenato dentro la promise → corre IN PARALLELO alle
@@ -229,9 +228,7 @@ async function caricaTutto(uid: string) {
   // si aggiorna. Appena arrivano, preload immediato dei GLB delle espansioni.
   const dropsPromise = listDropsAttivi().then(d => {
     gameStore.setDropsAttivi(d as never)
-    for (const drop of (d as { nome?: string | null; asset_glb?: string | null }[] ?? [])) {
-      preloadBustina(bustinaGlbUrl(drop))
-    }
+    // niente preload GLB qui: lo Sbusto scalda i suoi modelli al proprio mount
   }).catch(() => { })
 
   const [profilo, collezione, catalog] = await Promise.all([
