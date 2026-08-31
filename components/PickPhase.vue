@@ -118,8 +118,8 @@ const C = {
   } as CSSProperties,
   section: { marginBottom: '20px' } as CSSProperties,
   label: {
-    fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)", fontSize: '11px', letterSpacing: '0.22em',
-    color: 'var(--theme-text-2)', marginBottom: '10px', fontWeight: 700, textTransform: 'uppercase' as const,
+    fontFamily: "var(--ff-label, 'Saira Condensed', sans-serif)", fontSize: '16px', letterSpacing: '0.2em',
+    color: 'var(--theme-text)', marginBottom: '12px', fontWeight: 800, textTransform: 'uppercase' as const,
   } as CSSProperties,
   confirmBtn: (active: boolean): CSSProperties => ({
     width: '100%', padding: '16px 0', marginTop: '10px',
@@ -539,13 +539,13 @@ function hpBarData(hp: number, maxHp: number) {
       <!-- Sezione: roster del giocatore (selezionabile) -->
       <div :style="C.section">
         <div :style="C.label">IL TUO ROSTER</div>
-        <!-- Griglia 2 colonne — più spaziatura verticale + margini -->
-        <div class="pick-waifu-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 16px;padding:18px 12px 18px;">
+        <!-- Griglia 3 colonne (come la Collezione) — card più piccole e compatte -->
+        <div class="pick-waifu-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 9px;padding:14px 8px;">
           <template v-for="(w, idx) in activeRoster" :key="w.id ?? idx">
             <button
               :style="({
-                border: `5px solid ${cardBorderColor(getSlotNumber(idx) !== null, getRarityStyle(getWaifuRarita(w)))}`,
-                borderRadius: '12px !important',
+                border: `3px solid ${cardBorderColor(getSlotNumber(idx) !== null, getRarityStyle(getWaifuRarita(w)))}`,
+                borderRadius: '11px !important',
                 background: cardBackground(getSlotNumber(idx) !== null, getRarityStyle(getWaifuRarita(w))),
                 padding: '0 0 10px',
                 cursor: 'pointer', position: 'relative', textAlign: 'left',
@@ -559,7 +559,7 @@ function hpBarData(hp: number, maxHp: number) {
             >
               <!-- Badge slot in basso a destra (evita sovrapposizione col chip tipo in alto) -->
               <div v-if="getSlotNumber(idx) !== null"
-                style="position:absolute;bottom:-12px;right:-12px;width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#00b050,#00e676);display:flex;align-items:center;justify-content:center;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;font-weight:900;color:#fff;border:2px solid var(--theme-surface);z-index:4">
+                style="position:absolute;bottom:-9px;right:-9px;width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#00b050,#00e676);display:flex;align-items:center;justify-content:center;font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;font-weight:900;color:#fff;border:2px solid var(--theme-surface);z-index:4">
                 {{ getSlotNumber(idx) }}
               </div>
               <!-- Chip tipo top-right della card -->
@@ -582,27 +582,27 @@ function hpBarData(hp: number, maxHp: number) {
               </div>
 
               <!-- Nome + stats sotto l'immagine -->
-              <div style="padding:8px 10px 0;display:flex;flex-direction:column;gap:6px;">
-                <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:13px;font-weight:900;color:var(--theme-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+              <div style="padding:6px 6px 0;display:flex;flex-direction:column;gap:4px;">
+                <div style="font-family:var(--ff-display,'Fredoka',sans-serif);font-size:11px;font-weight:900;color:var(--theme-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
                   {{ w.nome ?? w.name ?? '—' }}
                 </div>
                 <!-- Stats: ⚡ VEL  💚 HP(grande)  💥 CRIT -->
                 <div style="display:flex;align-items:center;justify-content:space-between;">
                   <div style="display:flex;align-items:center;gap:1px;">
-                    <span style="font-size:14px;line-height:1">⚡</span>
-                    <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;font-weight:900;color:#0891b2;line-height:1;">
+                    <span style="font-size:11px;line-height:1">⚡</span>
+                    <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;font-weight:900;color:#0891b2;line-height:1;">
                       {{ Math.round((w.speed ?? w.velocita ?? w.velocita_base ?? computeSpeed(w as Record<string,unknown>)) as number) }}
                     </span>
                   </div>
                   <div style="display:flex;align-items:center;gap:1px;">
-                    <span style="font-size:18px;line-height:1">💚</span>
-                    <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:16px;font-weight:900;color:#06d6a0;line-height:1;">
+                    <span style="font-size:14px;line-height:1">💚</span>
+                    <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;font-weight:900;color:#06d6a0;line-height:1;">
                       {{ (getBattleStats(w).maxHp as number) ?? 300 }}
                     </span>
                   </div>
                   <div style="display:flex;align-items:center;gap:1px;">
-                    <span style="font-size:14px;line-height:1">💥</span>
-                    <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:13px;font-weight:900;color:var(--theme-accent);line-height:1;">
+                    <span style="font-size:11px;line-height:1">💥</span>
+                    <span style="font-family:var(--ff-label,'Saira Condensed',sans-serif);font-size:11px;font-weight:900;color:var(--theme-accent);line-height:1;">
                       {{ Math.round(((w.critChance ?? w.crit_chance ?? w.crit_chance_base ?? computeCritChance(w as Record<string,unknown>)) as number) * 100) }}%
                     </span>
                   </div>

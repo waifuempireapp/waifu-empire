@@ -1925,13 +1925,13 @@ const mvp = computed(() => {
       </div>
 
       <!-- ── ZONA 5+6: Action Panel ── -->
-      <!-- SEMPRE interamente visibile su qualsiasi schermo/rapporto: altezza MINIMA
-           che contiene le 4 mosse (niente tetto fisso che tagliava il contenuto).
-           È flexShrink:0 → resta ancorato in basso e il campo 3D sopra (flex:1) si
-           adatta; overflowY:auto solo come sicurezza per la fase cambio (più alta). -->
+      <!-- Altezza FISSA (px, non dvh): NON cambia tra menu e mosse → il campo 3D
+           sopra (flex:1) resta stabile e le waifu non si spostano/escono dalla view.
+           Abbastanza alta da contenere sempre le 4 mosse; overflowY:auto per la fase
+           cambio (più alta) che scrolla internamente senza alterare l'altezza. -->
       <div :style="{
         flexShrink:0,
-        minHeight: isMobile ? '212px' : '232px',
+        height: isMobile ? '230px' : '250px',
         display:'flex', flexDirection:'column',
         background:'var(--theme-surface)',
         borderTop:'1px solid var(--theme-border)',

@@ -427,6 +427,9 @@ button:active:not(:disabled) { scale: 0.96; }
 
 /* FAB missioni con gradiente */
 .missioni-fab-pocket { background-image: var(--grad-primary) !important; border: none !important; color: #fff !important; }
+/* Nascondi il FAB missioni quando è aperto un modale a schermo pieno (es. scelta
+   team / battaglia): non deve comparire sopra a quelle sezioni. */
+body.modal-open .missioni-fab-pocket { display: none !important; }
 
 /* Numeri tabulari dove servono cifre allineate */
 .tabular, [class*="countdown"], [class*="timer"] { font-variant-numeric: tabular-nums; }
