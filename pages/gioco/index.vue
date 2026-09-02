@@ -223,19 +223,15 @@ async function caricaTutto(uid: string) {
         return catalogRef
       })
 
-  // Drops: AWAITED insieme al resto (in parallelo). La Home ha bisogno del drop
-  // PRIMA di montare la bustina 3D, altrimenti parte col modello standard e non
-  // si aggiorna. Appena arrivano, preload immediato dei GLB delle espansioni.
-  const dropsPromise = listDropsAttivi().then(d => {
-    gameStore.setDropsAttivi(d as never)
-    // niente preload GLB qui: lo Sbusto scalda i suoi modelli al proprio mount
-  }).catch(() => { })
+  // Drops: NON bloccante. Serve solo per l'immagine/colore della bustina in Home
+  // (cosmetico) → carica in background e la Home si aggiorna reattivamente appena
+  // arriva, senza ritardare il primo render.
+  listDropsAttivi().then(d => gameStore.setDropsAttivi(d as never)).catch(() => { })
 
   const [profilo, collezione, catalog] = await Promise.all([
     getUserProfile(uid),
     getCollezione(uid),
     catalogPromise,
-    dropsPromise,
   ])
 
   if (!profilo) {
@@ -296,10 +292,14 @@ async function caricaTutto(uid: string) {
   gameStore.setCatalogoWaifu(catalog.ws as never[])
   gameStore.setCatalogoMosse(catalog.ms as never[])
 
-  // Precaricamento globale immagini: warm-up della cache HTTP per TUTTE le
-  // immagini di catalogo (waifu + mosse) ai preset usati da collezione, pesca,
-  // swipe e reveal → quando l'utente naviga le vede già caricate.
-  preloadCatalogImages(catalog.ws as any[], catalog.ms as any[])
+  // Precaricamento globale immagini: warm-up cache HTTP di TUTTE le immagini di
+  // catalogo. DIFFERITO a dopo il primo render (idle): prima inondava la rete e
+  // rallentava l'avvio. L'utente vede subito l'app; le immagini si scaldano dopo.
+  if (typeof window !== 'undefined') {
+    const warm = () => preloadCatalogImages(catalog.ws as any[], catalog.ms as any[])
+    if ('requestIdleCallback' in window) (window as any).requestIdleCallback(warm, { timeout: 4000 })
+    else setTimeout(warm, 1800)
+  }
 
   // Migrazione lazy stats (velocita/crit_chance)
   const waifuCatalogMap = Object.fromEntries((catalog.ws as { id: string }[]).map(w => [w.id, w]))

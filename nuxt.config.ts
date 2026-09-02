@@ -22,6 +22,11 @@ export default defineNuxtConfig({
   // Le server/api/ routes rimangono server-side.
   ssr: false,
 
+  // Spinner mostrato nell'HTML shell PRIMA che il bundle JS venga scaricato/parsato
+  // (niente più schermo bianco per decine di secondi su iPhone lenti). Il file è in
+  // root: senza questa opzione Nuxt cerca app/spa-loading-template.html (qui assente).
+  spaLoadingTemplate: 'spa-loading-template.html',
+
   modules: [
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
