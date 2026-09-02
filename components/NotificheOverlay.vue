@@ -95,8 +95,9 @@ onMounted(async () => {
 .notif-overlay {
   position: fixed; inset: 0; z-index: 120;
   background: var(--theme-overlay); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  display: flex; align-items: flex-start; justify-content: center;
-  padding: max(64px, env(safe-area-inset-top)) 14px 14px;
+  /* Centrato V+H come gli altri modali dell'app */
+  display: flex; align-items: center; justify-content: center;
+  padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
 }
 .notif-panel {
   width: 100%; max-width: 460px; max-height: 82dvh;

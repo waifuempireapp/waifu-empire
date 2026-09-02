@@ -13,7 +13,7 @@
        destinazione finale è pronta (finishSplash). Identico allo spa-loading-
        template pre-JS → handoff invisibile. -->
   <Transition name="splash-fade">
-    <AppLoading v-if="!splashDone" fullscreen />
+    <BootSplash v-if="!splashDone" />
   </Transition>
 </template>
 
