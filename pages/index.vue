@@ -31,6 +31,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <!-- Schermata di caricamento durante l'inizializzazione di Firebase Auth -->
-  <AppLoading fullscreen />
+  <!-- Nessun loader qui: lo splash di avvio è globale (app.vue) e copre tutto
+       finché non si sceglie la destinazione. -->
+  <div />
 </template>

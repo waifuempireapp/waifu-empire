@@ -19,6 +19,7 @@ definePageMeta({ middleware: 'guest' })
 
 const router    = useRouter()
 const authStore = useAuthStore()
+const { finishSplash, startSplash } = useSplash()
 // Toggle tema chiaro/scuro già dal login (salvato in localStorage; se poi
 // l'utente ha un tema sul profilo, quello prevale al caricamento del gioco)
 const { isDark, toggleTheme } = useTheme()
@@ -33,6 +34,7 @@ watch(
   () => authStore.isLoggedIn,
   async (loggedIn) => {
     if (!loggedIn || !authStore.user) return
+    startSplash()   // riarma lo splash: copre il caricamento verso /gioco|/onboarding
     try {
       const profilo = await getUserProfile(authStore.user.uid)
       router.replace(profilo ? '/gioco' : '/onboarding')
@@ -42,6 +44,15 @@ watch(
       router.replace('/onboarding')
     }
   },
+  { immediate: true },
+)
+
+// Auth risolta e utente NON loggato → il form di login è la destinazione:
+// spegni lo splash globale così l'utente può accedere. Se invece è loggato, il
+// watch qui sopra reindirizza e lo splash resta acceso fino a /gioco|/onboarding.
+watch(
+  () => authStore.ready,
+  (ready) => { if (ready && !authStore.isLoggedIn) finishSplash() },
   { immediate: true },
 )
 

@@ -36,6 +36,7 @@ const authStore = useAuthStore()
 const gameStore = useGameStore()
 const missionsStore = useMissionsStore()
 const router = useRouter()
+const { finishSplash } = useSplash()
 
 // ── Stato locale UI (non globale) ──────────────────────────────────────
 const tab = computed({ get: () => gameStore.tabAttiva, set: v => gameStore.setTab(v) })
@@ -185,6 +186,7 @@ async function avviaCaricamento(uid: string) {
   // Ultimo fallback: sblocca comunque la UI invece di restare nel loader infinito
   caricato.value = true
   appReady.value = true
+  finishSplash()
 }
 
 watch(
@@ -349,6 +351,7 @@ async function caricaTutto(uid: string) {
   })
 
   appReady.value = true
+  finishSplash()   // home pronta → spegni lo splash globale (unica volta)
 
   // PRELOAD di tutti i chunk lazy (tab + overlay) appena l'app è visibile:
   // "APRI ORA" e i cambi tab non dipendono più dalla rete → niente schermate
@@ -524,11 +527,9 @@ function handleSetTab(t: string) {
 </script>
 
 <template>
-  <!-- Overlay di caricamento — position:fixed z-index:9999, copre tutto finché
-       i dati Firestore E il pack 3D non sono pronti. Fallback 8s. -->
-  <Transition name="loading-fade">
-    <AppLoading v-if="!caricato || !appReady" fullscreen />
-  </Transition>
+  <!-- Nessun overlay di loading qui: lo splash di avvio è UNICO e globale
+       (app.vue) e sparisce solo quando appReady → finishSplash(). Così le carte
+       non spariscono/riappaiono ad ogni cambio pagina. -->
 
   <!-- Game container — montato non appena i dati sono pronti (così BustinaGLB
        può inizializzare Three.js in background mentre l'overlay è ancora visibile) -->

@@ -11,6 +11,7 @@ definePageMeta({ middleware: 'auth' })
 
 const authStore    = useAuthStore()
 const router       = useRouter()
+const { finishSplash, startSplash } = useSplash()
 const nomeImpero   = ref('')
 const coloreImpero = ref('#f59e0b')
 const busy         = ref(false)
@@ -20,9 +21,10 @@ const COLORI = ['#f59e0b', '#ec4899', '#a855f7', '#06d6a0', '#3b82f6', '#ef4444'
 
 // Se l'utente ha già un profilo, va direttamente al gioco
 onMounted(async () => {
-  if (!authStore.user) return
+  if (!authStore.user) { finishSplash(); return }
   const profilo = await getUserProfile(authStore.user.uid)
-  if (profilo) router.replace('/gioco')
+  if (profilo) { startSplash(); router.replace('/gioco') }   // ha già un profilo → splash fino a /gioco
+  else finishSplash()                                         // form onboarding è la destinazione → spegni splash
 })
 
 async function conferma() {
@@ -46,6 +48,7 @@ async function conferma() {
     }) as { success?: boolean; taken?: boolean }
     if (res.taken) { erroreNome.value = 'Questo nome è già preso. Scegline un altro!'; return }
     if (!res.success) { erroreNome.value = 'Creazione non riuscita. Riprova.'; return }
+    startSplash()   // copre il caricamento della home appena creata
     router.replace('/gioco')
   } catch (e: unknown) {
     // Errore VISIBILE all'utente invece di fallire silenziosamente in console
