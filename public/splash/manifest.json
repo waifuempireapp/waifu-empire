@@ -1,0 +1,45 @@
+{
+  "espansione": "Impero delle Arti",
+  "cards": [
+    {
+      "file": "/splash/card1.webp",
+      "nome": "ADAORA"
+    },
+    {
+      "file": "/splash/card2.webp",
+      "nome": "CARMEN"
+    },
+    {
+      "file": "/splash/card3.webp",
+      "nome": "DALIA"
+    },
+    {
+      "file": "/splash/card4.webp",
+      "nome": "ELOISE"
+    },
+    {
+      "file": "/splash/card5.webp",
+      "nome": "HELENA"
+    },
+    {
+      "file": "/splash/card6.webp",
+      "nome": "IRINA"
+    },
+    {
+      "file": "/splash/card7.webp",
+      "nome": "MAREN"
+    },
+    {
+      "file": "/splash/card8.webp",
+      "nome": "NADIA"
+    },
+    {
+      "file": "/splash/card9.webp",
+      "nome": "PAULA"
+    },
+    {
+      "file": "/splash/card10.webp",
+      "nome": "SASHA"
+    }
+  ]
+}
