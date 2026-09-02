@@ -7,39 +7,55 @@
     },
     {
       "file": "/splash/card2.webp",
-      "nome": "CARMEN"
+      "nome": "BEATRICE"
     },
     {
       "file": "/splash/card3.webp",
-      "nome": "DALIA"
+      "nome": "CELIA"
     },
     {
       "file": "/splash/card4.webp",
-      "nome": "ELOISE"
+      "nome": "COSIMA"
     },
     {
       "file": "/splash/card5.webp",
-      "nome": "HELENA"
+      "nome": "EDITH"
     },
     {
       "file": "/splash/card6.webp",
-      "nome": "IRINA"
+      "nome": "ELOISE"
     },
     {
       "file": "/splash/card7.webp",
-      "nome": "MAREN"
+      "nome": "GRETEL"
     },
     {
       "file": "/splash/card8.webp",
-      "nome": "NADIA"
+      "nome": "HILDA"
     },
     {
       "file": "/splash/card9.webp",
-      "nome": "PAULA"
+      "nome": "IRENE"
     },
     {
       "file": "/splash/card10.webp",
-      "nome": "SASHA"
+      "nome": "KAI"
+    },
+    {
+      "file": "/splash/card11.webp",
+      "nome": "MAREN"
+    },
+    {
+      "file": "/splash/card12.webp",
+      "nome": "MIRA"
+    },
+    {
+      "file": "/splash/card13.webp",
+      "nome": "NORA"
+    },
+    {
+      "file": "/splash/card14.webp",
+      "nome": "PALOMA"
     }
   ]
 }

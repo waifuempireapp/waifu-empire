@@ -66,8 +66,8 @@ async function main() {
   }
   console.log(`Carte con immagine: ${cards.length}`)
 
-  // 3. Scegli ~10 distribuite lungo la lista (varietà) senza duplicati
-  const N = Math.min(10, cards.length)
+  // 3. Scegli ~14 distribuite lungo la lista (varietà) senza duplicati
+  const N = Math.min(14, cards.length)
   const step = Math.max(1, Math.floor(cards.length / N))
   const chosen = []
   for (let i = 0; i < cards.length && chosen.length < N; i += step) chosen.push(cards[i])

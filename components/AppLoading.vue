@@ -8,7 +8,7 @@
   <div v-if="fullscreen" class="iw-splash">
     <div class="iw-rays" />
     <div class="iw-cards">
-      <img v-for="n in 10" :key="n" class="iw-c" :class="`iw-c${n}`" :src="`/splash/card${n}.webp`" alt="" @error="onImgErr">
+      <img v-for="n in 14" :key="n" class="iw-c" :class="`iw-c${n}`" :src="`/splash/card${n}.webp`" alt="" @error="onImgErr">
     </div>
     <img class="iw-logo" src="/splash/logo.png" alt="Waifu Empire">
     <div class="iw-spin" />
@@ -71,22 +71,28 @@ function onImgErr(ev: Event) {
 }
 .iw-cards { position: absolute; inset: 0; }
 .iw-c {
-  position: absolute; width: min(19vw, 96px); border-radius: 8px;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.5);
+  position: absolute; width: min(15vw, 74px); border-radius: 7px;
+  box-shadow: 0 5px 14px rgba(0,0,0,0.5);
 }
-.iw-c1 { left:5%;  top:9%;    transform:rotate(-12deg) }
-.iw-c2 { left:31%; top:3%;    transform:rotate(-5deg) }
-.iw-c3 { right:31%;top:4%;    transform:rotate(6deg) }
-.iw-c4 { right:4%; top:10%;   transform:rotate(13deg) }
-.iw-c5 { left:2%;  top:42%;   transform:rotate(-9deg) }
-.iw-c6 { right:2%; top:40%;   transform:rotate(9deg) }
-.iw-c7 { left:7%;  bottom:7%; transform:rotate(10deg) }
-.iw-c8 { left:33%; bottom:2%; transform:rotate(-6deg) }
-.iw-c9 { right:33%;bottom:3%; transform:rotate(7deg) }
-.iw-c10{ right:6%; bottom:8%; transform:rotate(-12deg) }
+/* anello esterno (bordi) */
+.iw-c1 { left:3%;  top:6%;    transform:rotate(-13deg) }
+.iw-c2 { left:27%; top:2%;    transform:rotate(-5deg) }
+.iw-c3 { right:27%;top:3%;    transform:rotate(6deg) }
+.iw-c4 { right:3%; top:7%;    transform:rotate(13deg) }
+.iw-c5 { left:1%;  top:44%;   transform:rotate(-9deg) }
+.iw-c6 { right:1%; top:42%;   transform:rotate(9deg) }
+.iw-c7 { left:4%;  bottom:5%; transform:rotate(10deg) }
+.iw-c8 { right:4%; bottom:6%; transform:rotate(-12deg) }
+/* anello interno (verso il centro, dietro il logo) */
+.iw-c9 { left:19%; top:23%;   transform:rotate(-8deg) }
+.iw-c10{ right:19%;top:21%;   transform:rotate(7deg) }
+.iw-c11{ left:21%; bottom:21%;transform:rotate(9deg) }
+.iw-c12{ right:21%;bottom:19%;transform:rotate(-7deg) }
+.iw-c13{ left:12%; top:64%;   transform:rotate(6deg) }
+.iw-c14{ right:12%;top:62%;   transform:rotate(-6deg) }
 .iw-logo {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: min(60vw, 320px); filter: drop-shadow(0 6px 22px rgba(167,139,250,0.45));
+  width: min(58vw, 300px); filter: drop-shadow(0 6px 22px rgba(167,139,250,0.5));
 }
 .iw-spin {
   position: absolute; left: 50%; bottom: 9%; transform: translateX(-50%);
