@@ -166,6 +166,20 @@ onUnmounted(() => {
 // Guard: evita esecuzioni concorrenti e ritenta in caso di 403 transitorio
 // (token auth non ancora propagato → permission-denied alla prima lettura).
 let caricamentoInCorso = false
+
+// Tetto sulle LETTURE iniziali (non sull'attesa del 3D, che ha già il suo cap):
+// le letture Firestore NON rifiutano quando la rete non risponde, ritentano da sole
+// in silenzio e la promise resta appesa per sempre. Senza questo tetto il catch del
+// ciclo qui sotto non veniva mai raggiunto, il fallback nemmeno, e lo splash restava
+// dipinto sulle carte all'infinito.
+const TIMEOUT_LETTURE_MS = 6000
+function conTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`timeout letture dopo ${ms}ms`)), ms)
+    p.then(v => { clearTimeout(t); resolve(v) }, e => { clearTimeout(t); reject(e) })
+  })
+}
+
 async function avviaCaricamento(uid: string) {
   if (caricamentoInCorso || caricato.value) return
   caricamentoInCorso = true
@@ -230,11 +244,11 @@ async function caricaTutto(uid: string) {
   // arriva, senza ritardare il primo render.
   listDropsAttivi().then(d => gameStore.setDropsAttivi(d as never)).catch(() => { })
 
-  const [profilo, collezione, catalog] = await Promise.all([
+  const [profilo, collezione, catalog] = await conTimeout(Promise.all([
     getUserProfile(uid),
     getCollezione(uid),
     catalogPromise,
-  ])
+  ]), TIMEOUT_LETTURE_MS)
 
   if (!profilo) {
     router.replace('/onboarding')
@@ -341,13 +355,15 @@ async function caricaTutto(uid: string) {
   caricato.value = true
   await nextTick()
 
-  // La loading screen resta finché il pacchetto 3D della Home non è PRONTO
-  // (richiesta UX: mai vedere il placeholder in Home). Il GLB è già in preload
-  // dall'inizio del caricamento, quindi di solito è questione di poco; il cap
-  // a 10s evita comunque un loader infinito se WebGL/rete falliscono.
+  // Lo splash resta finché la Home non è DIPINTA (richiesta UX: mai vedere il
+  // placeholder in Home), non un millisecondo di più.
+  // Prima si aspettava 'bustina:ready': evento emesso solo da BustinaGLB, che da
+  // quando la Home usa la bustina 2D non viene più montato → l'attesa arrivava
+  // SEMPRE al proprio cap, aggiungendo secondi di splash dopo l'ultima chiamata.
+  // 'home:ready' lo manda HomeTab quando il suo overlay anti-FOUC si toglie.
   await new Promise<void>(resolve => {
-    window.addEventListener('bustina:ready', () => resolve(), { once: true })
-    setTimeout(resolve, 10000)
+    window.addEventListener('home:ready', () => resolve(), { once: true })
+    setTimeout(resolve, 4000)   // cap di sicurezza se la Home non si annuncia
   })
 
   appReady.value = true

@@ -19,14 +19,16 @@
 
 <script setup lang="ts">
 const { initTheme } = useTheme()
-const { splashDone, finishSplash } = useSplash()
+const { splashDone, armSplashSafetyNet } = useSplash()
 
 onMounted(() => {
   // Applica il tema salvato prima di qualsiasi render
   initTheme()
 
   // Rete di sicurezza: qualunque cosa accada, non lasciare lo splash bloccato.
-  setTimeout(() => finishSplash(), 15000)
+  // Vive in useSplash() perché va RIARMATA a ogni startSplash() (dopo l'accesso),
+  // non consumata una volta sola all'avvio.
+  armSplashSafetyNet()
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker

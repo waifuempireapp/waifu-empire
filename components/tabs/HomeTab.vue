@@ -42,8 +42,20 @@ const emit = defineEmits<{
 const { isDark } = useTheme()
 const { t } = useI18n()
 
-// ── Anti-FOUC: overlay full-page finché la bustina 3D non ha renderizzato ──
-const { isPageReady } = usePageReady('canvas')
+// ── Anti-FOUC: overlay full-page finché la Home non ha davvero renderizzato ──
+// NIENTE selettore 'canvas': la Home usa la bustina 2D, un <canvas> non viene più
+// creato → il check restava appeso al proprio timeout di sicurezza (9s) a ogni
+// ingresso. Senza selettore attende il ritardo minimo + le immagini, che è ciò
+// che serve davvero qui.
+const { isPageReady } = usePageReady()
+
+// Segnala alla pagina /gioco che la Home è dipinta, così lo splash di avvio può
+// spegnersi esattamente adesso: niente "splash → overlay → home" e nessuna attesa
+// a vuoto. Prima /gioco aspettava 'bustina:ready', evento emesso solo da
+// BustinaGLB, che in Home non viene più montato → attesa fino al cap di 10s.
+watch(isPageReady, (pronta) => {
+  if (pronta) window.dispatchEvent(new Event('home:ready'))
+}, { immediate: true })
 
 // ── Runtime config (NEXT_PUBLIC_PESCA_ENABLED → public.pescaEnabled) ──
 const config = useRuntimeConfig()
