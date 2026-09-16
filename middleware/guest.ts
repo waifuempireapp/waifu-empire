@@ -7,7 +7,9 @@
 export default defineNuxtRouteMiddleware(async () => {
   const authStore = useAuthStore()
 
-  if (authStore.loading) return
+  // Stessa attesa del middleware auth: senza, su avvio a freddo un utente già
+  // loggato restava sul form di login invece di passare a /gioco.
+  await waitAuthReady(authStore)
 
   // Se già autenticato redirige al gioco
   if (authStore.isLoggedIn) {

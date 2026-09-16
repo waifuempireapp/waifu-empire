@@ -4,11 +4,13 @@
 // Va usato sulle pagine che richiedono login (es. /gioco).
 // ============================================================
 
-export default defineNuxtRouteMiddleware(() => {
+export default defineNuxtRouteMiddleware(async () => {
   const authStore = useAuthStore()
 
-  // Aspetta che il caricamento iniziale dell'auth sia completato
-  if (authStore.loading) return
+  // Attende la prima risposta di Firebase PRIMA di decidere: il middleware non
+  // viene rieseguito, quindi uscire qui con `loading` ancora true lasciava la
+  // rotta protetta montata a vuoto (vedi waitAuthReady).
+  await waitAuthReady(authStore)
 
   // Redirige al login se l'utente non è autenticato
   if (!authStore.isLoggedIn) {
