@@ -43,10 +43,12 @@ function ikUrl(src) {
 async function main() {
   // 1. Ultima espansione = drop più recente
   const dropsSnap = await db.collection('drops').orderBy('creato', 'desc').limit(1).get()
+  let dropId = dropsSnap.docs[0]?.id
   let drop = dropsSnap.docs[0]?.data()
   if (!drop) {
     // fallback: qualsiasi drop attivo
     const s = await db.collection('drops').where('attivo', '==', true).limit(1).get()
+    dropId = s.docs[0]?.id
     drop = s.docs[0]?.data()
   }
   if (!drop) throw new Error('Nessun drop trovato')
@@ -61,6 +63,14 @@ async function main() {
     const d = await db.collection('catalogo_waifu').doc(id).get()
     if (!d.exists) continue
     const w = d.data()
+    // Guardia: nello splash SOLO carte dell'ultima espansione. Se il drop
+    // elencasse un id di un'espansione precedente (ristampa/errore di seed),
+    // va scartato invece di finire nello splash.
+    const exp = w.espansione_id || w.espansioneId
+    if (exp && dropId && exp !== dropId) {
+      console.warn(`  – scartata ${w.nome}: espansione ${exp} ≠ ${dropId}`)
+      continue
+    }
     const src = w.asset_statica || w.asset_immersiva
     if (src) cards.push({ id, nome: w.nome, rarita: w.rarita || w.rarità || '', src })
   }
@@ -91,7 +101,7 @@ async function main() {
       console.log(`  ✓ ${fname} ← ${chosen[i].nome} (${(buf.length / 1024).toFixed(0)}KB)`)
     } catch (e) { console.warn(`  ✗ ${chosen[i].nome}: ${e.message}`) }
   }
-  writeFileSync(join(outDir, 'manifest.json'), JSON.stringify({ espansione: drop.nome, cards: manifest }, null, 2))
+  writeFileSync(join(outDir, 'manifest.json'), JSON.stringify({ espansione: drop.nome, espansione_id: dropId, cards: manifest }, null, 2))
   console.log(`\n✅ ${ok} carte in public/splash/ (espansione: ${drop.nome})`)
   process.exit(0)
 }

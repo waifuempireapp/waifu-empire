@@ -1,9 +1,10 @@
 <!-- Splash mostrato SUBITO nell'HTML (prima che il bundle JS venga scaricato/parsato):
      niente più schermo bianco per decine di secondi su device lenti.
-     STATICO (nessun fade-in/pulse/blink che ripartirebbe al passaggio alla fase
-     dati → niente "flash"): l'unico movimento è lo spinner liscio in basso.
-     Stessa grafica dell'AppLoading fullscreen → transizione invisibile.
-     Solo CSS + immagini locali in /splash/ (rigenerabili con scripts/build-splash-cards.mjs). -->
+     Le carte sono SOLO quelle dell'ultima espansione (public/splash/, rigenerabili
+     con scripts/build-splash-cards.mjs, che filtra per espansione_id del drop più recente).
+     L'unico movimento è un respiro lento (zoom in/out) delle carte + lo spinner:
+     BootSplash.vue replica gli stessi keyframe e ne risincronizza la fase al handoff
+     → nessun flash quando il bundle prende il posto di questo markup. -->
 <div class="iw-splash">
   <div class="iw-rays"></div>
   <div class="iw-cards">
@@ -36,31 +37,68 @@
     -webkit-mask-image:radial-gradient(circle,#000 0%,#000 30%,transparent 62%);
             mask-image:radial-gradient(circle,#000 0%,#000 30%,transparent 62%);}
   .iw-cards{position:absolute;inset:0;}
+  /* --r = rotazione fissa della carta, --cd = sfasamento del respiro (niente pulsare
+     all'unisono). La fase condivisa con BootSplash.vue passa invece da __iwSplashStart. */
   .iw-c{position:absolute;width:min(15vw,74px);border-radius:7px;
-    box-shadow:0 5px 14px rgba(0,0,0,0.5);}
+    box-shadow:0 5px 14px rgba(0,0,0,0.5);will-change:transform;
+    transform:rotate(var(--r)) scale(1);
+    animation:iw-breathe 3.4s ease-in-out infinite;
+    animation-delay:var(--cd);}
+  /* Zoom in/out: le carte si avvicinano e si allontanano. L'escursione deve
+     restare ben percepibile (0.88 -> 1.16): sotto il ~10% su card da 74px il
+     movimento non si legge a occhio. translateY accompagna la scala e vende la
+     profondita' (la carta "viene avanti" invece di gonfiarsi sul posto). */
+  @keyframes iw-breathe{
+    0%,100%{transform:rotate(var(--r)) scale(0.88) translateY(3px)}
+    50%    {transform:rotate(var(--r)) scale(1.16) translateY(-4px)}
+  }
   /* anello esterno (bordi) */
-  .iw-c1 {left:3%;  top:6%;    transform:rotate(-13deg)}
-  .iw-c2 {left:27%; top:2%;    transform:rotate(-5deg)}
-  .iw-c3 {right:27%;top:3%;    transform:rotate(6deg)}
-  .iw-c4 {right:3%; top:7%;    transform:rotate(13deg)}
-  .iw-c5 {left:1%;  top:44%;   transform:rotate(-9deg)}
-  .iw-c6 {right:1%; top:42%;   transform:rotate(9deg)}
-  .iw-c7 {left:4%;  bottom:5%; transform:rotate(10deg)}
-  .iw-c8 {right:4%; bottom:6%; transform:rotate(-12deg)}
+  .iw-c1 {left:3%;  top:6%;    --r:-13deg; --cd:0s}
+  .iw-c2 {left:27%; top:2%;    --r:-5deg;  --cd:-1.1s}
+  .iw-c3 {right:27%;top:3%;    --r:6deg;   --cd:-2s}
+  .iw-c4 {right:3%; top:7%;    --r:13deg;  --cd:-0.6s}
+  .iw-c5 {left:1%;  top:44%;   --r:-9deg;  --cd:-1.6s}
+  .iw-c6 {right:1%; top:42%;   --r:9deg;   --cd:-2.6s}
+  .iw-c7 {left:4%;  bottom:5%; --r:10deg;  --cd:-0.8s}
+  .iw-c8 {right:4%; bottom:6%; --r:-12deg; --cd:-2.3s}
   /* anello interno (verso il centro, dietro il logo) */
-  .iw-c9 {left:19%; top:23%;   transform:rotate(-8deg)}
-  .iw-c10{right:19%;top:21%;   transform:rotate(7deg)}
-  .iw-c11{left:21%; bottom:21%;transform:rotate(9deg)}
-  .iw-c12{right:21%;bottom:19%;transform:rotate(-7deg)}
-  .iw-c13{left:12%; top:64%;   transform:rotate(6deg)}
-  .iw-c14{right:12%;top:62%;   transform:rotate(-6deg)}
+  .iw-c9 {left:19%; top:23%;   --r:-8deg;  --cd:-0.3s}
+  .iw-c10{right:19%;top:21%;   --r:7deg;   --cd:-1.9s}
+  .iw-c11{left:21%; bottom:21%;--r:9deg;   --cd:-2.9s}
+  .iw-c12{right:21%;bottom:19%;--r:-7deg;  --cd:-1.3s}
+  .iw-c13{left:12%; top:64%;   --r:6deg;   --cd:-2.2s}
+  .iw-c14{right:12%;top:62%;   --r:-6deg;  --cd:-0.45s}
   .iw-logo{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-    width:min(58vw,300px);filter:drop-shadow(0 6px 22px rgba(167,139,250,0.5));}
-  /* Unico movimento: spinner liscio (ruota, non lampeggia) */
+    width:min(76vw,420px);filter:drop-shadow(0 6px 26px rgba(167,139,250,0.5));}
   .iw-spin{position:absolute;left:50%;bottom:9%;transform:translateX(-50%);
     width:34px;height:34px;border-radius:50%;
     border:3px solid rgba(167,139,250,0.22);border-top-color:#a78bfa;
     animation:iw-rot 0.9s linear infinite;}
   @keyframes iw-rot{to{transform:translateX(-50%) rotate(360deg)}}
-  @media (prefers-reduced-motion:reduce){.iw-spin{animation-duration:1.6s}}
+  @media (prefers-reduced-motion:reduce){
+    .iw-spin{animation-duration:1.6s}
+    .iw-c{animation:none;transform:rotate(var(--r)) scale(1)}
+  }
 </style>
+<!-- Fissa sulla timeline del documento l'istante in cui e' partito il respiro delle
+     carte. BootSplash.vue lo riusa per far ripartire le proprie animazioni dalla
+     STESSA fase (stesso startTime, stesso --cd per carta): senza questo, al passaggio
+     HTML statico -> bundle le carte farebbero un salto di dimensione visibile.
+     Stimare il tempo trascorso con performance.now() non basta: fra onMounted e il
+     primo calcolo di stile dell'elemento Vue passano centinaia di ms. -->
+<script>
+  (function () {
+    // startTime e' null finche' l'animazione e' "pending": va aspettata la sua ready,
+    // altrimenti si memorizza null e la risincronizzazione non avviene mai.
+    function grab(left) {
+      var el = document.querySelector('.iw-c1')
+      var a = el && el.getAnimations && el.getAnimations()[0]
+      if (a) {
+        if (a.startTime !== null) { window.__iwSplashStart = a.startTime; return }
+        if (a.ready) { a.ready.then(function () { window.__iwSplashStart = a.startTime }); return }
+      }
+      if (left > 0) requestAnimationFrame(function () { grab(left - 1) })
+    }
+    grab(10)
+  })()
+</script>
