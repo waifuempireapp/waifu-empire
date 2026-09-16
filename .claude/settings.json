@@ -446,7 +446,18 @@
       "Bash(node scripts/list-arti-imagekit.mjs)",
       "Bash(node scripts/inspect-waifu-doc.mjs)",
       "Bash(node scripts/seed-espansione-arti.mjs)",
-      "Bash(node scripts/seed-espansione-arti.mjs --commit --attiva)"
+      "Bash(node scripts/seed-espansione-arti.mjs --commit --attiva)",
+      "Bash(awk 'NR>=1940 && NR<=2010 && \\(/PlayerHud|player HUD|player\\\\.name|player\\\\.type|HpBar|position:.bottom|bottom:|inline — specchia|absolute/\\)' components/WaifuBattleArena.vue)",
+      "Bash(awk -F: '$1>=1900 && $1<=2020')",
+      "Bash(awk -F: '$1>=1930 && $1<=2030')",
+      "Bash(file assets/world-scenario/*)",
+      "Bash(sort -t'│' -k2 -h)",
+      "Bash(awk '{printf \"%8.0f KB  %s\\\\n\", $5/1024, $9}')",
+      "Bash(grep \"\\\\.js$\")",
+      "Bash(grep -ioE \"loading[^<]{0,20}|caricamento\")",
+      "Bash(python3 -c \"import json;print\\('EN loading:',json.load\\(open\\('i18n/locales/en.json'\\)\\).get\\('loading'\\)\\);print\\('IT loading:',json.load\\(open\\('i18n/locales/it.json'\\)\\).get\\('loading'\\)\\)\")",
+      "Bash(node scripts/build-splash-cards.mjs)",
+      "Bash(rm -f public/splash/card*.webp)"
     ],
     "additionalDirectories": [
       "/private/tmp",
