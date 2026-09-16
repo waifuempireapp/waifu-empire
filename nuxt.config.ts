@@ -12,6 +12,10 @@ export default defineNuxtConfig({
 
   devtools: { enabled: true },
 
+  // NB: le cartelle escluse dai watcher di dev (android/, ios/, dist/, ...) stanno
+  // in .nuxtignore, NON qui: in Nuxt 3.16.2 l'opzione `ignore` viene scartata da un
+  // bug dello schema (for..in su un array). Vedi i commenti in .nuxtignore.
+
   // Disabilita il prefisso del percorso per i componenti nelle subdirectory
   // (es. components/tabs/HomeTab.vue → <HomeTab> invece di <TabsHomeTab>)
   components: [

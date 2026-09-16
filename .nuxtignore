@@ -1,0 +1,22 @@
+# Cartelle escluse dallo scan e soprattutto dai WATCHER del dev server.
+#
+# Perché serve: android/ (Capacitor + build Gradle) sono ~3.300 file / 1.570 dir,
+# ios/ altri ~440. chokidar 4/5 su macOS non usa più fsevents e apre UN fs.watch
+# PER FILE: nuxt e nitro insieme arrivavano a ~14.500 watcher e >10.000 descrittori
+# aperti. Superata quella soglia OGNI spawn del processo fallisce con EBADF, e
+# nitro non riesce più ad avviare il servizio esbuild → "[nitro] ERROR spawn EBADF"
+# a ripetizione e dev server inutilizzabile.
+#
+# Perché QUI e non in nuxt.config `ignore`: in Nuxt 3.16.2 il resolver dello schema
+# fa `for (const pattern in val)` invece di `of` (@nuxt/schema/dist/index.mjs ~1283),
+# quindi dell'array di `ignore` arrivano gli INDICI ("0","1",...) e i pattern veri
+# vengono persi. .nuxtignore invece è letto alla lettera da resolveIgnorePatterns()
+# e funziona. Se in futuro si aggiorna Nuxt e il bug è chiuso, si può rientrare in
+# nuxt.config — ma questo file resta comunque valido.
+#
+# Sono tutti artefatti di `cap sync` / `nuxt generate`: non c'è nulla da watchare.
+android
+ios
+resources
+dist
+dist 2
