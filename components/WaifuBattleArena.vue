@@ -430,6 +430,18 @@ const isMobile = ref(true)
 const topOffset    = ref(0)
 const bottomOffset = ref(0)
 
+// ── Misure REALI dei due container (shell = tutta l'arena, body = campo di
+// battaglia). Servono perché le dimensioni non possono dipendere solo dal
+// breakpoint isMobile: su un pieghevole aperto la larghezza supera i 768px
+// (quindi isMobile=false → misure "desktop") ma l'altezza resta da telefono,
+// e footer + carte non ci stavano più. Misurando lo spazio effettivo il
+// layout regge sia da chiuso (schermo stretto) sia da aperto (quasi quadrato).
+const shellEl = ref<HTMLElement | null>(null)
+const arenaEl = ref<HTMLElement | null>(null)
+const shellH  = ref(0)
+const arenaH  = ref(0)
+const arenaW  = ref(0)
+
 // Statistiche per il popup risultato
 const statsP = ref({ ko: 0, dmg: 0 })
 const statsE = ref({ ko: 0, dmg: 0 })
@@ -540,7 +552,27 @@ onMounted(() => {
   calcOffset()
   window.addEventListener('resize', calcOffset)
 
+  // Osserva i due container: qualsiasi cosa cambi l'altezza utile (apertura del
+  // pieghevole, rotazione, barra del browser che si ritrae, tastiera) ridimensiona
+  // footer e carte senza bisogno di media query.
+  let ro: ResizeObserver | null = null
+  if (typeof ResizeObserver !== 'undefined') {
+    ro = new ResizeObserver(() => {
+      if (shellEl.value) shellH.value = shellEl.value.clientHeight
+      if (arenaEl.value) {
+        arenaH.value = arenaEl.value.clientHeight
+        arenaW.value = arenaEl.value.clientWidth
+      }
+    })
+    watch([shellEl, arenaEl], ([sh, ar]) => {
+      ro?.disconnect()
+      if (sh) ro?.observe(sh)
+      if (ar) ro?.observe(ar)
+    }, { immediate: true, flush: 'post' })
+  }
+
   onUnmounted(() => {
+    ro?.disconnect()
     window.removeEventListener('resize', checkMobile)
     window.removeEventListener('resize', calcOffset)
     if (timerInterval) clearInterval(timerInterval)
@@ -1292,8 +1324,35 @@ function cancelVoluntarySwap() {
   message.value = 'Scegli la tua mossa!'
 }
 
-const sEnemy  = computed(() => isMobile.value ? 118 : 150)
-const sPlayer = computed(() => isMobile.value ? 130 : 168)
+// ── Altezza del FOOTER (mosse, messaggio, timer) ──────────────────────────
+// Prima era fissa (230/250px). Su schermi bassi mangiava tutto il campo e, con
+// lo shell in overflow:auto, il blocco mosse finiva sotto il bordo: per vederlo
+// bisognava scrollare. Ora è un tetto, non una costante: mai oltre il 42% dello
+// shell, mai sotto i 168px che servono a contenere le 4 mosse.
+const FOOTER_MIN = 168
+const footerH = computed(() => {
+  const max = isMobile.value ? 230 : 250
+  if (!shellH.value) return max
+  return Math.round(Math.max(FOOTER_MIN, Math.min(max, shellH.value * 0.42)))
+})
+
+// ── Dimensione delle CARTE ────────────────────────────────────────────────
+// Le carte sono in position:absolute dentro contenitori overflow:hidden: con una
+// larghezza fissa, appena la zona diventava più bassa della carta (altezza =
+// larghezza × 1.5, aspect 2/3) venivano TAGLIATE invece di rimpicciolirsi — è
+// l'effetto "carte fuori schermo". Ora la misura scende dallo spazio reale della
+// propria metà di campo, con il valore storico come tetto massimo: su schermi
+// larghi resta identica a prima, su schermi bassi rientra.
+const ENEMY_ZONE = computed(() => isMobile.value ? 0.47 : 0.52)
+/** Lato massimo che una carta può avere restando dentro la sua zona. */
+function cardFit(zoneFrac: number, cap: number): number {
+  if (!arenaH.value) return cap
+  const perAltezza   = (arenaH.value * zoneFrac - 26) / 1.5   // 26px di respiro
+  const perLarghezza = arenaW.value * 0.42                    // niente carte che si toccano
+  return Math.round(Math.max(76, Math.min(cap, perAltezza, perLarghezza)))
+}
+const sEnemy  = computed(() => cardFit(ENEMY_ZONE.value, isMobile.value ? 118 : 150))
+const sPlayer = computed(() => cardFit(1 - ENEMY_ZONE.value, isMobile.value ? 130 : 168))
 
 const playerGlow = computed(() => isChoose.value && !isAnim.value
   ? '0 12px 40px rgba(0,0,0,.75), 0 0 0 2px #00C8FF, 0 0 22px rgba(0,200,255,.38)'
@@ -1536,10 +1595,14 @@ const mvp = computed(() => {
 
   <!-- Arena di battaglia principale -->
   <template v-else-if="phase !== 'result'">
-    <div :style="{
+    <!-- SHELL: contenitore unico dell'arena. NON scrolla (prima era overflowY:auto
+         e su schermi bassi il blocco mosse finiva sotto il bordo): si divide in due
+         container figli, BODY (campo di battaglia, flex:1) e FOOTER (mosse, altezza
+         limitata), che insieme occupano esattamente lo spazio disponibile. -->
+    <div ref="shellEl" :style="{
       position:'fixed',
       top: `${topOffset}px`, left:0, right:0, bottom: `${bottomOffset}px`,
-      zIndex:40, overflowY:'auto',
+      zIndex:40, overflow:'hidden',
       background:'var(--theme-bg)',
       display:'flex', flexDirection:'column',
       paddingBottom:'env(safe-area-inset-bottom,12px)',
@@ -1655,7 +1718,9 @@ const mvp = computed(() => {
       </div>
 
       <!-- ── ZONE 2+3+4: Arene di battaglia ── -->
-      <div :class="{ 'wba-screenshake': screenShake }" :style="{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative', minHeight:0 }">
+      <!-- BODY: campo di battaglia. Prende tutto lo spazio che il footer non usa;
+           le carte si dimensionano su questa altezza (arenaH) e restano dentro. -->
+      <div ref="arenaEl" :class="{ 'wba-screenshake': screenShake }" :style="{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative', minHeight:0 }">
 
         <!-- Palco 3D HD-2D: riempie il field DIETRO l'HUD (z auto < z HUD). Sostituisce
              le due card-sprite. Responsive 9:16 (mobile) / 16:9 (desktop/tablet). -->
@@ -1924,14 +1989,15 @@ const mvp = computed(() => {
         </div>
       </div>
 
-      <!-- ── ZONA 5+6: Action Panel ── -->
-      <!-- Altezza FISSA (px, non dvh): NON cambia tra menu e mosse → il campo 3D
-           sopra (flex:1) resta stabile e le waifu non si spostano/escono dalla view.
-           Abbastanza alta da contenere sempre le 4 mosse; overflowY:auto per la fase
-           cambio (più alta) che scrolla internamente senza alterare l'altezza. -->
+      <!-- ── FOOTER: Action Panel (timer, messaggio, mosse) ── -->
+      <!-- Altezza in px e STABILE tra menu e mosse → il campo sopra (flex:1) non si
+           muove e le waifu non saltano. Non è più una costante ma un tetto calcolato
+           (footerH): su schermi bassi si stringe invece di rubare spazio al body e di
+           spingere le mosse fuori dal bordo. overflowY:auto per la fase cambio, che è
+           più alta e scrolla internamente senza alterare l'altezza del footer. -->
       <div :style="{
         flexShrink:0,
-        height: isMobile ? '230px' : '250px',
+        height: `${footerH}px`,
         display:'flex', flexDirection:'column',
         background:'var(--theme-surface)',
         borderTop:'1px solid var(--theme-border)',
