@@ -172,10 +172,16 @@ let caricamentoInCorso = false
 // in silenzio e la promise resta appesa per sempre. Senza questo tetto il catch del
 // ciclo qui sotto non veniva mai raggiunto, il fallback nemmeno, e lo splash restava
 // dipinto sulle carte all'infinito.
-const TIMEOUT_LETTURE_MS = 6000
+// 12s, non 6: il tetto deve distinguere una rete MORTA da una rete LENTA. Con una
+// soglia stretta un primo caricamento lento (catalogo non ancora in cache) veniva
+// scambiato per un blocco, si ritentava 4 volte peggiorando il traffico e si finiva
+// nel fallback a UI vuota. Qui sotto un timeout NON viene ritentato: se le letture
+// non rispondono entro 12s la rete non c'e', e ritentare non aiuta.
+const TIMEOUT_LETTURE_MS = 12000
+class LettureTimeout extends Error {}
 function conTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error(`timeout letture dopo ${ms}ms`)), ms)
+    const t = setTimeout(() => reject(new LettureTimeout(`letture senza risposta dopo ${ms}ms`)), ms)
     p.then(v => { clearTimeout(t); resolve(v) }, e => { clearTimeout(t); reject(e) })
   })
 }
@@ -192,7 +198,12 @@ async function avviaCaricamento(uid: string) {
       return
     } catch (e) {
       console.warn(`[gioco] caricaTutto fallito (tentativo ${tentativo + 1}/4)`, e)
-      // Backoff crescente prima di ritentare
+      // Timeout = rete che non risponde: inutile ritentare altre 3 volte (sarebbero
+      // 48s di attesa). Si va subito al fallback, che sblocca la UI; la lettura
+      // rimasta in volo non viene annullata, quindi se piu' tardi arriva popola
+      // comunque lo store e la home si riempie da sola.
+      if (e instanceof LettureTimeout) break
+      // Errore vero (es. 403 col token non ancora propagato): backoff e ritenta
       await new Promise(r => setTimeout(r, 400 * (tentativo + 1)))
     }
   }

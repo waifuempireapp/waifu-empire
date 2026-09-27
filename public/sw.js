@@ -5,7 +5,8 @@
 //     cambia il contenuto) quindi cache-first è SICURO: mai stantii, e azzera il
 //     riscaricamento dei chunk pesanti (firebase ~716KB, three ~860KB) ad ogni
 //     apertura. NON tocca MAI l'HTML/navigazione (era la causa del loading perenne).
-const CACHE_NAME = 'impero-waifu-assets-v5';
+// v6: bump per invalidare le cache dei client che avevano chunk di build vecchie.
+const CACHE_NAME = 'impero-waifu-assets-v6';
 
 // Installa subito senza aspettare che le vecchie tab si chiudano
 self.addEventListener('install', () => self.skipWaiting());

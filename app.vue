@@ -30,11 +30,22 @@ onMounted(() => {
   // non consumata una volta sola all'avvio.
   armSplashSafetyNet()
 
+  // Service worker SOLO in produzione. In sviluppo dev server e build di produzione
+  // condividono l'origine localhost: un SW installato da una `nuxt preview` continua
+  // a vivere sotto `nuxt dev` e tiene in piedi i riferimenti della build vecchia →
+  // 404 su tutti i chunk /_nuxt/ e app che non parte. In dev si disinstalla anche
+  // quello eventualmente gia' registrato, cosi' la sessione si ripulisce da sola.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then((reg) => console.log('[SW] Registrato, scope:', reg.scope))
-      .catch((err) => console.warn('[SW] Registrazione fallita:', err))
+    if (import.meta.dev) {
+      navigator.serviceWorker.getRegistrations()
+        .then(regs => regs.forEach(r => r.unregister()))
+        .catch(() => { /* best effort */ })
+    } else {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then((reg) => console.log('[SW] Registrato, scope:', reg.scope))
+        .catch((err) => console.warn('[SW] Registrazione fallita:', err))
+    }
   }
 })
 </script>
